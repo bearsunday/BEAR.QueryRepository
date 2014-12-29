@@ -1,0 +1,31 @@
+{
+    "name": "bear/query-repository",
+    "description": "Resource query responsibility segregation",
+    "license": "BSD-3-Clause",
+    "authors": [
+        {
+            "name": "Akihito Koriyama",
+            "email": "akihito.koriyama@gmail.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "BEAR\\QueryRepository\\": "src/"
+        },
+        "files": ["src-file/doctrine_annotations.php"]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "BEAR\\RepositoryModule\\": [
+                "tests/",
+                "tests/Fake/"
+            ],
+            "FakeVendor\\HelloWorld\\": "tests/Fake/fake-app/src"
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "require": {
+        "bear/sunday": "1.0.x-dev"
+    }
+}
