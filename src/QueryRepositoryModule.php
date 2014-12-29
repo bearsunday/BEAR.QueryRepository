@@ -9,6 +9,8 @@ namespace BEAR\QueryRepository;
 use BEAR\Resource\NamedParameter;
 use BEAR\Resource\NamedParameterInterface;
 use BEAR\RepositoryModule\Annotation\QueryRepository as QueryRepositoryAnnotation;
+use Doctrine\Common\Annotations\AnnotationReader;
+use Doctrine\Common\Annotations\Reader;
 use Doctrine\Common\Cache\ArrayCache;
 use Doctrine\Common\Cache\Cache;
 use Doctrine\Common\Cache\CacheProvider;
@@ -41,6 +43,7 @@ class QueryRepositoryModule extends AbstractModule
         $this->bind()->annotatedWith('app_name')->toInstance($this->appName);
         $this->bind(SetEtagInterface::class)->to(SetEtag::class)->in(Scope::SINGLETON);
         $this->bind(NamedParameterInterface::class)->to(NamedParameter::class)->in(Scope::SINGLETON);
+        $this->bind(Reader::class)->to(AnnotationReader::class)->in(Scope::SINGLETON);
         $this->bindInterceptor(
             $this->matcher->annotatedWith(QueryRepositoryAnnotation::class),
             $this->matcher->startsWith('onGet'),
