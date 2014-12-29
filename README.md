@@ -51,7 +51,7 @@ list($code, $headers, $body) = $repository->get(new Uri('app://self/user'));
 
 ```php
 
-use BEAR\RepositoryModule\Annotation\QueryRepository;
+use BEAR\QueryRepository\Annotation\QueryRepository;
 use BEAR\Resource\ResourceObject;
  
 /**
