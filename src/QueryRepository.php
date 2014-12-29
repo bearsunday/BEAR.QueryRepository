@@ -48,7 +48,7 @@ class QueryRepository implements QueryRepositoryInterface
     /**
      * {@inheritdoc}
      */
-    public function delete(Uri $uri)
+    public function purge(Uri $uri)
     {
         return $this->kvs->delete((string) $uri);
     }

@@ -30,5 +30,5 @@ interface QueryRepositoryInterface
      *
      *  @return bool Is successfully deleted
      */
-    public function delete(Uri $uri);
+    public function purge(Uri $uri);
 }

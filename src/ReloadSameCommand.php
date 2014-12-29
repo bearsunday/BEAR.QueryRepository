@@ -33,7 +33,7 @@ class ReloadSameCommand implements CommandInterface
         $delUri->query = $getQuery;
 
         // delete data in repository
-        $this->repository->delete($delUri);
+        $this->repository->purge($delUri);
 
         // GET for re-generate (in interceptor)
         $resourceObject->uri->query = $getQuery;

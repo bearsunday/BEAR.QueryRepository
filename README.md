@@ -39,8 +39,8 @@ $repository = new QueryRepository(new FilesystemCache($tmpDir));
 $repository->put($resourceObject);
 
 // delete
-$repository->delete($resourceObject->uri);
-$repository->delete(new Uri('app://self/user'));
+$repository->purge($resourceObject->uri);
+$repository->purge(new Uri('app://self/user'));
 
 // load
 list($code, $headers, $body) = $repository->get(new Uri('app://self/user'));

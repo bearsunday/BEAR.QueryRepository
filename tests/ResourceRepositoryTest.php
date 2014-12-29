@@ -45,7 +45,7 @@ class ResourceRepositoryTest extends \PHPUnit_Framework_TestCase
     {
         $this->repository->put($this->resourceObject);
         $uri = $this->resourceObject->uri;
-        $this->repository->delete($uri);
+        $this->repository->purge($uri);
         $instance = $this->repository->get($uri);
         $this->assertFalse($instance);
     }
