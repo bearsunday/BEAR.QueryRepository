@@ -1,21 +1,15 @@
 # BEAR.QueryRepository
 
-**BEAR.QueryRepository** segregates reads(GET) and writes(POST, UPDATE..) into two separate repository.
+**BEAR.QueryRepository** segregates reads and writes into two separate repository.
 
-Updating cache entry is not trigger by TTL but non-GET request like `PATCH` or `DELETE`.
-`@QueryRepository` annotated class resource works as cache using `QueryRepository` on `GET` request.
+**@QueryRepository** annotated class resource works as cache using `query-only-repository` on GET request. But updating cache entry is triggered by NOT TTL but non-GET request.
 
-`QueryRepository` resource has meta information in the header just like HTTP cache.
-
-クラスに`@QueryRepository`とアノテートしたリソースは`GET`リクエストに読み込み専用のレポジトリ(`QueryRepository`)が使われるようになりキャッシュとして機能します。
-`QueryRepository`のエントリーは指定時間で更新が行われるのではなく、`PATCH`や`DELETE`など**GET**以外のリソースアクセス時に更新が行われます。
-
-`QueryRepository`リソースはコンテンツ更新時にメタ情報が以下のようにHTTPキャッシュと同じフォーマットでヘッダーに記録されます。
+Meta information will be add in the header just like HTTP cache.
 
  * Etag: 2296077071
  * Last-Modified: Mon, 29 Dec 2014 04:51:43 GMT
 
-### Module install
+## Module install
 
 ```php
 
@@ -31,9 +25,9 @@ class AppModule extends AbstractModule
 }
 
 ```
-### Usage
+## Usage
 
-## QueryRepository direct access
+### Direct access
 
 ```php
 
@@ -53,7 +47,7 @@ list($code, $headers, $body) = $repository->get(new Uri('app://self/user'));
 
 ```
 
-## Annotate class with @QueryRepository
+### @QueryRepository annotation
 
 ```php
 
@@ -67,12 +61,12 @@ class User extends ResourceObject
 {
     public function onGet($id)
     {
-        // invoke on 'GET' or 'PATCH'
+        // invoke not only 'GET' but also 'PATCH'
     }
 
      public function onPatch($id, $name)
     {
-        // update resource, automatically re-generate the entry in QueryRepository 
+        // automatically re-generate the entry in query repository.
     }
 }
 ```
