@@ -8,6 +8,9 @@
             "email": "akihito.koriyama@gmail.com"
         }
     ],
+    "require": {
+        "bear/resource": "1.0.x-dev"
+    },
     "autoload": {
         "psr-4": {
             "BEAR\\QueryRepository\\": "src/"
@@ -25,7 +28,9 @@
     },
     "minimum-stability": "dev",
     "prefer-stable": true,
-    "require": {
-        "bear/sunday": "1.0.x-dev"
+    "extra": {
+        "branch-alias": {
+            "dev-develop": "1.0.x-dev"
+        }
     }
 }
