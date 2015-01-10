@@ -9,6 +9,10 @@ Meta information will be add in the header just like HTTP cache.
  * Etag: 2296077071
  * Last-Modified: Mon, 29 Dec 2014 04:51:43 GMT
 
+### Composer install
+
+    $ composer require bear/query-repository:~1.0@dev
+ 
 ## Module install
 
 ```php
