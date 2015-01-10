@@ -43,6 +43,7 @@ class User extends ResourceObject
     {
         $this->data[$id]['name'] = $name;
         $this->data[$id]['age'] = $age;
+        $this['id'] = $id;
 
         return $this;
     }

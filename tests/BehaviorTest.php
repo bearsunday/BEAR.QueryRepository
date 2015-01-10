@@ -2,11 +2,14 @@
 
 namespace BEAR\QueryRepository;
 
+use BEAR\Resource\Resource;
 use BEAR\Resource\ResourceClientFactory;
+use BEAR\Resource\ResourceFactory;
 use BEAR\Resource\ResourceObject;
+use FakeVendor\HelloWorld\Resource\App\User\Profile;
 use Ray\Di\Injector;
 
-class CommandInterceptorTest extends \PHPUnit_Framework_TestCase
+class BehaviorTest extends \PHPUnit_Framework_TestCase
 {
     /**
      * @var Resource
@@ -21,12 +24,12 @@ class CommandInterceptorTest extends \PHPUnit_Framework_TestCase
     public function setUp()
     {
         $module = new QueryRepositoryModule('FakeVendor\HelloWorld');
-        $this->resource = (new ResourceClientFactory)->newClient($_ENV['TMP_DIR'], 'FakeVendor\HelloWorld', $module);
+        $this->resource = (new ResourceFactory)->newInstance($_ENV['TMP_DIR'], 'FakeVendor\HelloWorld', $module);
         $this->repository = (new Injector($module, $_ENV['TMP_DIR']))->getInstance(QueryRepositoryInterface::class);
         parent::setUp();
     }
 
-    public function testPatch()
+    public function testPurgeSameResourceObjectByPatch()
     {
         /** @var $user ResourceObject */
         $user = $this->resource->get->uri('app://self/user')->withQuery(['id' => 1])->eager->request();
@@ -39,7 +42,7 @@ class CommandInterceptorTest extends \PHPUnit_Framework_TestCase
         $this->assertFalse($etag === $newEtag);
     }
 
-    public function testDelete()
+    public function testPurgeSameResourceObjectByDelete()
     {
         /** @var $user ResourceObject */
         $user = $this->resource->get->uri('app://self/user')->withQuery(['id' => 1])->eager->request();
@@ -48,5 +51,11 @@ class CommandInterceptorTest extends \PHPUnit_Framework_TestCase
         $user = $this->resource->get->uri('app://self/user')->withQuery(['id' => 1])->eager->request();
         $newEtag = $user->headers['Etag'];
         $this->assertFalse($etag === $newEtag);
+    }
+
+    public function testPurgeByAnnotation()
+    {
+        $this->resource->put->uri('app://self/user')->withQuery(['id' => 1, 'age' => 10, 'name' => 'Sunday'])->eager->request();
+        $this->assertTrue(Profile::$requested);
     }
 }

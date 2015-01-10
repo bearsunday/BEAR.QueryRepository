@@ -8,6 +8,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\Purge;
 use BEAR\RepositoryModule\Annotation\Reload;
+use BEAR\Resource\Resource;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
@@ -27,16 +28,23 @@ class ReloadAnnotatedCommand implements CommandInterface
     private $reader;
 
     /**
+     * @var Resource|ResourceInterface
+     */
+    private $resource;
+
+    /**
      * @param QueryRepositoryInterface $repository
      * @param Reader                   $reader
      * @param ResourceInterface        $resource
      */
     public function __construct(
         QueryRepositoryInterface $repository,
-        Reader $reader
+        Reader $reader,
+        Resource $resource
     ) {
         $this->repository = $repository;
         $this->reader = $reader;
+        $this->resource = $resource;
     }
 
     /**
@@ -54,7 +62,10 @@ class ReloadAnnotatedCommand implements CommandInterface
             }
             if ($annotation instanceof Reload) {
                 $uri = uri_template($annotation->uri, $resourceObject->body);
-                $this->repository->purge(new Uri($uri));
+                $uri = new Uri($uri);
+                $this->repository->purge($uri);
+                $ro = $this->resource->get->uri($uri)->eager->request();
+                $this->repository->put($ro);
             }
         }
     }
