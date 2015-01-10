@@ -71,6 +71,27 @@ class User extends ResourceObject
 }
 ```
 
+### @Purge / @Reload annotation
+
+```php
+
+use BEAR\QueryRepository\Annotation\Purge;
+use BEAR\QueryRepository\Annotation\Reload;
+
+class User extends ResourceObject
+{
+     /**
+     * @Purge(uri="app://self/user/friend?user_id={id}")
+     * @Reload(uri="app://self/user/profile?user_id={id}")
+     */
+     public function onPatch($id, $name)
+    {
+        // "app://self/user/friend?user_id={id}" entry will be purged.
+        // "app://self/user/profile?user_id={id}" entry will be regenerated.
+    }
+}
+```
+
 ### Demo
 
     $ php docs/demo/run.php
