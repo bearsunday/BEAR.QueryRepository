@@ -24,7 +24,7 @@ class BehaviorTest extends \PHPUnit_Framework_TestCase
     public function setUp()
     {
         $module = new QueryRepositoryModule('FakeVendor\HelloWorld');
-        $this->resource = (new ResourceFactory)->newInstance($_ENV['TMP_DIR'], 'FakeVendor\HelloWorld', $module);
+        $this->resource = (new ResourceClientFactory)->newClient($_ENV['TMP_DIR'], 'FakeVendor\HelloWorld', $module);
         $this->repository = (new Injector($module, $_ENV['TMP_DIR']))->getInstance(QueryRepositoryInterface::class);
         parent::setUp();
     }

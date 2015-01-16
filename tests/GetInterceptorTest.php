@@ -14,7 +14,8 @@ class GetInterceptorTest extends \PHPUnit_Framework_TestCase
 
     public function setUp()
     {
-        $this->resource = (new ResourceFactory())->newInstance($_ENV['TMP_DIR'], 'FakeVendor\HelloWorld', new QueryRepositoryModule('FakeVendor\HelloWorld'));
+        $module = new QueryRepositoryModule('FakeVendor\HelloWorld');
+        $this->resource = (new ResourceClientFactory)->newClient($_ENV['TMP_DIR'], 'FakeVendor\HelloWorld', $module);
         parent::setUp();
     }
 
