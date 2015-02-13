@@ -1,4 +1,7 @@
 # BEAR.QueryRepository
+[![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/koriym/BEAR.QueryRepository/badges/quality-score.png?b=develop)](https://scrutinizer-ci.com/g/koriym/BEAR.QueryRepository/?branch=develop)
+[![Code Coverage](https://scrutinizer-ci.com/g/koriym/BEAR.QueryRepository/badges/coverage.png?b=develop)](https://scrutinizer-ci.com/g/koriym/BEAR.QueryRepository/?branch=develop)
+https://travis-ci.org/koriym/BEAR.QueryRepository.svg?branch=develop
 
 **BEAR.QueryRepository** segregates reads and writes into two separate repository.
 
