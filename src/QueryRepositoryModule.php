@@ -6,10 +6,10 @@
  */
 namespace BEAR\QueryRepository;
 
+use BEAR\RepositoryModule\Annotation\QueryRepository as QueryRepositoryAnnotation;
 use BEAR\RepositoryModule\Annotation\Storage;
 use BEAR\Resource\NamedParameter;
 use BEAR\Resource\NamedParameterInterface;
-use BEAR\RepositoryModule\Annotation\QueryRepository as QueryRepositoryAnnotation;
 use Doctrine\Common\Annotations\AnnotationReader;
 use Doctrine\Common\Annotations\Reader;
 use Doctrine\Common\Cache\ArrayCache;

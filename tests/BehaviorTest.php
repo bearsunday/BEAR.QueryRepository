@@ -3,7 +3,6 @@
 namespace BEAR\QueryRepository;
 
 use BEAR\Resource\Module\ResourceModule;
-use BEAR\Resource\Resource;
 use BEAR\Resource\ResourceClientFactory;
 use BEAR\Resource\ResourceFactory;
 use BEAR\Resource\ResourceInterface;

@@ -8,7 +8,6 @@ namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\Storage;
 use BEAR\Resource\Annotation\AppName;
-use Doctrine\Common\Cache\Cache;
 use Doctrine\Common\Cache\CacheProvider;
 use Ray\Di\Di\Inject;
 use Ray\Di\ProviderInterface;

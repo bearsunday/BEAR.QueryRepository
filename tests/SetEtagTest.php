@@ -5,7 +5,6 @@ namespace BEAR\QueryRepository;
 use BEAR\Resource\Module\ResourceModule;
 use BEAR\Resource\ResourceClientFactory;
 use BEAR\Resource\ResourceInterface;
-use Doctrine\Common\Annotations\AnnotationReader;
 use Ray\Di\Injector;
 
 class SetEtagTest extends \PHPUnit_Framework_TestCase

@@ -7,7 +7,6 @@ use BEAR\Resource\Module\ResourceModule;
 use BEAR\Resource\ResourceClientFactory;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
-use Doctrine\Common\Annotations\AnnotationReader;
 use Doctrine\Common\Cache\FilesystemCache;
 use Ray\Di\Injector;
 
