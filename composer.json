@@ -9,7 +9,7 @@
         }
     ],
     "require": {
-        "bear/resource": "1.0.x-dev"
+        "bear/resource": "~1.0@dev"
     },
     "autoload": {
         "psr-4": {
@@ -30,7 +30,7 @@
     "prefer-stable": true,
     "extra": {
         "branch-alias": {
-            "dev-develop": "1.0.x-dev"
+            "dev-develop": "0.1.x-dev"
         }
     }
 }
