@@ -11,7 +11,6 @@ use BEAR\Resource\Annotation\AppName;
 use Doctrine\Common\Cache\Cache;
 use Doctrine\Common\Cache\CacheProvider;
 use Ray\Di\Di\Inject;
-use Ray\Di\Di\Named;
 use Ray\Di\ProviderInterface;
 
 class StorageProvider implements ProviderInterface

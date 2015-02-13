@@ -11,7 +11,8 @@ class Commands extends \ArrayObject
     /**
      * @param CommandInterface[] $commands
      */
-    public function __construct(array $commands) {
+    public function __construct(array $commands)
+    {
         parent::__construct($commands);
     }
 }

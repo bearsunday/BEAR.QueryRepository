@@ -10,7 +10,6 @@ use BEAR\RepositoryModule\Annotation\Storage;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
 use Doctrine\Common\Cache\Cache;
-use Ray\Di\Di\Named;
 
 class QueryRepository implements QueryRepositoryInterface
 {
