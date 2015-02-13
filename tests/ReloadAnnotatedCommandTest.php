@@ -16,7 +16,6 @@ class ReloadAnnotatedCommandTest extends \PHPUnit_Framework_TestCase
 
     public function setUp()
     {
-        $module = new QueryRepositoryModule('FakeVendor\HelloWorld');
         $this->resource = (new Injector(new QueryRepositoryModule(new ResourceModule('FakeVendor\HelloWorld')), $_ENV['TMP_DIR']))->getInstance(ResourceInterface::class);
         parent::setUp();
     }
