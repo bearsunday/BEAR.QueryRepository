@@ -3,10 +3,13 @@
 namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\QueryRepository as Repository;
+use BEAR\Resource\Module\ResourceModule;
 use BEAR\Resource\ResourceClientFactory;
+use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use Doctrine\Common\Annotations\AnnotationReader;
 use Doctrine\Common\Cache\FilesystemCache;
+use Ray\Di\Injector;
 
 class ResourceRepositoryTest extends \PHPUnit_Framework_TestCase
 {
@@ -23,7 +26,7 @@ class ResourceRepositoryTest extends \PHPUnit_Framework_TestCase
     public function setUp()
     {
         $this->repository = new Repository(new FilesystemCache($_ENV['TMP_DIR']));
-        $resource = (new ResourceClientFactory())->newInstance('FakeVendor\HelloWorld', new AnnotationReader);
+        $resource = (new Injector(new QueryRepositoryModule(new ResourceModule('FakeVendor\HelloWorld'))))->getInstance(ResourceInterface::class);
         /** @var $resource Resource */
         $this->resourceObject = $resource->get->uri('app://self/user')->withQuery(['id' => 1])->eager->request();
 

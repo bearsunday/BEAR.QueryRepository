@@ -6,6 +6,7 @@
  */
 namespace BEAR\QueryRepository;
 
+use BEAR\RepositoryModule\Annotation\Storage;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
 use Doctrine\Common\Cache\Cache;
@@ -20,12 +21,15 @@ class QueryRepository implements QueryRepositoryInterface
 
     /**
      * @param Cache $kvs
-     * @Named("resource_repository")
+     *
+     * @Storage
      */
     public function __construct(Cache $kvs)
     {
         $this->kvs = $kvs;
     }
+
+
 
     /**
      * {@inheritdoc}

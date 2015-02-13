@@ -2,9 +2,11 @@
 
 namespace BEAR\QueryRepository;
 
+use BEAR\Resource\Module\ResourceModule;
 use BEAR\Resource\ResourceClientFactory;
 use BEAR\Resource\ResourceInterface;
 use Doctrine\Common\Annotations\AnnotationReader;
+use Ray\Di\Injector;
 
 class SetEtagTest extends \PHPUnit_Framework_TestCase
 {
@@ -16,7 +18,7 @@ class SetEtagTest extends \PHPUnit_Framework_TestCase
     public function setUp()
     {
         parent::setUp();
-        $this->resource = (new ResourceClientFactory())->newInstance('FakeVendor\HelloWorld', new AnnotationReader);
+        $this->resource = (new Injector(new QueryRepositoryModule(new ResourceModule('FakeVendor\HelloWorld')), $_ENV['TMP_DIR']))->getInstance(ResourceInterface::class);
     }
 
     public function testInvoke()

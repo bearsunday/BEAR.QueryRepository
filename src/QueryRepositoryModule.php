@@ -6,6 +6,7 @@
  */
 namespace BEAR\QueryRepository;
 
+use BEAR\RepositoryModule\Annotation\Storage;
 use BEAR\Resource\NamedParameter;
 use BEAR\Resource\NamedParameterInterface;
 use BEAR\RepositoryModule\Annotation\QueryRepository as QueryRepositoryAnnotation;
@@ -25,22 +26,13 @@ class QueryRepositoryModule extends AbstractModule
     private $appName;
 
     /**
-     * @param AbstractModule $appName
-     */
-    public function __construct($appName)
-    {
-        $this->appName = $appName;
-    }
-
-    /**
      * {@inheritdoc}
      */
     protected function configure()
     {
         $this->bind(QueryRepositoryInterface::class)->to(QueryRepository::class)->in(Scope::SINGLETON);
-        $this->bind(Cache::class)->annotatedWith('resource_repository')->toProvider(StorageProvider::class);
-        $this->bind(CacheProvider::class)->annotatedWith('resource_repository')->to(ArrayCache::class)->in(Scope::SINGLETON);
-        $this->bind()->annotatedWith('app_name')->toInstance($this->appName);
+        $this->bind(Cache::class)->annotatedWith(Storage::class)->toProvider(StorageProvider::class)->in(Scope::SINGLETON);
+        $this->bind(CacheProvider::class)->annotatedWith(Storage::class)->to(ArrayCache::class)->in(Scope::SINGLETON);
         $this->bind(SetEtagInterface::class)->to(SetEtag::class)->in(Scope::SINGLETON);
         $this->bind(NamedParameterInterface::class)->to(NamedParameter::class)->in(Scope::SINGLETON);
         $this->bind(Reader::class)->to(AnnotationReader::class)->in(Scope::SINGLETON);

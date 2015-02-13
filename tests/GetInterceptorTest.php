@@ -2,20 +2,23 @@
 
 namespace BEAR\QueryRepository;
 
+use BEAR\Resource\Module\ResourceModule;
 use BEAR\Resource\ResourceClientFactory;
 use BEAR\Resource\ResourceFactory;
+use BEAR\Resource\ResourceInterface;
+use Ray\Di\Injector;
 
 class GetInterceptorTest extends \PHPUnit_Framework_TestCase
 {
     /**
-     * @var Resource
+     * @var ResourceInterface
      */
     private $resource;
 
     public function setUp()
     {
-        $module = new QueryRepositoryModule('FakeVendor\HelloWorld');
-        $this->resource = (new ResourceClientFactory)->newClient($_ENV['TMP_DIR'], 'FakeVendor\HelloWorld', $module);
+        $this->resource = (new Injector(new QueryRepositoryModule(new ResourceModule('FakeVendor\HelloWorld'))))->getInstance(ResourceInterface::class);
+
         parent::setUp();
     }
 

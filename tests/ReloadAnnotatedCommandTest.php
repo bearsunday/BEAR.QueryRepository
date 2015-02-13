@@ -2,7 +2,10 @@
 
 namespace BEAR\QueryRepository;
 
+use BEAR\Resource\Module\ResourceModule;
 use BEAR\Resource\ResourceClientFactory;
+use BEAR\Resource\ResourceInterface;
+use Ray\Di\Injector;
 
 class ReloadAnnotatedCommandTest extends \PHPUnit_Framework_TestCase
 {
@@ -14,7 +17,7 @@ class ReloadAnnotatedCommandTest extends \PHPUnit_Framework_TestCase
     public function setUp()
     {
         $module = new QueryRepositoryModule('FakeVendor\HelloWorld');
-        $this->resource = (new ResourceClientFactory)->newClient($_ENV['TMP_DIR'], 'FakeVendor\HelloWorld', $module);
+        $this->resource = (new Injector(new QueryRepositoryModule(new ResourceModule('FakeVendor\HelloWorld')), $_ENV['TMP_DIR']))->getInstance(ResourceInterface::class);
         parent::setUp();
     }
 

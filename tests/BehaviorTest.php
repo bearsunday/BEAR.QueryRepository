@@ -2,9 +2,11 @@
 
 namespace BEAR\QueryRepository;
 
+use BEAR\Resource\Module\ResourceModule;
 use BEAR\Resource\Resource;
 use BEAR\Resource\ResourceClientFactory;
 use BEAR\Resource\ResourceFactory;
+use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use FakeVendor\HelloWorld\Resource\App\User\Profile;
 use Ray\Di\Injector;
@@ -12,7 +14,7 @@ use Ray\Di\Injector;
 class BehaviorTest extends \PHPUnit_Framework_TestCase
 {
     /**
-     * @var Resource
+     * @var ResourceInterface
      */
     private $resource;
 
@@ -23,9 +25,9 @@ class BehaviorTest extends \PHPUnit_Framework_TestCase
 
     public function setUp()
     {
-        $module = new QueryRepositoryModule('FakeVendor\HelloWorld');
-        $this->resource = (new ResourceClientFactory)->newClient($_ENV['TMP_DIR'], 'FakeVendor\HelloWorld', $module);
-        $this->repository = (new Injector($module, $_ENV['TMP_DIR']))->getInstance(QueryRepositoryInterface::class);
+        $injector = new Injector(new QueryRepositoryModule(new ResourceModule('FakeVendor\HelloWorld')), $_ENV['TMP_DIR']);
+        $this->repository = $injector->getInstance(QueryRepositoryInterface::class);
+        $this->resource = $injector->getInstance(ResourceInterface::class);
         parent::setUp();
     }
 

@@ -8,3 +8,4 @@
 require dirname(__DIR__) . '/src/Annotation/QueryRepository.php';
 require dirname(__DIR__) . '/src/Annotation/Purge.php';
 require dirname(__DIR__) . '/src/Annotation/Reload.php';
+require dirname(__DIR__) . '/src/Annotation/Storage.php';
