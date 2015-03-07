@@ -28,16 +28,17 @@ class QueryRepository implements QueryRepositoryInterface
         $this->kvs = $kvs;
     }
 
-
-
     /**
      * {@inheritdoc}
      */
     public function put(ResourceObject $ro)
     {
         $data = [$ro->code, $ro->headers, $ro->body, $ro->view];
-
-        return $this->kvs->save((string) $ro->uri, $data);
+        $uri = (string) $ro->uri;
+        if (isset($ro->headers['Etag'])) {
+            $this->updateEtagDatabase($ro, $ro->headers['Etag']);
+        }
+        return $this->kvs->save($uri, $data);
     }
 
     /**
@@ -53,6 +54,35 @@ class QueryRepository implements QueryRepositoryInterface
      */
     public function purge(Uri $uri)
     {
+        $this->deleteEtagDatabase($uri);
         return $this->kvs->delete((string) $uri);
+    }
+
+    /**
+     * Update etag in etag repository
+     *
+     * @param ResourceObject $ro
+     * @param string         $etag
+     */
+    private function updateEtagDatabase(ResourceObject $ro, $etag)
+    {
+        $etagId = 'resource-etag:' . (string) $ro->uri;
+        $oldEtagKey = $this->kvs->fetch($etagId);
+        $this->kvs->delete($oldEtagKey);
+        $newEtagKey = 'etag-id:' . $etag;
+        $this->kvs->save($newEtagKey, true);
+        $this->kvs->save($etagId, $newEtagKey);
+    }
+
+    /**
+     * Delete etag in etag repository
+     *
+     * @param $uri
+     */
+    public function deleteEtagDatabase($uri)
+    {
+        $etagId = 'resource-etag:' . (string) $uri;
+        $oldEtagKey = $this->kvs->fetch($etagId);
+        $this->kvs->delete($oldEtagKey);
     }
 }
