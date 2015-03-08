@@ -7,6 +7,7 @@
 namespace BEAR\QueryRepository;
 
 use BEAR\Resource\ResourceObject;
+use Doctrine\Common\Cache\Cache;
 
 class SetEtag implements SetEtagInterface
 {

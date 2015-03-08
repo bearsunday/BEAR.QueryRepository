@@ -28,16 +28,17 @@ class QueryRepository implements QueryRepositoryInterface
         $this->kvs = $kvs;
     }
 
-
-
     /**
      * {@inheritdoc}
      */
     public function put(ResourceObject $ro)
     {
         $data = [$ro->code, $ro->headers, $ro->body, $ro->view];
-
-        return $this->kvs->save((string) $ro->uri, $data);
+        $uri = (string) $ro->uri;
+        if (isset($ro->headers['Etag'])) {
+            $this->updateEtagDatabase($ro, $ro->headers['Etag']);
+        }
+        return $this->kvs->save($uri, $data);
     }
 
     /**
@@ -53,6 +54,41 @@ class QueryRepository implements QueryRepositoryInterface
      */
     public function purge(Uri $uri)
     {
+        $this->deleteEtagDatabase($uri);
         return $this->kvs->delete((string) $uri);
+    }
+
+    /**
+     * Update etag in etag repository
+     *
+     * @param ResourceObject $ro
+     * @param string         $etag
+     */
+    private function updateEtagDatabase(ResourceObject $ro, $etag)
+    {
+        if ($ro->uri->host !== 'page') {
+            return;
+        }
+        $uri = (string) $ro->uri;
+        $etagUri = 'resource-etag:' . $uri;
+        $this->kvs->delete($this->kvs->fetch($etagUri));
+        $etagId = 'etag-id:' . $etag;
+        $this->kvs->save($etagId, $uri);     // etag => uri  for "is etag_exists?"
+        $this->kvs->save($etagUri, $etagId); // uri  => etag for update etag by uri
+    }
+
+    /**
+     * Delete etag in etag repository
+     *
+     * @param $uri
+     */
+    public function deleteEtagDatabase($uri)
+    {
+        if ($uri->host !== 'page') {
+            return;
+        }
+        $etagId = 'resource-etag:' . (string) $uri; // invalidate etag
+        $oldEtagKey = $this->kvs->fetch($etagId);
+        $this->kvs->delete($oldEtagKey);
     }
 }
