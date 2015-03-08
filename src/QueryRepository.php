@@ -66,12 +66,15 @@ class QueryRepository implements QueryRepositoryInterface
      */
     private function updateEtagDatabase(ResourceObject $ro, $etag)
     {
-        $etagId = 'resource-etag:' . (string) $ro->uri;
-        $oldEtagKey = $this->kvs->fetch($etagId);
-        $this->kvs->delete($oldEtagKey);
-        $newEtagKey = 'etag-id:' . $etag;
-        $this->kvs->save($newEtagKey, true);
-        $this->kvs->save($etagId, $newEtagKey);
+        if ($ro->uri->host !== 'page') {
+            return;
+        }
+        $uri = (string) $ro->uri;
+        $etagUri = 'resource-etag:' . $uri;
+        $this->kvs->delete($this->kvs->fetch($etagUri));
+        $etagId = 'etag-id:' . $etag;
+        $this->kvs->save($etagId, $uri);     // etag => uri  for "is etag_exists?"
+        $this->kvs->save($etagUri, $etagId); // uri  => etag for update etag by uri
     }
 
     /**
@@ -81,7 +84,10 @@ class QueryRepository implements QueryRepositoryInterface
      */
     public function deleteEtagDatabase($uri)
     {
-        $etagId = 'resource-etag:' . (string) $uri;
+        if ($uri->host !== 'page') {
+            return;
+        }
+        $etagId = 'resource-etag:' . (string) $uri; // invalidate etag
         $oldEtagKey = $this->kvs->fetch($etagId);
         $this->kvs->delete($oldEtagKey);
     }
