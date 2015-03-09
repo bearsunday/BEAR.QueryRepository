@@ -7,7 +7,7 @@ use BEAR\Resource\ResourceClientFactory;
 use BEAR\Resource\ResourceInterface;
 use Ray\Di\Injector;
 
-class ReloadAnnotatedCommandTest extends \PHPUnit_Framework_TestCase
+class RefreshAnnotatedCommandTest extends \PHPUnit_Framework_TestCase
 {
     /**
      * @var Resource
