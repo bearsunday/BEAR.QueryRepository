@@ -10,7 +10,7 @@ use BEAR\Resource\ResourceObject;
 use BEAR\Sunday\Exception\LogicException;
 use Ray\Aop\MethodInvocation;
 
-class ReloadSameCommand implements CommandInterface
+class RefreshSameCommand implements CommandInterface
 {
     /**
      * @var QueryRepositoryInterface

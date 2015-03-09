@@ -16,9 +16,9 @@ class CommandsProvider implements ProviderInterface
     private $commands = [];
 
     /**
-     * @param ReloadSameCommand $command1
+     * @param RefreshSameCommand $command1
      */
-    public function __construct(ReloadSameCommand $command1)
+    public function __construct(RefreshSameCommand $command1)
     {
         $this->commands = [
             $command1,

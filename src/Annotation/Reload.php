@@ -10,7 +10,7 @@ namespace BEAR\RepositoryModule\Annotation;
  * @Annotation
  * @Target("METHOD")
  */
-final class Reload
+final class Refresh
 {
     /**
      * @var string

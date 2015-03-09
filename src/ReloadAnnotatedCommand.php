@@ -7,7 +7,7 @@
 namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\Purge;
-use BEAR\RepositoryModule\Annotation\Reload;
+use BEAR\RepositoryModule\Annotation\Refresh;
 use BEAR\Resource\Resource;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
@@ -15,7 +15,7 @@ use BEAR\Resource\Uri;
 use Doctrine\Common\Annotations\Reader;
 use Ray\Aop\MethodInvocation;
 
-class ReloadAnnotatedCommand implements CommandInterface
+class RefreshAnnotatedCommand implements CommandInterface
 {
     /**
      * @var QueryRepositoryInterface
@@ -60,7 +60,7 @@ class ReloadAnnotatedCommand implements CommandInterface
                 $uri = uri_template($annotation->uri, $resourceObject->body);
                 $this->repository->purge(new Uri($uri));
             }
-            if ($annotation instanceof Reload) {
+            if ($annotation instanceof Refresh) {
                 $uri = uri_template($annotation->uri, $resourceObject->body);
                 $uri = new Uri($uri);
                 $this->repository->purge($uri);
