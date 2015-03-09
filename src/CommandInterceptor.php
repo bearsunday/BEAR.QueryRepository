@@ -27,8 +27,8 @@ class CommandInterceptor implements MethodInterceptor
         Resource $resource
     ) {
         $this->commands = [
-            new ReloadSameCommand($repository),
-            new ReloadAnnotatedCommand($repository, $reader, $resource)
+            new RefreshSameCommand($repository),
+            new RefreshAnnotatedCommand($repository, $reader, $resource)
         ];
     }
 

@@ -26,7 +26,6 @@ class StorageProvider implements ProviderInterface
 
     /**
      * @param CacheProvider $kvs
-     * @param string        $appName
      *
      * @Storage
      */
@@ -36,7 +35,7 @@ class StorageProvider implements ProviderInterface
     }
 
     /**
-     * @param $appName
+     * @param string $appName
      *
      * @Inject
      * @AppName
@@ -44,7 +43,6 @@ class StorageProvider implements ProviderInterface
     public function setAppName($appName)
     {
         $this->appName = $appName;
-
     }
 
     /**
@@ -56,5 +54,4 @@ class StorageProvider implements ProviderInterface
 
         return $this->kvs;
     }
-
 }

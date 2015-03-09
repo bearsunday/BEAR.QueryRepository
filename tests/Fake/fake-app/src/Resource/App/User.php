@@ -4,7 +4,7 @@ namespace FakeVendor\HelloWorld\Resource\App;
 
 use BEAR\RepositoryModule\Annotation\Purge;
 use BEAR\RepositoryModule\Annotation\QueryRepository;
-use BEAR\RepositoryModule\Annotation\Reload;
+use BEAR\RepositoryModule\Annotation\Refresh;
 use BEAR\Resource\ResourceObject;
 
 /**
@@ -37,7 +37,7 @@ class User extends ResourceObject
 
     /**
      * @Purge(uri="app://self/user/friend?user_id={id}")
-     * @Reload(uri="app://self/user/profile?user_id={id}")
+     * @Refresh(uri="app://self/user/profile?user_id={id}")
      */
     public function onPut($id, $name, $age)
     {

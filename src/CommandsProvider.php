@@ -16,16 +16,12 @@ class CommandsProvider implements ProviderInterface
     private $commands = [];
 
     /**
-     * @param ReloadSameCommand      $command1
-     * @param ReloadAnnotatedCommand $command2
+     * @param RefreshSameCommand $command1
      */
-    public function __construct(
-        ReloadSameCommand $command1
-//        ReloadAnnotatedCommand $command2
-    ) {
+    public function __construct(RefreshSameCommand $command1)
+    {
         $this->commands = [
             $command1,
-//            $command2
         ];
     }
 

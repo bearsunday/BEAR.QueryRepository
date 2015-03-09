@@ -15,17 +15,12 @@ final class HttpCache
     /**
      * @var HttpCacheSaver
      */
-    public $responder;
+    public $saver;
 
     /**
      * @var string
      */
     private $appName;
-
-    /**
-     * @var array
-     */
-    private $server;
 
     /**
      * @var Cache
@@ -37,42 +32,40 @@ final class HttpCache
      */
     private $requestUri;
 
-
     /**
      * @param string $appName application name (Vendor\Package)
-     * @param array  $server  $_SERVER
      */
-    public function __construct($appName ,array $server)
+    public function __construct($appName)
     {
         $this->appName = $appName;
-        $this->server = $server;
         $this->kvs = apc_fetch($this->appName . '-kvs');
         if (! $this->kvs) {
             $prodModule = $this->appName . '\Module\ProdModule';
             $this->kvs = (new Injector(new $prodModule))->getInstance(Cache::class, Storage::class);
             apc_store($this->appName . '-kvs', $this->kvs);
         }
-        $this->responder = new HttpCacheSaver($this->kvs);
+        $this->saver = new HttpCacheSaver($this->kvs);
     }
 
-    public function isNotModified()
+    public function isNotModified(array $server)
     {
-        if(! isset($this->server['HTTP_IF_NONE_MATCH']) || ! $this->kvs->contains('etag-id:' . stripslashes($this->server['HTTP_IF_NONE_MATCH']))) {
+        if (! isset($server['HTTP_IF_NONE_MATCH'])) {
             return false;
         }
+        $etagKey = 'request-uri-etag:' . $server['REQUEST_URI'] . $server['HTTP_IF_NONE_MATCH'];
 
-        return true;
+        return $this->kvs->contains($etagKey) ? true : false;
     }
 
     /**
      * @return bool
      */
-    public function hasContents()
+    public function hasContents(array $server)
     {
-        if (! isset($this->server['REQUEST_URI'])) {
+        if (! isset($server['REQUEST_URI'])) {
             return false;
         }
-        $requestUri = 'request-uri:' . $this->server['REQUEST_URI'];
+        $requestUri = 'request-uri:' . $server['REQUEST_URI'];
         $this->requestUri = $this->kvs->fetch($requestUri);
 
         return $this->requestUri ? true : false;
@@ -90,21 +83,26 @@ final class HttpCache
     }
 
     /**
-     * @return bool is flushed contents ?
+     * Invoke http cache (304 and uri cache)
+     *
+     * @return array [$httpCode, $message]
      */
-    public function __invoke()
+    public function __invoke(array $server)
     {
-        if ($this->isNotModified()) {
+        if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+            return [0, "method:{$_SERVER['REQUEST_METHOD']}"];
+        }
+        if ($this->isNotModified($server)) {
             http_response_code(304);
 
-            return true;
+            return [304, "etag:{$server['HTTP_IF_NONE_MATCH']}"];
         }
-        if ($this->hasContents()) {
+        if ($this->hasContents($server)) {
             $this->transfer(new HttpCacheResponder);
 
-            return true;
+            return [200, "uri:{$server['REQUEST_URI']}"];
         }
 
-        return false;
+        return [0, "no-hit:{$server['REQUEST_URI']}"];
     }
 }

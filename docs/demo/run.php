@@ -1,14 +1,16 @@
 <?php
 
-use BEAR\QueryRepository\QueryRepositoryModule;
-use BEAR\Resource\ResourceClientFactory;
+use BEAR\Resource\ResourceInterface;
 use Composer\Autoload\ClassLoader;
+use FakeVendor\DemoApp\AppModule;
+use Ray\Di\Injector;
 
 /** @var $loader ClassLoader*/
 $loader = require dirname(dirname(__DIR__)) . '/vendor/autoload.php';
 $loader->addPsr4('FakeVendor\DemoApp\\', __DIR__);
 
-$resource = (new ResourceClientFactory)->newClient(__DIR__ . '/tmp', 'FakeVendor\DemoApp', new QueryRepositoryModule('FakeVendor\DemoApp'));
+/* @var $resource ResourceInterface */
+$resource = (new Injector(new AppModule))->getInstance(ResourceInterface::class);
 
 echo PHP_EOL;
 echo 'GET (onGet)' . PHP_EOL;
