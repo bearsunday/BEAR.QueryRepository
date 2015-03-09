@@ -87,42 +87,22 @@ final class HttpCache
     /**
      * Invoke http cache (304 and uri cache)
      *
-     * @return int http code 0: nocache, 200: uri base contents cache : 304: not modified
+     * @return array [$httpCode, $message]
      */
     public function __invoke(array $server)
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
-            return;
+            return [0, "method:{$_SERVER['REQUEST_METHOD']}"];
         }
         if ($this->isNotModified($server)) {
             http_response_code(304);
-            return 304;
+            return [304, "etag:{$server['HTTP_IF_NONE_MATCH']}"];
         }
         if ($this->hasContents($server)) {
             $this->transfer(new HttpCacheResponder);
 
-            return 200;
+            return [200, "uri:{$server['REQUEST_URI']}"];
         }
-        return 0;
-    }
-
-    public function debug(array $server)
-    {
-        if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
-            return;
-        }
-        if ($this->isNotModified($server)) {
-            http_response_code(304);
-            error_log("[http-cache] 304(Not Modified):{$server['HTTP_IF_NONE_MATCH']}");
-            return true;
-        }
-        if ($this->hasContents($server)) {
-            $this->transfer(new HttpCacheResponder);
-            error_log("[http-cache] cached-uri:{$server['REQUEST_URI']}");
-
-            return true;
-        }
-        error_log("[http-cache] no cache");
-        return false;
+        return [0, "no-hit:{$server['REQUEST_URI']}"];
     }
 }
