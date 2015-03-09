@@ -91,6 +91,9 @@ final class HttpCache
      */
     public function __invoke(array $server)
     {
+        if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+            return;
+        }
         if ($this->isNotModified($server)) {
             http_response_code(304);
             return 304;
@@ -105,6 +108,9 @@ final class HttpCache
 
     public function debug(array $server)
     {
+        if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+            return;
+        }
         if ($this->isNotModified($server)) {
             http_response_code(304);
             error_log("[http-cache] 304(Not Modified):{$server['HTTP_IF_NONE_MATCH']}");
