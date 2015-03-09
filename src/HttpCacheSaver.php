@@ -33,14 +33,16 @@ final class HttpCacheSaver implements TransferInterface
         if (PHP_SAPI === 'cli' || ! isset($resourceObject->headers['Etag']) && $resourceObject->code !== 200) {
             return;
         }
-
         $requestUriEtag = 'request-uri-etag:' . $server['REQUEST_URI'] . $resourceObject->headers['Etag'];
         if ($this->kvs->contains($requestUriEtag)) {
             return;
         }
         $requestUri = 'request-uri:' . $server['REQUEST_URI'];
         $this->kvs->delete($this->kvs->fetch($requestUri));
-        $this->kvs->save($requestUri, $requestUriEtag);
-        $this->kvs->save($requestUriEtag, [$resourceObject->headers, $resourceObject->view]);
+        $this->kvs->save($requestUri, $requestUriEtag);         // request-uri:/foo => 1755138345
+        $this->kvs->save(                                       // request-uri-etag:/1755138345 => [header, contents]
+            $requestUriEtag,
+            [$resourceObject->headers, $resourceObject->view]
+        );
     }
 }
