@@ -34,7 +34,6 @@ final class HttpCache
 
     /**
      * @param string $appName application name (Vendor\Package)
-     * @param array  $server  $_SERVER
      */
     public function __construct($appName)
     {
@@ -50,7 +49,6 @@ final class HttpCache
 
     public function isNotModified(array $server)
     {
-
         if (! isset($server['HTTP_IF_NONE_MATCH'])) {
             return false;
         }
@@ -96,6 +94,7 @@ final class HttpCache
         }
         if ($this->isNotModified($server)) {
             http_response_code(304);
+
             return [304, "etag:{$server['HTTP_IF_NONE_MATCH']}"];
         }
         if ($this->hasContents($server)) {
@@ -103,6 +102,7 @@ final class HttpCache
 
             return [200, "uri:{$server['REQUEST_URI']}"];
         }
+
         return [0, "no-hit:{$server['REQUEST_URI']}"];
     }
 }

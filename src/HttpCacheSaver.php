@@ -39,8 +39,10 @@ final class HttpCacheSaver implements TransferInterface
         }
         $requestUri = 'request-uri:' . $server['REQUEST_URI'];
         $this->kvs->delete($this->kvs->fetch($requestUri));
-        $this->kvs->save($requestUri, $requestUriEtag);         // request-uri:/foo => 1755138345
-        $this->kvs->save(                                       // request-uri-etag:/1755138345 => [header, contents]
+        // request-uri:/foo => 1755138345
+        $this->kvs->save($requestUri, $requestUriEtag);
+        // request-uri-etag:/1755138345 => [header, contents]
+        $this->kvs->save(
             $requestUriEtag,
             [$resourceObject->headers, $resourceObject->view]
         );

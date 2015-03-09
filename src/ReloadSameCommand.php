@@ -23,10 +23,12 @@ class ReloadSameCommand implements CommandInterface
     }
 
     /**
-     * @param ResourceObject $resourceObject
+     * @param MethodInvocation $invocation
+     * @param ResourceObject   $resourceObject
      */
     public function command(MethodInvocation $invocation, ResourceObject $resourceObject)
     {
+        unset($invocation);
         $onGet = [$resourceObject, 'onGet'];
         $getQuery = $this->getQuery($resourceObject, $onGet);
         $delUri = clone $resourceObject->uri;
