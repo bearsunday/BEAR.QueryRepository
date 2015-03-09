@@ -44,7 +44,6 @@ class StorageProvider implements ProviderInterface
     public function setAppName($appName)
     {
         $this->appName = $appName;
-
     }
 
     /**
@@ -56,5 +55,4 @@ class StorageProvider implements ProviderInterface
 
         return $this->kvs;
     }
-
 }

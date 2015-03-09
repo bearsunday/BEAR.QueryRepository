@@ -53,9 +53,9 @@ class ReloadAnnotatedCommand implements CommandInterface
      */
     public function command(MethodInvocation $invocation, ResourceObject $resourceObject)
     {
-        /** @var $purgeAnnotations Purge[] */
+        /* @var $purgeAnnotations Purge[] */
         $annotations = $this->reader->getMethodAnnotations($invocation->getMethod());
-        foreach($annotations as $annotation) {
+        foreach ($annotations as $annotation) {
             if ($annotation instanceof Purge) {
                 $uri = uri_template($annotation->uri, $resourceObject->body);
                 $this->repository->purge(new Uri($uri));

@@ -38,6 +38,7 @@ class QueryRepository implements QueryRepositoryInterface
         if (isset($ro->headers['Etag'])) {
             $this->updateEtagDatabase($ro, $ro->headers['Etag']);
         }
+
         return $this->kvs->save($uri, $data);
     }
 
@@ -55,6 +56,7 @@ class QueryRepository implements QueryRepositoryInterface
     public function purge(Uri $uri)
     {
         $this->deleteEtagDatabase($uri);
+
         return $this->kvs->delete((string) $uri);
     }
 

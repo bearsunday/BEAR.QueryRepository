@@ -33,5 +33,4 @@ class ReloadAnnotatedCommandTest extends \PHPUnit_Framework_TestCase
         $expect = $time;
         $this->assertSame($expect, $user['time']);
     }
-
 }

@@ -22,7 +22,8 @@ class CommandsProvider implements ProviderInterface
     public function __construct(
         ReloadSameCommand $command1
 //        ReloadAnnotatedCommand $command2
-    ) {
+)
+    {
         $this->commands = [
             $command1,
 //            $command2

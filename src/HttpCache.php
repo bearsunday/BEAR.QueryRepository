@@ -37,12 +37,11 @@ final class HttpCache
      */
     private $requestUri;
 
-
     /**
      * @param string $appName application name (Vendor\Package)
      * @param array  $server  $_SERVER
      */
-    public function __construct($appName ,array $server)
+    public function __construct($appName, array $server)
     {
         $this->appName = $appName;
         $this->server = $server;
@@ -57,7 +56,7 @@ final class HttpCache
 
     public function isNotModified()
     {
-        if(! isset($this->server['HTTP_IF_NONE_MATCH']) || ! $this->kvs->contains('etag-id:' . stripslashes($this->server['HTTP_IF_NONE_MATCH']))) {
+        if (! isset($this->server['HTTP_IF_NONE_MATCH']) || ! $this->kvs->contains('etag-id:' . stripslashes($this->server['HTTP_IF_NONE_MATCH']))) {
             return false;
         }
 

@@ -21,7 +21,7 @@ interface QueryRepositoryInterface
     /**
      * @param Uri $uri
      *
-     * @return  [$code, $headers, $body, $view]|false
+     * @return [$code, $headers, $body, $view]|false
      */
     public function get(Uri $uri);
 

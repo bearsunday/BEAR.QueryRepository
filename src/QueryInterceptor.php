@@ -24,7 +24,7 @@ class QueryInterceptor implements MethodInterceptor
 
     /**
      * @param QueryRepositoryInterface $repository
-     * @param SetEtagInterface            $setEtag
+     * @param SetEtagInterface         $setEtag
      */
     public function __construct(
         QueryRepositoryInterface $repository,
@@ -40,7 +40,7 @@ class QueryInterceptor implements MethodInterceptor
     public function invoke(MethodInvocation $invocation)
     {
         $resourceObject = $invocation->getThis();
-        /** @var $resourceObject ResourceObject */
+        /* @var $resourceObject ResourceObject */
         $stored = $this->repository->get($resourceObject->uri);
         if ($stored) {
             list($resourceObject->code, $resourceObject->headers, $resourceObject->body) = $stored;
