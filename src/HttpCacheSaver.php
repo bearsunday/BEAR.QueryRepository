@@ -30,7 +30,7 @@ final class HttpCacheSaver implements TransferInterface
 
     public function __invoke(ResourceObject $resourceObject, array $server)
     {
-        if (PHP_SAPI === 'cli' || ! isset($resourceObject->headers['Etag']) && $resourceObject->code !== 200) {
+        if (PHP_SAPI === 'cli' || (! isset($resourceObject->headers['Etag'])) || $resourceObject->code !== 200) {
             return;
         }
         $requestUriEtag = 'request-uri-etag:' . $server['REQUEST_URI'] . $resourceObject->headers['Etag'];
