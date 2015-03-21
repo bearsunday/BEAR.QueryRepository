@@ -78,18 +78,18 @@ class User extends ResourceObject
 }
 ```
 
-### @Purge / @Reload annotation
+### @Purge / @Refresh annotation
 
 ```php
 
 use BEAR\QueryRepository\Annotation\Purge;
-use BEAR\QueryRepository\Annotation\Reload;
+use BEAR\QueryRepository\Annotation\Refresh;
 
 class User extends ResourceObject
 {
      /**
      * @Purge(uri="app://self/user/friend?user_id={id}")
-     * @Reload(uri="app://self/user/profile?user_id={id}")
+     * @Refresh(uri="app://self/user/profile?user_id={id}")
      */
      public function onPatch($id, $name)
     {
