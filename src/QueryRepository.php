@@ -6,11 +6,17 @@
  */
 namespace BEAR\QueryRepository;
 
+use BEAR\RepositoryModule\Annotation\Cacheable;
+use BEAR\RepositoryModule\Annotation\ExpiryConfig;
 use BEAR\RepositoryModule\Annotation\Storage;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
+use Doctrine\Common\Annotations\Reader;
 use Doctrine\Common\Cache\Cache;
+use Ray\Aop\MethodInvocation;
+use Ray\Di\Di\Inject;
+use Ray\Di\Di\Named;
 
 class QueryRepository implements QueryRepositoryInterface
 {
@@ -20,13 +26,25 @@ class QueryRepository implements QueryRepositoryInterface
     private $kvs;
 
     /**
+     * @var Reader
+     */
+    private $reader;
+
+    /**
+     * @var array
+     */
+    private $expiry;
+
+    /**
      * @param Cache $kvs
      *
-     * @Storage
+     * @Named("kvs=BEAR\RepositoryModule\Annotation\Storage, expiry=BEAR\RepositoryModule\Annotation\ExpiryConfig")
      */
-    public function __construct(Cache $kvs)
+    public function __construct(Cache $kvs, Reader $reader, $expiry)
     {
+        $this->reader = $reader;
         $this->kvs = $kvs;
+        $this->expiry = $expiry;
     }
 
     /**
@@ -34,13 +52,15 @@ class QueryRepository implements QueryRepositoryInterface
      */
     public function put(ResourceObject $ro)
     {
-        $data = [$ro->code, $ro->headers, $ro->body, $ro->view];
-        $uri = (string) $ro->uri;
         if (isset($ro->headers['Etag'])) {
             $this->updateEtagDatabase($ro, $ro->headers['Etag']);
         }
+        /* @var $cacheable Cacheable */
+        $cacheable = $this->reader->getClassAnnotation(new \ReflectionClass($ro), Cacheable::class);
+        $lifeTime = $this->getExpiryTime($cacheable);
+        $data = [$ro->code, $ro->headers, $ro->body, $ro->view];
 
-        return $this->kvs->save($uri, $data);
+        return $this->kvs->save((string) $ro->uri, $data, $lifeTime);
     }
 
     /**
@@ -94,4 +114,18 @@ class QueryRepository implements QueryRepositoryInterface
         $oldEtagKey = $this->kvs->fetch($etagId);
         $this->kvs->delete($oldEtagKey);
     }
+
+    private function save($uri,ResourceObject $resourceObject)
+    {
+    }
+
+    private function getExpiryTime(Cacheable $cacheable = null)
+    {
+        if (is_null($cacheable)) {
+            return 0;
+        }
+
+        return ($cacheable->expirySecond) ? $cacheable->expirySecond :  $this->expiry[$cacheable->expiry];
+    }
+
 }
