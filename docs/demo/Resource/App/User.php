@@ -2,11 +2,11 @@
 
 namespace FakeVendor\DemoApp\Resource\App;
 
-use BEAR\RepositoryModule\Annotation\QueryRepository;
+use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\Resource\ResourceObject;
 
 /**
- * @QueryRepository
+ * @Cacheable(expirySecond=300)
  */
 class User extends ResourceObject
 {
@@ -19,10 +19,10 @@ class User extends ResourceObject
 
     public function onGet($id)
     {
-        error_log('*** ' . __FUNCTION__ . ' invoked !');
+        error_log(__FUNCTION__ . ' invoked');
 
         $this['name'] = isset($this->data[$id]) ? $this->data[$id]['name'] : '';
-        $this['time'] = microtime(true);
+        $this['time'] = date("h:i:s");
 
         return $this;
     }
