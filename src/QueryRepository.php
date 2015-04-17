@@ -7,15 +7,11 @@
 namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\Cacheable;
-use BEAR\RepositoryModule\Annotation\ExpiryConfig;
-use BEAR\RepositoryModule\Annotation\Storage;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
 use Doctrine\Common\Annotations\Reader;
 use Doctrine\Common\Cache\Cache;
-use Ray\Aop\MethodInvocation;
-use Ray\Di\Di\Inject;
 use Ray\Di\Di\Named;
 
 class QueryRepository implements QueryRepositoryInterface
@@ -115,10 +111,6 @@ class QueryRepository implements QueryRepositoryInterface
         $this->kvs->delete($oldEtagKey);
     }
 
-    private function save($uri,ResourceObject $resourceObject)
-    {
-    }
-
     private function getExpiryTime(Cacheable $cacheable = null)
     {
         if (is_null($cacheable)) {
@@ -127,5 +119,4 @@ class QueryRepository implements QueryRepositoryInterface
 
         return ($cacheable->expirySecond) ? $cacheable->expirySecond :  $this->expiry[$cacheable->expiry];
     }
-
 }
