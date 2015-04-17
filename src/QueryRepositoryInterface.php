@@ -13,7 +13,6 @@ interface QueryRepositoryInterface
 {
     /**
      * @param ResourceObject $ro
-     * @param int            $lifeTime
      *
      * @return bool Is successfully stored
      */

@@ -2,11 +2,11 @@
 
 namespace FakeVendor\HelloWorld\Resource\App;
 
-use BEAR\RepositoryModule\Annotation\QueryRepository;
+use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\Resource\ResourceObject;
 
 /**
- * @QueryRepository
+ * @Cacheable
  */
 class Friend extends ResourceObject
 {
