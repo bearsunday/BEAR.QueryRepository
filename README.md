@@ -5,12 +5,11 @@
 
 **BEAR.QueryRepository** segregates reads and writes into two separate repository.
 
-**@QueryRepository** annotated class resource works as cache using `query-only-repository` on GET request. But updating cache entry is triggered by NOT TTL but non-GET request.
-
-Meta information will be add in the header just like HTTP cache.
+Transparent caching is enabled with **@Cacheable** annotated resource. When you create, update or delete the resource by non-`get` method, cache data is automatically created and stored in **query only repository**. Meta information will be add in the header just like HTTP cache as following.
 
  * Etag: 2296077071
  * Last-Modified: Mon, 29 Dec 2014 04:51:43 GMT
+
 
 ### Composer install
 
@@ -34,35 +33,16 @@ class AppModule extends AbstractModule
 ```
 ## Usage
 
-### Direct access
+
+### @Cacheable annotation
 
 ```php
 
-use BEAR\QueryRepository\QueryRepository
-
-$repository = new QueryRepository(new FilesystemCache($tmpDir));
-
-// save
-$repository->put($resourceObject);
-
-// delete
-$repository->purge($resourceObject->uri);
-$repository->purge(new Uri('app://self/user'));
-
-// load
-list($code, $headers, $body) = $repository->get(new Uri('app://self/user'));
-
-```
-
-### @QueryRepository annotation
-
-```php
-
-use BEAR\QueryRepository\Annotation\QueryRepository;
+use BEAR\QueryRepository\Annotation\Cacheable;
 use BEAR\Resource\ResourceObject;
  
 /**
- * @QueryRepository
+ * @Cacheable
  */
 class User extends ResourceObject
 {
@@ -78,23 +58,70 @@ class User extends ResourceObject
 }
 ```
 
-### @Purge / @Reload annotation
+`expiry` option can limit data life time, `short`, `medium`, `long` and `never` are provided.
 
 ```php
+/**
+ * @Cacheable(expiry="short")
+ */
+```
 
+You can customize the expiry time with `Expiry`.
+   
+```php
+this->install(new QueryRepositoryModule('VendorWorld\DemoApp', new Expiry(60, 60*60, 24*60*60)); // for query storage namespace
+```
+
+### @Purge / @Refresh annotation
+
+You can `purge` or `refresh` entity value in query repository with `@Purge` or `@Refresh` annotation.
+
+```php
 use BEAR\QueryRepository\Annotation\Purge;
-use BEAR\QueryRepository\Annotation\Reload;
+use BEAR\QueryRepository\Annotation\Refresh;
 
 class User extends ResourceObject
 {
      /**
      * @Purge(uri="app://self/user/friend?user_id={id}")
-     * @Reload(uri="app://self/user/profile?user_id={id}")
+     * @Refresh(uri="app://self/user/profile?user_id={id}")
      */
      public function onPatch($id, $name)
+```
+
+### Direct access
+
+You can manually access query repository with `QueryRepository` object.
+
+```php
+
+use BEAR\QueryRepository\QueryRepository
+use BEAR\Resource\Uri;
+
+class AdminTool
+{
+    private $queryRepository;
+    
+    public function __construct(QueryRepositoryInterface $queryRepository)
     {
-        // "app://self/user/friend?user_id={id}" entry will be purged.
-        // "app://self/user/profile?user_id={id}" entry will be regenerated.
+        $this->queryRepository = $queryRepository;
+    }
+    
+    public function onPost()
+    {
+        // purge resource
+        $this->queryRepository->purge(new Uri('app://self/ad/?id={id}', ['id' => 1]));
+        
+        // save
+        $this->queryRepository->put($this);
+        $this->queryRepository->put($resourceObject);
+
+        // delete
+        $repository->purge($resourceObject->uri);
+        $repository->purge(new Uri('app://self/user'));
+        
+        // load
+        list($code, $headers, $body) = $repository->get(new Uri('app://self/user'));
     }
 }
 ```
