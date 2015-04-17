@@ -7,12 +7,10 @@
 namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\Cacheable;
-use BEAR\RepositoryModule\Annotation\ExpiryConfig;
 use BEAR\Resource\ResourceObject;
 use Doctrine\Common\Annotations\AnnotationReader;
 use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
-use Ray\Di\Di\Inject;
 
 class CacheInterceptor implements MethodInterceptor
 {
@@ -65,5 +63,4 @@ class CacheInterceptor implements MethodInterceptor
 
         return $resourceObject;
     }
-
 }

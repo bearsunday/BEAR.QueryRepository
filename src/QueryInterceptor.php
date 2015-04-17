@@ -6,7 +6,6 @@
  */
 namespace BEAR\QueryRepository;
 
-use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\Resource\ResourceObject;
 use Doctrine\Common\Annotations\Reader;
 use Ray\Aop\MethodInterceptor;

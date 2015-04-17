@@ -4,7 +4,6 @@
  *
  * @license http://opensource.org/licenses/bsd-license.php BSD
  */
-
 namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\Cacheable;
@@ -25,7 +24,7 @@ class QueryRepositoryModule extends AbstractModule
 {
     /**
      * Expiry second
-     * 
+     *
      * @var array
      */
     private $expiry = [
