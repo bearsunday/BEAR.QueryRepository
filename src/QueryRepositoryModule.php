@@ -24,25 +24,16 @@ use Ray\Di\Scope;
 class QueryRepositoryModule extends AbstractModule
 {
     /**
+     * Expiry second
+     * 
      * @var array
      */
     private $expiry = [
-        'short' => 60,          // 1 min
-        'medium' => 60 * 60,    // 1 hour
-        'long' => 60 * 60 * 24, // 1 day
+        'short' => 60,    // 1 min
+        'medium' => 3600, // 1 hour
+        'long' => 86400,  // 1 day
         'never' => 0
     ];
-
-//    public function __construct(array $expiry = [
-//        'short' => 60,          // 1 min
-//        'medium' => 60 * 60,    // 1 hour
-//        'long' => 60 * 60 * 24, // 1 day
-//        'never' => 0
-//    ], AbstractModule $module = null)
-//    {
-//        $this->expiry = $expiry;
-//        parent::__construct($module);
-//    }
 
     /**
      * {@inheritdoc}
