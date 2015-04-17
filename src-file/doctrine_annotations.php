@@ -4,7 +4,6 @@
  *
  * @license http://opensource.org/licenses/bsd-license.php BSD
  */
-require dirname(__DIR__) . '/src/Annotation/QueryRepository.php';
 require dirname(__DIR__) . '/src/Annotation/ExpiryConfig.php';
 require dirname(__DIR__) . '/src/Annotation/Cacheable.php';
 require dirname(__DIR__) . '/src/Annotation/Purge.php';

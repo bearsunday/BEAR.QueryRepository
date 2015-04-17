@@ -25,7 +25,7 @@ class ResourceRepositoryTest extends \PHPUnit_Framework_TestCase
 
     public function setUp()
     {
-        $this->repository = new Repository(new FilesystemCache($_ENV['TMP_DIR']), new AnnotationReader, [0, 0, 0, 0]);
+        $this->repository = new Repository(new FilesystemCache($_ENV['TMP_DIR']), new AnnotationReader, new Expiry(0, 0, 0));
         $resource = (new Injector(new QueryRepositoryModule(new ResourceModule('FakeVendor\HelloWorld'))))->getInstance(ResourceInterface::class);
         /* @var $resource Resource */
         $this->resourceObject = $resource->get->uri('app://self/user')->withQuery(['id' => 1])->eager->request();

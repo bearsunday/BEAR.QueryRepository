@@ -8,7 +8,6 @@ namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\ExpiryConfig;
-use BEAR\RepositoryModule\Annotation\QueryRepository as QueryRepositoryAnnotation;
 use BEAR\RepositoryModule\Annotation\Storage;
 use BEAR\Resource\NamedParameter;
 use BEAR\Resource\NamedParameterInterface;
@@ -55,19 +54,6 @@ class QueryRepositoryModule extends AbstractModule
         foreach (['onPost', 'onPut', 'onPatch', 'onDelete'] as $starts) {
             $this->bindInterceptor(
                 $this->matcher->annotatedWith(Cacheable::class),
-                $this->matcher->startsWith($starts),
-                [CommandInterceptor::class]
-            );
-        }
-        // @QueryRepository
-        $this->bindInterceptor(
-            $this->matcher->annotatedWith(QueryRepositoryAnnotation::class),
-            $this->matcher->startsWith('onGet'),
-            [QueryInterceptor::class]
-        );
-        foreach (['onPost', 'onPut', 'onPatch', 'onDelete'] as $starts) {
-            $this->bindInterceptor(
-                $this->matcher->annotatedWith(QueryRepositoryAnnotation::class),
                 $this->matcher->startsWith($starts),
                 [CommandInterceptor::class]
             );
