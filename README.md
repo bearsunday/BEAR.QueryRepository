@@ -3,15 +3,16 @@
 [![Code Coverage](https://scrutinizer-ci.com/g/bearsunday/BEAR.QueryRepository/badges/coverage.png?b=develop)](https://scrutinizer-ci.com/g/bearsunday/BEAR.QueryRepository/?branch=develop)
 [![Build Status](https://travis-ci.org/bearsunday/BEAR.QueryRepository.svg?branch=develop)](https://travis-ci.org/bearsunday/BEAR.QueryRepository)
 
-**BEAR.QueryRepository** segregates reads and writes into two separate repository.
+[CQRS](http://martinfowler.com/bliki/CQRS.html)-inspired **BEAR.QueryRepository** segregates reads and writes into two separate repository.
 
-Transparent caching is enabled with **@Cacheable** annotated resource. When you create, update or delete the resource by non-`get` method, cache data is automatically created and stored in **query only repository**. Meta information will be add in the header just like HTTP cache as following.
+Transparent caching is enabled with **@Cacheable** annotated resource. When you `post`, `put`, `patch` or `delete` the resource, data is automatically stored **Query only repository**. It can be work as a normal cache with `expiry` time. You can also treat it as permanent query only data storage without `expiry`.
+
+Meta information will be add in the header just like HTTP cache as following.
 
  * Etag: 2296077071
  * Last-Modified: Mon, 29 Dec 2014 04:51:43 GMT
 
-
-### Composer install
+## Composer install
 
     $ composer require bear/query-repository:~1.0@dev
  
@@ -19,16 +20,34 @@ Transparent caching is enabled with **@Cacheable** annotated resource. When you 
 
 ```php
 
+use BEAR\QueryRepository\Expiry;
 use BEAR\QueryRepository\QueryRepositoryModule;
+use BEAR\RepositoryModule\Annotation\ExpiryConfig;
+use BEAR\RepositoryModule\Annotation\Storage;
+use BEAR\Resource\Module\ResourceModule;
+use Doctrine\Common\Cache\ArrayCache;
+use Doctrine\Common\Cache\CacheProvider;
 use Ray\Di\AbstractModule;
+use Ray\Di\Scope;
 
 class AppModule extends AbstractModule
 {
+    /**
+     * {@inheritdoc}
+     */
     protected function configure()
     {
-        $this->install(new QueryRepositoryModule('VendorWorld\DemoApp'); // for query storage namespace
+        // Query repository engine
+        $this->bind(CacheProvider::class)->annotatedWith(Storage::class)->to(ArrayCache::class)->in(Scope::SINGLETON);
+        // Cache time
+        list($short, $medium, $long) = [60, 3600, 24 * 3600];
+        $this->bind()->annotatedWith(ExpiryConfig::class)->toInstance(new Expiry($short, $medium, $long));
+
+        $this->install(new ResourceModule(__NAMESPACE__));
+        $this->install(new QueryRepositoryModule);
     }
 }
+
 
 ```
 ## Usage
@@ -66,13 +85,16 @@ class User extends ResourceObject
  */
 ```
 
-You can customize the expiry time with `Expiry`.
+You can configure expiry time with `ExpiryConfig` binding.
    
 ```php
-this->install(new QueryRepositoryModule('VendorWorld\DemoApp', new Expiry(60, 60*60, 24*60*60)); // for query storage namespace
+// Cache time
+list($short, $medium, $long) = [60, 3600, 24 * 3600];
+$this->bind()->annotatedWith(ExpiryConfig::class)->toInstance(new Expiry($short, $medium, $long));
+storage namespace
 ```
 
-Specify cache storage engine. 
+Also `Storage` for cache storage engine. 
 
 ```php
 use Doctrine\Common\Cache\CacheProvider;
@@ -140,9 +162,10 @@ class AdminTool
 }
 ```
 
-### Demo
+## Demo
 
-    $ php docs/demo/run.php
+```
+php docs/demo/run.php
     
 GET
 onGet invoked
@@ -160,6 +183,7 @@ GET
 
 GET
 200{"name":"kuma","rnd":81}
+```
 
 ## Requirements
 
