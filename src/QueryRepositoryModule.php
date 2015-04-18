@@ -42,7 +42,7 @@ class QueryRepositoryModule extends AbstractModule
         $this->bind(QueryRepositoryInterface::class)->to(QueryRepository::class)->in(Scope::SINGLETON);
         $this->bind(Cache::class)->annotatedWith(Storage::class)->toProvider(StorageProvider::class)->in(Scope::SINGLETON);
         $this->bind(CacheProvider::class)->annotatedWith(Storage::class)->to(ArrayCache::class)->in(Scope::SINGLETON);
-        $this->bind(SetEtagInterface::class)->to(SetEtag::class)->in(Scope::SINGLETON);
+        $this->bind(EtagSetterInterface::class)->to(EtagSetter::class)->in(Scope::SINGLETON);
         $this->bind(NamedParameterInterface::class)->to(NamedParameter::class)->in(Scope::SINGLETON);
         $this->bind(Reader::class)->to(AnnotationReader::class)->in(Scope::SINGLETON);
         // @Cacheable
