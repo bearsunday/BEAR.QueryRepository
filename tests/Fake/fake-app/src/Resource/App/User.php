@@ -2,8 +2,8 @@
 
 namespace FakeVendor\HelloWorld\Resource\App;
 
-use BEAR\RepositoryModule\Annotation\Purge;
 use BEAR\RepositoryModule\Annotation\Cacheable;
+use BEAR\RepositoryModule\Annotation\Purge;
 use BEAR\RepositoryModule\Annotation\Refresh;
 use BEAR\Resource\ResourceObject;
 

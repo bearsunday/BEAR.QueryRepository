@@ -22,7 +22,7 @@ class User extends ResourceObject
         error_log(__FUNCTION__ . ' invoked');
 
         $this['name'] = isset($this->data[$id]) ? $this->data[$id]['name'] : '';
-        $this['rnd'] =rand(1, 100);
+        $this['rnd'] = rand(1, 100);
 
         return $this;
     }

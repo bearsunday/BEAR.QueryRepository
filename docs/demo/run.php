@@ -30,4 +30,3 @@ echo $user->code . $user . PHP_EOL. PHP_EOL;
 echo 'GET' . PHP_EOL;
 $user = $resource->get->uri('app://self/user')->withQuery(['id' => 1])->eager->request();
 echo $user->code . $user . PHP_EOL. PHP_EOL;
-
