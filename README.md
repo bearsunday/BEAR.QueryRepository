@@ -103,18 +103,22 @@ class User extends ResourceObject
 
     $ php docs/demo/run.php
     
-    GET (onGet)  // entry in query repository created.
-    *** onGet invoked !
-    {"name":"bear","time":1419826028.32}
-    
-    GET (Repository) // entry in query repository loaded. (no invocation of onGet method)
-    {"name":"bear","time":1419826028.32}
-    
-    UPDATE (Repository entry reloaded) // entry in query repository re-loaded by *UPDATE request*
-    *** onGet invoked !
-    
-    GET (Repository)  // updated entry in query repository loaded. (no invocation of onGet method)
-    {"name":"kuma","time":1419826028.3213}!
+GET
+onGet invoked
+200{"name":"bear","rnd":59}
+
+GET
+200{"name":"bear","rnd":59}
+
+PATCH
+onGet invoked
+200{"name":"kuma","rnd":81}
+
+GET
+200{"name":"kuma","rnd":81}
+
+GET
+200{"name":"kuma","rnd":81}
 
 ## Requirements
 
