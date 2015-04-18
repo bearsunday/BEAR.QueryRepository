@@ -72,6 +72,20 @@ You can customize the expiry time with `Expiry`.
 this->install(new QueryRepositoryModule('VendorWorld\DemoApp', new Expiry(60, 60*60, 24*60*60)); // for query storage namespace
 ```
 
+Specify cache storage engine. 
+
+```php
+use Doctrine\Common\Cache\CacheProvider;
+use Doctrine\Common\Cache\ApcCache;
+use BEAR\RepositoryModule\Annotation\Storage;
+use Ray\Di\Scope;
+
+// ...
+
+$this->bind(CacheProvider::class)->annotatedWith(Storage::class)->to(ApcCache::class)->in(Scope::SINGLETON);
+```
+When you have multiple web server, shared storage engine like [MemcacheCache](http://doctrine-orm.readthedocs.org/en/latest/reference/caching.html#memcache) or [Redis](http://doctrine-orm.readthedocs.org/en/latest/reference/caching.html#redis) are required.
+
 ### @Purge / @Refresh annotation
 
 You can `purge` or `refresh` entity value in query repository with `@Purge` or `@Refresh` annotation.

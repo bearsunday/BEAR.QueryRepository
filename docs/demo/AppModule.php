@@ -2,12 +2,13 @@
 
 namespace FakeVendor\DemoApp;
 
+use BEAR\QueryRepository\Expiry;
 use BEAR\QueryRepository\QueryRepositoryModule;
+use BEAR\RepositoryModule\Annotation\ExpiryConfig;
 use BEAR\RepositoryModule\Annotation\Storage;
 use BEAR\Resource\Module\ResourceModule;
 use Doctrine\Common\Cache\ArrayCache;
 use Doctrine\Common\Cache\CacheProvider;
-use Doctrine\Common\Cache\FilesystemCache;
 use Ray\Di\AbstractModule;
 use Ray\Di\Scope;
 
@@ -18,9 +19,12 @@ class AppModule extends AbstractModule
      */
     protected function configure()
     {
-        $this->bind()->annotatedWith("storage_dir")->toInstance(__DIR__ . '/tmp')->in(Scope::SINGLETON);
-//        $this->bind(CacheProvider::class)->annotatedWith(Storage::class)->toConstructor(FilesystemCache::class, 'directory=storage_dir')->in(Scope::SINGLETON);
+        // Query repository engine
         $this->bind(CacheProvider::class)->annotatedWith(Storage::class)->to(ArrayCache::class)->in(Scope::SINGLETON);
+        // Cache time
+        list($short, $medium, $long) = [60, 3600, 24 * 3600];
+        $this->bind()->annotatedWith(ExpiryConfig::class)->toInstance(new Expiry($short, $medium, $long));
+
         $this->install(new ResourceModule(__NAMESPACE__));
         $this->install(new QueryRepositoryModule);
     }

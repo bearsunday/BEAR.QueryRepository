@@ -12,6 +12,7 @@ use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
 use Doctrine\Common\Annotations\Reader;
 use Doctrine\Common\Cache\Cache;
+use Doctrine\Common\Cache\CacheProvider;
 use Ray\Di\Di\Named;
 
 class QueryRepository implements QueryRepositoryInterface
@@ -32,12 +33,13 @@ class QueryRepository implements QueryRepositoryInterface
     private $expiry;
 
     /**
-     * @param Cache $kvs
+     * @param CacheProvider $kvs
      *
-     * @Named("kvs=BEAR\RepositoryModule\Annotation\Storage, expiry=BEAR\RepositoryModule\Annotation\ExpiryConfig")
+     * @Named("kvs=BEAR\RepositoryModule\Annotation\Storage, expiry=BEAR\RepositoryModule\Annotation\ExpiryConfig, appName=BEAR\Resource\Annotation\AppName")
      */
-    public function __construct(Cache $kvs, Reader $reader, $expiry)
+    public function __construct(CacheProvider $kvs, Reader $reader, $expiry, $appName)
     {
+        $kvs->setNamespace($appName);
         $this->reader = $reader;
         $this->kvs = $kvs;
         $this->expiry = $expiry;
