@@ -8,7 +8,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\Resource\ResourceObject;
 
-interface SetEtagInterface
+interface EtagSetterInterface
 {
     public function __invoke(ResourceObject $resourceObject);
 }

@@ -9,7 +9,8 @@
         }
     ],
     "require": {
-        "bear/resource": "~1.0@dev"
+        "bear/resource": "~1.0@dev",
+        "mobiledetect/mobiledetectlib": "dev-master"
     },
     "autoload": {
         "psr-4": {
@@ -19,7 +20,7 @@
     },
     "autoload-dev": {
         "psr-4": {
-            "BEAR\\RepositoryModule\\": [
+            "BEAR\\QueryRepository\\": [
                 "tests/",
                 "tests/Fake/"
             ],

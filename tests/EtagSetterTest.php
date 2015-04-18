@@ -7,7 +7,7 @@ use BEAR\Resource\ResourceClientFactory;
 use BEAR\Resource\ResourceInterface;
 use Ray\Di\Injector;
 
-class SetEtagTest extends \PHPUnit_Framework_TestCase
+class EtagSetterTest extends \PHPUnit_Framework_TestCase
 {
     /**
      * @var ResourceInterface
@@ -23,7 +23,7 @@ class SetEtagTest extends \PHPUnit_Framework_TestCase
     public function testInvoke()
     {
         $resourceObject = $this->resource->get->uri('app://self/user')->withQuery(['id' => 1])->eager->request();
-        $setEtag = new SetEtag;
+        $setEtag = new EtagSetter;
         $time = 0;
         $setEtag($resourceObject, $time);
         $expect = 'Thu, 01 Jan 1970 00:00:01 GMT';

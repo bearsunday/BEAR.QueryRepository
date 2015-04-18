@@ -22,8 +22,8 @@ Meta information will be add in the header just like HTTP cache as following.
 
 use BEAR\QueryRepository\Expiry;
 use BEAR\QueryRepository\QueryRepositoryModule;
-use BEAR\RepositoryModule\Annotation\ExpiryConfig;
-use BEAR\RepositoryModule\Annotation\Storage;
+use BEAR\QueryRepository\Annotation\ExpiryConfig;
+use BEAR\QueryRepository\Annotation\Storage;
 use BEAR\Resource\Module\ResourceModule;
 use Doctrine\Common\Cache\ArrayCache;
 use Doctrine\Common\Cache\CacheProvider;
@@ -44,7 +44,9 @@ class AppModule extends AbstractModule
         $this->bind()->annotatedWith(ExpiryConfig::class)->toInstance(new Expiry($short, $medium, $long));
 
         $this->install(new ResourceModule(__NAMESPACE__));
-        $this->install(new QueryRepositoryModule);
+        
+        $this->install(new QueryRepositoryModule); // main module
+        $this->override(new MobileEtagModule);     // mobile etag module
     }
 }
 
