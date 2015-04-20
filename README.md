@@ -5,9 +5,9 @@
 
 [CQRS](http://martinfowler.com/bliki/CQRS.html)-inspired **BEAR.QueryRepository** segregates reads and writes into two separate repository.
 
-Transparent caching is enabled with **@Cacheable** annotated resource. When you `post`, `put`, `patch` or `delete` the resource, data is automatically stored **Query only repository**. It can be work as a normal cache with `expiry` time. You can also treat it as permanent query only data storage without `expiry`.
+Transparent caching is enabled with **@Cacheable** annotated resource. When you `post`, `put`, `patch` or `delete` the resource, data is automatically stored in **Query only repository**. It can be worked as a normal cache with `expiry` time. You can also treat it as permanent query only data storage without `expiry`.
 
-Meta information will be add in the header just like HTTP cache as following.
+Meta information will be added in the header just like HTTP cache as following.
 
  * Etag: 2296077071
  * Last-Modified: Mon, 29 Dec 2014 04:51:43 GMT
@@ -108,7 +108,7 @@ use Ray\Di\Scope;
 
 $this->bind(CacheProvider::class)->annotatedWith(Storage::class)->to(ApcCache::class)->in(Scope::SINGLETON);
 ```
-When you have multiple web server, shared storage engine like [MemcacheCache](http://doctrine-orm.readthedocs.org/en/latest/reference/caching.html#memcache) or [Redis](http://doctrine-orm.readthedocs.org/en/latest/reference/caching.html#redis) are required.
+When you have multiple web servers, shared storage engine like [MemcacheCache](http://doctrine-orm.readthedocs.org/en/latest/reference/caching.html#memcache) or [Redis](http://doctrine-orm.readthedocs.org/en/latest/reference/caching.html#redis) are required.
 
 ### @Purge / @Refresh annotation
 
