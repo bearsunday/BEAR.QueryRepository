@@ -10,7 +10,7 @@
     ],
     "require": {
         "bear/resource": "~1.0@dev",
-        "mobiledetect/mobiledetectlib": "dev-master"
+        "mobiledetect/mobiledetectlib": "~2.0@dev"
     },
     "autoload": {
         "psr-4": {
