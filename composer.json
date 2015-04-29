@@ -1,7 +1,7 @@
 {
     "name": "bear/query-repository",
     "description": "Resource query responsibility segregation",
-    "license": "BSD-3-Clause",
+    "license": "MIT",
     "authors": [
         {
             "name": "Akihito Koriyama",
