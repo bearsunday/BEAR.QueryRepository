@@ -85,10 +85,11 @@ class QueryRepository implements QueryRepositoryInterface
      */
     private function updateEtagDatabase(ResourceObject $ro, $etag)
     {
-        if ($ro->uri->host !== 'page') {
+        $uri = (string) $ro->uri;
+        $scheme = substr($uri, 0, 4);
+        if ($scheme !== 'page') {
             return;
         }
-        $uri = (string) $ro->uri;
         $etagUri = 'resource-etag:' . $uri;
         $this->kvs->delete($this->kvs->fetch($etagUri));
         $etagId = 'etag-id:' . $etag;
