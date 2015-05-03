@@ -7,8 +7,8 @@
 namespace BEAR\QueryRepository;
 
 use BEAR\Resource\ResourceObject;
-use BEAR\Sunday\Exception\LogicException;
 use Ray\Aop\MethodInvocation;
+use BEAR\QueryRepository\Exception\UnmatchedQuery;
 
 class RefreshSameCommand implements CommandInterface
 {
@@ -28,9 +28,18 @@ class RefreshSameCommand implements CommandInterface
      */
     public function command(MethodInvocation $invocation, ResourceObject $resourceObject)
     {
+        $method = $invocation->getMethod()->getName();
+        if ($method === 'onGet' || $method === 'onPost') {
+            return;
+        }
         unset($invocation);
         $onGet = [$resourceObject, 'onGet'];
-        $getQuery = $this->getQuery($resourceObject, $onGet);
+        try {
+            $getQuery = $this->getQuery($resourceObject, $onGet);
+        } catch (UnmatchedQuery $e) {
+            // command query is missing query in Get (Post ?)
+            return;
+        }
         $delUri = clone $resourceObject->uri;
         $delUri->query = $getQuery;
 
@@ -57,7 +66,7 @@ class RefreshSameCommand implements CommandInterface
                 $getQuery[$parameter->name] = $query[$parameter->name];
                 continue;
             }
-            throw new LogicException(get_class($resourceObject));
+            throw new UnmatchedQuery($resourceObject->uri->method . ' ' . (string)$resourceObject->uri);
         }
 
         return $getQuery;
