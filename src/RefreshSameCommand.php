@@ -6,9 +6,9 @@
  */
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Exception\UnmatchedQuery;
 use BEAR\Resource\ResourceObject;
 use Ray\Aop\MethodInvocation;
-use BEAR\QueryRepository\Exception\UnmatchedQuery;
 
 class RefreshSameCommand implements CommandInterface
 {
@@ -66,7 +66,7 @@ class RefreshSameCommand implements CommandInterface
                 $getQuery[$parameter->name] = $query[$parameter->name];
                 continue;
             }
-            throw new UnmatchedQuery($resourceObject->uri->method . ' ' . (string)$resourceObject->uri);
+            throw new UnmatchedQuery($resourceObject->uri->method . ' ' . (string) $resourceObject->uri);
         }
 
         return $getQuery;
