@@ -8,6 +8,8 @@ namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\Resource\AbstractUri;
+use BEAR\Resource\Request;
+use BEAR\Resource\RequestInterface;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
 use Doctrine\Common\Annotations\Reader;
@@ -54,9 +56,8 @@ class QueryRepository implements QueryRepositoryInterface
         /* @var $cacheable Cacheable */
         $cacheable = $this->reader->getClassAnnotation(new \ReflectionClass($ro), Cacheable::class);
         $lifeTime = $this->getExpiryTime($cacheable);
-        $data = [$ro->code, $ro->headers, $ro->body, $ro->view];
 
-        return $this->kvs->save((string) $ro->uri, $data, $lifeTime);
+        return $this->kvs->save((string) $ro->uri, $ro, $lifeTime);
     }
 
     /**
@@ -64,7 +65,12 @@ class QueryRepository implements QueryRepositoryInterface
      */
     public function get(Uri $uri)
     {
-        return $this->kvs->fetch((string) $uri);
+        $ro = $this->kvs->fetch((string) $uri);
+        if ($ro === false) {
+            return false;
+        }
+
+        return [$ro->code, $ro->headers, $ro->body, $ro->view];
     }
 
     /**
@@ -118,6 +124,6 @@ class QueryRepository implements QueryRepositoryInterface
             return 0;
         }
 
-        return ($cacheable->expirySecond) ? $cacheable->expirySecond :  $this->expiry[$cacheable->expiry];
+        return ($cacheable->expirySecond) ? $cacheable->expirySecond : $this->expiry[$cacheable->expiry];
     }
 }

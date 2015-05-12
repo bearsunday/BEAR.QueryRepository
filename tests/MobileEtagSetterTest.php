@@ -8,9 +8,9 @@ use Ray\Aop\ReflectiveMethodInvocation;
 
 class MobileEtagSetterTest extends \PHPUnit_Framework_TestCase
 {
-    CONST IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 6_0 like Mac OS X) AppleWebKit/536.26 (KHTML, like Gecko) Version/6.0 Mobile/10A403 Safari/8536.25';
+    const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 6_0 like Mac OS X) AppleWebKit/536.26 (KHTML, like Gecko) Version/6.0 Mobile/10A403 Safari/8536.25';
 
-    CONST IPAD = 'Mozilla/5.0 (iPad; CPU OS 6_0 like Mac OS X) AppleWebKit/536.26 (KHTML, like Gecko) Version/6.0 Mobile/10A403 Safari/8536.25';
+    const IPAD = 'Mozilla/5.0 (iPad; CPU OS 6_0 like Mac OS X) AppleWebKit/536.26 (KHTML, like Gecko) Version/6.0 Mobile/10A403 Safari/8536.25';
 
     /**
      * @var FakeMobileEtagSetter
@@ -21,7 +21,6 @@ class MobileEtagSetterTest extends \PHPUnit_Framework_TestCase
 
     private $obj;
 
-
     public function setUp()
     {
         parent::setUp();
@@ -29,7 +28,6 @@ class MobileEtagSetterTest extends \PHPUnit_Framework_TestCase
         $this->etagSetter = new FakeMobileEtagSetter;
         $currentTime = time();
         $this->time = gmdate("D, d M Y H:i:s", $currentTime) . ' GMT';
-
     }
 
     public function testMobile()
@@ -47,7 +45,6 @@ class MobileEtagSetterTest extends \PHPUnit_Framework_TestCase
         $expected = 'pc';
         $this->assertSame($expected, FakeMobileEtagSetter::$device);
     }
-
 
     public function testPc()
     {

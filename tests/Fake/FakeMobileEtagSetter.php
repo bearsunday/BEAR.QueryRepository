@@ -10,11 +10,12 @@ use BEAR\Resource\ResourceObject;
 
 class FakeMobileEtagSetter extends MobileEtagSetter
 {
-    static $device;
+    public static $device;
 
     public function __invoke(ResourceObject $resourceObject, $time = null)
     {
         self::$device =  $this->getDevice();
+
         return parent::__invoke($resourceObject, $time);
     }
 }
