@@ -6,6 +6,7 @@
  */
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\EtagSetterInterface;
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\Request;
@@ -34,12 +35,21 @@ class QueryRepository implements QueryRepositoryInterface
     private $expiry;
 
     /**
+     * @var EtagSetterInterface
+     */
+    private $setEtag;
+    /**
      * @param Cache $kvs
      *
      * @Named("kvs=BEAR\RepositoryModule\Annotation\Storage, expiry=BEAR\RepositoryModule\Annotation\ExpiryConfig")
      */
-    public function __construct(Cache $kvs, Reader $reader, $expiry)
-    {
+    public function __construct(
+        EtagSetterInterface $setEtag,
+        Cache $kvs,
+        Reader $reader,
+        $expiry
+    ) {
+        $this->setEtag = $setEtag;
         $this->reader = $reader;
         $this->kvs = $kvs;
         $this->expiry = $expiry;
@@ -50,9 +60,8 @@ class QueryRepository implements QueryRepositoryInterface
      */
     public function put(ResourceObject $ro)
     {
-        if (isset($ro->headers['Etag'])) {
-            $this->updateEtagDatabase($ro, $ro->headers['Etag']);
-        }
+        $this->setEtag->__invoke($ro);
+        $this->updateEtagDatabase($ro, $ro->headers['Etag']);
         /* @var $cacheable Cacheable */
         $cacheable = $this->reader->getClassAnnotation(new \ReflectionClass($ro), Cacheable::class);
         $lifeTime = $this->getExpiryTime($cacheable);
@@ -83,6 +92,9 @@ class QueryRepository implements QueryRepositoryInterface
         return $this->kvs->delete((string) $uri);
     }
 
+
+
+
     /**
      * Update etag in etag repository
      *
@@ -92,12 +104,9 @@ class QueryRepository implements QueryRepositoryInterface
     private function updateEtagDatabase(ResourceObject $ro, $etag)
     {
         $uri = (string) $ro->uri;
-        $scheme = substr($uri, 0, 4);
-        if ($scheme !== 'page') {
-            return;
-        }
         $etagUri = 'resource-etag:' . $uri;
-        $this->kvs->delete($this->kvs->fetch($etagUri));
+        $contents = $this->kvs->fetch($etagUri);
+        $this->kvs->delete($contents);
         $etagId = 'etag-id:' . $etag;
         $this->kvs->save($etagId, $uri);     // etag => uri  for "is etag_exists?"
         $this->kvs->save($etagUri, $etagId); // uri  => etag for update etag by uri
@@ -110,11 +119,9 @@ class QueryRepository implements QueryRepositoryInterface
      */
     public function deleteEtagDatabase(AbstractUri $uri)
     {
-        if ($uri->host !== 'page') {
-            return;
-        }
         $etagId = 'resource-etag:' . (string) $uri; // invalidate etag
         $oldEtagKey = $this->kvs->fetch($etagId);
+
         $this->kvs->delete($oldEtagKey);
     }
 

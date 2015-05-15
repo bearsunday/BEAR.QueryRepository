@@ -37,6 +37,7 @@ final class HttpCache
      */
     public function __construct($appName)
     {
+        error_log($appName);
         $this->appName = $appName;
         $this->kvs = apc_fetch($this->appName . '-kvs');
         if (! $this->kvs) {
@@ -59,21 +60,7 @@ final class HttpCache
 
         return $this->kvs->contains($etagKey) ? true : false;
     }
-
-    /**
-     * @return bool
-     */
-    public function hasContents(array $server)
-    {
-        if (! isset($server['REQUEST_URI'])) {
-            return false;
-        }
-        $requestUri = 'request-uri:' . $server['REQUEST_URI'];
-        $this->requestUri = $this->kvs->fetch($requestUri);
-
-        return $this->requestUri ? true : false;
-    }
-
+    
     /**
      * Transfer cached contents
      *
@@ -102,11 +89,6 @@ final class HttpCache
             http_response_code(304);
 
             return [304, "etag:{$server['HTTP_IF_NONE_MATCH']}"];
-        }
-        if ($this->hasContents($server)) {
-            $this->transfer(new HttpCacheResponder);
-
-            return [200, "uri:{$server['REQUEST_URI']}"];
         }
 
         return [0, "no-hit:{$server['REQUEST_URI']}"];
