@@ -92,6 +92,9 @@ final class HttpCache
      */
     public function __invoke(array $server)
     {
+        if (! isset($_SERVER['REQUEST_METHOD'])) {
+            return [0, 'not http request'];
+        }
         if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
             return [0, "method:{$_SERVER['REQUEST_METHOD']}"];
         }
