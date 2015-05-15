@@ -37,7 +37,6 @@ final class HttpCache
      */
     public function __construct($appName)
     {
-        error_log($appName);
         $this->appName = $appName;
         $this->kvs = apc_fetch($this->appName . '-kvs');
         if (! $this->kvs) {
@@ -60,7 +59,7 @@ final class HttpCache
 
         return $this->kvs->contains($etagKey) ? true : false;
     }
-    
+
     /**
      * Transfer cached contents
      *
