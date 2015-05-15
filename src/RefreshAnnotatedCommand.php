@@ -6,6 +6,7 @@
  */
 namespace BEAR\QueryRepository;
 
+use BEAR\RepositoryModule\Annotation\AbstractCommand;
 use BEAR\RepositoryModule\Annotation\Purge;
 use BEAR\RepositoryModule\Annotation\Refresh;
 use BEAR\Resource\Resource;
@@ -56,17 +57,34 @@ class RefreshAnnotatedCommand implements CommandInterface
         /* @var $purgeAnnotations Purge[] */
         $annotations = $this->reader->getMethodAnnotations($invocation->getMethod());
         foreach ($annotations as $annotation) {
+            if (! $annotation instanceof AbstractCommand) {
+                continue;
+            }
+            $uri = new Uri($this->getUri($resourceObject, $annotation));
             if ($annotation instanceof Purge) {
-                $uri = uri_template($annotation->uri, $resourceObject->body);
-                $this->repository->purge(new Uri($uri));
+                $this->repository->purge($uri);
             }
             if ($annotation instanceof Refresh) {
-                $uri = uri_template($annotation->uri, $resourceObject->body);
-                $uri = new Uri($uri);
                 $this->repository->purge($uri);
                 $ro = $this->resource->get->uri($uri)->eager->request();
                 $this->repository->put($ro);
             }
         }
+    }
+
+    /**
+     * @param ResourceObject $resourceObject
+     * @param object         $annotation
+     *
+     * @return string
+     */
+    private function getUri(ResourceObject $resourceObject, AbstractCommand $annotation)
+    {
+        if (! is_array($resourceObject->body)) {
+            return $annotation->uri;
+        }
+        $uri = uri_template($annotation->uri, $resourceObject->body);
+
+        return $uri;
     }
 }

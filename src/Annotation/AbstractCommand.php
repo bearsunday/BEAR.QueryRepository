@@ -10,6 +10,10 @@ namespace BEAR\RepositoryModule\Annotation;
  * @Annotation
  * @Target("METHOD")
  */
-final class Purge extends AbstractCommand
+abstract class AbstractCommand
 {
+    /**
+     * @var string
+     */
+    public $uri = false;
 }

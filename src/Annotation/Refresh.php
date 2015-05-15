@@ -10,10 +10,6 @@ namespace BEAR\RepositoryModule\Annotation;
  * @Annotation
  * @Target("METHOD")
  */
-final class Refresh
+final class Refresh extends AbstractCommand
 {
-    /**
-     * @var string
-     */
-    public $uri = false;
 }
