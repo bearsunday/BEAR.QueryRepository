@@ -41,6 +41,9 @@ final class HttpCache
         $this->kvs = apc_fetch($this->appName . '-kvs');
         if (! $this->kvs) {
             $prodModule = $this->appName . '\Module\ProdModule';
+            if (! class_exists($prodModule)) {
+                $prodModule = '\BEAR\Package\Context\ProdModule';
+            }
             $this->kvs = (new Injector(new $prodModule))->getInstance(Cache::class, Storage::class);
             apc_store($this->appName . '-kvs', $this->kvs);
         }
