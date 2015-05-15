@@ -92,6 +92,9 @@ class QueryRepository implements QueryRepositoryInterface
         return $this->kvs->delete((string) $uri);
     }
 
+
+
+
     /**
      * Update etag in etag repository
      *
