@@ -80,10 +80,9 @@ class RefreshAnnotatedCommand implements CommandInterface
      */
     private function getUri(ResourceObject $resourceObject, AbstractCommand $annotation)
     {
-        if (! is_array($resourceObject->body)) {
-            return $annotation->uri;
-        }
-        $uri = uri_template($annotation->uri, $resourceObject->body);
+        $body = is_array($resourceObject->body) ?: [];
+        $query = $body + $resourceObject->uri->query;
+        $uri = uri_template($annotation->uri, $query);
 
         return $uri;
     }
