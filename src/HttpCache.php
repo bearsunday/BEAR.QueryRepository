@@ -6,9 +6,8 @@
  */
 namespace BEAR\QueryRepository;
 
+use BEAR\RepositoryModule\Annotation\Storage;
 use Doctrine\Common\Cache\Cache;
-use Doctrine\Common\Cache\VoidCache;
-use Ray\Di\Di\Named;
 
 final class HttpCache implements HttpCacheInterface
 {
@@ -22,11 +21,11 @@ final class HttpCache implements HttpCacheInterface
     /**
      * @param Cache $kvs
      *
-     * @Named("appName=BEAR\Resource\Annotation\AppName,kvs=BEAR\RepositoryModule\Annotation\Storage")
+     * @Storage
      */
-    public function __construct($appName, Cache $kvs = null)
+    public function __construct(Cache $kvs)
     {
-        $this->kvs = $kvs ?: new VoidCache;
+        $this->kvs = $kvs;
     }
 
     /**
@@ -43,16 +42,5 @@ final class HttpCache implements HttpCacheInterface
         $etagKey = self::ETAG_KEY . $server['HTTP_IF_NONE_MATCH'];
 
         return $this->kvs->contains($etagKey) ? true : false;
-    }
-
-    /**
-     * Invoke http cache (304)
-     */
-    public function __invoke(array $server)
-    {
-        if ($this->isNotModified($server)) {
-            http_response_code(304);
-            exit(0);
-        }
     }
 }
