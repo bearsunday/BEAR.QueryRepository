@@ -6,11 +6,8 @@
  */
 namespace BEAR\QueryRepository;
 
-use BEAR\QueryRepository\EtagSetterInterface;
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\Resource\AbstractUri;
-use BEAR\Resource\Request;
-use BEAR\Resource\RequestInterface;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
 use Doctrine\Common\Annotations\Reader;
@@ -19,6 +16,8 @@ use Ray\Di\Di\Named;
 
 class QueryRepository implements QueryRepositoryInterface
 {
+    const ETAG_BY_URI = 'etag-by-uri';
+
     /**
      * @var Cache
      */
@@ -61,7 +60,9 @@ class QueryRepository implements QueryRepositoryInterface
     public function put(ResourceObject $ro)
     {
         $this->setEtag->__invoke($ro);
-        $this->updateEtagDatabase($ro, $ro->headers['Etag']);
+        if (isset($ro->headers['ETag'])) {
+            $this->updateEtagDatabase($ro);
+        }
         /* @var $cacheable Cacheable */
         $cacheable = $this->reader->getClassAnnotation(new \ReflectionClass($ro), Cacheable::class);
         $lifeTime = $this->getExpiryTime($cacheable);
@@ -92,24 +93,24 @@ class QueryRepository implements QueryRepositoryInterface
         return $this->kvs->delete((string) $uri);
     }
 
-
-
-
     /**
      * Update etag in etag repository
      *
      * @param ResourceObject $ro
      * @param string         $etag
      */
-    private function updateEtagDatabase(ResourceObject $ro, $etag)
+    private function updateEtagDatabase(ResourceObject $ro)
     {
+        $etag = $ro->headers['ETag'];
         $uri = (string) $ro->uri;
-        $etagUri = 'resource-etag:' . $uri;
-        $contents = $this->kvs->fetch($etagUri);
-        $this->kvs->delete($contents);
-        $etagId = 'etag-id:' . $etag;
-        $this->kvs->save($etagId, $uri);     // etag => uri  for "is etag_exists?"
-        $this->kvs->save($etagUri, $etagId); // uri  => etag for update etag by uri
+        $etagUri = self::ETAG_BY_URI . $uri;
+        $oldEtag = $this->kvs->fetch($etagUri);
+        if ($oldEtag) {
+            $this->kvs->delete($oldEtag);
+        }
+        $etagId = HttpCache::ETAG_KEY . $etag;
+        $this->kvs->save($etagId, $uri);     // save etag
+        $this->kvs->save($etagUri, $etagId); // save uri  mapping etag
     }
 
     /**
@@ -119,7 +120,7 @@ class QueryRepository implements QueryRepositoryInterface
      */
     public function deleteEtagDatabase(AbstractUri $uri)
     {
-        $etagId = 'resource-etag:' . (string) $uri; // invalidate etag
+        $etagId = self::ETAG_BY_URI . (string) $uri; // invalidate etag
         $oldEtagKey = $this->kvs->fetch($etagId);
 
         $this->kvs->delete($oldEtagKey);

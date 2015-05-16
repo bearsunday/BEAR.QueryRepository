@@ -13,7 +13,7 @@ class MobileEtagSetter implements EtagSetterInterface
     public function __invoke(ResourceObject $resourceObject, $time = null)
     {
         // etag]
-        $resourceObject->headers['Etag'] = (string) crc32($this->getDevice() . (string) $resourceObject);
+        $resourceObject->headers['ETag'] = (string) crc32($this->getDevice() . (string) $resourceObject);
         // time
         $time = ! is_null($time) ?: time();
         $resourceObject->headers['Last-Modified'] = gmdate("D, d M Y H:i:s", $time) . ' GMT';
