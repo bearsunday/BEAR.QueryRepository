@@ -29,7 +29,7 @@ class RefreshSameCommand implements CommandInterface
     public function command(MethodInvocation $invocation, ResourceObject $resourceObject)
     {
         $method = $invocation->getMethod()->getName();
-        if ($method === 'onGet' || $method === 'onPost') {
+        if ($method === 'onGet') {
             return;
         }
         unset($invocation);
