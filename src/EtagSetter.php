@@ -14,11 +14,10 @@ class EtagSetter implements EtagSetterInterface
     {
         $time = ! is_null($time) ?: time();
 
-        $view = (string) $resourceObject;
-        if ($resourceObject->code !== 200) {
+        if ($resourceObject->code !== 200 || ! $resourceObject->view) {
             return;
         }
-        $resourceObject->headers['ETag'] = (string) crc32($view);
+        $resourceObject->headers['ETag'] = (string) crc32($resourceObject->view);
         $resourceObject->headers['Last-Modified'] = gmdate("D, d M Y H:i:s", $time) . ' GMT';
     }
 }
