@@ -4,8 +4,6 @@ namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\Storage;
 use BEAR\Resource\Module\ResourceModule;
-use BEAR\Resource\ResourceClientFactory;
-use BEAR\Resource\ResourceFactory;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use Doctrine\Common\Cache\Cache;
@@ -35,8 +33,7 @@ class BehaviorTest extends \PHPUnit_Framework_TestCase
         $injector = new Injector(new QueryRepositoryModule(new ResourceModule($namespace)), $_ENV['TMP_DIR']);
         $this->repository = $injector->getInstance(QueryRepositoryInterface::class);
         $this->resource = $injector->getInstance(ResourceInterface::class);
-        $cache = $injector->getInstance(Cache::class, Storage::class);
-        $this->httpCache = new HttpCache($namespace, $cache);
+        $this->httpCache = $injector->getInstance(HttpCacheInterface::class);
         parent::setUp();
     }
 

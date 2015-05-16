@@ -6,18 +6,13 @@
  */
 namespace BEAR\QueryRepository;
 
-use BEAR\RepositoryModule\Annotation\Storage;
 use Doctrine\Common\Cache\Cache;
-use Ray\Di\Injector;
+use Doctrine\Common\Cache\VoidCache;
+use Ray\Di\Di\Named;
 
-final class HttpCache
+final class HttpCache implements HttpCacheInterface
 {
     const ETAG_KEY = 'etag:';
-
-    /**
-     * @var string
-     */
-    private $appName;
 
     /**
      * @var Cache
@@ -25,19 +20,18 @@ final class HttpCache
     private $kvs;
 
     /**
-     * @var mixed
-     */
-    private $cache;
-
-    /**
-     * @param string $appName application name (Vendor\Package)
+     * @param Cache $kvs
+     *
+     * @Named("appName=BEAR\Resource\Annotation\AppName,kvs=BEAR\RepositoryModule\Annotation\Storage")
      */
     public function __construct($appName, Cache $kvs = null)
     {
-        $this->appName = $appName;
-        $this->kvs = $kvs ?: $this->getKvs();
+        $this->kvs = $kvs ?: new VoidCache;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function isNotModified(array $server)
     {
         if (! isset($server['REQUEST_METHOD']) ||
@@ -52,31 +46,13 @@ final class HttpCache
     }
 
     /**
-     * Invoke http cache (304 and uri cache)
-     *
-     * @return array [$httpCode, $message]
+     * Invoke http cache (304)
      */
     public function __invoke(array $server)
     {
         if ($this->isNotModified($server)) {
             http_response_code(304);
-
-            return [304, "etag:{$server['HTTP_IF_NONE_MATCH']}"];
+            exit(0);
         }
-    }
-
-    private function getKvs()
-    {
-        $kvs = apc_fetch($this->appName . '-kvs');
-        if (! $kvs) {
-            $prodModule = $this->appName . '\Module\ProdModule';
-            if (!class_exists($prodModule)) {
-                $prodModule = '\BEAR\Package\Context\ProdModule';
-            }
-            $kvs = (new Injector(new $prodModule))->getInstance(Cache::class, Storage::class);
-            apc_store($this->appName . '-kvs', $this->kvs);
-        }
-
-        return $kvs;
     }
 }
