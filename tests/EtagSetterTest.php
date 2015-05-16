@@ -28,6 +28,6 @@ class EtagSetterTest extends \PHPUnit_Framework_TestCase
         $setEtag($resourceObject, $time);
         $expect = 'Thu, 01 Jan 1970 00:00:01 GMT';
         $this->assertSame($expect, $resourceObject->headers['Last-Modified']);
-        $this->assertInternalType('string', $resourceObject->headers['Etag']);
+        $this->assertInternalType('string', $resourceObject->headers['ETag']);
     }
 }

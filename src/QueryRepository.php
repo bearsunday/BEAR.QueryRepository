@@ -61,7 +61,7 @@ class QueryRepository implements QueryRepositoryInterface
     public function put(ResourceObject $ro)
     {
         $this->setEtag->__invoke($ro);
-        if (isset($ro->headers['Etag'])) {
+        if (isset($ro->headers['ETag'])) {
             $this->updateEtagDatabase($ro);
         }
         /* @var $cacheable Cacheable */
@@ -105,7 +105,7 @@ class QueryRepository implements QueryRepositoryInterface
      */
     private function updateEtagDatabase(ResourceObject $ro)
     {
-        $etag = $ro->headers['Etag'];
+        $etag = $ro->headers['ETag'];
         $uri = (string) $ro->uri;
         $etagUri = 'resource-etag:' . $uri;
         $contents = $this->kvs->fetch($etagUri);
