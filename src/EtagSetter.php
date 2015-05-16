@@ -15,6 +15,9 @@ class EtagSetter implements EtagSetterInterface
         $time = ! is_null($time) ?: time();
 
         $view = (string) $resourceObject;
+        if ($resourceObject->code !== 200) {
+            return;
+        }
         $resourceObject->headers['Etag'] = (string) crc32($view);
         $resourceObject->headers['Last-Modified'] = gmdate("D, d M Y H:i:s", $time) . ' GMT';
     }
