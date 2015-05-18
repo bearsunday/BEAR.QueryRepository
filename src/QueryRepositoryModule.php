@@ -7,6 +7,7 @@
 namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\Cacheable;
+use BEAR\RepositoryModule\Annotation\Commands;
 use BEAR\RepositoryModule\Annotation\ExpiryConfig;
 use BEAR\RepositoryModule\Annotation\Storage;
 use BEAR\Resource\NamedParameter;
@@ -46,6 +47,7 @@ class QueryRepositoryModule extends AbstractModule
         $this->bind(NamedParameterInterface::class)->to(NamedParameter::class)->in(Scope::SINGLETON);
         $this->bind(Reader::class)->to(AnnotationReader::class)->in(Scope::SINGLETON);
         $this->bind(HttpCacheInterface::class)->to(HttpCache::class);
+        $this->bind()->annotatedWith(Commands::class)->toProvider(CommandsProvider::class);
         // @Cacheable
         $this->bindInterceptor(
             $this->matcher->annotatedWith(Cacheable::class),

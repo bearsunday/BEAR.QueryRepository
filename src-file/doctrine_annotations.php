@@ -10,3 +10,4 @@ require dirname(__DIR__) . '/src/Annotation/Cacheable.php';
 require dirname(__DIR__) . '/src/Annotation/Purge.php';
 require dirname(__DIR__) . '/src/Annotation/Refresh.php';
 require dirname(__DIR__) . '/src/Annotation/Storage.php';
+require dirname(__DIR__) . '/src/Annotation/Commands.php';
