@@ -6,8 +6,7 @@
  */
 namespace BEAR\QueryRepository;
 
-use BEAR\Resource\Resource;
-use Doctrine\Common\Annotations\Reader;
+use BEAR\RepositoryModule\Annotation\Commands;
 use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
 
@@ -20,16 +19,12 @@ class CommandInterceptor implements MethodInterceptor
 
     /**
      * @param QueryRepositoryInterface $repository
+     *
+     * @Commands
      */
-    public function __construct(
-        QueryRepositoryInterface $repository,
-        Reader $reader,
-        Resource $resource
-    ) {
-        $this->commands = [
-            new RefreshSameCommand($repository),
-            new RefreshAnnotatedCommand($repository, $reader, $resource)
-        ];
+    public function __construct(array $commands)
+    {
+        $this->commands = $commands;
     }
 
     /**

@@ -6,23 +6,42 @@
  */
 namespace BEAR\QueryRepository;
 
+use BEAR\Resource\Resource;
+use BEAR\Resource\ResourceInterface;
+use Composer\Repository\RepositoryInterface;
+use Doctrine\Common\Annotations\Reader;
 use Ray\Di\ProviderInterface;
 
 class CommandsProvider implements ProviderInterface
 {
     /**
-     * @var CommandInterface[]
+     * @var RepositoryInterface
      */
-    private $commands = [];
+    private $repository;
 
     /**
-     * @param RefreshSameCommand $command1
+     * @var Reader
      */
-    public function __construct(RefreshSameCommand $command1)
-    {
-        $this->commands = [
-            $command1,
-        ];
+    private $reader;
+
+    /**
+     * @var ResourceInterface
+     */
+    private $resource;
+
+    /**
+     * @param QueryRepositoryInterface $repository
+     * @param Reader                   $reader
+     * @param ResourceInterface        $resource
+     */
+    public function __construct(
+        QueryRepositoryInterface $repository,
+        Reader $reader,
+        ResourceInterface $resource
+    ) {
+        $this->repository = $repository;
+        $this->reader = $reader;
+        $this->resource = $resource;
     }
 
     /**
@@ -30,6 +49,11 @@ class CommandsProvider implements ProviderInterface
      */
     public function get()
     {
-        return new Commands($this->commands);
+        $commands = [
+            new RefreshSameCommand($this->repository),
+            new RefreshAnnotatedCommand($this->repository, $this->reader, $this->resource)
+        ];
+
+        return $commands;
     }
 }
