@@ -6,7 +6,6 @@
  */
 namespace BEAR\QueryRepository;
 
-use BEAR\Resource\Resource;
 use BEAR\Resource\ResourceInterface;
 use Composer\Repository\RepositoryInterface;
 use Doctrine\Common\Annotations\Reader;

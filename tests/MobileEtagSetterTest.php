@@ -3,8 +3,6 @@
 namespace BEAR\QueryRepository;
 
 use FakeVendor\HelloWorld\Resource\App\User;
-use Ray\Aop\Arguments;
-use Ray\Aop\ReflectiveMethodInvocation;
 
 class MobileEtagSetterTest extends \PHPUnit_Framework_TestCase
 {

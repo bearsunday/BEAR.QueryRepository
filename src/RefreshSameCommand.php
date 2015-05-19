@@ -28,18 +28,9 @@ class RefreshSameCommand implements CommandInterface
      */
     public function command(MethodInvocation $invocation, ResourceObject $resourceObject)
     {
-        $method = $invocation->getMethod()->getName();
-        if ($method === 'onGet') {
-            return;
-        }
         unset($invocation);
         $onGet = [$resourceObject, 'onGet'];
-        try {
-            $getQuery = $this->getQuery($resourceObject, $onGet);
-        } catch (UnmatchedQuery $e) {
-            // command query is missing query in Get (Post ?)
-            return;
-        }
+        $getQuery = $this->getQuery($resourceObject, $onGet);
         $delUri = clone $resourceObject->uri;
         $delUri->query = $getQuery;
 
@@ -62,11 +53,10 @@ class RefreshSameCommand implements CommandInterface
         $getQuery = [];
         $query = $resourceObject->uri->query;
         foreach ($refParameters as $parameter) {
-            if (isset($query[$parameter->name])) {
-                $getQuery[$parameter->name] = $query[$parameter->name];
-                continue;
+            if (! isset($query[$parameter->name])) {
+                throw new UnmatchedQuery($resourceObject->uri->method . ' ' . (string) $resourceObject->uri);
             }
-            throw new UnmatchedQuery($resourceObject->uri->method . ' ' . (string) $resourceObject->uri);
+            $getQuery[$parameter->name] = $query[$parameter->name];
         }
 
         return $getQuery;

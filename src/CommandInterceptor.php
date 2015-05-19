@@ -6,7 +6,10 @@
  */
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Exception\ReturnValueIsNotResourceObjectException;
+use BEAR\RepositoryModule\Annotation\AbstractCommand;
 use BEAR\RepositoryModule\Annotation\Commands;
+use BEAR\Resource\ResourceObject;
 use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
 
@@ -18,7 +21,7 @@ class CommandInterceptor implements MethodInterceptor
     private $commands = [];
 
     /**
-     * @param QueryRepositoryInterface $repository
+     * @param AbstractCommand[] $commands
      *
      * @Commands
      */
@@ -33,6 +36,9 @@ class CommandInterceptor implements MethodInterceptor
     public function invoke(MethodInvocation $invocation)
     {
         $resourceObject = $invocation->proceed();
+        if (! $resourceObject instanceof ResourceObject) {
+            throw new ReturnValueIsNotResourceObjectException(get_class($invocation->getThis()));
+        }
         foreach ($this->commands as $command) {
             $command->command($invocation, $resourceObject);
         }

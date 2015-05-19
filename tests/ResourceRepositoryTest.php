@@ -8,7 +8,6 @@ use BEAR\Resource\Uri;
 use Doctrine\Common\Annotations\AnnotationReader;
 use Doctrine\Common\Cache\FilesystemCache;
 use FakeVendor\HelloWorld\Resource\Page\Index;
-use Ray\Di\Injector;
 
 class ResourceRepositoryTest extends \PHPUnit_Framework_TestCase
 {
