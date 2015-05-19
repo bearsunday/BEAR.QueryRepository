@@ -33,14 +33,15 @@ final class HttpCache implements HttpCacheInterface
      */
     public function isNotModified(array $server)
     {
-        if (! isset($server['REQUEST_METHOD']) ||
-            ! $server['REQUEST_METHOD'] === 'GET' ||
-            ! isset($server['HTTP_IF_NONE_MATCH'])
+        if (isset($server['REQUEST_METHOD'])
+            && $server['REQUEST_METHOD'] === 'GET'
+            && isset($server['HTTP_IF_NONE_MATCH'])
         ) {
-            return false;
-        }
-        $etagKey = self::ETAG_KEY . $server['HTTP_IF_NONE_MATCH'];
+            $etagKey = self::ETAG_KEY . $server['HTTP_IF_NONE_MATCH'];
 
-        return $this->kvs->contains($etagKey) ? true : false;
+            return $this->kvs->contains($etagKey) ? true : false;
+        }
+
+        return false;
     }
 }

@@ -57,18 +57,7 @@ class RefreshAnnotatedCommand implements CommandInterface
         /* @var $purgeAnnotations Purge[] */
         $annotations = $this->reader->getMethodAnnotations($invocation->getMethod());
         foreach ($annotations as $annotation) {
-            if (! $annotation instanceof AbstractCommand) {
-                continue;
-            }
-            $uri = new Uri($this->getUri($resourceObject, $annotation));
-            if ($annotation instanceof Purge) {
-                $this->repository->purge($uri);
-            }
-            if ($annotation instanceof Refresh) {
-                $this->repository->purge($uri);
-                $ro = $this->resource->get->uri($uri)->eager->request();
-                $this->repository->put($ro);
-            }
+            $this->request($resourceObject, $annotation);
         }
     }
 
@@ -85,5 +74,25 @@ class RefreshAnnotatedCommand implements CommandInterface
         $uri = uri_template($annotation->uri, $query);
 
         return $uri;
+    }
+
+    /**
+     * @param ResourceObject $resourceObject
+     * @param                $annotation
+     */
+    private function request(ResourceObject $resourceObject, $annotation)
+    {
+        if (!$annotation instanceof AbstractCommand) {
+            return;
+        }
+        $uri = new Uri($this->getUri($resourceObject, $annotation));
+        if ($annotation instanceof Purge) {
+            $this->repository->purge($uri);
+        }
+        if ($annotation instanceof Refresh) {
+            $this->repository->purge($uri);
+            $ro = $this->resource->get->uri($uri)->eager->request();
+            $this->repository->put($ro);
+        }
     }
 }
