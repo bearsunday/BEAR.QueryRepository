@@ -78,7 +78,7 @@ class BehaviorTest extends \PHPUnit_Framework_TestCase
     public function testReturnValueIsNotResourceObjectException()
     {
         $this->setExpectedException(ReturnValueIsNotResourceObjectException::class);
-        $this->resource->put->uri('app://self/null')->withQuery(['id' => 1, 'age' => 10, 'name' => 'Sunday'])->eager->request();
+        $this->resource->put->uri('app://self/invalid')->withQuery(['id' => 1, 'age' => 10, 'name' => 'Sunday'])->eager->request();
     }
 
     public function testUnMatchQuery()

@@ -9,7 +9,7 @@ use BEAR\Resource\ResourceObject;
 /**
  * @Cacheable
  */
-class Null extends ResourceObject
+class Invalid extends ResourceObject
 {
     public function onGet($id, $unused)
     {
