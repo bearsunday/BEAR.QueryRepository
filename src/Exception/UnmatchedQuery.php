@@ -1,6 +1,6 @@
 <?php
 /**
- * This file is part of the BEAR.QueryRepository package
+ * This file is part of the BEAR.QueryRepository package.
  *
  * @license http://opensource.org/licenses/MIT MIT
  */
