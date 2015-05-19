@@ -48,18 +48,6 @@ class QueryRepositoryModule extends AbstractModule
         $this->bind(Reader::class)->to(AnnotationReader::class)->in(Scope::SINGLETON);
         $this->bind(HttpCacheInterface::class)->to(HttpCache::class);
         $this->bind()->annotatedWith(Commands::class)->toProvider(CommandsProvider::class);
-        // @Cacheable
-        $this->bindInterceptor(
-            $this->matcher->annotatedWith(Cacheable::class),
-            $this->matcher->startsWith('onGet'),
-            [CacheInterceptor::class]
-        );
-        foreach (['onPost', 'onPut', 'onPatch', 'onDelete'] as $starts) {
-            $this->bindInterceptor(
-                $this->matcher->annotatedWith(Cacheable::class),
-                $this->matcher->startsWith($starts),
-                [CommandInterceptor::class]
-            );
-        }
+        $this->install(new QueryRepositoryAopModule);
     }
 }
