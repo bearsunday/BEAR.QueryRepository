@@ -1,6 +1,6 @@
 <?php
 /**
- * This file is part of the BEAR.QueryRepository package
+ * This file is part of the BEAR.QueryRepository package.
  *
  * @license http://opensource.org/licenses/MIT MIT
  */
@@ -37,8 +37,12 @@ class QueryRepository implements QueryRepositoryInterface
      * @var EtagSetterInterface
      */
     private $setEtag;
+
     /**
-     * @param Cache $kvs
+     * @param EtagSetterInterface $setEtag
+     * @param Cache               $kvs
+     * @param Reader              $reader
+     * @param int                 $expiry
      *
      * @Named("kvs=BEAR\RepositoryModule\Annotation\Storage, expiry=BEAR\RepositoryModule\Annotation\ExpiryConfig")
      */
@@ -97,7 +101,6 @@ class QueryRepository implements QueryRepositoryInterface
      * Update etag in etag repository
      *
      * @param ResourceObject $ro
-     * @param string         $etag
      */
     private function updateEtagDatabase(ResourceObject $ro)
     {
@@ -126,6 +129,11 @@ class QueryRepository implements QueryRepositoryInterface
         $this->kvs->delete($oldEtagKey);
     }
 
+    /**
+     * @param Cacheable $cacheable
+     *
+     * @return int
+     */
     private function getExpiryTime(Cacheable $cacheable = null)
     {
         if (is_null($cacheable)) {

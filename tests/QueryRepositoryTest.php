@@ -2,15 +2,15 @@
 
 namespace BEAR\QueryRepository;
 
-use BEAR\QueryRepository\Exception\ReturnValueIsNotResourceObjectException;
-use BEAR\QueryRepository\Exception\UnmatchedQuery;
 use BEAR\Resource\Module\ResourceModule;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
+use BEAR\Resource\Uri;
 use FakeVendor\HelloWorld\Resource\App\User\Profile;
+use FakeVendor\HelloWorld\Resource\Page\None;
 use Ray\Di\Injector;
 
-class BehaviorTest extends \PHPUnit_Framework_TestCase
+class QueryRepositoryTest extends \PHPUnit_Framework_TestCase
 {
     /**
      * @var ResourceInterface
@@ -30,7 +30,7 @@ class BehaviorTest extends \PHPUnit_Framework_TestCase
     public function setUp()
     {
         $namespace = 'FakeVendor\HelloWorld';
-        $injector = new Injector(new QueryRepositoryModule(new ResourceModule($namespace)), $_ENV['TMP_DIR']);
+        $injector = new Injector(new QueryRepositoryModule(new MobileEtagModule(new ResourceModule($namespace))), $_ENV['TMP_DIR']);
         $this->repository = $injector->getInstance(QueryRepositoryInterface::class);
         $this->resource = $injector->getInstance(ResourceInterface::class);
         $this->httpCache = $injector->getInstance(HttpCacheInterface::class);
@@ -75,15 +75,14 @@ class BehaviorTest extends \PHPUnit_Framework_TestCase
         $this->assertTrue(Profile::$requested);
     }
 
-    public function testReturnValueIsNotResourceObjectException()
+    /**
+     * @covers BEAR\QueryRepository\QueryRepository::getExpiryTime()
+     */
+    public function testNoAnnotationLifeTime()
     {
-        $this->setExpectedException(ReturnValueIsNotResourceObjectException::class);
-        $this->resource->put->uri('app://self/invalid')->withQuery(['id' => 1, 'age' => 10, 'name' => 'Sunday'])->eager->request();
-    }
-
-    public function testUnMatchQuery()
-    {
-        $this->setExpectedException(UnmatchedQuery::class);
-        $this->resource->put->uri('app://self/unmatch')->withQuery(['id' => 1, 'age' => 10, 'name' => 'Sunday'])->eager->request();
+        $ro = new None; // no annotation
+        $ro->uri = new Uri('page://self/none');
+        $result = $this->repository->put($ro);
+        $this->assertTrue($result);
     }
 }

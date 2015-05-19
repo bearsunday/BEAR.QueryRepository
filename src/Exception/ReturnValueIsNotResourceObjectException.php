@@ -6,6 +6,6 @@
  */
 namespace BEAR\QueryRepository\Exception;
 
-class UnmatchedQuery extends \InvalidArgumentException
+class ReturnValueIsNotResourceObjectException extends \UnexpectedValueException
 {
 }

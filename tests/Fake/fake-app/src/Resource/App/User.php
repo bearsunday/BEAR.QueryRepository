@@ -6,13 +6,14 @@ use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\Purge;
 use BEAR\RepositoryModule\Annotation\Refresh;
 use BEAR\Resource\ResourceObject;
+use Ray\Di\Di\Named;
 
 /**
  * @Cacheable
  */
 class User extends ResourceObject
 {
-    private $data = [];
+    protected $data = [];
 
     public function __construct()
     {
@@ -38,6 +39,8 @@ class User extends ResourceObject
     /**
      * @Purge(uri="app://self/user/friend?user_id={id}")
      * @Refresh(uri="app://self/user/profile?user_id={id}")
+     *
+     * @Named // to ignore
      */
     public function onPut($id, $name, $age)
     {
