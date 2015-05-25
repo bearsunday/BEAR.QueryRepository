@@ -9,6 +9,7 @@ namespace BEAR\QueryRepository;
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\Resource\ResourceObject;
 use Doctrine\Common\Annotations\AnnotationReader;
+use Doctrine\Common\Annotations\Reader;
 use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
 
@@ -36,7 +37,7 @@ class CacheInterceptor implements MethodInterceptor
     public function __construct(
         QueryRepositoryInterface $repository,
         EtagSetterInterface $setEtag,
-        AnnotationReader $annotationReader
+        Reader $annotationReader
     ) {
         $this->repository = $repository;
         $this->setEtag = $setEtag;
