@@ -11,7 +11,7 @@ use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
 use Doctrine\Common\Annotations\Reader;
-use Doctrine\Common\Cache\Cache;
+use Doctrine\Common\Cache\CacheProvider;
 use Ray\Di\Di\Named;
 
 class QueryRepository implements QueryRepositoryInterface
@@ -19,7 +19,7 @@ class QueryRepository implements QueryRepositoryInterface
     const ETAG_BY_URI = 'etag-by-uri';
 
     /**
-     * @var Cache
+     * @var CacheProvider
      */
     private $kvs;
 
@@ -40,7 +40,9 @@ class QueryRepository implements QueryRepositoryInterface
 
     /**
      * @param EtagSetterInterface $setEtag
-     * @param Cache               $kvs
+     * @param CacheProvider $kvs
+     * @param EtagSetterInterface $setEtag
+     * @param CacheProvider       $kvs
      * @param Reader              $reader
      * @param int                 $expiry
      *
@@ -48,7 +50,7 @@ class QueryRepository implements QueryRepositoryInterface
      */
     public function __construct(
         EtagSetterInterface $setEtag,
-        Cache $kvs,
+        CacheProvider $kvs,
         Reader $reader,
         $expiry
     ) {
