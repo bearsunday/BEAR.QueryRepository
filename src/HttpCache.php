@@ -7,23 +7,23 @@
 namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\Storage;
-use Doctrine\Common\Cache\Cache;
+use Doctrine\Common\Cache\CacheProvider;
 
 final class HttpCache implements HttpCacheInterface
 {
     const ETAG_KEY = 'etag:';
 
     /**
-     * @var Cache
+     * @var CacheProvider
      */
     private $kvs;
 
     /**
-     * @param Cache $kvs
+     * @param CacheProvider $kvs
      *
      * @Storage
      */
-    public function __construct(Cache $kvs)
+    public function __construct(CacheProvider $kvs)
     {
         $this->kvs = $kvs;
     }
