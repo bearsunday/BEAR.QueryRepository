@@ -16,7 +16,7 @@
     "autoload": {
         "psr-4": {
             "BEAR\\QueryRepository\\": "src/",
-            "BEAR\\RepositoryModule\\Annotation\\": "src/Annotation/"
+            "BEAR\\RepositoryModule\\Annotation\\": "src-annotation/"
         }
     },
     "autoload-dev": {

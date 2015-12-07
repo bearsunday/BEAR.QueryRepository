@@ -115,8 +115,8 @@ When you have multiple web servers, shared storage engine like [MemcacheCache](h
 You can `purge` or `refresh` entity value in query repository with `@Purge` or `@Refresh` annotation.
 
 ```php
-use BEAR\QueryRepository\Annotation\Purge;
-use BEAR\QueryRepository\Annotation\Refresh;
+use BEAR\RepositoryModule\Annotation\Purge;
+use BEAR\RepositoryModule\Annotation\Refresh;
 
 class User extends ResourceObject
 {
