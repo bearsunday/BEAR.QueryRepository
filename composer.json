@@ -9,14 +9,15 @@
         }
     ],
     "require": {
+        "php": ">=5.5.0",
         "bear/resource": "~1.1.1",
-        "mobiledetect/mobiledetectlib": "~2.0@dev"
+        "mobiledetect/mobiledetectlib": "~2.0"
     },
     "autoload": {
         "psr-4": {
-            "BEAR\\QueryRepository\\": "src/"
-        },
-        "files": ["src-file/doctrine_annotations.php"]
+            "BEAR\\QueryRepository\\": "src/",
+            "BEAR\\RepositoryModule\\Annotation\\": "src/Annotation/"
+        }
     },
     "autoload-dev": {
         "psr-4": {
@@ -26,7 +27,5 @@
             ],
             "FakeVendor\\HelloWorld\\": "tests/Fake/fake-app/src"
         }
-    },
-    "minimum-stability": "dev",
-    "prefer-stable": true
+    }
 }
