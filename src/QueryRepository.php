@@ -40,11 +40,9 @@ class QueryRepository implements QueryRepositoryInterface
 
     /**
      * @param EtagSetterInterface $setEtag
-     * @param CacheProvider $kvs
-     * @param EtagSetterInterface $setEtag
      * @param CacheProvider       $kvs
      * @param Reader              $reader
-     * @param int                 $expiry
+     * @param string              $expiry
      *
      * @Named("kvs=BEAR\RepositoryModule\Annotation\Storage, expiry=BEAR\RepositoryModule\Annotation\ExpiryConfig")
      */

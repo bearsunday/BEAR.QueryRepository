@@ -77,8 +77,8 @@ class RefreshAnnotatedCommand implements CommandInterface
     }
 
     /**
-     * @param ResourceObject  $resourceObject
-     * @param object          $annotation
+     * @param ResourceObject $resourceObject
+     * @param object         $annotation
      */
     private function request(ResourceObject $resourceObject, $annotation)
     {
