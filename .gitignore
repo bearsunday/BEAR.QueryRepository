@@ -7,8 +7,6 @@ nbproject
 .project
 .settings
 cache.properties
-build
-vendor/
-composer.phar
 composer.lock
-tmp
+build
+vendor
