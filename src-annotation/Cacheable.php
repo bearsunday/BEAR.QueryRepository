@@ -27,4 +27,10 @@ final class Cacheable
      * @var bool
      */
     public $update = true;
+
+    /**
+     * @var string
+     * @Enum({"value", "view"})
+     */
+    public $type = 'value';
 }
