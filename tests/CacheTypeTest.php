@@ -18,37 +18,48 @@ class CacheTypeTest extends \PHPUnit_Framework_TestCase
     public function setUp()
     {
         $this->resource = (new Injector(new QueryRepositoryModule(new ResourceModule('FakeVendor\HelloWorld'))))->getInstance(ResourceInterface::class);
-
         parent::setUp();
+    }
+
+    public function requestDobule($uri)
+    {
+        $ro = $this->resource->get->uri($uri)->eager->request();
+        // put
+        $expect = 'Last-Modified';
+        $this->assertArrayHasKey($expect, $ro->headers);
+        $time = $ro['time'];
+        // get
+        $ro = $this->resource->get->uri($uri)->eager->request();
+        $this->assertArrayHasKey($expect, $ro->headers);
+        $expect = $time;
+        $this->assertSame($expect, $ro['time']);
+
+        return $ro;
     }
 
     public function testValue()
     {
-        $ro = $this->resource->get->uri('app://self/value')->withQuery(['id' => 1])->eager->request();
+        $uri = 'app://self/value';
         // put
-        $expect = 'Last-Modified';
-        $this->assertArrayHasKey($expect, $ro->headers);
+        $ro = $this->resource->get->uri($uri)->eager->request();
+        (string) $ro;
         $time = $ro['time'];
-        // get
-        $ro = $this->resource->get->uri('app://self/value')->withQuery(['id' => 1])->eager->request();
-        $this->assertArrayHasKey($expect, $ro->headers);
-        $expect = $time;
-        $this->assertSame($expect, $ro['time']);
-        $this->assertNull($ro->view);
+        $this->assertSame('1' . $time, $ro->view);
+        $ro = $this->resource->get->uri($uri)->eager->request();
+        (string) $ro;
+        $this->assertSame('2' . $time, $ro->view);
     }
 
     public function testView()
     {
-        $ro = $this->resource->get->uri('app://self/view')->withQuery(['id' => 1])->eager->request();
+        $uri = 'app://self/view';
         // put
-        $expect = 'Last-Modified';
-        $this->assertArrayHasKey($expect, $ro->headers);
+        $ro = $this->resource->get->uri($uri)->eager->request();
+        (string) $ro;
         $time = $ro['time'];
-        // get
-        $ro = $this->resource->get->uri('app://self/view')->withQuery(['id' => 1])->eager->request();
-        $this->assertArrayHasKey($expect, $ro->headers);
-        $expect = $time;
-        $this->assertSame($expect, $ro['time']);
-        $this->assertSame('view', $ro->view);
+        $this->assertSame('1' . $time, $ro->view);
+        $ro = $this->resource->get->uri($uri)->eager->request();
+        (string) $ro;
+        $this->assertSame('1' . $time, $ro->view);
     }
 }

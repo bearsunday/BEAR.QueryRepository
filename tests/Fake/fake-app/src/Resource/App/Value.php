@@ -10,17 +10,21 @@ use BEAR\Resource\ResourceObject;
  */
 class Value extends ResourceObject
 {
+    static $i = 1;
+
     public function __toString()
     {
-        $this->view = 'value';
+        if ($this->view) {
+            return $this->view;
+        }
+        $this->view = (string) self::$i++ . $this['time'];
 
         return $this->view;
     }
 
-    public function onGet($id)
+    public function onGet()
     {
-        $this->body['id'] = $id;
-        $this['time'] = microtime(true);
+        $this['time'] = (string) microtime(true);
 
         return $this;
     }
