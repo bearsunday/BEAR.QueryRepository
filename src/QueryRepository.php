@@ -70,7 +70,9 @@ class QueryRepository implements QueryRepositoryInterface
         /* @var $cacheable Cacheable */
         $cacheable = $this->reader->getClassAnnotation(new \ReflectionClass($ro), Cacheable::class);
         $lifeTime = $this->getExpiryTime($cacheable);
-
+        if ($cacheable instanceof Cacheable && $cacheable->type === 'view') {
+            (string) $ro;
+        }
         return $this->kvs->save((string) $ro->uri, $ro, $lifeTime);
     }
 
