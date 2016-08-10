@@ -14,7 +14,7 @@ Meta information will be added in the header just like HTTP cache as following.
 
 ## Composer install
 
-    $ composer require bear/query-repository:~1.0@dev
+    $ composer require bear/query-repository
  
 ## Module install
 
