@@ -78,8 +78,25 @@ class User extends ResourceObject
     }
 }
 ```
+A `type` option can select cache type either **value** or **view**.  A value cache only cache resource value, A resource view (html or json) is rendered by each. 
 
-`expiry` option can limit data life time, `short`, `medium`, `long` and `never` are provided.
+```php
+/**
+ * @Cacheable(type="value")
+ */
+```
+
+A view cache stored both template assigned view and resource value. 
+
+```php
+/**
+ * @Cacheable(type="view")
+ */
+```
+The default type of cahe is **value**.
+
+
+An `expiry` option can limit data life time, `short`, `medium`, `long` and `never` are provided.
 
 ```php
 /**
@@ -95,7 +112,6 @@ list($short, $medium, $long) = [60, 3600, 24 * 3600];
 $this->bind()->annotatedWith(ExpiryConfig::class)->toInstance(new Expiry($short, $medium, $long));
 storage namespace
 ```
-
 Also `Storage` for cache storage engine. 
 
 ```php
