@@ -29,7 +29,7 @@ class RefreshAnnotatedCommand implements CommandInterface
     private $reader;
 
     /**
-     * @var Resource|ResourceInterface
+     * @var resource|ResourceInterface
      */
     private $resource;
 
@@ -82,7 +82,7 @@ class RefreshAnnotatedCommand implements CommandInterface
      */
     private function request(ResourceObject $resourceObject, $annotation)
     {
-        if (!$annotation instanceof AbstractCommand) {
+        if (! $annotation instanceof AbstractCommand) {
             return;
         }
         $uri = new Uri($this->getUri($resourceObject, $annotation));

@@ -1,11 +1,15 @@
 <?php
-
+/**
+ * This file is part of the BEAR.QueryRepository package.
+ *
+ * @license http://opensource.org/licenses/MIT MIT
+ */
 use BEAR\Resource\ResourceInterface;
 use Composer\Autoload\ClassLoader;
 use FakeVendor\DemoApp\AppModule;
 use Ray\Di\Injector;
 
-/** @var $loader ClassLoader*/
+/** @var $loader ClassLoader */
 $loader = require dirname(dirname(__DIR__)) . '/vendor/autoload.php';
 $loader->addPsr4('FakeVendor\DemoApp\\', __DIR__);
 

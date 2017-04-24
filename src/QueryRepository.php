@@ -73,6 +73,7 @@ class QueryRepository implements QueryRepositoryInterface
         if ($cacheable instanceof Cacheable && $cacheable->type === 'view') {
             (string) $ro;
         }
+
         return $this->kvs->save((string) $ro->uri, $ro, $lifeTime);
     }
 
@@ -100,6 +101,19 @@ class QueryRepository implements QueryRepositoryInterface
     }
 
     /**
+     * Delete etag in etag repository
+     *
+     * @param AbstractUri $uri
+     */
+    public function deleteEtagDatabase(AbstractUri $uri)
+    {
+        $etagId = self::ETAG_BY_URI . (string) $uri; // invalidate etag
+        $oldEtagKey = $this->kvs->fetch($etagId);
+
+        $this->kvs->delete($oldEtagKey);
+    }
+
+    /**
      * Update etag in etag repository
      *
      * @param ResourceObject $ro
@@ -119,26 +133,13 @@ class QueryRepository implements QueryRepositoryInterface
     }
 
     /**
-     * Delete etag in etag repository
-     *
-     * @param AbstractUri $uri
-     */
-    public function deleteEtagDatabase(AbstractUri $uri)
-    {
-        $etagId = self::ETAG_BY_URI . (string) $uri; // invalidate etag
-        $oldEtagKey = $this->kvs->fetch($etagId);
-
-        $this->kvs->delete($oldEtagKey);
-    }
-
-    /**
      * @param Cacheable $cacheable
      *
      * @return int
      */
     private function getExpiryTime(Cacheable $cacheable = null)
     {
-        if (is_null($cacheable)) {
+        if ($cacheable === null) {
             return 0;
         }
 

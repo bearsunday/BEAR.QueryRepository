@@ -1,5 +1,9 @@
 <?php
-
+/**
+ * This file is part of the BEAR.QueryRepository package.
+ *
+ * @license http://opensource.org/licenses/MIT MIT
+ */
 namespace BEAR\QueryRepository;
 
 use BEAR\Resource\Module\ResourceModule;
@@ -76,7 +80,7 @@ class QueryRepositoryTest extends \PHPUnit_Framework_TestCase
     }
 
     /**
-     * @covers BEAR\QueryRepository\QueryRepository::getExpiryTime()
+     * @covers \BEAR\QueryRepository\QueryRepository::getExpiryTime()
      */
     public function testNoAnnotationLifeTime()
     {
