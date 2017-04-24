@@ -32,6 +32,8 @@ class CommandInterceptor implements MethodInterceptor
 
     /**
      * {@inheritdoc}
+     *
+     * @throws ReturnValueIsNotResourceObjectException
      */
     public function invoke(MethodInvocation $invocation)
     {

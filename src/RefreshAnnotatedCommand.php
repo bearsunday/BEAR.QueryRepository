@@ -33,11 +33,6 @@ class RefreshAnnotatedCommand implements CommandInterface
      */
     private $resource;
 
-    /**
-     * @param QueryRepositoryInterface $repository
-     * @param Reader                   $reader
-     * @param ResourceInterface        $resource
-     */
     public function __construct(
         QueryRepositoryInterface $repository,
         Reader $reader,
@@ -62,9 +57,6 @@ class RefreshAnnotatedCommand implements CommandInterface
     }
 
     /**
-     * @param ResourceObject $resourceObject
-     * @param object         $annotation
-     *
      * @return string
      */
     private function getUri(ResourceObject $resourceObject, AbstractCommand $annotation)
