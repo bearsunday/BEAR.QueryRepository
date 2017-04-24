@@ -9,7 +9,6 @@ namespace BEAR\QueryRepository;
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceObject;
-use BEAR\Resource\Uri;
 use Doctrine\Common\Annotations\Reader;
 use Doctrine\Common\Cache\CacheProvider;
 use Ray\Di\Di\Named;
@@ -80,7 +79,7 @@ class QueryRepository implements QueryRepositoryInterface
     /**
      * {@inheritdoc}
      */
-    public function get(Uri $uri)
+    public function get(AbstractUri $uri)
     {
         $ro = $this->kvs->fetch((string) $uri);
         if ($ro === false) {
@@ -93,7 +92,7 @@ class QueryRepository implements QueryRepositoryInterface
     /**
      * {@inheritdoc}
      */
-    public function purge(Uri $uri)
+    public function purge(AbstractUri $uri)
     {
         $this->deleteEtagDatabase($uri);
 

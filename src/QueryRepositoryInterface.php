@@ -6,8 +6,8 @@
  */
 namespace BEAR\QueryRepository;
 
+use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceObject;
-use BEAR\Resource\Uri;
 
 interface QueryRepositoryInterface
 {
@@ -19,16 +19,16 @@ interface QueryRepositoryInterface
     public function put(ResourceObject $ro);
 
     /**
-     * @param Uri $uri
+     * @param AbstractUri $uri
      *
      * @return [$code, $headers, $body, $view]|false
      */
-    public function get(Uri $uri);
+    public function get(AbstractUri $uri);
 
     /**
-     * @param Uri $uri
+     * @param AbstractUri $uri
      *
      *  @return bool Is successfully deleted
      */
-    public function purge(Uri $uri);
+    public function purge(AbstractUri $uri);
 }
