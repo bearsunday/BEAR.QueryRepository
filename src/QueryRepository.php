@@ -142,6 +142,6 @@ class QueryRepository implements QueryRepositoryInterface
             return 0;
         }
 
-        return ($cacheable->expirySecond) ? $cacheable->expirySecond : $this->expiry[$cacheable->expiry];
+        return $cacheable->expirySecond ? $cacheable->expirySecond : $this->expiry[$cacheable->expiry];
     }
 }
