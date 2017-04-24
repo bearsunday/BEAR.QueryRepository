@@ -34,7 +34,7 @@ class RefreshSameCommand implements CommandInterface
         }
         unset($invocation);
         $onGet = [$resourceObject, 'onGet'];
-        $getQuery = $this->getQuery($resourceObject, $onGet);
+        $getQuery = $this->getQuery($resourceObject);
         $delUri = clone $resourceObject->uri;
         $delUri->query = $getQuery;
 
