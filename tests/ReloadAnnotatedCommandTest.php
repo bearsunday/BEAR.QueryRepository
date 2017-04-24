@@ -1,16 +1,19 @@
 <?php
-
+/**
+ * This file is part of the BEAR.QueryRepository package.
+ *
+ * @license http://opensource.org/licenses/MIT MIT
+ */
 namespace BEAR\QueryRepository;
 
 use BEAR\Resource\Module\ResourceModule;
-use BEAR\Resource\ResourceClientFactory;
 use BEAR\Resource\ResourceInterface;
 use Ray\Di\Injector;
 
 class ReloadAnnotatedCommandTest extends \PHPUnit_Framework_TestCase
 {
     /**
-     * @var Resource
+     * @var resource
      */
     private $resource;
 

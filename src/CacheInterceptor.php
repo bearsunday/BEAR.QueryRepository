@@ -30,10 +30,6 @@ class CacheInterceptor implements MethodInterceptor
      */
     private $reader;
 
-    /**
-     * @param QueryRepositoryInterface $repository
-     * @param EtagSetterInterface      $setEtag
-     */
     public function __construct(
         QueryRepositoryInterface $repository,
         EtagSetterInterface $setEtag,

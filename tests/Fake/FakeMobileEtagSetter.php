@@ -1,6 +1,6 @@
 <?php
 /**
- * This file is part of the BEAR.QueryRepository package
+ * This file is part of the BEAR.QueryRepository package.
  *
  * @license http://opensource.org/licenses/MIT MIT
  */
@@ -14,7 +14,7 @@ class FakeMobileEtagSetter extends MobileEtagSetter
 
     public function __invoke(ResourceObject $resourceObject, $time = null)
     {
-        self::$device =  $this->getDevice();
+        self::$device = $this->getDevice();
 
         return parent::__invoke($resourceObject, $time);
     }

@@ -1,5 +1,9 @@
 <?php
-
+/**
+ * This file is part of the BEAR.QueryRepository package.
+ *
+ * @license http://opensource.org/licenses/MIT MIT
+ */
 namespace FakeVendor\DemoApp\Resource\App;
 
 use BEAR\RepositoryModule\Annotation\Cacheable;
@@ -22,7 +26,7 @@ class User extends ResourceObject
         error_log(__FUNCTION__ . ' invoked');
 
         $this['name'] = isset($this->data[$id]) ? $this->data[$id]['name'] : '';
-        $this['rnd'] = rand(1, 100);
+        $this['rnd'] = mt_rand(1, 100);
 
         return $this;
     }

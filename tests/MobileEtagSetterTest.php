@@ -1,5 +1,9 @@
 <?php
-
+/**
+ * This file is part of the BEAR.QueryRepository package.
+ *
+ * @license http://opensource.org/licenses/MIT MIT
+ */
 namespace BEAR\QueryRepository;
 
 use FakeVendor\HelloWorld\Resource\App\User;
@@ -25,7 +29,7 @@ class MobileEtagSetterTest extends \PHPUnit_Framework_TestCase
         $this->obj = new User;
         $this->etagSetter = new FakeMobileEtagSetter;
         $currentTime = time();
-        $this->time = gmdate("D, d M Y H:i:s", $currentTime) . ' GMT';
+        $this->time = gmdate('D, d M Y H:i:s', $currentTime) . ' GMT';
     }
 
     public function testMobile()

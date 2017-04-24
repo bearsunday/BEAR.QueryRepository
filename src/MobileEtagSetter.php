@@ -15,8 +15,8 @@ class MobileEtagSetter implements EtagSetterInterface
         // etag]
         $resourceObject->headers['ETag'] = (string) crc32($this->getDevice() . serialize($resourceObject->view) . serialize($resourceObject->body));
         // time
-        $time = ! is_null($time) ?: time();
-        $resourceObject->headers['Last-Modified'] = gmdate("D, d M Y H:i:s", $time) . ' GMT';
+        $time = $time !== null ?: time();
+        $resourceObject->headers['Last-Modified'] = gmdate('D, d M Y H:i:s', $time) . ' GMT';
     }
 
     /**
@@ -25,7 +25,7 @@ class MobileEtagSetter implements EtagSetterInterface
     protected function getDevice()
     {
         $detect = new \Mobile_Detect;
-        $mobileDeviceType =  $detect->isMobile() && ! $detect->isTablet() ? 'mobile' : 'pc';
+        $mobileDeviceType = $detect->isMobile() && ! $detect->isTablet() ? 'mobile' : 'pc';
 
         return $mobileDeviceType;
     }

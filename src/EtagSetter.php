@@ -12,12 +12,12 @@ class EtagSetter implements EtagSetterInterface
 {
     public function __invoke(ResourceObject $resourceObject, $time = null)
     {
-        $time = ! is_null($time) ?: time();
+        $time = $time !== null ?: time();
 
         if ($resourceObject->code !== 200) {
             return;
         }
         $resourceObject->headers['ETag'] = (string) crc32(serialize($resourceObject->view) . serialize($resourceObject->body));
-        $resourceObject->headers['Last-Modified'] = gmdate("D, d M Y H:i:s", $time) . ' GMT';
+        $resourceObject->headers['Last-Modified'] = gmdate('D, d M Y H:i:s', $time) . ' GMT';
     }
 }

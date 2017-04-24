@@ -9,7 +9,6 @@ namespace BEAR\QueryRepository;
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceObject;
-use BEAR\Resource\Uri;
 use Doctrine\Common\Annotations\Reader;
 use Doctrine\Common\Cache\CacheProvider;
 use Ray\Di\Di\Named;
@@ -73,13 +72,14 @@ class QueryRepository implements QueryRepositoryInterface
         if ($cacheable instanceof Cacheable && $cacheable->type === 'view') {
             (string) $ro;
         }
+
         return $this->kvs->save((string) $ro->uri, $ro, $lifeTime);
     }
 
     /**
      * {@inheritdoc}
      */
-    public function get(Uri $uri)
+    public function get(AbstractUri $uri)
     {
         $ro = $this->kvs->fetch((string) $uri);
         if ($ro === false) {
@@ -92,11 +92,24 @@ class QueryRepository implements QueryRepositoryInterface
     /**
      * {@inheritdoc}
      */
-    public function purge(Uri $uri)
+    public function purge(AbstractUri $uri)
     {
         $this->deleteEtagDatabase($uri);
 
         return $this->kvs->delete((string) $uri);
+    }
+
+    /**
+     * Delete etag in etag repository
+     *
+     * @param AbstractUri $uri
+     */
+    public function deleteEtagDatabase(AbstractUri $uri)
+    {
+        $etagId = self::ETAG_BY_URI . (string) $uri; // invalidate etag
+        $oldEtagKey = $this->kvs->fetch($etagId);
+
+        $this->kvs->delete($oldEtagKey);
     }
 
     /**
@@ -119,29 +132,16 @@ class QueryRepository implements QueryRepositoryInterface
     }
 
     /**
-     * Delete etag in etag repository
-     *
-     * @param AbstractUri $uri
-     */
-    public function deleteEtagDatabase(AbstractUri $uri)
-    {
-        $etagId = self::ETAG_BY_URI . (string) $uri; // invalidate etag
-        $oldEtagKey = $this->kvs->fetch($etagId);
-
-        $this->kvs->delete($oldEtagKey);
-    }
-
-    /**
      * @param Cacheable $cacheable
      *
      * @return int
      */
     private function getExpiryTime(Cacheable $cacheable = null)
     {
-        if (is_null($cacheable)) {
+        if ($cacheable === null) {
             return 0;
         }
 
-        return ($cacheable->expirySecond) ? $cacheable->expirySecond : $this->expiry[$cacheable->expiry];
+        return $cacheable->expirySecond ? $cacheable->expirySecond : $this->expiry[$cacheable->expiry];
     }
 }
