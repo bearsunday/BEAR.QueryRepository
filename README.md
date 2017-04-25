@@ -37,16 +37,22 @@ class AppModule extends AbstractModule
      */
     protected function configure()
     {
-        // Query repository engine
-        $this->bind(CacheProvider::class)->annotatedWith(Storage::class)->to(ArrayCache::class)->in(Scope::SINGLETON);
-        // Cache time
-        list($short, $medium, $long) = [60, 3600, 24 * 3600];
-        $this->bind()->annotatedWith(ExpiryConfig::class)->toInstance(new Expiry($short, $medium, $long));
-
-        $this->install(new ResourceModule(__NAMESPACE__));
-        
         $this->install(new QueryRepositoryModule); // main module
         $this->override(new MobileEtagModule);     // mobile etag module
+        
+        // Cache time
+        list($short, $medium, $long) = [60, 3600, 24 * 3600];
+        $this->install(new StorageExpiryModule($short, $medium, $long);
+        
+        // Query repository engine - memcached
+        $memcachedServer = 'mem1.domain.com:11211:33,mem2.domain.com:11211:67'; // {host}:{port}:{weight},...
+        $this->install(new StorageMemcachedModule($memcachedServer);
+        
+        // or 
+        
+        // Query repository engine - redis
+        $redisServer = $server = 'localhost:6379'; // {host}:{port}
+        $this->install(new StorageRedisModule($redisServer);        
     }
 }
 
@@ -137,9 +143,9 @@ use BEAR\RepositoryModule\Annotation\Refresh;
 class User extends ResourceObject
 {
      /**
-     * @Purge(uri="app://self/user/friend?user_id={id}")
-     * @Refresh(uri="app://self/user/profile?user_id={id}")
-     */
+      * @Purge(uri="app://self/user/friend?user_id={id}")
+      * @Refresh(uri="app://self/user/profile?user_id={id}")
+      */
      public function onPatch($id, $name)
 ```
 
