@@ -11,10 +11,10 @@ cache:
     - $HOME/.composer/cache
 env:
   matrix:
+    allow_failures:
+      - php: hhvm
     - DEPENDENCIES=""
     - DEPENDENCIES="--prefer-lowest --prefer-stable"
-  allow_failures:
-    - php: hhvm
 before_script:
   - composer self-update
   - composer update $DEPENDENCIES
