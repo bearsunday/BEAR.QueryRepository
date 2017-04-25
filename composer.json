@@ -29,7 +29,8 @@
                 "tests/",
                 "tests/Fake/"
             ],
-            "FakeVendor\\HelloWorld\\": "tests/Fake/fake-app/src"
+            "FakeVendor\\HelloWorld\\": "tests/Fake/fake-app/src",
+            "": "tests/Fake"
         }
     }
 }
