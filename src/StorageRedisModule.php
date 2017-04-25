@@ -18,12 +18,12 @@ class StorageRedisModule extends AbstractModule
     private $server;
 
     /**
-     * @param array               $server [$host, $port]
+     * @param string              $server {host}:{port}
      * @param AbstractModule|null $module
      */
-    public function __construct(array $server, AbstractModule $module = null)
+    public function __construct($server, AbstractModule $module = null)
     {
-        $this->server = $server;
+        $this->server = explode(':', $server);
         parent::__construct($module);
     }
 
