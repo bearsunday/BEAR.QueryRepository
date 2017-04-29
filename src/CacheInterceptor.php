@@ -56,10 +56,11 @@ class CacheInterceptor implements MethodInterceptor
         /* @var $cacheable Cacheable */
         try {
             $resourceObject = $invocation->proceed();
-            $this->setEtag->__invoke($resourceObject);
             $this->repository->put($resourceObject);
+            $this->setEtag->__invoke($resourceObject);
         } catch (\Exception $e) {
             $this->repository->purge($resourceObject->uri);
+            error_log($e);
         }
 
         return $resourceObject;
