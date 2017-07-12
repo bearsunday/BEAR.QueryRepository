@@ -121,7 +121,9 @@ class QueryRepository implements QueryRepositoryInterface
     private function getCacheable(ResourceObject $ro)
     {
         if (isset($ro->classAnnotations)) {
-            return (unserialize($ro->classAnnotations))[Cacheable::class];
+            $annotations = unserialize($ro->classAnnotations);
+
+            return $annotations[Cacheable::class];
         }
 
         return $this->reader->getClassAnnotation(new \ReflectionClass($ro), Cacheable::class);
