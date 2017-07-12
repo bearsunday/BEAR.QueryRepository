@@ -10,6 +10,7 @@ use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceObject;
 use Doctrine\Common\Annotations\Reader;
+use Doctrine\Common\Cache\Cache;
 use Doctrine\Common\Cache\CacheProvider;
 use Ray\Di\Di\Named;
 
@@ -43,11 +44,11 @@ class QueryRepository implements QueryRepositoryInterface
      * @param Reader              $reader
      * @param string              $expiry
      *
-     * @Named("kvs=BEAR\RepositoryModule\Annotation\Storage, expiry=BEAR\RepositoryModule\Annotation\ExpiryConfig")
+     * @Named("kvs=BEAR\RepositoryModule\Annotation\Storage,expiry=BEAR\RepositoryModule\Annotation\ExpiryConfig")
      */
     public function __construct(
         EtagSetterInterface $setEtag,
-        CacheProvider $kvs,
+        Cache $kvs,
         Reader $reader,
         $expiry
     ) {
