@@ -12,7 +12,10 @@ use Ray\Di\Di\Qualifier;
  * @Target("METHOD")
  * @Qualifier()
  */
-final class ExpiryConfig
+final class CacheVersion
 {
+    /**
+     * @var string
+     */
     public $value;
 }

@@ -6,6 +6,7 @@
  */
 namespace BEAR\QueryRepository;
 
+use BEAR\RepositoryModule\Annotation\CacheVersion;
 use BEAR\RepositoryModule\Annotation\Commands;
 use BEAR\RepositoryModule\Annotation\ExpiryConfig;
 use BEAR\RepositoryModule\Annotation\Storage;
@@ -47,6 +48,7 @@ class QueryRepositoryModule extends AbstractModule
         $this->bind(Reader::class)->to(AnnotationReader::class)->in(Scope::SINGLETON);
         $this->bind(HttpCacheInterface::class)->to(HttpCache::class);
         $this->bind()->annotatedWith(Commands::class)->toProvider(CommandsProvider::class);
+        $this->bind()->annotatedWith(CacheVersion::class)->toInstance('');
         $this->install(new QueryRepositoryAopModule);
     }
 }
