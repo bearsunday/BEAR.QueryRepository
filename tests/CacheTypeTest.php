@@ -57,11 +57,10 @@ class CacheTypeTest extends \PHPUnit_Framework_TestCase
         $uri = 'app://self/view';
         // put
         $ro = $this->resource->get->uri($uri)->eager->request();
-        (string) $ro;
         $time = $ro['time'];
         $this->assertSame('1' . $time, $ro->view);
         $ro = $this->resource->get->uri($uri)->eager->request();
-        (string) $ro;
+        $this->assertTrue((bool) $ro->view);
         $this->assertSame('1' . $time, $ro->view);
     }
 }

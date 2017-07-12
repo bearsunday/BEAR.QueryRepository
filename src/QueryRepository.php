@@ -67,13 +67,16 @@ class QueryRepository implements QueryRepositoryInterface
             $this->updateEtagDatabase($ro);
         }
         /* @var $cacheable Cacheable */
-        $cacheable = $this->reader->getClassAnnotation(new \ReflectionClass($ro), Cacheable::class);
+        $cacheable = $this->getCacheable($ro);
         $lifeTime = $this->getExpiryTime($cacheable);
         if ($cacheable instanceof Cacheable && $cacheable->type === 'view') {
-            (string) $ro;
-        }
+            // render
+            $ro->view = $ro->toString();
 
-        return $this->kvs->save((string) $ro->uri, $ro, $lifeTime);
+            return $this->kvs->save((string) $ro->uri, [$ro->code, $ro->headers, $ro->body, $ro->view], $lifeTime);
+        }
+        // "value" cache type
+        return $this->kvs->save((string) $ro->uri, [$ro->code, $ro->headers, $ro->body, null], $lifeTime);
     }
 
     /**
@@ -81,12 +84,12 @@ class QueryRepository implements QueryRepositoryInterface
      */
     public function get(AbstractUri $uri)
     {
-        $ro = $this->kvs->fetch((string) $uri);
-        if ($ro === false) {
+        $data = $this->kvs->fetch((string) $uri);
+        if ($data === false) {
             return false;
         }
 
-        return [$ro->code, $ro->headers, $ro->body, $ro->view];
+        return $data;
     }
 
     /**
@@ -110,6 +113,20 @@ class QueryRepository implements QueryRepositoryInterface
         $oldEtagKey = $this->kvs->fetch($etagId);
 
         $this->kvs->delete($oldEtagKey);
+    }
+
+    /**
+     * @return Cacheable
+     */
+    private function getCacheable(ResourceObject $ro)
+    {
+        if (isset($ro->classAnnotations)) {
+            $annotations = unserialize($ro->classAnnotations);
+
+            return $annotations[Cacheable::class];
+        }
+
+        return $this->reader->getClassAnnotation(new \ReflectionClass($ro), Cacheable::class);
     }
 
     /**
