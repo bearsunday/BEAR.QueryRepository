@@ -9,7 +9,6 @@ namespace BEAR\QueryRepository;
 use BEAR\RepositoryModule\Annotation\Storage;
 use BEAR\Resource\Annotation\AppName;
 use Doctrine\Common\Cache\CacheProvider;
-use Ray\Di\Di\Inject;
 use Ray\Di\ProviderInterface;
 
 class StorageProvider implements ProviderInterface
@@ -26,22 +25,14 @@ class StorageProvider implements ProviderInterface
 
     /**
      * @param CacheProvider $kvs
+     * @param mixed         $appName
      *
      * @Storage
+     * @AppName("appName")
      */
-    public function __construct(CacheProvider $kvs)
+    public function __construct(CacheProvider $kvs, $appName)
     {
         $this->kvs = $kvs;
-    }
-
-    /**
-     * @param string $appName
-     *
-     * @Inject
-     * @AppName
-     */
-    public function setAppName($appName)
-    {
         $this->appName = $appName;
     }
 
