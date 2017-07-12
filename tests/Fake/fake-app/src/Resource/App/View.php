@@ -16,11 +16,12 @@ class View extends ResourceObject
 {
     public static $i = 1;
 
-    public function __toString()
+    public function toString()
     {
         if ($this->view) {
             return $this->view;
         }
+
         $this->view = (string) self::$i++ . $this['time'];
 
         return $this->view;
