@@ -73,8 +73,10 @@ class QueryRepository implements QueryRepositoryInterface
         $cacheable = $this->getCacheable($ro);
         $lifeTime = $this->getExpiryTime($cacheable);
         if ($cacheable instanceof Cacheable && $cacheable->type === 'view') {
-            // render
-            $ro->view = $ro->toString();
+            if (! $ro->view) {
+                // render
+                $ro->view = $ro->toString();
+            }
 
             return $this->kvs->save((string) $ro->uri, [$ro->code, $ro->headers, $ro->body, $ro->view], $lifeTime);
         }
