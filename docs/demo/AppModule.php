@@ -22,7 +22,7 @@ class AppModule extends AbstractModule
     protected function configure()
     {
         $this->bind()->annotatedWith('storage_dir')->toInstance(__DIR__ . '/tmp')->in(Scope::SINGLETON);
-//        $this->bind(CacheProvider::class)->annotatedWith(Storage::class)->toConstructor(FilesystemCache::class, 'directory=storage_dir')->in(Scope::SINGLETON);
+        //        $this->bind(CacheProvider::class)->annotatedWith(Storage::class)->toConstructor(FilesystemCache::class, 'directory=storage_dir')->in(Scope::SINGLETON);
         $this->bind(CacheProvider::class)->annotatedWith(Storage::class)->to(ArrayCache::class)->in(Scope::SINGLETON);
         $this->install(new ResourceModule(__NAMESPACE__));
         $this->install(new QueryRepositoryModule);
