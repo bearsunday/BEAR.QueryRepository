@@ -59,7 +59,7 @@ class CacheInterceptor implements MethodInterceptor
             $this->repository->put($resourceObject);
         } catch (\Exception $e) {
             $this->repository->purge($resourceObject->uri);
-            error_log($e);
+            throw $e;
         }
 
         return $resourceObject;
