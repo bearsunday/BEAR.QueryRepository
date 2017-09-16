@@ -1,6 +1,7 @@
 # BEAR.QueryRepository
 [![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/bearsunday/BEAR.QueryRepository/badges/quality-score.png?b=1.x)](https://scrutinizer-ci.com/g/bearsunday/BEAR.QueryRepository/?branch=1.x)
 [![Code Coverage](https://scrutinizer-ci.com/g/bearsunday/BEAR.QueryRepository/badges/coverage.png?b=1.x)](https://scrutinizer-ci.com/g/bearsunday/BEAR.QueryRepository/?branch=1.x)
+[![Build Status](https://scrutinizer-ci.com/g/bearsunday/BEAR.QueryRepository/badges/build.png?b=1.x)](https://scrutinizer-ci.com/g/bearsunday/BEAR.QueryRepository/build-status/1.x)
 [![Build Status](https://travis-ci.org/bearsunday/BEAR.QueryRepository.svg?branch=1.x)](https://travis-ci.org/bearsunday/BEAR.QueryRepository)
 
 [CQRS](http://martinfowler.com/bliki/CQRS.html)-inspired **BEAR.QueryRepository** segregates reads and writes into two separate repository.
@@ -208,9 +209,3 @@ GET
 GET
 200{"name":"kuma","rnd":81}
 ```
-
-## Requirements
-
- * PHP 5.5+
- * bear/resource:~1.0
- 
