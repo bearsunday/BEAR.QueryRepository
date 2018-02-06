@@ -94,7 +94,7 @@ class BehaviorTest extends \PHPUnit_Framework_TestCase
 
     public function testCacheCode()
     {
-        $ro = $this->resource->uri('app://self/code')->eager->request(); // 1
+        $ro = $this->resource->get->uri('app://self/code')->withQuery([])->eager->request(); // 1
         /* @var $ro Code */
         $ro->code = 203;
         $ro->onGet(); // 2 non-caached
