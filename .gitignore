@@ -10,3 +10,4 @@ cache.properties
 composer.lock
 build
 vendor
+.php_cs.cache

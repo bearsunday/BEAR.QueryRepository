@@ -124,7 +124,6 @@ return \PhpCsFixer\Config::create()
         'whitespace_after_comma_in_array' => true
     ))
     ->setLineEnding("\n")
-    ->setUsingCache(false)
     ->setFinder(
         PhpCsFixer\Finder::create()
             ->exclude('var')
