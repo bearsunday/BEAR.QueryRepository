@@ -103,7 +103,7 @@ class BehaviorTest extends \PHPUnit_Framework_TestCase
         $this->assertSame(3, Code::$i);
         $ro->code = 200;
         $ro->onGet(); // 4 cached
-        $ro->onGet(); //
+        $ro->onGet();
         $this->assertSame(4, Code::$i);
     }
 }
