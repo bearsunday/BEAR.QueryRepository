@@ -11,6 +11,7 @@ use BEAR\QueryRepository\Exception\UnmatchedQuery;
 use BEAR\Resource\Module\ResourceModule;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
+use FakeVendor\HelloWorld\Resource\App\Code;
 use FakeVendor\HelloWorld\Resource\App\User\Profile;
 use Ray\Di\Injector;
 
@@ -89,5 +90,20 @@ class BehaviorTest extends \PHPUnit_Framework_TestCase
     {
         $this->setExpectedException(UnmatchedQuery::class);
         $this->resource->put->uri('app://self/unmatch')->withQuery(['id' => 1, 'age' => 10, 'name' => 'Sunday'])->eager->request();
+    }
+
+    public function testCacheCode()
+    {
+        $ro = $this->resource->get->uri('app://self/code')->withQuery([])->eager->request(); // 1
+        /* @var $ro Code */
+        $ro->code = 203;
+        $ro->onGet(); // 2 non-caached
+        $ro->code = 500;
+        $ro->onGet(); // 3 non-caached
+        $this->assertSame(3, Code::$i);
+        $ro->code = 200;
+        $ro->onGet(); // 4 cached
+        $ro->onGet();
+        $this->assertSame(4, Code::$i);
     }
 }
