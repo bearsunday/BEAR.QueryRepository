@@ -35,7 +35,7 @@ class StorageExpiryModule extends AbstractModule
     public function __construct($short, $medium, $long, AbstractModule $module = null)
     {
         $this->short = $short;
-        $this->medium = $module;
+        $this->medium = $medium;
         $this->long = $long;
         parent::__construct($module);
     }
