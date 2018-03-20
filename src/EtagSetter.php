@@ -10,7 +10,7 @@ use BEAR\Resource\ResourceObject;
 
 class EtagSetter implements EtagSetterInterface
 {
-    public function __invoke(ResourceObject $resourceObject, $time = null)
+    public function __invoke(ResourceObject $resourceObject, int $time = null)
     {
         $time = $time !== null ?: time();
 

@@ -22,36 +22,27 @@ class RefreshSameCommand implements CommandInterface
         $this->repository = $repository;
     }
 
-    /**
-     * @param MethodInvocation $invocation
-     * @param ResourceObject   $resourceObject
-     */
-    public function command(MethodInvocation $invocation, ResourceObject $resourceObject)
+    public function command(MethodInvocation $invocation, ResourceObject $ro)
     {
         $method = $invocation->getMethod()->getName();
         if ($method === 'onGet' || $method === 'onPost') {
             return;
         }
         unset($invocation);
-        $onGet = [$resourceObject, 'onGet'];
-        $getQuery = $this->getQuery($resourceObject);
-        $delUri = clone $resourceObject->uri;
+        $onGet = [$ro, 'onGet'];
+        $getQuery = $this->getQuery($ro);
+        $delUri = clone $ro->uri;
         $delUri->query = $getQuery;
 
         // delete data in repository
         $this->repository->purge($delUri);
 
         // GET for re-generate (in interceptor)
-        $resourceObject->uri->query = $getQuery;
+        $ro->uri->query = $getQuery;
         call_user_func_array($onGet, $getQuery);
     }
 
-    /**
-     * @param ResourceObject $resourceObject
-     *
-     * @return array
-     */
-    private function getQuery(ResourceObject $resourceObject)
+    private function getQuery(ResourceObject $resourceObject) : array
     {
         $refParameters = (new \ReflectionMethod($resourceObject, 'onGet'))->getParameters();
         $getQuery = [];

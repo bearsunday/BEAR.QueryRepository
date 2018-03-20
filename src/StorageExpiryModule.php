@@ -25,13 +25,7 @@ class StorageExpiryModule extends AbstractModule
      */
     private $long;
 
-    /**
-     * @param int            $short
-     * @param int            $medium
-     * @param int            $long
-     * @param AbstractModule $module
-     */
-    public function __construct($short, $medium, $long, AbstractModule $module = null)
+    public function __construct(int $short, int $medium, int $long, AbstractModule $module = null)
     {
         $this->short = $short;
         $this->medium = $medium;
