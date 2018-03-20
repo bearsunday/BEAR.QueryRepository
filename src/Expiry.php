@@ -21,5 +21,6 @@ class Expiry extends \ArrayObject
         $this['medium'] = $medium;
         $this['long'] = $long;
         $this['never'] = 0;
+        parent::__construct();
     }
 }
