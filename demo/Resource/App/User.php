@@ -14,8 +14,8 @@ use BEAR\Resource\ResourceObject;
  */
 class User extends ResourceObject
 {
+    public static $i = 0;
     private $data = [];
-    static $i = 0;
 
     public function __construct()
     {
