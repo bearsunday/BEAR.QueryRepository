@@ -20,7 +20,7 @@ class QueryRepository implements QueryRepositoryInterface
     const ETAG_BY_URI = 'etag-by-uri';
 
     /**
-     * @var CacheProvider
+     * @var Cache
      */
     private $kvs;
 
