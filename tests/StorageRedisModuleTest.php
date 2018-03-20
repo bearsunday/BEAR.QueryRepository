@@ -9,9 +9,10 @@ namespace BEAR\QueryRepository;
 use BEAR\RepositoryModule\Annotation\Storage;
 use Doctrine\Common\Cache\CacheProvider;
 use Doctrine\Common\Cache\RedisCache;
+use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 
-class StorageRedisModuleTest extends \PHPUnit_Framework_TestCase
+class StorageRedisModuleTest extends TestCase
 {
     public function testNew()
     {

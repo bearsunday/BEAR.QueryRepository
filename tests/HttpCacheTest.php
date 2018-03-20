@@ -7,8 +7,9 @@
 namespace BEAR\QueryRepository;
 
 use Doctrine\Common\Cache\VoidCache;
+use PHPUnit\Framework\TestCase;
 
-class HttpCacheTest extends \PHPUnit_Framework_TestCase
+class HttpCacheTest extends TestCase
 {
     public function setUp()
     {

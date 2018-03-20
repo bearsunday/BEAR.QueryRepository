@@ -12,9 +12,10 @@ use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
 use FakeVendor\HelloWorld\Resource\App\User\Profile;
 use FakeVendor\HelloWorld\Resource\Page\None;
+use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 
-class QueryRepositoryTest extends \PHPUnit_Framework_TestCase
+class QueryRepositoryTest extends TestCase
 {
     /**
      * @var ResourceInterface

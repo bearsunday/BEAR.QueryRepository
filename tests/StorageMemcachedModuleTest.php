@@ -9,9 +9,10 @@ namespace BEAR\QueryRepository;
 use BEAR\RepositoryModule\Annotation\Storage;
 use Doctrine\Common\Cache\CacheProvider;
 use Doctrine\Common\Cache\MemcachedCache;
+use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 
-class StorageMemcachedModuleTest extends \PHPUnit_Framework_TestCase
+class StorageMemcachedModuleTest extends TestCase
 {
     public function testNew()
     {

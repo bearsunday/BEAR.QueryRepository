@@ -12,8 +12,9 @@ use BEAR\Resource\Uri;
 use Doctrine\Common\Annotations\AnnotationReader;
 use Doctrine\Common\Cache\FilesystemCache;
 use FakeVendor\HelloWorld\Resource\Page\Index;
+use PHPUnit\Framework\TestCase;
 
-class ResourceRepositoryTest extends \PHPUnit_Framework_TestCase
+class ResourceRepositoryTest extends TestCase
 {
     /**
      * @var QueryRepository
