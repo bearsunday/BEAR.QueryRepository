@@ -8,7 +8,6 @@ namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\CacheVersion;
 use BEAR\RepositoryModule\Annotation\Commands;
-use BEAR\RepositoryModule\Annotation\ExpiryConfig;
 use BEAR\RepositoryModule\Annotation\Storage;
 use BEAR\Resource\NamedParameter;
 use BEAR\Resource\NamedParameterInterface;
@@ -27,7 +26,7 @@ class QueryRepositoryModule extends AbstractModule
      */
     protected function configure()
     {
-        $this->bind(Expiry::class)->toInstance(new Expiry(60, 60 * 60,60 * 60 * 24));
+        $this->bind(Expiry::class)->toInstance(new Expiry(60, 60 * 60, 60 * 60 * 24));
         $this->bind(QueryRepositoryInterface::class)->to(QueryRepository::class)->in(Scope::SINGLETON);
         $this->bind(Cache::class)->annotatedWith(Storage::class)->toProvider(StorageProvider::class)->in(Scope::SINGLETON);
         $this->bind(CacheProvider::class)->annotatedWith(Storage::class)->to(ArrayCache::class)->in(Scope::SINGLETON);

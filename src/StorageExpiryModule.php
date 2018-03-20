@@ -6,7 +6,6 @@
  */
 namespace BEAR\QueryRepository;
 
-use BEAR\RepositoryModule\Annotation\ExpiryConfig;
 use Ray\Di\AbstractModule;
 
 class StorageExpiryModule extends AbstractModule

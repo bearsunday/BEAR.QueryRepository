@@ -7,14 +7,11 @@
 namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\Cacheable;
-use BEAR\RepositoryModule\Annotation\ExpiryConfig;
 use BEAR\RepositoryModule\Annotation\Storage;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceObject;
 use Doctrine\Common\Annotations\Reader;
 use Doctrine\Common\Cache\Cache;
-use Doctrine\Common\Cache\CacheProvider;
-use Symfony\Component\Process\Exception\LogicException;
 
 class QueryRepository implements QueryRepositoryInterface
 {
@@ -120,7 +117,7 @@ class QueryRepository implements QueryRepositoryInterface
      */
     private function getCacheable(ResourceObject $ro)
     {
-        if (property_exists($ro,'classAnnotations')) {
+        if (property_exists($ro, 'classAnnotations')) {
             $annotations = unserialize($ro->classAnnotations);
 
             return $annotations[Cacheable::class];
