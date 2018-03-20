@@ -14,6 +14,7 @@ use BEAR\Resource\ResourceObject;
 use Doctrine\Common\Annotations\Reader;
 use Doctrine\Common\Cache\Cache;
 use Doctrine\Common\Cache\CacheProvider;
+use Symfony\Component\Process\Exception\LogicException;
 
 class QueryRepository implements QueryRepositoryInterface
 {
@@ -124,8 +125,12 @@ class QueryRepository implements QueryRepositoryInterface
 
             return $annotations[Cacheable::class];
         }
+        $cache = $this->reader->getClassAnnotation(new \ReflectionClass($ro), Cacheable::class);
+        if (! $cache instanceof Cacheable) {
+            throw new LogicException();
+        }
 
-        return $this->reader->getClassAnnotation(new \ReflectionClass($ro), Cacheable::class);
+        return $cache;
     }
 
     /**
