@@ -119,7 +119,7 @@ class QueryRepository implements QueryRepositoryInterface
      */
     private function getCacheable(ResourceObject $ro)
     {
-        if (isset($ro->classAnnotations)) {
+        if (property_exists($ro,'classAnnotations')) {
             $annotations = unserialize($ro->classAnnotations);
 
             return $annotations[Cacheable::class];
