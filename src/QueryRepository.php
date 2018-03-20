@@ -116,7 +116,7 @@ class QueryRepository implements QueryRepositoryInterface
     }
 
     /**
-     * @return Cacheable
+     * @return Cacheable|null
      */
     private function getCacheable(ResourceObject $ro)
     {
@@ -125,10 +125,8 @@ class QueryRepository implements QueryRepositoryInterface
 
             return $annotations[Cacheable::class];
         }
+        /** @var Cacheable|null $cache */
         $cache = $this->reader->getClassAnnotation(new \ReflectionClass($ro), Cacheable::class);
-        if (! $cache instanceof Cacheable) {
-            throw new LogicException();
-        }
 
         return $cache;
     }
