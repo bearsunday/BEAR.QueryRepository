@@ -14,7 +14,7 @@ use Ray\Di\ProviderInterface;
 class CommandsProvider implements ProviderInterface
 {
     /**
-     * @var RepositoryInterface
+     * @var QueryRepositoryInterface
      */
     private $repository;
 
