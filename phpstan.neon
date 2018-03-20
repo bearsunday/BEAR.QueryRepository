@@ -1,0 +1,3 @@
+parameters:
+	ignoreErrors:
+		- '#Method Redis::connect\(\) invoked with 2 parameters, 0 required.#'
