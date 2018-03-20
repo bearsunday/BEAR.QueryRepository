@@ -26,7 +26,7 @@ class CacheInterceptor implements MethodInterceptor
     private $setEtag;
 
     /**
-     * @var AnnotationReader
+     * @var Reader
      */
     private $reader;
 
