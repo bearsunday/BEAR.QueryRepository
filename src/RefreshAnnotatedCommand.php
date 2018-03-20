@@ -29,14 +29,14 @@ class RefreshAnnotatedCommand implements CommandInterface
     private $reader;
 
     /**
-     * @var resource|ResourceInterface
+     * @var ResourceInterface
      */
     private $resource;
 
     public function __construct(
         QueryRepositoryInterface $repository,
         Reader $reader,
-        Resource $resource
+        ResourceInterface $resource
     ) {
         $this->repository = $repository;
         $this->reader = $reader;
