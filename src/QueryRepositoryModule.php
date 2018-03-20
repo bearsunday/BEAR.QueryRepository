@@ -23,23 +23,11 @@ use Ray\Di\Scope;
 class QueryRepositoryModule extends AbstractModule
 {
     /**
-     * Expiry second
-     *
-     * @var array
-     */
-    private $expiry = [
-        'short' => 60,    // 1 min
-        'medium' => 3600, // 1 hour
-        'long' => 86400,  // 1 day
-        'never' => 0
-    ];
-
-    /**
      * {@inheritdoc}
      */
     protected function configure()
     {
-        $this->bind()->annotatedWith(ExpiryConfig::class)->toInstance($this->expiry);
+        $this->bind(Expiry::class)->toInstance(new Expiry(60, 60 * 60,60 * 60 * 24));
         $this->bind(QueryRepositoryInterface::class)->to(QueryRepository::class)->in(Scope::SINGLETON);
         $this->bind(Cache::class)->annotatedWith(Storage::class)->toProvider(StorageProvider::class)->in(Scope::SINGLETON);
         $this->bind(CacheProvider::class)->annotatedWith(Storage::class)->to(ArrayCache::class)->in(Scope::SINGLETON);

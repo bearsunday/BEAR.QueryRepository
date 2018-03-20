@@ -30,7 +30,7 @@ class QueryRepository implements QueryRepositoryInterface
     private $reader;
 
     /**
-     * @var array
+     * @var Expiry
      */
     private $expiry;
 
@@ -40,19 +40,13 @@ class QueryRepository implements QueryRepositoryInterface
     private $setEtag;
 
     /**
-     * @param EtagSetterInterface $setEtag
-     * @param CacheProvider       $kvs
-     * @param Reader              $reader
-     * @param string              $expiry
-     *
      * @Storage("kvs")
-     * @ExpiryConfig("expiry")
      */
     public function __construct(
         EtagSetterInterface $setEtag,
         Cache $kvs,
         Reader $reader,
-        $expiry
+        Expiry $expiry
     ) {
         $this->setEtag = $setEtag;
         $this->reader = $reader;
