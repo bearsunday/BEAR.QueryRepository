@@ -30,19 +30,15 @@ class StorageProvider implements ProviderInterface
     private $version;
 
     /**
-     * @param CacheProvider $kvs
-     * @param mixed         $appName
-     * @param mixed         $version
-     *
      * @Storage
      * @AppName("appName")
      * @CacheVersion("version")
      */
-    public function __construct(CacheProvider $kvs, $appName, $version)
+    public function __construct(CacheProvider $kvs, string $appName, string $version)
     {
         $this->kvs = $kvs;
         $this->appName = $appName;
-        $this->version = (string) $version;
+        $this->version = $version;
     }
 
     /**

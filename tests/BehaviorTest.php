@@ -13,9 +13,10 @@ use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use FakeVendor\HelloWorld\Resource\App\Code;
 use FakeVendor\HelloWorld\Resource\App\User\Profile;
+use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 
-class BehaviorTest extends \PHPUnit_Framework_TestCase
+class BehaviorTest extends TestCase
 {
     /**
      * @var ResourceInterface
@@ -82,13 +83,13 @@ class BehaviorTest extends \PHPUnit_Framework_TestCase
 
     public function testReturnValueIsNotResourceObjectException()
     {
-        $this->setExpectedException(ReturnValueIsNotResourceObjectException::class);
+        $this->expectException(ReturnValueIsNotResourceObjectException::class);
         $this->resource->put->uri('app://self/invalid')->withQuery(['id' => 1, 'age' => 10, 'name' => 'Sunday'])->eager->request();
     }
 
     public function testUnMatchQuery()
     {
-        $this->setExpectedException(UnmatchedQuery::class);
+        $this->expectException(UnmatchedQuery::class);
         $this->resource->put->uri('app://self/unmatch')->withQuery(['id' => 1, 'age' => 10, 'name' => 'Sunday'])->eager->request();
     }
 

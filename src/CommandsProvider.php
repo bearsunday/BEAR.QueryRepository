@@ -7,14 +7,13 @@
 namespace BEAR\QueryRepository;
 
 use BEAR\Resource\ResourceInterface;
-use Composer\Repository\RepositoryInterface;
 use Doctrine\Common\Annotations\Reader;
 use Ray\Di\ProviderInterface;
 
 class CommandsProvider implements ProviderInterface
 {
     /**
-     * @var RepositoryInterface
+     * @var QueryRepositoryInterface
      */
     private $repository;
 

@@ -10,7 +10,7 @@ use FakeVendor\DemoApp\AppModule;
 use Ray\Di\Injector;
 
 /** @var $loader ClassLoader */
-$loader = require dirname(dirname(__DIR__)) . '/vendor/autoload.php';
+$loader = require dirname(__DIR__) . '/vendor/autoload.php';
 $loader->addPsr4('FakeVendor\DemoApp\\', __DIR__);
 
 /* @var $resource ResourceInterface */

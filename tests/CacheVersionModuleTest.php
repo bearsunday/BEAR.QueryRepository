@@ -9,9 +9,10 @@ namespace BEAR\QueryRepository;
 use BEAR\RepositoryModule\Annotation\Storage;
 use BEAR\Resource\Module\ResourceModule;
 use Doctrine\Common\Cache\Cache;
+use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 
-class CacheVersionModuleTest extends \PHPUnit_Framework_TestCase
+class CacheVersionModuleTest extends TestCase
 {
     public function testNew()
     {

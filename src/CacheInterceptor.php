@@ -8,7 +8,6 @@ namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\Resource\ResourceObject;
-use Doctrine\Common\Annotations\AnnotationReader;
 use Doctrine\Common\Annotations\Reader;
 use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
@@ -26,7 +25,7 @@ class CacheInterceptor implements MethodInterceptor
     private $setEtag;
 
     /**
-     * @var AnnotationReader
+     * @var Reader
      */
     private $reader;
 
@@ -45,23 +44,24 @@ class CacheInterceptor implements MethodInterceptor
      */
     public function invoke(MethodInvocation $invocation)
     {
-        $resourceObject = $invocation->getThis();
-        /* @var $resourceObject ResourceObject */
-        $stored = $this->repository->get($resourceObject->uri);
+        /** @var ResourceObject $ro */
+        $ro = $invocation->getThis();
+        $stored = $this->repository->get($ro->uri);
         if ($stored) {
-            list($resourceObject->code, $resourceObject->headers, $resourceObject->body, $resourceObject->view) = $stored;
+            list($ro->code, $ro->headers, $ro->body, $ro->view) = $stored;
 
-            return $resourceObject;
+            return $ro;
         }
         /* @var $cacheable Cacheable */
         try {
-            $resourceObject = $invocation->proceed();
-            $resourceObject->code === 200 ? $this->repository->put($resourceObject) : $this->repository->purge($resourceObject->uri);
+            /** @var ResourceObject $ro */
+            $ro = $invocation->proceed();
+            $ro->code === 200 ? $this->repository->put($ro) : $this->repository->purge($ro->uri);
         } catch (\Exception $e) {
-            $this->repository->purge($resourceObject->uri);
+            $this->repository->purge($ro->uri);
             throw $e;
         }
 
-        return $resourceObject;
+        return $ro;
     }
 }

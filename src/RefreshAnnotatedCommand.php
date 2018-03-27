@@ -9,7 +9,6 @@ namespace BEAR\QueryRepository;
 use BEAR\RepositoryModule\Annotation\AbstractCommand;
 use BEAR\RepositoryModule\Annotation\Purge;
 use BEAR\RepositoryModule\Annotation\Refresh;
-use BEAR\Resource\Resource;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
@@ -29,37 +28,30 @@ class RefreshAnnotatedCommand implements CommandInterface
     private $reader;
 
     /**
-     * @var resource|ResourceInterface
+     * @var ResourceInterface
      */
     private $resource;
 
     public function __construct(
         QueryRepositoryInterface $repository,
         Reader $reader,
-        Resource $resource
+        ResourceInterface $resource
     ) {
         $this->repository = $repository;
         $this->reader = $reader;
         $this->resource = $resource;
     }
 
-    /**
-     * @param MethodInvocation $invocation
-     * @param ResourceObject   $resourceObject
-     */
-    public function command(MethodInvocation $invocation, ResourceObject $resourceObject)
+    public function command(MethodInvocation $invocation, ResourceObject $ro)
     {
         /* @var $purgeAnnotations Purge[] */
         $annotations = $this->reader->getMethodAnnotations($invocation->getMethod());
         foreach ($annotations as $annotation) {
-            $this->request($resourceObject, $annotation);
+            $this->request($ro, $annotation);
         }
     }
 
-    /**
-     * @return string
-     */
-    private function getUri(ResourceObject $resourceObject, AbstractCommand $annotation)
+    private function getUri(ResourceObject $resourceObject, AbstractCommand $annotation) : string
     {
         $body = is_array($resourceObject->body) ? $resourceObject->body : [];
         $query = $body + $resourceObject->uri->query;
@@ -68,10 +60,6 @@ class RefreshAnnotatedCommand implements CommandInterface
         return $uri;
     }
 
-    /**
-     * @param ResourceObject $resourceObject
-     * @param object         $annotation
-     */
     private function request(ResourceObject $resourceObject, $annotation)
     {
         if (! $annotation instanceof AbstractCommand) {

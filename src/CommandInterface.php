@@ -11,5 +11,5 @@ use Ray\Aop\MethodInvocation;
 
 interface CommandInterface
 {
-    public function command(MethodInvocation $invocation, ResourceObject $resourceObject);
+    public function command(MethodInvocation $invocation, ResourceObject $ro);
 }

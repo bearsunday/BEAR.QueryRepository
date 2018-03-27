@@ -7,7 +7,6 @@
 namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\ReturnValueIsNotResourceObjectException;
-use BEAR\RepositoryModule\Annotation\AbstractCommand;
 use BEAR\RepositoryModule\Annotation\Commands;
 use BEAR\Resource\ResourceObject;
 use Ray\Aop\MethodInterceptor;
@@ -21,7 +20,7 @@ class CommandInterceptor implements MethodInterceptor
     private $commands = [];
 
     /**
-     * @param AbstractCommand[] $commands
+     * @param CommandInterface[] $commands
      *
      * @Commands
      */

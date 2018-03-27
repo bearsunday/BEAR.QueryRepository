@@ -6,7 +6,6 @@
  */
 namespace BEAR\QueryRepository;
 
-use BEAR\RepositoryModule\Annotation\ExpiryConfig;
 use Ray\Di\AbstractModule;
 
 class StorageExpiryModule extends AbstractModule
@@ -26,13 +25,7 @@ class StorageExpiryModule extends AbstractModule
      */
     private $long;
 
-    /**
-     * @param int            $short
-     * @param int            $medium
-     * @param int            $long
-     * @param AbstractModule $module
-     */
-    public function __construct($short, $medium, $long, AbstractModule $module = null)
+    public function __construct(int $short, int $medium, int $long, AbstractModule $module = null)
     {
         $this->short = $short;
         $this->medium = $medium;
@@ -45,6 +38,6 @@ class StorageExpiryModule extends AbstractModule
      */
     protected function configure()
     {
-        $this->bind()->annotatedWith(ExpiryConfig::class)->toInstance(new Expiry($this->short, $this->medium, $this->long));
+        $this->bind(Expiry::class)->toInstance(new Expiry($this->short, $this->medium, $this->long));
     }
 }

@@ -8,9 +8,10 @@ namespace BEAR\QueryRepository;
 
 use BEAR\Resource\Module\ResourceModule;
 use BEAR\Resource\ResourceInterface;
+use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 
-class ReloadAnnotatedCommandTest extends \PHPUnit_Framework_TestCase
+class ReloadAnnotatedCommandTest extends TestCase
 {
     /**
      * @var resource

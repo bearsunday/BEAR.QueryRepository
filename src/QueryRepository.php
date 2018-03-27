@@ -7,20 +7,18 @@
 namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\Cacheable;
-use BEAR\RepositoryModule\Annotation\ExpiryConfig;
 use BEAR\RepositoryModule\Annotation\Storage;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceObject;
 use Doctrine\Common\Annotations\Reader;
 use Doctrine\Common\Cache\Cache;
-use Doctrine\Common\Cache\CacheProvider;
 
 class QueryRepository implements QueryRepositoryInterface
 {
     const ETAG_BY_URI = 'etag-by-uri';
 
     /**
-     * @var CacheProvider
+     * @var Cache
      */
     private $kvs;
 
@@ -30,7 +28,7 @@ class QueryRepository implements QueryRepositoryInterface
     private $reader;
 
     /**
-     * @var array
+     * @var Expiry
      */
     private $expiry;
 
@@ -40,19 +38,13 @@ class QueryRepository implements QueryRepositoryInterface
     private $setEtag;
 
     /**
-     * @param EtagSetterInterface $setEtag
-     * @param CacheProvider       $kvs
-     * @param Reader              $reader
-     * @param string              $expiry
-     *
      * @Storage("kvs")
-     * @ExpiryConfig("expiry")
      */
     public function __construct(
         EtagSetterInterface $setEtag,
         Cache $kvs,
         Reader $reader,
-        $expiry
+        Expiry $expiry
     ) {
         $this->setEtag = $setEtag;
         $this->reader = $reader;
@@ -121,17 +113,19 @@ class QueryRepository implements QueryRepositoryInterface
     }
 
     /**
-     * @return Cacheable
+     * @return Cacheable|null
      */
     private function getCacheable(ResourceObject $ro)
     {
-        if (isset($ro->classAnnotations)) {
+        if (property_exists($ro, 'classAnnotations')) {
             $annotations = unserialize($ro->classAnnotations);
 
             return $annotations[Cacheable::class];
         }
+        /** @var Cacheable|null $cache */
+        $cache = $this->reader->getClassAnnotation(new \ReflectionClass($ro), Cacheable::class);
 
-        return $this->reader->getClassAnnotation(new \ReflectionClass($ro), Cacheable::class);
+        return $cache;
     }
 
     /**

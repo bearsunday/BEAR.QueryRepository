@@ -14,6 +14,7 @@ use BEAR\Resource\ResourceObject;
  */
 class User extends ResourceObject
 {
+    public static $i = 0;
     private $data = [];
 
     public function __construct()
@@ -23,16 +24,18 @@ class User extends ResourceObject
 
     public function onGet($id)
     {
-        error_log(__FUNCTION__ . ' invoked');
-
-        $this['name'] = isset($this->data[$id]) ? $this->data[$id]['name'] : '';
-        $this['rnd'] = mt_rand(1, 100);
+        error_log('*** onGet() method invoked ***');
+        $this->body = [
+            'name' => isset($this->data[$id]) ? $this->data[$id]['name'] : '',
+            'update' => self::$i++
+        ];
 
         return $this;
     }
 
     public function onPatch($id, $name)
     {
+        error_log('*** onPatch() method invoked ***');
         $this->data[$id]['name'] = $name;
 
         return $this;

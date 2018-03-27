@@ -21,14 +21,14 @@ interface QueryRepositoryInterface
     /**
      * @param AbstractUri $uri
      *
-     * @return [$code, $headers, $body, $view]|false
+     * @return array|false [$code, $headers, $body, $view]
      */
     public function get(AbstractUri $uri);
 
     /**
      * @param AbstractUri $uri
      *
-     *  @return bool Is successfully deleted
+     * @return bool Is successfully deleted
      */
     public function purge(AbstractUri $uri);
 }

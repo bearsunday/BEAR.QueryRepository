@@ -190,7 +190,7 @@ class AdminTool
 ## Demo
 
 ```
-php docs/demo/run.php
+php demo/run.php
     
 GET
 onGet invoked
