@@ -12,6 +12,7 @@ use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceObject;
 use Doctrine\Common\Annotations\Reader;
 use Doctrine\Common\Cache\Cache;
+use Doctrine\Common\Cache\CacheProvider;
 
 class QueryRepository implements QueryRepositoryInterface
 {
@@ -42,7 +43,7 @@ class QueryRepository implements QueryRepositoryInterface
      */
     public function __construct(
         EtagSetterInterface $setEtag,
-        Cache $kvs,
+        CacheProvider $kvs,
         Reader $reader,
         Expiry $expiry
     ) {
