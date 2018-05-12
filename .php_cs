@@ -127,5 +127,6 @@ return \PhpCsFixer\Config::create()
     ->setFinder(
         PhpCsFixer\Finder::create()
             ->exclude('var')
+            ->exclude('tests/tmp')
             ->in(__DIR__)
     );
