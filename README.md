@@ -56,9 +56,15 @@ class AppModule extends AbstractModule
         $this->install(new StorageRedisModule($redisServer);        
     }
 }
+```
 
+## Redis install in OSX
 
 ```
+brew install redis
+redis-server
+```
+
 ## Usage
 
 
