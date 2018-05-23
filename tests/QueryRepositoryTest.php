@@ -44,7 +44,7 @@ class QueryRepositoryTest extends TestCase
 
     public function testPurgeSameResourceObjectByPatch()
     {
-        /** @var $user ResourceObject */
+        /** @var ResourceObject $user */
         $user = $this->resource->get->uri('app://self/user')->withQuery(['id' => 1])->eager->request();
         $etag = $user->headers['ETag'];
         // reload (purge repository entry and re-generate by onGet)
@@ -57,7 +57,7 @@ class QueryRepositoryTest extends TestCase
 
     public function testPurgeSameResourceObjectByDelete()
     {
-        /** @var $user ResourceObject */
+        /** @var ResourceObject $user */
         $user = $this->resource->get->uri('app://self/user')->withQuery(['id' => 1])->eager->request();
         $etag = $user->headers['ETag'];
         $server = [

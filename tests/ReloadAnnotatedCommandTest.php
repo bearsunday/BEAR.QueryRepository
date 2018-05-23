@@ -14,7 +14,7 @@ use Ray\Di\Injector;
 class ReloadAnnotatedCommandTest extends TestCase
 {
     /**
-     * @var resource
+     * @var ResourceInterface
      */
     private $resource;
 

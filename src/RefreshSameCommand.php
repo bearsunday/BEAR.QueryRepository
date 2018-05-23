@@ -39,7 +39,7 @@ class RefreshSameCommand implements CommandInterface
 
         // GET for re-generate (in interceptor)
         $ro->uri->query = $getQuery;
-        call_user_func_array($onGet, $getQuery);
+        \call_user_func_array($onGet, $getQuery);
     }
 
     private function getQuery(ResourceObject $resourceObject) : array

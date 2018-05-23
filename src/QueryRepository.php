@@ -57,7 +57,7 @@ class QueryRepository implements QueryRepositoryInterface
      */
     public function put(ResourceObject $ro)
     {
-        $this->setEtag->__invoke($ro);
+        ($this->setEtag)($ro);
         if (isset($ro->headers['ETag'])) {
             $this->updateEtagDatabase($ro);
         }
@@ -117,8 +117,8 @@ class QueryRepository implements QueryRepositoryInterface
      */
     private function getCacheable(ResourceObject $ro)
     {
-        if (property_exists($ro, 'classAnnotations')) {
-            $annotations = unserialize($ro->classAnnotations);
+        if (\property_exists($ro, 'classAnnotations')) {
+            $annotations = \unserialize($ro->classAnnotations);
 
             return $annotations[Cacheable::class];
         }

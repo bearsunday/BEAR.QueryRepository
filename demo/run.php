@@ -19,7 +19,7 @@ function echoRo(\BEAR\Resource\ResourceObject $ro)
 }
 
 /* @var $loader \Composer\Autoload\ClassLoader */
-$loader = require dirname(__DIR__) . '/vendor/autoload.php';
+$loader = require \dirname(__DIR__) . '/vendor/autoload.php';
 $loader->addPsr4('FakeVendor\DemoApp\\', __DIR__);
 
 /* @var $resource ResourceInterface */

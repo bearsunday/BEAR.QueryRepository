@@ -11,6 +11,7 @@ use BEAR\Resource\Module\ResourceModule;
 use Doctrine\Common\Cache\Cache;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
+use Ray\Di\NullModule;
 
 class CacheVersionModuleTest extends TestCase
 {
@@ -18,7 +19,10 @@ class CacheVersionModuleTest extends TestCase
     {
         $namespace = 'FakeVendor\HelloWorld';
         $version = '1';
-        $injector = new Injector(new CacheVersionModule($version, new QueryRepositoryModule(new MobileEtagModule(new ResourceModule($namespace))), $_ENV['TMP_DIR']));
+        $module = new NullModule;
+        $module->install(new CacheVersionModule($version));
+        $module->install(new QueryRepositoryModule(new ResourceModule($namespace)));
+        $injector = new Injector($module, $_ENV['TMP_DIR']);
         $cache = $injector->getInstance(Cache::class, Storage::class);
         /* @var $cache \Doctrine\Common\Cache\CacheProvider */
         $ns = $cache->getNamespace();

@@ -24,7 +24,7 @@ class User extends ResourceObject
 
     public function onGet($id)
     {
-        error_log('*** onGet() method invoked ***');
+        \error_log('*** onGet() method invoked ***');
         $this->body = [
             'name' => isset($this->data[$id]) ? $this->data[$id]['name'] : '',
             'update' => self::$i++
@@ -35,7 +35,7 @@ class User extends ResourceObject
 
     public function onPatch($id, $name)
     {
-        error_log('*** onPatch() method invoked ***');
+        \error_log('*** onPatch() method invoked ***');
         $this->data[$id]['name'] = $name;
 
         return $this;

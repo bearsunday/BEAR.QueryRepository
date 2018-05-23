@@ -17,7 +17,6 @@ class Invalid extends ResourceObject
 {
     public function onGet($id, $unused)
     {
-        return null;
     }
 
     /**

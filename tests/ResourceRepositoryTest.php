@@ -51,7 +51,7 @@ class ResourceRepositoryTest extends TestCase
         $this->repository->put($this->resourceObject);
         $uri = $this->resourceObject->uri;
         $this->repository->purge($uri);
-        $instance = $this->repository->get($uri);
+        $instance = (bool) $this->repository->get($uri);
         $this->assertFalse($instance);
     }
 }
