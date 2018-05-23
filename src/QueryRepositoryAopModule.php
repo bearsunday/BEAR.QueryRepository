@@ -17,7 +17,7 @@ class QueryRepositoryAopModule extends AbstractModule
     protected function configure()
     {
         // @Cacheable
-        $this->bindInterceptor(
+        $this->bindPriorityInterceptor(
             $this->matcher->annotatedWith(Cacheable::class),
             $this->matcher->startsWith('onGet'),
             [CacheInterceptor::class]
