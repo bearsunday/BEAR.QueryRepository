@@ -12,7 +12,6 @@ use BEAR\RepositoryModule\Annotation\Refresh;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
-use Doctrine\Common\Annotations\Reader;
 use Ray\Aop\MethodInvocation;
 
 class RefreshAnnotatedCommand implements CommandInterface
@@ -23,29 +22,21 @@ class RefreshAnnotatedCommand implements CommandInterface
     private $repository;
 
     /**
-     * @var Reader
-     */
-    private $reader;
-
-    /**
      * @var ResourceInterface
      */
     private $resource;
 
     public function __construct(
         QueryRepositoryInterface $repository,
-        Reader $reader,
         ResourceInterface $resource
     ) {
         $this->repository = $repository;
-        $this->reader = $reader;
         $this->resource = $resource;
     }
 
     public function command(MethodInvocation $invocation, ResourceObject $ro)
     {
-        /* @var $purgeAnnotations Purge[] */
-        $annotations = $this->reader->getMethodAnnotations($invocation->getMethod());
+        $annotations = $invocation->getMethod()->getAnnotations();
         foreach ($annotations as $annotation) {
             $this->request($ro, $annotation);
         }
