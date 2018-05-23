@@ -10,16 +10,22 @@ cache:
     - $HOME/.composer/cache
 env:
   matrix:
-    - DEPENDENCIES=""
-    - DEPENDENCIES="--prefer-lowest --prefer-stable"
+    - DEPENDENCIES=''
+    - DEPENDENCIES='--prefer-lowest --prefer-stable'
+services:
+  - memcached
+  - redis-server
+before_install:
+  - echo "extension = redis.so" >> ~/.phpenv/versions/$(phpenv version-name)/etc/php.ini
+  - echo "extension = memcached.so" >> ~/.phpenv/versions/$(phpenv version-name)/etc/php.ini
 before_script:
   - composer self-update
-  - composer update $DEPENDENCIES
-  - if [ "$TRAVIS_PHP_VERSION" = "7.1" ]; then wget http://cs.sensiolabs.org/download/php-cs-fixer-v2.phar; fi
-  - if [ "$TRAVIS_PHP_VERSION" = "7.1" ]; then composer require phpstan/phpstan-shim; fi
+  - composer update --no-interaction $DEPENDENCIES
+  - if [[ $TRAVIS_PHP_VERSION = '7.1' && DEPENDENCIES = '' ]]; then COVERAGE="--coverage-clover=coverage.clover"; else phpenv config-rm xdebug.ini; fi
+  - if [[ $TRAVIS_PHP_VERSION = '7.1' && DEPENDENCIES = '' ]]; then composer require --dev phpstan/phpstan-shim friendsofphp/php-cs-fixer; fi
 script:
-  - ./vendor/bin/phpunit --coverage-clover=coverage.clover;
-  - if [ "$TRAVIS_PHP_VERSION" = "7.1" ]; then CHANGED_FILES=$(git diff --name-only --diff-filter=ACMRTUXB "${TRAVIS_COMMIT_RANGE}") & if ! echo "${CHANGED_FILES}" | grep -qE "^(\\.php_cs(\\.dist)?|composer\\.lock)$"; then IFS=$'\n' EXTRA_ARGS=('--path-mode=intersection' '--' ${CHANGED_FILES[@]}); fi & php php-cs-fixer-v2.phar fix --config=.php_cs -v --dry-run --stop-on-violation --using-cache=no "${EXTRA_ARGS[@]}"; fi
-  - if [ "$TRAVIS_PHP_VERSION" = "7.1" ]; then ./vendor/bin/phpstan analyse -l max -c phpstan.neon src tests --no-progress --no-interaction; fi
+  - ./vendor/bin/phpunit $COVERAGE;
+  - if [[ $TRAVIS_PHP_VERSION = '7.1' && DEPENDENCIES = '' ]]; then IFS=$'\n'; COMMIT_SCA_FILES=($(git diff --name-only --diff-filter=ACMRTUXB "${TRAVIS_COMMIT_RANGE}")); unset IFS && ./vendor/bin/php-cs-fixer fix --config=.php_cs -v --dry-run --stop-on-violation --using-cache=no --path-mode=intersection -- "${COMMIT_SCA_FILES[@]}";fi
+  - if [[ $TRAVIS_PHP_VERSION = '7.1' && DEPENDENCIES = '' ]]; then ./vendor/bin/phpstan analyse -l max src tests --no-progress --no-interaction; fi
 after_script:
-  - if [ "$TRAVIS_PHP_VERSION" = "7.1" ]; then wget https://scrutinizer-ci.com/ocular.phar && php ocular.phar code-coverage:upload --format=php-clover coverage.clover; fi
+  - if [[ $TRAVIS_PHP_VERSION = '7.1' ]]; then wget https://scrutinizer-ci.com/ocular.phar && php ocular.phar code-coverage:upload --format=php-clover coverage.clover; fi
