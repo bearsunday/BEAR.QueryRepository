@@ -36,7 +36,7 @@ class MobileEtagSetterTest extends TestCase
     public function testMobile()
     {
         $_SERVER['HTTP_USER_AGENT'] = self::IPHONE;
-        $this->etagSetter->__invoke($this->obj, $this->time);
+        ($this->etagSetter)($this->obj, $this->time);
         $expected = 'mobile';
         $this->assertSame($expected, FakeMobileEtagSetter::$device);
     }
@@ -44,7 +44,7 @@ class MobileEtagSetterTest extends TestCase
     public function testTablet()
     {
         $_SERVER['HTTP_USER_AGENT'] = self::IPAD;
-        $this->etagSetter->__invoke($this->obj, $this->time);
+        ($this->etagSetter)($this->obj, $this->time);
         $expected = 'pc';
         $this->assertSame($expected, FakeMobileEtagSetter::$device);
     }
@@ -52,7 +52,7 @@ class MobileEtagSetterTest extends TestCase
     public function testPc()
     {
         unset($_SERVER['HTTP_USER_AGENT']);
-        $this->etagSetter->__invoke($this->obj, $this->time);
+        ($this->etagSetter)($this->obj, $this->time);
         $expected = 'pc';
         $this->assertSame($expected, FakeMobileEtagSetter::$device);
     }

@@ -57,7 +57,7 @@ class QueryRepository implements QueryRepositoryInterface
      */
     public function put(ResourceObject $ro)
     {
-        $this->setEtag->__invoke($ro);
+        ($this->setEtag)($ro);
         if (isset($ro->headers['ETag'])) {
             $this->updateEtagDatabase($ro);
         }
