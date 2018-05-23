@@ -29,8 +29,9 @@
                 "tests/",
                 "tests/Fake/"
             ],
-            "FakeVendor\\HelloWorld\\": "tests/Fake/fake-app/src",
-            "": "tests/Fake"
+            "FakeVendor\\HelloWorld\\": [
+              "tests/Fake/fake-app/src"
+            ]
         }
     },
     "scripts" :{

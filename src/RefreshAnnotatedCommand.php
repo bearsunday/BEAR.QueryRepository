@@ -13,6 +13,7 @@ use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
 use Ray\Aop\MethodInvocation;
+use Ray\Aop\ReflectionMethod;
 
 class RefreshAnnotatedCommand implements CommandInterface
 {
@@ -34,9 +35,15 @@ class RefreshAnnotatedCommand implements CommandInterface
         $this->resource = $resource;
     }
 
+    /**
+     * @param MethodInvocation $invocation
+     * @param ResourceObject   $ro
+     */
     public function command(MethodInvocation $invocation, ResourceObject $ro)
     {
-        $annotations = $invocation->getMethod()->getAnnotations();
+        /** @var ReflectionMethod $method */
+        $method = $invocation->getMethod();
+        $annotations = $method->getAnnotations();
         foreach ($annotations as $annotation) {
             $this->request($ro, $annotation);
         }
