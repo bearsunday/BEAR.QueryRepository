@@ -28,7 +28,7 @@ class User extends ResourceObject
     public function onGet($id)
     {
         $this['name'] = isset($this->data[$id]) ? $this->data[$id]['name'] : '';
-        $this['time'] = microtime(true);
+        $this['time'] = \microtime(true);
 
         return $this;
     }

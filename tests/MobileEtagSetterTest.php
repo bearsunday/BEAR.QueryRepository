@@ -29,8 +29,8 @@ class MobileEtagSetterTest extends TestCase
         parent::setUp();
         $this->obj = new User;
         $this->etagSetter = new FakeMobileEtagSetter;
-        $currentTime = time();
-        $this->time = gmdate('D, d M Y H:i:s', $currentTime) . ' GMT';
+        $currentTime = \time();
+        $this->time = \gmdate('D, d M Y H:i:s', $currentTime) . ' GMT';
     }
 
     public function testMobile()

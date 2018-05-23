@@ -29,7 +29,7 @@ class View extends ResourceObject
 
     public function onGet()
     {
-        $this['time'] = (string) microtime(true);
+        $this['time'] = (string) \microtime(true);
 
         return $this;
     }

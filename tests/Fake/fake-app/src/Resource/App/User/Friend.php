@@ -19,7 +19,7 @@ class Friend extends ResourceObject
         static $cnt = 0;
 
         $this['user_id'] = $user_id;
-        $this['time'] = microtime(true);
+        $this['time'] = \microtime(true);
         $this['cnt'] = $cnt++;
 
         return $this;

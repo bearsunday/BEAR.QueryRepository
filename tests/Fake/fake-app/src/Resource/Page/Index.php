@@ -16,7 +16,7 @@ class Index extends ResourceObject
 {
     public function onGet()
     {
-        $this['time'] = microtime(true);
+        $this['time'] = \microtime(true);
 
         return $this;
     }

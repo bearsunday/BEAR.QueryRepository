@@ -19,9 +19,9 @@ class StorageMemcachedModule extends AbstractModule
 
     public function __construct($servers, AbstractModule $module = null)
     {
-        $this->servers = array_map(function ($serverString) {
-            return explode(':', $serverString);
-        }, explode(',', $servers));
+        $this->servers = \array_map(function ($serverString) {
+            return \explode(':', $serverString);
+        }, \explode(',', $servers));
         parent::__construct($module);
     }
 
