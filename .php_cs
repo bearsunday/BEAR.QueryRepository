@@ -38,7 +38,7 @@ return \PhpCsFixer\Config::create()
         'method_separation' => true,
         'modernize_types_casting' => true,
         'native_function_casing' => true,
-//        'native_function_invocation' => true,
+        'native_function_invocation' => true,
         'new_with_braces' => false, //
         'no_alias_functions' => true,
         'no_blank_lines_after_class_opening' => true,
@@ -108,8 +108,8 @@ return \PhpCsFixer\Config::create()
         'return_type_declaration' =>  ['space_before' => 'one'],
         'self_accessor' => true,
         'short_scalar_cast' => true,
-        'silenced_deprecation_error' => true,
-//        'simplified_null_return' => true,
+//        'silenced_deprecation_error' => true,
+        'simplified_null_return' => true,
 //        'single_blank_line_before_namespace' => true,
         'single_quote' => true,
         'space_after_semicolon' => true,
@@ -123,9 +123,8 @@ return \PhpCsFixer\Config::create()
         'unary_operator_spaces' => true,
         'whitespace_after_comma_in_array' => true
     ))
-    ->setLineEnding("\n")
     ->setFinder(
         PhpCsFixer\Finder::create()
-            ->exclude('var')
+            ->exclude('tests/tmp')
             ->in(__DIR__)
-    );
+    )->setLineEnding("\n");
