@@ -40,7 +40,8 @@ class ResourceRepositoryTest extends TestCase
         $this->repository->put($this->resourceObject);
         $uri = $this->resourceObject->uri;
         // get
-        list($code, $headers, $body) = $this->repository->get($uri);
+        list($uri, $code, $headers, $body) = $this->repository->get($uri);
+        $this->assertSame((string) $uri, (string) $this->resourceObject->uri);
         $this->assertSame($code, $this->resourceObject->code);
         $this->assertSame($headers, $this->resourceObject->headers);
         $this->assertSame($body, $this->resourceObject->body);
