@@ -48,7 +48,7 @@ class CacheInterceptor implements MethodInterceptor
         $ro = $invocation->getThis();
         $stored = $this->repository->get($ro->uri);
         if ($stored) {
-            list($ro->code, $ro->headers, $ro->body, $ro->view) = $stored;
+            list($ro->uri, $ro->code, $ro->headers, $ro->body, $ro->view) = $stored;
 
             return $ro;
         }
