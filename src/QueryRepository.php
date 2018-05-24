@@ -70,10 +70,10 @@ class QueryRepository implements QueryRepositoryInterface
                 $ro->view = $ro->toString();
             }
 
-            return $this->kvs->save((string) $ro->uri, [$ro->code, $ro->headers, $ro->body, $ro->view], $lifeTime);
+            return $this->kvs->save((string) $ro->uri, [$ro->uri, $ro->code, $ro->headers, $ro->body, $ro->view], $lifeTime);
         }
         // "value" cache type
-        return $this->kvs->save((string) $ro->uri, [$ro->code, $ro->headers, $ro->body, null], $lifeTime);
+        return $this->kvs->save((string) $ro->uri, [$ro->uri, $ro->code, $ro->headers, $ro->body, null], $lifeTime);
     }
 
     /**
