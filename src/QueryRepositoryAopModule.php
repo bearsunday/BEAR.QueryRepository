@@ -7,6 +7,8 @@
 namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\Cacheable;
+use BEAR\RepositoryModule\Annotation\Purge;
+use BEAR\RepositoryModule\Annotation\Refresh;
 use Ray\Di\AbstractModule;
 
 class QueryRepositoryAopModule extends AbstractModule
@@ -27,6 +29,16 @@ class QueryRepositoryAopModule extends AbstractModule
                 $this->matcher->annotatedWith(Cacheable::class),
                 $this->matcher->startsWith($starts),
                 [CommandInterceptor::class]
+            );
+            $this->bindInterceptor(
+                $this->matcher->logicalNot(
+                    $this->matcher->annotatedWith(Cacheable::class)
+                ),
+                $this->matcher->logicalOr(
+                    $this->matcher->annotatedWith(Purge::class),
+                    $this->matcher->annotatedWith(Refresh::class)
+                ),
+                [RefreshInterceptor::class]
             );
         }
     }
