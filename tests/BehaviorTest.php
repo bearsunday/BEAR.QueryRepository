@@ -12,6 +12,7 @@ use BEAR\Resource\Module\ResourceModule;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use FakeVendor\HelloWorld\Resource\App\Code;
+use FakeVendor\HelloWorld\Resource\App\RefreshDest;
 use FakeVendor\HelloWorld\Resource\App\User\Profile;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
@@ -106,5 +107,19 @@ class BehaviorTest extends TestCase
         $ro->onGet(); // 4 cached
         $ro->onGet();
         $this->assertSame(4, Code::$i);
+    }
+
+    public function testRefreshWithCacheableAnnotation()
+    {
+        RefreshDest::$id = 0;
+        $this->resource->put->uri('app://self/refresh-cache-src')(['id' => '1']);
+        $this->assertSame('1', RefreshDest::$id);
+    }
+
+    public function testRefreshWithoutCacheableAnnotation()
+    {
+        RefreshDest::$id = 0;
+        $this->resource->put->uri('app://self/refresh-src')(['id' => '1']);
+        $this->assertSame('1', RefreshDest::$id);
     }
 }
