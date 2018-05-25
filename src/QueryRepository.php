@@ -117,11 +117,6 @@ class QueryRepository implements QueryRepositoryInterface
      */
     private function getCacheable(ResourceObject $ro)
     {
-        if (\property_exists($ro, 'classAnnotations')) {
-            $annotations = \unserialize($ro->classAnnotations);
-
-            return $annotations[Cacheable::class];
-        }
         /** @var Cacheable|null $cache */
         $cache = $this->reader->getClassAnnotation(new \ReflectionClass($ro), Cacheable::class);
 
