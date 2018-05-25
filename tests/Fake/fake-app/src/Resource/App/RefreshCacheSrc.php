@@ -15,9 +15,11 @@ class RefreshCacheSrc extends ResourceObject
     {
         return $this;
     }
-    
+
     /**
      * @Refresh(uri="app://self/refresh-dest{?id}")
+     *
+     * @param mixed $id
      */
     public function onPut($id)
     {
