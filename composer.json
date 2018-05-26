@@ -10,7 +10,7 @@
     ],
     "require": {
         "php": ">=7.0.0",
-        "bear/resource": "^1.9.2",
+        "bear/resource": "^1.9.5",
         "mobiledetect/mobiledetectlib": "^2.5.0",
         "doctrine/cache": "^1.6.1"
     },
