@@ -16,7 +16,7 @@ class Value extends ResourceObject
 {
     public static $i = 1;
 
-    public function __toString()
+    public function toString()
     {
         if ($this->view) {
             return $this->view;

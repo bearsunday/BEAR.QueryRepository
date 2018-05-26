@@ -66,7 +66,8 @@ class QueryRepository implements QueryRepositoryInterface
         /* @var $cacheable Cacheable */
         $cacheable = $this->getCacheable($ro);
         $lifeTime = $this->getExpiryTime($cacheable);
-        foreach ($ro->body as &$item) {
+        $body = is_array($ro->body) ? $ro->body : [];
+        foreach ($body as &$item) {
             if ($item instanceof RequestInterface) {
                 $item = ($item)();
             }
