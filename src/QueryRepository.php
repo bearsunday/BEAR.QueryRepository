@@ -9,6 +9,7 @@ namespace BEAR\QueryRepository;
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\Storage;
 use BEAR\Resource\AbstractUri;
+use BEAR\Resource\RequestInterface;
 use BEAR\Resource\ResourceObject;
 use Doctrine\Common\Annotations\Reader;
 use Doctrine\Common\Cache\Cache;
@@ -57,6 +58,7 @@ class QueryRepository implements QueryRepositoryInterface
      */
     public function put(ResourceObject $ro)
     {
+        $ro->toString();
         ($this->setEtag)($ro);
         if (isset($ro->headers['ETag'])) {
             $this->updateEtagDatabase($ro);
@@ -64,6 +66,11 @@ class QueryRepository implements QueryRepositoryInterface
         /* @var $cacheable Cacheable */
         $cacheable = $this->getCacheable($ro);
         $lifeTime = $this->getExpiryTime($cacheable);
+        foreach ($ro->body as &$item) {
+            if ($item instanceof RequestInterface) {
+                $item = ($item)();
+            }
+        }
         if ($cacheable instanceof Cacheable && $cacheable->type === 'view') {
             if (! $ro->view) {
                 // render
