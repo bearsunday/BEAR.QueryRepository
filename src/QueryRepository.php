@@ -66,12 +66,7 @@ class QueryRepository implements QueryRepositoryInterface
         /* @var $cacheable Cacheable */
         $cacheable = $this->getCacheable($ro);
         $lifeTime = $this->getExpiryTime($cacheable);
-        $body = is_array($ro->body) ? $ro->body : [];
-        foreach ($body as &$item) {
-            if ($item instanceof RequestInterface) {
-                $item = ($item)();
-            }
-        }
+        $this->evaluate($ro);
         if ($cacheable instanceof Cacheable && $cacheable->type === 'view') {
             if (! $ro->view) {
                 // render
@@ -118,6 +113,18 @@ class QueryRepository implements QueryRepositoryInterface
         $oldEtagKey = $this->kvs->fetch($etagId);
 
         $this->kvs->delete($oldEtagKey);
+    }
+
+    private function evaluate(ResourceObject $ro)
+    {
+        if (! \is_array($ro->body)) {
+            return;
+        }
+        foreach ($ro->body as &$item) {
+            if ($item instanceof RequestInterface) {
+                $item = ($item)();
+            }
+        }
     }
 
     /**
