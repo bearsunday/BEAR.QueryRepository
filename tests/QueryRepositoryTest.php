@@ -90,4 +90,30 @@ class QueryRepositoryTest extends TestCase
         $result = $this->repository->put($ro);
         $this->assertTrue($result);
     }
+
+    public function testPutResquestEmbeddedResoureView()
+    {
+        $uri = new Uri('page://self/emb-view');
+        $ro = $this->resource->uri($uri)();
+        $this->repository->put($ro);
+        list(, , , $body, $view) = $this->repository->get($uri);
+        $this->assertInstanceOf(None::class, $body['time']);
+        $this->assertSame(1, $body['num']);
+        $this->assertSame('{
+    "time": null,
+    "num": 1
+}
+', $view);
+    }
+
+    public function testPutResquestEmbeddedResoureValue()
+    {
+        $uri = new Uri('page://self/emb-val');
+        $ro = $this->resource->uri($uri)();
+        $this->repository->put($ro);
+        list(, , , $body, $view) = $this->repository->get($uri);
+        $this->assertInstanceOf(None::class, $body['time']);
+        $this->assertSame(1, $body['num']);
+        $this->assertNull($view);
+    }
 }

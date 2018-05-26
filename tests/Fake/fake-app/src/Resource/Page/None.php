@@ -12,6 +12,8 @@ class None extends ResourceObject
 {
     public function onGet()
     {
-        $this['time'] = \microtime(true);
+        $this->body = [
+            'time' => \microtime(true)
+        ];
     }
 }
