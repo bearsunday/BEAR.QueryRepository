@@ -66,17 +66,17 @@ class QueryRepository implements QueryRepositoryInterface
         /* @var $cacheable Cacheable */
         $cacheable = $this->getCacheable($ro);
         $lifeTime = $this->getExpiryTime($cacheable);
-        $this->evaluate($ro);
+        $body = $this->evaluateBody($ro->body);
         if ($cacheable instanceof Cacheable && $cacheable->type === 'view') {
             if (! $ro->view) {
                 // render
                 $ro->view = $ro->toString();
             }
 
-            return $this->kvs->save((string) $ro->uri, [$ro->uri, $ro->code, $ro->headers, $ro->body, $ro->view], $lifeTime);
+            return $this->kvs->save((string) $ro->uri, [$ro->uri, $ro->code, $ro->headers, $body, $ro->view], $lifeTime);
         }
         // "value" cache type
-        return $this->kvs->save((string) $ro->uri, [$ro->uri, $ro->code, $ro->headers, $ro->body, null], $lifeTime);
+        return $this->kvs->save((string) $ro->uri, [$ro->uri, $ro->code, $ro->headers, $body, null], $lifeTime);
     }
 
     /**
@@ -115,16 +115,18 @@ class QueryRepository implements QueryRepositoryInterface
         $this->kvs->delete($oldEtagKey);
     }
 
-    private function evaluate(ResourceObject $ro)
+    private function evaluateBody($body)
     {
-        if (! \is_array($ro->body)) {
-            return;
+        if (! \is_array($body)) {
+            return $body;
         }
-        foreach ($ro->body as &$item) {
+        foreach ($body as &$item) {
             if ($item instanceof RequestInterface) {
                 $item = ($item)();
             }
         }
+
+        return $body;
     }
 
     /**
