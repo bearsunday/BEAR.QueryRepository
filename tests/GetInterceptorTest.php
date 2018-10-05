@@ -21,11 +21,10 @@ class GetInterceptorTest extends TestCase
     public function setUp()
     {
         $this->resource = (new Injector(new QueryRepositoryModule(new ResourceModule('FakeVendor\HelloWorld'))))->getInstance(ResourceInterface::class);
-
         parent::setUp();
     }
 
-    public function testInvoke()
+    public function testLastModifiedHeader()
     {
         $user = $this->resource->get->uri('app://self/user')->withQuery(['id' => 1])->eager->request();
         // put
@@ -37,5 +36,19 @@ class GetInterceptorTest extends TestCase
         $this->assertArrayHasKey($expect, $user->headers);
         $expect = $time;
         $this->assertSame($expect, $user['time']);
+    }
+
+    public function testCacheControlHeaderNone()
+    {
+        $user = $this->resource->get->uri('app://self/control-none')->eager->request();
+        $this->assertArrayHasKey('Cache-Control', $user->headers);
+        $this->assertSame('max-age=60', $user->headers['Cache-Control']);
+    }
+
+    public function testCacheControlHeaderPublic()
+    {
+        $user = $this->resource->get->uri('app://self/control-public')->eager->request();
+        $this->assertArrayHasKey('Cache-Control', $user->headers);
+        $this->assertSame('public, max-age=60', $user->headers['Cache-Control']);
     }
 }
