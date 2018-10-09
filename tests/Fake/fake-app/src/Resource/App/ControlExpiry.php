@@ -8,7 +8,6 @@ namespace FakeVendor\HelloWorld\Resource\App;
 
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\Resource\ResourceObject;
-use DateTime;
 
 /**
  * @Cacheable(expiryAt="expiry_at")
@@ -19,7 +18,7 @@ class ControlExpiry extends ResourceObject
 
     public function onGet() : ResourceObject
     {
-        $this->body['expiry_at'] = (new DateTime('+30 sec'))->format('Y-m-d H:i:s'); // NOW + 30 sec
+        $this->body['expiry_at'] = (new \DateTime('+30 sec'))->format('Y-m-d H:i:s'); // NOW + 30 sec
 
         return $this;
     }
