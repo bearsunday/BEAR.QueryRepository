@@ -58,4 +58,16 @@ class GetInterceptorTest extends TestCase
         $this->expectException(ExpireAtKeyNotExists::class);
         $this->resource->get->uri('app://self/control-expiry-error')->eager->request();
     }
+
+    public function testHttpCacheAnnotation()
+    {
+        $ro = $this->resource->get->uri('app://self/http-cache-control')->eager->request();
+        $this->assertSame($ro->headers['Cache-Control'], 'private, no-cache, no-store, must-revalidate');
+    }
+
+    public function testNoHttpCacheAnnotation()
+    {
+        $ro = $this->resource->get->uri('app://self/http-no-cache-control')->eager->request();
+        $this->assertSame($ro->headers['Cache-Control'], 'private, no-store, no-cache, must-revalidate');
+    }
 }

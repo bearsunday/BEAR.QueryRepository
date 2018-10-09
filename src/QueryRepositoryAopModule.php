@@ -6,6 +6,7 @@
  */
 namespace BEAR\QueryRepository;
 
+use BEAR\RepositoryModule\Annotation\AbstractCacheControl;
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\Purge;
 use BEAR\RepositoryModule\Annotation\Refresh;
@@ -41,5 +42,10 @@ class QueryRepositoryAopModule extends AbstractModule
                 [RefreshInterceptor::class]
             );
         }
+        $this->bindInterceptor(
+            $this->matcher->annotatedWith(AbstractCacheControl::class),
+            $this->matcher->startsWith('onGet'),
+            [HttpCacheInterceptor::class]
+        );
     }
 }
