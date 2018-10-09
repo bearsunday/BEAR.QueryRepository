@@ -6,6 +6,7 @@
  */
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Exception\ExpireAtKeyNotExists;
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\Storage;
 use BEAR\Resource\AbstractUri;
@@ -13,7 +14,6 @@ use BEAR\Resource\RequestInterface;
 use BEAR\Resource\ResourceObject;
 use Doctrine\Common\Annotations\Reader;
 use Doctrine\Common\Cache\Cache;
-use LogicException;
 
 class QueryRepository implements QueryRepositoryInterface
 {
@@ -178,7 +178,7 @@ class QueryRepository implements QueryRepositoryInterface
     {
         if (! isset($ro->body[$cacheable->expiryAt])) {
             $msg = \sprintf('%s::%s', \get_class($ro), $cacheable->expiryAt);
-            throw new LogicException($msg);
+            throw new ExpireAtKeyNotExists($msg);
         }
         $expiryAt = $ro->body[$cacheable->expiryAt];
         $sec = \strtotime($expiryAt) - \time();

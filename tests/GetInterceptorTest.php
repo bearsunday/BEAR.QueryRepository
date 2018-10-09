@@ -6,6 +6,7 @@
  */
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Exception\ExpireAtKeyNotExists;
 use BEAR\Resource\Module\ResourceModule;
 use BEAR\Resource\ResourceInterface;
 use PHPUnit\Framework\TestCase;
@@ -50,5 +51,11 @@ class GetInterceptorTest extends TestCase
         $user = $this->resource->get->uri('app://self/control-expiry')->eager->request();
         $this->assertArrayHasKey('Cache-Control', $user->headers);
         $this->assertSame('public, max-age=30', $user->headers['Cache-Control']);
+    }
+
+    public function testCacheControlHeaderExpiryError()
+    {
+        $this->expectException(ExpireAtKeyNotExists::class);
+        $this->resource->get->uri('app://self/control-expiry-error')->eager->request();
     }
 }
