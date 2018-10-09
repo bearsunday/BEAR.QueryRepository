@@ -16,7 +16,7 @@ class StorageApcModuleTest extends TestCase
 {
     public function testNew()
     {
-        $cache = (new Injector(new StorageApcModule))->getInstance(CacheProvider::class, Storage::class);
+        $cache = (new Injector(new StorageApcModule, $_ENV['TMP_DIR']))->getInstance(CacheProvider::class, Storage::class);
         $this->assertInstanceOf(ApcuCache::class, $cache);
     }
 }
