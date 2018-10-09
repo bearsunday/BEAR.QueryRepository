@@ -66,6 +66,7 @@ class QueryRepository implements QueryRepositoryInterface
         /* @var $cacheable Cacheable */
         $cacheable = $this->getCacheable($ro);
         $lifeTime = $this->getExpiryTime($cacheable);
+        $this->setMaxAge($ro, $lifeTime);
         $body = $this->evaluateBody($ro->body);
         if ($cacheable instanceof Cacheable && $cacheable->type === 'view') {
             if (! $ro->view) {
@@ -171,5 +172,16 @@ class QueryRepository implements QueryRepositoryInterface
         }
 
         return $cacheable->expirySecond ? $cacheable->expirySecond : $this->expiry[$cacheable->expiry];
+    }
+
+    private function setMaxAge(ResourceObject $ro, int $age)
+    {
+        $setMaxAge = \sprintf('max-age=%d', $age);
+        if (isset($ro->headers['Cache-Control'])) {
+            $ro->headers['Cache-Control'] .= ', ' . $setMaxAge;
+
+            return;
+        }
+        $ro->headers['Cache-Control'] = $setMaxAge;
     }
 }
