@@ -45,10 +45,10 @@ class GetInterceptorTest extends TestCase
         $this->assertSame('max-age=60', $user->headers['Cache-Control']);
     }
 
-    public function testCacheControlHeaderPublic()
+    public function testCacheControlHeaderExpiry()
     {
-        $user = $this->resource->get->uri('app://self/control-public')->eager->request();
+        $user = $this->resource->get->uri('app://self/control-expiry')->eager->request();
         $this->assertArrayHasKey('Cache-Control', $user->headers);
-        $this->assertSame('public, max-age=60', $user->headers['Cache-Control']);
+        $this->assertSame('public, max-age=30', $user->headers['Cache-Control']);
     }
 }

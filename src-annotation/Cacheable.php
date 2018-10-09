@@ -24,6 +24,11 @@ final class Cacheable
     public $expirySecond;
 
     /**
+     * @var string
+     */
+    public $expiryAt = '';
+
+    /**
      * @var bool
      */
     public $update = true;

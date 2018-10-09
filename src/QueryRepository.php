@@ -13,6 +13,7 @@ use BEAR\Resource\RequestInterface;
 use BEAR\Resource\ResourceObject;
 use Doctrine\Common\Annotations\Reader;
 use Doctrine\Common\Cache\Cache;
+use LogicException;
 
 class QueryRepository implements QueryRepositoryInterface
 {
@@ -65,9 +66,9 @@ class QueryRepository implements QueryRepositoryInterface
         }
         /* @var $cacheable Cacheable */
         $cacheable = $this->getCacheable($ro);
-        $lifeTime = $this->getExpiryTime($cacheable);
-        $this->setMaxAge($ro, $lifeTime);
         $body = $this->evaluateBody($ro->body);
+        $lifeTime = $this->getExpiryTime($ro, $cacheable);
+        $this->setMaxAge($ro, $lifeTime);
         if ($cacheable instanceof Cacheable && $cacheable->type === 'view') {
             if (! $ro->view) {
                 // render
@@ -160,18 +161,29 @@ class QueryRepository implements QueryRepositoryInterface
         $this->kvs->save($etagUri, $etagId); // save uri  mapping etag
     }
 
-    /**
-     * @param Cacheable $cacheable
-     *
-     * @return int
-     */
-    private function getExpiryTime(Cacheable $cacheable = null)
+    private function getExpiryTime(ResourceObject $ro, Cacheable $cacheable = null) : int
     {
         if ($cacheable === null) {
             return 0;
         }
 
+        if ($cacheable->expiryAt) {
+            return $this->getExpiryAtSec($ro, $cacheable);
+        }
+
         return $cacheable->expirySecond ? $cacheable->expirySecond : $this->expiry[$cacheable->expiry];
+    }
+
+    private function getExpiryAtSec(ResourceObject $ro, Cacheable $cacheable) : int
+    {
+        if (! isset($ro->body[$cacheable->expiryAt])) {
+            $msg = \sprintf('%s::%s', \get_class($ro), $cacheable->expiryAt);
+            throw new LogicException($msg);
+        }
+        $expiryAt = $ro->body[$cacheable->expiryAt];
+        $sec = \strtotime($expiryAt) - \time();
+
+        return $sec;
     }
 
     private function setMaxAge(ResourceObject $ro, int $age)
