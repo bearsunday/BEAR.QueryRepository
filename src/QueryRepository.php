@@ -92,6 +92,8 @@ class QueryRepository implements QueryRepositoryInterface
         if ($data === false) {
             return false;
         }
+        $age = \time() - \strtotime($data[2]['Last-Modified']);
+        $data[2]['Age'] = $age;
 
         return $data;
     }
