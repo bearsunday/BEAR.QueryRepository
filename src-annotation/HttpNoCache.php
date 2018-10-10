@@ -13,40 +13,9 @@ namespace BEAR\RepositoryModule\Annotation;
  *
  * @Annotation
  * @Target("CLASS")
- * {@inheritdoc}
  */
 final class HttpNoCache extends AbstractCacheControl
 {
-    /**
-     * @var int
-     */
-    public $maxAge = 0;
-
-    /**
-     * @var int
-     */
-    public $sMaxAge = 0;
-
-    /**
-     * @var false
-     */
-    public $isPrivate = false;
-
-    /**
-     * @var bool
-     */
-    public $noCache = true;
-
-    /**
-     * @var bool
-     */
-    public $noStore = true;
-
-    /**
-     * @var bool
-     */
-    public $mustRevalidate = true;
-
     /**
      * @return string
      */
