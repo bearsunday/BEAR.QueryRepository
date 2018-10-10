@@ -67,7 +67,7 @@ class GetInterceptorTest extends TestCase
 
     public function testNoHttpCacheAnnotation()
     {
-        $ro = $this->resource->get->uri('app://self/http-no-cache-control')->eager->request();
+        $ro = $this->resource->get->uri('app://self/no-http-cache-control')->eager->request();
         $this->assertSame($ro->headers['Cache-Control'], 'private, no-store, no-cache, must-revalidate');
     }
 

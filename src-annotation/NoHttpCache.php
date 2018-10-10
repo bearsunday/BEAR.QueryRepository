@@ -14,7 +14,7 @@ namespace BEAR\RepositoryModule\Annotation;
  * @Annotation
  * @Target("CLASS")
  */
-final class HttpNoCache extends AbstractCacheControl
+final class NoHttpCache extends AbstractCacheControl
 {
     /**
      * @return string

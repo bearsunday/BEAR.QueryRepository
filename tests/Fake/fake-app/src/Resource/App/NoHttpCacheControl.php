@@ -6,13 +6,13 @@
  */
 namespace FakeVendor\HelloWorld\Resource\App;
 
-use BEAR\RepositoryModule\Annotation\HttpNoCache;
+use BEAR\RepositoryModule\Annotation\NoHttpCache;
 use BEAR\Resource\ResourceObject;
 
 /**
- * @HttpNoCache
+ * @NoHttpCache
  */
-class HttpNoCacheControl extends ResourceObject
+class NoHttpCacheControl extends ResourceObject
 {
     public function onGet() : ResourceObject
     {
