@@ -69,16 +69,17 @@ class QueryRepository implements QueryRepositoryInterface
         $body = $this->evaluateBody($ro->body);
         $lifeTime = $this->getExpiryTime($ro, $cacheable);
         $this->setMaxAge($ro, $lifeTime);
+        $id = $this->getVaryUri($ro->uri);
         if ($cacheable instanceof Cacheable && $cacheable->type === 'view') {
             if (! $ro->view) {
                 // render
                 $ro->view = $ro->toString();
             }
 
-            return $this->kvs->save((string) $ro->uri, [$ro->uri, $ro->code, $ro->headers, $body, $ro->view], $lifeTime);
+            return $this->kvs->save($id, [$ro->uri, $ro->code, $ro->headers, $body, $ro->view], $lifeTime);
         }
         // "value" cache type
-        return $this->kvs->save((string) $ro->uri, [$ro->uri, $ro->code, $ro->headers, $body, null], $lifeTime);
+        return $this->kvs->save($id, [$ro->uri, $ro->code, $ro->headers, $body, null], $lifeTime);
     }
 
     /**
@@ -86,7 +87,8 @@ class QueryRepository implements QueryRepositoryInterface
      */
     public function get(AbstractUri $uri)
     {
-        $data = $this->kvs->fetch((string) $uri);
+        $id = $this->getVaryUri($uri);
+        $data = $this->kvs->fetch($id);
         if ($data === false) {
             return false;
         }
@@ -99,9 +101,10 @@ class QueryRepository implements QueryRepositoryInterface
      */
     public function purge(AbstractUri $uri)
     {
+        $id = $this->getVaryUri($uri);
         $this->deleteEtagDatabase($uri);
 
-        return $this->kvs->delete((string) $uri);
+        return $this->kvs->delete($id);
     }
 
     /**
@@ -111,7 +114,8 @@ class QueryRepository implements QueryRepositoryInterface
      */
     public function deleteEtagDatabase(AbstractUri $uri)
     {
-        $etagId = self::ETAG_BY_URI . (string) $uri; // invalidate etag
+        $etagId = self::ETAG_BY_URI . $this->getVaryUri($uri); // invalidate etag
+
         $oldEtagKey = $this->kvs->fetch($etagId);
 
         $this->kvs->delete($oldEtagKey);
@@ -195,5 +199,22 @@ class QueryRepository implements QueryRepositoryInterface
             return;
         }
         $ro->headers['Cache-Control'] = $setMaxAge;
+    }
+
+    private function getVaryUri(AbstractUri $uri) : string
+    {
+        if (! isset($_SERVER['X_VARY'])) {
+            return (string) $uri;
+        }
+        $varys = \explode(',', $_SERVER['X_VARY']);
+        $varyId = '';
+        foreach ($varys as $vary) {
+            $phpVaryKey = \sprintf('X_%s', \strtoupper($vary));
+            if (isset($_SERVER[$phpVaryKey])) {
+                $varyId .= $_SERVER[$phpVaryKey];
+            }
+        }
+
+        return (string) $uri . $varyId;
     }
 }
