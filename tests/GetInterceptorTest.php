@@ -70,4 +70,13 @@ class GetInterceptorTest extends TestCase
         $ro = $this->resource->get->uri('app://self/http-no-cache-control')->eager->request();
         $this->assertSame($ro->headers['Cache-Control'], 'private, no-store, no-cache, must-revalidate');
     }
+
+    public function testHttpCacheVary()
+    {
+        $ro1 = $this->resource->get->uri('app://self/etag')->eager->request();
+        $ro2 = $this->resource->get->uri('app://self/etag')->eager->request();
+        $ro3 = $this->resource->get->uri('app://self/etag')->withQuery(['updatedAt' => 1])->eager->request();
+        $this->assertSame($ro1->headers['ETag'], $ro2->headers['ETag']);
+        $this->assertNotSame($ro1->headers['ETag'], $ro3->headers['ETag']);
+    }
 }
