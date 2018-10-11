@@ -47,8 +47,7 @@ class EtagSetter implements EtagSetterInterface
      */
     private function getEtag(ResourceObject $ro, HttpCache $httpCache = null) : string
     {
-        $hasEtagKeys = $httpCache instanceof HttpCache && $httpCache->etag !== [];
-        $etag = $hasEtagKeys ? $this->getEtagByPartialBody($httpCache, $ro) : $this->getEtagByEitireView($ro);
+        $etag = $httpCache instanceof HttpCache && $httpCache->etag ? $this->getEtagByPartialBody($httpCache, $ro) : $this->getEtagByEitireView($ro);
 
         return (string) \crc32(\get_class($ro) . $etag);
     }
