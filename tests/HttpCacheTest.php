@@ -28,5 +28,16 @@ class HttpCacheTest extends TestCase
         $httpCache = new HttpCache($cache);
         $server = ['HTTP_IF_NONE_MATCH' => $etag];
         $this->assertTrue($httpCache->isNotModified($server));
+
+        return $httpCache;
+    }
+
+    /**
+     * @depends testisNotModifiedTrue
+     */
+    public function testTransfer(HttpCache $httpCache)
+    {
+        $this->expectOutputRegex('/\A304 Not Modified/');
+        $httpCache->transfer();
     }
 }
