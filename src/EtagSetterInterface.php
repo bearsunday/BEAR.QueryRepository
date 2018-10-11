@@ -13,8 +13,6 @@ interface EtagSetterInterface
 {
     /**
      * Set Etag
-     *
-     * @return void
      */
     public function __invoke(ResourceObject $resourceObject, int $time = null, HttpCache $httpCache = null);
 }

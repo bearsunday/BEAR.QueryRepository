@@ -8,7 +8,6 @@ namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\AbstractCacheControl;
 use Doctrine\Common\Annotations\Reader;
-use FakeVendor\HelloWorld\Resource\App\HttpCacheControl;
 use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
 

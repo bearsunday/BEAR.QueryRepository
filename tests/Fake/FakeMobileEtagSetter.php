@@ -6,8 +6,8 @@
  */
 namespace BEAR\QueryRepository;
 
-use BEAR\Resource\ResourceObject;
 use BEAR\RepositoryModule\Annotation\HttpCache;
+use BEAR\Resource\ResourceObject;
 
 class FakeMobileEtagSetter extends MobileEtagSetter
 {
