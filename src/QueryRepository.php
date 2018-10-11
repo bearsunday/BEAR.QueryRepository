@@ -63,8 +63,9 @@ class QueryRepository implements QueryRepositoryInterface
     public function put(ResourceObject $ro)
     {
         $ro->toString();
-        $httpCache = $this->reader->getClassAnnotation(new \ReflectionClass($ro), HttpCache::class);
-        $cacheable = $this->reader->getClassAnnotation(new \ReflectionClass($ro), Cacheable::class);
+        $httpCache = $this->getHttpCacheAnnotation($ro);
+        $cacheable = $this->getCacheableAnnotation($ro);
+        /** @var Cacheable $cacheable|null */
         ($this->setEtag)($ro, null, $httpCache);
         if (isset($ro->headers['ETag'])) {
             $this->updateEtagDatabase($ro);
@@ -83,6 +84,30 @@ class QueryRepository implements QueryRepositoryInterface
         }
         // "value" cache type
         return $this->kvs->save($id, [$ro->uri, $ro->code, $ro->headers, $body, null], $lifeTime);
+    }
+
+    /**
+     * @throws \ReflectionException
+     */
+    private function getHttpCacheAnnotation(ResourceObject $ro)
+    {
+        $annotation =  $this->reader->getClassAnnotation(new \ReflectionClass($ro), HttpCache::class);
+        if ($annotation instanceof HttpCache || $annotation  === null) {
+            return $annotation;
+        }
+        throw new \LogicException();
+    }
+
+    /**
+     * @throws \ReflectionException
+     */
+    private function getCacheableAnnotation(ResourceObject $ro)
+    {
+        $annotation =  $this->reader->getClassAnnotation(new \ReflectionClass($ro), Cacheable::class);
+        if ($annotation instanceof Cacheable || $annotation  === null) {
+            return $annotation;
+        }
+        throw new \LogicException();
     }
 
     /**
