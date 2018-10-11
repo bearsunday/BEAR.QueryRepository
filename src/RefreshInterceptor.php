@@ -14,7 +14,7 @@ use Ray\Aop\MethodInvocation;
 class RefreshInterceptor implements MethodInterceptor
 {
     /**
-     * @var RefreshAnnotatedCommand 
+     * @var RefreshAnnotatedCommand
      */
     private $command;
 

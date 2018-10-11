@@ -151,6 +151,11 @@ class QueryRepository implements QueryRepositoryInterface
         $this->kvs->delete($oldEtagKey);
     }
 
+    /**
+     * @param mixed $body
+     *
+     * @return mixed
+     */
     private function evaluateBody($body)
     {
         if (! \is_array($body)) {
