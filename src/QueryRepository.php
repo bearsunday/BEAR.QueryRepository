@@ -184,7 +184,7 @@ class QueryRepository implements QueryRepositoryInterface
         if ($oldEtag) {
             $this->kvs->delete($oldEtag);
         }
-        $etagId = \BEAR\QueryRepository\HttpCache::ETAG_KEY . $etag;
+        $etagId = ResourceStorage::ETAG_PREFIX . $etag;
         $this->kvs->save($etagId, $uri);     // save etag
         $this->kvs->save($etagUri, $etagId); // save uri  mapping etag
     }
