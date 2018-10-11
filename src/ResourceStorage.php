@@ -18,6 +18,8 @@ final class ResourceStorage implements ResourceStorageInterface
 
     const ETAG_BY_URI = 'etag-by-uri';
 
+    const ETAG_PREFIX = 'etag-';
+
     /**
      * @var Cache
      */
@@ -36,15 +38,7 @@ final class ResourceStorage implements ResourceStorageInterface
      */
     public function hasEtag(string $etag) : bool
     {
-        return $this->cache->contains($etag);
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function setEtag(string $etag)
-    {
-        $this->cache->save($etag, self::MARK);
+        return $this->cache->contains(self::ETAG_PREFIX . $etag);
     }
 
     /**
@@ -97,7 +91,7 @@ final class ResourceStorage implements ResourceStorageInterface
         if ($oldEtag) {
             $this->cache->delete($oldEtag);
         }
-        $etagId = HttpCache::ETAG_KEY . $etag;
+        $etagId = self::ETAG_PREFIX . $etag;
         $this->cache->save($etagId, $uri);     // save etag
         $this->cache->save($etagUri, $etagId); // save uri  mapping etag
     }

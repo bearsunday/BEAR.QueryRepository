@@ -6,26 +6,16 @@
  */
 namespace BEAR\QueryRepository;
 
-use BEAR\RepositoryModule\Annotation\Storage;
-use Doctrine\Common\Cache\CacheProvider;
-
 final class HttpCache implements HttpCacheInterface
 {
-    const ETAG_KEY = 'etag:';
-
     /**
-     * @var CacheProvider
+     * @var ResourceStorageInterface
      */
-    private $kvs;
+    private $storage;
 
-    /**
-     * @param CacheProvider $kvs
-     *
-     * @Storage
-     */
-    public function __construct(CacheProvider $kvs)
+    public function __construct(ResourceStorageInterface $storage)
     {
-        $this->kvs = $kvs;
+        $this->storage = $storage;
     }
 
     /**
@@ -36,9 +26,8 @@ final class HttpCache implements HttpCacheInterface
         if (! isset($server['HTTP_IF_NONE_MATCH'])) {
             return false;
         }
-        $etagKey = self::ETAG_KEY . $server['HTTP_IF_NONE_MATCH'];
 
-        return $this->kvs->contains($etagKey) ? true : false;
+        return $this->storage->hasEtag($server['HTTP_IF_NONE_MATCH']);
     }
 
     /**
