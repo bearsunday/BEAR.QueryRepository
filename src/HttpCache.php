@@ -31,7 +31,7 @@ final class HttpCache implements HttpCacheInterface
     /**
      * {@inheritdoc}
      */
-    public function isNotModified(array $server)
+    public function isNotModified(array $server) : bool
     {
         if (! isset($server['HTTP_IF_NONE_MATCH'])) {
             return false;
