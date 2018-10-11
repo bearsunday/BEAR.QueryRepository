@@ -10,5 +10,10 @@ use BEAR\Resource\ResourceObject;
 
 interface EtagSetterInterface
 {
-    public function __invoke(ResourceObject $resourceObject);
+    /**
+     * Set Etag
+     *
+     * @return void
+     */
+    public function __invoke(ResourceObject $resourceObject, int $time = null, HttpCache $httpCache = null);
 }

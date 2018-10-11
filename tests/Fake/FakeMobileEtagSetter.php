@@ -12,8 +12,9 @@ class FakeMobileEtagSetter extends MobileEtagSetter
 {
     public static $device;
 
-    public function __invoke(ResourceObject $resourceObject, $time = null)
+    public function __invoke(ResourceObject $resourceObject, int $time = null, HttpCache $httpCache = null)
     {
+        unset($time, $httpCache);
         self::$device = $this->getDevice();
 
         return parent::__invoke($resourceObject, $time);
