@@ -8,6 +8,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\ExpireAtKeyNotExists;
 use BEAR\RepositoryModule\Annotation\Cacheable;
+use BEAR\RepositoryModule\Annotation\HttpCache;
 use BEAR\RepositoryModule\Annotation\Storage;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\RequestInterface;
@@ -56,16 +57,18 @@ class QueryRepository implements QueryRepositoryInterface
 
     /**
      * {@inheritdoc}
+     *
+     * @throws \ReflectionException
      */
     public function put(ResourceObject $ro)
     {
         $ro->toString();
-        ($this->setEtag)($ro);
+        $httpCache = $this->reader->getClassAnnotation(new \ReflectionClass($ro), HttpCache::class);
+        $cacheable = $this->reader->getClassAnnotation(new \ReflectionClass($ro), Cacheable::class);
+        ($this->setEtag)($ro, null, $httpCache);
         if (isset($ro->headers['ETag'])) {
             $this->updateEtagDatabase($ro);
         }
-        /* @var $cacheable Cacheable */
-        $cacheable = $this->getCacheable($ro);
         $body = $this->evaluateBody($ro->body);
         $lifeTime = $this->getExpiryTime($ro, $cacheable);
         $this->setMaxAge($ro, $lifeTime);
@@ -138,17 +141,6 @@ class QueryRepository implements QueryRepositoryInterface
     }
 
     /**
-     * @return Cacheable|null
-     */
-    private function getCacheable(ResourceObject $ro)
-    {
-        /** @var Cacheable|null $cache */
-        $cache = $this->reader->getClassAnnotation(new \ReflectionClass($ro), Cacheable::class);
-
-        return $cache;
-    }
-
-    /**
      * Update etag in etag repository
      *
      * @param ResourceObject $ro
@@ -162,7 +154,7 @@ class QueryRepository implements QueryRepositoryInterface
         if ($oldEtag) {
             $this->kvs->delete($oldEtag);
         }
-        $etagId = HttpCache::ETAG_KEY . $etag;
+        $etagId = \BEAR\QueryRepository\HttpCache::ETAG_KEY . $etag;
         $this->kvs->save($etagId, $uri);     // save etag
         $this->kvs->save($etagUri, $etagId); // save uri  mapping etag
     }

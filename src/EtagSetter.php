@@ -6,15 +6,14 @@
  */
 namespace BEAR\QueryRepository;
 
-use BEAR\RepositoryModule\Annotation\AbstractCacheControl;
+use BEAR\RepositoryModule\Annotation\HttpCache;
 use BEAR\Resource\ResourceObject;
 
 class EtagSetter implements EtagSetterInterface
 {
-    public function __invoke(ResourceObject $resourceObject, int $time = null, AbstractCacheControl $httpCache = null)
+    public function __invoke(ResourceObject $resourceObject, int $time = null, HttpCache $httpCache = null)
     {
-        $time = $time !== null ?: \time();
-
+        $time = $time === null ? \time() : $time;
         if ($resourceObject->code !== 200) {
             return;
         }
@@ -22,12 +21,13 @@ class EtagSetter implements EtagSetterInterface
         $resourceObject->headers['Last-Modified'] = \gmdate('D, d M Y H:i:s', $time) . ' GMT';
     }
 
-    public function getEtagByPartialBody(AbstractCacheControl $httpCache) : string
+    public function getEtagByPartialBody(HttpCache $httpCacche, ResourceObject $ro) : string
     {
         $etag = '';
-        foreach ($httpCache->etag as $etagKey) {
-            $phpServerKey = \sprintf('HTTP_%s', \strtoupper($etagKey));
-            $etag .= \strtolower($_SERVER[$phpServerKey] ?? '');
+        foreach ($httpCacche->etag as $bodyEtag) {
+            if (isset($ro->body[$bodyEtag])) {
+                $etag .= $ro->body[$bodyEtag];
+            }
         }
 
         return $etag;
@@ -45,11 +45,11 @@ class EtagSetter implements EtagSetterInterface
      *
      * @see https://cloud.google.com/storage/docs/hashes-etags
      */
-    private function getEtag(ResourceObject $ro, AbstractCacheControl $httpCache = null) : string
+    private function getEtag(ResourceObject $ro, HttpCache $httpCache = null) : string
     {
-        $hasEtagKeys = $httpCache instanceof AbstractCacheControl && $httpCache->etag !== [];
+        $hasEtagKeys = $httpCache instanceof HttpCache && $httpCache->etag !== [];
         $etag = $hasEtagKeys ? $this->getEtagByPartialBody($httpCache, $ro) : $this->getEtagByEitireView($ro);
 
-        return (string) \crc32($etag);
+        return (string) \crc32(\get_class($ro) . $etag);
     }
 }
