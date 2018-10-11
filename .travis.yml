@@ -25,7 +25,7 @@ before_script:
   - composer update --no-interaction $DEPENDENCIES
   - if [[ $TRAVIS_PHP_VERSION = '7.2' ]]; then composer require --dev phpstan/phpstan-shim ^0.9 friendsofphp/php-cs-fixer ^2.0 vimeo/psalm ^2.0;  fi
 script:
-- php demo/bin/run.php
+- php demo/run.php
 - if [[ $TRAVIS_PHP_VERSION = '7.2' ]]; then ./vendor/bin/php-cs-fixer --dry-run -vvv fix; fi
 - if [[ $TRAVIS_PHP_VERSION = '7.2' ]]; then ./vendor/bin/phpstan analyse -l max -c phpstan.neon src tests --no-progress --no-interaction; fi
 - if [[ $TRAVIS_PHP_VERSION = '7.2' ]]; then ./vendor/bin/psalm --show-info=false; fi
