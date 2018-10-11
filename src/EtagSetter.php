@@ -33,7 +33,7 @@ class EtagSetter implements EtagSetterInterface
         return $etag;
     }
 
-    public function getEtagByEitireView(ResourceObject $ro)
+    public function getEtagByEitireView(ResourceObject $ro) : string
     {
         return \get_class($ro) . \serialize($ro->view);
     }
