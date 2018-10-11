@@ -6,21 +6,27 @@
  */
 namespace BEAR\QueryRepository;
 
-use Doctrine\Common\Cache\VoidCache;
+use BEAR\Resource\Uri;
+use Doctrine\Common\Cache\ArrayCache;
 use PHPUnit\Framework\TestCase;
 
 class HttpCacheTest extends TestCase
 {
-    public function setUp()
+    public function testisNotModifiedFale()
     {
-        parent::setUp();
+        $httpCache = new HttpCache(new ArrayCache);
+        $server = [];
+        $this->assertFalse($httpCache->isNotModified($server));
     }
 
-    public function testPurgeSameResourceObjectByPatch()
+    public function testisNotModifiedTrue()
     {
-        $httpCache = new HttpCache(new VoidCache);
-        $server = [];
-        $result = $httpCache->isNotModified($server);
-        $this->assertFalse($result);
+        $cache = new ArrayCache;
+        $uri = new Uri('app://self/');
+        $etag = 'etag-1';
+        $cache->save(HttpCache::ETAG_KEY . $etag, (string) $uri);
+        $httpCache = new HttpCache($cache);
+        $server = ['HTTP_IF_NONE_MATCH' => $etag];
+        $this->assertTrue($httpCache->isNotModified($server));
     }
 }
