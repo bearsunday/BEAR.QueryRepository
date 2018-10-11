@@ -11,21 +11,21 @@ use BEAR\Resource\ResourceObject;
 
 class EtagSetter implements EtagSetterInterface
 {
-    public function __invoke(ResourceObject $resourceObject, int $time = null, AbstractCacheControl $httpCacche = null)
+    public function __invoke(ResourceObject $resourceObject, int $time = null, AbstractCacheControl $httpCache = null)
     {
         $time = $time !== null ?: \time();
 
         if ($resourceObject->code !== 200) {
             return;
         }
-        $resourceObject->headers['ETag'] = $this->getEtag($resourceObject, $httpCacche);
+        $resourceObject->headers['ETag'] = $this->getEtag($resourceObject, $httpCache);
         $resourceObject->headers['Last-Modified'] = \gmdate('D, d M Y H:i:s', $time) . ' GMT';
     }
 
-    public function getEtagByPartialBody(AbstractCacheControl $httpCacche) : string
+    public function getEtagByPartialBody(AbstractCacheControl $httpCache) : string
     {
         $etag = '';
-        foreach ($httpCacche->etag as $etagKey) {
+        foreach ($httpCache->etag as $etagKey) {
             $phpServerKey = \sprintf('HTTP_%s', \strtoupper($etagKey));
             $etag .= \strtolower($_SERVER[$phpServerKey] ?? '');
         }
@@ -45,10 +45,10 @@ class EtagSetter implements EtagSetterInterface
      *
      * @see https://cloud.google.com/storage/docs/hashes-etags
      */
-    private function getEtag(ResourceObject $ro, AbstractCacheControl $httpCacche = null) : string
+    private function getEtag(ResourceObject $ro, AbstractCacheControl $httpCache = null) : string
     {
-        $hasEtagKeys = $httpCacche instanceof AbstractCacheControl && $httpCacche->etag !== [];
-        $etag = $hasEtagKeys ? $this->getEtagByPartialBody($httpCacche, $ro) : $this->getEtagByEitireView($ro);
+        $hasEtagKeys = $httpCache instanceof AbstractCacheControl && $httpCache->etag !== [];
+        $etag = $hasEtagKeys ? $this->getEtagByPartialBody($httpCache, $ro) : $this->getEtagByEitireView($ro);
 
         return (string) \crc32($etag);
     }
