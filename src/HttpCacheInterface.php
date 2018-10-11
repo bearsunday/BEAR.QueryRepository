@@ -17,4 +17,11 @@ interface HttpCacheInterface
      * @https://tools.ietf.org/html/rfc7232#section-4.1
      */
     public function isNotModified(array $server) : bool;
+
+    /**
+     * Transfer status code 304 to the client
+     *
+     * @return void
+     */
+    public function transfer();
 }

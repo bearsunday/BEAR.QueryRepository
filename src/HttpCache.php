@@ -40,4 +40,17 @@ final class HttpCache implements HttpCacheInterface
 
         return $this->kvs->contains($etagKey) ? true : false;
     }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function transfer()
+    {
+        if (PHP_SAPI === 'cli') {
+            echo '304 Not Modified' . PHP_EOL . PHP_EOL;
+
+            return;
+        }
+        \http_response_code(304);
+    }
 }
