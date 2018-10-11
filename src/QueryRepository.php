@@ -12,16 +12,13 @@ use BEAR\Resource\AbstractUri;
 use BEAR\Resource\RequestInterface;
 use BEAR\Resource\ResourceObject;
 use Doctrine\Common\Annotations\Reader;
-use Doctrine\Common\Cache\Cache;
 
 class QueryRepository implements QueryRepositoryInterface
 {
-    const ETAG_BY_URI = 'etag-by-uri';
-
     /**
-     * @var Cache
+     * @var ResourceStorageInterface
      */
-    private $kvs;
+    private $storage;
 
     /**
      * @var Reader
@@ -43,25 +40,27 @@ class QueryRepository implements QueryRepositoryInterface
      */
     public function __construct(
         EtagSetterInterface $setEtag,
-        Cache $kvs,
+        ResourceStorageInterface $storage,
         Reader $reader,
         Expiry $expiry
     ) {
         $this->setEtag = $setEtag;
         $this->reader = $reader;
-        $this->kvs = $kvs;
+        $this->storage = $storage;
         $this->expiry = $expiry;
     }
 
     /**
      * {@inheritdoc}
+     *
+     * @throws \ReflectionException
      */
     public function put(ResourceObject $ro)
     {
         $ro->toString();
         ($this->setEtag)($ro);
         if (isset($ro->headers['ETag'])) {
-            $this->updateEtagDatabase($ro);
+            $this->storage->updateEtag($ro);
         }
         /* @var $cacheable Cacheable */
         $cacheable = $this->getCacheable($ro);
@@ -73,10 +72,10 @@ class QueryRepository implements QueryRepositoryInterface
                 $ro->view = $ro->toString();
             }
 
-            return $this->kvs->save((string) $ro->uri, [$ro->uri, $ro->code, $ro->headers, $body, $ro->view], $lifeTime);
+            return $this->storage->saveView($ro, $lifeTime);
         }
         // "value" cache type
-        return $this->kvs->save((string) $ro->uri, [$ro->uri, $ro->code, $ro->headers, $body, null], $lifeTime);
+        return $this->storage->saveValue($ro, $lifeTime);
     }
 
     /**
@@ -84,12 +83,7 @@ class QueryRepository implements QueryRepositoryInterface
      */
     public function get(AbstractUri $uri)
     {
-        $data = $this->kvs->fetch((string) $uri);
-        if ($data === false) {
-            return false;
-        }
-
-        return $data;
+        return $this->storage->get($uri);
     }
 
     /**
@@ -97,22 +91,7 @@ class QueryRepository implements QueryRepositoryInterface
      */
     public function purge(AbstractUri $uri)
     {
-        $this->deleteEtagDatabase($uri);
-
-        return $this->kvs->delete((string) $uri);
-    }
-
-    /**
-     * Delete etag in etag repository
-     *
-     * @param AbstractUri $uri
-     */
-    public function deleteEtagDatabase(AbstractUri $uri)
-    {
-        $etagId = self::ETAG_BY_URI . (string) $uri; // invalidate etag
-        $oldEtagKey = $this->kvs->fetch($etagId);
-
-        $this->kvs->delete($oldEtagKey);
+        return $this->storage->delete($uri);
     }
 
     private function evaluateBody($body)
@@ -130,6 +109,8 @@ class QueryRepository implements QueryRepositoryInterface
     }
 
     /**
+     * @throws \ReflectionException
+     *
      * @return Cacheable|null
      */
     private function getCacheable(ResourceObject $ro)
@@ -138,25 +119,6 @@ class QueryRepository implements QueryRepositoryInterface
         $cache = $this->reader->getClassAnnotation(new \ReflectionClass($ro), Cacheable::class);
 
         return $cache;
-    }
-
-    /**
-     * Update etag in etag repository
-     *
-     * @param ResourceObject $ro
-     */
-    private function updateEtagDatabase(ResourceObject $ro)
-    {
-        $etag = $ro->headers['ETag'];
-        $uri = (string) $ro->uri;
-        $etagUri = self::ETAG_BY_URI . $uri;
-        $oldEtag = $this->kvs->fetch($etagUri);
-        if ($oldEtag) {
-            $this->kvs->delete($oldEtag);
-        }
-        $etagId = HttpCache::ETAG_KEY . $etag;
-        $this->kvs->save($etagId, $uri);     // save etag
-        $this->kvs->save($etagUri, $etagId); // save uri  mapping etag
     }
 
     /**
