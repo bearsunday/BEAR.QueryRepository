@@ -20,8 +20,6 @@ interface HttpCacheInterface
 
     /**
      * Transfer status code 304 to the client
-     *
-     * @return void
      */
     public function transfer();
 }
