@@ -69,7 +69,7 @@ class RefreshAnnotatedCommand implements CommandInterface
         }
         if ($annotation instanceof Refresh) {
             $this->repository->purge($uri);
-            $ro = $this->resource->get->uri($uri)->eager->request();
+            $ro = $this->resource->get((string) $uri);
             $this->repository->put($ro);
         }
     }
