@@ -30,7 +30,7 @@ class EtagSetterTest extends TestCase
         $setEtag = new EtagSetter;
         $time = 0;
         $setEtag($resourceObject, $time);
-        $expect = 'Thu, 01 Jan 1970 00:00:01 GMT';
+        $expect = 'Thu, 01 Jan 1970 00:00:00 GMT';
         $this->assertSame($expect, $resourceObject->headers['Last-Modified']);
         $this->assertInternalType('string', $resourceObject->headers['ETag']);
     }

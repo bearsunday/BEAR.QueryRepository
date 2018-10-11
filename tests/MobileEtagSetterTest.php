@@ -6,6 +6,7 @@
  */
 namespace BEAR\QueryRepository;
 
+use BEAR\RepositoryModule\Annotation\HttpCache;
 use FakeVendor\HelloWorld\Resource\App\User;
 use PHPUnit\Framework\TestCase;
 
@@ -29,14 +30,13 @@ class MobileEtagSetterTest extends TestCase
         parent::setUp();
         $this->obj = new User;
         $this->etagSetter = new FakeMobileEtagSetter;
-        $currentTime = \time();
-        $this->time = \gmdate('D, d M Y H:i:s', $currentTime) . ' GMT';
+        $this->time = \time();
     }
 
     public function testMobile()
     {
         $_SERVER['HTTP_USER_AGENT'] = self::IPHONE;
-        ($this->etagSetter)($this->obj, $this->time);
+        ($this->etagSetter)($this->obj, $this->time, new HttpCache);
         $expected = 'mobile';
         $this->assertSame($expected, FakeMobileEtagSetter::$device);
     }

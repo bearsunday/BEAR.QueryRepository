@@ -6,16 +6,17 @@
  */
 namespace BEAR\QueryRepository;
 
+use BEAR\RepositoryModule\Annotation\HttpCache;
 use BEAR\Resource\ResourceObject;
 
 class FakeMobileEtagSetter extends MobileEtagSetter
 {
     public static $device;
 
-    public function __invoke(ResourceObject $resourceObject, $time = null)
+    public function __invoke(ResourceObject $resourceObject, int $time = null, HttpCache $httpCache = null)
     {
         self::$device = $this->getDevice();
 
-        return parent::__invoke($resourceObject, $time);
+        return parent::__invoke($resourceObject, $time, $httpCache);
     }
 }

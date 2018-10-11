@@ -58,4 +58,38 @@ class GetInterceptorTest extends TestCase
         $this->expectException(ExpireAtKeyNotExists::class);
         $this->resource->get->uri('app://self/control-expiry-error')->eager->request();
     }
+
+    public function testHttpCacheAnnotation()
+    {
+        $ro = $this->resource->get->uri('app://self/http-cache-control')->eager->request();
+        $this->assertSame($ro->headers['Cache-Control'], 'private, no-cache, no-store, must-revalidate');
+    }
+
+    public function testNoHttpCacheAnnotation()
+    {
+        $ro = $this->resource->get->uri('app://self/no-http-cache-control')->eager->request();
+        $this->assertSame($ro->headers['Cache-Control'], 'private, no-store, no-cache, must-revalidate');
+    }
+
+    public function testHttpCacheEtag()
+    {
+        $ro1 = $this->resource->get->uri('app://self/etag')->eager->request();
+        $ro2 = $this->resource->get->uri('app://self/etag')->eager->request();
+        $ro3 = $this->resource->get->uri('app://self/etag')->withQuery(['updatedAt' => 1])->eager->request();
+        $this->assertSame($ro1->headers['ETag'], $ro2->headers['ETag']);
+        $this->assertNotSame($ro1->headers['ETag'], $ro3->headers['ETag']);
+    }
+
+    public function testHttpCacheVary()
+    {
+        $ro1 = $this->resource->get->uri('app://self/etag')->eager->request();
+        $ro2 = $this->resource->get->uri('app://self/etag')->eager->request();
+        $_SERVER['X_VARY'] = 'val1, val2';
+        $_SERVER['X_VAL1'] = '1';
+        $_SERVER['X_VAL2'] = '2';
+        $ro3 = $this->resource->get->uri('app://self/etag')->eager->request();
+        $this->assertArrayNotHasKey('Age', $ro1->headers);
+        $this->assertArrayHasKey('Age', $ro2->headers);
+        $this->assertArrayNotHasKey('Age', $ro3->headers);
+    }
 }

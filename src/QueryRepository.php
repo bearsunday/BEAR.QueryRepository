@@ -8,6 +8,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\ExpireAtKeyNotExists;
 use BEAR\RepositoryModule\Annotation\Cacheable;
+use BEAR\RepositoryModule\Annotation\HttpCache;
 use BEAR\RepositoryModule\Annotation\Storage;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\RequestInterface;
@@ -56,29 +57,33 @@ class QueryRepository implements QueryRepositoryInterface
 
     /**
      * {@inheritdoc}
+     *
+     * @throws \ReflectionException
      */
     public function put(ResourceObject $ro)
     {
         $ro->toString();
-        ($this->setEtag)($ro);
+        $httpCache = $this->getHttpCacheAnnotation($ro);
+        $cacheable = $this->getCacheableAnnotation($ro);
+        /* @var Cacheable $cacheable|null */
+        ($this->setEtag)($ro, null, $httpCache);
         if (isset($ro->headers['ETag'])) {
             $this->updateEtagDatabase($ro);
         }
-        /* @var $cacheable Cacheable */
-        $cacheable = $this->getCacheable($ro);
         $body = $this->evaluateBody($ro->body);
         $lifeTime = $this->getExpiryTime($ro, $cacheable);
         $this->setMaxAge($ro, $lifeTime);
+        $id = $this->getVaryUri($ro->uri);
         if ($cacheable instanceof Cacheable && $cacheable->type === 'view') {
             if (! $ro->view) {
                 // render
                 $ro->view = $ro->toString();
             }
 
-            return $this->kvs->save((string) $ro->uri, [$ro->uri, $ro->code, $ro->headers, $body, $ro->view], $lifeTime);
+            return $this->kvs->save($id, [$ro->uri, $ro->code, $ro->headers, $body, $ro->view], $lifeTime);
         }
         // "value" cache type
-        return $this->kvs->save((string) $ro->uri, [$ro->uri, $ro->code, $ro->headers, $body, null], $lifeTime);
+        return $this->kvs->save($id, [$ro->uri, $ro->code, $ro->headers, $body, null], $lifeTime);
     }
 
     /**
@@ -86,10 +91,13 @@ class QueryRepository implements QueryRepositoryInterface
      */
     public function get(AbstractUri $uri)
     {
-        $data = $this->kvs->fetch((string) $uri);
+        $id = $this->getVaryUri($uri);
+        $data = $this->kvs->fetch($id);
         if ($data === false) {
             return false;
         }
+        $age = \time() - \strtotime($data[2]['Last-Modified']);
+        $data[2]['Age'] = $age;
 
         return $data;
     }
@@ -99,9 +107,10 @@ class QueryRepository implements QueryRepositoryInterface
      */
     public function purge(AbstractUri $uri)
     {
+        $id = $this->getVaryUri($uri);
         $this->deleteEtagDatabase($uri);
 
-        return $this->kvs->delete((string) $uri);
+        return $this->kvs->delete($id);
     }
 
     /**
@@ -111,12 +120,42 @@ class QueryRepository implements QueryRepositoryInterface
      */
     public function deleteEtagDatabase(AbstractUri $uri)
     {
-        $etagId = self::ETAG_BY_URI . (string) $uri; // invalidate etag
+        $etagId = self::ETAG_BY_URI . $this->getVaryUri($uri); // invalidate etag
+
         $oldEtagKey = $this->kvs->fetch($etagId);
 
         $this->kvs->delete($oldEtagKey);
     }
 
+    /**
+     * @throws \ReflectionException
+     */
+    private function getHttpCacheAnnotation(ResourceObject $ro)
+    {
+        $annotation = $this->reader->getClassAnnotation(new \ReflectionClass($ro), HttpCache::class);
+        if ($annotation instanceof HttpCache || $annotation === null) {
+            return $annotation;
+        }
+        throw new \LogicException();
+    }
+
+    /**
+     * @throws \ReflectionException
+     */
+    private function getCacheableAnnotation(ResourceObject $ro)
+    {
+        $annotation = $this->reader->getClassAnnotation(new \ReflectionClass($ro), Cacheable::class);
+        if ($annotation instanceof Cacheable || $annotation === null) {
+            return $annotation;
+        }
+        throw new \LogicException();
+    }
+
+    /**
+     * @param mixed $body
+     *
+     * @return mixed
+     */
     private function evaluateBody($body)
     {
         if (! \is_array($body)) {
@@ -129,17 +168,6 @@ class QueryRepository implements QueryRepositoryInterface
         }
 
         return $body;
-    }
-
-    /**
-     * @return Cacheable|null
-     */
-    private function getCacheable(ResourceObject $ro)
-    {
-        /** @var Cacheable|null $cache */
-        $cache = $this->reader->getClassAnnotation(new \ReflectionClass($ro), Cacheable::class);
-
-        return $cache;
     }
 
     /**
@@ -156,7 +184,7 @@ class QueryRepository implements QueryRepositoryInterface
         if ($oldEtag) {
             $this->kvs->delete($oldEtag);
         }
-        $etagId = HttpCache::ETAG_KEY . $etag;
+        $etagId = \BEAR\QueryRepository\HttpCache::ETAG_KEY . $etag;
         $this->kvs->save($etagId, $uri);     // save etag
         $this->kvs->save($etagUri, $etagId); // save uri  mapping etag
     }
@@ -195,5 +223,22 @@ class QueryRepository implements QueryRepositoryInterface
             return;
         }
         $ro->headers['Cache-Control'] = $setMaxAge;
+    }
+
+    private function getVaryUri(AbstractUri $uri) : string
+    {
+        if (! isset($_SERVER['X_VARY'])) {
+            return (string) $uri;
+        }
+        $varys = \explode(',', $_SERVER['X_VARY']);
+        $varyId = '';
+        foreach ($varys as $vary) {
+            $phpVaryKey = \sprintf('X_%s', \strtoupper($vary));
+            if (isset($_SERVER[$phpVaryKey])) {
+                $varyId .= $_SERVER[$phpVaryKey];
+            }
+        }
+
+        return (string) $uri . $varyId;
     }
 }

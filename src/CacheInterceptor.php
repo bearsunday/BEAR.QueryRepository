@@ -20,22 +20,15 @@ class CacheInterceptor implements MethodInterceptor
     private $repository;
 
     /**
-     * @var EtagSetterInterface
-     */
-    private $setEtag;
-
-    /**
      * @var Reader
      */
     private $reader;
 
     public function __construct(
         QueryRepositoryInterface $repository,
-        EtagSetterInterface $setEtag,
         Reader $annotationReader
     ) {
         $this->repository = $repository;
-        $this->setEtag = $setEtag;
         $this->reader = $annotationReader;
     }
 

@@ -42,9 +42,12 @@ class RefreshSameCommand implements CommandInterface
         \call_user_func_array($onGet, $getQuery);
     }
 
+    /**
+     * @throws \ReflectionException
+     */
     private function getQuery(ResourceObject $resourceObject) : array
     {
-        $refParameters = (new \ReflectionMethod($resourceObject, 'onGet'))->getParameters();
+        $refParameters = (new \ReflectionMethod(\get_class($resourceObject), 'onGet'))->getParameters();
         $getQuery = [];
         $query = $resourceObject->uri->query;
         foreach ($refParameters as $parameter) {
