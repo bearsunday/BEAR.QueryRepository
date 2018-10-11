@@ -8,4 +8,8 @@ namespace BEAR\RepositoryModule\Annotation;
 
 abstract class AbstractCacheControl
 {
+    public function __toString()
+    {
+        return '';
+    }
 }

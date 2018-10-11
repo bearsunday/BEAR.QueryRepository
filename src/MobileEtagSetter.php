@@ -10,12 +10,12 @@ use BEAR\Resource\ResourceObject;
 
 class MobileEtagSetter implements EtagSetterInterface
 {
-    public function __invoke(ResourceObject $resourceObject, $time = null)
+    public function __invoke(ResourceObject $resourceObject, int $time = null)
     {
         // etag]
         $resourceObject->headers['ETag'] = (string) \crc32($this->getDevice() . \serialize($resourceObject->view) . \serialize($resourceObject->body));
         // time
-        $time = $time !== null ?: \time();
+        $time = $time === null ? \time() : $time;
         $resourceObject->headers['Last-Modified'] = \gmdate('D, d M Y H:i:s', $time) . ' GMT';
     }
 
