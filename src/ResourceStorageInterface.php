@@ -29,7 +29,9 @@ interface ResourceStorageInterface
     /**
      * Get resource cache
      *
-     * @return [$uri, $code, $headers, $body, $view]]|false
+     * return [$uri, $code, $headers, $body, $view]] array.
+     *
+     * @return array|false
      */
     public function get(AbstractUri $uri);
 
