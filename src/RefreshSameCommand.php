@@ -8,6 +8,8 @@ namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\UnmatchedQuery;
 use BEAR\Resource\ResourceObject;
+use function is_callable;
+use function method_exists;
 use Ray\Aop\MethodInvocation;
 
 class RefreshSameCommand implements CommandInterface
@@ -29,7 +31,6 @@ class RefreshSameCommand implements CommandInterface
             return;
         }
         unset($invocation);
-        $onGet = [$ro, 'onGet'];
         $getQuery = $this->getQuery($ro);
         $delUri = clone $ro->uri;
         $delUri->query = $getQuery;
@@ -39,7 +40,9 @@ class RefreshSameCommand implements CommandInterface
 
         // GET for re-generate (in interceptor)
         $ro->uri->query = $getQuery;
-        \call_user_func_array($onGet, $getQuery);
+        if (method_exists($ro, 'onGet')) {
+            \call_user_func_array([$ro, 'onGet'], $getQuery);
+        }
     }
 
     /**
