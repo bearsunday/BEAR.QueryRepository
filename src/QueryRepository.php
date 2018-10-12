@@ -14,7 +14,6 @@ use BEAR\Resource\AbstractUri;
 use BEAR\Resource\RequestInterface;
 use BEAR\Resource\ResourceObject;
 use Doctrine\Common\Annotations\Reader;
-use Doctrine\Common\Cache\Cache;
 
 class QueryRepository implements QueryRepositoryInterface
 {
