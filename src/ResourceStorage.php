@@ -10,27 +10,25 @@ use BEAR\RepositoryModule\Annotation\Storage;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\RequestInterface;
 use BEAR\Resource\ResourceObject;
-use Doctrine\Common\Cache\Cache;
+use Doctrine\Common\Cache\CacheProvider;
 
 final class ResourceStorage implements ResourceStorageInterface
 {
-    const MARK = '1';
+    const ETAG_TABLE = 'etag-table-';
 
-    const ETAG_BY_URI = 'etag-by-uri';
-
-    const ETAG_PREFIX = 'etag-';
+    const ETAG_VAL = 'etag-val-';
 
     /**
-     * @var Cache
+     * @var CacheProvider
      */
     private $cache;
 
     /**
      * @Storage
      */
-    public function __construct(Cache $etagRepo)
+    public function __construct(CacheProvider $cache)
     {
-        $this->cache = $etagRepo;
+        $this->cache = $cache;
     }
 
     /**
@@ -38,7 +36,36 @@ final class ResourceStorage implements ResourceStorageInterface
      */
     public function hasEtag(string $etag) : bool
     {
-        return $this->cache->contains(self::ETAG_PREFIX . $etag);
+        return $this->cache->contains(self::ETAG_VAL . $etag);
+    }
+
+    /**
+     * Update ETag
+     */
+    public function updateEtag(ResourceObject $ro)
+    {
+        $varyUri = $this->getVaryUri($ro->uri);
+        $etag = self::ETAG_VAL . $ro->headers['ETag'];
+        $uri = self::ETAG_TABLE . $varyUri;
+        // delete old ETag
+        $this->deleteEtag($ro->uri);
+        // save ETag uri
+        $this->cache->save($uri, $etag);
+        // save ETag value
+        $this->cache->save($etag, $uri);
+    }
+
+    /**
+     * Delete etag in etag repository
+     *
+     * @param AbstractUri $uri
+     */
+    public function deleteEtag(AbstractUri $uri)
+    {
+        $uri = self::ETAG_TABLE . $this->getVaryUri($uri); // invalidate etag
+        $oldEtagKey = $this->cache->fetch($uri);
+
+        $this->cache->delete($oldEtagKey);
     }
 
     /**
@@ -46,7 +73,9 @@ final class ResourceStorage implements ResourceStorageInterface
      */
     public function get(AbstractUri $uri)
     {
-        return $this->cache->fetch((string) $uri);
+        $uri = $this->getVaryUri($uri);
+
+        return $this->cache->fetch($uri);
     }
 
     /**
@@ -55,8 +84,9 @@ final class ResourceStorage implements ResourceStorageInterface
     public function delete(AbstractUri $uri) : bool
     {
         $this->deleteEtag($uri);
+        $uri = $this->getVaryUri($uri);
 
-        return $this->cache->delete((string) $uri);
+        return $this->cache->delete($uri);
     }
 
     /**
@@ -65,8 +95,10 @@ final class ResourceStorage implements ResourceStorageInterface
     public function saveValue(ResourceObject $ro, int $lifeTime)
     {
         $body = $this->evaluateBody($ro->body);
+        $uri = $this->getVaryUri($ro->uri);
+        $val = [$ro->uri, $ro->code, $ro->headers, $body, null];
 
-        return $this->cache->save((string) $ro->uri, [$ro->uri, $ro->code, $ro->headers, $body, null], $lifeTime);
+        return $this->cache->save($uri, $val, $lifeTime);
     }
 
     /**
@@ -75,38 +107,10 @@ final class ResourceStorage implements ResourceStorageInterface
     public function saveView(ResourceObject $ro, int $lifeTime)
     {
         $body = $this->evaluateBody($ro->body);
+        $uri = $this->getVaryUri($ro->uri);
+        $val = [$ro->uri, $ro->code, $ro->headers, $body, $ro->view];
 
-        return $this->cache->save((string) $ro->uri, [$ro->uri, $ro->code, $ro->headers, $body, $ro->view], $lifeTime);
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function updateEtag(ResourceObject $ro)
-    {
-        $etag = $ro->headers['ETag'];
-        $uri = (string) $ro->uri;
-        $etagUri = self::ETAG_BY_URI . $uri;
-        $oldEtag = $this->cache->fetch($etagUri);
-        if ($oldEtag) {
-            $this->cache->delete($oldEtag);
-        }
-        $etagId = self::ETAG_PREFIX . $etag;
-        $this->cache->save($etagId, $uri);     // save etag
-        $this->cache->save($etagUri, $etagId); // save uri  mapping etag
-    }
-
-    /**
-     * Delete etag in etag repository
-     *
-     * @param AbstractUri $uri
-     */
-    private function deleteEtag(AbstractUri $uri)
-    {
-        $etagId = self::ETAG_BY_URI . (string) $uri; // invalidate etag
-        $oldEtagKey = $this->cache->fetch($etagId);
-
-        $this->cache->delete($oldEtagKey);
+        return $this->cache->save($uri, $val, $lifeTime);
     }
 
     private function evaluateBody($body)
@@ -121,5 +125,22 @@ final class ResourceStorage implements ResourceStorageInterface
         }
 
         return $body;
+    }
+
+    private function getVaryUri(AbstractUri $uri) : string
+    {
+        if (! isset($_SERVER['X_VARY'])) {
+            return (string) $uri;
+        }
+        $varys = \explode(',', $_SERVER['X_VARY']);
+        $varyId = '';
+        foreach ($varys as $vary) {
+            $phpVaryKey = \sprintf('X_%s', \strtoupper($vary));
+            if (isset($_SERVER[$phpVaryKey])) {
+                $varyId .= $_SERVER[$phpVaryKey];
+            }
+        }
+
+        return (string) $uri . $varyId;
     }
 }

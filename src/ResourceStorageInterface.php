@@ -12,14 +12,19 @@ use BEAR\Resource\ResourceObject;
 interface ResourceStorageInterface
 {
     /**
+     * Is ETag registered ?
+     */
+    public function hasEtag(string $etag) : bool;
+
+    /**
      * Update or save new Etag
      */
     public function updateEtag(ResourceObject $ro);
 
     /**
-     * Is ETag registered ?
+     * Delete Etag
      */
-    public function hasEtag(string $etag) : bool;
+    public function deleteEtag(AbstractUri $uri);
 
     /**
      * Get resource cache
