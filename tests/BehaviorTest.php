@@ -30,7 +30,7 @@ class BehaviorTest extends TestCase
     private $repository;
 
     /**
-     * @var HttpCache
+     * @var HttpCacheInterface
      */
     private $httpCache;
 

@@ -16,7 +16,7 @@ class HttpCacheTest extends TestCase
 {
     public function testisNotModifiedFale()
     {
-        $httpCache = new HttpCache(new ResourceStorage(new ArrayCache));
+        $httpCache = new HttpCacheCli(new ResourceStorage(new ArrayCache));
         $server = [];
         $this->assertFalse($httpCache->isNotModified($server));
     }
@@ -27,7 +27,7 @@ class HttpCacheTest extends TestCase
         $user = $resource->get('app://self/user', ['id' => 1]);
         $storage = new ResourceStorage(new ArrayCache);
         $storage->updateEtag($user);
-        $httpCache = new HttpCache($storage);
+        $httpCache = new HttpCacheCli($storage);
         $server = ['HTTP_IF_NONE_MATCH' => $user->headers['ETag']];
         $this->assertTrue($httpCache->isNotModified($server));
 
@@ -37,7 +37,7 @@ class HttpCacheTest extends TestCase
     /**
      * @depends testisNotModifiedTrue
      */
-    public function testTransfer(HttpCache $httpCache)
+    public function testTransfer(HttpCacheCli $httpCache)
     {
         $this->expectOutputRegex('/\A304 Not Modified/');
         $httpCache->transfer();

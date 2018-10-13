@@ -6,7 +6,7 @@
  */
 namespace BEAR\QueryRepository;
 
-final class HttpCache implements HttpCacheInterface
+final class HttpCacheWeb implements HttpCacheInterface
 {
     /**
      * @var ResourceStorageInterface
@@ -31,11 +31,6 @@ final class HttpCache implements HttpCacheInterface
      */
     public function transfer()
     {
-        if (PHP_SAPI === 'cli') {
-            echo '304 Not Modified' . PHP_EOL . PHP_EOL;
-
-            return;
-        }
         \http_response_code(304);
     }
 }
