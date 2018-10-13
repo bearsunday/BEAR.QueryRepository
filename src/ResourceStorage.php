@@ -62,8 +62,8 @@ final class ResourceStorage implements ResourceStorageInterface
      */
     public function deleteEtag(AbstractUri $uri)
     {
-        $uri = self::ETAG_TABLE . $this->getVaryUri($uri); // invalidate etag
-        $oldEtagKey = $this->cache->fetch($uri);
+        $varyUri = self::ETAG_TABLE . $this->getVaryUri($uri); // invalidate etag
+        $oldEtagKey = $this->cache->fetch($varyUri);
 
         $this->cache->delete($oldEtagKey);
     }
@@ -73,9 +73,9 @@ final class ResourceStorage implements ResourceStorageInterface
      */
     public function get(AbstractUri $uri)
     {
-        $uri = $this->getVaryUri($uri);
+        $varyUri = $this->getVaryUri($uri);
 
-        return $this->cache->fetch($uri);
+        return $this->cache->fetch($varyUri);
     }
 
     /**
@@ -84,9 +84,9 @@ final class ResourceStorage implements ResourceStorageInterface
     public function delete(AbstractUri $uri) : bool
     {
         $this->deleteEtag($uri);
-        $uri = $this->getVaryUri($uri);
+        $varyUri = $this->getVaryUri($uri);
 
-        return $this->cache->delete($uri);
+        return $this->cache->delete($varyUri);
     }
 
     /**
