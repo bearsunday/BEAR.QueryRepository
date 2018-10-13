@@ -14,16 +14,15 @@ use BEAR\Resource\AbstractUri;
 use BEAR\Resource\RequestInterface;
 use BEAR\Resource\ResourceObject;
 use Doctrine\Common\Annotations\Reader;
-use Doctrine\Common\Cache\Cache;
 
 class QueryRepository implements QueryRepositoryInterface
 {
     const ETAG_BY_URI = 'etag-by-uri';
 
     /**
-     * @var Cache
+     * @var ResourceStorageInterface
      */
-    private $kvs;
+    private $storage;
 
     /**
      * @var Reader
@@ -45,13 +44,13 @@ class QueryRepository implements QueryRepositoryInterface
      */
     public function __construct(
         EtagSetterInterface $setEtag,
-        Cache $kvs,
+        ResourceStorageInterface $storage,
         Reader $reader,
         Expiry $expiry
     ) {
         $this->setEtag = $setEtag;
         $this->reader = $reader;
-        $this->kvs = $kvs;
+        $this->storage = $storage;
         $this->expiry = $expiry;
     }
 
@@ -68,22 +67,21 @@ class QueryRepository implements QueryRepositoryInterface
         /* @var Cacheable $cacheable|null */
         ($this->setEtag)($ro, null, $httpCache);
         if (isset($ro->headers['ETag'])) {
-            $this->updateEtagDatabase($ro);
+            $this->storage->updateEtag($ro);
         }
         $body = $this->evaluateBody($ro->body);
         $lifeTime = $this->getExpiryTime($ro, $cacheable);
         $this->setMaxAge($ro, $lifeTime);
-        $id = $this->getVaryUri($ro->uri);
         if ($cacheable instanceof Cacheable && $cacheable->type === 'view') {
             if (! $ro->view) {
                 // render
                 $ro->view = $ro->toString();
             }
 
-            return $this->kvs->save($id, [$ro->uri, $ro->code, $ro->headers, $body, $ro->view], $lifeTime);
+            return $this->storage->saveView($ro, $lifeTime);
         }
         // "value" cache type
-        return $this->kvs->save($id, [$ro->uri, $ro->code, $ro->headers, $body, null], $lifeTime);
+        return $this->storage->saveValue($ro, $lifeTime);
     }
 
     /**
@@ -91,8 +89,7 @@ class QueryRepository implements QueryRepositoryInterface
      */
     public function get(AbstractUri $uri)
     {
-        $id = $this->getVaryUri($uri);
-        $data = $this->kvs->fetch($id);
+        $data = $this->storage->get($uri);
         if ($data === false) {
             return false;
         }
@@ -107,24 +104,9 @@ class QueryRepository implements QueryRepositoryInterface
      */
     public function purge(AbstractUri $uri)
     {
-        $id = $this->getVaryUri($uri);
-        $this->deleteEtagDatabase($uri);
+        $this->storage->deleteEtag($uri);
 
-        return $this->kvs->delete($id);
-    }
-
-    /**
-     * Delete etag in etag repository
-     *
-     * @param AbstractUri $uri
-     */
-    public function deleteEtagDatabase(AbstractUri $uri)
-    {
-        $etagId = self::ETAG_BY_URI . $this->getVaryUri($uri); // invalidate etag
-
-        $oldEtagKey = $this->kvs->fetch($etagId);
-
-        $this->kvs->delete($oldEtagKey);
+        return $this->storage->delete($uri);
     }
 
     /**
@@ -170,25 +152,6 @@ class QueryRepository implements QueryRepositoryInterface
         return $body;
     }
 
-    /**
-     * Update etag in etag repository
-     *
-     * @param ResourceObject $ro
-     */
-    private function updateEtagDatabase(ResourceObject $ro)
-    {
-        $etag = $ro->headers['ETag'];
-        $uri = (string) $ro->uri;
-        $etagUri = self::ETAG_BY_URI . $uri;
-        $oldEtag = $this->kvs->fetch($etagUri);
-        if ($oldEtag) {
-            $this->kvs->delete($oldEtag);
-        }
-        $etagId = \BEAR\QueryRepository\HttpCache::ETAG_KEY . $etag;
-        $this->kvs->save($etagId, $uri);     // save etag
-        $this->kvs->save($etagUri, $etagId); // save uri  mapping etag
-    }
-
     private function getExpiryTime(ResourceObject $ro, Cacheable $cacheable = null) : int
     {
         if ($cacheable === null) {
@@ -209,9 +172,8 @@ class QueryRepository implements QueryRepositoryInterface
             throw new ExpireAtKeyNotExists($msg);
         }
         $expiryAt = $ro->body[$cacheable->expiryAt];
-        $sec = \strtotime($expiryAt) - \time();
 
-        return $sec;
+        return \strtotime($expiryAt) - \time();
     }
 
     private function setMaxAge(ResourceObject $ro, int $age)
@@ -223,22 +185,5 @@ class QueryRepository implements QueryRepositoryInterface
             return;
         }
         $ro->headers['Cache-Control'] = $setMaxAge;
-    }
-
-    private function getVaryUri(AbstractUri $uri) : string
-    {
-        if (! isset($_SERVER['X_VARY'])) {
-            return (string) $uri;
-        }
-        $varys = \explode(',', $_SERVER['X_VARY']);
-        $varyId = '';
-        foreach ($varys as $vary) {
-            $phpVaryKey = \sprintf('X_%s', \strtoupper($vary));
-            if (isset($_SERVER[$phpVaryKey])) {
-                $varyId .= $_SERVER[$phpVaryKey];
-            }
-        }
-
-        return (string) $uri . $varyId;
     }
 }

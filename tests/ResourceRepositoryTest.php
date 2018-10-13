@@ -28,8 +28,14 @@ class ResourceRepositoryTest extends TestCase
 
     public function setUp()
     {
-        $this->repository = new Repository(new EtagSetter, new FilesystemCache($_ENV['TMP_DIR']), new AnnotationReader, new Expiry(0, 0, 0));
-        /* @var $resource Resource */
+        $this->repository = new Repository(
+            new EtagSetter,
+            new ResourceStorage(
+                new FilesystemCache($_ENV['TMP_DIR'])
+            ),
+                new AnnotationReader,
+                new Expiry(0, 0, 0)
+        );
         $this->resourceObject = new Index;
         $this->resourceObject->uri = new Uri('page://self/user');
     }
