@@ -40,7 +40,7 @@ final class ResourceStorage implements ResourceStorageInterface
     }
 
     /**
-     * Update ETag
+     * {@inheritdoc}
      */
     public function updateEtag(ResourceObject $ro)
     {
@@ -56,9 +56,7 @@ final class ResourceStorage implements ResourceStorageInterface
     }
 
     /**
-     * Delete etag in etag repository
-     *
-     * @param AbstractUri $uri
+     * {@inheritdoc}
      */
     public function deleteEtag(AbstractUri $uri)
     {
