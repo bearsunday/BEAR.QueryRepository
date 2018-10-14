@@ -26,7 +26,7 @@ class HttpCacheTest extends TestCase
         $resource = (new Injector(new QueryRepositoryModule(new ResourceModule('FakeVendor\HelloWorld'))))->getInstance(ResourceInterface::class);
         $user = $resource->get('app://self/user', ['id' => 1]);
         $storage = new ResourceStorage(new ArrayCache);
-        $storage->updateEtag($user);
+        $storage->updateEtag($user, 10);
         $httpCache = new HttpCacheCli($storage);
         $server = ['HTTP_IF_NONE_MATCH' => $user->headers['ETag']];
         $this->assertTrue($httpCache->isNotModified($server));
