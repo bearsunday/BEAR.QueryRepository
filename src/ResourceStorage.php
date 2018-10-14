@@ -42,7 +42,7 @@ final class ResourceStorage implements ResourceStorageInterface
     /**
      * {@inheritdoc}
      */
-    public function updateEtag(ResourceObject $ro)
+    public function updateEtag(ResourceObject $ro, int $lifeTime)
     {
         $varyUri = $this->getVaryUri($ro->uri);
         $etag = self::ETAG_VAL . $ro->headers['ETag'];
@@ -50,9 +50,9 @@ final class ResourceStorage implements ResourceStorageInterface
         // delete old ETag
         $this->deleteEtag($ro->uri);
         // save ETag uri
-        $this->cache->save($uri, $etag);
+        $this->cache->save($uri, $etag, $lifeTime);
         // save ETag value
-        $this->cache->save($etag, $uri);
+        $this->cache->save($etag, $uri, $lifeTime);
     }
 
     /**

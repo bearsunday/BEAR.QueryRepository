@@ -19,7 +19,7 @@ interface ResourceStorageInterface
     /**
      * Update or save new Etag
      */
-    public function updateEtag(ResourceObject $ro);
+    public function updateEtag(ResourceObject $ro, int $lifeTime);
 
     /**
      * Delete Etag

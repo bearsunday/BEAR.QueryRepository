@@ -66,11 +66,10 @@ class QueryRepository implements QueryRepositoryInterface
         $cacheable = $this->getCacheableAnnotation($ro);
         /* @var Cacheable $cacheable|null */
         ($this->setEtag)($ro, null, $httpCache);
-        if (isset($ro->headers['ETag'])) {
-            $this->storage->updateEtag($ro);
-        }
-        $body = $this->evaluateBody($ro->body);
         $lifeTime = $this->getExpiryTime($ro, $cacheable);
+        if (isset($ro->headers['ETag'])) {
+            $this->storage->updateEtag($ro, $lifeTime);
+        }
         $this->setMaxAge($ro, $lifeTime);
         if ($cacheable instanceof Cacheable && $cacheable->type === 'view') {
             if (! $ro->view) {
