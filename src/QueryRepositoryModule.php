@@ -6,11 +6,13 @@
  */
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\HttpCacheInterface as DeprecatedHttpCacheInterface;
 use BEAR\RepositoryModule\Annotation\CacheVersion;
 use BEAR\RepositoryModule\Annotation\Commands;
 use BEAR\RepositoryModule\Annotation\Storage;
 use BEAR\Resource\NamedParameter;
 use BEAR\Resource\NamedParameterInterface;
+use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
 use Doctrine\Common\Annotations\AnnotationReader;
 use Doctrine\Common\Annotations\Reader;
 use Doctrine\Common\Cache\ArrayCache;
@@ -39,5 +41,7 @@ class QueryRepositoryModule extends AbstractModule
         $this->bind(RefreshInterceptor::class);
         $this->install(new QueryRepositoryAopModule);
         $this->bind(ResourceStorageInterface::class)->to(ResourceStorage::class);
+        // BC
+        $this->bind(DeprecatedHttpCacheInterface::class)->to(HttpCacheWeb::class);
     }
 }
