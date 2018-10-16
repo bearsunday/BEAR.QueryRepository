@@ -7,7 +7,6 @@ namespace BEAR\QueryRepository;
 use BEAR\QueryRepository\Exception\ExpireAtKeyNotExists;
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\HttpCache;
-use BEAR\RepositoryModule\Annotation\Storage;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\RequestInterface;
 use BEAR\Resource\ResourceObject;
@@ -37,9 +36,6 @@ final class QueryRepository implements QueryRepositoryInterface
      */
     private $setEtag;
 
-    /**
-     * @Storage("kvs")
-     */
     public function __construct(
         EtagSetterInterface $setEtag,
         ResourceStorageInterface $storage,
