@@ -19,17 +19,10 @@ class CacheInterceptor implements MethodInterceptor
      */
     private $repository;
 
-    /**
-     * @var Reader
-     */
-    private $reader;
-
     public function __construct(
-        QueryRepositoryInterface $repository,
-        Reader $annotationReader
+        QueryRepositoryInterface $repository
     ) {
         $this->repository = $repository;
-        $this->reader = $annotationReader;
     }
 
     /**
