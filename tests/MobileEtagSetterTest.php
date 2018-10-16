@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * This file is part of the BEAR.QueryRepository package.
  *
@@ -29,7 +30,7 @@ class MobileEtagSetterTest extends TestCase
     {
         parent::setUp();
         $this->obj = new User;
-        $this->etagSetter = new FakeMobileEtagSetter;
+        $this->etagSetter = new FakeMobileEtagSetter(new MobileEtagSetter);
         $this->time = \time();
     }
 
