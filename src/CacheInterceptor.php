@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\RepositoryModule\Annotation\Cacheable;
+use BEAR\QueryRepository\Exception\ReturnValueIsNotResourceObjectException;
 use BEAR\Resource\ResourceObject;
 use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
+use function get_class;
 
 class CacheInterceptor implements MethodInterceptor
 {
@@ -27,17 +28,18 @@ class CacheInterceptor implements MethodInterceptor
      */
     public function invoke(MethodInvocation $invocation)
     {
-        /** @var ResourceObject $ro */
         $ro = $invocation->getThis();
+        if (! $ro instanceof ResourceObject) {
+            throw new ReturnValueIsNotResourceObjectException(get_class($ro));
+        }
         $stored = $this->repository->get($ro->uri);
         if ($stored) {
             list($ro->uri, $ro->code, $ro->headers, $ro->body, $ro->view) = $stored;
 
             return $ro;
         }
-        /* @var Cacheable $cacheable */
+
         try {
-            /* @var ResourceObject $ro */
             $ro = $invocation->proceed();
             $ro->code === 200 ? $this->repository->put($ro) : $this->repository->purge($ro->uri);
         } catch (\Exception $e) {
