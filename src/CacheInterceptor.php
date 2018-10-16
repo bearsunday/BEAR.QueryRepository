@@ -30,7 +30,7 @@ class CacheInterceptor implements MethodInterceptor
      */
     public function invoke(MethodInvocation $invocation)
     {
-        /** @var ResourceObject $ro */
+        /* @var ResourceObject $ro */
         $ro = $invocation->getThis();
         $stored = $this->repository->get($ro->uri);
         if ($stored) {
@@ -38,9 +38,9 @@ class CacheInterceptor implements MethodInterceptor
 
             return $ro;
         }
-        /* @var $cacheable Cacheable */
+        /* @var Cacheable $cacheable */
         try {
-            /** @var ResourceObject $ro */
+            /* @var ResourceObject $ro */
             $ro = $invocation->proceed();
             $ro->code === 200 ? $this->repository->put($ro) : $this->repository->purge($ro->uri);
         } catch (\Exception $e) {
