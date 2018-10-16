@@ -11,6 +11,9 @@ use BEAR\Resource\ResourceObject;
 
 class EtagSetter implements EtagSetterInterface
 {
+    /**
+     * {@inheritdoc}
+     */
     public function __invoke(ResourceObject $resourceObject, int $time = null, HttpCache $httpCache = null)
     {
         $time = $time === null ? \time() : $time;
