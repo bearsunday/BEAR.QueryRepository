@@ -14,22 +14,11 @@ use Ray\Aop\MethodInvocation;
 class HttpCacheInterceptor implements MethodInterceptor
 {
     /**
-     * @var Reader
-     */
-    private $reader;
-
-    public function __construct(
-        Reader $annotationReader
-    ) {
-        $this->reader = $annotationReader;
-    }
-
-    /**
      * {@inheritdoc}
      */
     public function invoke(MethodInvocation $invocation)
     {
-        $cacheControl = $this->reader->getClassAnnotation($invocation->getMethod()->getDeclaringClass(), AbstractCacheControl::class);
+        $cacheControl = $invocation->getMethod()->getDeclaringClass()->getAnnotation(AbstractCacheControl::class);
         $ro = $invocation->proceed();
         if ($ro->code === 200 && $cacheControl instanceof AbstractCacheControl) {
             $ro->headers['Cache-Control'] = (string) $cacheControl;
