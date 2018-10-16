@@ -66,14 +66,9 @@ final class QueryRepository implements QueryRepositoryInterface
         }
         $this->setMaxAge($ro, $lifeTime);
         if ($cacheable instanceof Cacheable && $cacheable->type === 'view') {
-            if (! $ro->view) {
-                // render
-                $ro->view = $ro->toString();
-            }
-
-            return $this->storage->saveView($ro, $lifeTime);
+            return $this->saveViewCache($ro, $lifeTime);
         }
-        // "value" cache type
+
         return $this->storage->saveValue($ro, $lifeTime);
     }
 
@@ -176,5 +171,14 @@ final class QueryRepository implements QueryRepositoryInterface
             return;
         }
         $ro->headers['Cache-Control'] = $setMaxAge;
+    }
+
+    private function saveViewCache(ResourceObject $ro, int $lifeTime)
+    {
+        if (! $ro->view) {
+            $ro->view = $ro->toString();
+        }
+
+        return $this->storage->saveView($ro, $lifeTime);
     }
 }
