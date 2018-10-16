@@ -7,7 +7,6 @@
 namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\AbstractCacheControl;
-use Doctrine\Common\Annotations\Reader;
 use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
 
