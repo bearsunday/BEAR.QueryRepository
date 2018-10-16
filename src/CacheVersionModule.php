@@ -16,10 +16,6 @@ class CacheVersionModule extends AbstractModule
      */
     private $version;
 
-    /**
-     * @param string              $cacheVersion
-     * @param AbstractModule|null $module
-     */
     public function __construct($cacheVersion, AbstractModule $module = null)
     {
         $this->version = $cacheVersion;
