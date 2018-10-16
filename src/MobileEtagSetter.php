@@ -20,6 +20,8 @@ final class MobileEtagSetter implements EtagSetterInterface
     }
 
     /**
+     * Return ETag prefix by device
+     *
      * @return string
      */
     private function getDevice()
