@@ -31,7 +31,8 @@
             "FakeVendor\\HelloWorld\\": [
               "tests/Fake/fake-app/src"
             ]
-        }
+        },
+        "files": ["tests/Fake/Memcached.php", "tests/Fake/Redis.php"]
     },
     "scripts" :{
         "test": ["phpunit"],
