@@ -33,7 +33,7 @@ class StorageRedisCacheProvider implements ProviderInterface
         $redis = new \Redis();
         $host = $this->server[0];
         $port = $this->server[1];
-        $redis->connect($host, $port);
+        $redis->connect($host, (int) $port);
         $redisCache = new RedisCache();
         $redisCache->setRedis($redis);
 
