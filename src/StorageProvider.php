@@ -15,7 +15,7 @@ class StorageProvider implements ProviderInterface
     /**
      * @var CacheProvider
      */
-    private $kvs;
+    private $cache;
 
     /**
      * @var string
@@ -32,9 +32,9 @@ class StorageProvider implements ProviderInterface
      * @AppName("appName")
      * @CacheVersion("version")
      */
-    public function __construct(CacheProvider $kvs, string $appName, string $version)
+    public function __construct(CacheProvider $cache, string $appName, string $version)
     {
-        $this->kvs = $kvs;
+        $this->cache = $cache;
         $this->appName = $appName;
         $this->version = $version;
     }
@@ -44,8 +44,8 @@ class StorageProvider implements ProviderInterface
      */
     public function get()
     {
-        $this->kvs->setNamespace($this->appName . $this->version);
+        $this->cache->setNamespace($this->appName . $this->version);
 
-        return $this->kvs;
+        return $this->cache;
     }
 }
