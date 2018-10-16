@@ -14,8 +14,14 @@ use Doctrine\Common\Cache\CacheProvider;
 
 final class ResourceStorage implements ResourceStorageInterface
 {
+    /**
+     * Prefix for ETag URI
+     */
     const ETAG_TABLE = 'etag-table-';
 
+    /**
+     * Prefix of ETag value
+     */
     const ETAG_VAL = 'etag-val-';
 
     /**
