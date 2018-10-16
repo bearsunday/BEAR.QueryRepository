@@ -9,7 +9,7 @@ namespace BEAR\QueryRepository;
 use BEAR\RepositoryModule\Annotation\HttpCache;
 use BEAR\Resource\ResourceObject;
 
-class EtagSetter implements EtagSetterInterface
+final class EtagSetter implements EtagSetterInterface
 {
     /**
      * {@inheritdoc}

@@ -10,7 +10,7 @@ use BEAR\QueryRepository\Exception\UnmatchedQuery;
 use BEAR\Resource\ResourceObject;
 use Ray\Aop\MethodInvocation;
 
-class RefreshSameCommand implements CommandInterface
+final class RefreshSameCommand implements CommandInterface
 {
     /**
      * @var QueryRepositoryInterface

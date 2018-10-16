@@ -11,7 +11,7 @@ use BEAR\Resource\ResourceObject;
 use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
 
-class RefreshInterceptor implements MethodInterceptor
+final class RefreshInterceptor implements MethodInterceptor
 {
     /**
      * @var RefreshAnnotatedCommand

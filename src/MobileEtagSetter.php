@@ -9,7 +9,7 @@ namespace BEAR\QueryRepository;
 use BEAR\RepositoryModule\Annotation\HttpCache;
 use BEAR\Resource\ResourceObject;
 
-class MobileEtagSetter implements EtagSetterInterface
+final class MobileEtagSetter implements EtagSetterInterface
 {
     public function __invoke(ResourceObject $resourceObject, int $time = null, HttpCache $httpCache = null)
     {

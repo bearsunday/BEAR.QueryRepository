@@ -15,7 +15,7 @@ use BEAR\Resource\Uri;
 use Ray\Aop\MethodInvocation;
 use Ray\Aop\ReflectionMethod;
 
-class RefreshAnnotatedCommand implements CommandInterface
+final class RefreshAnnotatedCommand implements CommandInterface
 {
     /**
      * @var QueryRepositoryInterface

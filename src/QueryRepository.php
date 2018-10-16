@@ -15,7 +15,7 @@ use BEAR\Resource\RequestInterface;
 use BEAR\Resource\ResourceObject;
 use Doctrine\Common\Annotations\Reader;
 
-class QueryRepository implements QueryRepositoryInterface
+final class QueryRepository implements QueryRepositoryInterface
 {
     const ETAG_BY_URI = 'etag-by-uri';
 
