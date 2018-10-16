@@ -58,7 +58,6 @@ final class QueryRepository implements QueryRepositoryInterface
         $ro->toString();
         $httpCache = $this->getHttpCacheAnnotation($ro);
         $cacheable = $this->getCacheableAnnotation($ro);
-        /* @var Cacheable $cacheable|null */
         ($this->setEtag)($ro, null, $httpCache);
         $lifeTime = $this->getExpiryTime($ro, $cacheable);
         if (isset($ro->headers['ETag'])) {
@@ -112,6 +111,8 @@ final class QueryRepository implements QueryRepositoryInterface
 
     /**
      * @throws \ReflectionException
+     *
+     * @return ?Cacheable
      */
     private function getCacheableAnnotation(ResourceObject $ro)
     {
