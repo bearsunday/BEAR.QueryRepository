@@ -51,7 +51,7 @@ final class RefreshSameCommand implements CommandInterface
         $query = $resourceObject->uri->query;
         foreach ($refParameters as $parameter) {
             if (! isset($query[$parameter->name])) {
-                throw new UnmatchedQuery($resourceObject->uri->method . ' ' . (string) $resourceObject->uri);
+                throw new UnmatchedQuery(sprintf('%s %s', $resourceObject->uri->method, (string) $resourceObject->uri));
             }
             $getQuery[$parameter->name] = $query[$parameter->name];
         }
