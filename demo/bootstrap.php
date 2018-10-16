@@ -1,9 +1,7 @@
 <?php
-/**
- * This file is part of the BEAR.QueryRepository package.
- *
- * @license http://opensource.org/licenses/MIT MIT
- */
+
+declare(strict_types=1);
+
 use BEAR\Resource\ResourceInterface;
 use Composer\Autoload\ClassLoader;
 use FakeVendor\DemoApp\AppModule;

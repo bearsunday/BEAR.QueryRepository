@@ -1,9 +1,7 @@
 <?php
-/**
- * This file is part of the BEAR.QueryRepository package.
- *
- * @license http://opensource.org/licenses/MIT MIT
- */
+
+declare(strict_types=1);
+
 namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\ExpireAtKeyNotExists;
@@ -117,6 +115,7 @@ final class QueryRepository implements QueryRepositoryInterface
         if ($annotation instanceof HttpCache || $annotation === null) {
             return $annotation;
         }
+
         throw new \LogicException();
     }
 
@@ -129,14 +128,10 @@ final class QueryRepository implements QueryRepositoryInterface
         if ($annotation instanceof Cacheable || $annotation === null) {
             return $annotation;
         }
+
         throw new \LogicException();
     }
 
-    /**
-     * @param mixed $body
-     *
-     * @return mixed
-     */
     private function evaluateBody($body)
     {
         if (! \is_array($body)) {
@@ -168,6 +163,7 @@ final class QueryRepository implements QueryRepositoryInterface
     {
         if (! isset($ro->body[$cacheable->expiryAt])) {
             $msg = \sprintf('%s::%s', \get_class($ro), $cacheable->expiryAt);
+
             throw new ExpireAtKeyNotExists($msg);
         }
         $expiryAt = $ro->body[$cacheable->expiryAt];

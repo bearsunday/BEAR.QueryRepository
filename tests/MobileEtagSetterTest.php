@@ -1,10 +1,7 @@
 <?php
+
 declare(strict_types=1);
-/**
- * This file is part of the BEAR.QueryRepository package.
- *
- * @license http://opensource.org/licenses/MIT MIT
- */
+
 namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\HttpCache;
@@ -26,7 +23,7 @@ class MobileEtagSetterTest extends TestCase
 
     private $obj;
 
-    public function setUp()
+    protected function setUp()
     {
         parent::setUp();
         $this->obj = new User;

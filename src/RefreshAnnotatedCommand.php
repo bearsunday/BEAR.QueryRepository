@@ -1,9 +1,7 @@
 <?php
-/**
- * This file is part of the BEAR.QueryRepository package.
- *
- * @license http://opensource.org/licenses/MIT MIT
- */
+
+declare(strict_types=1);
+
 namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\AbstractCommand;
@@ -35,10 +33,6 @@ final class RefreshAnnotatedCommand implements CommandInterface
         $this->resource = $resource;
     }
 
-    /**
-     * @param MethodInvocation $invocation
-     * @param ResourceObject   $ro
-     */
     public function command(MethodInvocation $invocation, ResourceObject $ro)
     {
         /** @var ReflectionMethod $method */
@@ -53,9 +47,8 @@ final class RefreshAnnotatedCommand implements CommandInterface
     {
         $body = \is_array($resourceObject->body) ? $resourceObject->body : [];
         $query = $body + $resourceObject->uri->query;
-        $uri = uri_template($annotation->uri, $query);
 
-        return $uri;
+        return uri_template($annotation->uri, $query);
     }
 
     private function request(ResourceObject $resourceObject, $annotation)

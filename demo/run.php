@@ -1,14 +1,12 @@
 <?php
-/**
- * This file is part of the BEAR.QueryRepository package.
- *
- * @license http://opensource.org/licenses/MIT MIT
- */
+
+declare(strict_types=1);
+
 use BEAR\Resource\ResourceInterface;
 use FakeVendor\DemoApp\AppModule;
 use Ray\Di\Injector;
 
-function echoRo(\BEAR\Resource\ResourceObject $ro)
+function echoRo(BEAR\Resource\ResourceObject $ro)
 {
     echo $ro->uri->method . PHP_EOL;
     echo $ro->code . PHP_EOL;

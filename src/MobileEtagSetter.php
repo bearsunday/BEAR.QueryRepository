@@ -1,9 +1,7 @@
 <?php
-/**
- * This file is part of the BEAR.QueryRepository package.
- *
- * @license http://opensource.org/licenses/MIT MIT
- */
+
+declare(strict_types=1);
+
 namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\HttpCache;
@@ -24,11 +22,10 @@ final class MobileEtagSetter implements EtagSetterInterface
     /**
      * @return string
      */
-    protected function getDevice()
+    private function getDevice()
     {
         $detect = new \Mobile_Detect;
-        $mobileDeviceType = $detect->isMobile() && ! $detect->isTablet() ? 'mobile' : 'pc';
 
-        return $mobileDeviceType;
+        return $detect->isMobile() && ! $detect->isTablet() ? 'mobile' : 'pc';
     }
 }

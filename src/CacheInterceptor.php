@@ -1,14 +1,11 @@
 <?php
-/**
- * This file is part of the BEAR.QueryRepository package.
- *
- * @license http://opensource.org/licenses/MIT MIT
- */
+
+declare(strict_types=1);
+
 namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\Resource\ResourceObject;
-use Doctrine\Common\Annotations\Reader;
 use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
 
@@ -30,7 +27,7 @@ class CacheInterceptor implements MethodInterceptor
      */
     public function invoke(MethodInvocation $invocation)
     {
-        /* @var ResourceObject $ro */
+        /** @var ResourceObject $ro */
         $ro = $invocation->getThis();
         $stored = $this->repository->get($ro->uri);
         if ($stored) {
@@ -45,6 +42,7 @@ class CacheInterceptor implements MethodInterceptor
             $ro->code === 200 ? $this->repository->put($ro) : $this->repository->purge($ro->uri);
         } catch (\Exception $e) {
             $this->repository->purge($ro->uri);
+
             throw $e;
         }
 

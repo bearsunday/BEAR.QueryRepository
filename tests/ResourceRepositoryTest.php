@@ -1,9 +1,7 @@
 <?php
-/**
- * This file is part of the BEAR.QueryRepository package.
- *
- * @license http://opensource.org/licenses/MIT MIT
- */
+
+declare(strict_types=1);
+
 namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\QueryRepository as Repository;
@@ -26,7 +24,7 @@ class ResourceRepositoryTest extends TestCase
      */
     private $resourceObject;
 
-    public function setUp()
+    protected function setUp()
     {
         $this->repository = new Repository(
             new EtagSetter,

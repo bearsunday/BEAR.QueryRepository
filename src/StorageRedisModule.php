@@ -1,9 +1,7 @@
 <?php
-/**
- * This file is part of the BEAR.QueryRepository package.
- *
- * @license http://opensource.org/licenses/MIT MIT
- */
+
+declare(strict_types=1);
+
 namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\Storage;
@@ -18,8 +16,7 @@ class StorageRedisModule extends AbstractModule
     private $server;
 
     /**
-     * @param string              $server {host}:{port} format
-     * @param AbstractModule|null $module
+     * @param string $server {host}:{port} format
      */
     public function __construct(string $server, AbstractModule $module = null)
     {
