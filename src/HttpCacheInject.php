@@ -1,10 +1,10 @@
 <?php
-/**
- * This file is part of the BEAR.QueryRepository package.
- *
- * @license http://opensource.org/licenses/MIT MIT
- */
+
+declare(strict_types=1);
+
 namespace BEAR\QueryRepository;
+
+use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
 
 trait HttpCacheInject
 {
@@ -14,8 +14,6 @@ trait HttpCacheInject
     public $httpCache;
 
     /**
-     * @param HttpCacheInterface $httpCache
-     *
      * @Ray\Di\Di\Inject
      */
     public function setHttpCache(HttpCacheInterface $httpCache)

@@ -1,21 +1,18 @@
 <?php
-/**
- * This file is part of the BEAR.QueryRepository package.
- *
- * @license http://opensource.org/licenses/MIT MIT
- */
+
+declare(strict_types=1);
+
 namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\ExpireAtKeyNotExists;
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\HttpCache;
-use BEAR\RepositoryModule\Annotation\Storage;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\RequestInterface;
 use BEAR\Resource\ResourceObject;
 use Doctrine\Common\Annotations\Reader;
 
-class QueryRepository implements QueryRepositoryInterface
+final class QueryRepository implements QueryRepositoryInterface
 {
     const ETAG_BY_URI = 'etag-by-uri';
 
@@ -39,9 +36,6 @@ class QueryRepository implements QueryRepositoryInterface
      */
     private $setEtag;
 
-    /**
-     * @Storage("kvs")
-     */
     public function __construct(
         EtagSetterInterface $setEtag,
         ResourceStorageInterface $storage,
@@ -64,7 +58,6 @@ class QueryRepository implements QueryRepositoryInterface
         $ro->toString();
         $httpCache = $this->getHttpCacheAnnotation($ro);
         $cacheable = $this->getCacheableAnnotation($ro);
-        /* @var Cacheable $cacheable|null */
         ($this->setEtag)($ro, null, $httpCache);
         $lifeTime = $this->getExpiryTime($ro, $cacheable);
         if (isset($ro->headers['ETag'])) {
@@ -72,14 +65,9 @@ class QueryRepository implements QueryRepositoryInterface
         }
         $this->setMaxAge($ro, $lifeTime);
         if ($cacheable instanceof Cacheable && $cacheable->type === 'view') {
-            if (! $ro->view) {
-                // render
-                $ro->view = $ro->toString();
-            }
-
-            return $this->storage->saveView($ro, $lifeTime);
+            return $this->saveViewCache($ro, $lifeTime);
         }
-        // "value" cache type
+
         return $this->storage->saveValue($ro, $lifeTime);
     }
 
@@ -117,11 +105,14 @@ class QueryRepository implements QueryRepositoryInterface
         if ($annotation instanceof HttpCache || $annotation === null) {
             return $annotation;
         }
+
         throw new \LogicException();
     }
 
     /**
      * @throws \ReflectionException
+     *
+     * @return ?Cacheable
      */
     private function getCacheableAnnotation(ResourceObject $ro)
     {
@@ -129,14 +120,10 @@ class QueryRepository implements QueryRepositoryInterface
         if ($annotation instanceof Cacheable || $annotation === null) {
             return $annotation;
         }
+
         throw new \LogicException();
     }
 
-    /**
-     * @param mixed $body
-     *
-     * @return mixed
-     */
     private function evaluateBody($body)
     {
         if (! \is_array($body)) {
@@ -168,6 +155,7 @@ class QueryRepository implements QueryRepositoryInterface
     {
         if (! isset($ro->body[$cacheable->expiryAt])) {
             $msg = \sprintf('%s::%s', \get_class($ro), $cacheable->expiryAt);
+
             throw new ExpireAtKeyNotExists($msg);
         }
         $expiryAt = $ro->body[$cacheable->expiryAt];
@@ -184,5 +172,14 @@ class QueryRepository implements QueryRepositoryInterface
             return;
         }
         $ro->headers['Cache-Control'] = $setMaxAge;
+    }
+
+    private function saveViewCache(ResourceObject $ro, int $lifeTime)
+    {
+        if (! $ro->view) {
+            $ro->view = $ro->toString();
+        }
+
+        return $this->storage->saveView($ro, $lifeTime);
     }
 }

@@ -1,16 +1,17 @@
 <?php
-/**
- * This file is part of the BEAR.QueryRepository package.
- *
- * @license http://opensource.org/licenses/MIT MIT
- */
+
+declare(strict_types=1);
+
 namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\HttpCache;
 use BEAR\Resource\ResourceObject;
 
-class EtagSetter implements EtagSetterInterface
+final class EtagSetter implements EtagSetterInterface
 {
+    /**
+     * {@inheritdoc}
+     */
     public function __invoke(ResourceObject $resourceObject, int $time = null, HttpCache $httpCache = null)
     {
         $time = $time === null ? \time() : $time;

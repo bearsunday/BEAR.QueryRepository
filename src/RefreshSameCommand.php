@@ -1,16 +1,14 @@
 <?php
-/**
- * This file is part of the BEAR.QueryRepository package.
- *
- * @license http://opensource.org/licenses/MIT MIT
- */
+
+declare(strict_types=1);
+
 namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\UnmatchedQuery;
 use BEAR\Resource\ResourceObject;
 use Ray\Aop\MethodInvocation;
 
-class RefreshSameCommand implements CommandInterface
+final class RefreshSameCommand implements CommandInterface
 {
     /**
      * @var QueryRepositoryInterface
@@ -53,7 +51,7 @@ class RefreshSameCommand implements CommandInterface
         $query = $resourceObject->uri->query;
         foreach ($refParameters as $parameter) {
             if (! isset($query[$parameter->name])) {
-                throw new UnmatchedQuery($resourceObject->uri->method . ' ' . (string) $resourceObject->uri);
+                throw new UnmatchedQuery(sprintf('%s %s', $resourceObject->uri->method, (string) $resourceObject->uri));
             }
             $getQuery[$parameter->name] = $query[$parameter->name];
         }

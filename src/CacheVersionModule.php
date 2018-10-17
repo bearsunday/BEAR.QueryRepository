@@ -1,9 +1,7 @@
 <?php
-/**
- * This file is part of the BEAR.QueryRepository package.
- *
- * @license http://opensource.org/licenses/MIT MIT
- */
+
+declare(strict_types=1);
+
 namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\CacheVersion;
@@ -16,10 +14,6 @@ class CacheVersionModule extends AbstractModule
      */
     private $version;
 
-    /**
-     * @param string              $cacheVersion
-     * @param AbstractModule|null $module
-     */
     public function __construct($cacheVersion, AbstractModule $module = null)
     {
         $this->version = $cacheVersion;

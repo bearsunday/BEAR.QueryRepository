@@ -1,19 +1,17 @@
 <?php
-/**
- * This file is part of the BEAR.QueryRepository package.
- *
- * @license http://opensource.org/licenses/MIT MIT
- */
-class Redis
-{
-    const OPT_SERIALIZER = '';
-    const SERIALIZER_PHP = '';
 
-    public function connect($host, $port)
+if (! class_exists('Redis')) {
+    class Redis
     {
-    }
+        const OPT_SERIALIZER = '';
+        const SERIALIZER_PHP = '';
 
-    public function setOption()
-    {
+        public function connect($host, $port)
+        {
+        }
+
+        public function setOption()
+        {
+        }
     }
 }

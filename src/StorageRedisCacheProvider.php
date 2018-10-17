@@ -1,9 +1,7 @@
 <?php
-/**
- * This file is part of the BEAR.QueryRepository package.
- *
- * @license http://opensource.org/licenses/MIT MIT
- */
+
+declare(strict_types=1);
+
 namespace BEAR\QueryRepository;
 
 use Doctrine\Common\Cache\RedisCache;
@@ -35,7 +33,7 @@ class StorageRedisCacheProvider implements ProviderInterface
         $redis = new \Redis();
         $host = $this->server[0];
         $port = $this->server[1];
-        $redis->connect($host, $port);
+        $redis->connect($host, (int) $port);
         $redisCache = new RedisCache();
         $redisCache->setRedis($redis);
 

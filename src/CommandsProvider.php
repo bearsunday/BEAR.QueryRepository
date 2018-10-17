@@ -1,9 +1,7 @@
 <?php
-/**
- * This file is part of the BEAR.QueryRepository package.
- *
- * @license http://opensource.org/licenses/MIT MIT
- */
+
+declare(strict_types=1);
+
 namespace BEAR\QueryRepository;
 
 use BEAR\Resource\ResourceInterface;
@@ -34,11 +32,9 @@ class CommandsProvider implements ProviderInterface
      */
     public function get()
     {
-        $commands = [
+        return [
             new RefreshSameCommand($this->repository),
             new RefreshAnnotatedCommand($this->repository, $this->resource)
         ];
-
-        return $commands;
     }
 }

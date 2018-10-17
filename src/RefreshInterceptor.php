@@ -1,9 +1,7 @@
 <?php
-/**
- * This file is part of the BEAR.QueryRepository package.
- *
- * @license http://opensource.org/licenses/MIT MIT
- */
+
+declare(strict_types=1);
+
 namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\ReturnValueIsNotResourceObjectException;
@@ -11,7 +9,7 @@ use BEAR\Resource\ResourceObject;
 use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
 
-class RefreshInterceptor implements MethodInterceptor
+final class RefreshInterceptor implements MethodInterceptor
 {
     /**
      * @var RefreshAnnotatedCommand

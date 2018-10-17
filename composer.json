@@ -14,11 +14,12 @@
         "mobiledetect/mobiledetectlib": "^2.8"
     },
     "require-dev": {
-        "phpunit/phpunit": "^6.5"
+        "phpunit/phpunit": "^6.5",
+        "bear/cs": "1.0.0"
     },
     "autoload": {
         "psr-4": {
-            "BEAR\\QueryRepository\\": "src/",
+            "BEAR\\QueryRepository\\": ["src/", "src-deprecated/"],
             "BEAR\\RepositoryModule\\Annotation\\": "src-annotation/"
         }
     },
@@ -31,7 +32,8 @@
             "FakeVendor\\HelloWorld\\": [
               "tests/Fake/fake-app/src"
             ]
-        }
+        },
+        "files": ["tests/Fake/Memcached.php", "tests/Fake/Redis.php"]
     },
     "scripts" :{
         "test": ["phpunit"],
