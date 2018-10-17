@@ -165,13 +165,20 @@ final class QueryRepository implements QueryRepositoryInterface
 
     private function setMaxAge(ResourceObject $ro, int $age)
     {
+        if ($age === 0) {
+            return;
+        }
         $setMaxAge = \sprintf('max-age=%d', $age);
-        if (isset($ro->headers['Cache-Control'])) {
-            $ro->headers['Cache-Control'] .= ', ' . $setMaxAge;
+        if (! isset($ro->headers['Cache-Control'])) {
+            $ro->headers['Cache-Control'] = sprintf('private, %s', $setMaxAge);
 
             return;
         }
-        $ro->headers['Cache-Control'] = $setMaxAge;
+        if (is_int(strpos($ro->headers['Cache-Control'], 'max-age'))) {
+            return;
+        }
+
+        $ro->headers['Cache-Control'] .= ', ' . $setMaxAge;
     }
 
     private function saveViewCache(ResourceObject $ro, int $lifeTime)
