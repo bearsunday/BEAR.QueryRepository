@@ -1,5 +1,13 @@
 <?php
 
+$header = <<<'EOF'
+EOF;
+
+$finder = PhpCsFixer\Finder::create()
+    ->exclude('tests/Fake')
+    ->exclude('tests/tmp')
+    ->in(__DIR__);
+
 return \PhpCsFixer\Config::create()
     ->setRiskyAllowed(true)
     ->setRules([
@@ -9,11 +17,10 @@ return \PhpCsFixer\Config::create()
         'array_indentation' => true,
         'array_syntax' => ['syntax' => 'short'],
         'backtick_to_shell_exec' => true,
-        'binary_operator_spaces' => ['align_equals' => false, 'align_double_arrow' => false],
-        'blank_line_after_opening_tag' => true,
-        'blank_line_after_namespace' => true,
+        'binary_operator_spaces' => true, // @Symfony
+        'blank_line_after_opening_tag' => true,  // @Symfony
         'blank_line_before_return' => true,
-        'blank_line_before_statement' => true,
+        'blank_line_before_statement' => ['statements' => ['break', 'continue', 'declare', 'return', 'throw']],
         'cast_spaces' => true,
         'class_attributes_separation' => ['elements' => ['const', 'method']],
         'combine_consecutive_issets' => true,
@@ -174,9 +181,5 @@ return \PhpCsFixer\Config::create()
         'whitespace_after_comma_in_array' => true,
         'yoda_style' => false
     ])
-    ->setFinder(
-        PhpCsFixer\Finder::create()
-            ->exclude('tests/Fake')
-            ->exclude('tests/tmp')
-            ->in(__DIR__)
-    )->setLineEnding("\n");
+    ->setFinder($finder)
+    ->setLineEnding("\n");
