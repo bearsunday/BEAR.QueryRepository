@@ -24,12 +24,12 @@ class EtagSetterTest extends TestCase
 
     public function testInvoke()
     {
-        $resourceObject = $this->resource->get->uri('app://self/user')->withQuery(['id' => 1])->eager->request();
+        $ro = $this->resource->get->uri('app://self/user')->withQuery(['id' => 1])->eager->request();
         $setEtag = new EtagSetter;
         $time = 0;
-        $setEtag($resourceObject, $time);
+        $setEtag($ro, $time);
         $expect = 'Thu, 01 Jan 1970 00:00:00 GMT';
-        $this->assertSame($expect, $resourceObject->headers['Last-Modified']);
-        $this->assertInternalType('string', $resourceObject->headers['ETag']);
+        $this->assertSame($expect, $ro->headers['Last-Modified']);
+        $this->assertInternalType('string', $ro->headers['ETag']);
     }
 }

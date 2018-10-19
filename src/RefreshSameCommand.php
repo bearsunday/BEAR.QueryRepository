@@ -44,14 +44,14 @@ final class RefreshSameCommand implements CommandInterface
     /**
      * @throws \ReflectionException
      */
-    private function getQuery(ResourceObject $resourceObject) : array
+    private function getQuery(ResourceObject $ro) : array
     {
-        $refParameters = (new \ReflectionMethod(\get_class($resourceObject), 'onGet'))->getParameters();
+        $refParameters = (new \ReflectionMethod(\get_class($ro), 'onGet'))->getParameters();
         $getQuery = [];
-        $query = $resourceObject->uri->query;
+        $query = $ro->uri->query;
         foreach ($refParameters as $parameter) {
             if (! isset($query[$parameter->name])) {
-                throw new UnmatchedQuery(sprintf('%s %s', $resourceObject->uri->method, (string) $resourceObject->uri));
+                throw new UnmatchedQuery(sprintf('%s %s', $ro->uri->method, (string) $ro->uri));
             }
             $getQuery[$parameter->name] = $query[$parameter->name];
         }

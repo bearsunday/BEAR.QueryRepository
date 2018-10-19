@@ -22,7 +22,7 @@ class ResourceRepositoryTest extends TestCase
     /**
      * @var ResourceObject
      */
-    private $resourceObject;
+    private $ro;
 
     protected function setUp()
     {

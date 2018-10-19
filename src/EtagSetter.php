@@ -12,14 +12,14 @@ final class EtagSetter implements EtagSetterInterface
     /**
      * {@inheritdoc}
      */
-    public function __invoke(ResourceObject $resourceObject, int $time = null, HttpCache $httpCache = null)
+    public function __invoke(ResourceObject $ro, int $time = null, HttpCache $httpCache = null)
     {
         $time = $time === null ? \time() : $time;
-        if ($resourceObject->code !== 200) {
+        if ($ro->code !== 200) {
             return;
         }
-        $resourceObject->headers['ETag'] = $this->getEtag($resourceObject, $httpCache);
-        $resourceObject->headers['Last-Modified'] = \gmdate('D, d M Y H:i:s', $time) . ' GMT';
+        $ro->headers['ETag'] = $this->getEtag($ro, $httpCache);
+        $ro->headers['Last-Modified'] = \gmdate('D, d M Y H:i:s', $time) . ' GMT';
     }
 
     public function getEtagByPartialBody(HttpCache $httpCacche, ResourceObject $ro) : string

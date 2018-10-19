@@ -23,11 +23,11 @@ class FakeMobileEtagSetter implements EtagSetterInterface
         $this->mobileEtagSetter = $mobileEtagSetter;
     }
 
-    public function __invoke(ResourceObject $resourceObject, int $time = null, HttpCache $httpCache = null)
+    public function __invoke(ResourceObject $ro, int $time = null, HttpCache $httpCache = null)
     {
         self::$device = $this->getDevice();
 
-        return ($this->mobileEtagSetter)($resourceObject, $time, $httpCache);
+        return ($this->mobileEtagSetter)($ro, $time, $httpCache);
     }
 
     private function getDevice()

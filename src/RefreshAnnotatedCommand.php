@@ -43,20 +43,20 @@ final class RefreshAnnotatedCommand implements CommandInterface
         }
     }
 
-    private function getUri(ResourceObject $resourceObject, AbstractCommand $annotation) : string
+    private function getUri(ResourceObject $ro, AbstractCommand $annotation) : string
     {
-        $body = \is_array($resourceObject->body) ? $resourceObject->body : [];
-        $query = $body + $resourceObject->uri->query;
+        $body = \is_array($ro->body) ? $ro->body : [];
+        $query = $body + $ro->uri->query;
 
         return uri_template($annotation->uri, $query);
     }
 
-    private function request(ResourceObject $resourceObject, $annotation)
+    private function request(ResourceObject $ro, $annotation)
     {
         if (! $annotation instanceof AbstractCommand) {
             return;
         }
-        $uri = new Uri($this->getUri($resourceObject, $annotation));
+        $uri = new Uri($this->getUri($ro, $annotation));
         if ($annotation instanceof Purge) {
             $this->repository->purge($uri);
         }

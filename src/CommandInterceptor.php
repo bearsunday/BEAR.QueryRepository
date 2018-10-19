@@ -34,14 +34,14 @@ class CommandInterceptor implements MethodInterceptor
      */
     public function invoke(MethodInvocation $invocation)
     {
-        $resourceObject = $invocation->proceed();
-        if (! $resourceObject instanceof ResourceObject) {
+        $ro = $invocation->proceed();
+        if (! $ro instanceof ResourceObject) {
             throw new ReturnValueIsNotResourceObjectException(\get_class($invocation->getThis()));
         }
         foreach ($this->commands as $command) {
-            $command->command($invocation, $resourceObject);
+            $command->command($invocation, $ro);
         }
 
-        return $resourceObject;
+        return $ro;
     }
 }
