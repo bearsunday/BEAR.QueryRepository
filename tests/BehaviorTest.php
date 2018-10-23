@@ -94,8 +94,8 @@ class BehaviorTest extends TestCase
 
     public function testCacheCode()
     {
+        /** @var Code $ro */
         $ro = $this->resource->get('app://self/code', []); // 1
-        /* @var $ro Code */
         $ro->code = 203;
         $ro->onGet(); // 2 non-caached
         $ro->code = 500;
