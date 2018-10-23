@@ -43,12 +43,12 @@ class QueryRepositoryTest extends TestCase
     public function testPurgeSameResourceObjectByPatch()
     {
         /** @var ResourceObject $user */
-        $user = $this->resource->get->uri('app://self/user')->withQuery(['id' => 1])->eager->request();
+        $user = $this->resource->get('app://self/user', ['id' => 1]);
         $etag = $user->headers['ETag'];
         // reload (purge repository entry and re-generate by onGet)
-        $this->resource->patch->uri('app://self/user')->withQuery(['id' => 1, 'name' => 'kuma'])->eager->request();
+        $this->resource->patch('app://self/user', ['id' => 1, 'name' => 'kuma']);
         // load from repository, not invoke onGet method
-        $user = $this->resource->get->uri('app://self/user')->withQuery(['id' => 1])->eager->request();
+        $user = $this->resource->get('app://self/user', ['id' => 1]);
         $newEtag = $user->headers['ETag'];
         $this->assertFalse($etag === $newEtag);
     }
@@ -56,7 +56,7 @@ class QueryRepositoryTest extends TestCase
     public function testPurgeSameResourceObjectByDelete()
     {
         /** @var ResourceObject $user */
-        $user = $this->resource->get->uri('app://self/user')->withQuery(['id' => 1])->eager->request();
+        $user = $this->resource->get('app://self/user', ['id' => 1]);
         $etag = $user->headers['ETag'];
         $server = [
             'REQUEST_METHOD' => 'GET',
@@ -64,8 +64,8 @@ class QueryRepositoryTest extends TestCase
         ];
         $isNotModified = $this->httpCache->isNotModified($server);
         $this->assertTrue($isNotModified);
-        $this->resource->delete->uri('app://self/user')->withQuery(['id' => 1])->eager->request();
-        $user = $this->resource->get->uri('app://self/user')->withQuery(['id' => 1])->eager->request();
+        $this->resource->delete('app://self/user', ['id' => 1]);
+        $user = $this->resource->get('app://self/user', ['id' => 1]);
         $newEtag = $user->headers['ETag'];
         $this->assertFalse($etag === $newEtag);
         $isNotModified = $this->httpCache->isNotModified($server);
@@ -74,7 +74,7 @@ class QueryRepositoryTest extends TestCase
 
     public function testPurgeByAnnotation()
     {
-        $this->resource->put->uri('app://self/user')->withQuery(['id' => 1, 'age' => 10, 'name' => 'Sunday'])->eager->request();
+        $this->resource->put('app://self/user', ['id' => 1, 'age' => 10, 'name' => 'Sunday']);
         $this->assertTrue(Profile::$requested);
     }
 
@@ -91,10 +91,10 @@ class QueryRepositoryTest extends TestCase
 
     public function testPutResquestEmbeddedResoureView()
     {
-        $uri = new Uri('page://self/emb-view');
-        $ro = $this->resource->uri($uri)();
+        $uri = 'page://self/emb-view';
+        $ro = $this->resource->get($uri);
         $this->repository->put($ro);
-        list(, , , $body, $view) = $this->repository->get($uri);
+        list(, , , $body, $view) = $this->repository->get(new Uri($uri));
         $this->assertInstanceOf(None::class, $body['time']);
         $this->assertSame(1, $body['num']);
         $this->assertSame('{
@@ -106,10 +106,10 @@ class QueryRepositoryTest extends TestCase
 
     public function testPutResquestEmbeddedResoureValue()
     {
-        $uri = new Uri('page://self/emb-val');
-        $ro = $this->resource->uri($uri)();
+        $uri = 'page://self/emb-val';
+        $ro = $this->resource->get($uri);
         $this->repository->put($ro);
-        list(, , , $body, $view) = $this->repository->get($uri);
+        list(, , , $body, $view) = $this->repository->get(new Uri($uri));
         $this->assertInstanceOf(None::class, $body['time']);
         $this->assertSame(1, $body['num']);
         $this->assertNull($view);

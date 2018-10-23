@@ -24,13 +24,13 @@ class ReloadAnnotatedCommandTest extends TestCase
 
     public function testInvoke()
     {
-        $user = $this->resource->patch->uri('app://self/user')->withQuery(['id' => 1, 'name' => 'koriym'])->eager->request();
+        $user = $this->resource->patch('app://self/user', ['id' => 1, 'name' => 'koriym']);
         // put
         $expect = 'Last-Modified';
         $this->assertArrayHasKey($expect, $user->headers);
         $time = $user['time'];
         // get
-        $user = $this->resource->get->uri('app://self/user')->withQuery(['id' => 1])->eager->request();
+        $user = $this->resource->get('app://self/user', ['id' => 1]);
         $this->assertArrayHasKey($expect, $user->headers);
         $expect = $time;
         $this->assertSame($expect, $user['time']);
