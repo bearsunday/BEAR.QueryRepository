@@ -80,7 +80,10 @@ final class HttpCache extends AbstractCacheControl
 
     public function __toString()
     {
-        $control = $this->isPrivate ? ['private'] : ['public'];
+        $control = [];
+        if ($this->isPrivate) {
+            $control[] = 'private';
+        }
         if ($this->noCache) {
             $control[] = 'no-cache';
         }
