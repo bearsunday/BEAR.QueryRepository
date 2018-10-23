@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-final class HttpCacheCli implements HttpCacheInterface
+final class CliHttpCache implements HttpCacheInterface
 {
     /**
      * @var ResourceStorageInterface

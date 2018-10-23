@@ -33,13 +33,13 @@ class QueryRepositoryModule extends AbstractModule
         $this->bind(EtagSetterInterface::class)->to(EtagSetter::class)->in(Scope::SINGLETON);
         $this->bind(NamedParameterInterface::class)->to(NamedParameter::class)->in(Scope::SINGLETON);
         $this->bind(Reader::class)->to(AnnotationReader::class)->in(Scope::SINGLETON);
-        $this->bind(HttpCacheInterface::class)->to(HttpCacheWeb::class);
+        $this->bind(HttpCacheInterface::class)->to(HttpCache::class);
         $this->bind()->annotatedWith(Commands::class)->toProvider(CommandsProvider::class);
         $this->bind()->annotatedWith(CacheVersion::class)->toInstance('');
         $this->bind(RefreshInterceptor::class);
         $this->install(new QueryRepositoryAopModule);
         $this->bind(ResourceStorageInterface::class)->to(ResourceStorage::class);
         // BC
-        $this->bind(DeprecatedHttpCacheInterface::class)->to(HttpCacheWeb::class);
+        $this->bind(DeprecatedHttpCacheInterface::class)->to(HttpCache::class);
     }
 }
