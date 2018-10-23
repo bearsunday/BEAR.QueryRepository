@@ -14,8 +14,6 @@ use Doctrine\Common\Annotations\Reader;
 
 final class QueryRepository implements QueryRepositoryInterface
 {
-    const ETAG_BY_URI = 'etag-by-uri';
-
     /**
      * @var ResourceStorageInterface
      */
