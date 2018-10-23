@@ -34,28 +34,28 @@ class ResourceRepositoryTest extends TestCase
                 new AnnotationReader,
                 new Expiry(0, 0, 0)
         );
-        $this->resourceObject = new Index;
-        $this->resourceObject->uri = new Uri('page://self/user');
+        $this->ro = new Index;
+        $this->ro->uri = new Uri('page://self/user');
     }
 
     public function testPutAndGet()
     {
         // put
-        $this->repository->put($this->resourceObject);
-        $uri = $this->resourceObject->uri;
+        $this->repository->put($this->ro);
+        $uri = $this->ro->uri;
         // get
         list($uri, $code, $headers, $body) = $this->repository->get($uri);
-        $this->assertSame((string) $uri, (string) $this->resourceObject->uri);
-        $this->assertSame($code, $this->resourceObject->code);
-        $this->assertArraySubset($this->resourceObject->headers, $headers);
+        $this->assertSame((string) $uri, (string) $this->ro->uri);
+        $this->assertSame($code, $this->ro->code);
+        $this->assertArraySubset($this->ro->headers, $headers);
         $this->assertArrayHasKey('Age', $headers);
-        $this->assertSame($body, $this->resourceObject->body);
+        $this->assertSame($body, $this->ro->body);
     }
 
     public function testDelete()
     {
-        $this->repository->put($this->resourceObject);
-        $uri = $this->resourceObject->uri;
+        $this->repository->put($this->ro);
+        $uri = $this->ro->uri;
         $this->repository->purge($uri);
         $instance = (bool) $this->repository->get($uri);
         $this->assertFalse($instance);
