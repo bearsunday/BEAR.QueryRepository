@@ -69,6 +69,18 @@ class GetInterceptorTest extends TestCase
         $this->assertSame($ro->headers['Cache-Control'], 'private, no-store, no-cache, must-revalidate');
     }
 
+    public function testHttpCacheWithCacheble()
+    {
+        $ro = $this->resource->get->uri('app://self/http-cache-control-with-cacheable')->eager->request();
+        $this->assertSame($ro->headers['Cache-Control'], 'private, max-age=10');
+    }
+
+    public function testHttpCacheOverrideMaxAge()
+    {
+        $ro = $this->resource->get->uri('app://self/http-cache-control-override-max-age')->eager->request();
+        $this->assertSame($ro->headers['Cache-Control'], 'max-age=5');
+    }
+
     public function testHttpCacheEtag()
     {
         $ro1 = $this->resource->get->uri('app://self/etag')->eager->request();
