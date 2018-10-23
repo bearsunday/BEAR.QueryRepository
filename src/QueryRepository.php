@@ -163,6 +163,9 @@ final class QueryRepository implements QueryRepositoryInterface
 
     private function setMaxAge(ResourceObject $ro, int $age)
     {
+        if ($age === 0) {
+            return;
+        }
         $setMaxAge = \sprintf('max-age=%d', $age);
         $noCacheControleHeader = ! isset($ro->headers['Cache-Control']);
         if ($noCacheControleHeader) {
