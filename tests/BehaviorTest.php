@@ -45,12 +45,12 @@ class BehaviorTest extends TestCase
     public function testPurgeSameResourceObjectByPatch()
     {
         /** @var ResourceObject $user */
-        $user = $this->resource->get->uri('app://self/user')->withQuery(['id' => 1])->eager->request();
+        $user = $this->resource->get('app://self/user', ['id' => 1]);
         $etag = $user->headers['ETag'];
         // reload (purge repository entry and re-generate by onGet)
-        $this->resource->patch->uri('app://self/user')->withQuery(['id' => 1, 'name' => 'kuma'])->eager->request();
+        $this->resource->patch('app://self/user', ['id' => 1, 'name' => 'kuma']);
         // load from repository, not invoke onGet method
-        $user = $this->resource->get->uri('app://self/user')->withQuery(['id' => 1])->eager->request();
+        $user = $this->resource->get('app://self/user', ['id' => 1]);
         $newEtag = $user->headers['ETag'];
         $this->assertFalse($etag === $newEtag);
     }
@@ -58,7 +58,7 @@ class BehaviorTest extends TestCase
     public function testPurgeSameResourceObjectByDelete()
     {
         /** @var ResourceObject $user */
-        $user = $this->resource->get->uri('app://self/user')->withQuery(['id' => 1])->eager->request();
+        $user = $this->resource->get('app://self/user', ['id' => 1]);
         $etag = $user->headers['ETag'];
         $server = [
             'REQUEST_METHOD' => 'GET',
@@ -66,8 +66,8 @@ class BehaviorTest extends TestCase
         ];
         $isNotModified = $this->httpCache->isNotModified($server);
         $this->assertTrue($isNotModified);
-        $this->resource->delete->uri('app://self/user')->withQuery(['id' => 1])->eager->request();
-        $user = $this->resource->get->uri('app://self/user')->withQuery(['id' => 1])->eager->request();
+        $this->resource->delete('app://self/user', ['id' => 1]);
+        $user = $this->resource->get('app://self/user', ['id' => 1]);
         $newEtag = $user->headers['ETag'];
         $this->assertFalse($etag === $newEtag);
         $isNotModified = $this->httpCache->isNotModified($server);
@@ -76,25 +76,25 @@ class BehaviorTest extends TestCase
 
     public function testPurgeByAnnotation()
     {
-        $this->resource->put->uri('app://self/user')->withQuery(['id' => 1, 'age' => 10, 'name' => 'Sunday'])->eager->request();
+        $this->resource->put('app://self/user', ['id' => 1, 'age' => 10, 'name' => 'Sunday']);
         $this->assertTrue(Profile::$requested);
     }
 
     public function testReturnValueIsNotResourceObjectException()
     {
         $this->expectException(ReturnValueIsNotResourceObjectException::class);
-        $this->resource->put->uri('app://self/invalid')->withQuery(['id' => 1, 'age' => 10, 'name' => 'Sunday'])->eager->request();
+        $this->resource->put('app://self/invalid', ['id' => 1, 'age' => 10, 'name' => 'Sunday']);
     }
 
     public function testUnMatchQuery()
     {
         $this->expectException(UnmatchedQuery::class);
-        $this->resource->put->uri('app://self/unmatch')->withQuery(['id' => 1, 'age' => 10, 'name' => 'Sunday'])->eager->request();
+        $this->resource->put('app://self/unmatch', ['id' => 1, 'age' => 10, 'name' => 'Sunday']);
     }
 
     public function testCacheCode()
     {
-        $ro = $this->resource->get->uri('app://self/code')->withQuery([])->eager->request(); // 1
+        $ro = $this->resource->get('app://self/code', []); // 1
         /* @var $ro Code */
         $ro->code = 203;
         $ro->onGet(); // 2 non-caached
@@ -110,14 +110,14 @@ class BehaviorTest extends TestCase
     public function testRefreshWithCacheableAnnotation()
     {
         RefreshDest::$id = 0;
-        $this->resource->put->uri('app://self/refresh-cache-src')(['id' => '1']);
+        $this->resource->put('app://self/refresh-cache-src', ['id' => '1']);
         $this->assertSame('1', RefreshDest::$id);
     }
 
     public function testRefreshWithoutCacheableAnnotation()
     {
         RefreshDest::$id = 0;
-        $this->resource->put->uri('app://self/refresh-src')(['id' => '1']);
+        $this->resource->put('app://self/refresh-src', ['id' => '1']);
         $this->assertSame('1', RefreshDest::$id);
     }
 }

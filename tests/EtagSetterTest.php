@@ -24,7 +24,7 @@ class EtagSetterTest extends TestCase
 
     public function testInvoke()
     {
-        $ro = $this->resource->get->uri('app://self/user')->withQuery(['id' => 1])->eager->request();
+        $ro = $this->resource->get('app://self/user', ['id' => 1]);
         $setEtag = new EtagSetter;
         $time = 0;
         $setEtag($ro, $time);

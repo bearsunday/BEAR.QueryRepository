@@ -24,13 +24,13 @@ class CacheTypeTest extends TestCase
 
     public function requestDobule($uri)
     {
-        $ro = $this->resource->get->uri($uri)->eager->request();
+        $ro = $this->resource->get($uri);
         // put
         $expect = 'Last-Modified';
         $this->assertArrayHasKey($expect, $ro->headers);
         $time = $ro['time'];
         // get
-        $ro = $this->resource->get->uri($uri)->eager->request();
+        $ro = $this->resource->get($uri);
         $this->assertArrayHasKey($expect, $ro->headers);
         $expect = $time;
         $this->assertSame($expect, $ro['time']);
@@ -42,11 +42,11 @@ class CacheTypeTest extends TestCase
     {
         $uri = 'app://self/value';
         // put
-        $ro = $this->resource->get->uri($uri)->eager->request();
+        $ro = $this->resource->get($uri);
         (string) $ro;
         $time = $ro['time'];
         $this->assertSame('1' . $time, $ro->view);
-        $ro = $this->resource->get->uri($uri)->eager->request();
+        $ro = $this->resource->get($uri);
         (string) $ro;
         $this->assertSame('2' . $time, $ro->view);
     }
@@ -55,10 +55,10 @@ class CacheTypeTest extends TestCase
     {
         $uri = 'app://self/view';
         // put
-        $ro = $this->resource->get->uri($uri)->eager->request();
+        $ro = $this->resource->get($uri);
         $time = $ro['time'];
         $this->assertSame('1' . $time, $ro->view);
-        $ro = $this->resource->get->uri($uri)->eager->request();
+        $ro = $this->resource->get($uri);
         $this->assertTrue((bool) $ro->view);
         $this->assertSame('1' . $time, $ro->view);
     }
