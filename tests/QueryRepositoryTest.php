@@ -91,7 +91,7 @@ class QueryRepositoryTest extends TestCase
 
     public function testPutResquestEmbeddedResoureView()
     {
-        $uri ='page://self/emb-view';
+        $uri = 'page://self/emb-view';
         $ro = $this->resource->get($uri);
         $this->repository->put($ro);
         list(, , , $body, $view) = $this->repository->get(new Uri($uri));
