@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\ReturnValueIsNotResourceObjectException;
 use BEAR\RepositoryModule\Annotation\Commands;
+use BEAR\Resource\Code;
 use BEAR\Resource\ResourceObject;
 use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
@@ -38,6 +39,11 @@ class CommandInterceptor implements MethodInterceptor
         if (! $ro instanceof ResourceObject) {
             throw new ReturnValueIsNotResourceObjectException(\get_class($invocation->getThis()));
         }
+
+        if ($ro->code >= Code::BAD_REQUEST) {
+            return $this;
+        }
+
         foreach ($this->commands as $command) {
             $command->command($invocation, $ro);
         }

@@ -53,6 +53,12 @@ class BehaviorTest extends TestCase
         $user = $this->resource->get('app://self/user', ['id' => 1]);
         $newEtag = $user->headers['ETag'];
         $this->assertFalse($etag === $newEtag);
+
+        // patch request with invalid query
+        $lastModified = $user->headers['Last-Modified'];
+        $this->resource->patch('app://self/user', ['id' => 1, 'name' => '']);
+        $user = $this->resource->get('app://self/user', ['id' => 1]);
+        $this->assertSame($lastModified, $user->headers['Last-Modified']);
     }
 
     public function testPurgeSameResourceObjectByDelete()
@@ -119,5 +125,15 @@ class BehaviorTest extends TestCase
         RefreshDest::$id = 0;
         $this->resource->put('app://self/refresh-src', ['id' => '1']);
         $this->assertSame('1', RefreshDest::$id);
+    }
+
+    public function testRefreshByAbortedRequest()
+    {
+        $profile = $this->resource->get('app://self/user/profile', ['user_id' => 1]);
+        $lastModified = $profile->headers['Last-Modified'];
+
+        $this->resource->put('app://self/entry', ['id' => 1, 'name' => 'foo', 'age' => 'one']);
+        $profile = $this->resource->get('app://self/user/profile', ['user_id' => 1]);
+        $this->assertSame($lastModified, $profile->headers['Last-Modified']);
     }
 }

@@ -9,6 +9,7 @@ namespace FakeVendor\HelloWorld\Resource\App;
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\Purge;
 use BEAR\RepositoryModule\Annotation\Refresh;
+use BEAR\Resource\Code;
 use BEAR\Resource\ResourceObject;
 
 /**
@@ -49,6 +50,12 @@ class Entry extends ResourceObject
      */
     public function onPut($id, $name, $age)
     {
+        if (!is_numeric($age)) {
+            $this->code = Code::BAD_REQUEST;
+
+            return $this;
+        }
+
         $this->data[$id]['name'] = $name;
         $this->data[$id]['age'] = $age;
         $this['id'] = $id;
