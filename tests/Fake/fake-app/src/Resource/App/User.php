@@ -9,6 +9,7 @@ namespace FakeVendor\HelloWorld\Resource\App;
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\Purge;
 use BEAR\RepositoryModule\Annotation\Refresh;
+use BEAR\Resource\Code;
 use BEAR\Resource\ResourceObject;
 use Ray\Di\Di\Named;
 
@@ -35,6 +36,12 @@ class User extends ResourceObject
 
     public function onPatch($id, $name)
     {
+        if (empty($name)) {
+            $this->code = Code::BAD_REQUEST;
+
+            return $this;
+        }
+
         $this->data[$id]['name'] = $name;
 
         return $this;
