@@ -12,3 +12,4 @@ build
 vendor
 .php_cs.cache
 tests/tmp/*
+tests/dump.rdb
