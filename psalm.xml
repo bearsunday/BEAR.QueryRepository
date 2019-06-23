@@ -3,29 +3,16 @@
     totallyTyped="false"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xmlns="https://getpsalm.org/schema/config"
-    xsi:schemaLocation="https://getpsalm.org/schema/config file:///Users/kooriyama/.composer/vendor/vimeo/psalm/config.xsd"
+    xsi:schemaLocation="https://getpsalm.org/schema/config vendor/vimeo/psalm/config.xsd"
 >
     <projectFiles>
         <directory name="src" />
         <ignoreFiles>
             <directory name="vendor" />
-            <file name="src/CacheVersionModule.php" />
-            <file name="src/MobileEtagModule.php" />
-            <file name="src/QueryRepositoryAopModule.php" />
-            <file name="src/QueryRepositoryModule.php" />
-            <file name="src/StorageApcModule.php" />
-            <file name="src/StorageExpiryModule.php" />
-            <file name="src/StorageMemcachedModule.php" />
-            <file name="src/StorageRedisModule.php" />
         </ignoreFiles>
     </projectFiles>
 
     <issueHandlers>
-        <UndefinedMethod>
-            <errorLevel type="suppress">
-                <file name="src/RefreshSameCommand.php" />
-            </errorLevel>
-        </UndefinedMethod>
         <LessSpecificReturnType errorLevel="info" />
 
         <!-- level 3 issues - slightly lazy code writing, but provably low false-negatives -->
@@ -34,8 +21,13 @@
         <DeprecatedProperty errorLevel="info" />
         <DeprecatedClass errorLevel="info" />
         <DeprecatedConstant errorLevel="info" />
+        <DeprecatedFunction errorLevel="info" />
         <DeprecatedInterface errorLevel="info" />
         <DeprecatedTrait errorLevel="info" />
+
+        <InternalMethod errorLevel="info" />
+        <InternalProperty errorLevel="info" />
+        <InternalClass errorLevel="info" />
 
         <MissingClosureReturnType errorLevel="info" />
         <MissingReturnType errorLevel="info" />
@@ -56,5 +48,7 @@
         <UnresolvableInclude errorLevel="info" />
 
         <RawObjectIteration errorLevel="info" />
+
+        <InvalidStringClass errorLevel="info" />
     </issueHandlers>
 </psalm>
