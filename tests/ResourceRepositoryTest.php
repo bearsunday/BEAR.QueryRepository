@@ -31,8 +31,8 @@ class ResourceRepositoryTest extends TestCase
             new ResourceStorage(
                 new FilesystemCache($_ENV['TMP_DIR'])
             ),
-                new AnnotationReader,
-                new Expiry(0, 0, 0)
+            new AnnotationReader,
+            new Expiry(0, 0, 0)
         );
         $this->ro = new Index;
         $this->ro->uri = new Uri('page://self/user');
