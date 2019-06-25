@@ -102,8 +102,6 @@ class GetInterceptorTest extends TestCase
         $this->assertArrayHasKey('Age', $ro2->headers);
         $this->assertArrayNotHasKey('Age', $ro3->headers);
 
-        unset($_SERVER['X_VARY']);
-        unset($_SERVER['X_VAL1']);
-        unset($_SERVER['X_VAL2']);
+        unset($_SERVER['X_VARY'], $_SERVER['X_VAL1'], $_SERVER['X_VAL2']);
     }
 }
