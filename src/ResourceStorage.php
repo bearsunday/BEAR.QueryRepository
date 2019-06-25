@@ -12,6 +12,8 @@ use Doctrine\Common\Cache\CacheProvider;
 
 final class ResourceStorage implements ResourceStorageInterface
 {
+    use VaryUriTrait;
+
     /**
      * Prefix for ETag URI
      */
@@ -127,22 +129,5 @@ final class ResourceStorage implements ResourceStorageInterface
         }
 
         return $body;
-    }
-
-    private function getVaryUri(AbstractUri $uri) : string
-    {
-        if (! isset($_SERVER['X_VARY'])) {
-            return (string) $uri;
-        }
-        $varys = \explode(',', $_SERVER['X_VARY']);
-        $varyId = '';
-        foreach ($varys as $vary) {
-            $phpVaryKey = \sprintf('X_%s', \strtoupper($vary));
-            if (isset($_SERVER[$phpVaryKey])) {
-                $varyId .= $_SERVER[$phpVaryKey];
-            }
-        }
-
-        return (string) $uri . $varyId;
     }
 }

@@ -9,6 +9,8 @@ use BEAR\Resource\ResourceObject;
 
 final class EtagSetter implements EtagSetterInterface
 {
+    use VaryUriTrait;
+
     /**
      * {@inheritdoc}
      */
@@ -36,7 +38,7 @@ final class EtagSetter implements EtagSetterInterface
 
     public function getEtagByEitireView(ResourceObject $ro) : string
     {
-        return \get_class($ro) . \serialize($ro->view);
+        return \serialize($ro->view);
     }
 
     /**
@@ -50,6 +52,6 @@ final class EtagSetter implements EtagSetterInterface
     {
         $etag = $httpCache instanceof HttpCache && $httpCache->etag ? $this->getEtagByPartialBody($httpCache, $ro) : $this->getEtagByEitireView($ro);
 
-        return (string) \crc32(\get_class($ro) . $etag);
+        return (string) \crc32($this->getVaryUri($ro->uri) . $etag);
     }
 }
