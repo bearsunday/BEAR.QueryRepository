@@ -179,6 +179,7 @@ return \PhpCsFixer\Config::create()
         'visibility_required' => true,
 //      'void_return' => true, // @PHP71Migration:risky
         'whitespace_after_comma_in_array' => true, // @Symfony
-//      'yoda_style' => true // @Symfony
+//      'yoda_style' => true // @Symfony,
+        'declare_strict_types' => false
     ])
     ->setFinder($finder);
