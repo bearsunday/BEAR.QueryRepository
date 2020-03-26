@@ -47,7 +47,10 @@ class ResourceRepositoryTest extends TestCase
         list($uri, $code, $headers, $body) = $this->repository->get($uri);
         $this->assertSame((string) $uri, (string) $this->ro->uri);
         $this->assertSame($code, $this->ro->code);
-        $this->assertArraySubset($this->ro->headers, $headers);
+        $this->assertSame($this->ro->headers['Content-Type'], $headers['Content-Type']);
+        $this->assertSame($this->ro->headers['ETag'], $headers['ETag']);
+        $this->assertSame($this->ro->headers['Last-Modified'], $headers['Last-Modified']);
+        $this->assertSame(0, $headers['Age']);
         $this->assertArrayHasKey('Age', $headers);
         $this->assertSame($body, $this->ro->body);
     }

@@ -15,8 +15,7 @@
     },
     "require-dev": {
         "ext-redis": "*",
-        "phpunit/phpunit": "^7.5",
-        "vimeo/psalm": "dev-master",
+        "phpunit/phpunit": "^8.5",
         "symfony/process": "^4.3",
         "phpstan/phpstan": "^0.11"
     },

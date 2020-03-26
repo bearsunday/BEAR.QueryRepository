@@ -48,7 +48,7 @@ class GetInterceptorTest extends TestCase
     {
         $user = $this->resource->get('app://self/control-expiry');
         $this->assertArrayHasKey('Cache-Control', $user->headers);
-        $this->assertContains('public, max-age=3', $user->headers['Cache-Control']); // 30 sec (but may 30+x sec for slow CI)
+        $this->assertStringContainsString('public, max-age=3', $user->headers['Cache-Control']); // 30 sec (but may 30+x sec for slow CI)
     }
 
     public function testCacheControlHeaderExpiryError()
