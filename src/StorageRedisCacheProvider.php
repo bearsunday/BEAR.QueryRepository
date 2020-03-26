@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\RepositoryModule\Annotation\CacheVersion;
+use BEAR\RepositoryModule\Annotation\Redis;
+use BEAR\Resource\Annotation\AppName;
 use Doctrine\Common\Cache\RedisCache;
-use Ray\Di\Di\Named;
 use Ray\Di\ProviderInterface;
 
 class StorageRedisCacheProvider implements ProviderInterface
@@ -18,11 +20,25 @@ class StorageRedisCacheProvider implements ProviderInterface
     private $server;
 
     /**
-     * @Named("redis_server")
+     * @var string
      */
-    public function __construct(array $server)
+    private $appName;
+
+    /**
+     * @var string
+     */
+    private $version;
+
+    /**
+     * @Redis("server")
+     * @AppName("appName")
+     * @CacheVersion("version")
+     */
+    public function __construct(array $server, string $appName = '', string $version = '')
     {
         $this->server = $server;
+        $this->appName = $appName;
+        $this->version = $version;
     }
 
     /**
@@ -36,6 +52,7 @@ class StorageRedisCacheProvider implements ProviderInterface
         $redis->connect($host, (int) $port);
         $redisCache = new RedisCache();
         $redisCache->setRedis($redis);
+        $redisCache->setNamespace($this->appName . $this->version);
 
         return $redisCache;
     }

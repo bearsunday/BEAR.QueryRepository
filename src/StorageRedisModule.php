@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\RepositoryModule\Annotation\Redis;
 use BEAR\RepositoryModule\Annotation\Storage;
 use Doctrine\Common\Cache\CacheProvider;
 use Ray\Di\AbstractModule;
@@ -29,7 +30,7 @@ class StorageRedisModule extends AbstractModule
      */
     protected function configure()
     {
-        $this->bind()->annotatedWith('redis_server')->toInstance($this->server);
+        $this->bind()->annotatedWith(Redis::class)->toInstance($this->server);
         $this->bind(CacheProvider::class)->annotatedWith(Storage::class)->toProvider(StorageRedisCacheProvider::class);
     }
 }
