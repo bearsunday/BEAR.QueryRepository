@@ -17,7 +17,8 @@
         "ext-redis": "*",
         "phpunit/phpunit": "^7.5",
         "vimeo/psalm": "dev-master",
-        "symfony/process": "^4.3"
+        "symfony/process": "^4.3",
+        "phpstan/phpstan": "^0.11"
     },
     "autoload": {
         "psr-4": {
