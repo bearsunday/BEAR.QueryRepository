@@ -30,7 +30,7 @@ class QueryRepositoryTest extends TestCase
      */
     private $httpCache;
 
-    protected function setUp()
+    protected function setUp() : void
     {
         $namespace = 'FakeVendor\HelloWorld';
         $injector = new Injector(new QueryRepositoryModule(new MobileEtagModule(new ResourceModule($namespace))), $_ENV['TMP_DIR']);

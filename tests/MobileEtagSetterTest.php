@@ -23,7 +23,7 @@ class MobileEtagSetterTest extends TestCase
 
     private $obj;
 
-    protected function setUp()
+    protected function setUp() : void
     {
         parent::setUp();
         $this->obj = new User;

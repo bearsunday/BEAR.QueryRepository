@@ -24,7 +24,7 @@ class ResourceRepositoryTest extends TestCase
      */
     private $ro;
 
-    protected function setUp()
+    protected function setUp() : void
     {
         $this->repository = new Repository(
             new EtagSetter,

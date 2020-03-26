@@ -32,7 +32,7 @@ class BehaviorTest extends TestCase
      */
     private $httpCache;
 
-    protected function setUp()
+    protected function setUp() : void
     {
         $namespace = 'FakeVendor\HelloWorld';
         $injector = new Injector(new QueryRepositoryModule(new ResourceModule($namespace)), $_ENV['TMP_DIR']);
