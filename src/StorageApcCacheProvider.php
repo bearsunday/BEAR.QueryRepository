@@ -16,11 +16,23 @@ class StorageApcCacheProvider implements ProviderInterface
     private $namespace;
 
     /**
+     * @var string
+     */
+    private $appName;
+
+    /**
+     * @var string
+     */
+    private $version;
+
+    /**
      * @Named("namespace=cache_namespace")
      */
-    public function __construct(string $namespace = '')
+    public function __construct(string $namespace = '', string $appName = '', string $version = '')
     {
         $this->namespace = $namespace;
+        $this->appName = $appName;
+        $this->version = $version;
     }
 
     /**
@@ -29,7 +41,7 @@ class StorageApcCacheProvider implements ProviderInterface
     public function get()
     {
         $cache = new ApcuCache;
-        $cache->setNamespace($this->namespace);
+        $cache->setNamespace($this->namespace . $this->appName . $this->version);
 
         return $cache;
     }
