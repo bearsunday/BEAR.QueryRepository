@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\RepositoryModule\Annotation\Memcache;
 use BEAR\RepositoryModule\Annotation\Storage;
 use Doctrine\Common\Cache\CacheProvider;
 use Ray\Di\AbstractModule;
@@ -28,7 +29,7 @@ class StorageMemcachedModule extends AbstractModule
      */
     protected function configure()
     {
-        $this->bind()->annotatedWith('memcached_servers')->toInstance($this->servers);
+        $this->bind()->annotatedWith(Memcache::class)->toInstance($this->servers);
         $this->bind(CacheProvider::class)->annotatedWith(Storage::class)->toProvider(StorageMemcachedCacheProvider::class);
     }
 }
