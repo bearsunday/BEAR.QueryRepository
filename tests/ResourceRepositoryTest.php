@@ -24,7 +24,7 @@ class ResourceRepositoryTest extends TestCase
      */
     private $ro;
 
-    protected function setUp()
+    protected function setUp() : void
     {
         $this->repository = new Repository(
             new EtagSetter,
@@ -47,8 +47,13 @@ class ResourceRepositoryTest extends TestCase
         list($uri, $code, $headers, $body) = $this->repository->get($uri);
         $this->assertSame((string) $uri, (string) $this->ro->uri);
         $this->assertSame($code, $this->ro->code);
-        $this->assertArraySubset($this->ro->headers, $headers);
-        $this->assertArrayHasKey('Age', $headers);
+        $headers = array_change_key_case($headers, CASE_LOWER);
+        $Roheaders = array_change_key_case($this->ro->headers, CASE_LOWER);
+        $this->assertSame($headers['content-type'], $Roheaders['content-type']);
+        $this->assertSame($headers['etag'], $Roheaders['etag']);
+        $this->assertSame($headers['last-modified'], $Roheaders['last-modified']);
+        $this->assertSame(0, $headers['age']);
+        $this->assertArrayHasKey('age', $headers);
         $this->assertSame($body, $this->ro->body);
     }
 

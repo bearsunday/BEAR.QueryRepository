@@ -16,7 +16,7 @@ class EtagSetterTest extends TestCase
      */
     private $resource;
 
-    protected function setUp()
+    protected function setUp() : void
     {
         parent::setUp();
         $this->resource = (new Injector(new QueryRepositoryModule(new ResourceModule('FakeVendor\HelloWorld')), $_ENV['TMP_DIR']))->getInstance(ResourceInterface::class);
@@ -30,6 +30,6 @@ class EtagSetterTest extends TestCase
         $setEtag($ro, $time);
         $expect = 'Thu, 01 Jan 1970 00:00:00 GMT';
         $this->assertSame($expect, $ro->headers['Last-Modified']);
-        $this->assertInternalType('string', $ro->headers['ETag']);
+        $this->assertIsString($ro->headers['ETag']);
     }
 }

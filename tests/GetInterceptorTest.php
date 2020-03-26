@@ -17,7 +17,7 @@ class GetInterceptorTest extends TestCase
      */
     private $resource;
 
-    protected function setUp()
+    protected function setUp() : void
     {
         $this->resource = (new Injector(new QueryRepositoryModule(new ResourceModule('FakeVendor\HelloWorld')), $_ENV['TMP_DIR']))->getInstance(ResourceInterface::class);
         parent::setUp();
@@ -48,7 +48,7 @@ class GetInterceptorTest extends TestCase
     {
         $user = $this->resource->get('app://self/control-expiry');
         $this->assertArrayHasKey('Cache-Control', $user->headers);
-        $this->assertContains('public, max-age=3', $user->headers['Cache-Control']); // 30 sec (but may 30+x sec for slow CI)
+        $this->assertStringContainsString('public, max-age=3', $user->headers['Cache-Control']); // 30 sec (but may 30+x sec for slow CI)
     }
 
     public function testCacheControlHeaderExpiryError()
