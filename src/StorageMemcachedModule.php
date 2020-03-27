@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\RepositoryModule\Annotation\CacheEngine;
 use BEAR\RepositoryModule\Annotation\Memcache;
 use BEAR\RepositoryModule\Annotation\Storage;
 use Doctrine\Common\Cache\CacheProvider;
 use Ray\Di\AbstractModule;
+use Ray\Di\Scope;
 
 class StorageMemcachedModule extends AbstractModule
 {
@@ -16,7 +18,7 @@ class StorageMemcachedModule extends AbstractModule
      */
     private $servers;
 
-    public function __construct($servers, AbstractModule $module = null)
+    public function __construct(string $servers, AbstractModule $module = null)
     {
         $this->servers = \array_map(function ($serverString) {
             return \explode(':', $serverString);
@@ -30,6 +32,7 @@ class StorageMemcachedModule extends AbstractModule
     protected function configure()
     {
         $this->bind()->annotatedWith(Memcache::class)->toInstance($this->servers);
-        $this->bind(CacheProvider::class)->annotatedWith(Storage::class)->toProvider(StorageMemcachedCacheProvider::class);
+        $this->bind(CacheProvider::class)->annotatedWith(CacheEngine::class)->toProvider(StorageMemcachedCacheProvider::class);
+        $this->bind(CacheProvider::class)->annotatedWith(Storage::class)->toProvider(NamespacedCacheProvider::class)->in(Scope::SINGLETON);
     }
 }
