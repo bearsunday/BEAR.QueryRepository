@@ -13,3 +13,4 @@ vendor
 .php_cs.cache
 tests/tmp/*
 tests/dump.rdb
+.phpunit.result.cache

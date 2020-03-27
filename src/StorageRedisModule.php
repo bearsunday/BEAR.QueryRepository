@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\RepositoryModule\Annotation\CacheEngine;
+use BEAR\RepositoryModule\Annotation\Redis;
 use BEAR\RepositoryModule\Annotation\Storage;
 use Doctrine\Common\Cache\CacheProvider;
 use Ray\Di\AbstractModule;
+use Ray\Di\Scope;
 
 class StorageRedisModule extends AbstractModule
 {
@@ -16,7 +19,7 @@ class StorageRedisModule extends AbstractModule
     private $server;
 
     /**
-     * @param string $server {host}:{port} format
+     * @param string $server 'localhost:6379' {host}:{port}
      */
     public function __construct(string $server, AbstractModule $module = null)
     {
@@ -29,7 +32,8 @@ class StorageRedisModule extends AbstractModule
      */
     protected function configure()
     {
-        $this->bind()->annotatedWith('redis_server')->toInstance($this->server);
-        $this->bind(CacheProvider::class)->annotatedWith(Storage::class)->toProvider(StorageRedisCacheProvider::class);
+        $this->bind()->annotatedWith(Redis::class)->toInstance($this->server);
+        $this->bind(CacheProvider::class)->annotatedWith(CacheEngine::class)->toProvider(StorageRedisCacheProvider::class);
+        $this->bind(CacheProvider::class)->annotatedWith(Storage::class)->toProvider(NamespacedCacheProvider::class)->in(Scope::SINGLETON);
     }
 }

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\RepositoryModule\Annotation\Redis;
 use Doctrine\Common\Cache\RedisCache;
-use Ray\Di\Di\Named;
 use Ray\Di\ProviderInterface;
 
 class StorageRedisCacheProvider implements ProviderInterface
@@ -18,7 +18,7 @@ class StorageRedisCacheProvider implements ProviderInterface
     private $server;
 
     /**
-     * @Named("redis_server")
+     * @Redis("server")
      */
     public function __construct(array $server)
     {
