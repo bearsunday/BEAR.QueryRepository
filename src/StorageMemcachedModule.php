@@ -18,6 +18,9 @@ class StorageMemcachedModule extends AbstractModule
      */
     private $servers;
 
+    /**
+     * @param string $servers 'mem1.domain.com:11211:33,mem2.domain.com:11211:67' {host}:{port}:{weight}
+     */
     public function __construct(string $servers, AbstractModule $module = null)
     {
         $this->servers = \array_map(function ($serverString) {

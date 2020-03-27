@@ -19,7 +19,7 @@ class StorageRedisModule extends AbstractModule
     private $server;
 
     /**
-     * @param string $server {host}:{port} format
+     * @param string $server 'localhost:6379' {host}:{port}
      */
     public function __construct(string $server, AbstractModule $module = null)
     {
