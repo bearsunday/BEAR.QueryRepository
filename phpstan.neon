@@ -1,4 +1,5 @@
 parameters:
     excludes_analyse:
         - */tests/tmp/*
+        - */tests/Fake/*
         - */src/StorageRedisCacheProvider.php*
