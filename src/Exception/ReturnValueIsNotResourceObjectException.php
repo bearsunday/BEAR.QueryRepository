@@ -4,6 +4,6 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository\Exception;
 
-class ReturnValueIsNotResourceObjectException extends \UnexpectedValueException
+class ReturnValueIsNotResourceObjectException extends RuntimeException
 {
 }
