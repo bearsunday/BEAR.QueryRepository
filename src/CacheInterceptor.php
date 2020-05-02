@@ -32,7 +32,7 @@ class CacheInterceptor implements MethodInterceptor
         $ro = $invocation->getThis();
         try {
             $stored = $this->repository->get($ro->uri);
-        } catch (LogicException|RuntimeException $e) {
+        } catch (LogicException | RuntimeException $e) {
             throw $e;
         } catch (\Exception $e) {
             $this->errorLog($e);
@@ -47,7 +47,7 @@ class CacheInterceptor implements MethodInterceptor
         try {
             $ro = $invocation->proceed();
             $ro->code === 200 ? $this->repository->put($ro) : $this->repository->purge($ro->uri);
-        } catch (LogicException|RuntimeException $e) {
+        } catch (LogicException | RuntimeException $e) {
             throw $e;
         } catch (\Exception $e) {
             $this->errorLog($e);
