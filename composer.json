@@ -37,7 +37,7 @@
               "tests/Fake/fake-app/src"
             ]
         },
-        "files": ["tests/Fake/Memcached.php", "tests/Fake/Redis.php"]
+        "files": ["tests/Fake/Memcached.php", "tests/Fake/Redis.php", "tests/syslog.php"]
     },
     "scripts" :{
         "test": ["phpunit"],
