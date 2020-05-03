@@ -50,6 +50,6 @@ final class EtagSetter implements EtagSetterInterface
     {
         $etag = $httpCache instanceof HttpCache && $httpCache->etag ? $this->getEtagByPartialBody($httpCache, $ro) : $this->getEtagByEitireView($ro);
 
-        return (string) \crc32(\get_class($ro) . $etag);
+        return (string) \crc32(\get_class($ro) . $etag . (string) $ro->uri);
     }
 }
