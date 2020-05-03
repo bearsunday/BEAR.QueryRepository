@@ -4,13 +4,16 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\RepositoryModule\Annotation\Storage;
 use BEAR\Resource\Module\ResourceModule;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
+use Doctrine\Common\Cache\CacheProvider;
 use FakeVendor\HelloWorld\Resource\App\User\Profile;
 use FakeVendor\HelloWorld\Resource\Page\None;
 use PHPUnit\Framework\TestCase;
+use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
 
 class QueryRepositoryTest extends TestCase
@@ -113,5 +116,23 @@ class QueryRepositoryTest extends TestCase
         $this->assertInstanceOf(None::class, $body['time']);
         $this->assertSame(1, $body['num']);
         $this->assertNull($view);
+    }
+
+    public function testErrorInCacheRead()
+    {
+        $namespace = 'FakeVendor\HelloWorld';
+        $module = new QueryRepositoryModule(new MobileEtagModule(new ResourceModule($namespace)));
+
+        $module->override(new class extends AbstractModule {
+            protected function configure()
+            {
+                $this->bind(CacheProvider::class)->annotatedWith(Storage::class)->to(FakeErrorCache::class);
+            }
+        });
+        $resource = (new Injector($module, $_ENV['TMP_DIR']))->getInstance(ResourceInterface::class);
+        assert($resource instanceof ResourceInterface);
+        $resource->get('app://self/user', ['id' => 1]);
+        $this->assertSame(2, $GLOBALS['BEAR\QueryRepository\syslog'][0]);
+        $this->assertContains('Exception: DoctrineNamespaceCacheKey[]', $GLOBALS['BEAR\QueryRepository\syslog'][1]);
     }
 }
