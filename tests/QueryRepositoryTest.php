@@ -135,4 +135,26 @@ class QueryRepositoryTest extends TestCase
         $this->assertSame(2, $GLOBALS['BEAR\QueryRepository\syslog'][0]);
         $this->assertContains('Exception: DoctrineNamespaceCacheKey[]', $GLOBALS['BEAR\QueryRepository\syslog'][1]);
     }
+
+    public function testSameResponseButDifferentParameter()
+    {
+        $ro1 = $this->resource->get('app://self/sometimes-same-response', ['id' => 1]);
+        $server1 = [
+            'REQUEST_METHOD' => 'GET',
+            'HTTP_IF_NONE_MATCH' => $ro1->headers['ETag'],
+        ];
+        $this->assertTrue($this->httpCache->isNotModified($server1), 'id:1 is not modified');
+
+        $ro2 = $this->resource->get('app://self/sometimes-same-response', ['id' => 2]);
+        $server2 = [
+            'REQUEST_METHOD' => 'GET',
+            'HTTP_IF_NONE_MATCH' => $ro2->headers['ETag'],
+        ];
+        $this->assertTrue($this->httpCache->isNotModified($server2), 'id:2 is not modified');
+
+        $this->resource->delete('app://self/sometimes-same-response', ['id' => 1]);
+
+        $this->assertFalse($this->httpCache->isNotModified($server1), 'id:1 is modified');
+        $this->assertTrue($this->httpCache->isNotModified($server2), 'id:2 is not modified');
+    }
 }
