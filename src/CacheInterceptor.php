@@ -37,7 +37,7 @@ class CacheInterceptor implements MethodInterceptor
         } catch (\Exception $e) {
             $this->errorLog($e);
 
-            return $invocation->proceed();
+            return $invocation->proceed(); // proceed when cache error
         }
         if ($stored) {
             list($ro->uri, $ro->code, $ro->headers, $ro->body, $ro->view) = $stored;
