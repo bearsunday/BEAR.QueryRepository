@@ -44,8 +44,8 @@ class CacheInterceptor implements MethodInterceptor
 
             return $ro;
         }
+        $ro = $invocation->proceed();
         try {
-            $ro = $invocation->proceed();
             $ro->code === 200 ? $this->repository->put($ro) : $this->repository->purge($ro->uri);
         } catch (LogicException | RuntimeException $e) {
             throw $e;
