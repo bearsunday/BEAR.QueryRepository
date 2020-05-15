@@ -12,6 +12,7 @@ use BEAR\Resource\Uri;
 use Doctrine\Common\Cache\CacheProvider;
 use FakeVendor\HelloWorld\Resource\App\User\Profile;
 use FakeVendor\HelloWorld\Resource\Page\None;
+use PHPUnit\Framework\Error\Warning;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
@@ -97,7 +98,7 @@ class QueryRepositoryTest extends TestCase
         $uri = 'page://self/emb-view';
         $ro = $this->resource->get($uri);
         $this->repository->put($ro);
-        list(, , , $body, $view) = $this->repository->get(new Uri($uri));
+        [, , , $body, $view] = $this->repository->get(new Uri($uri));
         $this->assertInstanceOf(None::class, $body['time']);
         $this->assertSame(1, $body['num']);
         $this->assertSame('{
@@ -112,7 +113,7 @@ class QueryRepositoryTest extends TestCase
         $uri = 'page://self/emb-val';
         $ro = $this->resource->get($uri);
         $this->repository->put($ro);
-        list(, , , $body, $view) = $this->repository->get(new Uri($uri));
+        [, , , $body, $view] = $this->repository->get(new Uri($uri));
         $this->assertInstanceOf(None::class, $body['time']);
         $this->assertSame(1, $body['num']);
         $this->assertNull($view);
@@ -131,6 +132,7 @@ class QueryRepositoryTest extends TestCase
         });
         $resource = (new Injector($module, $_ENV['TMP_DIR']))->getInstance(ResourceInterface::class);
         assert($resource instanceof ResourceInterface);
+        $this->expectException(Warning::class);
         $resource->get('app://self/user', ['id' => 1]);
         $this->assertSame(2, $GLOBALS['BEAR\QueryRepository\syslog'][0]);
         $this->assertContains('Exception: DoctrineNamespaceCacheKey[]', $GLOBALS['BEAR\QueryRepository\syslog'][1]);
