@@ -35,12 +35,12 @@ class CacheInterceptor implements MethodInterceptor
         } catch (LogicException | RuntimeException $e) {
             throw $e;
         } catch (\Exception $e) {
-            $this->errorLog($e);
+            $this->triggerError($e);
 
-            return $invocation->proceed(); // proceed when cache error
+            return $invocation->proceed();
         }
         if ($stored) {
-            list($ro->uri, $ro->code, $ro->headers, $ro->body, $ro->view) = $stored;
+            [$ro->uri, $ro->code, $ro->headers, $ro->body, $ro->view] = $stored;
 
             return $ro;
         }
@@ -50,15 +50,18 @@ class CacheInterceptor implements MethodInterceptor
         } catch (LogicException | RuntimeException $e) {
             throw $e;
         } catch (\Exception $e) {
-            $this->errorLog($e);
+            $this->triggerError($e);
         }
 
         return $ro;
     }
 
-    private function errorLog(\Exception $e) : void
+    /**
+     * Trigger error when cache server is down instead of throwing the exception
+     */
+    private function triggerError(\Exception $e) : void
     {
         $message = sprintf('%s: %s in %s:%s', get_class($e), $e->getMessage(), $e->getFile(), $e->getLine());
-        syslog(LOG_CRIT, $message);
+        trigger_error($message, E_USER_WARNING);
     }
 }
