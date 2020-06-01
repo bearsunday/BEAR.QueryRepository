@@ -99,10 +99,11 @@ class QueryRepositoryTest extends TestCase
         $ro = $this->resource->get($uri);
         $this->repository->put($ro);
         [, , , $body, $view] = $this->repository->get(new Uri($uri));
-        $this->assertInstanceOf(None::class, $body['time']);
         $this->assertSame(1, $body['num']);
         $this->assertSame('{
-    "time": null,
+    "time": {
+        "none": "none"
+    },
     "num": 1
 }
 ', $view);
@@ -114,7 +115,6 @@ class QueryRepositoryTest extends TestCase
         $ro = $this->resource->get($uri);
         $this->repository->put($ro);
         [, , , $body, $view] = $this->repository->get(new Uri($uri));
-        $this->assertInstanceOf(None::class, $body['time']);
         $this->assertSame(1, $body['num']);
         $this->assertNull($view);
     }

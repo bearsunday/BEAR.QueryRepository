@@ -124,6 +124,9 @@ final class ResourceStorage implements ResourceStorageInterface
             if ($item instanceof RequestInterface) {
                 $item = ($item)();
             }
+            if ($item instanceof ResourceObject) {
+                $item = $item->body;
+            }
         }
 
         return $body;
