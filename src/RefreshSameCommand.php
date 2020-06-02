@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\UnmatchedQuery;
 use BEAR\Resource\ResourceObject;
+use function array_values;
 use function is_callable;
 use Ray\Aop\MethodInvocation;
 
@@ -42,10 +43,7 @@ final class RefreshSameCommand implements CommandInterface
         $ro->uri->query = $getQuery;
         $get = [$ro, 'onGet'];
         if (is_callable($get)) {
-            /**
-             * @psalm-suppress InvalidArgument
-             */
-            \call_user_func_array($get, $getQuery);
+            \call_user_func_array($get, array_values($getQuery));
         }
     }
 
