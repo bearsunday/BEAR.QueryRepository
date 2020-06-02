@@ -13,12 +13,14 @@ class StorageRedisCacheProvider implements ProviderInterface
     /**
      * redis server
      *
-     * @var array
+     * @var array{0: string, 1: string}
      */
     private $server;
 
     /**
      * @Redis("server")
+     *
+     * @param array{0: string, 1: string} $server
      */
     public function __construct(array $server)
     {

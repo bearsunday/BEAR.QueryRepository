@@ -61,6 +61,7 @@ final class RefreshSameCommand implements CommandInterface
             if (! isset($query[$parameter->name])) {
                 throw new UnmatchedQuery(sprintf('%s %s', $ro->uri->method, (string) $ro->uri));
             }
+            /** @psalm-suppress MixedAssignment */
             $getQuery[$parameter->name] = $query[$parameter->name];
         }
 

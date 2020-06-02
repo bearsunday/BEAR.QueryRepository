@@ -16,6 +16,7 @@ class HttpCacheInterceptor implements MethodInterceptor
     public function invoke(MethodInvocation $invocation)
     {
         $cacheControl = $invocation->getMethod()->getDeclaringClass()->getAnnotation(AbstractCacheControl::class);
+        /** @psalm-suppress MixedAssignment $ro */
         $ro = $invocation->proceed();
         if ($ro->code === 200 && $cacheControl instanceof AbstractCacheControl) {
             $ro->headers['Cache-Control'] = (string) $cacheControl;

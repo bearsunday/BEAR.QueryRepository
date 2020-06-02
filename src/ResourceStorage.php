@@ -9,6 +9,7 @@ use BEAR\Resource\AbstractUri;
 use BEAR\Resource\RequestInterface;
 use BEAR\Resource\ResourceObject;
 use Doctrine\Common\Cache\CacheProvider;
+use function is_string;
 
 final class ResourceStorage implements ResourceStorageInterface
 {
@@ -69,9 +70,11 @@ final class ResourceStorage implements ResourceStorageInterface
     public function deleteEtag(AbstractUri $uri)
     {
         $varyUri = self::ETAG_TABLE . $this->getVaryUri($uri); // invalidate etag
+        /** @psalm-suppress MixedAssignment */
         $oldEtagKey = $this->cache->fetch($varyUri);
-
-        $this->cache->delete($oldEtagKey);
+        if (is_string($oldEtagKey)) {
+            $this->cache->delete($oldEtagKey);
+        }
     }
 
     /**
@@ -80,7 +83,7 @@ final class ResourceStorage implements ResourceStorageInterface
     public function get(AbstractUri $uri)
     {
         $varyUri = $this->getVaryUri($uri);
-
+        /** @var array{0:string, 1: int, 2:array<string, string>, 3: mixed, 4: string}|false $roProps */
         return $this->cache->fetch($varyUri);
     }
 
@@ -102,6 +105,7 @@ final class ResourceStorage implements ResourceStorageInterface
      */
     public function saveValue(ResourceObject $ro, int $lifeTime)
     {
+        /** @psalm-suppress MixedAssignment $body */
         $body = $this->evaluateBody($ro->body);
         $uri = $this->getVaryUri($ro->uri);
         $val = [$ro->uri, $ro->code, $ro->headers, $body, null];
@@ -116,6 +120,7 @@ final class ResourceStorage implements ResourceStorageInterface
      */
     public function saveView(ResourceObject $ro, int $lifeTime)
     {
+        /** @psalm-suppress MixedAssignment $body */
         $body = $this->evaluateBody($ro->body);
         $uri = $this->getVaryUri($ro->uri);
         $val = [$ro->uri, $ro->code, $ro->headers, $body, $ro->view];
@@ -133,6 +138,7 @@ final class ResourceStorage implements ResourceStorageInterface
         if (! \is_array($body)) {
             return $body;
         }
+        /** @psalm-suppress MixedAssignment $item */
         foreach ($body as &$item) {
             if ($item instanceof RequestInterface) {
                 $item = ($item)();
@@ -150,15 +156,17 @@ final class ResourceStorage implements ResourceStorageInterface
         if (! isset($_SERVER['X_VARY'])) {
             return (string) $uri;
         }
-        $varys = \explode(',', $_SERVER['X_VARY']);
+        /** @var string $xvary */
+        $xvary = $_SERVER['X_VARY'];
+        $varys = \explode(',', $xvary);
         $varyId = '';
         foreach ($varys as $vary) {
             $phpVaryKey = \sprintf('X_%s', \strtoupper($vary));
-            if (isset($_SERVER[$phpVaryKey])) {
+            if (isset($_SERVER[$phpVaryKey]) && is_string($_SERVER[$phpVaryKey])) {
                 $varyId .= $_SERVER[$phpVaryKey];
             }
         }
 
-        return (string) $uri . $varyId;
+        return $uri . $varyId;
     }
 }

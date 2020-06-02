@@ -43,6 +43,7 @@ final class CliHttpCache implements HttpCacheInterface
     private function setRequestHeaders(array $server, string $query) : array
     {
         \parse_str($query, $headers);
+        /** @var array<string, string> $headers */
         foreach ($headers as $key => $header) {
             $server[$this->getServerKey($key)] = (string) $header;
         }

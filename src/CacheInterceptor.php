@@ -44,7 +44,9 @@ class CacheInterceptor implements MethodInterceptor
 
             return $ro;
         }
+        /** @psalm-suppress MixedAssignment */
         $ro = $invocation->proceed();
+        assert($ro instanceof ResourceObject);
         try {
             $ro->code === 200 ? $this->repository->put($ro) : $this->repository->purge($ro->uri);
         } catch (LogicException | RuntimeException $e) {
