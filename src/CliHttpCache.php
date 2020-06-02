@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
 use function assert;
+use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
 use function is_string;
 
 final class CliHttpCache implements HttpCacheInterface
