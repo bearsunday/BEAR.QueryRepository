@@ -1,5 +1,9 @@
 parameters:
-    excludes_analyse:
-        - */tests/tmp/*
-        - */tests/Fake/*
-        - */src/StorageRedisCacheProvider.php*
+  level: max
+  paths:
+    - src
+    - tests
+  excludes_analyse:
+    - */tests/tmp/*
+    - */tests/Fake/*
+    - */src/StorageRedisCacheProvider.php*
