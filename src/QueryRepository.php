@@ -96,10 +96,8 @@ final class QueryRepository implements QueryRepositoryInterface
 
     /**
      * @throws \ReflectionException
-     *
-     * @return HttpCache|null
      */
-    private function getHttpCacheAnnotation(ResourceObject $ro): ?HttpCache
+    private function getHttpCacheAnnotation(ResourceObject $ro) : ?HttpCache
     {
         $annotation = $this->reader->getClassAnnotation(new \ReflectionClass($ro), HttpCache::class);
         if ($annotation instanceof HttpCache || $annotation === null) {

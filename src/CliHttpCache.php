@@ -50,7 +50,7 @@ final class CliHttpCache implements HttpCacheInterface
         return $server;
     }
 
-    private function getServerKey(string $key): string
+    private function getServerKey(string $key) : string
     {
         return sprintf('HTTP_%s', strtoupper(\str_replace('-', '_', $key)));
     }
