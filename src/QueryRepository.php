@@ -124,6 +124,11 @@ final class QueryRepository implements QueryRepositoryInterface
         throw new \LogicException();
     }
 
+    /**
+     * @param mixed $body
+     *
+     * @return mixed
+     */
     private function evaluateBody($body)
     {
         if (! \is_array($body)) {
@@ -185,7 +190,7 @@ final class QueryRepository implements QueryRepositoryInterface
         $ro->headers['Cache-Control'] .= ', ' . $setMaxAge;
     }
 
-    private function saveViewCache(ResourceObject $ro, int $lifeTime)
+    private function saveViewCache(ResourceObject $ro, int $lifeTime) : bool
     {
         if (! $ro->view) {
             $ro->view = $ro->toString();

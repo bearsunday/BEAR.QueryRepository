@@ -16,11 +16,15 @@ interface ResourceStorageInterface
 
     /**
      * Update or save new Etag
+     *
+     * @return void
      */
     public function updateEtag(ResourceObject $ro, int $lifeTime);
 
     /**
      * Delete Etag
+     *
+     * @return void
      */
     public function deleteEtag(AbstractUri $uri);
 
@@ -35,11 +39,15 @@ interface ResourceStorageInterface
 
     /**
      * Save resource cache with value
+     *
+     * @return bool
      */
     public function saveValue(ResourceObject $ro, int $ttl);
 
     /**
      * Save resource cache with view
+     *
+     * @return bool
      */
     public function saveView(ResourceObject $ro, int $ttl);
 

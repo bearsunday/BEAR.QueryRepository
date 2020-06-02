@@ -123,6 +123,11 @@ final class ResourceStorage implements ResourceStorageInterface
         return $this->cache->save($uri, $val, $lifeTime);
     }
 
+    /**
+     * @param mixed $body
+     *
+     * @return mixed
+     */
     private function evaluateBody($body)
     {
         if (! \is_array($body)) {
