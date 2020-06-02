@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
+
 final class HttpCache implements HttpCacheInterface
 {
     /**
