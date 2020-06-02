@@ -51,6 +51,8 @@ final class RefreshSameCommand implements CommandInterface
 
     /**
      * @throws \ReflectionException
+     *
+     * @return array<string, mixed>
      */
     private function getQuery(ResourceObject $ro) : array
     {
@@ -62,7 +64,7 @@ final class RefreshSameCommand implements CommandInterface
                 throw new UnmatchedQuery(sprintf('%s %s', $ro->uri->method, (string) $ro->uri));
             }
             /** @psalm-suppress MixedAssignment */
-            $getQuery[$parameter->name] = $query[$parameter->name];
+            $getQuery[(string) $parameter->name] = $query[$parameter->name];
         }
 
         return $getQuery;

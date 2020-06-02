@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
+use function assert;
+use function is_string;
 
 final class CliHttpCache implements HttpCacheInterface
 {
@@ -24,10 +26,11 @@ final class CliHttpCache implements HttpCacheInterface
     public function isNotModified(array $server) : bool
     {
         if (isset($server['argc']) && $server['argc'] === 4) {
+            assert(isset($server['argv'][3]) && is_string($server['argv'][3]));
             $server = $this->setRequestHeaders($server, $server['argv'][3]);
         }
 
-        return isset($server['HTTP_IF_NONE_MATCH']) && $this->storage->hasEtag($server['HTTP_IF_NONE_MATCH']);
+        return isset($server['HTTP_IF_NONE_MATCH']) && is_string($server['HTTP_IF_NONE_MATCH']) && $this->storage->hasEtag($server['HTTP_IF_NONE_MATCH']);
     }
 
     /**

@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\HttpCache;
 use BEAR\Resource\ResourceObject;
+use function is_array;
 
 final class EtagSetter implements EtagSetterInterface
 {
@@ -25,9 +26,10 @@ final class EtagSetter implements EtagSetterInterface
     public function getEtagByPartialBody(HttpCache $httpCacche, ResourceObject $ro) : string
     {
         $etag = '';
+        assert(is_array($ro->body));
         foreach ($httpCacche->etag as $bodyEtag) {
             if (isset($ro->body[$bodyEtag])) {
-                $etag .= $ro->body[$bodyEtag];
+                $etag .= (string) $ro->body[$bodyEtag];
             }
         }
 

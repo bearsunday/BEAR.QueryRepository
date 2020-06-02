@@ -11,6 +11,7 @@ use BEAR\Resource\AbstractUri;
 use BEAR\Resource\RequestInterface;
 use BEAR\Resource\ResourceObject;
 use Doctrine\Common\Annotations\Reader;
+use function assert;
 use function is_array;
 
 final class QueryRepository implements QueryRepositoryInterface
@@ -153,17 +154,17 @@ final class QueryRepository implements QueryRepositoryInterface
             return $this->getExpiryAtSec($ro, $cacheable);
         }
 
-        return $cacheable->expirySecond ? $cacheable->expirySecond : $this->expiry[$cacheable->expiry];
+        return $cacheable->expirySecond ? $cacheable->expirySecond : (int) $this->expiry[$cacheable->expiry];
     }
 
     private function getExpiryAtSec(ResourceObject $ro, Cacheable $cacheable) : int
     {
-        assert(is_array($ro->body));
         if (! isset($ro->body[$cacheable->expiryAt])) {
             $msg = \sprintf('%s::%s', \get_class($ro), $cacheable->expiryAt);
 
             throw new ExpireAtKeyNotExists($msg);
         }
+        assert(is_array($ro->body));
         $expiryAt = (string) $ro->body[$cacheable->expiryAt];
 
         return \strtotime($expiryAt) - \time();
