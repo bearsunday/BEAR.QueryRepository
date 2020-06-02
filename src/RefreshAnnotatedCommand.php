@@ -33,6 +33,9 @@ final class RefreshAnnotatedCommand implements CommandInterface
         $this->resource = $resource;
     }
 
+    /**
+     * @return void
+     */
     public function command(MethodInvocation $invocation, ResourceObject $ro)
     {
         /** @var ReflectionMethod $method */
@@ -51,7 +54,10 @@ final class RefreshAnnotatedCommand implements CommandInterface
         return uri_template($annotation->uri, $query);
     }
 
-    private function request(ResourceObject $ro, $annotation)
+    /**
+     * @return void
+     */
+    private function request(ResourceObject $ro, object $annotation)
     {
         if (! $annotation instanceof AbstractCommand) {
             return;

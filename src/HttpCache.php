@@ -26,6 +26,8 @@ final class HttpCache implements HttpCacheInterface
 
     /**
      * {@inheritdoc}
+     *
+     * @return void
      */
     public function transfer()
     {

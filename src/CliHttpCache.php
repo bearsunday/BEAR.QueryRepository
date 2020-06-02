@@ -30,6 +30,8 @@ final class CliHttpCache implements HttpCacheInterface
 
     /**
      * {@inheritdoc}
+     *
+     * @return void
      */
     public function transfer()
     {
@@ -46,7 +48,7 @@ final class CliHttpCache implements HttpCacheInterface
         return $server;
     }
 
-    private function getServerKey(string $key)
+    private function getServerKey(string $key): string
     {
         return sprintf('HTTP_%s', strtoupper(\str_replace('-', '_', $key)));
     }

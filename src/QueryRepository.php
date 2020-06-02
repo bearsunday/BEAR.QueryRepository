@@ -96,8 +96,10 @@ final class QueryRepository implements QueryRepositoryInterface
 
     /**
      * @throws \ReflectionException
+     *
+     * @return HttpCache|null
      */
-    private function getHttpCacheAnnotation(ResourceObject $ro)
+    private function getHttpCacheAnnotation(ResourceObject $ro): ?HttpCache
     {
         $annotation = $this->reader->getClassAnnotation(new \ReflectionClass($ro), HttpCache::class);
         if ($annotation instanceof HttpCache || $annotation === null) {
@@ -161,6 +163,9 @@ final class QueryRepository implements QueryRepositoryInterface
         return \strtotime($expiryAt) - \time();
     }
 
+    /**
+     * @return void
+     */
     private function setMaxAge(ResourceObject $ro, int $age)
     {
         if ($age === 0) {

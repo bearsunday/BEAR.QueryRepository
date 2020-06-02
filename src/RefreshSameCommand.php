@@ -19,6 +19,9 @@ final class RefreshSameCommand implements CommandInterface
         $this->repository = $repository;
     }
 
+    /**
+     * @return void
+     */
     public function command(MethodInvocation $invocation, ResourceObject $ro)
     {
         $method = $invocation->getMethod()->getName();

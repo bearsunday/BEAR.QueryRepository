@@ -45,6 +45,8 @@ final class ResourceStorage implements ResourceStorageInterface
 
     /**
      * {@inheritdoc}
+     *
+     * @return void
      */
     public function updateEtag(ResourceObject $ro, int $lifeTime)
     {
@@ -61,6 +63,8 @@ final class ResourceStorage implements ResourceStorageInterface
 
     /**
      * {@inheritdoc}
+     *
+     * @return void
      */
     public function deleteEtag(AbstractUri $uri)
     {
@@ -93,6 +97,8 @@ final class ResourceStorage implements ResourceStorageInterface
 
     /**
      * {@inheritdoc}
+     *
+     * @return bool
      */
     public function saveValue(ResourceObject $ro, int $lifeTime)
     {
@@ -105,6 +111,8 @@ final class ResourceStorage implements ResourceStorageInterface
 
     /**
      * {@inheritdoc}
+     *
+     * @return bool
      */
     public function saveView(ResourceObject $ro, int $lifeTime)
     {
