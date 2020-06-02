@@ -74,7 +74,7 @@ final class HttpCache extends AbstractCacheControl
     /**
      * Resource body index of Etag
      *
-     * @var array
+     * @var array<string>
      */
     public $etag = [];
 

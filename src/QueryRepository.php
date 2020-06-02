@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use function assert;
 use BEAR\QueryRepository\Exception\ExpireAtKeyNotExists;
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\HttpCache;
@@ -11,6 +12,7 @@ use BEAR\Resource\AbstractUri;
 use BEAR\Resource\RequestInterface;
 use BEAR\Resource\ResourceObject;
 use Doctrine\Common\Annotations\Reader;
+use function is_array;
 
 final class QueryRepository implements QueryRepositoryInterface
 {
@@ -97,7 +99,7 @@ final class QueryRepository implements QueryRepositoryInterface
     /**
      * @throws \ReflectionException
      */
-    private function getHttpCacheAnnotation(ResourceObject $ro)
+    private function getHttpCacheAnnotation(ResourceObject $ro) : ?HttpCache
     {
         $annotation = $this->reader->getClassAnnotation(new \ReflectionClass($ro), HttpCache::class);
         if ($annotation instanceof HttpCache || $annotation === null) {
@@ -122,11 +124,17 @@ final class QueryRepository implements QueryRepositoryInterface
         throw new \LogicException();
     }
 
+    /**
+     * @param mixed $body
+     *
+     * @return mixed
+     */
     private function evaluateBody($body)
     {
         if (! \is_array($body)) {
             return $body;
         }
+        /** @psalm-suppress MixedAssignment $item */
         foreach ($body as &$item) {
             if ($item instanceof RequestInterface) {
                 $item = ($item)();
@@ -146,7 +154,7 @@ final class QueryRepository implements QueryRepositoryInterface
             return $this->getExpiryAtSec($ro, $cacheable);
         }
 
-        return $cacheable->expirySecond ? $cacheable->expirySecond : $this->expiry[$cacheable->expiry];
+        return $cacheable->expirySecond ? $cacheable->expirySecond : (int) $this->expiry[$cacheable->expiry];
     }
 
     private function getExpiryAtSec(ResourceObject $ro, Cacheable $cacheable) : int
@@ -156,11 +164,15 @@ final class QueryRepository implements QueryRepositoryInterface
 
             throw new ExpireAtKeyNotExists($msg);
         }
-        $expiryAt = $ro->body[$cacheable->expiryAt];
+        assert(is_array($ro->body));
+        $expiryAt = (string) $ro->body[$cacheable->expiryAt];
 
         return \strtotime($expiryAt) - \time();
     }
 
+    /**
+     * @return void
+     */
     private function setMaxAge(ResourceObject $ro, int $age)
     {
         if ($age === 0) {
@@ -168,19 +180,23 @@ final class QueryRepository implements QueryRepositoryInterface
         }
         $setMaxAge = \sprintf('max-age=%d', $age);
         $noCacheControleHeader = ! isset($ro->headers['Cache-Control']);
+        /** @var array<string, string> $headers */
+        $headers = $ro->headers;
         if ($noCacheControleHeader) {
             $ro->headers['Cache-Control'] = $setMaxAge;
 
             return;
         }
-        $isMaxAgeAlreadyDefined = strpos($ro->headers['Cache-Control'], 'max-age') !== false;
+        $isMaxAgeAlreadyDefined = strpos($headers['Cache-Control'], 'max-age') !== false;
         if ($isMaxAgeAlreadyDefined) {
             return;
         }
-        $ro->headers['Cache-Control'] .= ', ' . $setMaxAge;
+        if (is_string($ro->headers['Cache-Control'])) {
+            $ro->headers['Cache-Control'] .= ', ' . $setMaxAge;
+        }
     }
 
-    private function saveViewCache(ResourceObject $ro, int $lifeTime)
+    private function saveViewCache(ResourceObject $ro, int $lifeTime) : bool
     {
         if (! $ro->view) {
             $ro->view = $ro->toString();

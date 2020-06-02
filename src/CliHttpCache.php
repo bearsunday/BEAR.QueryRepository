@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use function assert;
+use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
+use function is_string;
+
 final class CliHttpCache implements HttpCacheInterface
 {
     /**
@@ -22,14 +26,17 @@ final class CliHttpCache implements HttpCacheInterface
     public function isNotModified(array $server) : bool
     {
         if (isset($server['argc']) && $server['argc'] === 4) {
+            assert(isset($server['argv'][3]) && is_string($server['argv'][3]));
             $server = $this->setRequestHeaders($server, $server['argv'][3]);
         }
 
-        return isset($server['HTTP_IF_NONE_MATCH']) && $this->storage->hasEtag($server['HTTP_IF_NONE_MATCH']);
+        return isset($server['HTTP_IF_NONE_MATCH']) && is_string($server['HTTP_IF_NONE_MATCH']) && $this->storage->hasEtag($server['HTTP_IF_NONE_MATCH']);
     }
 
     /**
      * {@inheritdoc}
+     *
+     * @return void
      */
     public function transfer()
     {
@@ -39,6 +46,7 @@ final class CliHttpCache implements HttpCacheInterface
     private function setRequestHeaders(array $server, string $query) : array
     {
         \parse_str($query, $headers);
+        /** @var array<string, string> $headers */
         foreach ($headers as $key => $header) {
             $server[$this->getServerKey($key)] = (string) $header;
         }
@@ -46,7 +54,7 @@ final class CliHttpCache implements HttpCacheInterface
         return $server;
     }
 
-    private function getServerKey(string $key)
+    private function getServerKey(string $key) : string
     {
         return sprintf('HTTP_%s', strtoupper(\str_replace('-', '_', $key)));
     }

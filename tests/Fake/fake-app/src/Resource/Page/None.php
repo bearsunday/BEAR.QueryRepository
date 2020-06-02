@@ -10,10 +10,12 @@ use BEAR\Resource\ResourceObject;
 
 class None extends ResourceObject
 {
-    public function onGet()
+    public function onGet() : ResourceObject
     {
         $this->body = [
-            'time' => \microtime(true)
+            'none' => 'none'
         ];
+
+        return $this;
     }
 }

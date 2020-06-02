@@ -7,12 +7,13 @@ php:
 
 cache:
   directories:
-    - vendor
+    - ./vendor
     - $HOME/.composer/cache
 
 before_install:
   - mv ~/.phpenv/versions/$(phpenv version-name)/etc/conf.d/xdebug.ini{,.disabled} || echo "xdebug not available"
   - echo "extension = redis.so" >> ~/.phpenv/versions/$(phpenv version-name)/etc/php.ini
+  - composer validate
   - composer self-update
 
 install:
@@ -22,13 +23,14 @@ script:
   - ./vendor/bin/phpunit;
 
 jobs:
+  fast_finish: true
   include:
   - stage: Test
     name: Lowest dependencies
     php: 7.2
     install: composer update --prefer-dist --prefer-lowest
 
-  - stage: Test
+  - stage: Code Quality
     name: Code coverage
     php: 7.2
     before_script:
@@ -41,16 +43,16 @@ jobs:
 
   - stage: Code Quality
     name: Static analysis
-    php: 7.4
-    install: composer require --dev phpstan/phpstan ^0.11 phpmetrics/phpmetrics vimeo/psalm
+    php: 7.2
+    install: composer global require --dev phpstan/phpstan ^0.11 vimeo/psalm ^3.11 phpmetrics/phpmetrics ^2.6;
     script:
-      - ./vendor/bin/phpstan analyse -l max -c phpstan.neon src tests --no-progress --no-interaction;
-      - ./vendor/bin/psalm
-      - ./vendor/bin/phpmetrics --excluded-dirs=src/Exception src
+      - ~/.composer/vendor/bin/phpstan analyse -c phpstan.neon --no-progress --no-interaction;
+      - ~/.composer/vendor/bin/psalm --no-cache --show-info=true
+      - ~/.composer/vendor/bin/phpmetrics --exclude=Exception src
 
   - stage: Code Quality
     name: Coding standards
-    php: 7.4
-    install: composer require --dev friendsofphp/php-cs-fixer ^2.0;
+    php: 7.2
+    install: composer global require --dev friendsofphp/php-cs-fixer ^2.0;
     script:
-      - ./vendor/bin/php-cs-fixer --dry-run -v fix;
+      - ~/.composer/vendor/bin/php-cs-fixer --dry-run -v fix;

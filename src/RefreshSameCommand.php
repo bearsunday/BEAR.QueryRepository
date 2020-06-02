@@ -1,7 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace BEAR\QueryRepository;
 
+use function array_values;
 use BEAR\QueryRepository\Exception\UnmatchedQuery;
 use BEAR\Resource\ResourceObject;
 use function is_callable;
@@ -19,6 +22,9 @@ final class RefreshSameCommand implements CommandInterface
         $this->repository = $repository;
     }
 
+    /**
+     * @return void
+     */
     public function command(MethodInvocation $invocation, ResourceObject $ro)
     {
         $method = $invocation->getMethod()->getName();
@@ -37,15 +43,14 @@ final class RefreshSameCommand implements CommandInterface
         $ro->uri->query = $getQuery;
         $get = [$ro, 'onGet'];
         if (is_callable($get)) {
-            /**
-             * @psalm-suppress InvalidArgument
-             */
-            \call_user_func_array($get, $getQuery);
+            \call_user_func_array($get, array_values($getQuery));
         }
     }
 
     /**
      * @throws \ReflectionException
+     *
+     * @return array<string, mixed>
      */
     private function getQuery(ResourceObject $ro) : array
     {
@@ -56,7 +61,8 @@ final class RefreshSameCommand implements CommandInterface
             if (! isset($query[$parameter->name])) {
                 throw new UnmatchedQuery(sprintf('%s %s', $ro->uri->method, (string) $ro->uri));
             }
-            $getQuery[$parameter->name] = $query[$parameter->name];
+            /** @psalm-suppress MixedAssignment */
+            $getQuery[(string) $parameter->name] = $query[$parameter->name];
         }
 
         return $getQuery;
