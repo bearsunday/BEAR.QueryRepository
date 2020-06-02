@@ -52,6 +52,7 @@ final class ResourceStorage implements ResourceStorageInterface
     public function updateEtag(ResourceObject $ro, int $lifeTime)
     {
         $varyUri = $this->getVaryUri($ro->uri);
+        assert(isset($ro->headers['ETag']) && is_string($ro->headers['ETag']));
         $etag = self::ETAG_VAL . $ro->headers['ETag'];
         $uri = self::ETAG_TABLE . $varyUri;
         // delete old ETag

@@ -180,16 +180,20 @@ final class QueryRepository implements QueryRepositoryInterface
         }
         $setMaxAge = \sprintf('max-age=%d', $age);
         $noCacheControleHeader = ! isset($ro->headers['Cache-Control']);
+        /** @var array<string, string> $headers */
+        $headers = $ro->headers;
         if ($noCacheControleHeader) {
             $ro->headers['Cache-Control'] = $setMaxAge;
 
             return;
         }
-        $isMaxAgeAlreadyDefined = strpos($ro->headers['Cache-Control'], 'max-age') !== false;
+        $isMaxAgeAlreadyDefined = strpos($headers['Cache-Control'], 'max-age') !== false;
         if ($isMaxAgeAlreadyDefined) {
             return;
         }
-        $ro->headers['Cache-Control'] .= ', ' . $setMaxAge;
+        if (is_string($ro->headers['Cache-Control'])) {
+            $ro->headers['Cache-Control'] .= ', ' . $setMaxAge;
+        }
     }
 
     private function saveViewCache(ResourceObject $ro, int $lifeTime) : bool

@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use function array_values;
 use BEAR\QueryRepository\Exception\UnmatchedQuery;
 use BEAR\Resource\ResourceObject;
-use function array_values;
 use function is_callable;
 use Ray\Aop\MethodInvocation;
 
