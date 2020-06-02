@@ -125,7 +125,7 @@ final class ResourceStorage implements ResourceStorageInterface
                 $item = ($item)();
             }
             if ($item instanceof ResourceObject) {
-                $item = $item->body;
+                $item->body = $this->evaluateBody($item->body);
             }
         }
 
