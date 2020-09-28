@@ -11,6 +11,7 @@ EOF;
 
 $finder = PhpCsFixer\Finder::create()
     ->exclude(['tests/Fake', 'tests/tmp'])
+    ->notPath('src/RefreshSameCommand.php')
     ->in(__DIR__);
 
 return \PhpCsFixer\Config::create()
