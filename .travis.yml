@@ -24,6 +24,8 @@ script:
 
 jobs:
   fast_finish: true
+  allow_failures:
+    - name: Static analysis
   include:
   - stage: Test
     name: Lowest dependencies
