@@ -11,6 +11,7 @@ use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use FakeVendor\HelloWorld\Resource\App\Code;
 use FakeVendor\HelloWorld\Resource\App\RefreshDest;
+use FakeVendor\HelloWorld\Resource\App\TypedParam;
 use FakeVendor\HelloWorld\Resource\App\User\Profile;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
@@ -135,5 +136,11 @@ class BehaviorTest extends TestCase
         $this->resource->put('app://self/entry', ['id' => 1, 'name' => 'foo', 'age' => 'one']);
         $profile = $this->resource->get('app://self/user/profile', ['user_id' => 1]);
         $this->assertSame($lastModified, $profile->headers['Last-Modified']);
+    }
+
+    public function testRefreshTypedParam()
+    {
+        $this->resource->put('app://self/typed-param', ['id' => '1']);
+        $this->assertSame(1, TypedParam::$id);
     }
 }
