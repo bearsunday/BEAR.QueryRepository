@@ -23,9 +23,7 @@
     },
     "require-dev": {
         "ext-redis": "*",
-        "phpunit/phpunit": "^8.5",
-        "symfony/process": "^4.3",
-        "phpstan/phpstan": "^0.11"
+        "phpunit/phpunit": "^8.5"
     },
     "autoload": {
         "psr-4": {
