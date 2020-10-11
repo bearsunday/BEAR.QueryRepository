@@ -4,6 +4,7 @@
 <testsuites>
     <testsuite name="all">
         <directory>tests</directory>
+        <directory phpVersion="7.4" phpVersionOperator="lt">tests-pecl-ext</directory>
     </testsuite>
 </testsuites>
 <php>
