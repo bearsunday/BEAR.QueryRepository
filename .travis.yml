@@ -11,7 +11,7 @@ cache:
     - $HOME/.composer/cache
 
 before_install:
-  - phpenv config-rm xdebug.ini || true
+  - mv ~/.phpenv/versions/$(phpenv version-name)/etc/conf.d/xdebug.ini{,.disabled} || echo "xdebug not available"
   - echo "extension = redis.so" >> ~/.phpenv/versions/$(phpenv version-name)/etc/php.ini
   - composer validate
   - composer self-update
@@ -38,7 +38,6 @@ jobs:
     before_install:
       - phpenv config-rm xdebug.ini || true
       - composer self-update
-
     install: composer update --ignore-platform-reqs
 
   - stage: Code Quality
