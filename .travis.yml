@@ -32,6 +32,14 @@ jobs:
     php: 7.2
     install: composer update --prefer-dist --prefer-lowest
 
+  - stage: Test
+    name: PHP 8
+    php: nightly
+    before_install:
+      - phpenv config-rm xdebug.ini || true
+      - composer self-update
+    install: composer update --ignore-platform-reqs
+
   - stage: Code Quality
     name: Code coverage
     php: 7.2
