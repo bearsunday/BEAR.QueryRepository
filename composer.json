@@ -10,22 +10,23 @@
     ],
     "require": {
         "php": "^7.2 || ^8.0",
-        "bear/resource": "^1.14.8",
-        "bear/sunday": "^1.3",
+        "bear/resource": "^1.x-dev",
+        "bear/sunday": "1.x-dev",
         "doctrine/annotations": "^1.8",
         "doctrine/cache": "^1.10",
         "mobiledetect/mobiledetectlib": "^2.8",
-        "ray/aop": "^2.9.9",
-        "ray/di": "^2.10.5"
+        "ray/aop": "2.x-dev",
+        "ray/di": "2.x-dev"
     },
     "config": {
         "sort-packages": true
     },
     "require-dev": {
         "ext-redis": "*",
-        "phpunit/phpunit": "^8.5",
-        "symfony/process": "^4.3"
-    },
+        "phpunit/phpunit": "^9.5",
+        "symfony/process": "^4.3",
+        "koriym/attributes": "^0.2"
+     },
     "autoload": {
         "psr-4": {
             "BEAR\\QueryRepository\\": ["src/", "src-deprecated/"],
@@ -36,7 +37,8 @@
         "psr-4": {
             "BEAR\\QueryRepository\\": [
                 "tests/",
-                "tests/Fake/"
+                "tests/Fake/",
+                "tests-php8/Fake"
             ],
             "FakeVendor\\HelloWorld\\": [
               "tests/Fake/fake-app/src"
