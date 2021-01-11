@@ -4,17 +4,22 @@ declare(strict_types=1);
 
 namespace BEAR\RepositoryModule\Annotation;
 
+use Attribute;
+
+use function is_string;
+
 /**
  * @Annotation
  * @Target("CLASS")
  */
+#[Attribute(Attribute::TARGET_CLASS)]
 final class Cacheable
 {
     /**
-     * @var string
+     * @var 'short'|'medium'|'long'|'never'
      * @Enum({"short", "medium", "long", "never"})
      */
-    public $expiry = 'never';
+    public $expiry;
 
     /**
      * @var int
@@ -24,16 +29,40 @@ final class Cacheable
     /**
      * @var string
      */
-    public $expiryAt = '';
+    public $expiryAt;
 
     /**
      * @var bool
      */
-    public $update = true;
+    public $update;
 
     /**
-     * @var string
+     * @var 'value'|'view'
      * @Enum({"value", "view"})
      */
-    public $type = 'value';
+    public $type;
+
+    /**
+     * @param 'short'|'medium'|'long'|'never' $expiry
+     * @param 'value'|'view' $type
+     */
+    public function __construct($expiry = 'never', int $expirySecond = 0, string $expiryAt = '', bool $update = false, string $type = 'value')
+    {
+        if (is_string($expiry)) {
+            $this->expiry = $expiry;
+            $this->expirySecond = $expirySecond;
+            $this->expiryAt = $expiryAt;
+            $this->update = $update;
+            $this->type = $type;
+
+            return;
+        }
+        /** @var array{expiry: string, expirySecond: int, expiryAt: string, bool: bool, type: string} $expiry */
+        $value = $expiry;
+        $this->expiry = $value['expiry'] ?? 'never';
+        $this->expirySecond = $value['expirySecond'] ?? 0;
+        $this->expiryAt = $value['expiryAt'] ?? '';
+        $this->update = $value['update'] ?? true;
+        $this->type = $value['type'] ?? 'value';
+    }
 }
