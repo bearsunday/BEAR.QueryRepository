@@ -1,10 +1,12 @@
 name: Continuous Integration
+
 on:
   push:
   pull_request:
   workflow_dispatch:
   schedule:
     - cron: '42 15 * * *'
+
 jobs:
   phpunit:
     name: PHPUnit
@@ -27,6 +29,8 @@ jobs:
         dependencies:
           - lowest
           - highest
+    env:
+      REDIS_SERVER: 'redis/6379'
     steps:
       - name: Checkout
         uses: actions/checkout@v1

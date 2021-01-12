@@ -34,7 +34,7 @@ class StorageRedisModuleTest extends TestCase
     public function testNew()
     {
         // @see http://php.net/manual/en/memcached.addservers.php
-        $server = 'localhost:6379';
+        $server = $_ENV['REDIS_SERVER'] ?? 'localhost:6379';
         $cache = (new Injector(new StorageRedisModule($server), __DIR__ . '/tmp'))->getInstance(CacheProvider::class, Storage::class);
         $this->assertInstanceOf(RedisCache::class, $cache);
     }
