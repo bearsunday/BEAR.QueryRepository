@@ -29,8 +29,6 @@ jobs:
         dependencies:
           - lowest
           - highest
-    env:
-      REDIS_SERVER: 'redis/6379'
     steps:
       - name: Checkout
         uses: actions/checkout@v1
@@ -64,6 +62,8 @@ jobs:
         run: composer update --no-interaction --no-progress --no-suggest
 
       - name: Run test suite
+        env:
+          REDIS_SERVER: 'redis:6379'
         run: ./vendor/bin/phpunit --coverage-clover=coverage.xml
 
       - name: Upload coverage report
