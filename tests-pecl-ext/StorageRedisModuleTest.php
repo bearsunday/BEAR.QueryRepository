@@ -10,6 +10,7 @@ use Doctrine\Common\Cache\RedisCache;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 use Symfony\Component\Process\Process;
+use function getenv;
 
 class StorageRedisModuleTest extends TestCase
 {
@@ -34,7 +35,7 @@ class StorageRedisModuleTest extends TestCase
     public function testNew()
     {
         // @see http://php.net/manual/en/memcached.addservers.php
-        $server = $_ENV['REDIS_SERVER'] ?? 'localhost:6379';
+        $server = getenv('REDIS_SERVER') ? getenv('REDIS_SERVER') : 'localhost:6379';
         $cache = (new Injector(new StorageRedisModule($server), __DIR__ . '/tmp'))->getInstance(CacheProvider::class, Storage::class);
         $this->assertInstanceOf(RedisCache::class, $cache);
     }
