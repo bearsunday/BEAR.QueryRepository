@@ -53,8 +53,8 @@
         "tests": ["@cs", "@sa", "@test"],
         "sa": ["./vendor/bin/phpstan analyse -l max src tests -c phpstan.neon --no-progress", "psalm --show-info=false"],
         "coverage": ["php -dzend_extension=xdebug.so ./vendor/bin/phpunit --coverage-text --coverage-html=build/coverage"],
-        "cs": ["./vendor/bin/php-cs-fixer fix -v --dry-run", "phpcs --standard=./phpcs.xml src"],
-        "cs-fix": ["./vendor/bin/php-cs-fixer fix -v", "phpcbf src"],
+        "cs": ["./vendor/bin/phpcs --standard=./phpcs.xml src"],
+        "cs-fix": ["./vendor/bin/phpcbf src"],
         "metrics": ["./vendor/bin/phpmetrics --report-html=build/metrics --exclude=Exception --log-junit=build/junit.xml --junit=build/junit.xml src"],
         "build": ["@cs", "@sa", "@coverage", "@metrics"],
         "baseline": ["phpstan analyse --configuration phpstan.neon src/ tests/ --generate-baseline", "vendor/bin/psalm --set-baseline=psalm.baseline.xml"]
