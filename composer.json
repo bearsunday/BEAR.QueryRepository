@@ -25,6 +25,7 @@
         "ext-redis": "*",
         "bamarni/composer-bin-plugin": "^1.4",
         "koriym/attributes": "^0.2",
+        "phpunit/phpunit": "^9.5",
         "symfony/process": "^4.3"
     },
     "autoload": {
