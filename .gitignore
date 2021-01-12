@@ -7,10 +7,12 @@ nbproject
 .project
 .settings
 cache.properties
-composer.lock
+/composer.lock
 build
 vendor
 .php_cs.cache
 tests/tmp/*
 tests/dump.rdb
 .phpunit.result.cache
+/vendor-bin/**/vendor
+vendor-bin/tools/composer.lock
