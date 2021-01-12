@@ -15,7 +15,7 @@ jobs:
       redis:
         image: redis
         ports:
-          - 6379/tcp
+          - 6379:6379
         options: --health-cmd="redis-cli ping" --health-interval=10s --health-timeout=5s --health-retries=3
     strategy:
       matrix:
@@ -63,7 +63,7 @@ jobs:
 
       - name: Run test suite
         env:
-          REDIS_SERVER: 'redis:6379'
+          REDIS_SERVER: 'localhost:6379'
         run: ./vendor/bin/phpunit --coverage-clover=coverage.xml
 
       - name: Upload coverage report
