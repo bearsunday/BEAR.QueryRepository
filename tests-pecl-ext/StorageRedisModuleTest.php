@@ -19,6 +19,9 @@ class StorageRedisModuleTest extends TestCase
      */
     private static $process;
 
+    /** @var string */
+    private $server;
+
     public static function setUpBeforeClass() : void
     {
         self::$process = new Process(['redis-server']);
@@ -32,19 +35,21 @@ class StorageRedisModuleTest extends TestCase
         self::$process->stop(1);
     }
 
+    protected function setUp() : void
+    {
+        $this->server = getenv('REDIS_SERVER') ? getenv('REDIS_SERVER') : 'localhost:6379';
+    }
+
     public function testNew()
     {
         // @see http://php.net/manual/en/memcached.addservers.php
-        $server = getenv('REDIS_SERVER') ? getenv('REDIS_SERVER') : 'localhost:6379';
-        $cache = (new Injector(new StorageRedisModule($server), __DIR__ . '/tmp'))->getInstance(CacheProvider::class, Storage::class);
+        $cache = (new Injector(new StorageRedisModule($this->server), __DIR__ . '/tmp'))->getInstance(CacheProvider::class, Storage::class);
         $this->assertInstanceOf(RedisCache::class, $cache);
     }
 
     public function testCacheNamespace()
     {
-        // @see http://php.net/manual/en/memcached.addservers.php
-        $server = 'localhost:6379';
-        $cache = (new Injector(new CacheVersionModule('1', new StorageRedisModule($server)), __DIR__ . '/tmp'))->getInstance(CacheProvider::class, Storage::class);
+        $cache = (new Injector(new CacheVersionModule('1', new StorageRedisModule($this->server)), __DIR__ . '/tmp'))->getInstance(CacheProvider::class, Storage::class);
         assert($cache instanceof RedisCache);
         $namespace = $cache->getNamespace();
         $this->assertSame(':1', $namespace);
