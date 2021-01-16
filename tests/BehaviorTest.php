@@ -23,9 +23,6 @@ class BehaviorTest extends TestCase
     /** @var ResourceInterface */
     private $resource;
 
-    /** @var QueryRepository */
-    private $repository;
-
     /** @var HttpCacheInterface */
     private $httpCache;
 
@@ -33,7 +30,6 @@ class BehaviorTest extends TestCase
     {
         $namespace = 'FakeVendor\HelloWorld';
         $injector = new Injector(new QueryRepositoryModule(new ResourceModule($namespace)), $_ENV['TMP_DIR']);
-        $this->repository = $injector->getInstance(QueryRepositoryInterface::class);
         $this->resource = $injector->getInstance(ResourceInterface::class);
         $this->httpCache = $injector->getInstance(HttpCacheInterface::class);
         parent::setUp();
