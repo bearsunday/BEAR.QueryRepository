@@ -48,6 +48,12 @@ final class CliHttpCache implements HttpCacheInterface
         echo '304 Not Modified' . PHP_EOL . PHP_EOL;
     }
 
+    /**
+     * @param array<string, string> $server
+     * @param string<string, mixed> $query
+     *
+     * @return array<string, string>
+     */
     private function setRequestHeaders(array $server, string $query): array
     {
         parse_str($query, $headers);

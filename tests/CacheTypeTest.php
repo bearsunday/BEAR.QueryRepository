@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\Resource\Module\ResourceModule;
 use BEAR\Resource\ResourceInterface;
+use BEAR\Resource\ResourceObject;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 
@@ -20,7 +21,7 @@ class CacheTypeTest extends TestCase
         parent::setUp();
     }
 
-    public function requestDobule($uri)
+    public function requestDobule(string $uri): ResourceObject
     {
         $ro = $this->resource->get($uri);
         // put

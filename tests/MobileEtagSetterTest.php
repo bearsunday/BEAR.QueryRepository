@@ -18,7 +18,11 @@ class MobileEtagSetterTest extends TestCase
 
     /** @var FakeMobileEtagSetter */
     private $etagSetter;
+
+    /** @var int */
     private $time;
+
+    /** @var User */
     private $obj;
 
     protected function setUp(): void

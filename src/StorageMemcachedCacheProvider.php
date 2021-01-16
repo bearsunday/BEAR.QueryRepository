@@ -14,11 +14,13 @@ class StorageMemcachedCacheProvider implements ProviderInterface
     /**
      * memcached server list
      *
-     * @var array
+     * @var array<string>
      */
     private $servers;
 
     /**
+     * @param array<string> $servers
+     *
      * @Memcache("servers")
      * @see http://php.net/manual/en/memcached.addservers.php
      */

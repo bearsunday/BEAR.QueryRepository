@@ -19,7 +19,7 @@ class HttpCacheTest extends TestCase
         $this->assertFalse($httpCache->isNotModified($server));
     }
 
-    public function testisNotModifiedTrue(): void
+    public function testisNotModifiedTrue(): CliHttpCache
     {
         $resource = (new Injector(new QueryRepositoryModule(new ResourceModule('FakeVendor\HelloWorld'))))->getInstance(ResourceInterface::class);
         $user = $resource->get('app://self/user', ['id' => 1]);

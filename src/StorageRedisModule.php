@@ -15,7 +15,7 @@ use function explode;
 
 class StorageRedisModule extends AbstractModule
 {
-    /** @var array */
+    /** @var array<string> */
     private $server;
 
     /**
