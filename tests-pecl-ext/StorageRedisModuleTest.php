@@ -10,6 +10,7 @@ use Doctrine\Common\Cache\RedisCache;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 use Symfony\Component\Process\Process;
+use function getenv;
 
 class StorageRedisModuleTest extends TestCase
 {
@@ -17,6 +18,9 @@ class StorageRedisModuleTest extends TestCase
      * @var Process
      */
     private static $process;
+
+    /** @var string */
+    private $server;
 
     public static function setUpBeforeClass() : void
     {
@@ -31,19 +35,21 @@ class StorageRedisModuleTest extends TestCase
         self::$process->stop(1);
     }
 
+    protected function setUp() : void
+    {
+        $this->server = getenv('REDIS_SERVER') ? getenv('REDIS_SERVER') : 'localhost:6379';
+    }
+
     public function testNew()
     {
         // @see http://php.net/manual/en/memcached.addservers.php
-        $server = 'localhost:6379';
-        $cache = (new Injector(new StorageRedisModule($server), __DIR__ . '/tmp'))->getInstance(CacheProvider::class, Storage::class);
+        $cache = (new Injector(new StorageRedisModule($this->server), __DIR__ . '/tmp'))->getInstance(CacheProvider::class, Storage::class);
         $this->assertInstanceOf(RedisCache::class, $cache);
     }
 
     public function testCacheNamespace()
     {
-        // @see http://php.net/manual/en/memcached.addservers.php
-        $server = 'localhost:6379';
-        $cache = (new Injector(new CacheVersionModule('1', new StorageRedisModule($server)), __DIR__ . '/tmp'))->getInstance(CacheProvider::class, Storage::class);
+        $cache = (new Injector(new CacheVersionModule('1', new StorageRedisModule($this->server)), __DIR__ . '/tmp'))->getInstance(CacheProvider::class, Storage::class);
         assert($cache instanceof RedisCache);
         $namespace = $cache->getNamespace();
         $this->assertSame(':1', $namespace);

@@ -132,7 +132,7 @@ class QueryRepositoryTest extends TestCase
         });
         $resource = (new Injector($module, $_ENV['TMP_DIR']))->getInstance(ResourceInterface::class);
         assert($resource instanceof ResourceInterface);
-        $this->expectException(Warning::class);
+        $this->expectWarning();
         $resource->get('app://self/user', ['id' => 1]);
         $this->assertSame(2, $GLOBALS['BEAR\QueryRepository\syslog'][0]);
         $this->assertContains('Exception: DoctrineNamespaceCacheKey[]', $GLOBALS['BEAR\QueryRepository\syslog'][1]);

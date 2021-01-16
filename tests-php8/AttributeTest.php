@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\NoHttpCache;
 use BEAR\RepositoryModule\Annotation\Purge;
@@ -15,10 +14,6 @@ use Koriym\Attributes\AttributeReader;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use ReflectionMethod;
-use function array_map;
-use function assert;
-use function class_exists;
-use function get_class;
 
 class AttributeTest extends TestCase
 {
@@ -28,7 +23,7 @@ class AttributeTest extends TestCase
     /**
      * @return array<Reader>
      */
-    public function readerProvider(): array
+    public function readerProvider() : array
     {
         return [
             [new AttributeReader()],

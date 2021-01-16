@@ -44,7 +44,7 @@ final class Cacheable
 
     /**
      * @param 'short'|'medium'|'long'|'never' $expiry
-     * @param 'value'|'view' $type
+     * @param 'value'|'view'                  $type
      */
     public function __construct($expiry = 'never', int $expirySecond = 0, string $expiryAt = '', bool $update = false, string $type = 'value')
     {

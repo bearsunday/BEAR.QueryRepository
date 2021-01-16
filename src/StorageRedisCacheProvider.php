@@ -4,18 +4,19 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Exception\RedisConnectionException;
 use BEAR\RepositoryModule\Annotation\Redis;
 use Doctrine\Common\Cache\RedisCache;
 use Ray\Di\ProviderInterface;
+use RedisException;
 
 class StorageRedisCacheProvider implements ProviderInterface
 {
-    /**
-     * redis server
-     *
-     * @var array{0: string, 1: string}
-     */
-    private $server;
+    /** @var string */
+    private $host;
+
+    /** @var int */
+    private $port;
 
     /**
      * @Redis("server")
@@ -24,7 +25,8 @@ class StorageRedisCacheProvider implements ProviderInterface
      */
     public function __construct(array $server)
     {
-        $this->server = $server;
+        $this->host = $server[0];
+        $this->port = (int) $server[1];
     }
 
     /**
@@ -33,9 +35,11 @@ class StorageRedisCacheProvider implements ProviderInterface
     public function get()
     {
         $redis = new \Redis();
-        $host = $this->server[0];
-        $port = $this->server[1];
-        $redis->connect($host, (int) $port);
+        try {
+            $redis->connect($this->host, $this->port);
+        } catch (RedisException $e) {
+            throw new RedisConnectionException(sprintf('%s/%s', $this->host, $this->port), 0, $e);
+        }
         $redisCache = new RedisCache();
         $redisCache->setRedis($redis);
 

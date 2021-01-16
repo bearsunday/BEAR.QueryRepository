@@ -1,0 +1,322 @@
+parameters:
+	ignoreErrors:
+		-
+			message: "#^Result of && is always false\\.$#"
+			count: 1
+			path: src/CliHttpCache.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\CliHttpCache\\:\\:setRequestHeaders\\(\\) has parameter \\$server with no value type specified in iterable type array\\.$#"
+			count: 1
+			path: src/CliHttpCache.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\CliHttpCache\\:\\:setRequestHeaders\\(\\) return type has no value type specified in iterable type array\\.$#"
+			count: 1
+			path: src/CliHttpCache.php
+
+		-
+			message: "#^Variable \\$headers in PHPDoc tag @var does not match any variable in the foreach loop\\: \\$key, \\$header$#"
+			count: 1
+			path: src/CliHttpCache.php
+
+		-
+			message: "#^Class BEAR\\\\QueryRepository\\\\Expiry extends generic class ArrayObject but does not specify its types\\: TKey, TValue$#"
+			count: 1
+			path: src/Expiry.php
+
+		-
+			message: "#^Property BEAR\\\\QueryRepository\\\\QueryRepository\\:\\:\\$expiry type has no value type specified in iterable type BEAR\\\\QueryRepository\\\\Expiry\\.$#"
+			count: 1
+			path: src/QueryRepository.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\QueryRepository\\:\\:__construct\\(\\) has parameter \\$expiry with no value type specified in iterable type BEAR\\\\QueryRepository\\\\Expiry\\.$#"
+			count: 1
+			path: src/QueryRepository.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\QueryRepository\\:\\:get\\(\\) return type has no value type specified in iterable type array\\.$#"
+			count: 1
+			path: src/QueryRepository.php
+
+		-
+			message: "#^Result of \\|\\| is always true\\.$#"
+			count: 2
+			path: src/QueryRepository.php
+
+		-
+			message: "#^Unreachable statement \\- code above always terminates\\.$#"
+			count: 2
+			path: src/QueryRepository.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\QueryRepositoryInterface\\:\\:get\\(\\) return type has no value type specified in iterable type array\\.$#"
+			count: 1
+			path: src/QueryRepositoryInterface.php
+
+		-
+			message: "#^Property BEAR\\\\QueryRepository\\\\StorageMemcachedCacheProvider\\:\\:\\$servers type has no value type specified in iterable type array\\.$#"
+			count: 1
+			path: src/StorageMemcachedCacheProvider.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\StorageMemcachedCacheProvider\\:\\:__construct\\(\\) has parameter \\$servers with no value type specified in iterable type array\\.$#"
+			count: 1
+			path: src/StorageMemcachedCacheProvider.php
+
+		-
+			message: "#^Property BEAR\\\\QueryRepository\\\\StorageMemcachedModule\\:\\:\\$servers type has no value type specified in iterable type array\\.$#"
+			count: 1
+			path: src/StorageMemcachedModule.php
+
+		-
+			message: "#^Property BEAR\\\\QueryRepository\\\\StorageRedisModule\\:\\:\\$server type has no value type specified in iterable type array\\.$#"
+			count: 1
+			path: src/StorageRedisModule.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\BehaviorTest\\:\\:testPurgeSameResourceObjectByPatch\\(\\) has no return typehint specified\\.$#"
+			count: 1
+			path: tests/BehaviorTest.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\BehaviorTest\\:\\:testPurgeSameResourceObjectByDelete\\(\\) has no return typehint specified\\.$#"
+			count: 1
+			path: tests/BehaviorTest.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\BehaviorTest\\:\\:testPurgeByAnnotation\\(\\) has no return typehint specified\\.$#"
+			count: 1
+			path: tests/BehaviorTest.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\BehaviorTest\\:\\:testReturnValueIsNotResourceObjectException\\(\\) has no return typehint specified\\.$#"
+			count: 1
+			path: tests/BehaviorTest.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\BehaviorTest\\:\\:testUnMatchQuery\\(\\) has no return typehint specified\\.$#"
+			count: 1
+			path: tests/BehaviorTest.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\BehaviorTest\\:\\:testCacheCode\\(\\) has no return typehint specified\\.$#"
+			count: 1
+			path: tests/BehaviorTest.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\BehaviorTest\\:\\:testRefreshWithCacheableAnnotation\\(\\) has no return typehint specified\\.$#"
+			count: 1
+			path: tests/BehaviorTest.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\BehaviorTest\\:\\:testRefreshWithoutCacheableAnnotation\\(\\) has no return typehint specified\\.$#"
+			count: 1
+			path: tests/BehaviorTest.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\BehaviorTest\\:\\:testRefreshByAbortedRequest\\(\\) has no return typehint specified\\.$#"
+			count: 1
+			path: tests/BehaviorTest.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\BehaviorTest\\:\\:testRefreshTypedParam\\(\\) has no return typehint specified\\.$#"
+			count: 1
+			path: tests/BehaviorTest.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\CacheTypeTest\\:\\:requestDobule\\(\\) has no return typehint specified\\.$#"
+			count: 1
+			path: tests/CacheTypeTest.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\CacheTypeTest\\:\\:requestDobule\\(\\) has parameter \\$uri with no typehint specified\\.$#"
+			count: 1
+			path: tests/CacheTypeTest.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\CacheTypeTest\\:\\:testValue\\(\\) has no return typehint specified\\.$#"
+			count: 1
+			path: tests/CacheTypeTest.php
+
+		-
+			message: "#^Expression \"\\(string\\) \\$ro\" on a separate line does not do anything\\.$#"
+			count: 2
+			path: tests/CacheTypeTest.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\CacheTypeTest\\:\\:testView\\(\\) has no return typehint specified\\.$#"
+			count: 1
+			path: tests/CacheTypeTest.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\CacheVersionModuleTest\\:\\:testNew\\(\\) has no return typehint specified\\.$#"
+			count: 1
+			path: tests/CacheVersionModuleTest.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\EtagSetterTest\\:\\:testInvoke\\(\\) has no return typehint specified\\.$#"
+			count: 1
+			path: tests/EtagSetterTest.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\GetInterceptorTest\\:\\:testLastModifiedHeader\\(\\) has no return typehint specified\\.$#"
+			count: 1
+			path: tests/GetInterceptorTest.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\GetInterceptorTest\\:\\:testCacheControlHeaderNone\\(\\) has no return typehint specified\\.$#"
+			count: 1
+			path: tests/GetInterceptorTest.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\GetInterceptorTest\\:\\:testCacheControlHeaderExpiry\\(\\) has no return typehint specified\\.$#"
+			count: 1
+			path: tests/GetInterceptorTest.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\GetInterceptorTest\\:\\:testCacheControlHeaderExpiryError\\(\\) has no return typehint specified\\.$#"
+			count: 1
+			path: tests/GetInterceptorTest.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\GetInterceptorTest\\:\\:testHttpCacheAnnotation\\(\\) has no return typehint specified\\.$#"
+			count: 1
+			path: tests/GetInterceptorTest.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\GetInterceptorTest\\:\\:testNoHttpCacheAnnotation\\(\\) has no return typehint specified\\.$#"
+			count: 1
+			path: tests/GetInterceptorTest.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\GetInterceptorTest\\:\\:testHttpCacheWithCacheble\\(\\) has no return typehint specified\\.$#"
+			count: 1
+			path: tests/GetInterceptorTest.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\GetInterceptorTest\\:\\:testHttpCacheOverrideMaxAge\\(\\) has no return typehint specified\\.$#"
+			count: 1
+			path: tests/GetInterceptorTest.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\GetInterceptorTest\\:\\:testHttpCacheEtag\\(\\) has no return typehint specified\\.$#"
+			count: 1
+			path: tests/GetInterceptorTest.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\GetInterceptorTest\\:\\:testHttpCacheVary\\(\\) has no return typehint specified\\.$#"
+			count: 1
+			path: tests/GetInterceptorTest.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\HttpCacheTest\\:\\:testisNotModifiedFale\\(\\) has no return typehint specified\\.$#"
+			count: 1
+			path: tests/HttpCacheTest.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\HttpCacheTest\\:\\:testisNotModifiedTrue\\(\\) has no return typehint specified\\.$#"
+			count: 1
+			path: tests/HttpCacheTest.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\HttpCacheTest\\:\\:testTransfer\\(\\) has no return typehint specified\\.$#"
+			count: 1
+			path: tests/HttpCacheTest.php
+
+		-
+			message: "#^Property BEAR\\\\QueryRepository\\\\MobileEtagSetterTest\\:\\:\\$time has no typehint specified\\.$#"
+			count: 1
+			path: tests/MobileEtagSetterTest.php
+
+		-
+			message: "#^Property BEAR\\\\QueryRepository\\\\MobileEtagSetterTest\\:\\:\\$obj has no typehint specified\\.$#"
+			count: 1
+			path: tests/MobileEtagSetterTest.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\MobileEtagSetterTest\\:\\:testMobile\\(\\) has no return typehint specified\\.$#"
+			count: 1
+			path: tests/MobileEtagSetterTest.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\MobileEtagSetterTest\\:\\:testTablet\\(\\) has no return typehint specified\\.$#"
+			count: 1
+			path: tests/MobileEtagSetterTest.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\MobileEtagSetterTest\\:\\:testPc\\(\\) has no return typehint specified\\.$#"
+			count: 1
+			path: tests/MobileEtagSetterTest.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\NamespacedCacheProviderTest\\:\\:testNew\\(\\) has no return typehint specified\\.$#"
+			count: 1
+			path: tests/NamespacedCacheProviderTest.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\QueryRepositoryTest\\:\\:testPurgeSameResourceObjectByPatch\\(\\) has no return typehint specified\\.$#"
+			count: 1
+			path: tests/QueryRepositoryTest.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\QueryRepositoryTest\\:\\:testPurgeSameResourceObjectByDelete\\(\\) has no return typehint specified\\.$#"
+			count: 1
+			path: tests/QueryRepositoryTest.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\QueryRepositoryTest\\:\\:testPurgeByAnnotation\\(\\) has no return typehint specified\\.$#"
+			count: 1
+			path: tests/QueryRepositoryTest.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\QueryRepositoryTest\\:\\:testNoAnnotationLifeTime\\(\\) has no return typehint specified\\.$#"
+			count: 1
+			path: tests/QueryRepositoryTest.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\QueryRepositoryTest\\:\\:testPutResquestEmbeddedResoureView\\(\\) has no return typehint specified\\.$#"
+			count: 1
+			path: tests/QueryRepositoryTest.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\QueryRepositoryTest\\:\\:testPutResquestEmbeddedResoureValue\\(\\) has no return typehint specified\\.$#"
+			count: 1
+			path: tests/QueryRepositoryTest.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\QueryRepositoryTest\\:\\:testErrorInCacheRead\\(\\) has no return typehint specified\\.$#"
+			count: 1
+			path: tests/QueryRepositoryTest.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\QueryRepositoryTest\\:\\:testSameResponseButDifferentParameter\\(\\) has no return typehint specified\\.$#"
+			count: 1
+			path: tests/QueryRepositoryTest.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\ReloadAnnotatedCommandTest\\:\\:testInvoke\\(\\) has no return typehint specified\\.$#"
+			count: 1
+			path: tests/ReloadAnnotatedCommandTest.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\ResourceRepositoryTest\\:\\:testPutAndGet\\(\\) has no return typehint specified\\.$#"
+			count: 1
+			path: tests/ResourceRepositoryTest.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\ResourceRepositoryTest\\:\\:testDelete\\(\\) has no return typehint specified\\.$#"
+			count: 1
+			path: tests/ResourceRepositoryTest.php
+
+		-
+			message: "#^Method BEAR\\\\QueryRepository\\\\StorageApcModuleTest\\:\\:testNew\\(\\) has no return typehint specified\\.$#"
+			count: 1
+			path: tests/StorageApcModuleTest.php
+
+		-
+			message: "#^Function BEAR\\\\QueryRepository\\\\syslog\\(\\) has no return typehint specified\\.$#"
+			count: 1
+			path: tests/syslog.php
+
