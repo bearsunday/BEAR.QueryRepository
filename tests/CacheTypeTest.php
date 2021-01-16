@@ -36,7 +36,7 @@ class CacheTypeTest extends TestCase
         return $ro;
     }
 
-    public function testValue()
+    public function testValue(): void
     {
         $uri = 'app://self/value';
         // put
@@ -49,7 +49,7 @@ class CacheTypeTest extends TestCase
         $this->assertSame('2' . $time, $ro->view);
     }
 
-    public function testView()
+    public function testView(): void
     {
         $uri = 'app://self/view';
         // put

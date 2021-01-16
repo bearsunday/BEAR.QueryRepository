@@ -20,7 +20,7 @@ class ReloadAnnotatedCommandTest extends TestCase
         parent::setUp();
     }
 
-    public function testInvoke()
+    public function testInvoke(): void
     {
         $user = $this->resource->patch('app://self/user', ['id' => 1, 'name' => 'koriym']);
         // put

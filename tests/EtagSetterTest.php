@@ -20,7 +20,7 @@ class EtagSetterTest extends TestCase
         $this->resource = (new Injector(new QueryRepositoryModule(new ResourceModule('FakeVendor\HelloWorld')), $_ENV['TMP_DIR']))->getInstance(ResourceInterface::class);
     }
 
-    public function testInvoke()
+    public function testInvoke(): void
     {
         $ro = $this->resource->get('app://self/user', ['id' => 1]);
         $setEtag = new EtagSetter();

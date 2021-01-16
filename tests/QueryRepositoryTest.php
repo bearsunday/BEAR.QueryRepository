@@ -39,7 +39,7 @@ class QueryRepositoryTest extends TestCase
         parent::setUp();
     }
 
-    public function testPurgeSameResourceObjectByPatch()
+    public function testPurgeSameResourceObjectByPatch(): void
     {
         $user = $this->resource->get('app://self/user', ['id' => 1]);
         assert($user instanceof ResourceObject);
@@ -52,7 +52,7 @@ class QueryRepositoryTest extends TestCase
         $this->assertFalse($etag === $newEtag);
     }
 
-    public function testPurgeSameResourceObjectByDelete()
+    public function testPurgeSameResourceObjectByDelete(): void
     {
         $user = $this->resource->get('app://self/user', ['id' => 1]);
         assert($user instanceof ResourceObject);
@@ -71,7 +71,7 @@ class QueryRepositoryTest extends TestCase
         $this->assertFalse($isNotModified);
     }
 
-    public function testPurgeByAnnotation()
+    public function testPurgeByAnnotation(): void
     {
         $this->resource->put('app://self/user', ['id' => 1, 'age' => 10, 'name' => 'Sunday']);
         $this->assertTrue(Profile::$requested);
@@ -80,7 +80,7 @@ class QueryRepositoryTest extends TestCase
     /**
      * @covers \BEAR\QueryRepository\QueryRepository::getExpiryTime()
      */
-    public function testNoAnnotationLifeTime()
+    public function testNoAnnotationLifeTime(): void
     {
         $ro = new None(); // no annotation
         $ro->uri = new Uri('page://self/none');
@@ -88,7 +88,7 @@ class QueryRepositoryTest extends TestCase
         $this->assertTrue($result);
     }
 
-    public function testPutResquestEmbeddedResoureView()
+    public function testPutResquestEmbeddedResoureView(): void
     {
         $uri = 'page://self/emb-view';
         $ro = $this->resource->get($uri);
@@ -104,7 +104,7 @@ class QueryRepositoryTest extends TestCase
 ', $view);
     }
 
-    public function testPutResquestEmbeddedResoureValue()
+    public function testPutResquestEmbeddedResoureValue(): void
     {
         $uri = 'page://self/emb-val';
         $ro = $this->resource->get($uri);
@@ -114,7 +114,7 @@ class QueryRepositoryTest extends TestCase
         $this->assertNull($view);
     }
 
-    public function testErrorInCacheRead()
+    public function testErrorInCacheRead(): void
     {
         $namespace = 'FakeVendor\HelloWorld';
         $module = new QueryRepositoryModule(new MobileEtagModule(new ResourceModule($namespace)));
@@ -133,7 +133,7 @@ class QueryRepositoryTest extends TestCase
         $this->assertContains('Exception: DoctrineNamespaceCacheKey[]', $GLOBALS['BEAR\QueryRepository\syslog'][1]);
     }
 
-    public function testSameResponseButDifferentParameter()
+    public function testSameResponseButDifferentParameter(): void
     {
         $ro1 = $this->resource->get('app://self/sometimes-same-response', ['id' => 1]);
         $server1 = [

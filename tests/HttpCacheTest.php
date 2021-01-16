@@ -12,14 +12,14 @@ use Ray\Di\Injector;
 
 class HttpCacheTest extends TestCase
 {
-    public function testisNotModifiedFale()
+    public function testisNotModifiedFale(): void
     {
         $httpCache = new CliHttpCache(new ResourceStorage(new ArrayCache()));
         $server = [];
         $this->assertFalse($httpCache->isNotModified($server));
     }
 
-    public function testisNotModifiedTrue()
+    public function testisNotModifiedTrue(): void
     {
         $resource = (new Injector(new QueryRepositoryModule(new ResourceModule('FakeVendor\HelloWorld'))))->getInstance(ResourceInterface::class);
         $user = $resource->get('app://self/user', ['id' => 1]);
@@ -35,7 +35,7 @@ class HttpCacheTest extends TestCase
     /**
      * @depends testisNotModifiedTrue
      */
-    public function testTransfer(CliHttpCache $httpCache)
+    public function testTransfer(CliHttpCache $httpCache): void
     {
         $this->expectOutputRegex('/\A304 Not Modified/');
         $httpCache->transfer();

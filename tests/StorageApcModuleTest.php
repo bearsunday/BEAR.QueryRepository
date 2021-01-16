@@ -12,7 +12,7 @@ use Ray\Di\Injector;
 
 class StorageApcModuleTest extends TestCase
 {
-    public function testNew()
+    public function testNew(): void
     {
         $cache = (new Injector(new StorageApcModule(), $_ENV['TMP_DIR']))->getInstance(CacheProvider::class, Storage::class);
         $this->assertInstanceOf(ApcuCache::class, $cache);

@@ -14,7 +14,7 @@ use Ray\Di\NullModule;
 
 class CacheVersionModuleTest extends TestCase
 {
-    public function testNew()
+    public function testNew(): void
     {
         $namespace = 'FakeVendor\HelloWorld';
         $version = '1';

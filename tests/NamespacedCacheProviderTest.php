@@ -9,7 +9,7 @@ use PHPUnit\Framework\TestCase;
 
 class NamespacedCacheProviderTest extends TestCase
 {
-    public function testNew()
+    public function testNew(): void
     {
         $provider = new NamespacedCacheProvider(new ArrayCache(), 'app', '1');
         $cache = $provider->get();

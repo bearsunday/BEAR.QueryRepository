@@ -29,7 +29,7 @@ class MobileEtagSetterTest extends TestCase
         $this->time = time();
     }
 
-    public function testMobile()
+    public function testMobile(): void
     {
         $_SERVER['HTTP_USER_AGENT'] = self::IPHONE;
         ($this->etagSetter)($this->obj, $this->time, new HttpCache());
@@ -37,7 +37,7 @@ class MobileEtagSetterTest extends TestCase
         $this->assertSame($expected, FakeMobileEtagSetter::$device);
     }
 
-    public function testTablet()
+    public function testTablet(): void
     {
         $_SERVER['HTTP_USER_AGENT'] = self::IPAD;
         ($this->etagSetter)($this->obj, $this->time);
@@ -45,7 +45,7 @@ class MobileEtagSetterTest extends TestCase
         $this->assertSame($expected, FakeMobileEtagSetter::$device);
     }
 
-    public function testPc()
+    public function testPc(): void
     {
         unset($_SERVER['HTTP_USER_AGENT']);
         ($this->etagSetter)($this->obj, $this->time);
