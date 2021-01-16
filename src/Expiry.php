@@ -8,6 +8,8 @@ use ArrayObject;
 
 /**
  * Expiry time value object
+ *
+ * @extends ArrayObject<int, string>
  */
 class Expiry extends ArrayObject
 {

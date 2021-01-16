@@ -50,7 +50,6 @@ final class CliHttpCache implements HttpCacheInterface
 
     /**
      * @param array<string, string> $server
-     * @param string<string, mixed> $query
      *
      * @return array<string, string>
      */
