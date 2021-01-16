@@ -35,7 +35,7 @@ class BehaviorTest extends TestCase
         parent::setUp();
     }
 
-    public function testPurgeSameResourceObjectByPatch()
+    public function testPurgeSameResourceObjectByPatch(): void
     {
         $user = $this->resource->get('app://self/user', ['id' => 1]);
         assert($user instanceof ResourceObject);
@@ -54,7 +54,7 @@ class BehaviorTest extends TestCase
         $this->assertSame($lastModified, $user->headers['Last-Modified']);
     }
 
-    public function testPurgeSameResourceObjectByDelete()
+    public function testPurgeSameResourceObjectByDelete(): void
     {
         $user = $this->resource->get('app://self/user', ['id' => 1]);
         assert($user instanceof ResourceObject);
@@ -73,25 +73,25 @@ class BehaviorTest extends TestCase
         $this->assertFalse($isNotModified);
     }
 
-    public function testPurgeByAnnotation()
+    public function testPurgeByAnnotation(): void
     {
         $this->resource->put('app://self/user', ['id' => 1, 'age' => 10, 'name' => 'Sunday']);
         $this->assertTrue(Profile::$requested);
     }
 
-    public function testReturnValueIsNotResourceObjectException()
+    public function testReturnValueIsNotResourceObjectException(): void
     {
         $this->expectException(ReturnValueIsNotResourceObjectException::class);
         $this->resource->put('app://self/invalid', ['id' => 1, 'age' => 10, 'name' => 'Sunday']);
     }
 
-    public function testUnMatchQuery()
+    public function testUnMatchQuery(): void
     {
         $this->expectException(UnmatchedQuery::class);
         $this->resource->put('app://self/unmatch', ['id' => 1, 'age' => 10, 'name' => 'Sunday']);
     }
 
-    public function testCacheCode()
+    public function testCacheCode(): void
     {
         $ro = $this->resource->get('app://self/code', []);
         assert($ro instanceof Code); // 1
@@ -106,21 +106,21 @@ class BehaviorTest extends TestCase
         $this->assertSame(4, Code::$i);
     }
 
-    public function testRefreshWithCacheableAnnotation()
+    public function testRefreshWithCacheableAnnotation(): void
     {
         RefreshDest::$id = 0;
         $this->resource->put('app://self/refresh-cache-src', ['id' => '1']);
         $this->assertSame('1', RefreshDest::$id);
     }
 
-    public function testRefreshWithoutCacheableAnnotation()
+    public function testRefreshWithoutCacheableAnnotation(): void
     {
         RefreshDest::$id = 0;
         $this->resource->put('app://self/refresh-src', ['id' => '1']);
         $this->assertSame('1', RefreshDest::$id);
     }
 
-    public function testRefreshByAbortedRequest()
+    public function testRefreshByAbortedRequest(): void
     {
         $profile = $this->resource->get('app://self/user/profile', ['user_id' => 1]);
         $lastModified = $profile->headers['Last-Modified'];
@@ -130,7 +130,7 @@ class BehaviorTest extends TestCase
         $this->assertSame($lastModified, $profile->headers['Last-Modified']);
     }
 
-    public function testRefreshTypedParam()
+    public function testRefreshTypedParam(): void
     {
         $this->resource->put('app://self/typed-param', ['id' => '1']);
         $this->assertSame(1, TypedParam::$id);
