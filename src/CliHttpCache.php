@@ -4,15 +4,20 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use function assert;
 use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
+
+use function assert;
 use function is_string;
+use function parse_str;
+use function sprintf;
+use function str_replace;
+use function strtoupper;
+
+use const PHP_EOL;
 
 final class CliHttpCache implements HttpCacheInterface
 {
-    /**
-     * @var ResourceStorageInterface
-     */
+    /** @var ResourceStorageInterface */
     private $storage;
 
     public function __construct(ResourceStorageInterface $storage)
@@ -23,7 +28,7 @@ final class CliHttpCache implements HttpCacheInterface
     /**
      * {@inheritdoc}
      */
-    public function isNotModified(array $server) : bool
+    public function isNotModified(array $server): bool
     {
         if (isset($server['argc']) && $server['argc'] === 4) {
             assert(isset($server['argv'][3]) && is_string($server['argv'][3]));
@@ -43,9 +48,9 @@ final class CliHttpCache implements HttpCacheInterface
         echo '304 Not Modified' . PHP_EOL . PHP_EOL;
     }
 
-    private function setRequestHeaders(array $server, string $query) : array
+    private function setRequestHeaders(array $server, string $query): array
     {
-        \parse_str($query, $headers);
+        parse_str($query, $headers);
         /** @var array<string, string> $headers */
         foreach ($headers as $key => $header) {
             $server[$this->getServerKey($key)] = (string) $header;
@@ -54,8 +59,8 @@ final class CliHttpCache implements HttpCacheInterface
         return $server;
     }
 
-    private function getServerKey(string $key) : string
+    private function getServerKey(string $key): string
     {
-        return sprintf('HTTP_%s', strtoupper(\str_replace('-', '_', $key)));
+        return sprintf('HTTP_%s', strtoupper(str_replace('-', '_', $key)));
     }
 }

@@ -11,21 +11,22 @@ use Doctrine\Common\Cache\CacheProvider;
 use Ray\Di\AbstractModule;
 use Ray\Di\Scope;
 
+use function array_map;
+use function explode;
+
 class StorageMemcachedModule extends AbstractModule
 {
-    /**
-     * @var array
-     */
+    /** @var array */
     private $servers;
 
     /**
      * @param string $servers 'mem1.domain.com:11211:33,mem2.domain.com:11211:67' {host}:{port}:{weight}
      */
-    public function __construct(string $servers, AbstractModule $module = null)
+    public function __construct(string $servers, ?AbstractModule $module = null)
     {
-        $this->servers = \array_map(function ($serverString) {
-            return \explode(':', $serverString);
-        }, \explode(',', $servers));
+        $this->servers = array_map(static function ($serverString) {
+            return explode(':', $serverString);
+        }, explode(',', $servers));
         parent::__construct($module);
     }
 

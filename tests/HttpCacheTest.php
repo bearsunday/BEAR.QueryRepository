@@ -14,7 +14,7 @@ class HttpCacheTest extends TestCase
 {
     public function testisNotModifiedFale()
     {
-        $httpCache = new CliHttpCache(new ResourceStorage(new ArrayCache));
+        $httpCache = new CliHttpCache(new ResourceStorage(new ArrayCache()));
         $server = [];
         $this->assertFalse($httpCache->isNotModified($server));
     }
@@ -23,7 +23,7 @@ class HttpCacheTest extends TestCase
     {
         $resource = (new Injector(new QueryRepositoryModule(new ResourceModule('FakeVendor\HelloWorld'))))->getInstance(ResourceInterface::class);
         $user = $resource->get('app://self/user', ['id' => 1]);
-        $storage = new ResourceStorage(new ArrayCache);
+        $storage = new ResourceStorage(new ArrayCache());
         $storage->updateEtag($user, 10);
         $httpCache = new CliHttpCache($storage);
         $server = ['HTTP_IF_NONE_MATCH' => $user->headers['ETag']];

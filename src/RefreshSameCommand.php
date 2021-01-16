@@ -1,18 +1,24 @@
 <?php
 
+declare(strict_types=1);
+
 namespace BEAR\QueryRepository;
 
-use function array_values;
 use BEAR\QueryRepository\Exception\UnmatchedQuery;
 use BEAR\Resource\ResourceObject;
-use function is_callable;
 use Ray\Aop\MethodInvocation;
+use ReflectionException;
+use ReflectionMethod;
+
+use function array_values;
+use function call_user_func_array;
+use function get_class;
+use function is_callable;
+use function sprintf;
 
 final class RefreshSameCommand implements CommandInterface
 {
-    /**
-     * @var QueryRepositoryInterface
-     */
+    /** @var QueryRepositoryInterface */
     private $repository;
 
     public function __construct(QueryRepositoryInterface $repository)
@@ -29,6 +35,7 @@ final class RefreshSameCommand implements CommandInterface
         if ($method === 'onGet' || $method === 'onPost') {
             return;
         }
+
         unset($invocation);
         $getQuery = $this->getQuery($ro);
         $delUri = clone $ro->uri;
@@ -41,24 +48,25 @@ final class RefreshSameCommand implements CommandInterface
         $ro->uri->query = $getQuery;
         $get = [$ro, 'onGet'];
         if (is_callable($get)) {
-            \call_user_func_array($get, array_values($getQuery));
+            call_user_func_array($get, array_values($getQuery));
         }
     }
 
     /**
-     * @throws \ReflectionException
-     *
      * @return array<string, mixed>
+     *
+     * @throws ReflectionException
      */
-    private function getQuery(ResourceObject $ro) : array
+    private function getQuery(ResourceObject $ro): array
     {
-        $refParameters = (new \ReflectionMethod(\get_class($ro), 'onGet'))->getParameters();
+        $refParameters = (new ReflectionMethod(get_class($ro), 'onGet'))->getParameters();
         $getQuery = [];
         $query = $ro->uri->query;
         foreach ($refParameters as $parameter) {
             if (! isset($query[$parameter->name])) {
                 throw new UnmatchedQuery(sprintf('%s %s', $ro->uri->method, (string) $ro->uri));
             }
+
             /** @psalm-suppress MixedAssignment */
             $getQuery[(string) $parameter->name] = $query[$parameter->name];
         }

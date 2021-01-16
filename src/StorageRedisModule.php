@@ -11,19 +11,19 @@ use Doctrine\Common\Cache\CacheProvider;
 use Ray\Di\AbstractModule;
 use Ray\Di\Scope;
 
+use function explode;
+
 class StorageRedisModule extends AbstractModule
 {
-    /**
-     * @var array
-     */
+    /** @var array */
     private $server;
 
     /**
      * @param string $server 'localhost:6379' {host}:{port}
      */
-    public function __construct(string $server, AbstractModule $module = null)
+    public function __construct(string $server, ?AbstractModule $module = null)
     {
-        $this->server = \explode(':', $server);
+        $this->server = explode(':', $server);
         parent::__construct($module);
     }
 

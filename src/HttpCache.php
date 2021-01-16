@@ -6,6 +6,8 @@ namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\HttpCacheInterface as DeprecatedHttpCacheInterface;
 use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
+
+use function http_response_code;
 use function is_string;
 
 /**
@@ -13,9 +15,7 @@ use function is_string;
  */
 final class HttpCache implements HttpCacheInterface, DeprecatedHttpCacheInterface
 {
-    /**
-     * @var ResourceStorageInterface
-     */
+    /** @var ResourceStorageInterface */
     private $storage;
 
     public function __construct(ResourceStorageInterface $storage)
@@ -26,7 +26,7 @@ final class HttpCache implements HttpCacheInterface, DeprecatedHttpCacheInterfac
     /**
      * {@inheritdoc}
      */
-    public function isNotModified(array $server) : bool
+    public function isNotModified(array $server): bool
     {
         return isset($server['HTTP_IF_NONE_MATCH']) && is_string($server['HTTP_IF_NONE_MATCH']) && $this->storage->hasEtag($server['HTTP_IF_NONE_MATCH']);
     }
@@ -38,6 +38,6 @@ final class HttpCache implements HttpCacheInterface, DeprecatedHttpCacheInterfac
      */
     public function transfer()
     {
-        \http_response_code(304);
+        http_response_code(304);
     }
 }

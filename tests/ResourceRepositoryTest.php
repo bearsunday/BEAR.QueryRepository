@@ -12,29 +12,29 @@ use Doctrine\Common\Cache\FilesystemCache;
 use FakeVendor\HelloWorld\Resource\Page\Index;
 use PHPUnit\Framework\TestCase;
 
+use function array_change_key_case;
+
+use const CASE_LOWER;
+
 class ResourceRepositoryTest extends TestCase
 {
-    /**
-     * @var QueryRepository
-     */
+    /** @var QueryRepository */
     private $repository;
 
-    /**
-     * @var ResourceObject
-     */
+    /** @var ResourceObject */
     private $ro;
 
-    protected function setUp() : void
+    protected function setUp(): void
     {
         $this->repository = new Repository(
-            new EtagSetter,
+            new EtagSetter(),
             new ResourceStorage(
                 new FilesystemCache($_ENV['TMP_DIR'])
             ),
-            new AnnotationReader,
+            new AnnotationReader(),
             new Expiry(0, 0, 0)
         );
-        $this->ro = new Index;
+        $this->ro = new Index();
         $this->ro->uri = new Uri('page://self/user');
     }
 
@@ -44,7 +44,7 @@ class ResourceRepositoryTest extends TestCase
         $this->repository->put($this->ro);
         $uri = $this->ro->uri;
         // get
-        list($uri, $code, $headers, $body) = $this->repository->get($uri);
+        [$uri, $code, $headers, $body] = $this->repository->get($uri);
         $this->assertSame((string) $uri, (string) $this->ro->uri);
         $this->assertSame($code, $this->ro->code);
         $headers = array_change_key_case($headers, CASE_LOWER);

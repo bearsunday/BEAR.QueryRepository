@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\Memcache;
 use Doctrine\Common\Cache\MemcachedCache;
+use Memcached;
 use Ray\Di\ProviderInterface;
 
 class StorageMemcachedCacheProvider implements ProviderInterface
@@ -19,7 +20,6 @@ class StorageMemcachedCacheProvider implements ProviderInterface
 
     /**
      * @Memcache("servers")
-     *
      * @see http://php.net/manual/en/memcached.addservers.php
      */
     public function __construct(array $servers)
@@ -32,8 +32,8 @@ class StorageMemcachedCacheProvider implements ProviderInterface
      */
     public function get()
     {
-        $memcachedCache = new MemcachedCache;
-        $memcache = new \Memcached;
+        $memcachedCache = new MemcachedCache();
+        $memcache = new Memcached();
         $memcache->addServers($this->servers);
         $memcachedCache->setMemcached($memcache);
 

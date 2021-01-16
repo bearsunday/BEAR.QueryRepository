@@ -37,7 +37,7 @@ class QueryRepositoryModule extends AbstractModule
         $this->bind()->annotatedWith(Commands::class)->toProvider(CommandsProvider::class);
         $this->bind()->annotatedWith(CacheVersion::class)->toInstance('');
         $this->bind(RefreshInterceptor::class);
-        $this->install(new QueryRepositoryAopModule);
+        $this->install(new QueryRepositoryAopModule());
         $this->bind(ResourceStorageInterface::class)->to(ResourceStorage::class);
         // BC
         $this->bind(DeprecatedHttpCacheInterface::class)->to(HttpCache::class);

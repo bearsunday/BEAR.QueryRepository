@@ -12,19 +12,13 @@ use Ray\Di\ProviderInterface;
 
 class StorageProvider implements ProviderInterface
 {
-    /**
-     * @var CacheProvider
-     */
+    /** @var CacheProvider */
     private $cache;
 
-    /**
-     * @var string
-     */
+    /** @var string */
     private $appName;
 
-    /**
-     * @var string
-     */
+    /** @var string */
     private $version;
 
     /**

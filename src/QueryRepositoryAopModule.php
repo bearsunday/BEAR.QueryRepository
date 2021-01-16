@@ -40,6 +40,7 @@ class QueryRepositoryAopModule extends AbstractModule
                 [RefreshInterceptor::class]
             );
         }
+
         $this->bindInterceptor(
             $this->matcher->annotatedWith(AbstractCacheControl::class),
             $this->matcher->startsWith('onGet'),

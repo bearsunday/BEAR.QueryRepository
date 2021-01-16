@@ -12,7 +12,7 @@ interface ResourceStorageInterface
     /**
      * Is ETag registered ?
      */
-    public function hasEtag(string $etag) : bool;
+    public function hasEtag(string $etag): bool;
 
     /**
      * Update or save new Etag
@@ -54,5 +54,5 @@ interface ResourceStorageInterface
     /**
      * Delete resource cache
      */
-    public function delete(AbstractUri $uri) : bool;
+    public function delete(AbstractUri $uri): bool;
 }

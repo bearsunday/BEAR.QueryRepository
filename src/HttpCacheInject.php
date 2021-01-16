@@ -8,9 +8,7 @@ use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
 
 trait HttpCacheInject
 {
-    /**
-     * @var HttpCacheInterface
-     */
+    /** @var HttpCacheInterface */
     public $httpCache;
 
     /**

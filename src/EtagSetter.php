@@ -6,24 +6,32 @@ namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\HttpCache;
 use BEAR\Resource\ResourceObject;
+
+use function assert;
+use function crc32;
+use function get_class;
+use function gmdate;
 use function is_array;
+use function serialize;
+use function time;
 
 final class EtagSetter implements EtagSetterInterface
 {
     /**
      * {@inheritdoc}
      */
-    public function __invoke(ResourceObject $ro, int $time = null, HttpCache $httpCache = null)
+    public function __invoke(ResourceObject $ro, ?int $time = null, ?HttpCache $httpCache = null)
     {
-        $time = $time === null ? \time() : $time;
+        $time = $time ?? time();
         if ($ro->code !== 200) {
             return;
         }
+
         $ro->headers['ETag'] = $this->getEtag($ro, $httpCache);
-        $ro->headers['Last-Modified'] = \gmdate('D, d M Y H:i:s', $time) . ' GMT';
+        $ro->headers['Last-Modified'] = gmdate('D, d M Y H:i:s', $time) . ' GMT';
     }
 
-    public function getEtagByPartialBody(HttpCache $httpCacche, ResourceObject $ro) : string
+    public function getEtagByPartialBody(HttpCache $httpCacche, ResourceObject $ro): string
     {
         $etag = '';
         assert(is_array($ro->body));
@@ -36,9 +44,9 @@ final class EtagSetter implements EtagSetterInterface
         return $etag;
     }
 
-    public function getEtagByEitireView(ResourceObject $ro) : string
+    public function getEtagByEitireView(ResourceObject $ro): string
     {
-        return \get_class($ro) . \serialize($ro->view);
+        return get_class($ro) . serialize($ro->view);
     }
 
     /**
@@ -48,10 +56,10 @@ final class EtagSetter implements EtagSetterInterface
      *
      * @see https://cloud.google.com/storage/docs/hashes-etags
      */
-    private function getEtag(ResourceObject $ro, HttpCache $httpCache = null) : string
+    private function getEtag(ResourceObject $ro, ?HttpCache $httpCache = null): string
     {
         $etag = $httpCache instanceof HttpCache && $httpCache->etag ? $this->getEtagByPartialBody($httpCache, $ro) : $this->getEtagByEitireView($ro);
 
-        return (string) \crc32(\get_class($ro) . $etag . (string) $ro->uri);
+        return (string) crc32(get_class($ro) . $etag . (string) $ro->uri);
     }
 }

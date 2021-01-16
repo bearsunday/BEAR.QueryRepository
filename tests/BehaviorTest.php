@@ -16,24 +16,20 @@ use FakeVendor\HelloWorld\Resource\App\User\Profile;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 
+use function assert;
+
 class BehaviorTest extends TestCase
 {
-    /**
-     * @var ResourceInterface
-     */
+    /** @var ResourceInterface */
     private $resource;
 
-    /**
-     * @var QueryRepository
-     */
+    /** @var QueryRepository */
     private $repository;
 
-    /**
-     * @var HttpCacheInterface
-     */
+    /** @var HttpCacheInterface */
     private $httpCache;
 
-    protected function setUp() : void
+    protected function setUp(): void
     {
         $namespace = 'FakeVendor\HelloWorld';
         $injector = new Injector(new QueryRepositoryModule(new ResourceModule($namespace)), $_ENV['TMP_DIR']);
@@ -45,8 +41,8 @@ class BehaviorTest extends TestCase
 
     public function testPurgeSameResourceObjectByPatch()
     {
-        /** @var ResourceObject $user */
         $user = $this->resource->get('app://self/user', ['id' => 1]);
+        assert($user instanceof ResourceObject);
         $etag = $user->headers['ETag'];
         // reload (purge repository entry and re-generate by onGet)
         $this->resource->patch('app://self/user', ['id' => 1, 'name' => 'kuma']);
@@ -64,12 +60,12 @@ class BehaviorTest extends TestCase
 
     public function testPurgeSameResourceObjectByDelete()
     {
-        /** @var ResourceObject $user */
         $user = $this->resource->get('app://self/user', ['id' => 1]);
+        assert($user instanceof ResourceObject);
         $etag = $user->headers['ETag'];
         $server = [
             'REQUEST_METHOD' => 'GET',
-            'HTTP_IF_NONE_MATCH' => $etag
+            'HTTP_IF_NONE_MATCH' => $etag,
         ];
         $isNotModified = $this->httpCache->isNotModified($server);
         $this->assertTrue($isNotModified);
@@ -101,8 +97,8 @@ class BehaviorTest extends TestCase
 
     public function testCacheCode()
     {
-        /** @var Code $ro */
-        $ro = $this->resource->get('app://self/code', []); // 1
+        $ro = $this->resource->get('app://self/code', []);
+        assert($ro instanceof Code); // 1
         $ro->code = 203;
         $ro->onGet(); // 2 non-caached
         $ro->code = 500;

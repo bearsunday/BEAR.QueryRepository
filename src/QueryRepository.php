@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use function assert;
 use BEAR\QueryRepository\Exception\ExpireAtKeyNotExists;
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\HttpCache;
@@ -12,28 +11,31 @@ use BEAR\Resource\AbstractUri;
 use BEAR\Resource\RequestInterface;
 use BEAR\Resource\ResourceObject;
 use Doctrine\Common\Annotations\Reader;
+use LogicException;
+use ReflectionClass;
+use ReflectionException;
+
+use function assert;
+use function get_class;
 use function is_array;
+use function is_string;
+use function sprintf;
+use function strpos;
+use function strtotime;
+use function time;
 
 final class QueryRepository implements QueryRepositoryInterface
 {
-    /**
-     * @var ResourceStorageInterface
-     */
+    /** @var ResourceStorageInterface */
     private $storage;
 
-    /**
-     * @var Reader
-     */
+    /** @var Reader */
     private $reader;
 
-    /**
-     * @var Expiry
-     */
+    /** @var Expiry */
     private $expiry;
 
-    /**
-     * @var EtagSetterInterface
-     */
+    /** @var EtagSetterInterface */
     private $setEtag;
 
     public function __construct(
@@ -51,7 +53,7 @@ final class QueryRepository implements QueryRepositoryInterface
     /**
      * {@inheritdoc}
      *
-     * @throws \ReflectionException
+     * @throws ReflectionException
      */
     public function put(ResourceObject $ro)
     {
@@ -63,6 +65,7 @@ final class QueryRepository implements QueryRepositoryInterface
         if (isset($ro->headers['ETag'])) {
             $this->storage->updateEtag($ro, $lifeTime);
         }
+
         $this->setMaxAge($ro, $lifeTime);
         if ($cacheable instanceof Cacheable && $cacheable->type === 'view') {
             return $this->saveViewCache($ro, $lifeTime);
@@ -80,7 +83,8 @@ final class QueryRepository implements QueryRepositoryInterface
         if ($data === false) {
             return false;
         }
-        $age = \time() - \strtotime($data[2]['Last-Modified']);
+
+        $age = time() - strtotime($data[2]['Last-Modified']);
         $data[2]['Age'] = $age;
 
         return $data;
@@ -97,31 +101,31 @@ final class QueryRepository implements QueryRepositoryInterface
     }
 
     /**
-     * @throws \ReflectionException
+     * @throws ReflectionException
      */
-    private function getHttpCacheAnnotation(ResourceObject $ro) : ?HttpCache
+    private function getHttpCacheAnnotation(ResourceObject $ro): ?HttpCache
     {
-        $annotation = $this->reader->getClassAnnotation(new \ReflectionClass($ro), HttpCache::class);
+        $annotation = $this->reader->getClassAnnotation(new ReflectionClass($ro), HttpCache::class);
         if ($annotation instanceof HttpCache || $annotation === null) {
             return $annotation;
         }
 
-        throw new \LogicException();
+        throw new LogicException();
     }
 
     /**
-     * @throws \ReflectionException
-     *
      * @return ?Cacheable
+     *
+     * @throws ReflectionException
      */
     private function getCacheableAnnotation(ResourceObject $ro)
     {
-        $annotation = $this->reader->getClassAnnotation(new \ReflectionClass($ro), Cacheable::class);
+        $annotation = $this->reader->getClassAnnotation(new ReflectionClass($ro), Cacheable::class);
         if ($annotation instanceof Cacheable || $annotation === null) {
             return $annotation;
         }
 
-        throw new \LogicException();
+        throw new LogicException();
     }
 
     /**
@@ -131,9 +135,10 @@ final class QueryRepository implements QueryRepositoryInterface
      */
     private function evaluateBody($body)
     {
-        if (! \is_array($body)) {
+        if (! is_array($body)) {
             return $body;
         }
+
         /** @psalm-suppress MixedAssignment $item */
         foreach ($body as &$item) {
             if ($item instanceof RequestInterface) {
@@ -144,7 +149,7 @@ final class QueryRepository implements QueryRepositoryInterface
         return $body;
     }
 
-    private function getExpiryTime(ResourceObject $ro, Cacheable $cacheable = null) : int
+    private function getExpiryTime(ResourceObject $ro, ?Cacheable $cacheable = null): int
     {
         if ($cacheable === null) {
             return 0;
@@ -157,17 +162,18 @@ final class QueryRepository implements QueryRepositoryInterface
         return $cacheable->expirySecond ? $cacheable->expirySecond : (int) $this->expiry[$cacheable->expiry];
     }
 
-    private function getExpiryAtSec(ResourceObject $ro, Cacheable $cacheable) : int
+    private function getExpiryAtSec(ResourceObject $ro, Cacheable $cacheable): int
     {
         if (! isset($ro->body[$cacheable->expiryAt])) {
-            $msg = \sprintf('%s::%s', \get_class($ro), $cacheable->expiryAt);
+            $msg = sprintf('%s::%s', get_class($ro), $cacheable->expiryAt);
 
             throw new ExpireAtKeyNotExists($msg);
         }
+
         assert(is_array($ro->body));
         $expiryAt = (string) $ro->body[$cacheable->expiryAt];
 
-        return \strtotime($expiryAt) - \time();
+        return strtotime($expiryAt) - time();
     }
 
     /**
@@ -178,7 +184,8 @@ final class QueryRepository implements QueryRepositoryInterface
         if ($age === 0) {
             return;
         }
-        $setMaxAge = \sprintf('max-age=%d', $age);
+
+        $setMaxAge = sprintf('max-age=%d', $age);
         $noCacheControleHeader = ! isset($ro->headers['Cache-Control']);
         /** @var array<string, string> $headers */
         $headers = $ro->headers;
@@ -187,16 +194,18 @@ final class QueryRepository implements QueryRepositoryInterface
 
             return;
         }
+
         $isMaxAgeAlreadyDefined = strpos($headers['Cache-Control'], 'max-age') !== false;
         if ($isMaxAgeAlreadyDefined) {
             return;
         }
+
         if (is_string($ro->headers['Cache-Control'])) {
             $ro->headers['Cache-Control'] .= ', ' . $setMaxAge;
         }
     }
 
-    private function saveViewCache(ResourceObject $ro, int $lifeTime) : bool
+    private function saveViewCache(ResourceObject $ro, int $lifeTime): bool
     {
         if (! $ro->view) {
             $ro->view = $ro->toString();

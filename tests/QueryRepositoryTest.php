@@ -12,29 +12,24 @@ use BEAR\Resource\Uri;
 use Doctrine\Common\Cache\CacheProvider;
 use FakeVendor\HelloWorld\Resource\App\User\Profile;
 use FakeVendor\HelloWorld\Resource\Page\None;
-use PHPUnit\Framework\Error\Warning;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
 
+use function assert;
+
 class QueryRepositoryTest extends TestCase
 {
-    /**
-     * @var ResourceInterface
-     */
+    /** @var ResourceInterface */
     private $resource;
 
-    /**
-     * @var QueryRepository
-     */
+    /** @var QueryRepository */
     private $repository;
 
-    /**
-     * @var HttpCacheInterface
-     */
+    /** @var HttpCacheInterface */
     private $httpCache;
 
-    protected function setUp() : void
+    protected function setUp(): void
     {
         $namespace = 'FakeVendor\HelloWorld';
         $injector = new Injector(new QueryRepositoryModule(new MobileEtagModule(new ResourceModule($namespace))), $_ENV['TMP_DIR']);
@@ -46,8 +41,8 @@ class QueryRepositoryTest extends TestCase
 
     public function testPurgeSameResourceObjectByPatch()
     {
-        /** @var ResourceObject $user */
         $user = $this->resource->get('app://self/user', ['id' => 1]);
+        assert($user instanceof ResourceObject);
         $etag = $user->headers['ETag'];
         // reload (purge repository entry and re-generate by onGet)
         $this->resource->patch('app://self/user', ['id' => 1, 'name' => 'kuma']);
@@ -59,12 +54,12 @@ class QueryRepositoryTest extends TestCase
 
     public function testPurgeSameResourceObjectByDelete()
     {
-        /** @var ResourceObject $user */
         $user = $this->resource->get('app://self/user', ['id' => 1]);
+        assert($user instanceof ResourceObject);
         $etag = $user->headers['ETag'];
         $server = [
             'REQUEST_METHOD' => 'GET',
-            'HTTP_IF_NONE_MATCH' => $etag
+            'HTTP_IF_NONE_MATCH' => $etag,
         ];
         $isNotModified = $this->httpCache->isNotModified($server);
         $this->assertTrue($isNotModified);
@@ -87,7 +82,7 @@ class QueryRepositoryTest extends TestCase
      */
     public function testNoAnnotationLifeTime()
     {
-        $ro = new None; // no annotation
+        $ro = new None(); // no annotation
         $ro->uri = new Uri('page://self/none');
         $result = $this->repository->put($ro);
         $this->assertTrue($result);
