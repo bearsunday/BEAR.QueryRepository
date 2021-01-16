@@ -105,11 +105,8 @@ final class QueryRepository implements QueryRepositoryInterface
     private function getHttpCacheAnnotation(ResourceObject $ro): ?HttpCache
     {
         $annotation = $this->reader->getClassAnnotation(new ReflectionClass($ro), HttpCache::class);
-        if ($annotation instanceof HttpCache || $annotation === null) {
-            return $annotation;
-        }
 
-        throw new LogicException();
+        return $annotation;
     }
 
     /**
@@ -117,14 +114,11 @@ final class QueryRepository implements QueryRepositoryInterface
      *
      * @throws ReflectionException
      */
-    private function getCacheableAnnotation(ResourceObject $ro)
+    private function getCacheableAnnotation(ResourceObject $ro): ?Cacheable
     {
         $annotation = $this->reader->getClassAnnotation(new ReflectionClass($ro), Cacheable::class);
-        if ($annotation instanceof Cacheable || $annotation === null) {
-            return $annotation;
-        }
 
-        throw new LogicException();
+        return $annotation;
     }
 
     private function getExpiryTime(ResourceObject $ro, ?Cacheable $cacheable = null): int

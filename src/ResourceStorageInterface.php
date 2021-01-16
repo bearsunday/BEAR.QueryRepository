@@ -33,7 +33,7 @@ interface ResourceStorageInterface
      *
      * return [$uri, $code, $headers, $body, $view]] array.
      *
-     * @return array{0:string, 1: int, 2:array<string, string>, 3: mixed, 4: string}|false
+     * @return array{0:AbstractUri, 1: int, 2:array<string, string>, 3: mixed, 4: mixed}|false
      */
     public function get(AbstractUri $uri);
 

@@ -9,7 +9,7 @@ use ArrayObject;
 /**
  * Expiry time value object
  *
- * @extends ArrayObject<int, string>
+ * @extends ArrayObject<string, int>
  */
 class Expiry extends ArrayObject
 {
