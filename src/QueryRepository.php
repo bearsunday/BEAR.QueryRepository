@@ -87,7 +87,6 @@ final class QueryRepository implements QueryRepositoryInterface
         $data[2]['Age'] = $age;
 
         return $data;
-
     }
 
     /**
@@ -115,9 +114,7 @@ final class QueryRepository implements QueryRepositoryInterface
      */
     private function getCacheableAnnotation(ResourceObject $ro): ?Cacheable
     {
-        $annotation = $this->reader->getClassAnnotation(new ReflectionClass($ro), Cacheable::class);
-
-        return $annotation;
+        return $this->reader->getClassAnnotation(new ReflectionClass($ro), Cacheable::class);
     }
 
     private function getExpiryTime(ResourceObject $ro, ?Cacheable $cacheable = null): int

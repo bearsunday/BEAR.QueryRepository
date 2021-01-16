@@ -6,7 +6,6 @@ namespace BEAR\QueryRepository;
 
 use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
 
-use function assert;
 use function is_string;
 use function parse_str;
 use function sprintf;
