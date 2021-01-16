@@ -128,27 +128,6 @@ final class QueryRepository implements QueryRepositoryInterface
         throw new LogicException();
     }
 
-    /**
-     * @param mixed $body
-     *
-     * @return mixed
-     */
-    private function evaluateBody($body)
-    {
-        if (! is_array($body)) {
-            return $body;
-        }
-
-        /** @psalm-suppress MixedAssignment $item */
-        foreach ($body as &$item) {
-            if ($item instanceof RequestInterface) {
-                $item = ($item)();
-            }
-        }
-
-        return $body;
-    }
-
     private function getExpiryTime(ResourceObject $ro, ?Cacheable $cacheable = null): int
     {
         if ($cacheable === null) {
