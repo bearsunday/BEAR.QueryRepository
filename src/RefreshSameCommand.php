@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\UnmatchedQuery;
@@ -15,6 +13,8 @@ use function call_user_func_array;
 use function get_class;
 use function is_callable;
 use function sprintf;
+
+// phpcs:ignoreFile SlevomatCodingStandard.TypeHints.DeclareStrictTypes.DeclareStrictTypesMissing -- for call_user_func_array
 
 final class RefreshSameCommand implements CommandInterface
 {
