@@ -42,11 +42,11 @@ class CacheTypeTest extends TestCase
         $uri = 'app://self/value';
         // put
         $ro = $this->resource->get($uri);
-        (string) $ro;
+        (string) $ro; /* @phpstan-ignore-line */
         $time = $ro['time'];
         $this->assertSame('1' . $time, $ro->view);
         $ro = $this->resource->get($uri);
-        (string) $ro;
+        (string) $ro; /* @phpstan-ignore-line */
         $this->assertSame('2' . $time, $ro->view);
     }
 

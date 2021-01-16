@@ -88,7 +88,6 @@ final class ResourceStorage implements ResourceStorageInterface
     public function get(AbstractUri $uri)
     {
         $varyUri = $this->getVaryUri($uri);
-        /** @var array{0:string, 1: int, 2:array<string, string>, 3: mixed, 4: string}|false $roProps */
         $roProps = $this->cache->fetch($varyUri);
 
         return $roProps;

@@ -10,7 +10,6 @@ use BEAR\RepositoryModule\Annotation\HttpCache;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceObject;
 use Doctrine\Common\Annotations\Reader;
-use LogicException;
 use ReflectionClass;
 use ReflectionException;
 
@@ -79,6 +78,7 @@ final class QueryRepository implements QueryRepositoryInterface
     public function get(AbstractUri $uri)
     {
         $data = $this->storage->get($uri);
+
         if ($data === false) {
             return false;
         }
@@ -87,6 +87,7 @@ final class QueryRepository implements QueryRepositoryInterface
         $data[2]['Age'] = $age;
 
         return $data;
+
     }
 
     /**
@@ -104,9 +105,7 @@ final class QueryRepository implements QueryRepositoryInterface
      */
     private function getHttpCacheAnnotation(ResourceObject $ro): ?HttpCache
     {
-        $annotation = $this->reader->getClassAnnotation(new ReflectionClass($ro), HttpCache::class);
-
-        return $annotation;
+        return $this->reader->getClassAnnotation(new ReflectionClass($ro), HttpCache::class);
     }
 
     /**

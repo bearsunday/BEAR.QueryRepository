@@ -15,7 +15,7 @@ interface QueryRepositoryInterface
     public function put(ResourceObject $ro);
 
     /**
-     * @return array{0:string|AbstractUri, 1:int, 2:array<string, string>, 3:array<string, string>}|false
+     * @return array{0:AbstractUri, 1:int, 2:array<string, mixed>, 3:mixed, 4: ?string}|false
      */
     public function get(AbstractUri $uri);
 
