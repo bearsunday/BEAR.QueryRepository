@@ -38,10 +38,10 @@ class CacheInterceptor implements MethodInterceptor
         assert($ro instanceof ResourceObject);
         try {
             $stored = $this->repository->get($ro->uri);
-        } catch (LogicException | RuntimeException $e) {
+        } catch (LogicException $e) {
             throw $e;
         } catch (Throwable $e) {
-            $this->triggerError($e);
+            $this->triggerWarning($e);
 
             return $invocation->proceed();
         }
@@ -57,19 +57,21 @@ class CacheInterceptor implements MethodInterceptor
         assert($ro instanceof ResourceObject);
         try {
             $ro->code === 200 ? $this->repository->put($ro) : $this->repository->purge($ro->uri);
-        } catch (LogicException | RuntimeException $e) {
+        } catch (LogicException $e) {
             throw $e;
         } catch (Throwable $e) {
-            $this->triggerError($e);
+            $this->triggerWarning($e);
         }
 
         return $ro;
     }
 
     /**
-     * Trigger error when cache server is down instead of throwing the exception
+     * Trigger warning
+     *
+     * When the cache server is down, it will issue a warning rather than an exception to continue service.
      */
-    private function triggerError(Throwable $e): void
+    private function triggerWarning(Throwable $e): void
     {
         $message = sprintf('%s: %s in %s:%s', get_class($e), $e->getMessage(), $e->getFile(), $e->getLine());
         trigger_error($message, E_USER_WARNING);
