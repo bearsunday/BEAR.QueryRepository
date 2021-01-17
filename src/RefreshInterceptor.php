@@ -30,7 +30,7 @@ final class RefreshInterceptor implements MethodInterceptor
         /** @psalm-suppress MixedAssignment */
         $ro = $invocation->proceed();
         if (! $ro instanceof ResourceObject) {
-            throw new ReturnValueIsNotResourceObjectException(get_class($invocation->getThis()));
+            throw new ReturnValueIsNotResourceObjectException(get_class($invocation->getThis())); // @codeCoverageIgnore
         }
 
         if ($ro->code < Code::BAD_REQUEST) {
