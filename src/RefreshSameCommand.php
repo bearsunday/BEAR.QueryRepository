@@ -9,8 +9,10 @@ use ReflectionException;
 use ReflectionMethod;
 
 use function array_values;
+use function assert;
 use function call_user_func_array;
 use function get_class;
+use function in_array;
 use function is_callable;
 use function sprintf;
 
@@ -31,11 +33,7 @@ final class RefreshSameCommand implements CommandInterface
      */
     public function command(MethodInvocation $invocation, ResourceObject $ro)
     {
-        $method = $invocation->getMethod()->getName();
-        if ($method === 'onGet' || $method === 'onPost') {
-            return;
-        }
-
+        assert(in_array($invocation->getMethod()->name, ['onPut', 'onDelete', 'onPatch']));
         unset($invocation);
         $getQuery = $this->getQuery($ro);
         $delUri = clone $ro->uri;
