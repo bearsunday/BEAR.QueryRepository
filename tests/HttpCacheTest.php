@@ -40,4 +40,22 @@ class HttpCacheTest extends TestCase
         $this->expectOutputRegex('/\A304 Not Modified/');
         $httpCache->transfer();
     }
+
+    /**
+     * @depends testisNotModifiedTrue
+     */
+    public function testHeaderSetInCli(): void
+    {
+        $resource = (new Injector(new QueryRepositoryModule(new ResourceModule('FakeVendor\HelloWorld'))))->getInstance(ResourceInterface::class);
+        $user = $resource->get('app://self/user', ['id' => 1]);
+        $storage = new ResourceStorage(new ArrayCache());
+        $storage->updateEtag($user, 10);
+        $httpCache = new CliHttpCache($storage);
+        $header = 'IF_NONE_MATCH=' . $user->headers['ETag'];
+        $server = [
+            'argc' => 4,
+            'argv' => [3 => $header],
+        ];
+        $this->assertTrue($httpCache->isNotModified($server));
+    }
 }
