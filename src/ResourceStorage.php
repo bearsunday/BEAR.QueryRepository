@@ -108,14 +108,14 @@ final class ResourceStorage implements ResourceStorageInterface
      *
      * @return bool
      */
-    public function saveValue(ResourceObject $ro, int $lifeTime)
+    public function saveValue(ResourceObject $ro, int $ttl)
     {
         /** @psalm-suppress MixedAssignment $body */
         $body = $this->evaluateBody($ro->body);
         $uri = $this->getVaryUri($ro->uri);
         $val = [$ro->uri, $ro->code, $ro->headers, $body, null];
 
-        return $this->cache->save($uri, $val, $lifeTime);
+        return $this->cache->save($uri, $val, $ttl);
     }
 
     /**
@@ -123,14 +123,14 @@ final class ResourceStorage implements ResourceStorageInterface
      *
      * @return bool
      */
-    public function saveView(ResourceObject $ro, int $lifeTime)
+    public function saveView(ResourceObject $ro, int $ttl)
     {
         /** @psalm-suppress MixedAssignment $body */
         $body = $this->evaluateBody($ro->body);
         $uri = $this->getVaryUri($ro->uri);
         $val = [$ro->uri, $ro->code, $ro->headers, $body, $ro->view];
 
-        return $this->cache->save($uri, $val, $lifeTime);
+        return $this->cache->save($uri, $val, $ttl);
     }
 
     /**
