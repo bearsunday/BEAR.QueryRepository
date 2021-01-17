@@ -26,12 +26,12 @@ final class CliHttpCache implements HttpCacheInterface
 
     /**
      * {@inheritdoc}
-     *
-     * @var array{HTTP_IF_NONE_MATCH: string}|array{argc: int, argv: array<int, string>} $server
      */
     public function isNotModified(array $server): bool
     {
-        if (isset($server['argc']) && $server['argc'] === 4) { // phpcs:ignore /* @phpstan-ignore-line */
+        /** @var array{HTTP_IF_NONE_MATCH: string}|array{argc?: int, argv?: array} $server */
+        if (isset($server['argc']) && $server['argc'] === 4) {
+            /** @var array<string, string> $server */
             $server = $this->setRequestHeaders($server, $server['argv'][3]);
         }
 
@@ -49,7 +49,7 @@ final class CliHttpCache implements HttpCacheInterface
     }
 
     /**
-     * @param array<string, string> $server
+     * @param array<string, mixed> $server
      *
      * @return array<string, string>
      */

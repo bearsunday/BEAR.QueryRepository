@@ -16,7 +16,7 @@ use function explode;
 
 class StorageMemcachedModule extends AbstractModule
 {
-    /** @var array<string> */
+    /** @var list<list<string>> */
     private $servers;
 
     /**
