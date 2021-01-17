@@ -9,7 +9,8 @@ use BEAR\Resource\ResourceInterface;
 use Doctrine\Common\Cache\ArrayCache;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
-use Symfony\Component\HttpClient\HttpClient;
+
+use function http_response_code;
 
 class HttpCacheTest extends TestCase
 {

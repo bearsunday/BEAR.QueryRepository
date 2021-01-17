@@ -21,13 +21,14 @@ class EtagSetterTest extends TestCase
         $this->resource = (new Injector(new QueryRepositoryModule(new ResourceModule('FakeVendor\HelloWorld')), $_ENV['TMP_DIR']))->getInstance(ResourceInterface::class);
     }
 
-    public function testStatusNotOk()
+    public function testStatusNotOk(): void
     {
         $setEtag = new EtagSetter();
-        $ro = new Code;
+        $ro = new Code();
         $ro->code = 500;
-        $result = $setEtag($ro);
-        $this->assertNull($result);
+        $setEtag($ro);
+        // $ro->headers['ETag']
+        $this->assertArrayNotHasKey('Etag', $ro->headers);
     }
 
     public function testInvoke(): void
