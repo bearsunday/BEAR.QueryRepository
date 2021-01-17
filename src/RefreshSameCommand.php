@@ -68,7 +68,7 @@ final class RefreshSameCommand implements CommandInterface
             }
 
             /** @psalm-suppress MixedAssignment */
-            $getQuery[(string) $parameter->name] = $query[$parameter->name];
+            $getQuery[$parameter->name] = $query[$parameter->name];
         }
 
         return $getQuery;
