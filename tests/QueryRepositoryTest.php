@@ -10,7 +10,10 @@ use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
 use Doctrine\Common\Cache\CacheProvider;
+use FakeVendor\HelloWorld\Resource\App\Code;
+use FakeVendor\HelloWorld\Resource\App\NullView;
 use FakeVendor\HelloWorld\Resource\App\User\Profile;
+use FakeVendor\HelloWorld\Resource\App\View;
 use FakeVendor\HelloWorld\Resource\Page\None;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\AbstractModule;
@@ -153,5 +156,17 @@ class QueryRepositoryTest extends TestCase
 
         $this->assertFalse($this->httpCache->isNotModified($server1), 'id:1 is modified');
         $this->assertTrue($this->httpCache->isNotModified($server2), 'id:2 is not modified');
+    }
+
+    /**
+     * @covers \BEAR\QueryRepository\QueryRepository::saveViewCache
+     */
+    public function testRenderView(): void
+    {
+        $ro = new NullView();
+        $ro->uri = new Uri('app://self/null-view');
+        $ro->body = ['time' => '0'];
+        $this->repository->put($ro);
+        $this->assertIsString($ro->view);
     }
 }
