@@ -9,14 +9,10 @@ use Ray\Di\ProviderInterface;
 
 class CommandsProvider implements ProviderInterface
 {
-    /**
-     * @var QueryRepositoryInterface
-     */
+    /** @var QueryRepositoryInterface */
     private $repository;
 
-    /**
-     * @var ResourceInterface
-     */
+    /** @var ResourceInterface */
     private $resource;
 
     public function __construct(
@@ -34,7 +30,7 @@ class CommandsProvider implements ProviderInterface
     {
         return [
             new RefreshSameCommand($this->repository),
-            new RefreshAnnotatedCommand($this->repository, $this->resource)
+            new RefreshAnnotatedCommand($this->repository, $this->resource),
         ];
     }
 }

@@ -12,29 +12,24 @@ use BEAR\Resource\Uri;
 use Doctrine\Common\Cache\CacheProvider;
 use FakeVendor\HelloWorld\Resource\App\User\Profile;
 use FakeVendor\HelloWorld\Resource\Page\None;
-use PHPUnit\Framework\Error\Warning;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
 
+use function assert;
+
 class QueryRepositoryTest extends TestCase
 {
-    /**
-     * @var ResourceInterface
-     */
+    /** @var ResourceInterface */
     private $resource;
 
-    /**
-     * @var QueryRepository
-     */
+    /** @var QueryRepository */
     private $repository;
 
-    /**
-     * @var HttpCacheInterface
-     */
+    /** @var HttpCacheInterface */
     private $httpCache;
 
-    protected function setUp() : void
+    protected function setUp(): void
     {
         $namespace = 'FakeVendor\HelloWorld';
         $injector = new Injector(new QueryRepositoryModule(new MobileEtagModule(new ResourceModule($namespace))), $_ENV['TMP_DIR']);
@@ -44,10 +39,10 @@ class QueryRepositoryTest extends TestCase
         parent::setUp();
     }
 
-    public function testPurgeSameResourceObjectByPatch()
+    public function testPurgeSameResourceObjectByPatch(): void
     {
-        /** @var ResourceObject $user */
         $user = $this->resource->get('app://self/user', ['id' => 1]);
+        assert($user instanceof ResourceObject);
         $etag = $user->headers['ETag'];
         // reload (purge repository entry and re-generate by onGet)
         $this->resource->patch('app://self/user', ['id' => 1, 'name' => 'kuma']);
@@ -57,14 +52,14 @@ class QueryRepositoryTest extends TestCase
         $this->assertFalse($etag === $newEtag);
     }
 
-    public function testPurgeSameResourceObjectByDelete()
+    public function testPurgeSameResourceObjectByDelete(): void
     {
-        /** @var ResourceObject $user */
         $user = $this->resource->get('app://self/user', ['id' => 1]);
+        assert($user instanceof ResourceObject);
         $etag = $user->headers['ETag'];
         $server = [
             'REQUEST_METHOD' => 'GET',
-            'HTTP_IF_NONE_MATCH' => $etag
+            'HTTP_IF_NONE_MATCH' => $etag,
         ];
         $isNotModified = $this->httpCache->isNotModified($server);
         $this->assertTrue($isNotModified);
@@ -76,7 +71,7 @@ class QueryRepositoryTest extends TestCase
         $this->assertFalse($isNotModified);
     }
 
-    public function testPurgeByAnnotation()
+    public function testPurgeByAnnotation(): void
     {
         $this->resource->put('app://self/user', ['id' => 1, 'age' => 10, 'name' => 'Sunday']);
         $this->assertTrue(Profile::$requested);
@@ -85,15 +80,15 @@ class QueryRepositoryTest extends TestCase
     /**
      * @covers \BEAR\QueryRepository\QueryRepository::getExpiryTime()
      */
-    public function testNoAnnotationLifeTime()
+    public function testNoAnnotationLifeTime(): void
     {
-        $ro = new None; // no annotation
+        $ro = new None(); // no annotation
         $ro->uri = new Uri('page://self/none');
         $result = $this->repository->put($ro);
         $this->assertTrue($result);
     }
 
-    public function testPutResquestEmbeddedResoureView()
+    public function testPutResquestEmbeddedResoureView(): void
     {
         $uri = 'page://self/emb-view';
         $ro = $this->resource->get($uri);
@@ -109,7 +104,7 @@ class QueryRepositoryTest extends TestCase
 ', $view);
     }
 
-    public function testPutResquestEmbeddedResoureValue()
+    public function testPutResquestEmbeddedResoureValue(): void
     {
         $uri = 'page://self/emb-val';
         $ro = $this->resource->get($uri);
@@ -119,7 +114,7 @@ class QueryRepositoryTest extends TestCase
         $this->assertNull($view);
     }
 
-    public function testErrorInCacheRead()
+    public function testErrorInCacheRead(): void
     {
         $namespace = 'FakeVendor\HelloWorld';
         $module = new QueryRepositoryModule(new MobileEtagModule(new ResourceModule($namespace)));
@@ -138,7 +133,7 @@ class QueryRepositoryTest extends TestCase
         $this->assertContains('Exception: DoctrineNamespaceCacheKey[]', $GLOBALS['BEAR\QueryRepository\syslog'][1]);
     }
 
-    public function testSameResponseButDifferentParameter()
+    public function testSameResponseButDifferentParameter(): void
     {
         $ro1 = $this->resource->get('app://self/sometimes-same-response', ['id' => 1]);
         $server1 = [

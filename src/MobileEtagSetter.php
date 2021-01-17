@@ -6,17 +6,23 @@ namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\HttpCache;
 use BEAR\Resource\ResourceObject;
+use Mobile_Detect;
+
+use function crc32;
+use function gmdate;
+use function serialize;
+use function time;
 
 final class MobileEtagSetter implements EtagSetterInterface
 {
-    public function __invoke(ResourceObject $ro, int $time = null, HttpCache $httpCache = null)
+    public function __invoke(ResourceObject $ro, ?int $time = null, ?HttpCache $httpCache = null)
     {
         unset($httpCache);
         // etag]
-        $ro->headers['ETag'] = (string) \crc32($this->getDevice() . \serialize($ro->view) . \serialize($ro->body));
+        $ro->headers['ETag'] = (string) crc32($this->getDevice() . serialize($ro->view) . serialize($ro->body));
         // time
-        $time = $time === null ? \time() : $time;
-        $ro->headers['Last-Modified'] = \gmdate('D, d M Y H:i:s', $time) . ' GMT';
+        $time = $time ?? time();
+        $ro->headers['Last-Modified'] = gmdate('D, d M Y H:i:s', $time) . ' GMT';
     }
 
     /**
@@ -26,7 +32,7 @@ final class MobileEtagSetter implements EtagSetterInterface
      */
     private function getDevice()
     {
-        $detect = new \Mobile_Detect;
+        $detect = new Mobile_Detect();
 
         return $detect->isMobile() && ! $detect->isTablet() ? 'mobile' : 'pc';
     }

@@ -4,15 +4,19 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use function assert;
 use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
+
 use function is_string;
+use function parse_str;
+use function sprintf;
+use function str_replace;
+use function strtoupper;
+
+use const PHP_EOL;
 
 final class CliHttpCache implements HttpCacheInterface
 {
-    /**
-     * @var ResourceStorageInterface
-     */
+    /** @var ResourceStorageInterface */
     private $storage;
 
     public function __construct(ResourceStorageInterface $storage)
@@ -23,11 +27,12 @@ final class CliHttpCache implements HttpCacheInterface
     /**
      * {@inheritdoc}
      */
-    public function isNotModified(array $server) : bool
+    public function isNotModified(array $server): bool
     {
-        if (isset($server['argc']) && $server['argc'] === 4) {
-            assert(isset($server['argv'][3]) && is_string($server['argv'][3]));
-            $server = $this->setRequestHeaders($server, $server['argv'][3]);
+        /** @var array{HTTP_IF_NONE_MATCH: string}|array{argc: int, argv: array} $server */
+        $hasRequestHeaderInCli = isset($server['argc']) && $server['argc'] === 4 && isset($server['argv']);
+        if ($hasRequestHeaderInCli) {
+            $server = $this->setRequestHeaders($server, $server['argv'][3]); // @phpstan-ignore-line
         }
 
         return isset($server['HTTP_IF_NONE_MATCH']) && is_string($server['HTTP_IF_NONE_MATCH']) && $this->storage->hasEtag($server['HTTP_IF_NONE_MATCH']);
@@ -43,10 +48,14 @@ final class CliHttpCache implements HttpCacheInterface
         echo '304 Not Modified' . PHP_EOL . PHP_EOL;
     }
 
-    private function setRequestHeaders(array $server, string $query) : array
+    /**
+     * @param array<string, mixed> $server
+     *
+     * @return array<string, string>
+     */
+    private function setRequestHeaders(array $server, string $query): array
     {
-        \parse_str($query, $headers);
-        /** @var array<string, string> $headers */
+        parse_str($query, $headers);
         foreach ($headers as $key => $header) {
             $server[$this->getServerKey($key)] = (string) $header;
         }
@@ -54,8 +63,8 @@ final class CliHttpCache implements HttpCacheInterface
         return $server;
     }
 
-    private function getServerKey(string $key) : string
+    private function getServerKey(string $key): string
     {
-        return sprintf('HTTP_%s', strtoupper(\str_replace('-', '_', $key)));
+        return sprintf('HTTP_%s', strtoupper(str_replace('-', '_', $key)));
     }
 }

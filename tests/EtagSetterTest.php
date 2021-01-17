@@ -11,21 +11,19 @@ use Ray\Di\Injector;
 
 class EtagSetterTest extends TestCase
 {
-    /**
-     * @var ResourceInterface
-     */
+    /** @var ResourceInterface */
     private $resource;
 
-    protected function setUp() : void
+    protected function setUp(): void
     {
         parent::setUp();
         $this->resource = (new Injector(new QueryRepositoryModule(new ResourceModule('FakeVendor\HelloWorld')), $_ENV['TMP_DIR']))->getInstance(ResourceInterface::class);
     }
 
-    public function testInvoke()
+    public function testInvoke(): void
     {
         $ro = $this->resource->get('app://self/user', ['id' => 1]);
-        $setEtag = new EtagSetter;
+        $setEtag = new EtagSetter();
         $time = 0;
         $setEtag($ro, $time);
         $expect = 'Thu, 01 Jan 1970 00:00:00 GMT';

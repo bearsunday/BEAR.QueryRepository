@@ -9,12 +9,10 @@ use Ray\Di\AbstractModule;
 
 class CacheVersionModule extends AbstractModule
 {
-    /**
-     * @var string
-     */
+    /** @var string */
     private $version;
 
-    public function __construct(string $cacheVersion, AbstractModule $module = null)
+    public function __construct(string $cacheVersion, ?AbstractModule $module = null)
     {
         $this->version = $cacheVersion;
         parent::__construct($module);

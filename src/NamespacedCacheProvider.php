@@ -12,9 +12,7 @@ use Ray\Di\ProviderInterface;
 
 class NamespacedCacheProvider implements ProviderInterface
 {
-    /**
-     * @var CacheProvider
-     */
+    /** @var CacheProvider */
     private $cache;
 
     /**

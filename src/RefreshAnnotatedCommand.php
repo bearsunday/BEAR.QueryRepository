@@ -11,18 +11,15 @@ use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
 use Ray\Aop\MethodInvocation;
-use Ray\Aop\ReflectionMethod;
+
+use function is_array;
 
 final class RefreshAnnotatedCommand implements CommandInterface
 {
-    /**
-     * @var QueryRepositoryInterface
-     */
+    /** @var QueryRepositoryInterface */
     private $repository;
 
-    /**
-     * @var ResourceInterface
-     */
+    /** @var ResourceInterface */
     private $resource;
 
     public function __construct(
@@ -38,7 +35,6 @@ final class RefreshAnnotatedCommand implements CommandInterface
      */
     public function command(MethodInvocation $invocation, ResourceObject $ro)
     {
-        /** @var ReflectionMethod $method */
         $method = $invocation->getMethod();
         $annotations = $method->getAnnotations();
         foreach ($annotations as $annotation) {
@@ -46,9 +42,9 @@ final class RefreshAnnotatedCommand implements CommandInterface
         }
     }
 
-    private function getUri(ResourceObject $ro, AbstractCommand $annotation) : string
+    private function getUri(ResourceObject $ro, AbstractCommand $annotation): string
     {
-        $body = \is_array($ro->body) ? $ro->body : [];
+        $body = is_array($ro->body) ? $ro->body : [];
         $query = $body + $ro->uri->query;
 
         return uri_template($annotation->uri, $query);
@@ -62,10 +58,12 @@ final class RefreshAnnotatedCommand implements CommandInterface
         if (! $annotation instanceof AbstractCommand) {
             return;
         }
+
         $uri = new Uri($this->getUri($ro, $annotation));
         if ($annotation instanceof Purge) {
             $this->repository->purge($uri);
         }
+
         if ($annotation instanceof Refresh) {
             $this->repository->purge($uri);
             $ro = $this->resource->get((string) $uri);

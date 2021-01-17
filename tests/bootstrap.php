@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 $_ENV['TMP_DIR'] = __DIR__ . '/tmp';
-$unlink = function ($path) use (&$unlink) {
+$unlink = static function ($path) use (&$unlink) {
     foreach ((array) glob(rtrim($path, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . '*') as $f) {
         $file = (string) $f;
         is_dir($file) ? $unlink($file) : unlink($file);

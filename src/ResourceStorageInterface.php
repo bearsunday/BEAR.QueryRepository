@@ -12,7 +12,7 @@ interface ResourceStorageInterface
     /**
      * Is ETag registered ?
      */
-    public function hasEtag(string $etag) : bool;
+    public function hasEtag(string $etag): bool;
 
     /**
      * Update or save new Etag
@@ -33,7 +33,7 @@ interface ResourceStorageInterface
      *
      * return [$uri, $code, $headers, $body, $view]] array.
      *
-     * @return array{0:string, 1: int, 2:array<string, string>, 3: mixed, 4: string}|false
+     * @return array{0:AbstractUri, 1: int, 2:array<string, string>, 3: mixed, 4: mixed}|false
      */
     public function get(AbstractUri $uri);
 
@@ -54,5 +54,5 @@ interface ResourceStorageInterface
     /**
      * Delete resource cache
      */
-    public function delete(AbstractUri $uri) : bool;
+    public function delete(AbstractUri $uri): bool;
 }

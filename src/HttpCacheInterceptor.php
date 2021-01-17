@@ -9,6 +9,8 @@ use BEAR\Resource\ResourceObject;
 use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
 
+use function assert;
+
 class HttpCacheInterceptor implements MethodInterceptor
 {
     /**

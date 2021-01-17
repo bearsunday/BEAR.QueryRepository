@@ -9,23 +9,27 @@ use BEAR\Resource\AbstractUri;
 use BEAR\Resource\RequestInterface;
 use BEAR\Resource\ResourceObject;
 use Doctrine\Common\Cache\CacheProvider;
+
+use function assert;
+use function explode;
+use function is_array;
 use function is_string;
+use function sprintf;
+use function strtoupper;
 
 final class ResourceStorage implements ResourceStorageInterface
 {
     /**
      * Prefix for ETag URI
      */
-    const ETAG_TABLE = 'etag-table-';
+    public const ETAG_TABLE = 'etag-table-';
 
     /**
      * Prefix of ETag value
      */
-    const ETAG_VAL = 'etag-val-';
+    public const ETAG_VAL = 'etag-val-';
 
-    /**
-     * @var CacheProvider
-     */
+    /** @var CacheProvider */
     private $cache;
 
     /**
@@ -39,7 +43,7 @@ final class ResourceStorage implements ResourceStorageInterface
     /**
      * {@inheritdoc}
      */
-    public function hasEtag(string $etag) : bool
+    public function hasEtag(string $etag): bool
     {
         return $this->cache->contains(self::ETAG_VAL . $etag);
     }
@@ -84,16 +88,14 @@ final class ResourceStorage implements ResourceStorageInterface
     public function get(AbstractUri $uri)
     {
         $varyUri = $this->getVaryUri($uri);
-        /** @var array{0:string, 1: int, 2:array<string, string>, 3: mixed, 4: string}|false $roProps */
-        $roProps = $this->cache->fetch($varyUri);
 
-        return $roProps;
+        return $this->cache->fetch($varyUri);
     }
 
     /**
      * {@inheritdoc}
      */
-    public function delete(AbstractUri $uri) : bool
+    public function delete(AbstractUri $uri): bool
     {
         $this->deleteEtag($uri);
         $varyUri = $this->getVaryUri($uri);
@@ -106,14 +108,14 @@ final class ResourceStorage implements ResourceStorageInterface
      *
      * @return bool
      */
-    public function saveValue(ResourceObject $ro, int $lifeTime)
+    public function saveValue(ResourceObject $ro, int $ttl)
     {
         /** @psalm-suppress MixedAssignment $body */
         $body = $this->evaluateBody($ro->body);
         $uri = $this->getVaryUri($ro->uri);
         $val = [$ro->uri, $ro->code, $ro->headers, $body, null];
 
-        return $this->cache->save($uri, $val, $lifeTime);
+        return $this->cache->save($uri, $val, $ttl);
     }
 
     /**
@@ -121,14 +123,14 @@ final class ResourceStorage implements ResourceStorageInterface
      *
      * @return bool
      */
-    public function saveView(ResourceObject $ro, int $lifeTime)
+    public function saveView(ResourceObject $ro, int $ttl)
     {
         /** @psalm-suppress MixedAssignment $body */
         $body = $this->evaluateBody($ro->body);
         $uri = $this->getVaryUri($ro->uri);
         $val = [$ro->uri, $ro->code, $ro->headers, $body, $ro->view];
 
-        return $this->cache->save($uri, $val, $lifeTime);
+        return $this->cache->save($uri, $val, $ttl);
     }
 
     /**
@@ -138,14 +140,16 @@ final class ResourceStorage implements ResourceStorageInterface
      */
     private function evaluateBody($body)
     {
-        if (! \is_array($body)) {
+        if (! is_array($body)) {
             return $body;
         }
+
         /** @psalm-suppress MixedAssignment $item */
         foreach ($body as &$item) {
             if ($item instanceof RequestInterface) {
                 $item = ($item)();
             }
+
             if ($item instanceof ResourceObject) {
                 $item->body = $this->evaluateBody($item->body);
             }
@@ -154,17 +158,18 @@ final class ResourceStorage implements ResourceStorageInterface
         return $body;
     }
 
-    private function getVaryUri(AbstractUri $uri) : string
+    private function getVaryUri(AbstractUri $uri): string
     {
         if (! isset($_SERVER['X_VARY'])) {
             return (string) $uri;
         }
-        /** @var string $xvary */
+
         $xvary = $_SERVER['X_VARY'];
-        $varys = \explode(',', $xvary);
+        assert(is_string($xvary));
+        $varys = explode(',', $xvary);
         $varyId = '';
         foreach ($varys as $vary) {
-            $phpVaryKey = \sprintf('X_%s', \strtoupper($vary));
+            $phpVaryKey = sprintf('X_%s', strtoupper($vary));
             if (isset($_SERVER[$phpVaryKey]) && is_string($_SERVER[$phpVaryKey])) {
                 $varyId .= $_SERVER[$phpVaryKey];
             }

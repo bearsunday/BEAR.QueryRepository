@@ -6,23 +6,22 @@ namespace BEAR\QueryRepository;
 
 use BEAR\Resource\Module\ResourceModule;
 use BEAR\Resource\ResourceInterface;
+use BEAR\Resource\ResourceObject;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 
 class CacheTypeTest extends TestCase
 {
-    /**
-     * @var ResourceInterface
-     */
+    /** @var ResourceInterface */
     private $resource;
 
-    protected function setUp() : void
+    protected function setUp(): void
     {
         $this->resource = (new Injector(new QueryRepositoryModule(new ResourceModule('FakeVendor\HelloWorld')), $_ENV['TMP_DIR']))->getInstance(ResourceInterface::class);
         parent::setUp();
     }
 
-    public function requestDobule($uri)
+    public function requestDobule(string $uri): ResourceObject
     {
         $ro = $this->resource->get($uri);
         // put
@@ -38,20 +37,20 @@ class CacheTypeTest extends TestCase
         return $ro;
     }
 
-    public function testValue()
+    public function testValue(): void
     {
         $uri = 'app://self/value';
         // put
         $ro = $this->resource->get($uri);
-        (string) $ro;
+        (string) $ro; /* @phpstan-ignore-line */
         $time = $ro['time'];
         $this->assertSame('1' . $time, $ro->view);
         $ro = $this->resource->get($uri);
-        (string) $ro;
+        (string) $ro; /* @phpstan-ignore-line */
         $this->assertSame('2' . $time, $ro->view);
     }
 
-    public function testView()
+    public function testView(): void
     {
         $uri = 'app://self/view';
         // put

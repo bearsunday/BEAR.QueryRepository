@@ -11,11 +11,11 @@ use BEAR\Resource\ResourceObject;
 use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
 
+use function get_class;
+
 class CommandInterceptor implements MethodInterceptor
 {
-    /**
-     * @var CommandInterface[]
-     */
+    /** @var CommandInterface[] */
     private $commands = [];
 
     /**
@@ -38,7 +38,7 @@ class CommandInterceptor implements MethodInterceptor
         /** @psalm-suppress MixedAssignment */
         $ro = $invocation->proceed();
         if (! $ro instanceof ResourceObject) {
-            throw new ReturnValueIsNotResourceObjectException(\get_class($invocation->getThis()));
+            throw new ReturnValueIsNotResourceObjectException(get_class($invocation->getThis()));
         }
 
         if ($ro->code >= Code::BAD_REQUEST) {

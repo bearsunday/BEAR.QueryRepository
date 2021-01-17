@@ -10,6 +10,8 @@ use Doctrine\Common\Cache\RedisCache;
 use Ray\Di\ProviderInterface;
 use RedisException;
 
+use function sprintf;
+
 class StorageRedisCacheProvider implements ProviderInterface
 {
     /** @var string */
@@ -19,9 +21,9 @@ class StorageRedisCacheProvider implements ProviderInterface
     private $port;
 
     /**
-     * @Redis("server")
-     *
      * @param array{0: string, 1: string} $server
+     *
+     * @Redis("server")
      */
     public function __construct(array $server)
     {
@@ -38,8 +40,10 @@ class StorageRedisCacheProvider implements ProviderInterface
         try {
             $redis->connect($this->host, $this->port);
         } catch (RedisException $e) {
+            /** @psalm-suppress UndefinedClass */
             throw new RedisConnectionException(sprintf('%s/%s', $this->host, $this->port), 0, $e);
         }
+
         $redisCache = new RedisCache();
         $redisCache->setRedis($redis);
 
