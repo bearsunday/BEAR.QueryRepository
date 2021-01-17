@@ -175,10 +175,6 @@ final class QueryRepository implements QueryRepositoryInterface
 
     private function saveViewCache(ResourceObject $ro, int $lifeTime): bool
     {
-        if (! $ro->view) {
-            $ro->view = $ro->toString();
-        }
-
         return $this->storage->saveView($ro, $lifeTime);
     }
 }

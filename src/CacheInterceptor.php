@@ -37,12 +37,10 @@ class CacheInterceptor implements MethodInterceptor
         assert($ro instanceof ResourceObject);
         try {
             $stored = $this->repository->get($ro->uri);
-        } catch (LogicException $e) {
-            throw $e;
         } catch (Throwable $e) {
             $this->triggerWarning($e);
 
-            return $invocation->proceed();
+            return $invocation->proceed(); // @codeCoverageIgnore
         }
 
         if ($stored) {
@@ -58,8 +56,8 @@ class CacheInterceptor implements MethodInterceptor
             $ro->code === 200 ? $this->repository->put($ro) : $this->repository->purge($ro->uri);
         } catch (LogicException $e) {
             throw $e;
-        } catch (Throwable $e) {
-            $this->triggerWarning($e);
+        } catch (Throwable $e) {  // @codeCoverageIgnore
+            $this->triggerWarning($e); // @codeCoverageIgnore
         }
 
         return $ro;
@@ -74,5 +72,6 @@ class CacheInterceptor implements MethodInterceptor
     {
         $message = sprintf('%s: %s in %s:%s', get_class($e), $e->getMessage(), $e->getFile(), $e->getLine());
         trigger_error($message, E_USER_WARNING);
+        // @codeCoverageIgnoreStart
     }
 }
