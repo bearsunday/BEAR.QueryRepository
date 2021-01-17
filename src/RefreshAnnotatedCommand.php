@@ -11,9 +11,7 @@ use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
 use Ray\Aop\MethodInvocation;
-use Ray\Aop\ReflectionMethod;
 
-use function assert;
 use function is_array;
 
 final class RefreshAnnotatedCommand implements CommandInterface
