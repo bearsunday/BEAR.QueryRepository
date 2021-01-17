@@ -29,10 +29,10 @@ final class CliHttpCache implements HttpCacheInterface
      */
     public function isNotModified(array $server): bool
     {
-        /** @var array{HTTP_IF_NONE_MATCH: string}|array{argc?: int, argv?: array} $server */
-        if (isset($server['argc']) && $server['argc'] === 4) {
-            /** @var array<string, string> $server */
-            $server = $this->setRequestHeaders($server, $server['argv'][3]);
+        /** @var array{HTTP_IF_NONE_MATCH: string}|array{argc: int, argv: array} $server */
+        $hasRequestHeaderInCli = isset($server['argc']) && $server['argc'] === 4 && isset($server['argv']);
+        if ($hasRequestHeaderInCli) {
+            $server = $this->setRequestHeaders($server, $server['argv'][3]); // @phpstan-ignore-line
         }
 
         return isset($server['HTTP_IF_NONE_MATCH']) && is_string($server['HTTP_IF_NONE_MATCH']) && $this->storage->hasEtag($server['HTTP_IF_NONE_MATCH']);

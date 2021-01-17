@@ -38,7 +38,6 @@ final class RefreshAnnotatedCommand implements CommandInterface
     public function command(MethodInvocation $invocation, ResourceObject $ro)
     {
         $method = $invocation->getMethod();
-        assert($method instanceof ReflectionMethod);
         $annotations = $method->getAnnotations();
         foreach ($annotations as $annotation) {
             $this->request($ro, $annotation);
