@@ -37,8 +37,6 @@ class CacheInterceptor implements MethodInterceptor
         assert($ro instanceof ResourceObject);
         try {
             $stored = $this->repository->get($ro->uri);
-        } catch (LogicException $e) {
-            throw $e;
         } catch (Throwable $e) {
             $this->triggerWarning($e);
 
