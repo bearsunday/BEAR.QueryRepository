@@ -26,7 +26,6 @@ class QueryRepositoryModule extends AbstractModule
      */
     protected function configure()
     {
-        $this->bind(Expiry::class)->toInstance(new Expiry(60, 60 * 60, 60 * 60 * 24));
         $this->bind(QueryRepositoryInterface::class)->to(QueryRepository::class)->in(Scope::SINGLETON);
         $this->bind(Cache::class)->annotatedWith(Storage::class)->toProvider(StorageProvider::class)->in(Scope::SINGLETON);
         $this->bind(CacheProvider::class)->annotatedWith(Storage::class)->to(ArrayCache::class)->in(Scope::SINGLETON);
@@ -37,8 +36,9 @@ class QueryRepositoryModule extends AbstractModule
         $this->bind()->annotatedWith(Commands::class)->toProvider(CommandsProvider::class);
         $this->bind()->annotatedWith(CacheVersion::class)->toInstance('');
         $this->bind(RefreshInterceptor::class);
-        $this->install(new QueryRepositoryAopModule());
         $this->bind(ResourceStorageInterface::class)->to(ResourceStorage::class);
+        $this->install(new QueryRepositoryAopModule());
+        $this->install(new StorageExpiryModule(60, 60 * 60, 60 * 60 * 24));
         // BC
         $this->bind(DeprecatedHttpCacheInterface::class)->to(HttpCache::class);
     }
