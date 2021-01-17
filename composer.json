@@ -42,7 +42,12 @@
               "tests/Fake/fake-app/src"
             ]
         },
-        "files": ["tests/Fake/Memcached.php", "tests/Fake/Redis.php", "tests/syslog.php"]
+        "files": [
+            "tests/Fake/Memcached.php",
+            "tests/Fake/Redis.php",
+            "tests/Fake/RedisException.php",
+            "tests/syslog.php"
+        ]
     },
     "config": {
         "sort-packages": true

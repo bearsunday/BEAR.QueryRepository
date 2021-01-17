@@ -40,6 +40,7 @@ class StorageRedisCacheProvider implements ProviderInterface
         try {
             $redis->connect($this->host, $this->port);
         } catch (RedisException $e) {
+            /** @psalm-suppress UndefinedClass */
             throw new RedisConnectionException(sprintf('%s/%s', $this->host, $this->port), 0, $e);
         }
 
