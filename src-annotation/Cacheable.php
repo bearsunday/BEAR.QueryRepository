@@ -7,6 +7,7 @@ namespace BEAR\RepositoryModule\Annotation;
 use Attribute;
 
 use BEAR\QueryRepository\CacheInterceptor;
+use Doctrine\Common\Annotations\NamedArgumentConstructorAnnotation;
 use function is_string;
 
 /**
@@ -16,7 +17,7 @@ use function is_string;
  * @see CacheInterceptor
  */
 #[Attribute(Attribute::TARGET_CLASS)]
-final class Cacheable
+final class Cacheable implements NamedArgumentConstructorAnnotation
 {
     /**
      * @var 'short'|'medium'|'long'|'never'
@@ -49,23 +50,12 @@ final class Cacheable
      * @param 'short'|'medium'|'long'|'never' $expiry
      * @param 'value'|'view'                  $type
      */
-    public function __construct($expiry = 'never', int $expirySecond = 0, string $expiryAt = '', bool $update = false, string $type = 'value')
+    public function __construct(string $expiry = 'never', int $expirySecond = 0, string $expiryAt = '', bool $update = false, string $type = 'value')
     {
-        if (is_string($expiry)) {
-            $this->expiry = $expiry;
-            $this->expirySecond = $expirySecond;
-            $this->expiryAt = $expiryAt;
-            $this->update = $update;
-            $this->type = $type;
-
-            return;
-        }
-        /** @var array{expiry: string, expirySecond: int, expiryAt: string, bool: bool, type: string} $expiry */
-        $value = $expiry;
-        $this->expiry = $value['expiry'] ?? 'never';
-        $this->expirySecond = $value['expirySecond'] ?? 0;
-        $this->expiryAt = $value['expiryAt'] ?? '';
-        $this->update = $value['update'] ?? true;
-        $this->type = $value['type'] ?? 'value';
+        $this->expiry = $expiry;
+        $this->expirySecond = $expirySecond;
+        $this->expiryAt = $expiryAt;
+        $this->update = $update;
+        $this->type = $type;
     }
 }

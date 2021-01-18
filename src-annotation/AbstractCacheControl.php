@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace BEAR\RepositoryModule\Annotation;
 
-abstract class AbstractCacheControl
+use Doctrine\Common\Annotations\NamedArgumentConstructorAnnotation;
+
+abstract class AbstractCacheControl implements NamedArgumentConstructorAnnotation
 {
     public function __toString()
     {
