@@ -25,6 +25,7 @@ class CommandInterceptor implements MethodInterceptor
      *
      * @Commands
      */
+    #[Commands]
     public function __construct(array $commands)
     {
         $this->commands = $commands;

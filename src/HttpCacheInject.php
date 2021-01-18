@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
+use Ray\Di\Di\Inject;
 
 trait HttpCacheInject
 {
@@ -14,6 +15,7 @@ trait HttpCacheInject
     /**
      * @Ray\Di\Di\Inject
      */
+    #[Inject]
     public function setHttpCache(HttpCacheInterface $httpCache)
     {
         $this->httpCache = $httpCache;

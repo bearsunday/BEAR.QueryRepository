@@ -25,6 +25,7 @@ class StorageRedisCacheProvider implements ProviderInterface
      *
      * @Redis("server")
      */
+    #[Redis]
     public function __construct(array $server)
     {
         $this->host = $server[0];
