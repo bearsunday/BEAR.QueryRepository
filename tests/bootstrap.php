@@ -11,3 +11,8 @@ $unlink = static function ($path) use (&$unlink) {
     }
 };
 $unlink($_ENV['TMP_DIR']);
+
+// no annotation in PHP 8
+//if (PHP_MAJOR_VERSION >= 8) {
+//    ServiceLocator::setReader(new AttributeReader());
+//}
