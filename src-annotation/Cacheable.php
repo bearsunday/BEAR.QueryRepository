@@ -6,11 +6,14 @@ namespace BEAR\RepositoryModule\Annotation;
 
 use Attribute;
 
+use BEAR\QueryRepository\CacheInterceptor;
 use function is_string;
 
 /**
  * @Annotation
  * @Target("CLASS")
+ *
+ * @see CacheInterceptor
  */
 #[Attribute(Attribute::TARGET_CLASS)]
 final class Cacheable

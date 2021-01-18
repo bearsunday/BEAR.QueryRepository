@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace BEAR\RepositoryModule\Annotation;
 
+use Attribute;
+use BEAR\QueryRepository\HttpCacheInterceptor;
+
 /**
  * HTTP Cache Control
  *
@@ -12,7 +15,10 @@ namespace BEAR\RepositoryModule\Annotation;
  * @Annotation
  * @Target("CLASS")
  * {@inheritdoc}
+ *
+ * @see HttpCacheInterceptor
  */
+#[Attribute(Attribute::TARGET_CLASS)]
 final class HttpCache extends AbstractCacheControl
 {
     /**
