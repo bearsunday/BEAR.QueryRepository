@@ -8,8 +8,5 @@ use Doctrine\Common\Annotations\NamedArgumentConstructorAnnotation;
 
 abstract class AbstractCacheControl implements NamedArgumentConstructorAnnotation
 {
-    public function __toString()
-    {
-        return '';
-    }
+    abstract function __toString();
 }
