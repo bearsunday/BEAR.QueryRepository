@@ -6,7 +6,7 @@ namespace BEAR\RepositoryModule\Annotation;
 
 use Doctrine\Common\Annotations\NamedArgumentConstructorAnnotation;
 
-abstract class AbstractCacheControl implements NamedArgumentConstructorAnnotation
+abstract class AbstractCacheControl
 {
     abstract function __toString();
 }
