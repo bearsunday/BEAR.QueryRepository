@@ -14,6 +14,7 @@ use BEAR\Resource\ResourceObject;
 /**
  * @Cacheable
  */
+#[Cacheable]
 class Unmatch extends ResourceObject
 {
     /*

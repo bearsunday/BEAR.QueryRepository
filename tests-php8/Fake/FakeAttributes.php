@@ -17,11 +17,12 @@ use BEAR\Resource\ResourceObject;
 class FakeAttributes extends ResourceObject
 {
     /**
-     * @Refresh
-     * @Purge
+     * @Purge(uri="app://self/")
+     * @Refresh(uri="app://self/")
      */
-    #[Refresh, Purge]
+    #[Purge(uri: "app://self/"), Refresh(uri: "app://self/")]
     public function onGet(): static
     {
+        return $this;
     }
 }

@@ -21,6 +21,7 @@ class RefreshCacheSrc extends ResourceObject
      *
      * @param mixed $id
      */
+    #[Refresh(uri: "app://self/refresh-dest{?id}")]
     public function onPut($id)
     {
         unset($id);

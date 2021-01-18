@@ -16,6 +16,7 @@ use Ray\Di\Di\Named;
 /**
  * @Cacheable
  */
+#[Cacheable]
 class User extends ResourceObject
 {
     protected $data = [];
@@ -51,12 +52,14 @@ class User extends ResourceObject
      * @Purge(uri="app://self/user/friend?user_id={id}")
      * @Refresh(uri="app://self/user/profile?user_id={id}")
      *
-     * @Named // to ignore
+     * @ Named // to ignore
      *
      * @param mixed $id
      * @param mixed $name
      * @param mixed $age
      */
+    #[Purge(uri: "app://self/user/friend?user_id={id}")]
+    #[Refresh(uri: "app://self/user/profile?user_id={id}")]
     public function onPut($id, $name, $age)
     {
         $this->data[$id]['name'] = $name;

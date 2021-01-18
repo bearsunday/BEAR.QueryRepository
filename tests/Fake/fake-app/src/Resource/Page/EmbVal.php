@@ -9,14 +9,12 @@ namespace FakeVendor\HelloWorld\Resource\Page;
 use BEAR\Resource\Annotation\Embed;
 use BEAR\Resource\ResourceObject;
 
-/**
- * Class EmbVal
- */
 class EmbVal extends ResourceObject
 {
     /**
      * @Embed(rel="time", src="page://self/none");
      */
+    #[Embed(rel: "time", src: "page://self/none")]
     public function onGet() : ResourceObject
     {
         $this->body += [

@@ -12,6 +12,7 @@ use BEAR\Resource\ResourceObject;
 /**
  * @NoHttpCache
  */
+#[NoHttpCache]
 class NoHttpCacheControl extends ResourceObject
 {
     public function onGet() : ResourceObject

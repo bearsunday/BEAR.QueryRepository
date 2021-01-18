@@ -13,8 +13,9 @@ use BEAR\Resource\Code;
 use BEAR\Resource\ResourceObject;
 
 /**
- * @Cacheable(expiry="never", update=true);
+ * @Cacheable(expiry="never", update=true)
  */
+#[Cacheable(expiry: "never", update: true)]
 class Entry extends ResourceObject
 {
     private $data = [];

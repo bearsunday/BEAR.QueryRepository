@@ -13,6 +13,7 @@ use BEAR\Resource\ResourceObject;
 /**
  * @Cacheable
  */
+#[Cacheable]
 class Invalid extends ResourceObject
 {
     public function onGet($id, $unused)
@@ -26,6 +27,7 @@ class Invalid extends ResourceObject
      * @param mixed $name
      * @param mixed $age
      */
+    #[Purge(uri: "app://self/user/friend?user_id={id}")]
     public function onPut($id, $name, $age)
     {
     }

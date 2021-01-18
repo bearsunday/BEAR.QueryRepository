@@ -12,6 +12,7 @@ use BEAR\Resource\ResourceObject;
 /**
  * @Cacheable(type="view")
  */
+#[Cacheable(type: 'value')]
 class View extends ResourceObject
 {
     public static $i = 1;
