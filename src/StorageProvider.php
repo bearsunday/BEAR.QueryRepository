@@ -26,7 +26,7 @@ class StorageProvider implements ProviderInterface
      * @AppName("appName")
      * @CacheVersion("version")
      */
-    #[Storage, AppName("appName"), CacheVersion("version")]
+    #[Storage, AppName('appName'), CacheVersion('version')]
     public function __construct(CacheProvider $cache, string $appName, string $version)
     {
         $this->cache = $cache;

@@ -20,7 +20,7 @@ class NamespacedCacheProvider implements ProviderInterface
      * @AppName("appName")
      * @CacheVersion("version")
      */
-    #[CacheEngine('cache'), AppName('appName'), CacheVersion("version")]
+    #[CacheEngine('cache'), AppName('appName'), CacheVersion('version')]
     public function __construct(CacheProvider $cache, string $appName = '', string $version = '')
     {
         $cache->setNamespace($appName . ':' . $version);
