@@ -12,7 +12,6 @@
 /phpstan.neon                    export-ignore
 /psalm.xml                       export-ignore
 /phpunit.xml.dist                export-ignore
-/phpstan-baseline.neon           export-ignore
 
 # Configure diff output for .php and .phar files.
 *.php diff=php
