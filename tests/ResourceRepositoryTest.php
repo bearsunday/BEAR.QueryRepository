@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\QueryRepository as Repository;
-use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
 use Doctrine\Common\Annotations\AnnotationReader;
 use Doctrine\Common\Cache\FilesystemCache;
@@ -21,7 +20,7 @@ class ResourceRepositoryTest extends TestCase
     /** @var QueryRepository */
     private $repository;
 
-    /** @var ResourceObject */
+    /** @var Index */
     private $ro;
 
     protected function setUp(): void

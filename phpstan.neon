@@ -1,4 +1,11 @@
 parameters:
+  scanFiles:
+    - tests/Fake/fake-app/src/Resource/App/Code.php
+    - tests/Fake/fake-app/src/Resource/App/NullView.php
+    - tests/Fake/fake-app/src/Resource/App/TypedParam.php
+    - tests/Fake/fake-app/src/Resource/App/User.php
+    - tests/Fake/fake-app/src/Resource/App/User/Profile.php
+    - tests/Fake/fake-app/src/Resource/Page/Index.php
   level: max
   paths:
     - src
