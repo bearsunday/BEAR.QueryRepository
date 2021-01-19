@@ -28,7 +28,7 @@ final class HttpCache implements HttpCacheInterface, DeprecatedHttpCacheInterfac
      */
     public function isNotModified(array $server): bool
     {
-        return isset($server['HTTP_IF_NONE_MATCH']) && is_string($server['HTTP_IF_NONE_MATCH']) && $this->storage->hasEtag($server['HTTP_IF_NONE_MATCH']);
+        return isset($server['HTTP_IF_NONE_MATCH']) && $this->storage->hasEtag($server['HTTP_IF_NONE_MATCH']);
     }
 
     /**
