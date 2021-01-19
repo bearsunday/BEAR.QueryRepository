@@ -127,7 +127,7 @@ final class QueryRepository implements QueryRepositoryInterface
             return $this->getExpiryAtSec($ro, $cacheable);
         }
 
-        return $cacheable->expirySecond ? $cacheable->expirySecond : (int) $this->expiry[$cacheable->expiry];
+        return $cacheable->expirySecond ? $cacheable->expirySecond : $this->expiry->getTime($cacheable->expiry);
     }
 
     private function getExpiryAtSec(ResourceObject $ro, Cacheable $cacheable): int
@@ -168,7 +168,7 @@ final class QueryRepository implements QueryRepositoryInterface
             return;
         }
 
-        if (is_string($ro->headers['Cache-Control'])) {
+        if (isset($ro->headers['Cache-Control'])) {
             $ro->headers['Cache-Control'] .= ', ' . $setMaxAge;
         }
     }
