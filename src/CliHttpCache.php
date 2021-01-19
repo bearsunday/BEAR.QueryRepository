@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
 
+use function assert;
 use function is_string;
 use function parse_str;
 use function sprintf;
@@ -54,8 +55,8 @@ final class CliHttpCache implements HttpCacheInterface
     {
         parse_str($query, $headers);
         $server = [];
-        /** @var string $header */
         foreach ($headers as $key => $header) {
+            assert(is_string($header));
             assert(is_string($key));
             $server[$this->getServerKey($key)] = $header;
         }
@@ -77,8 +78,9 @@ final class CliHttpCache implements HttpCacheInterface
         if ($hasRequestHeaderInCli) {
             $server = $this->getServer((string) $server['argv'][3]);
         }
-        assert(is_string($server['HTTP_IF_NONE_MATCH']));
 
-        return $server['HTTP_IF_NONE_MATCH'] ?? null;
+        $hasValidEtag = isset($server['HTTP_IF_NONE_MATCH']) && is_string($server['HTTP_IF_NONE_MATCH']);
+
+        return $hasValidEtag ? $server['HTTP_IF_NONE_MATCH'] : null;
     }
 }

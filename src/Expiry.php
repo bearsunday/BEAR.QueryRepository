@@ -4,13 +4,9 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use ArrayObject;
-
 final class Expiry
 {
-    /**
-     * @var array<string, int>
-     */
+    /** @var array<string, int> */
     private $time;
 
     public function __construct(int $short = 60, int $medium = 3600, int $long = 86400, int $never = 31536000)
@@ -19,7 +15,7 @@ final class Expiry
             'short' => $short,
             'medium' => $medium,
             'long' => $long,
-            'never' => $never
+            'never' => $never,
         ];
     }
 

@@ -92,7 +92,7 @@ final class ResourceStorage implements ResourceStorageInterface
     public function get(AbstractUri $uri)
     {
         $varyUri = $this->getVaryUri($uri);
-        /** @psalm-var ResourceState $stored */ /** @phpstan-var array{0: \BEAR\Resource\AbstractUri, 1: int, 2: array<string, string>, 3: mixed, 4: null|string}|false $stored */
+        /** @psalm-var ResourceState $stored */ /** @phpstan-var array{0: AbstractUri, 1: int, 2: array<string, string>, 3: mixed, 4: (null|string)}|false $stored */
         $stored = $this->cache->fetch($varyUri);
 
         return $stored;
