@@ -42,7 +42,7 @@ interface ResourceStorageInterface
      *
      * return [$uri, $code, $headers, $body, $view]] array.
      *
-     * @phpstan-return array{0: AbstractUri, 1: int, 2: non-empty-array<string, mixed>, 3: mixed, 4: mixed}|false
+     * @phpstan-return array{0: AbstractUri, 1: int, 2:array<string, string>, 3: mixed, 4: null|string}|false
      * @psalm-return ResourceState|false
      */
     public function get(AbstractUri $uri);
