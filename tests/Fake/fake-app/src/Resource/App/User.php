@@ -6,6 +6,7 @@
  */
 namespace FakeVendor\HelloWorld\Resource\App;
 
+use BEAR\QueryRepository\FakeAnnotation;
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\Purge;
 use BEAR\RepositoryModule\Annotation\Refresh;
@@ -16,6 +17,7 @@ use Ray\Di\Di\Named;
 /**
  * @Cacheable
  */
+#[Cacheable]
 class User extends ResourceObject
 {
     protected $data = [];
@@ -51,12 +53,15 @@ class User extends ResourceObject
      * @Purge(uri="app://self/user/friend?user_id={id}")
      * @Refresh(uri="app://self/user/profile?user_id={id}")
      *
-     * @Named // to ignore
+     * @FakeAnnotation // ignored in RefreshAnnotatedCommand::request. This was put for the test coverage.
      *
      * @param mixed $id
      * @param mixed $name
      * @param mixed $age
      */
+    #[Purge(uri: "app://self/user/friend?user_id={id}")]
+    #[Refresh(uri: "app://self/user/profile?user_id={id}")]
+    #[FakeAnnotation]
     public function onPut($id, $name, $age)
     {
         $this->data[$id]['name'] = $name;

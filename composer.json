@@ -10,19 +10,19 @@
     ],
     "require": {
         "php": "^7.2 || ^8.0",
-        "bear/resource": "^1.15",
+        "bear/resource": "^1.15.1",
         "bear/sunday": "^1.5",
         "doctrine/annotations": "^1.8",
         "doctrine/cache": "^1.10",
         "mobiledetect/mobiledetectlib": "^2.8",
         "ray/aop": "^2.10",
-        "ray/di": "2.11"
+        "ray/di": "^2.11.2"
     },
     "require-dev": {
         "ext-redis": "*",
         "phpunit/phpunit": "^9.5",
         "symfony/process": "^4.3",
-        "koriym/attributes": "^1.0",
+        "koriym/attributes": "^1.0.1",
         "bamarni/composer-bin-plugin": "^1.4"
     },
     "autoload": {

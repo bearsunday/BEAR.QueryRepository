@@ -12,6 +12,7 @@ use BEAR\Resource\ResourceObject;
 /**
  * @Cacheable(type="view")
  */
+#[Cacheable(type: "view")]
 class NullView extends ResourceObject
 {
     public function onGet()

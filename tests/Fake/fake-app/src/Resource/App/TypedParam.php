@@ -13,6 +13,7 @@ use BEAR\Resource\ResourceObject;
 /**
  * @Cacheable
  */
+#[Cacheable]
 class TypedParam extends ResourceObject
 {
     public static $id;

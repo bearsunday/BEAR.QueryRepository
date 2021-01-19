@@ -12,6 +12,7 @@ use BEAR\Resource\ResourceObject;
 /**
  * @Cacheable(expirySecond=60)
  */
+#[Cacheable(expirySecond: 60)]
 class ControlPublic extends ResourceObject
 {
     public function onGet() : ResourceObject

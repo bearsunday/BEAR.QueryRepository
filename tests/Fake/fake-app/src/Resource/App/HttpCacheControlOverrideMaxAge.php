@@ -14,6 +14,7 @@ use BEAR\Resource\ResourceObject;
  * @Cacheable(expirySecond=10)
  * @HttpCache(maxAge=5)
  */
+#[Cacheable(expirySecond: 10), HttpCache(maxAge: 5)]
 class HttpCacheControlOverrideMaxAge extends ResourceObject
 {
     public function onGet() : ResourceObject

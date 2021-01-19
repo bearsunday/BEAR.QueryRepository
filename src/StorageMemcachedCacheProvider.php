@@ -24,6 +24,7 @@ class StorageMemcachedCacheProvider implements ProviderInterface
      * @Memcache("servers")
      * @see http://php.net/manual/en/memcached.addservers.php
      */
+    #[Memcache('servers')]
     public function __construct(array $servers)
     {
         $this->servers = $servers;

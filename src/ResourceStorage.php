@@ -35,6 +35,7 @@ final class ResourceStorage implements ResourceStorageInterface
     /**
      * @Storage
      */
+    #[Storage]
     public function __construct(CacheProvider $cache)
     {
         $this->cache = $cache;

@@ -12,6 +12,7 @@ use BEAR\Resource\ResourceObject;
 /**
  * @Cacheable(expiryAt="expiry_at")
  */
+#[Cacheable(expiryAt: "expiry_at")]
 class ControlExpiryError extends ResourceObject
 {
     public function onGet() : ResourceObject

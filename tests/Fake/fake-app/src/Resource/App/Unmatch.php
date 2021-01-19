@@ -14,6 +14,7 @@ use BEAR\Resource\ResourceObject;
 /**
  * @Cacheable
  */
+#[Cacheable]
 class Unmatch extends ResourceObject
 {
     /*
@@ -33,6 +34,7 @@ class Unmatch extends ResourceObject
      * @param mixed $name
      * @param mixed $age
      */
+    #[Purge(uri: 'app://self/user/friend?user_id={id}')]
     public function onPut($id, $name, $age)
     {
         return $this;

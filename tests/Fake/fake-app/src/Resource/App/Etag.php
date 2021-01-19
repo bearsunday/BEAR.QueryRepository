@@ -14,6 +14,7 @@ use BEAR\Resource\ResourceObject;
  * @Cacheable
  * @HttpCache(etag={"updated_at"})
  */
+#[Cacheable, HttpCache(etag: ["updated_at"])]
 class Etag extends ResourceObject
 {
     public function onGet(string $updatedAt = '0') : ResourceObject

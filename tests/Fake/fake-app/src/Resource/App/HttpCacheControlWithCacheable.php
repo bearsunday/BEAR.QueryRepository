@@ -14,6 +14,7 @@ use BEAR\Resource\ResourceObject;
  * @Cacheable(expirySecond=10)
  * @HttpCache(isPrivate=true)
  */
+#[Cacheable(expirySecond: 10), HttpCache(isPrivate: true)]
 class HttpCacheControlWithCacheable extends ResourceObject
 {
     public function onGet() : ResourceObject

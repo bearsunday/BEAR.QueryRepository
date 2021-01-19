@@ -12,6 +12,7 @@ use BEAR\Resource\ResourceObject;
 /**
  * @Cacheable
  */
+#[Cacheable]
 class Code extends ResourceObject
 {
     public $code = 203;

@@ -12,6 +12,7 @@ use BEAR\Resource\ResourceObject;
 /**
  * @Cacheable
  */
+#[Cacheable]
 class SometimesSameResponse extends ResourceObject
 {
     private $data = [

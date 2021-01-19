@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace BEAR\RepositoryModule\Annotation;
 
+use Attribute;
+use BEAR\QueryRepository\HttpCacheInterceptor;
+use Doctrine\Common\Annotations\NamedArgumentConstructorAnnotation;
+
 /**
  * HTTP Cache Control
  *
@@ -12,8 +16,11 @@ namespace BEAR\RepositoryModule\Annotation;
  * @Annotation
  * @Target("CLASS")
  * {@inheritdoc}
+ *
+ * @see HttpCacheInterceptor
  */
-final class HttpCache extends AbstractCacheControl
+#[Attribute(Attribute::TARGET_CLASS)]
+final class HttpCache extends AbstractCacheControl implements NamedArgumentConstructorAnnotation
 {
     /**
      * Is private cache
@@ -77,6 +84,28 @@ final class HttpCache extends AbstractCacheControl
      * @var array<string>
      */
     public $etag = [];
+
+    /**
+     * @param array<string> $etag
+     */
+    public function __construct(
+        bool $isPrivate = false,
+        bool $noCache = false,
+        bool $noStore = false,
+        bool $mustRevalidate = false,
+        int $maxAge = 0,
+        int $sMaxAge = 0,
+        array $etag = []
+    )
+    {
+        $this->isPrivate = $isPrivate;
+        $this->noCache = $noCache;
+        $this->noStore = $noStore;
+        $this->mustRevalidate = $mustRevalidate;
+        $this->maxAge = $maxAge;
+        $this->sMaxAge = $sMaxAge;
+        $this->etag = $etag;
+    }
 
     public function __toString()
     {
