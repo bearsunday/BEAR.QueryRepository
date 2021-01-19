@@ -17,6 +17,9 @@ use function is_string;
 use function sprintf;
 use function strtoupper;
 
+/**
+ * @psalm-import-type ResourceState from ResourceStorageInterface
+ */
 final class ResourceStorage implements ResourceStorageInterface
 {
     /**
@@ -57,7 +60,7 @@ final class ResourceStorage implements ResourceStorageInterface
     public function updateEtag(ResourceObject $ro, int $lifeTime)
     {
         $varyUri = $this->getVaryUri($ro->uri);
-        assert(isset($ro->headers['ETag']) && is_string($ro->headers['ETag']));
+        assert(isset($ro->headers['ETag']));
         $etag = self::ETAG_VAL . $ro->headers['ETag'];
         $uri = self::ETAG_TABLE . $varyUri;
         // delete old ETag
@@ -89,8 +92,10 @@ final class ResourceStorage implements ResourceStorageInterface
     public function get(AbstractUri $uri)
     {
         $varyUri = $this->getVaryUri($uri);
+        /** @psalm-var ResourceState $stored */ /** @phpstan-var array{0: AbstractUri, 1: int, 2: array<string, string>, 3: mixed, 4: (null|string)}|false $stored */
+        $stored = $this->cache->fetch($varyUri);
 
-        return $this->cache->fetch($varyUri);
+        return $stored;
     }
 
     /**

@@ -20,6 +20,7 @@ use Ray\Di\Di\Named;
 #[Cacheable]
 class User extends ResourceObject
 {
+    /** @var array<int, array<string, string>> */
     protected $data = [];
 
     public function __construct()

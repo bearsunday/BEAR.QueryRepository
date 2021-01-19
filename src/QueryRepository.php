@@ -16,7 +16,6 @@ use ReflectionException;
 use function assert;
 use function get_class;
 use function is_array;
-use function is_string;
 use function sprintf;
 use function strpos;
 use function strtotime;
@@ -84,7 +83,7 @@ final class QueryRepository implements QueryRepositoryInterface
         }
 
         $age = time() - strtotime($data[2]['Last-Modified']);
-        $data[2]['Age'] = $age;
+        $data[2]['Age'] = (string) $age;
 
         return $data;
     }
@@ -127,7 +126,7 @@ final class QueryRepository implements QueryRepositoryInterface
             return $this->getExpiryAtSec($ro, $cacheable);
         }
 
-        return $cacheable->expirySecond ? $cacheable->expirySecond : (int) $this->expiry[$cacheable->expiry];
+        return $cacheable->expirySecond ? $cacheable->expirySecond : $this->expiry->getTime($cacheable->expiry);
     }
 
     private function getExpiryAtSec(ResourceObject $ro, Cacheable $cacheable): int
@@ -168,7 +167,7 @@ final class QueryRepository implements QueryRepositoryInterface
             return;
         }
 
-        if (is_string($ro->headers['Cache-Control'])) {
+        if (isset($ro->headers['Cache-Control'])) {
             $ro->headers['Cache-Control'] .= ', ' . $setMaxAge;
         }
     }

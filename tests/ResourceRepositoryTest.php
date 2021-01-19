@@ -51,7 +51,7 @@ class ResourceRepositoryTest extends TestCase
         $this->assertSame($headers['content-type'], $roHeaders['content-type']);
         $this->assertSame($headers['etag'], $roHeaders['etag']);
         $this->assertSame($headers['last-modified'], $roHeaders['last-modified']);
-        $this->assertSame(0, $headers['age']);
+        $this->assertSame('0', $headers['age']);
         $this->assertArrayHasKey('age', $headers);
         $this->assertSame($body, $this->ro->body);
     }

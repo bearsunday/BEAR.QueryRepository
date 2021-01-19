@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
 
+use function assert;
 use function is_string;
 use function parse_str;
 use function sprintf;
@@ -29,13 +30,12 @@ final class CliHttpCache implements HttpCacheInterface
      */
     public function isNotModified(array $server): bool
     {
-        /** @var array{HTTP_IF_NONE_MATCH: string}|array{argc: int, argv: array} $server */
-        $hasRequestHeaderInCli = isset($server['argc']) && $server['argc'] === 4 && isset($server['argv'][3]);
-        if ($hasRequestHeaderInCli) {
-            $server = $this->setRequestHeaders($server, $server['argv'][3]); // @phpstan-ignore-line
+        $etag = $this->getEtag($server);
+        if ($etag === null) {
+            return false;
         }
 
-        return isset($server['HTTP_IF_NONE_MATCH']) && is_string($server['HTTP_IF_NONE_MATCH']) && $this->storage->hasEtag($server['HTTP_IF_NONE_MATCH']);
+        return $this->storage->hasEtag($etag);
     }
 
     /**
@@ -49,15 +49,16 @@ final class CliHttpCache implements HttpCacheInterface
     }
 
     /**
-     * @param array<string, mixed> $server
-     *
      * @return array<string, string>
      */
-    private function setRequestHeaders(array $server, string $query): array
+    private function getServer(string $query): array
     {
         parse_str($query, $headers);
+        $server = [];
         foreach ($headers as $key => $header) {
-            $server[$this->getServerKey($key)] = (string) $header;
+            assert(is_string($header));
+            assert(is_string($key));
+            $server[$this->getServerKey($key)] = $header;
         }
 
         return $server;
@@ -66,5 +67,20 @@ final class CliHttpCache implements HttpCacheInterface
     private function getServerKey(string $key): string
     {
         return sprintf('HTTP_%s', strtoupper(str_replace('-', '_', $key)));
+    }
+
+    /**
+     * @param array<string, mixed> $server
+     */
+    private function getEtag(array $server): ?string
+    {
+        $hasRequestHeaderInCli = isset($server['argc']) && $server['argc'] === 4 && isset($server['argv'][3]);
+        if ($hasRequestHeaderInCli) {
+            $server = $this->getServer((string) $server['argv'][3]);
+        }
+
+        $hasValidEtag = isset($server['HTTP_IF_NONE_MATCH']) && is_string($server['HTTP_IF_NONE_MATCH']);
+
+        return $hasValidEtag ? $server['HTTP_IF_NONE_MATCH'] : null;
     }
 }
