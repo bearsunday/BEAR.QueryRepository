@@ -16,7 +16,6 @@ use ReflectionException;
 use function assert;
 use function get_class;
 use function is_array;
-use function is_string;
 use function sprintf;
 use function strpos;
 use function strtotime;

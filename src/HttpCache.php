@@ -8,7 +8,6 @@ use BEAR\QueryRepository\HttpCacheInterface as DeprecatedHttpCacheInterface;
 use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
 
 use function http_response_code;
-use function is_string;
 
 /**
  * @psalm-suppress DeprecatedInterface for BC
