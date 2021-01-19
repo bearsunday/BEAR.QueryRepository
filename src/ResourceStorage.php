@@ -17,6 +17,9 @@ use function is_string;
 use function sprintf;
 use function strtoupper;
 
+/**
+ * @psalm-import-type ResourceState from ResourceStorageInterface
+ */
 final class ResourceStorage implements ResourceStorageInterface
 {
     /**
@@ -89,8 +92,10 @@ final class ResourceStorage implements ResourceStorageInterface
     public function get(AbstractUri $uri)
     {
         $varyUri = $this->getVaryUri($uri);
+        /** @psalm-var ResourceState $stored */
+        $stored = $this->cache->fetch($varyUri);
 
-        return $this->cache->fetch($varyUri);
+        return $stored;
     }
 
     /**

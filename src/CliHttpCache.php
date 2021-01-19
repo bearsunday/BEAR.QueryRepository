@@ -29,7 +29,6 @@ final class CliHttpCache implements HttpCacheInterface
      */
     public function isNotModified(array $server): bool
     {
-        /** @var array{HTTP_IF_NONE_MATCH: string}|array{argc: int, argv: array} $server */
         $hasRequestHeaderInCli = isset($server['argc']) && $server['argc'] === 4 && isset($server['argv'][3]);
         if ($hasRequestHeaderInCli) {
             $server = $this->setRequestHeaders($server, $server['argv'][3]); // @phpstan-ignore-line
@@ -49,15 +48,16 @@ final class CliHttpCache implements HttpCacheInterface
     }
 
     /**
-     * @param array<string, mixed> $server
+     * @param array<string, string> $server
      *
      * @return array<string, string>
      */
     private function setRequestHeaders(array $server, string $query): array
     {
         parse_str($query, $headers);
+        /** @var array<string, string> $headers */
         foreach ($headers as $key => $header) {
-            $server[$this->getServerKey($key)] = (string) $header;
+            $server[$this->getServerKey($key)] = $header;
         }
 
         return $server;

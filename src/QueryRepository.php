@@ -84,7 +84,7 @@ final class QueryRepository implements QueryRepositoryInterface
         }
 
         $age = time() - strtotime($data[2]['Last-Modified']);
-        $data[2]['Age'] = $age;
+        $data[2]['Age'] = (string) $age;
 
         return $data;
     }
