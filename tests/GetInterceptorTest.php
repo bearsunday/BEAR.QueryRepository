@@ -58,25 +58,25 @@ class GetInterceptorTest extends TestCase
     public function testHttpCacheAnnotation(): void
     {
         $ro = $this->resource->get('app://self/http-cache-control');
-        $this->assertSame('private, no-cache, no-store, must-revalidate', $ro->headers['Cache-Control']);
+        $this->assertSame($ro->headers['Cache-Control'], 'private, no-cache, no-store, must-revalidate');
     }
 
     public function testNoHttpCacheAnnotation(): void
     {
         $ro = $this->resource->get('app://self/no-http-cache-control');
-        $this->assertSame('private, no-store, no-cache, must-revalidate', $ro->headers['Cache-Control']);
+        $this->assertSame($ro->headers['Cache-Control'], 'private, no-store, no-cache, must-revalidate');
     }
 
     public function testHttpCacheWithCacheble(): void
     {
         $ro = $this->resource->get('app://self/http-cache-control-with-cacheable');
-        $this->assertSame('private, max-age=10', $ro->headers['Cache-Control']);
+        $this->assertSame($ro->headers['Cache-Control'], 'private, max-age=10');
     }
 
     public function testHttpCacheOverrideMaxAge(): void
     {
         $ro = $this->resource->get('app://self/http-cache-control-override-max-age');
-        $this->assertSame('max-age=5', $ro->headers['Cache-Control']);
+        $this->assertSame($ro->headers['Cache-Control'], 'max-age=5');
     }
 
     public function testHttpCacheEtag(): void
