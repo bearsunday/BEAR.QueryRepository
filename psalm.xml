@@ -5,7 +5,6 @@
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xmlns="https://getpsalm.org/schema/config"
     xsi:schemaLocation="https://getpsalm.org/schema/config https://psalm.dev/schema/config"
-    errorBaseline="psalm.baseline.xml"
 >
     <projectFiles>
         <directory name="src" />
