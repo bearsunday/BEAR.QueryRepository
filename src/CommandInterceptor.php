@@ -11,9 +11,7 @@ use BEAR\Resource\ResourceObject;
 use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
 
-use function assert;
 use function get_class;
-use function in_array;
 
 class CommandInterceptor implements MethodInterceptor
 {
