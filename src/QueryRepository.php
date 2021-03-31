@@ -154,7 +154,6 @@ final class QueryRepository implements QueryRepositoryInterface
 
         $setMaxAge = sprintf('max-age=%d', $age);
         $noCacheControleHeader = ! isset($ro->headers['Cache-Control']);
-        /** @var array<string, string> $headers */
         $headers = $ro->headers;
         if ($noCacheControleHeader) {
             $ro->headers['Cache-Control'] = $setMaxAge;

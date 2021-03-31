@@ -76,6 +76,7 @@ final class CliHttpCache implements HttpCacheInterface
     {
         $hasRequestHeaderInCli = isset($server['argc']) && $server['argc'] === 4 && isset($server['argv'][3]);
         if ($hasRequestHeaderInCli) {
+            /** @psalm-suppress MixedArrayAccess */
             $server = $this->getServer((string) $server['argv'][3]);
         }
 

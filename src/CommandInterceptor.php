@@ -11,9 +11,7 @@ use BEAR\Resource\ResourceObject;
 use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
 
-use function assert;
 use function get_class;
-use function in_array;
 
 class CommandInterceptor implements MethodInterceptor
 {
@@ -38,7 +36,6 @@ class CommandInterceptor implements MethodInterceptor
      */
     public function invoke(MethodInvocation $invocation)
     {
-        assert(in_array($invocation->getMethod()->name, ['onPut', 'onDelete', 'onPatch']));
         /** @psalm-suppress MixedAssignment */
         $ro = $invocation->proceed();
         if (! $ro instanceof ResourceObject) {
