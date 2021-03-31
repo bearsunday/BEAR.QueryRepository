@@ -38,7 +38,6 @@ class CommandInterceptor implements MethodInterceptor
      */
     public function invoke(MethodInvocation $invocation)
     {
-        assert(in_array($invocation->getMethod()->name, ['onPut', 'onDelete', 'onPatch']));
         /** @psalm-suppress MixedAssignment */
         $ro = $invocation->proceed();
         if (! $ro instanceof ResourceObject) {

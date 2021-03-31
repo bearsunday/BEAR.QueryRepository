@@ -15,6 +15,7 @@ use function get_class;
 use function in_array;
 use function is_callable;
 use function sprintf;
+use function var_dump;
 
 // phpcs:ignoreFile SlevomatCodingStandard.TypeHints.DeclareStrictTypes.DeclareStrictTypesMissing -- for call_user_func_array
 
@@ -33,7 +34,6 @@ final class RefreshSameCommand implements CommandInterface
      */
     public function command(MethodInvocation $invocation, ResourceObject $ro)
     {
-        assert(in_array($invocation->getMethod()->name, ['onPut', 'onDelete', 'onPatch']));
         unset($invocation);
         $getQuery = $this->getQuery($ro);
         $delUri = clone $ro->uri;
