@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\Package\Provide\Error\NullPage;
 use BEAR\RepositoryModule\Annotation\Storage;
+use BEAR\Resource\Code;
 use BEAR\Resource\Module\ResourceModule;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
@@ -30,6 +32,9 @@ class QueryRepositoryTest extends TestCase
     /** @var HttpCacheInterface */
     private $httpCache;
 
+    /** @var NullPage */
+    private $nullPage;
+
     protected function setUp(): void
     {
         $namespace = 'FakeVendor\HelloWorld';
@@ -37,6 +42,7 @@ class QueryRepositoryTest extends TestCase
         $this->repository = $injector->getInstance(QueryRepositoryInterface::class);
         $this->resource = $injector->getInstance(ResourceInterface::class);
         $this->httpCache = $injector->getInstance(HttpCacheInterface::class);
+        $this->nullPage = $injector->getInstance(NullPage::class);
         parent::setUp();
     }
 
@@ -166,5 +172,17 @@ class QueryRepositoryTest extends TestCase
         $ro->body = ['time' => '0'];
         $this->repository->put($ro);
         $this->assertIsString($ro->view);
+    }
+
+    public function testFakeCompile(): void
+    {
+        $ro = $this->nullPage;
+        assert($ro instanceof NullPage);
+        $ro->uri = new Uri('app://self/');
+        $ro = $this->resource->get->object($ro)(['required' => 'string']);
+        assert($ro instanceof NullPage);
+        $this->assertEquals(Code::CREATED, $ro->code);
+        $this->assertNotEmpty($ro->headers);
+        $this->resource->get->object($ro)(['required' => 'string']);
     }
 }
