@@ -10,7 +10,7 @@
     ],
     "require": {
         "php": "^7.2 || ^8.0",
-        "bear/package": "^1.10",
+        "bear/package": "fix-null-page-dev",
         "bear/resource": "^1.15.1",
         "bear/sunday": "^1.5",
         "doctrine/annotations": "^1.8",
