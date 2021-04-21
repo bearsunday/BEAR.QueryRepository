@@ -179,9 +179,10 @@ class QueryRepositoryTest extends TestCase
         $ro = $this->nullPage;
         assert($ro instanceof NullPage);
         $ro->uri = new Uri('app://self/');
+        $this->resource->get->object($ro)(['required' => 'string']);
         $ro = $this->resource->get->object($ro)(['required' => 'string']);
         assert($ro instanceof NullPage);
-        $this->assertEquals(Code::CREATED, $ro->code);
+        $this->assertEquals(Code::OK, $ro->code);
         $this->assertNotEmpty($ro->headers);
         $this->resource->get->object($ro)(['required' => 'string']);
     }
