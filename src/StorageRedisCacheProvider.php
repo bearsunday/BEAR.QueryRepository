@@ -47,6 +47,7 @@ class StorageRedisCacheProvider implements ProviderInterface
             // @codeCoverageIgnoreStart
         }
 
+        /** @psalm-suppress DeprecatedClass */
         $redisCache = new RedisCache();
         $redisCache->setRedis($redis);
 

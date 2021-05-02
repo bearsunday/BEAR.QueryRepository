@@ -35,6 +35,7 @@ class StorageMemcachedCacheProvider implements ProviderInterface
      */
     public function get()
     {
+        /** @psalm-suppress DeprecatedClass */
         $memcachedCache = new MemcachedCache();
         $memcache = new Memcached();
         $memcache->addServers($this->servers);
