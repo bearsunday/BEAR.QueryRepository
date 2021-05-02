@@ -18,6 +18,7 @@ class StorageApcModule extends AbstractModule
      */
     protected function configure()
     {
+        /** @psalm-suppress DeprecatedClass */
         $this->bind(CacheProvider::class)->annotatedWith(CacheEngine::class)->to(ApcuCache::class);
         $this->bind(CacheProvider::class)->annotatedWith(Storage::class)->toProvider(NamespacedCacheProvider::class)->in(Scope::SINGLETON);
     }
