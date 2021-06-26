@@ -7,9 +7,9 @@ namespace BEAR\QueryRepository;
 use BEAR\QueryRepository\QueryRepository as Repository;
 use BEAR\Resource\Uri;
 use Doctrine\Common\Annotations\AnnotationReader;
-use Doctrine\Common\Cache\FilesystemCache;
 use FakeVendor\HelloWorld\Resource\Page\Index;
 use PHPUnit\Framework\TestCase;
+use Ray\PsrCacheModule\FilesystemAdapter;
 
 use function array_change_key_case;
 
@@ -28,7 +28,7 @@ class ResourceRepositoryTest extends TestCase
         $this->repository = new Repository(
             new EtagSetter(),
             new ResourceStorage(
-                new FilesystemCache($_ENV['TMP_DIR'])
+                new FilesystemAdapter('', 0, $_ENV['TMP_DIR'])
             ),
             new AnnotationReader(),
             new Expiry(0, 0, 0)

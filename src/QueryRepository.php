@@ -78,7 +78,7 @@ final class QueryRepository implements QueryRepositoryInterface
     {
         $data = $this->storage->get($uri);
 
-        if ($data === false) {
+        if ($data === null) {
             return false;
         }
 
