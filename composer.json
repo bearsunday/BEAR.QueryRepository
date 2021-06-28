@@ -18,14 +18,14 @@
         "psr/cache": "^1.0",
         "ray/aop": "^2.10",
         "ray/di": "^2.11.2",
-        "ray/psr-cache-module": "1.x-dev"
+        "ray/psr-cache-module": "1.x-dev",
+        "symfony/cache": "^5.3"
     },
     "require-dev": {
         "ext-redis": "*",
         "bamarni/composer-bin-plugin": "^1.4",
         "koriym/attributes": "^1.0.1",
         "phpunit/phpunit": "^9.5",
-        "symfony/cache": "^5.3",
         "symfony/process": "^4.3"
     },
     "autoload": {
