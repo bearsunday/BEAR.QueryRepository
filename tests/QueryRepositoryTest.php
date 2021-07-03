@@ -33,7 +33,7 @@ class QueryRepositoryTest extends TestCase
     protected function setUp(): void
     {
         $namespace = 'FakeVendor\HelloWorld';
-        $injector = new Injector(new QueryRepositoryModule(new MobileEtagModule(new ResourceModule($namespace))), $_ENV['TMP_DIR']);
+        $injector = new Injector(new FakeEtagPoolModule(new QueryRepositoryModule(new MobileEtagModule(new ResourceModule($namespace)))), $_ENV['TMP_DIR']);
         $this->repository = $injector->getInstance(QueryRepositoryInterface::class);
         $this->resource = $injector->getInstance(ResourceInterface::class);
         $this->httpCache = $injector->getInstance(HttpCacheInterface::class);

@@ -4,17 +4,21 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\RepositoryModule\Annotation\Storage;
+use BEAR\RepositoryModule\Annotation\EtagPool;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\RequestInterface;
 use BEAR\Resource\ResourceObject;
-use Doctrine\Common\Cache\CacheProvider;
+use Psr\Cache\CacheItemPoolInterface;
+use Ray\PsrCacheModule\Annotation\Shared;
+use Symfony\Component\Cache\Adapter\AdapterInterface;
+use Symfony\Component\Cache\Adapter\TagAwareAdapter;
 
 use function assert;
 use function explode;
 use function is_array;
 use function is_string;
 use function sprintf;
+use function str_replace;
 use function strtoupper;
 
 /**
@@ -23,25 +27,43 @@ use function strtoupper;
 final class ResourceStorage implements ResourceStorageInterface
 {
     /**
-     * Prefix for ETag URI
+     * ETag URI table prefix
      */
-    public const ETAG_TABLE = 'etag-table-';
+    private const KEY_ETAG_TABLE = 'etag-t';
 
     /**
-     * Prefix of ETag value
+     * ETag value cache prefix
      */
-    public const ETAG_VAL = 'etag-val-';
-
-    /** @var CacheProvider */
-    private $cache;
+    private const KEY_ETAG_VAL = 'etag-v';
 
     /**
-     * @Storage
+     * Resource object cache prefix
      */
-    #[Storage]
-    public function __construct(CacheProvider $cache)
+    private const KEY_RO = 'ro-';
+
+    /** @var TagAwareAdapter */
+    private $roPool;
+
+    /** @var AdapterInterface */
+    private $etagPool;
+
+    /**
+     * @Shared("pool")
+     * @EtagPool("etagPool")
+     */
+    #[Shared('pool'), EtagPool('etagPool')]
+    public function __construct(CacheItemPoolInterface $pool, ?CacheItemPoolInterface $etagPool = null)
     {
-        $this->cache = $cache;
+        assert($pool instanceof AdapterInterface);
+        if ($etagPool instanceof AdapterInterface) {
+            $this->roPool = new TagAwareAdapter($pool, $etagPool);
+            $this->etagPool = $etagPool;
+
+            return;
+        }
+
+        $this->roPool = new TagAwareAdapter($pool);
+        $this->etagPool = $this->roPool;
     }
 
     /**
@@ -49,7 +71,7 @@ final class ResourceStorage implements ResourceStorageInterface
      */
     public function hasEtag(string $etag): bool
     {
-        return $this->cache->contains(self::ETAG_VAL . $etag);
+        return $this->etagPool->hasItem(self::KEY_ETAG_VAL . $etag);
     }
 
     /**
@@ -57,33 +79,26 @@ final class ResourceStorage implements ResourceStorageInterface
      *
      * @return void
      */
-    public function updateEtag(ResourceObject $ro, int $lifeTime)
+    public function updateEtag(AbstractUri $uri, string $etag, int $lifeTime)
     {
-        $varyUri = $this->getVaryUri($ro->uri);
-        assert(isset($ro->headers['ETag']));
-        $etag = self::ETAG_VAL . $ro->headers['ETag'];
-        $uri = self::ETAG_TABLE . $varyUri;
-        // delete old ETag
-        $this->deleteEtag($ro->uri);
-        // save ETag uri
-        $this->cache->save($uri, $etag, $lifeTime);
-        // save ETag value
-        $this->cache->save($etag, $uri, $lifeTime);
+        $this->deleteEtag($uri); // old
+        $this->saveEtag($uri, $etag, $lifeTime); // new
     }
 
     /**
      * {@inheritdoc}
-     *
-     * @return void
      */
     public function deleteEtag(AbstractUri $uri)
     {
-        $varyUri = self::ETAG_TABLE . $this->getVaryUri($uri); // invalidate etag
-        /** @psalm-suppress MixedAssignment */
-        $oldEtagKey = $this->cache->fetch($varyUri);
-        if (is_string($oldEtagKey)) {
-            $this->cache->delete($oldEtagKey);
+        $cachedEtag = $this->loadEtag($uri);
+        if (is_string($cachedEtag)) {
+            $this->roPool->invalidateTags([$cachedEtag]); // remove ro
+            $this->etagPool->deleteItem($cachedEtag);
+
+            return true;
         }
+
+        return false;
     }
 
     /**
@@ -91,22 +106,10 @@ final class ResourceStorage implements ResourceStorageInterface
      */
     public function get(AbstractUri $uri)
     {
-        $varyUri = $this->getVaryUri($uri);
-        /** @psalm-var ResourceState $stored */ /** @phpstan-var array{0: AbstractUri, 1: int, 2: array<string, string>, 3: mixed, 4: (null|string)}|false $stored */
-        $stored = $this->cache->fetch($varyUri);
+        /** @var array{0: AbstractUri, 1: int, 2: array<string, string>, 3: mixed, 4: (null|string)}|null $ro */
+        $ro = $this->roPool->getItem($this->getUriKey($uri, self::KEY_RO))->get();
 
-        return $stored;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function delete(AbstractUri $uri): bool
-    {
-        $this->deleteEtag($uri);
-        $varyUri = $this->getVaryUri($uri);
-
-        return $this->cache->delete($varyUri);
+        return $ro;
     }
 
     /**
@@ -118,10 +121,15 @@ final class ResourceStorage implements ResourceStorageInterface
     {
         /** @psalm-suppress MixedAssignment $body */
         $body = $this->evaluateBody($ro->body);
-        $uri = $this->getVaryUri($ro->uri);
         $val = [$ro->uri, $ro->code, $ro->headers, $body, null];
+        $key = $this->getUriKey($ro->uri, self::KEY_RO);
+        $item = $this->roPool->getItem($key);
+        $item->set($val);
+        $item->expiresAfter($ttl);
+        $etag = self::KEY_ETAG_VAL . $ro->headers['ETag'];
+        $item->tag($etag);
 
-        return $this->cache->save($uri, $val, $ttl);
+        return $this->roPool->save($item);
     }
 
     /**
@@ -133,10 +141,15 @@ final class ResourceStorage implements ResourceStorageInterface
     {
         /** @psalm-suppress MixedAssignment $body */
         $body = $this->evaluateBody($ro->body);
-        $uri = $this->getVaryUri($ro->uri);
         $val = [$ro->uri, $ro->code, $ro->headers, $body, $ro->view];
+        $key = $this->getUriKey($ro->uri, self::KEY_RO);
+        $item = $this->roPool->getItem($key);
+        $item->set($val);
+        $item->expiresAfter($ttl);
+        $etag = self::KEY_ETAG_VAL . $ro->headers['ETag'];
+        $item->tag([$etag]);
 
-        return $this->cache->save($uri, $val, $ttl);
+        return $this->roPool->save($item);
     }
 
     /**
@@ -164,6 +177,22 @@ final class ResourceStorage implements ResourceStorageInterface
         return $body;
     }
 
+    private function loadEtag(AbstractUri $uri): ?string
+    {
+        $key = $this->getUriKey($uri, self::KEY_ETAG_TABLE);
+        /** @var ?string $cachedEtag */
+        $cachedEtag = $this->etagPool->getItem($key)->get();
+
+        return $cachedEtag;
+    }
+
+    private function getUriKey(AbstractUri $uri, string $type): string
+    {
+        $key =  $type . $this->getVaryUri($uri);
+
+        return str_replace([':', '/'], ['_', '-'], $key);
+    }
+
     private function getVaryUri(AbstractUri $uri): string
     {
         if (! isset($_SERVER['X_VARY'])) {
@@ -182,5 +211,22 @@ final class ResourceStorage implements ResourceStorageInterface
         }
 
         return $uri . $varyId;
+    }
+
+    private function saveEtag(AbstractUri $uri, string $etag, int $lifeTime): void
+    {
+        // save ETag uri
+        $uriKey = $this->getUriKey($uri, self::KEY_ETAG_TABLE);
+        $uriItem = $this->roPool->getItem($uriKey);
+        $etagKey = self::KEY_ETAG_VAL . $etag;
+        $uriItem->set($etagKey);
+        $uriItem->expiresAfter($lifeTime);
+        // save ETag value
+        $this->etagPool->save($uriItem);
+
+        $etagItem = $this->roPool->getItem($etagKey);
+        $etagItem->set($uriKey);
+        $etagItem->expiresAfter($lifeTime);
+        $this->etagPool->save($etagItem);
     }
 }

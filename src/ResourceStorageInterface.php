@@ -28,12 +28,12 @@ interface ResourceStorageInterface
      *
      * @return void
      */
-    public function updateEtag(ResourceObject $ro, int $lifeTime);
+    public function updateEtag(AbstractUri $uri, string $etag, int $lifeTime);
 
     /**
      * Delete Etag
      *
-     * @return void
+     * @return bool
      */
     public function deleteEtag(AbstractUri $uri);
 
@@ -42,8 +42,8 @@ interface ResourceStorageInterface
      *
      * return [$uri, $code, $headers, $body, $view]] array.
      *
-     * @psalm-return ResourceState|false
-     * @phpstan-return array{0: AbstractUri, 1: int, 2:array<string, string>, 3: mixed, 4: null|string}|false
+     * @psalm-return ResourceState|null
+     * @phpstan-return array{0: AbstractUri, 1: int, 2:array<string, string>, 3: mixed, 4: null|string}|null
      */
     public function get(AbstractUri $uri);
 
@@ -60,9 +60,4 @@ interface ResourceStorageInterface
      * @return bool
      */
     public function saveView(ResourceObject $ro, int $ttl);
-
-    /**
-     * Delete resource cache
-     */
-    public function delete(AbstractUri $uri): bool;
 }

@@ -16,6 +16,7 @@ use Doctrine\Common\Cache\Cache;
 use Doctrine\Common\Cache\CacheProvider;
 use Ray\Di\AbstractModule;
 use Ray\Di\Scope;
+use Ray\PsrCacheModule\Psr6ArrayModule;
 
 class QueryRepositoryModule extends AbstractModule
 {
@@ -24,6 +25,7 @@ class QueryRepositoryModule extends AbstractModule
      */
     protected function configure()
     {
+        $this->install(new Psr6ArrayModule());
         $this->bind(QueryRepositoryInterface::class)->to(QueryRepository::class)->in(Scope::SINGLETON);
         $this->bind(Cache::class)->annotatedWith(Storage::class)->toProvider(StorageProvider::class)->in(Scope::SINGLETON);
         /** @psalm-suppress DeprecatedClass */

@@ -6,9 +6,14 @@
  */
 namespace FakeVendor\HelloWorld\Resource\Page;
 
+use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\Resource\Annotation\Embed;
 use BEAR\Resource\ResourceObject;
 
+/**
+ * @Cacheable
+ */
+#[Cacheable]
 class EmbVal extends ResourceObject
 {
     /**
