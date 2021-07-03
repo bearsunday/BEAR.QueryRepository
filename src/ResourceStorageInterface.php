@@ -28,12 +28,12 @@ interface ResourceStorageInterface
      *
      * @return void
      */
-    public function updateEtag(ResourceObject $ro, int $lifeTime);
+    public function updateEtag(AbstractUri $uri, string $etag, int $lifeTime);
 
     /**
      * Delete Etag
      *
-     * @return void
+     * @return bool
      */
     public function deleteEtag(AbstractUri $uri);
 
@@ -60,9 +60,4 @@ interface ResourceStorageInterface
      * @return bool
      */
     public function saveView(ResourceObject $ro, int $ttl);
-
-    /**
-     * Delete resource cache
-     */
-    public function delete(AbstractUri $uri): bool;
 }

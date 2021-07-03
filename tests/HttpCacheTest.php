@@ -6,10 +6,12 @@ namespace BEAR\QueryRepository;
 
 use BEAR\Resource\Module\ResourceModule;
 use BEAR\Resource\ResourceInterface;
+use BEAR\Resource\ResourceObject;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 
+use function assert;
 use function http_response_code;
 
 class HttpCacheTest extends TestCase
@@ -27,8 +29,9 @@ class HttpCacheTest extends TestCase
     {
         $resource = (new Injector(new QueryRepositoryModule(new ResourceModule('FakeVendor\HelloWorld'))))->getInstance(ResourceInterface::class);
         $user = $resource->get('app://self/user', ['id' => 1]);
+        assert($user instanceof ResourceObject);
         $storage = new ResourceStorage(new ArrayAdapter());
-        $storage->updateEtag($user, 10);
+        $storage->updateEtag($user->uri, $user->headers['ETag'], 10);
         $httpCache = new CliHttpCache($storage);
         $server = ['HTTP_IF_NONE_MATCH' => $user->headers['ETag']];
         $this->assertTrue($httpCache->isNotModified($server));
@@ -63,8 +66,9 @@ class HttpCacheTest extends TestCase
     {
         $resource = (new Injector(new QueryRepositoryModule(new ResourceModule('FakeVendor\HelloWorld'))))->getInstance(ResourceInterface::class);
         $user = $resource->get('app://self/user', ['id' => 1]);
+        assert($user instanceof ResourceObject);
         $storage = new ResourceStorage(new ArrayAdapter());
-        $storage->updateEtag($user, 10);
+        $storage->updateEtag($user->uri, $user->headers['ETag'], 10);
         $httpCache = new CliHttpCache($storage);
         $header = 'IF_NONE_MATCH=' . $user->headers['ETag'];
         $server = [

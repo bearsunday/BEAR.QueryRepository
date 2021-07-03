@@ -60,7 +60,7 @@ final class QueryRepository implements QueryRepositoryInterface
         ($this->setEtag)($ro, null, $httpCache);
         $lifeTime = $this->getExpiryTime($ro, $cacheable);
         if (isset($ro->headers['ETag'])) {
-            $this->storage->updateEtag($ro, $lifeTime);
+            $this->storage->updateEtag($ro->uri, $ro->headers['ETag'], $lifeTime);
         }
 
         $this->setMaxAge($ro, $lifeTime);
@@ -93,9 +93,7 @@ final class QueryRepository implements QueryRepositoryInterface
      */
     public function purge(AbstractUri $uri)
     {
-        $this->storage->deleteEtag($uri);
-
-        return $this->storage->delete($uri);
+        return $this->storage->deleteEtag($uri);
     }
 
     /**
