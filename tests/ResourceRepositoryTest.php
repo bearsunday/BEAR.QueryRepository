@@ -15,6 +15,8 @@ use Ray\PsrCacheModule\FilesystemAdapter;
 use function array_change_key_case;
 use function assert;
 
+use function serialize;
+use function unserialize;
 use const CASE_LOWER;
 
 class ResourceRepositoryTest extends TestCase
@@ -107,6 +109,12 @@ class ResourceRepositoryTest extends TestCase
             new AnnotationReader(),
             new Expiry(0, 0, 0)
         );
+        $this->assertInstanceOf(Repository::class, $repository);
+    }
+
+    public function testSerializable(): void
+    {
+        $repository = unserialize(serialize($this->repository));
         $this->assertInstanceOf(Repository::class, $repository);
     }
 }
