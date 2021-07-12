@@ -18,7 +18,7 @@
         "psr/cache": "^1.0",
         "ray/aop": "^2.10",
         "ray/di": "^2.11.2",
-        "ray/psr-cache-module": "1.x-dev",
+        "ray/psr-cache-module": "^1.0",
         "symfony/cache": "^5.3"
     },
     "require-dev": {

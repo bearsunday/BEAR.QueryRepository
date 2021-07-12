@@ -36,15 +36,19 @@ class CacheInterceptor implements MethodInterceptor
         $ro = $invocation->getThis();
         assert($ro instanceof ResourceObject);
         try {
-            $stored = $this->repository->get($ro->uri);
+            $state = $this->repository->get($ro->uri);
         } catch (Throwable $e) {
             $this->triggerWarning($e);
 
             return $invocation->proceed(); // @codeCoverageIgnore
         }
 
-        if ($stored) {
-            [$ro->uri, $ro->code, $ro->headers, $ro->body, $ro->view] = $stored;
+        if ($state) {
+            $ro->uri = $state->uri;
+            $ro->code = $state->code;
+            $ro->headers = $state->headers;
+            $ro->body = $state->body;
+            $ro->view = $state->view;
 
             return $ro;
         }

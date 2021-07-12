@@ -74,18 +74,17 @@ final class QueryRepository implements QueryRepositoryInterface
     /**
      * {@inheritdoc}
      */
-    public function get(AbstractUri $uri)
+    public function get(AbstractUri $uri): ?ResourceState
     {
-        $data = $this->storage->get($uri);
+        $state = $this->storage->get($uri);
 
-        if ($data === null) {
-            return false;
+        if ($state === null) {
+            return null;
         }
 
-        $age = time() - strtotime($data[2]['Last-Modified']);
-        $data[2]['Age'] = (string) $age;
+        $state->headers['Age'] = (string) (time() - strtotime($state->headers['Last-Modified']));
 
-        return $data;
+        return $state;
     }
 
     /**
