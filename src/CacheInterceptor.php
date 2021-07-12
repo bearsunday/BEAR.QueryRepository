@@ -71,11 +71,12 @@ class CacheInterceptor implements MethodInterceptor
      * Trigger warning
      *
      * When the cache server is down, it will issue a warning rather than an exception to continue service.
+     *
+     * @codeCoverageIgnore
      */
     private function triggerWarning(Throwable $e): void
     {
         $message = sprintf('%s: %s in %s:%s', get_class($e), $e->getMessage(), $e->getFile(), $e->getLine());
         trigger_error($message, E_USER_WARNING);
-        // @codeCoverageIgnoreStart
     }
 }
