@@ -8,9 +8,11 @@ use BEAR\RepositoryModule\Annotation\EtagPool;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\RequestInterface;
 use BEAR\Resource\ResourceObject;
+use Doctrine\Common\Cache\CacheProvider;
 use Psr\Cache\CacheItemPoolInterface;
 use Ray\PsrCacheModule\Annotation\Shared;
 use Symfony\Component\Cache\Adapter\AdapterInterface;
+use Symfony\Component\Cache\Adapter\DoctrineAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapter;
 
 use function assert;
@@ -49,8 +51,17 @@ final class ResourceStorage implements ResourceStorageInterface
      * @EtagPool("etagPool")
      */
     #[Shared('pool'), EtagPool('etagPool')]
-    public function __construct(CacheItemPoolInterface $pool, ?CacheItemPoolInterface $etagPool = null)
-    {
+    public function __construct(
+        ?CacheItemPoolInterface $pool = null,
+        ?CacheItemPoolInterface $etagPool = null,
+        ?CacheProvider $cache = null
+    ) {
+        if ($pool === null && $cache instanceof CacheProvider) {
+            $this->injectDoctrineCache($cache);
+
+            return;
+        }
+
         assert($pool instanceof AdapterInterface);
         if ($etagPool instanceof AdapterInterface) {
             $this->roPool = new TagAwareAdapter($pool, $etagPool);
@@ -60,6 +71,12 @@ final class ResourceStorage implements ResourceStorageInterface
         }
 
         $this->roPool = new TagAwareAdapter($pool);
+        $this->etagPool = $this->roPool;
+    }
+
+    private function injectDoctrineCache(CacheProvider $cache): void
+    {
+        $this->roPool = new TagAwareAdapter(new DoctrineAdapter($cache));
         $this->etagPool = $this->roPool;
     }
 

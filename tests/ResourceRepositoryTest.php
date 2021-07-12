@@ -7,6 +7,7 @@ namespace BEAR\QueryRepository;
 use BEAR\QueryRepository\QueryRepository as Repository;
 use BEAR\Resource\Uri;
 use Doctrine\Common\Annotations\AnnotationReader;
+use Doctrine\Common\Cache\CacheProvider;
 use FakeVendor\HelloWorld\Resource\Page\Index;
 use PHPUnit\Framework\TestCase;
 use Ray\PsrCacheModule\FilesystemAdapter;
@@ -67,5 +68,45 @@ class ResourceRepositoryTest extends TestCase
         $this->repository->purge($uri);
         $instance = (bool) $this->repository->get($uri);
         $this->assertFalse($instance);
+    }
+
+    public function testCreateFromDoctrineAnnotation(): void
+    {
+        $doctrineCache = new class extends CacheProvider{
+            protected function doFetch($id)
+            {
+            }
+
+            protected function doContains($id)
+            {
+            }
+
+            protected function doSave($id, $data, $lifeTime = 0)
+            {
+            }
+
+            protected function doDelete($id)
+            {
+            }
+
+            protected function doFlush()
+            {
+            }
+
+            protected function doGetStats()
+            {
+            }
+        };
+        $repository = new Repository(
+            new EtagSetter(),
+            new ResourceStorage(
+                null,
+                null,
+                $doctrineCache
+            ),
+            new AnnotationReader(),
+            new Expiry(0, 0, 0)
+        );
+        $this->assertInstanceOf(Repository::class, $repository);
     }
 }
