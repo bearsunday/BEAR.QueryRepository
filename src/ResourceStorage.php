@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\SerializableTagAwareAdapter as TagAwareAdapter;
 use BEAR\RepositoryModule\Annotation\EtagPool;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\RequestInterface;
@@ -13,7 +14,6 @@ use Psr\Cache\CacheItemPoolInterface;
 use Ray\PsrCacheModule\Annotation\Shared;
 use Symfony\Component\Cache\Adapter\AdapterInterface;
 use Symfony\Component\Cache\Adapter\DoctrineAdapter;
-use Symfony\Component\Cache\Adapter\TagAwareAdapter;
 
 use function assert;
 use function explode;

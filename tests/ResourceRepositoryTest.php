@@ -14,9 +14,9 @@ use Ray\PsrCacheModule\FilesystemAdapter;
 
 use function array_change_key_case;
 use function assert;
-
 use function serialize;
 use function unserialize;
+
 use const CASE_LOWER;
 
 class ResourceRepositoryTest extends TestCase
@@ -74,6 +74,7 @@ class ResourceRepositoryTest extends TestCase
 
     public function testCreateFromDoctrineAnnotation(): void
     {
+        // phpcs:disable SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
         $doctrineCache = new class extends CacheProvider{
             protected function doFetch($id)
             {
@@ -99,6 +100,7 @@ class ResourceRepositoryTest extends TestCase
             {
             }
         };
+        // phpcs:enable
         $repository = new Repository(
             new EtagSetter(),
             new ResourceStorage(
