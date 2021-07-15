@@ -9,6 +9,9 @@ use Doctrine\Common\Cache\MemcachedCache;
 use Memcached;
 use Ray\Di\ProviderInterface;
 
+/**
+ * @deprecated
+ */
 class StorageMemcachedCacheProvider implements ProviderInterface
 {
     /**

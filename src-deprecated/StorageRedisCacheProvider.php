@@ -12,6 +12,9 @@ use RedisException;
 
 use function sprintf;
 
+/**
+ * @deprecated
+ */
 class StorageRedisCacheProvider implements ProviderInterface
 {
     /** @var string */
