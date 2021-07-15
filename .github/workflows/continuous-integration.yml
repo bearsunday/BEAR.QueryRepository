@@ -59,7 +59,7 @@ jobs:
 
       - name: Install highest dependencies
         if: ${{ matrix.dependencies == 'highest' }}
-        run: composer update --no-interaction --no-progress --no-suggest
+        run: composer update --no-interaction --no-progress
 
       - name: Run test suite
         env:
