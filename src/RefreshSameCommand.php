@@ -7,15 +7,11 @@ use BEAR\Resource\ResourceObject;
 use Ray\Aop\MethodInvocation;
 use ReflectionException;
 use ReflectionMethod;
-
 use function array_values;
-use function assert;
 use function call_user_func_array;
 use function get_class;
-use function in_array;
 use function is_callable;
 use function sprintf;
-use function var_dump;
 
 // phpcs:ignoreFile SlevomatCodingStandard.TypeHints.DeclareStrictTypes.DeclareStrictTypesMissing -- for call_user_func_array
 

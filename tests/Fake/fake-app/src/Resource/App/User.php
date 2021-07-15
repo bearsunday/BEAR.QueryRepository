@@ -12,7 +12,6 @@ use BEAR\RepositoryModule\Annotation\Purge;
 use BEAR\RepositoryModule\Annotation\Refresh;
 use BEAR\Resource\Code;
 use BEAR\Resource\ResourceObject;
-use Ray\Di\Di\Named;
 
 /**
  * @Cacheable
