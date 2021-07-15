@@ -4,14 +4,16 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\SerializableTagAwareAdapter as TagAwareAdapter;
 use BEAR\RepositoryModule\Annotation\EtagPool;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\RequestInterface;
 use BEAR\Resource\ResourceObject;
+use Doctrine\Common\Cache\CacheProvider;
 use Psr\Cache\CacheItemPoolInterface;
 use Ray\PsrCacheModule\Annotation\Shared;
 use Symfony\Component\Cache\Adapter\AdapterInterface;
-use Symfony\Component\Cache\Adapter\TagAwareAdapter;
+use Symfony\Component\Cache\Adapter\DoctrineAdapter;
 
 use function assert;
 use function explode;
@@ -21,9 +23,6 @@ use function sprintf;
 use function str_replace;
 use function strtoupper;
 
-/**
- * @psalm-import-type ResourceState from ResourceStorageInterface
- */
 final class ResourceStorage implements ResourceStorageInterface
 {
     /**
@@ -52,8 +51,17 @@ final class ResourceStorage implements ResourceStorageInterface
      * @EtagPool("etagPool")
      */
     #[Shared('pool'), EtagPool('etagPool')]
-    public function __construct(CacheItemPoolInterface $pool, ?CacheItemPoolInterface $etagPool = null)
-    {
+    public function __construct(
+        ?CacheItemPoolInterface $pool = null,
+        ?CacheItemPoolInterface $etagPool = null,
+        ?CacheProvider $cache = null
+    ) {
+        if ($pool === null && $cache instanceof CacheProvider) {
+            $this->injectDoctrineCache($cache);
+
+            return;
+        }
+
         assert($pool instanceof AdapterInterface);
         if ($etagPool instanceof AdapterInterface) {
             $this->roPool = new TagAwareAdapter($pool, $etagPool);
@@ -63,6 +71,12 @@ final class ResourceStorage implements ResourceStorageInterface
         }
 
         $this->roPool = new TagAwareAdapter($pool);
+        $this->etagPool = $this->roPool;
+    }
+
+    private function injectDoctrineCache(CacheProvider $cache): void
+    {
+        $this->roPool = new TagAwareAdapter(new DoctrineAdapter($cache));
         $this->etagPool = $this->roPool;
     }
 
@@ -104,12 +118,12 @@ final class ResourceStorage implements ResourceStorageInterface
     /**
      * {@inheritdoc}
      */
-    public function get(AbstractUri $uri)
+    public function get(AbstractUri $uri): ?ResourceState
     {
-        /** @var array{0: AbstractUri, 1: int, 2: array<string, string>, 3: mixed, 4: (null|string)}|null $ro */
-        $ro = $this->roPool->getItem($this->getUriKey($uri, self::KEY_RO))->get();
+        $state = $this->roPool->getItem($this->getUriKey($uri, self::KEY_RO))->get();
+        assert($state instanceof ResourceState || $state === null);
 
-        return $ro;
+        return $state;
     }
 
     /**
@@ -121,7 +135,7 @@ final class ResourceStorage implements ResourceStorageInterface
     {
         /** @psalm-suppress MixedAssignment $body */
         $body = $this->evaluateBody($ro->body);
-        $val = [$ro->uri, $ro->code, $ro->headers, $body, null];
+        $val = new ResourceState($ro, $body, null);
         $key = $this->getUriKey($ro->uri, self::KEY_RO);
         $item = $this->roPool->getItem($key);
         $item->set($val);
@@ -141,7 +155,7 @@ final class ResourceStorage implements ResourceStorageInterface
     {
         /** @psalm-suppress MixedAssignment $body */
         $body = $this->evaluateBody($ro->body);
-        $val = [$ro->uri, $ro->code, $ro->headers, $body, $ro->view];
+        $val = new ResourceState($ro, $body, $ro->view);
         $key = $this->getUriKey($ro->uri, self::KEY_RO);
         $item = $this->roPool->getItem($key);
         $item->set($val);

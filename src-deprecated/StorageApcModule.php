@@ -11,6 +11,11 @@ use Doctrine\Common\Cache\CacheProvider;
 use Ray\Di\AbstractModule;
 use Ray\Di\Scope;
 
+/**
+ * @deprecated
+ *
+ * Use \Ray\PsrCacheModule\Psr6ApcuModule
+ */
 class StorageApcModule extends AbstractModule
 {
     /**

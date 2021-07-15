@@ -10,6 +10,9 @@ use BEAR\Resource\Annotation\AppName;
 use Doctrine\Common\Cache\CacheProvider;
 use Ray\Di\ProviderInterface;
 
+/**
+ * @deprecated
+ */
 class StorageProvider implements ProviderInterface
 {
     /** @var CacheProvider */

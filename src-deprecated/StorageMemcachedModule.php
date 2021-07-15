@@ -14,6 +14,11 @@ use Ray\Di\Scope;
 use function array_map;
 use function explode;
 
+/**
+ * @deprecated
+ *
+ * use \Ray\PsrCacheModule\Psr6MemcachedModule
+ */
 class StorageMemcachedModule extends AbstractModule
 {
     /** @var list<list<string>> */

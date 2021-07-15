@@ -27,9 +27,6 @@ class QueryRepositoryModule extends AbstractModule
     {
         $this->install(new Psr6ArrayModule());
         $this->bind(QueryRepositoryInterface::class)->to(QueryRepository::class)->in(Scope::SINGLETON);
-        $this->bind(Cache::class)->annotatedWith(Storage::class)->toProvider(StorageProvider::class)->in(Scope::SINGLETON);
-        /** @psalm-suppress DeprecatedClass */
-        $this->bind(CacheProvider::class)->annotatedWith(Storage::class)->to(ArrayCache::class)->in(Scope::SINGLETON);
         $this->bind(EtagSetterInterface::class)->to(EtagSetter::class)->in(Scope::SINGLETON);
         $this->bind(NamedParameterInterface::class)->to(NamedParameter::class)->in(Scope::SINGLETON);
         $this->bind(HttpCacheInterface::class)->to(HttpCache::class);
@@ -41,5 +38,9 @@ class QueryRepositoryModule extends AbstractModule
         $this->install(new StorageExpiryModule(60, 60 * 60, 60 * 60 * 24));
         // BC
         $this->bind(DeprecatedHttpCacheInterface::class)->to(HttpCache::class);
+        /** @psalm-suppress DeprecatedClass */
+        $this->bind(Cache::class)->annotatedWith(Storage::class)->toProvider(StorageProvider::class)->in(Scope::SINGLETON);
+        /** @psalm-suppress DeprecatedClass */
+        $this->bind(CacheProvider::class)->annotatedWith(Storage::class)->to(ArrayCache::class)->in(Scope::SINGLETON);
     }
 }

@@ -36,15 +36,19 @@ class CacheInterceptor implements MethodInterceptor
         $ro = $invocation->getThis();
         assert($ro instanceof ResourceObject);
         try {
-            $stored = $this->repository->get($ro->uri);
+            $state = $this->repository->get($ro->uri);
         } catch (Throwable $e) {
             $this->triggerWarning($e);
 
             return $invocation->proceed(); // @codeCoverageIgnore
         }
 
-        if ($stored) {
-            [$ro->uri, $ro->code, $ro->headers, $ro->body, $ro->view] = $stored;
+        if ($state) {
+            $ro->uri = $state->uri;
+            $ro->code = $state->code;
+            $ro->headers = $state->headers;
+            $ro->body = $state->body;
+            $ro->view = $state->view;
 
             return $ro;
         }
@@ -67,11 +71,12 @@ class CacheInterceptor implements MethodInterceptor
      * Trigger warning
      *
      * When the cache server is down, it will issue a warning rather than an exception to continue service.
+     *
+     * @codeCoverageIgnore
      */
     private function triggerWarning(Throwable $e): void
     {
         $message = sprintf('%s: %s in %s:%s', get_class($e), $e->getMessage(), $e->getFile(), $e->getLine());
         trigger_error($message, E_USER_WARNING);
-        // @codeCoverageIgnoreStart
     }
 }

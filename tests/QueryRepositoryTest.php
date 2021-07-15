@@ -94,15 +94,16 @@ class QueryRepositoryTest extends TestCase
         $uri = 'page://self/emb-view';
         $ro = $this->resource->get($uri);
         $this->repository->put($ro);
-        [, , , $body, $view] = $this->repository->get(new Uri($uri));
-        $this->assertSame(1, $body['num']);
+        $state = $this->repository->get(new Uri($uri));
+        assert($state instanceof ResourceState);
+        $this->assertSame(1, $state->body['num']);
         $this->assertSame('{
     "time": {
         "none": "none"
     },
     "num": 1
 }
-', $view);
+', $state->view);
     }
 
     public function testPutResquestEmbeddedResoureValue(): void
@@ -110,9 +111,10 @@ class QueryRepositoryTest extends TestCase
         $uri = 'page://self/emb-val';
         $ro = $this->resource->get($uri);
         $this->repository->put($ro);
-        [, , , $body, $view] = $this->repository->get(new Uri($uri));
-        $this->assertSame(1, $body['num']);
-        $this->assertNull($view);
+        $state = $this->repository->get(new Uri($uri));
+        assert($state instanceof ResourceState);
+        $this->assertSame(1, $state->body['num']);
+        $this->assertNull($state->view);
     }
 
     public function testErrorInCacheRead(): void

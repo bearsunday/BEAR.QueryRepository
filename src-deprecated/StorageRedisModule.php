@@ -13,6 +13,11 @@ use Ray\Di\Scope;
 
 use function explode;
 
+/**
+ * @deprecated
+ *
+ * use Ray\PsrCacheModule\Psr6RedisModule
+ */
 class StorageRedisModule extends AbstractModule
 {
     /** @var array<string> */
