@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\RepositoryModule\Annotation\Storage;
-use Doctrine\Common\Cache\CacheProvider;
-use Doctrine\Common\Cache\RedisCache;
 use PHPUnit\Framework\TestCase;
+use Psr\Cache\CacheItemPoolInterface;
 use Ray\Di\Injector;
+use Ray\PsrCacheModule\Annotation\Shared;
+use Symfony\Component\Cache\Adapter\RedisAdapter;
 use Symfony\Component\Process\Process;
 use function getenv;
 
@@ -43,15 +43,7 @@ class StorageRedisModuleTest extends TestCase
     public function testNew()
     {
         // @see http://php.net/manual/en/memcached.addservers.php
-        $cache = (new Injector(new StorageRedisModule($this->server), __DIR__ . '/tmp'))->getInstance(CacheProvider::class, Storage::class);
-        $this->assertInstanceOf(RedisCache::class, $cache);
-    }
-
-    public function testCacheNamespace()
-    {
-        $cache = (new Injector(new CacheVersionModule('1', new StorageRedisModule($this->server)), __DIR__ . '/tmp'))->getInstance(CacheProvider::class, Storage::class);
-        assert($cache instanceof RedisCache);
-        $namespace = $cache->getNamespace();
-        $this->assertSame(':1', $namespace);
+        $cache = (new Injector(new StorageRedisModule($this->server), __DIR__ . '/tmp'))->getInstance(CacheItemPoolInterface::class, Shared::class);
+        $this->assertInstanceOf(RedisAdapter::class, $cache);
     }
 }

@@ -38,6 +38,8 @@
         "psr-4": {
             "BEAR\\QueryRepository\\": [
                 "tests/",
+                "tests-deprecated/",
+                "tests-pecl-ext/",
                 "tests/Fake/",
                 "tests-php8/Fake"
             ],

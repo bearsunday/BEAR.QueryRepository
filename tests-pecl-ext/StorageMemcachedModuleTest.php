@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\RepositoryModule\Annotation\Storage;
-use Doctrine\Common\Cache\CacheProvider;
-use Doctrine\Common\Cache\MemcachedCache;
 use PHPUnit\Framework\TestCase;
+use Psr\Cache\CacheItemPoolInterface;
 use Ray\Di\Injector;
+use Ray\PsrCacheModule\Annotation\Shared;
+use Symfony\Component\Cache\Adapter\MemcachedAdapter;
 
 class StorageMemcachedModuleTest extends TestCase
 {
@@ -16,7 +16,7 @@ class StorageMemcachedModuleTest extends TestCase
     {
         // @see http://php.net/manual/en/memcached.addservers.php
         $servers = 'mem1.domain.com:11211:33,mem2.domain.com:11211:67';
-        $cache = (new Injector(new StorageMemcachedModule($servers)))->getInstance(CacheProvider::class, Storage::class);
-        $this->assertInstanceOf(MemcachedCache::class, $cache);
+        $cache = (new Injector(new StorageMemcachedModule($servers)))->getInstance(CacheItemPoolInterface::class, Shared::class);
+        $this->assertInstanceOf(MemcachedAdapter::class, $cache);
     }
 }
