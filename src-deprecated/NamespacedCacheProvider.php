@@ -16,6 +16,8 @@ class NamespacedCacheProvider implements ProviderInterface
     private $cache;
 
     /**
+     * @deprecated
+     *
      * @CacheEngine("cache")
      * @AppName("appName")
      * @CacheVersion("version")
