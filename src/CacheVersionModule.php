@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\RepositoryModule\Annotation\CacheVersion;
 use Ray\Di\AbstractModule;
+use Ray\PsrCacheModule\CacheNamespaceModule;
 
 class CacheVersionModule extends AbstractModule
 {
@@ -23,6 +23,6 @@ class CacheVersionModule extends AbstractModule
      */
     protected function configure()
     {
-        $this->bind()->annotatedWith(CacheVersion::class)->toInstance($this->version);
+        $this->install(new CacheNamespaceModule($this->version));
     }
 }

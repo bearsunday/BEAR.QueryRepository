@@ -9,6 +9,10 @@ use Doctrine\Common\Annotations\NamedArgumentConstructorAnnotation;
 use Ray\Di\Di\Qualifier;
 
 /**
+ * @deprecated
+ *
+ * Use \Ray\PsrCacheModule\Annotation\CacheNamespace
+ *
  * @Annotation
  * @Target("METHOD")
  * @Qualifier()

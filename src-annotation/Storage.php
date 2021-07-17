@@ -8,6 +8,10 @@ use Attribute;
 use Ray\Di\Di\Qualifier;
 
 /**
+ * @deprecated
+ *
+ * Use \Ray\PsrCacheModule\Annotation\Shared
+ *
  * @Annotation
  * @Target("METHOD")
  * @Qualifier

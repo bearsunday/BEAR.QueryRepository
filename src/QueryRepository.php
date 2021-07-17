@@ -11,7 +11,6 @@ use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceObject;
 use Doctrine\Common\Annotations\Reader;
 use ReflectionClass;
-use ReflectionException;
 
 use function assert;
 use function get_class;
@@ -49,8 +48,6 @@ final class QueryRepository implements QueryRepositoryInterface
 
     /**
      * {@inheritdoc}
-     *
-     * @throws ReflectionException
      */
     public function put(ResourceObject $ro)
     {
@@ -95,9 +92,6 @@ final class QueryRepository implements QueryRepositoryInterface
         return $this->storage->deleteEtag($uri);
     }
 
-    /**
-     * @throws ReflectionException
-     */
     private function getHttpCacheAnnotation(ResourceObject $ro): ?HttpCache
     {
         return $this->reader->getClassAnnotation(new ReflectionClass($ro), HttpCache::class);
@@ -105,8 +99,6 @@ final class QueryRepository implements QueryRepositoryInterface
 
     /**
      * @return ?Cacheable
-     *
-     * @throws ReflectionException
      */
     private function getCacheableAnnotation(ResourceObject $ro): ?Cacheable
     {

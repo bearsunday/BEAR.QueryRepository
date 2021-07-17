@@ -1,65 +1,50 @@
 <?php
-/**
- * This file is part of the BEAR.QueryRepository package.
- *
- * @license http://opensource.org/licenses/MIT MIT
- */
+
 namespace BEAR\QueryRepository;
 
-use Doctrine\Common\Cache\CacheProvider;
+use Psr\Cache\CacheItemInterface;
+use RuntimeException;
+use Symfony\Component\Cache\Adapter\AdapterInterface;
 
 /**
  * Error cache driver
- *
- * @link   www.doctrine-project.org
  */
-class FakeErrorCache extends CacheProvider
+class FakeErrorCache implements AdapterInterface
 {
-    /**
-     * {@inheritDoc}
-     */
-    protected function doFetch($id)
+    public function getItem($key)
     {
-        throw new \Exception($id);
+        throw new RuntimeException();
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    protected function doContains($id)
+    public function getItems(array $keys = array())
     {
-        return false;
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    protected function doSave($id, $data, $lifeTime = 0)
+    public function hasItem($key)
     {
-        throw new \Exception($id);
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    protected function doDelete($id)
+    public function clear(string $prefix = '')
     {
-        return true;
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    protected function doFlush()
+    public function deleteItem($key)
     {
-        return true;
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    protected function doGetStats()
+    public function deleteItems(array $keys)
     {
-        return;
+    }
+
+    public function save(CacheItemInterface $item)
+    {
+    }
+
+    public function saveDeferred(CacheItemInterface $item)
+    {
+    }
+
+    public function commit()
+    {
     }
 }

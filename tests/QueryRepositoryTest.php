@@ -4,18 +4,19 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\RepositoryModule\Annotation\Storage;
 use BEAR\Resource\Module\ResourceModule;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
-use Doctrine\Common\Cache\CacheProvider;
+use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
 use FakeVendor\HelloWorld\Resource\App\NullView;
 use FakeVendor\HelloWorld\Resource\App\User\Profile;
 use FakeVendor\HelloWorld\Resource\Page\None;
 use PHPUnit\Framework\TestCase;
+use Psr\Cache\CacheItemPoolInterface;
 use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
+use Ray\PsrCacheModule\Annotation\Shared;
 
 use function assert;
 
@@ -117,6 +118,13 @@ class QueryRepositoryTest extends TestCase
         $this->assertNull($state->view);
     }
 
+    /**
+     * If the cache component causes an error (such as insufficient disk space), it will read the original data to avoid the error.
+     * In that case, a warning will be output to syslog.
+     *
+     * キャッシュコンポーネントが(ディスクの容量不足など）エラーを発生させた場合に、オリジナルのデータを読んでエラーを回避します。
+     * その際にはsyslogにWarningを出力します。
+     */
     public function testErrorInCacheRead(): void
     {
         $namespace = 'FakeVendor\HelloWorld';
@@ -125,7 +133,7 @@ class QueryRepositoryTest extends TestCase
         $module->override(new class extends AbstractModule {
             protected function configure()
             {
-                $this->bind(CacheProvider::class)->annotatedWith(Storage::class)->to(FakeErrorCache::class);
+                $this->bind(CacheItemPoolInterface::class)->annotatedWith(Shared::class)->to(FakeErrorCache::class);
             }
         });
         $resource = (new Injector($module, $_ENV['TMP_DIR']))->getInstance(ResourceInterface::class);
