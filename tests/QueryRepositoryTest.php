@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\RepositoryModule\Annotation\Storage;
 use BEAR\Resource\Module\ResourceModule;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
+use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
 use Doctrine\Common\Cache\CacheProvider;
 use FakeVendor\HelloWorld\Resource\App\NullView;
 use FakeVendor\HelloWorld\Resource\App\User\Profile;
@@ -16,6 +16,7 @@ use FakeVendor\HelloWorld\Resource\Page\None;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
+use Ray\PsrCacheModule\Annotation\Shared;
 
 use function assert;
 
@@ -125,7 +126,7 @@ class QueryRepositoryTest extends TestCase
         $module->override(new class extends AbstractModule {
             protected function configure()
             {
-                $this->bind(CacheProvider::class)->annotatedWith(Storage::class)->to(FakeErrorCache::class);
+                $this->bind(CacheProvider::class)->annotatedWith(Shared::class)->to(FakeErrorCache::class);
             }
         });
         $resource = (new Injector($module, $_ENV['TMP_DIR']))->getInstance(ResourceInterface::class);
