@@ -7,3 +7,4 @@
 /coverage.xml
 /vendor-bin/**/vendor
 /.php_cs.cache
+/.phpunit-cache/
