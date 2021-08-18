@@ -21,6 +21,7 @@ class QueryRepositoryModule extends AbstractModule
     {
         $this->install(new Psr6ArrayModule());
         $this->bind(QueryRepositoryInterface::class)->to(QueryRepository::class)->in(Scope::SINGLETON);
+        $this->bind(CacheDependencyInterface::class)->to(CacheDependency::class);
         $this->bind(EtagSetterInterface::class)->to(EtagSetter::class)->in(Scope::SINGLETON);
         $this->bind(NamedParameterInterface::class)->to(NamedParameter::class)->in(Scope::SINGLETON);
         $this->bind(HttpCacheInterface::class)->to(HttpCache::class);
