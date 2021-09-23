@@ -19,7 +19,7 @@ interface ResourceStorageInterface
      *
      * @return void
      */
-    public function updateEtag(AbstractUri $uri, string $etag, int $lifeTime);
+    public function updateEtag(AbstractUri $uri, string $etag, ?int $ttl);
 
     /**
      * Delete Etag
@@ -46,4 +46,19 @@ interface ResourceStorageInterface
      * @return bool
      */
     public function saveView(ResourceObject $ro, int $ttl);
+
+    /**
+     * Return cached resource static
+     */
+    public function getDonut(AbstractUri $uri): ?ResourceDonut;
+
+    /**
+     * Save donut-cacheable page
+     */
+    public function saveDonut(AbstractUri $uri, ResourceDonut $donut): void;
+
+    /**
+     * Save donut-cache state
+     */
+    public function saveDonutView(ResourceObject $ro, ?int $ttl): bool;
 }

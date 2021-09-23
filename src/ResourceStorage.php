@@ -14,11 +14,14 @@ use Psr\Cache\CacheItemPoolInterface;
 use Ray\PsrCacheModule\Annotation\Shared;
 use Symfony\Component\Cache\Adapter\AdapterInterface;
 use Symfony\Component\Cache\Adapter\DoctrineAdapter;
+use Symfony\Component\Cache\CacheItem;
+use Symfony\Contracts\Cache\ItemInterface;
 
 use function array_merge;
 use function assert;
 use function explode;
 use function is_array;
+use function is_int;
 use function is_string;
 use function sprintf;
 use function str_replace;
@@ -35,6 +38,11 @@ final class ResourceStorage implements ResourceStorageInterface
      * Resource object cache prefix
      */
     private const KEY_RO = 'ro-';
+
+    /**
+     * Resource static cache prifix
+     */
+    private const KEY_STATIC = 'st-';
 
     /** @var TagAwareAdapter */
     private $roPool;
@@ -89,10 +97,10 @@ final class ResourceStorage implements ResourceStorageInterface
      *
      * @return void
      */
-    public function updateEtag(AbstractUri $uri, string $etag, int $lifeTime)
+    public function updateEtag(AbstractUri $uri, string $etag, ?int $ttl)
     {
         $this->deleteEtag($uri); // old
-        $this->saveEtag($uri, $etag, $lifeTime); // new
+        $this->saveEtag($uri, $etag, $ttl); // new
     }
 
     /**
@@ -116,7 +124,9 @@ final class ResourceStorage implements ResourceStorageInterface
      */
     public function get(AbstractUri $uri): ?ResourceState
     {
-        $state = $this->roPool->getItem($this->getUriKey($uri, self::KEY_RO))->get();
+        $item = $this->roPool->getItem($this->getUriKey($uri, self::KEY_RO));
+        assert($item instanceof ItemInterface);
+        $state = $item->get();
         assert($state instanceof ResourceState || $state === null);
 
         return $state;
@@ -148,8 +158,8 @@ final class ResourceStorage implements ResourceStorageInterface
     private function getTags(ResourceObject $ro): array
     {
         $etags = [$ro->headers['ETag']];
-        if (isset($ro->headers[CacheDependency::CACHE_DEPENDENCY])) {
-            $etags = array_merge($etags, explode(' ', $ro->headers[CacheDependency::CACHE_DEPENDENCY]));
+        if (isset($ro->headers[CacheDependency::SURROGATE_KEY])) {
+            $etags = array_merge($etags, explode(' ', $ro->headers[CacheDependency::SURROGATE_KEY]));
         }
 
         return $etags;
@@ -173,6 +183,53 @@ final class ResourceStorage implements ResourceStorageInterface
         $item->tag($tag);
 
         return $this->roPool->save($item);
+    }
+
+    public function saveDonutView(ResourceObject $ro, ?int $ttl): bool
+    {
+        $val = ResourceState::create($ro, [], $ro->view);
+        $key = $this->getUriKey($ro->uri, self::KEY_RO);
+        $item = $this->roPool->getItem($key);
+        if (is_int($ttl)) {
+            $item->expiresAfter($ttl);
+        }
+
+        $item->set($val);
+        $tag = $this->getTags($ro);
+        $item->tag($tag);
+
+        // save ETags
+        $this->saveStaticTag($ro, $item);
+
+        // save view
+        return $this->roPool->save($item);
+    }
+
+    public function getDonut(AbstractUri $uri): ?ResourceDonut
+    {
+        $key = $this->getUriKey($uri, self::KEY_STATIC);
+        $item = $this->roPool->getItem($key);
+        assert($item instanceof ItemInterface);
+        $donut = $item->get();
+        assert($donut instanceof ResourceDonut || $donut === null);
+
+        return $donut;
+    }
+
+    public function saveDonut(AbstractUri $uri, ResourceDonut $donut): void
+    {
+        $key = $this->getUriKey($uri, self::KEY_STATIC);
+        $item = $this->roPool->getItem($key);
+        $item->set($donut);
+        assert($this->roPool->save($item));
+    }
+
+    private function saveStaticTag(ResourceObject $ro, CacheItem $roPoolItem): void
+    {
+        $tags = $this->getTags($ro);
+        $roPoolItem->tag($tags);
+        $this->etagPool->save($roPoolItem);
+        $this->saveEtag($ro->uri, $ro->headers['ETag'], null);
     }
 
     /**
@@ -236,19 +293,25 @@ final class ResourceStorage implements ResourceStorageInterface
         return $uri . $varyId;
     }
 
-    private function saveEtag(AbstractUri $uri, string $etag, int $lifeTime): void
+    private function saveEtag(AbstractUri $uri, string $etag, ?int $ttl): void
     {
         // save ETag uri
         $uriKey = $this->getUriKey($uri, self::KEY_ETAG_TABLE);
         $uriItem = $this->roPool->getItem($uriKey);
         $uriItem->set($etag);
-        $uriItem->expiresAfter($lifeTime);
+        if (is_int($ttl)) {
+            $uriItem->expiresAfter($ttl);
+        }
+
         // save ETag value
         $this->etagPool->save($uriItem);
 
-        $etagItem = $this->roPool->getItem($etag);
+        $etagItem = $this->roPool->getItem($etag); // @todo 本当？
         $etagItem->set($uriKey);
-        $etagItem->expiresAfter($lifeTime);
+        if (is_int($ttl)) {
+            $etagItem->expiresAfter($ttl);
+        }
+
         $this->etagPool->save($etagItem);
     }
 }
