@@ -131,7 +131,7 @@ final class ResourceStorage implements ResourceStorageInterface
     {
         /** @psalm-suppress MixedAssignment $body */
         $body = $this->evaluateBody($ro->body);
-        $val = new ResourceState($ro, $body, null);
+        $val = ResourceState::create($ro, $body, null);
         $key = $this->getUriKey($ro->uri, self::KEY_RO);
         $item = $this->roPool->getItem($key);
         $item->set($val);
@@ -164,7 +164,7 @@ final class ResourceStorage implements ResourceStorageInterface
     {
         /** @psalm-suppress MixedAssignment $body */
         $body = $this->evaluateBody($ro->body);
-        $val = new ResourceState($ro, $body, $ro->view);
+        $val = ResourceState::create($ro, $body, $ro->view);
         $key = $this->getUriKey($ro->uri, self::KEY_RO);
         $item = $this->roPool->getItem($key);
         $item->set($val);
