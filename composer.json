@@ -10,7 +10,7 @@
     ],
     "require": {
         "php": "^7.2 || ^8.0",
-        "bear/resource": "^1.15.6",
+        "bear/resource": "^1.15",
         "bear/sunday": "^1.5.5",
         "doctrine/annotations": "^1.8",
         "doctrine/cache": "^1.10 || ^2.0",
@@ -25,6 +25,7 @@
         "ext-redis": "*",
         "bamarni/composer-bin-plugin": "^1.4",
         "koriym/attributes": "^1.0.1",
+        "madapaja/twig-module": "^2.0",
         "phpunit/phpunit": "^9.5",
         "symfony/process": "^4.3"
     },
