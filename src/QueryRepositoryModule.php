@@ -30,5 +30,7 @@ class QueryRepositoryModule extends AbstractModule
         $this->bind(ResourceStorageInterface::class)->to(ResourceStorage::class);
         $this->install(new QueryRepositoryAopModule());
         $this->install(new StorageExpiryModule(60, 60 * 60, 60 * 60 * 24));
+        $this->install(new DonutAopModule());
+        $this->bind(HeaderSetter::class);
     }
 }
