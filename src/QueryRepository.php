@@ -16,7 +16,6 @@ use function assert;
 use function get_class;
 use function is_array;
 use function sprintf;
-use function strpos;
 use function strtotime;
 use function time;
 
@@ -31,16 +30,16 @@ final class QueryRepository implements QueryRepositoryInterface
     /** @var Expiry */
     private $expiry;
 
-    /** @var EtagSetterInterface */
-    private $setEtag;
+    /** @var HeaderSetter */
+    private $headerSetter;
 
     public function __construct(
-        EtagSetterInterface $setEtag,
+        HeaderSetter $headerSetter,
         ResourceStorageInterface $storage,
         Reader $reader,
         Expiry $expiry
     ) {
-        $this->setEtag = $setEtag;
+        $this->headerSetter = $headerSetter;
         $this->reader = $reader;
         $this->storage = $storage;
         $this->expiry = $expiry;
@@ -52,20 +51,19 @@ final class QueryRepository implements QueryRepositoryInterface
     public function put(ResourceObject $ro)
     {
         $ro->toString();
-        $httpCache = $this->getHttpCacheAnnotation($ro);
         $cacheable = $this->getCacheableAnnotation($ro);
-        ($this->setEtag)($ro, null, $httpCache);
-        $lifeTime = $this->getExpiryTime($ro, $cacheable);
+        $httpCache = $this->getHttpCacheAnnotation($ro);
+        $ttl = $this->getExpiryTime($ro, $cacheable);
+        ($this->headerSetter)($ro, $ttl, $httpCache);
         if (isset($ro->headers['ETag'])) {
-            $this->storage->updateEtag($ro->uri, $ro->headers['ETag'], $lifeTime);
+            $this->storage->updateEtag($ro->uri, $ro->headers['ETag'], $ttl);
         }
 
-        $this->setMaxAge($ro, $lifeTime);
         if ($cacheable instanceof Cacheable && $cacheable->type === 'view') {
-            return $this->saveViewCache($ro, $lifeTime);
+            return $this->saveViewCache($ro, $ttl);
         }
 
-        return $this->storage->saveValue($ro, $lifeTime);
+        return $this->storage->saveValue($ro, $ttl);
     }
 
     /**
@@ -132,36 +130,10 @@ final class QueryRepository implements QueryRepositoryInterface
         return strtotime($expiryAt) - time();
     }
 
-    /**
-     * @return void
-     */
-    private function setMaxAge(ResourceObject $ro, int $age)
+    private function saveViewCache(ResourceObject $ro, int $ttl): bool
     {
-        if ($age === 0) {
-            return;
-        }
+        $this->storage->updateEtag($ro->uri, $ro->headers['ETag'], $ttl);
 
-        $setMaxAge = sprintf('max-age=%d', $age);
-        $noCacheControleHeader = ! isset($ro->headers['Cache-Control']);
-        $headers = $ro->headers;
-        if ($noCacheControleHeader) {
-            $ro->headers['Cache-Control'] = $setMaxAge;
-
-            return;
-        }
-
-        $isMaxAgeAlreadyDefined = strpos($headers['Cache-Control'], 'max-age') !== false;
-        if ($isMaxAgeAlreadyDefined) {
-            return;
-        }
-
-        if (isset($ro->headers['Cache-Control'])) {
-            $ro->headers['Cache-Control'] .= ', ' . $setMaxAge;
-        }
-    }
-
-    private function saveViewCache(ResourceObject $ro, int $lifeTime): bool
-    {
-        return $this->storage->saveView($ro, $lifeTime);
+        return $this->storage->saveView($ro, $ttl);
     }
 }

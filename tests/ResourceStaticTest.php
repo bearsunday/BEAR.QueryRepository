@@ -29,11 +29,11 @@ class ResourceStaticTest extends TestCase
         parent::setUp();
     }
 
-    public function testRefresh(): void
+    public function testGetState(): void
     {
-        $static = new ResourceStatic('cmt=[le:page://self/html/comment]');
+        $donut = new ResourceDonut('cmt=[le:page://self/html/comment]', null);
         $blog = $this->resource->get('page://self/html/blog-posting');
-        $ro = $static->refresh($this->resource, $blog);
+        $ro = $donut->refresh($this->resource, $blog);
         $this->assertInstanceOf(ResourceObject::class, $ro);
         $this->assertSame('cmt=comment01', $ro->view);
     }

@@ -38,7 +38,7 @@ final class EtagSetter implements EtagSetterInterface
 
         $etag =  $this->getEtag($ro, $httpCache);
         $ro->headers['ETag'] = $etag;
-        $ro->headers['Last-Modified'] = gmdate('D, d M Y H:i:s', $time) . ' GMT';
+        $ro->headers['Last-Modified'] = gmdate('D, d M Y H:i:s', $time) . ' GMT'; // @todo 定数に
         $this->setCacheDependency($ro);
     }
 
