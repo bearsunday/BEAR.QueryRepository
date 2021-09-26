@@ -18,18 +18,12 @@ use const E_USER_WARNING;
 
 class DonutQueryInterceptor implements MethodInterceptor
 {
-    /** @var QueryRepositoryInterface  */
-    private $queryRepository;
-
     /** @var DonutRepository */
     private $donutRepository;
 
-    public function __construct(
-        DonutRepository $donutRepository,
-        QueryRepositoryInterface $queryRepository
-    ) {
+    public function __construct(DonutRepository $donutRepository)
+    {
         $this->donutRepository = $donutRepository;
-        $this->queryRepository = $queryRepository;
     }
 
     /**
@@ -40,25 +34,15 @@ class DonutQueryInterceptor implements MethodInterceptor
         $ro = $invocation->getThis();
         assert($ro instanceof ResourceObject);
         try {
-            $maybeState = $this->queryRepository->get($ro->uri);
+            $maybeRo = $this->donutRepository->get($ro);
+            if ($maybeRo instanceof ResourceObject) {
+                return $maybeRo;
+            }
         } catch (Throwable $e) {
             // when cache server is down
             $this->triggerWarning($e);
 
             return $invocation->proceed(); // @codeCoverageIgnore
-        }
-
-        if ($maybeState instanceof ResourceState) {
-            $ro->headers = $maybeState->headers;
-            $ro->view = $maybeState->view;
-
-            return $ro;
-        }
-
-        // refresh state
-        $maybeStatic = $this->donutRepository->refreshDonut($ro);
-        if ($maybeStatic instanceof ResourceObject) {
-            return $maybeStatic;
         }
 
         /** @var ResourceObject $ro */

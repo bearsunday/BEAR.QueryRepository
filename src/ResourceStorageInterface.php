@@ -61,4 +61,9 @@ interface ResourceStorageInterface
      * Save donut-cache state
      */
     public function saveDonutView(ResourceObject $ro, ?int $ttl): bool;
+
+    /**
+     * Delete donut-cacheable page
+     */
+    public function deleteDonut(AbstractUri $uri): void;
 }

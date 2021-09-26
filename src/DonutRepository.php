@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 
@@ -20,26 +21,32 @@ final class DonutRepository
     /** @var ResourceInterface */
     private $resource;
 
-    public function __construct(HeaderSetter $headerSetter, ResourceStorageInterface $resourceStorage, ResourceInterface $resource)
-    {
+    /** @var QueryRepository */
+    private $queryRepository;
+
+    public function __construct(
+        QueryRepository $queryRepository,
+        HeaderSetter $headerSetter,
+        ResourceStorageInterface $resourceStorage,
+        ResourceInterface $resource
+    ) {
         $this->resourceStorage = $resourceStorage;
         $this->headerSetter = $headerSetter;
         $this->resource = $resource;
+        $this->queryRepository = $queryRepository;
     }
 
-    public function refreshDonut(ResourceObject $ro): ?ResourceObject
+    public function get(ResourceObject $ro): ?ResourceObject
     {
-        $donut = $this->resourceStorage->getDonut($ro->uri);
-        if (! $donut instanceof ResourceDonut) {
-            return null;
+        $maybeState = $this->queryRepository->get($ro->uri);
+        if ($maybeState instanceof ResourceState) {
+            $ro->headers = $maybeState->headers;
+            $ro->view = $maybeState->view;
+
+            return $ro;
         }
 
-        $donut->refresh($this->resource, $ro);
-        ($this->headerSetter)($ro, $donut->ttl, null);
-        $ro->headers['ETag'] .= 'r'; // mark refreshed by resource static
-        $this->saveView($ro, $donut->ttl);
-
-        return $ro;
+        return $this->refreshDonut($ro);
     }
 
     public function createDonut(ResourceObject $ro, ?int $ttl): ResourceObject
@@ -53,6 +60,33 @@ final class DonutRepository
         $etags->setSurrogateKey($ro);
         ($this->headerSetter)($ro, 0, null);
         $this->saveView($ro, $ttl);
+
+        return $ro;
+    }
+
+    public function refresh(AbstractUri $uri): void
+    {
+        $this->purge($uri);
+        $this->resource->get((string) $uri);
+    }
+
+    private function purge(AbstractUri $uri): void
+    {
+        $this->queryRepository->purge($uri);
+        $this->resourceStorage->deleteDonut($uri);
+    }
+
+    private function refreshDonut(ResourceObject $ro): ?ResourceObject
+    {
+        $donut = $this->resourceStorage->getDonut($ro->uri);
+        if (! $donut instanceof ResourceDonut) {
+            return null;
+        }
+
+        $donut->refresh($this->resource, $ro);
+        ($this->headerSetter)($ro, $donut->ttl, null);
+        $ro->headers['ETag'] .= 'r'; // mark refreshed by resource static
+        $this->saveView($ro, $donut->ttl);
 
         return $ro;
     }

@@ -65,7 +65,7 @@ class DonutRepositoryTest extends TestCase
         $this->assertInstanceOf(ResourceState::class, $state);
     }
 
-    public function testPurge(): void
+    public function testCachePurge(): void
     {
         assert($this->queryRepository->purge($this->uri));
         $maybeNullPurged = $this->queryRepository->get($this->uri);
@@ -104,5 +104,20 @@ class DonutRepositoryTest extends TestCase
         $resource->get('page://self/html/blog-posting');
         $blogState3 = $queryRepository->get(new Uri('page://self/html/blog-posting'));
         $this->assertInstanceOf(ResourceState::class, $blogState3);
+    }
+
+    public function testRefresh(): void
+    {
+        $injector = $this->getInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $queryRepository = $injector->getInstance(QueryRepository::class);
+
+        $resource->get('page://self/html/blog-posting');
+        assert($queryRepository->purge(new Uri('page://self/html/blog-posting')));
+        $donutRo = $resource->get('page://self/html/blog-posting');
+        $this->assertSame('r', $donutRo->headers['ETag'][-1]);
+        $this->donutRepository->refresh(new Uri('page://self/html/blog-posting'));
+        $donutRo2 = $this->resource->get('page://self/html/blog-posting');
+        $this->assertNotSame('r', $donutRo2->headers['ETag'][-1]);
     }
 }
