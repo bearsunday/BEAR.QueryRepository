@@ -8,34 +8,47 @@ use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 
+use function assert;
 use function preg_replace_callback;
 
 /**
  * Donut cache resource state
  */
-final class ResourceStatic
+final class ResourceDonut
 {
     public const FOMRAT = '[le:%s]';
 
     /** @var string */
     private $template;
 
+    /**
+     * @var ?int
+     * @readonly
+     */
+    public $ttl;
+
     private const URI_REGEX = '/\[le:(.+)\]/';
 
-    public function __construct(string $template)
+    public function __construct(string $template, ?int $ttl)
     {
         $this->template = $template;
+        $this->ttl = $ttl;
     }
 
     public function refresh(ResourceInterface $resource, ResourceObject $ro): ResourceObject
     {
-        $refreshView =  preg_replace_callback(self::URI_REGEX, static function (array $matches) use ($resource) {
-            $uri = $matches[1];
+        $etags = new Etags();
+        $refreshView =  preg_replace_callback(self::URI_REGEX, static function (array $matches) use ($resource, $etags): string {
+            $uri = (string) $matches[1];
             $ro = $resource->get($uri);
+            $ro->toString();
+            assert($ro->headers['ETag']);
+            $etags->addEtag($ro);
 
-            return (string) $ro;
+            return (string) $ro->view;
         }, $this->template);
 
+        $etags->setSurrogateKey($ro);
         $ro->view = $refreshView;
 
         return $ro;
@@ -49,16 +62,17 @@ final class ResourceStatic
         return $ro;
     }
 
-    public static function create(ResourceObject $ro, DonutRenderer $storage)
+    public static function create(ResourceObject $ro, DonutRenderer $storage, Etags $etags, ?int $ttl): self
     {
+        /** @var mixed $maybeRequest */
         foreach ($ro->body as &$maybeRequest) {
             if ($maybeRequest instanceof AbstractRequest) {
-                $maybeRequest = new DonutRequest($maybeRequest, $storage);
+                $maybeRequest = new DonutRequest($maybeRequest, $storage, $etags);
             }
         }
 
         $donutTemplate = (string) $ro;
 
-        return new self($donutTemplate);
+        return new self($donutTemplate, $ttl);
     }
 }
