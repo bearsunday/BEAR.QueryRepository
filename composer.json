@@ -19,7 +19,8 @@
         "ray/aop": "^2.10",
         "ray/di": "^2.12",
         "ray/psr-cache-module": "^1.0",
-        "symfony/cache": "^5.3"
+        "symfony/cache": "^5.3",
+        "symfony/cache-contracts": "^2.4"
     },
     "require-dev": {
         "ext-redis": "*",
