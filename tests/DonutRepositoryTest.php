@@ -33,11 +33,8 @@ class DonutRepositoryTest extends TestCase
     {
         static $injector;
 
-        $namespace = 'FakeVendor\HelloWorld';
-        $module = new FakeEtagPoolModule(new QueryRepositoryModule(new ResourceModule($namespace)));
-        $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
         if (! $injector) {
-            $injector = new Injector($module, $_ENV['TMP_DIR']);
+            $injector = $this->getInjector();
         }
 
         $this->resource = $injector->getInstance(ResourceInterface::class);
@@ -46,6 +43,15 @@ class DonutRepositoryTest extends TestCase
         $uri = 'page://self/html/blog-posting';
         $this->uri = new Uri($uri);
         parent::setUp();
+    }
+
+    private function getInjector(): Injector
+    {
+        $namespace = 'FakeVendor\HelloWorld';
+        $module = new FakeEtagPoolModule(new QueryRepositoryModule(new ResourceModule($namespace)));
+        $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
+
+        return new Injector($module, $_ENV['TMP_DIR']);
     }
 
     public function testCreateStatic(): void
@@ -75,5 +81,28 @@ class DonutRepositoryTest extends TestCase
         $donutRo = $this->resource->get('page://self/html/blog-posting');
         assert($donutRo instanceof ResourceObject);
         $this->assertSame('r', $donutRo->headers['ETag'][-1]);
+    }
+
+    /**
+     * When cache A contains cache B, deleting B will automatically delete A as well.
+     */
+    public function testCacheDependency(): void
+    {
+        $injector = $this->getInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $queryRepository = $injector->getInstance(QueryRepository::class);
+
+        // Cache created.
+        $resource->get('page://self/html/blog-posting');
+        $blogState1 = $queryRepository->get(new Uri('page://self/html/blog-posting'));
+        $this->assertInstanceOf(ResourceState::class, $blogState1);
+        // When cache dependency is deleted, cache dependent automatically deleted
+        assert($queryRepository->purge(new Uri('page://self/html/comment')));
+        $blogState2 = $queryRepository->get(new Uri('page://self/html/blog-posting'));
+        $this->assertNull($blogState2);
+        // Cache created again.
+        $resource->get('page://self/html/blog-posting');
+        $blogState3 = $queryRepository->get(new Uri('page://self/html/blog-posting'));
+        $this->assertInstanceOf(ResourceState::class, $blogState3);
     }
 }
