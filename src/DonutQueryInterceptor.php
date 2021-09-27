@@ -18,10 +18,10 @@ use const E_USER_WARNING;
 
 class DonutQueryInterceptor implements MethodInterceptor
 {
-    /** @var DonutRepository */
+    /** @var DonutRepositoryInterface */
     private $donutRepository;
 
-    public function __construct(DonutRepository $donutRepository)
+    public function __construct(DonutRepositoryInterface $donutRepository)
     {
         $this->donutRepository = $donutRepository;
     }

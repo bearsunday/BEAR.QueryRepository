@@ -33,5 +33,6 @@ class QueryRepositoryModule extends AbstractModule
         $this->install(new DonutAopModule());
         $this->bind(HeaderSetter::class);
         $this->bind(CdnCacheControlHeaderSetterInterface::class)->to(CdnCacheControlHeaderSetter::class);
+        $this->bind(DonutRepositoryInterface::class)->to(DonutRepository::class)->in(Scope::SINGLETON);
     }
 }

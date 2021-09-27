@@ -20,10 +20,10 @@ class DonutRepositoryTest extends TestCase
     /** @var ResourceInterface */
     private $resource;
 
-    /** @var QueryRepository */
+    /** @var QueryRepositoryInterface */
     private $queryRepository;
 
-    /** @var DonutRepository  */
+    /** @var DonutRepositoryInterface  */
     private $donutRepository;
 
     /** @var Uri */
@@ -38,8 +38,8 @@ class DonutRepositoryTest extends TestCase
         }
 
         $this->resource = $injector->getInstance(ResourceInterface::class);
-        $this->donutRepository = $injector->getInstance(DonutRepository::class);
-        $this->queryRepository = $injector->getInstance(QueryRepository::class);
+        $this->donutRepository = $injector->getInstance(DonutRepositoryInterface::class);
+        $this->queryRepository = $injector->getInstance(QueryRepositoryInterface::class);
         $uri = 'page://self/html/blog-posting';
         $this->uri = new Uri($uri);
         parent::setUp();
@@ -116,8 +116,5 @@ class DonutRepositoryTest extends TestCase
         assert($queryRepository->purge(new Uri('page://self/html/blog-posting')));
         $donutRo = $resource->get('page://self/html/blog-posting');
         $this->assertSame('r', $donutRo->headers['ETag'][-1]);
-        $this->donutRepository->refresh(new Uri('page://self/html/blog-posting'));
-        $donutRo2 = $this->resource->get('page://self/html/blog-posting');
-        $this->assertNotSame('r', $donutRo2->headers['ETag'][-1]);
     }
 }

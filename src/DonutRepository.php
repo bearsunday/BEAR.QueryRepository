@@ -10,7 +10,7 @@ use BEAR\Resource\ResourceObject;
 
 use function assert;
 
-final class DonutRepository
+final class DonutRepository implements DonutRepositoryInterface
 {
     /** @var ResourceStorageInterface */
     private $resourceStorage;
@@ -54,13 +54,13 @@ final class DonutRepository
         return $this->refreshDonut($ro);
     }
 
-    public function createDonut(ResourceObject $ro, ?int $sMaxAge): ResourceObject
+    public function createDonut(ResourceObject $ro, ?int $sMaxAge = null, ?int $donutAge = null): ResourceObject
     {
         $renderer = new DonutRenderer();
         $etags = new Etags();
         ($this->cacheControlHeaderSetter)($ro, $sMaxAge);
         $donut = ResourceDonut::create($ro, $renderer, $etags, $sMaxAge);
-        $this->resourceStorage->saveDonut($ro->uri, $donut, $sMaxAge);
+        $this->resourceStorage->saveDonut($ro->uri, $donut, $donutAge);
 
         $donut->render($ro, $renderer);
         $etags->setSurrogateKey($ro);
