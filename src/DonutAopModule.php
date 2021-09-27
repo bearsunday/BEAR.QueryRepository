@@ -21,5 +21,17 @@ class DonutAopModule extends AbstractModule
             $this->matcher->startsWith('onGet'),
             [DonutQueryInterceptor::class]
         );
+
+        $this->bindInterceptor(
+            $this->matcher->annotatedWith(DonutCache::class),
+            $this->matcher->logicalOr(
+                $this->matcher->startsWith('onPut'),
+                $this->matcher->logicalOr(
+                    $this->matcher->startsWith('onPatch'),
+                    $this->matcher->startsWith('onDelete')
+                )
+            ),
+            [DonutCommandInterceptor::class]
+        );
     }
 }
