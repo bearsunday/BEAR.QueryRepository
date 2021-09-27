@@ -71,4 +71,10 @@ class DonutQueryInterceptorTest extends TestCase
         $this->assertArrayHasKey('Age', $blogPosting->headers);
         $this->assertArrayHasKey('CDN-Cache-Control', $blogPosting->headers);
     }
+
+    public function testCreatDonutInResourceObject(): void
+    {
+        $blogPostingCacheControl = $this->resource->get('page://self/html/blog-posting-cache-control');
+        $this->assertArrayHasKey(CdnCacheControlHeaderSetter::CDN_CACHE_CONTROL_HEADER, $blogPostingCacheControl->headers);
+    }
 }

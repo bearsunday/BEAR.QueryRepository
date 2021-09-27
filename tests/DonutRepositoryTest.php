@@ -54,7 +54,7 @@ class DonutRepositoryTest extends TestCase
         return new Injector($module, $_ENV['TMP_DIR']);
     }
 
-    public function testCreateStatic(): void
+    public function testCreateDonut(): void
     {
         $maybeNull = $this->queryRepository->get($this->uri);
         $this->assertNull($maybeNull);
@@ -73,7 +73,7 @@ class DonutRepositoryTest extends TestCase
     }
 
     /**
-     * @depends testCreateStatic
+     * @depends testCreateDonut
      */
     public function testCreatedByStatic(): void
     {

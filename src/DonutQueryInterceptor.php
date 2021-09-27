@@ -47,8 +47,11 @@ class DonutQueryInterceptor implements MethodInterceptor
 
         /** @var ResourceObject $ro */
         $ro = $invocation->proceed();
+        if (isset($ro->headers['ETag'])) {
+            return $ro; // donut created in ResourceObject
+        }
 
-        return $this->donutRepository->createDonut($ro, null);
+        return $this->donutRepository->createDonut($ro, null, null);
     }
 
     /**
