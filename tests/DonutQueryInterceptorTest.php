@@ -20,12 +20,6 @@ class DonutQueryInterceptorTest extends TestCase
     /** @var ResourceInterface */
     private $resource;
 
-    /** @var QueryRepository */
-    private $repository;
-
-    /** @var Injector  */
-    private $injector;
-
     protected function setUp(): void
     {
         static $injector;
@@ -37,9 +31,7 @@ class DonutQueryInterceptorTest extends TestCase
             $injector = new Injector($module, $_ENV['TMP_DIR']);
         }
 
-        $this->injector = $injector;
         $this->resource = $injector->getInstance(ResourceInterface::class);
-        $this->repository = $injector->getInstance(QueryRepository::class);
 
         parent::setUp();
     }
@@ -77,5 +69,6 @@ class DonutQueryInterceptorTest extends TestCase
         $blogPosting = $this->resource->get('page://self/html/blog-posting');
         assert($blogPosting instanceof BlogPosting);
         $this->assertArrayHasKey('Age', $blogPosting->headers);
+        $this->assertArrayHasKey('CDN-Cache-Control', $blogPosting->headers);
     }
 }

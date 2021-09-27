@@ -32,5 +32,6 @@ class QueryRepositoryModule extends AbstractModule
         $this->install(new StorageExpiryModule(60, 60 * 60, 60 * 60 * 24));
         $this->install(new DonutAopModule());
         $this->bind(HeaderSetter::class);
+        $this->bind(CdnCacheControlHeaderSetterInterface::class)->to(CdnCacheControlHeaderSetter::class);
     }
 }

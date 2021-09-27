@@ -24,16 +24,21 @@ final class DonutRepository
     /** @var QueryRepository */
     private $queryRepository;
 
+    /** @var CdnCacheControlHeaderSetterInterface */
+    private $cacheControlHeaderSetter;
+
     public function __construct(
         QueryRepository $queryRepository,
         HeaderSetter $headerSetter,
         ResourceStorageInterface $resourceStorage,
-        ResourceInterface $resource
+        ResourceInterface $resource,
+        CdnCacheControlHeaderSetterInterface $cacheControlHeaderSetter
     ) {
         $this->resourceStorage = $resourceStorage;
         $this->headerSetter = $headerSetter;
         $this->resource = $resource;
         $this->queryRepository = $queryRepository;
+        $this->cacheControlHeaderSetter = $cacheControlHeaderSetter;
     }
 
     public function get(ResourceObject $ro): ?ResourceObject
@@ -49,17 +54,19 @@ final class DonutRepository
         return $this->refreshDonut($ro);
     }
 
-    public function createDonut(ResourceObject $ro, ?int $ttl): ResourceObject
+    public function createDonut(ResourceObject $ro, ?int $sMaxAge): ResourceObject
     {
         $renderer = new DonutRenderer();
         $etags = new Etags();
-        $donut = ResourceDonut::create($ro, $renderer, $etags, $ttl);
-        $this->resourceStorage->saveDonut($ro->uri, $donut);
+        ($this->cacheControlHeaderSetter)($ro, $sMaxAge);
+        $donut = ResourceDonut::create($ro, $renderer, $etags, $sMaxAge);
+        $this->resourceStorage->saveDonut($ro->uri, $donut, $sMaxAge);
 
         $donut->render($ro, $renderer);
         $etags->setSurrogateKey($ro);
         ($this->headerSetter)($ro, 0, null);
-        $this->saveView($ro, $ttl);
+        ($this->cacheControlHeaderSetter)($ro, $donut->ttl);
+        $this->saveView($ro, $sMaxAge);
 
         return $ro;
     }
@@ -86,6 +93,7 @@ final class DonutRepository
         $donut->refresh($this->resource, $ro);
         ($this->headerSetter)($ro, $donut->ttl, null);
         $ro->headers['ETag'] .= 'r'; // mark refreshed by resource static
+        ($this->cacheControlHeaderSetter)($ro, $donut->ttl);
         $this->saveView($ro, $donut->ttl);
 
         return $ro;
