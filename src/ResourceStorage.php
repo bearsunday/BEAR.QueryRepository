@@ -222,11 +222,15 @@ final class ResourceStorage implements ResourceStorageInterface
         $this->roPool->delete($key);
     }
 
-    public function saveDonut(AbstractUri $uri, ResourceDonut $donut): void
+    public function saveDonut(AbstractUri $uri, ResourceDonut $donut, ?int $sMaxAge): void
     {
         $key = $this->getUriKey($uri, self::KEY_STATIC);
         $item = $this->roPool->getItem($key);
         $item->set($donut);
+        if (is_int($sMaxAge)) {
+            $item->expiresAfter($sMaxAge);
+        }
+
         assert($this->roPool->save($item));
     }
 
