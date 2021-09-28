@@ -50,16 +50,21 @@ final class ResourceStorage implements ResourceStorageInterface
     /** @var AdapterInterface */
     private $etagPool;
 
+    /** @var EtagDeleterInterface */
+    private $etagDeleter;
+
     /**
      * @Shared("pool")
      * @EtagPool("etagPool")
      */
     #[Shared('pool'), EtagPool('etagPool')]
     public function __construct(
+        EtagDeleterInterface $etagDeleter,
         ?CacheItemPoolInterface $pool = null,
         ?CacheItemPoolInterface $etagPool = null,
         ?CacheProvider $cache = null
     ) {
+        $this->etagDeleter = $etagDeleter;
         if ($pool === null && $cache instanceof CacheProvider) {
             $this->injectDoctrineCache($cache);
 
@@ -112,6 +117,7 @@ final class ResourceStorage implements ResourceStorageInterface
         if (is_string($cachedEtag)) {
             $this->roPool->invalidateTags([$cachedEtag]); // remove ro
             $this->etagPool->deleteItem($cachedEtag);
+            ($this->etagDeleter)($cachedEtag);
 
             return true;
         }

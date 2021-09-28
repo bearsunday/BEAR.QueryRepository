@@ -32,6 +32,7 @@ class ResourceRepositoryTest extends TestCase
         $this->repository = new Repository(
             new HeaderSetter(new EtagSetter(new CacheDependency())),
             new ResourceStorage(
+                new NullEtagDeleter(),
                 new FilesystemAdapter('', 0, $_ENV['TMP_DIR'])
             ),
             new AnnotationReader(),
@@ -104,6 +105,7 @@ class ResourceRepositoryTest extends TestCase
         $repository = new Repository(
             new HeaderSetter(new EtagSetter(new CacheDependency())),
             new ResourceStorage(
+                new NullEtagDeleter(),
                 null,
                 null,
                 $doctrineCache
