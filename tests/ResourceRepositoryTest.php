@@ -30,7 +30,7 @@ class ResourceRepositoryTest extends TestCase
     protected function setUp(): void
     {
         $this->repository = new Repository(
-            new EtagSetter(),
+            new EtagSetter(new CacheDependency()),
             new ResourceStorage(
                 new FilesystemAdapter('', 0, $_ENV['TMP_DIR'])
             ),
@@ -102,7 +102,7 @@ class ResourceRepositoryTest extends TestCase
         };
         // phpcs:enable
         $repository = new Repository(
-            new EtagSetter(),
+            new EtagSetter(new CacheDependency()),
             new ResourceStorage(
                 null,
                 null,

@@ -15,6 +15,7 @@ use Ray\PsrCacheModule\Annotation\Shared;
 use Symfony\Component\Cache\Adapter\AdapterInterface;
 use Symfony\Component\Cache\Adapter\DoctrineAdapter;
 
+use function array_merge;
 use function assert;
 use function explode;
 use function is_array;
@@ -29,11 +30,6 @@ final class ResourceStorage implements ResourceStorageInterface
      * ETag URI table prefix
      */
     private const KEY_ETAG_TABLE = 'etag-t';
-
-    /**
-     * ETag value cache prefix
-     */
-    private const KEY_ETAG_VAL = 'etag-v';
 
     /**
      * Resource object cache prefix
@@ -85,7 +81,7 @@ final class ResourceStorage implements ResourceStorageInterface
      */
     public function hasEtag(string $etag): bool
     {
-        return $this->etagPool->hasItem(self::KEY_ETAG_VAL . $etag);
+        return $this->etagPool->hasItem($etag);
     }
 
     /**
@@ -140,10 +136,23 @@ final class ResourceStorage implements ResourceStorageInterface
         $item = $this->roPool->getItem($key);
         $item->set($val);
         $item->expiresAfter($ttl);
-        $etag = self::KEY_ETAG_VAL . $ro->headers['ETag'];
-        $item->tag($etag);
+        $tags = $this->getTags($ro);
+        $item->tag($tags);
 
         return $this->roPool->save($item);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function getTags(ResourceObject $ro): array
+    {
+        $etags = [$ro->headers['ETag']];
+        if (isset($ro->headers[CacheDependency::CACHE_DEPENDENCY])) {
+            $etags = array_merge($etags, explode(' ', $ro->headers[CacheDependency::CACHE_DEPENDENCY]));
+        }
+
+        return $etags;
     }
 
     /**
@@ -160,8 +169,8 @@ final class ResourceStorage implements ResourceStorageInterface
         $item = $this->roPool->getItem($key);
         $item->set($val);
         $item->expiresAfter($ttl);
-        $etag = self::KEY_ETAG_VAL . $ro->headers['ETag'];
-        $item->tag([$etag]);
+        $tag = $this->getTags($ro);
+        $item->tag($tag);
 
         return $this->roPool->save($item);
     }
@@ -232,13 +241,12 @@ final class ResourceStorage implements ResourceStorageInterface
         // save ETag uri
         $uriKey = $this->getUriKey($uri, self::KEY_ETAG_TABLE);
         $uriItem = $this->roPool->getItem($uriKey);
-        $etagKey = self::KEY_ETAG_VAL . $etag;
-        $uriItem->set($etagKey);
+        $uriItem->set($etag);
         $uriItem->expiresAfter($lifeTime);
         // save ETag value
         $this->etagPool->save($uriItem);
 
-        $etagItem = $this->roPool->getItem($etagKey);
+        $etagItem = $this->roPool->getItem($etag);
         $etagItem->set($uriKey);
         $etagItem->expiresAfter($lifeTime);
         $this->etagPool->save($etagItem);

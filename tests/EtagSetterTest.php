@@ -23,7 +23,7 @@ class EtagSetterTest extends TestCase
 
     public function testStatusNotOk(): void
     {
-        $setEtag = new EtagSetter();
+        $setEtag = new EtagSetter(new CacheDependency());
         $ro = new Code();
         $ro->code = 500;
         $setEtag($ro);
@@ -34,7 +34,7 @@ class EtagSetterTest extends TestCase
     public function testInvoke(): void
     {
         $ro = $this->resource->get('app://self/user', ['id' => 1]);
-        $setEtag = new EtagSetter();
+        $setEtag = new EtagSetter(new CacheDependency());
         $time = 0;
         $setEtag($ro, $time);
         $expect = 'Thu, 01 Jan 1970 00:00:00 GMT';
