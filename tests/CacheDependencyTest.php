@@ -10,6 +10,8 @@ use BEAR\Resource\Uri;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 
+use function explode;
+
 class CacheDependencyTest extends TestCase
 {
     /** @var ResourceInterface */
@@ -18,12 +20,16 @@ class CacheDependencyTest extends TestCase
     /** @var QueryRepository */
     private $repository;
 
+    /** @var ResourceStorageInterface */
+    private $storage;
+
     protected function setUp(): void
     {
         $namespace = 'FakeVendor\HelloWorld';
         $injector = new Injector(new FakeEtagPoolModule(new QueryRepositoryModule(new ResourceModule($namespace))), $_ENV['TMP_DIR']);
         $this->repository = $injector->getInstance(QueryRepositoryInterface::class);
         $this->resource = $injector->getInstance(ResourceInterface::class);
+        $this->storage = $injector->getInstance(ResourceStorageInterface::class);
         parent::setUp();
     }
 
@@ -32,10 +38,12 @@ class CacheDependencyTest extends TestCase
         $this->resource->get('page://self/dep/level-one');
         $one1 = $this->repository->get(new Uri('page://self/dep/level-one'));
         $this->assertInstanceOf(ResourceState::class, $one1);
+        $etag1 = $one1->headers['ETag'];
         // destroy by child
         $this->repository->purge(new Uri('page://self/dep/level-two'));
         $one2 = $this->repository->get(new Uri('page://self/dep/level-one'));
         $this->assertNull($one2);
+        $this->assertFalse($this->storage->hasEtag($etag1));
     }
 
     public function testDestroyByGrandChild(): void
@@ -46,5 +54,12 @@ class CacheDependencyTest extends TestCase
         $this->repository->purge(new Uri('page://self/dep/level-three'));
         $one2 = $this->repository->get(new Uri('page://self/dep/level-one'));
         $this->assertNull($one2);
+        $etag1 = $one1->headers['ETag'];
+        $surrogateKeys = explode(' ', $one1->headers['Surrogate-Key']);
+        $etag2 = $surrogateKeys[0];
+        $etag3 = $surrogateKeys[1];
+        $this->assertFalse($this->storage->hasEtag($etag1));
+        $this->assertFalse($this->storage->hasEtag($etag2));
+        $this->assertFalse($this->storage->hasEtag($etag3));
     }
 }
