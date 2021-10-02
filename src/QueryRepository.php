@@ -67,7 +67,7 @@ final class QueryRepository implements QueryRepositoryInterface
         }
 
         if ($cacheable instanceof Cacheable && $cacheable->type === 'view') {
-            return $this->saveViewCache($ro, $ttl);
+            return $this->storage->saveView($ro, $ttl);
         }
 
         return $this->storage->saveValue($ro, $ttl);
@@ -136,12 +136,5 @@ final class QueryRepository implements QueryRepositoryInterface
         $expiryAt = (string) $ro->body[$cacheable->expiryAt];
 
         return strtotime($expiryAt) - time();
-    }
-
-    private function saveViewCache(ResourceObject $ro, int $ttl): bool
-    {
-        $this->storage->updateEtag($ro->uri, $ro->headers['ETag'], $ttl);
-
-        return $this->storage->saveView($ro, $ttl);
     }
 }
