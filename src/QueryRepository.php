@@ -32,8 +32,13 @@ final class QueryRepository implements QueryRepositoryInterface
 
     /** @var HeaderSetter */
     private $headerSetter;
+    /**
+     * @var RepositoryLogger
+     */
+    private $logger;
 
     public function __construct(
+        RepositoryLogger $logger,
         HeaderSetter $headerSetter,
         ResourceStorageInterface $storage,
         Reader $reader,
@@ -43,6 +48,7 @@ final class QueryRepository implements QueryRepositoryInterface
         $this->reader = $reader;
         $this->storage = $storage;
         $this->expiry = $expiry;
+        $this->logger = $logger;
     }
 
     /**
@@ -50,6 +56,7 @@ final class QueryRepository implements QueryRepositoryInterface
      */
     public function put(ResourceObject $ro)
     {
+        $this->logger->log('repository-put uri:%s', $ro->uri);
         $ro->toString();
         $cacheable = $this->getCacheableAnnotation($ro);
         $httpCache = $this->getHttpCacheAnnotation($ro);
@@ -87,6 +94,7 @@ final class QueryRepository implements QueryRepositoryInterface
      */
     public function purge(AbstractUri $uri)
     {
+        $this->logger->log('repository-purge uri:%s', $uri);
         return $this->storage->deleteEtag($uri);
     }
 

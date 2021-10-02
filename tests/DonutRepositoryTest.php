@@ -14,6 +14,7 @@ use Ray\Di\Injector;
 
 use function assert;
 use function dirname;
+use function error_log;
 
 class DonutRepositoryTest extends TestCase
 {
@@ -65,6 +66,9 @@ class DonutRepositoryTest extends TestCase
         $this->assertInstanceOf(ResourceState::class, $state);
     }
 
+    /**
+     * @depends testCreateDonut
+     */
     public function testCachePurge(): void
     {
         assert($this->queryRepository->purge($this->uri));
@@ -75,7 +79,7 @@ class DonutRepositoryTest extends TestCase
     /**
      * @depends testCreateDonut
      */
-    public function testCreatedByStatic(): void
+    public function testCreatedByDonut(): void
     {
         // create by static
         $donutRo = $this->resource->get('page://self/html/blog-posting');
@@ -109,8 +113,10 @@ class DonutRepositoryTest extends TestCase
     public function testRefresh(): void
     {
         $injector = $this->getInjector();
+        /** @var ResourceInterface $resource */
         $resource = $injector->getInstance(ResourceInterface::class);
-        $queryRepository = $injector->getInstance(QueryRepository::class);
+        /** @var QueryRepositoryInterface $queryRepository */
+        $queryRepository = $injector->getInstance(QueryRepositoryInterface::class);
 
         $resource->get('page://self/html/blog-posting');
         assert($queryRepository->purge(new Uri('page://self/html/blog-posting')));

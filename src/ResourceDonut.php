@@ -8,7 +8,7 @@ use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 
-use function assert;
+use function array_key_exists;
 use function preg_replace_callback;
 
 /**
@@ -42,8 +42,9 @@ final class ResourceDonut
             $uri = (string) $matches[1];
             $ro = $resource->get($uri);
             $ro->toString();
-            assert($ro->headers['ETag']);
-            $etags->addEtag($ro);
+            if (array_key_exists('ETag', $ro->headers)) {
+                $etags->addEtag($ro);
+            }
 
             return (string) $ro->view;
         }, $this->template);

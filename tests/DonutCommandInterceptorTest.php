@@ -32,7 +32,7 @@ class DonutCommandInterceptorTest extends TestCase
         parent::setUp();
     }
 
-    public function testCommandInterceptor(): void
+    public function testCommandInterceptorRefresh(): void
     {
         $ro = $this->resource->get('page://self/html/blog-posting?id=0');
         $this->assertArrayNotHasKey('Age', $ro->headers);
@@ -41,14 +41,20 @@ class DonutCommandInterceptorTest extends TestCase
         $this->logger->log('delete');
         $this->resource->delete('page://self/html/blog-posting?id=0');
         $this->logger->log('get');
-        $ro = $this->resource->get('page://self/html/blog-posting?id=0');
-        $this->assertArrayHasKey('Age', $ro->headers);
         $log = (string) $this->logger;
         $this->assertStringContainsString('delete
-delete-donut uri:page://self/html/blog-posting?id=0
+purge-query uri:page://self/html/blog-posting?id=0
 delete-etag uri:page://self/html/blog-posting?id=0 etag:3592113651
-get-donut-cache: uri:page://self/html/blog-posting?id=0
-get
-', $log);
+delete-donut uri:page://self/html/blog-posting?id=0
+no-donut-found uri:page://self/html/blog-posting?id=0
+create-donut: uri:page://self/html/blog-posting?id=0 s-maxage:0 donut-age:
+save-donut uri:page://self/html/blog-posting?id=0 s-maxage:
+delete-etag uri:page://self/html/blog-posting?id=0 etag:3592113651
+save-etag: uri:page://self/html/blog-posting?id=0 etag:3592113651, ttl:
+save-donut-view uri:page://self/html/blog-posting?id=0 ttl:
+save-etag: uri:page://self/html/blog-posting?id=0 etag:3592113651, ttl:
+get', $log);
+        $ro = $this->resource->get('page://self/html/blog-posting?id=0');
+        $this->assertArrayHasKey('Age', $ro->headers);
     }
 }

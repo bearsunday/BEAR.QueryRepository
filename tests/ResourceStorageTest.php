@@ -20,6 +20,7 @@ class ResourceStorageTest extends TestCase
     protected function setUp(): void
     {
         $this->storage = new ResourceStorage(
+            new RepositoryLogger(),
             new NullEtagDeleter(),
             new FilesystemAdapter('', 0, $_ENV['TMP_DIR'])
         );

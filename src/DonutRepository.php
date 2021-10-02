@@ -27,24 +27,30 @@ final class DonutRepository implements DonutRepositoryInterface
     /** @var CdnCacheControlHeaderSetterInterface */
     private $cacheControlHeaderSetter;
 
+    /** @var RepositoryLoggerInterface */
+    private $logger;
+
     public function __construct(
         QueryRepository $queryRepository,
         HeaderSetter $headerSetter,
         ResourceStorageInterface $resourceStorage,
         ResourceInterface $resource,
-        CdnCacheControlHeaderSetterInterface $cacheControlHeaderSetter
+        CdnCacheControlHeaderSetterInterface $cacheControlHeaderSetter,
+        RepositoryLoggerInterface $logger
     ) {
         $this->resourceStorage = $resourceStorage;
         $this->headerSetter = $headerSetter;
         $this->resource = $resource;
         $this->queryRepository = $queryRepository;
         $this->cacheControlHeaderSetter = $cacheControlHeaderSetter;
+        $this->logger = $logger;
     }
 
     public function get(ResourceObject $ro): ?ResourceObject
     {
         $maybeState = $this->queryRepository->get($ro->uri);
         if ($maybeState instanceof ResourceState) {
+            $this->logger->log('get-donut-cache: uri:%s', $ro->uri);
             $ro->headers = $maybeState->headers;
             $ro->view = $maybeState->view;
 
@@ -56,6 +62,7 @@ final class DonutRepository implements DonutRepositoryInterface
 
     public function createDonut(ResourceObject $ro, ?int $sMaxAge = null, ?int $donutAge = null): ResourceObject
     {
+        $this->logger->log('create-donut: uri:%s s-maxage:%d donut-age:%s', (string) $ro->uri, $sMaxAge, $donutAge);
         $renderer = new DonutRenderer();
         $etags = new Etags();
         ($this->cacheControlHeaderSetter)($ro, $sMaxAge);
@@ -79,6 +86,7 @@ final class DonutRepository implements DonutRepositoryInterface
 
     private function purge(AbstractUri $uri): void
     {
+        $this->logger->log('purge donut: uri:', $uri);
         $this->queryRepository->purge($uri);
         $this->resourceStorage->deleteDonut($uri);
     }
@@ -87,9 +95,12 @@ final class DonutRepository implements DonutRepositoryInterface
     {
         $donut = $this->resourceStorage->getDonut($ro->uri);
         if (! $donut instanceof ResourceDonut) {
+            $this->logger->log('no-donut uri:%s', (string) $ro->uri);
+
             return null;
         }
 
+        $this->logger->log('refresh-donut: uri:%s', $ro->uri);
         $donut->refresh($this->resource, $ro);
         ($this->headerSetter)($ro, $donut->ttl, null);
         $ro->headers['ETag'] .= 'r'; // mark refreshed by resource static

@@ -44,6 +44,9 @@ final class ResourceStorage implements ResourceStorageInterface
      */
     private const KEY_STATIC = 'st-';
 
+    /** @var RepositoryLoggerInterface */
+    private $logger;
+
     /** @var TagAwareAdapter */
     private $roPool;
 
@@ -59,11 +62,13 @@ final class ResourceStorage implements ResourceStorageInterface
      */
     #[Shared('pool'), EtagPool('etagPool')]
     public function __construct(
+        RepositoryLoggerInterface $logger,
         EtagDeleterInterface $etagDeleter,
         ?CacheItemPoolInterface $pool = null,
         ?CacheItemPoolInterface $etagPool = null,
         ?CacheProvider $cache = null
     ) {
+        $this->logger = $logger;
         $this->etagDeleter = $etagDeleter;
         if ($pool === null && $cache instanceof CacheProvider) {
             $this->injectDoctrineCache($cache);
@@ -115,6 +120,7 @@ final class ResourceStorage implements ResourceStorageInterface
     {
         $cachedEtag = $this->loadEtag($uri);
         if (is_string($cachedEtag)) {
+            $this->logger->log('delete-etag uri:%s', $uri);
             $this->roPool->invalidateTags([$cachedEtag]); // remove ro
             $this->etagPool->deleteItem($cachedEtag);
             ($this->etagDeleter)($cachedEtag);
@@ -145,6 +151,7 @@ final class ResourceStorage implements ResourceStorageInterface
      */
     public function saveValue(ResourceObject $ro, int $ttl)
     {
+        $this->logger->log('save-value uri:%s ttl:%s', $ro->uri, $ttl);
         /** @psalm-suppress MixedAssignment $body */
         $body = $this->evaluateBody($ro->body);
         $val = ResourceState::create($ro, $body, null);
@@ -178,6 +185,7 @@ final class ResourceStorage implements ResourceStorageInterface
      */
     public function saveView(ResourceObject $ro, int $ttl)
     {
+        $this->logger->log('save-view uri:%s ttl:%s', $ro->uri, $ttl);
         /** @psalm-suppress MixedAssignment $body */
         $body = $this->evaluateBody($ro->body);
         $val = ResourceState::create($ro, $body, $ro->view);
@@ -205,6 +213,7 @@ final class ResourceStorage implements ResourceStorageInterface
         $item->tag($tag);
 
         // save ETags
+        $this->logger->log('save-donut-view uri:%s ttl:%s', $ro->uri, $ttl);
         $this->saveStaticTag($ro, $item);
 
         // save view
@@ -224,12 +233,14 @@ final class ResourceStorage implements ResourceStorageInterface
 
     public function deleteDonut(AbstractUri $uri): void
     {
+        $this->logger->log('delete-donut uri:%s', $uri);
         $key = $this->getUriKey($uri, self::KEY_STATIC);
         $this->roPool->delete($key);
     }
 
     public function saveDonut(AbstractUri $uri, ResourceDonut $donut, ?int $sMaxAge): void
     {
+        $this->logger->log('save-donut uri:%s s-maxage:%s', $uri, $sMaxAge);
         $key = $this->getUriKey($uri, self::KEY_STATIC);
         $item = $this->roPool->getItem($key);
         $item->set($donut);
@@ -311,6 +322,7 @@ final class ResourceStorage implements ResourceStorageInterface
 
     private function saveEtag(AbstractUri $uri, string $etag, ?int $ttl): void
     {
+        $this->logger->log('save-etag: uri:%s etag:%s, ttl:%s', (string) $uri, $etag, $ttl);
         // save ETag uri
         $uriKey = $this->getUriKey($uri, self::KEY_ETAG_TABLE);
         $uriItem = $this->roPool->getItem($uriKey);

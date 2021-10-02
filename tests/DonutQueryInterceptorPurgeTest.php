@@ -14,6 +14,7 @@ use Ray\Di\Injector;
 
 use function assert;
 use function dirname;
+use function error_log;
 
 class DonutQueryInterceptorPurgeTest extends TestCase
 {
@@ -22,9 +23,6 @@ class DonutQueryInterceptorPurgeTest extends TestCase
 
     /** @var QueryRepository */
     private $repository;
-
-    /** @var Injector  */
-    private $injector;
 
     protected function setUp(): void
     {
@@ -37,7 +35,6 @@ class DonutQueryInterceptorPurgeTest extends TestCase
             $injector = new Injector($module, $_ENV['TMP_DIR']);
         }
 
-        $this->injector = $injector;
         $this->resource = $injector->getInstance(ResourceInterface::class);
         $this->repository = $injector->getInstance(QueryRepository::class);
 
@@ -46,13 +43,16 @@ class DonutQueryInterceptorPurgeTest extends TestCase
 
     public function testStatePurge(): void
     {
+        error_log("get('page://self/html/blog-posting')");
         $ro1 = $this->resource->get('page://self/html/blog-posting');
         $this->assertFalse($this->isCreatedByState($ro1));
         $this->assertTrue($this->isStateCached());
 
+        error_log("purge('page://self/html/blog-posting')");
         assert($this->repository->purge(new Uri('page://self/html/blog-posting')));
         $this->assertFalse($this->isStateCached());
 
+        error_log("get('page://self/html/blog-posting')");
         $ro2 = $this->resource->get('page://self/html/blog-posting');
         $this->assertTrue($this->isCreatedByState($ro2));
         $this->assertTrue($this->isStateCached(), 'Resource state should be cached');
