@@ -31,7 +31,7 @@ class HttpCacheTest extends TestCase
         $user = $resource->get('app://self/user', ['id' => 1]);
         assert($user instanceof ResourceObject);
         $storage = new ResourceStorage(new RepositoryLogger(), new NullEtagDeleter(), new ArrayAdapter());
-        $storage->updateEtag($user->uri, $user->headers['ETag'], 10);
+        $storage->updateEtag($user->uri, $user->headers['ETag'], '', 10);
         $httpCache = new CliHttpCache($storage);
         $server = ['HTTP_IF_NONE_MATCH' => $user->headers['ETag']];
         $this->assertTrue($httpCache->isNotModified($server));
@@ -68,7 +68,7 @@ class HttpCacheTest extends TestCase
         $user = $resource->get('app://self/user', ['id' => 1]);
         assert($user instanceof ResourceObject);
         $storage = new ResourceStorage(new RepositoryLogger(), new NullEtagDeleter(), new ArrayAdapter());
-        $storage->updateEtag($user->uri, $user->headers['ETag'], 10);
+        $storage->updateEtag($user->uri, $user->headers['ETag'], '', 10);
         $httpCache = new CliHttpCache($storage);
         $header = 'IF_NONE_MATCH=' . $user->headers['ETag'];
         $server = [

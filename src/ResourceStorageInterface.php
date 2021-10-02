@@ -19,7 +19,7 @@ interface ResourceStorageInterface
      *
      * @return void
      */
-    public function updateEtag(AbstractUri $uri, string $etag, ?int $ttl);
+    public function updateEtag(AbstractUri $uri, string $etag, string $surrogateKeys, ?int $ttl);
 
     /**
      * Delete Etag

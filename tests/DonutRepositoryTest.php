@@ -14,7 +14,6 @@ use Ray\Di\Injector;
 
 use function assert;
 use function dirname;
-use function error_log;
 
 class DonutRepositoryTest extends TestCase
 {

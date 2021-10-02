@@ -32,9 +32,8 @@ final class QueryRepository implements QueryRepositoryInterface
 
     /** @var HeaderSetter */
     private $headerSetter;
-    /**
-     * @var RepositoryLogger
-     */
+
+    /** @var RepositoryLogger */
     private $logger;
 
     public function __construct(
@@ -63,7 +62,9 @@ final class QueryRepository implements QueryRepositoryInterface
         $ttl = $this->getExpiryTime($ro, $cacheable);
         ($this->headerSetter)($ro, $ttl, $httpCache);
         if (isset($ro->headers['ETag'])) {
-            $this->storage->updateEtag($ro->uri, $ro->headers['ETag'], $ttl);
+            $etag = $ro->headers['ETag'];
+            $surrogateKeys = $ro->headers['Surrogate-Key'] ?? '';
+            $this->storage->updateEtag($ro->uri, $etag, $surrogateKeys, $ttl);
         }
 
         if ($cacheable instanceof Cacheable && $cacheable->type === 'view') {
@@ -95,6 +96,7 @@ final class QueryRepository implements QueryRepositoryInterface
     public function purge(AbstractUri $uri)
     {
         $this->logger->log('repository-purge uri:%s', $uri);
+
         return $this->storage->deleteEtag($uri);
     }
 
