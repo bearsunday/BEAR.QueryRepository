@@ -21,7 +21,7 @@ class ResourceStorageTest extends TestCase
     {
         $this->storage = new ResourceStorage(
             new RepositoryLogger(),
-            new NullEtagDeleter(),
+            new NullPurger(),
             new FilesystemAdapter('', 0, $_ENV['TMP_DIR'])
         );
         $this->ro = new Index();

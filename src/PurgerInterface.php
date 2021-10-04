@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-interface EtagDeleterInterface
+interface PurgerInterface
 {
     public function __invoke(string $etag): void;
 }

@@ -53,7 +53,7 @@ final class ResourceStorage implements ResourceStorageInterface
     /** @var TagAwareAdapter */
     private $etagPool;
 
-    /** @var EtagDeleterInterface */
+    /** @var PurgerInterface */
     private $etagDeleter;
 
     /**
@@ -63,7 +63,7 @@ final class ResourceStorage implements ResourceStorageInterface
     #[Shared('pool'), EtagPool('etagPool')]
     public function __construct(
         RepositoryLoggerInterface $logger,
-        EtagDeleterInterface $etagDeleter,
+        PurgerInterface $etagDeleter,
         ?CacheItemPoolInterface $pool = null,
         ?CacheItemPoolInterface $etagPool = null,
         ?CacheProvider $cache = null
