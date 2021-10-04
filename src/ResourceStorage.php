@@ -336,7 +336,7 @@ final class ResourceStorage implements ResourceStorageInterface
         // save ETag value
         $this->etagPool->save($uriItem);
 
-        $etagItem = $this->roPool->getItem($etag); // @todo 本当？
+        $etagItem = $this->roPool->getItem($etag);
         $etagItem->set($uriKey);
         $tags = $surrogateKeys ? explode(' ', $surrogateKeys) : null;
         if (is_array($tags)) {
