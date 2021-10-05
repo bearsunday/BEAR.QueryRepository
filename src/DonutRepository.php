@@ -78,12 +78,6 @@ final class DonutRepository implements DonutRepositoryInterface
         return $ro;
     }
 
-    public function refresh(AbstractUri $uri): void
-    {
-        $this->purge($uri);
-        $this->resource->get((string) $uri);
-    }
-
     public function purge(AbstractUri $uri): void
     {
         $this->queryRepository->purge($uri);
