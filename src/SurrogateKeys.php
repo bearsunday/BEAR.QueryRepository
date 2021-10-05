@@ -27,7 +27,7 @@ final class SurrogateKeys
 
         $this->surrogateKeys[] = $ro->headers['ETag'];
         if (array_key_exists(CacheDependency::SURROGATE_KEY, $ro->headers)) {
-            $this->surrogateKeys = array_merge($this->surrogateKeys, explode(' ', $ro->headers[CacheDependency::SURROGATE_KEY])); // @phpstan-ignore-line
+            $this->surrogateKeys = array_merge($this->surrogateKeys, explode(' ', $ro->headers[CacheDependency::SURROGATE_KEY]));
         }
     }
 
