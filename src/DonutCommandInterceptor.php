@@ -23,9 +23,13 @@ class DonutCommandInterceptor implements MethodInterceptor
     /** @var DonutRepositoryInterface */
     private $repository;
 
-    public function __construct(DonutRepositoryInterface $repository)
+    /** @var MatchQueryInterface */
+    private $matchQuery;
+
+    public function __construct(DonutRepositoryInterface $repository, MatchQueryInterface $matchQuery)
     {
         $this->repository = $repository;
+        $this->matchQuery = $matchQuery;
     }
 
     public function invoke(MethodInvocation $invocation): ResourceObject
@@ -39,7 +43,7 @@ class DonutCommandInterceptor implements MethodInterceptor
 
     public function refreshDonutAndState(ResourceObject $ro): void
     {
-        $getQuery = $this->getQuery($ro);
+        $getQuery =($this->matchQuery)($ro);
         $delUri = clone $ro->uri;
         $delUri->query = $getQuery;
 
@@ -59,25 +63,5 @@ class DonutCommandInterceptor implements MethodInterceptor
         if (is_callable($get)) {
             call_user_func_array($get, array_values($getQuery));
         }
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function getQuery(ResourceObject $ro): array
-    {
-        $refParameters = (new ReflectionMethod(get_class($ro), 'onGet'))->getParameters();
-        $getQuery = [];
-        $query = $ro->uri->query;
-        foreach ($refParameters as $parameter) {
-            if (! isset($query[$parameter->name])) {
-                throw new UnmatchedQuery(sprintf('%s %s', $ro->uri->method, (string) $ro->uri));
-            }
-
-            /** @psalm-suppress MixedAssignment */
-            $getQuery[$parameter->name] = $query[$parameter->name];
-        }
-
-        return $getQuery;
     }
 }

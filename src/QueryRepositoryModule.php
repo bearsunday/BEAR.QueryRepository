@@ -36,5 +36,6 @@ class QueryRepositoryModule extends AbstractModule
         $this->bind(DonutRepositoryInterface::class)->to(DonutRepository::class)->in(Scope::SINGLETON);
         $this->bind(PurgerInterface::class)->to(NullPurger::class);
         $this->bind(RepositoryLoggerInterface::class)->to(RepositoryLogger::class)->in(Scope::SINGLETON);
+        $this->bind(MatchQueryInterface::class)->to(MatchQuery::class)->in(Scope::SINGLETON);
     }
 }
