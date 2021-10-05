@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use function error_log;
 use function implode;
 use function sprintf;
 
@@ -24,8 +23,7 @@ final class RepositoryLogger implements RepositoryLoggerInterface
         $msg = sprintf($template, ...$values);
 
         $this->logs[] = $msg;
-        /** @noinspection ForgottenDebugOutputInspection */
-        error_log($msg);
+        // error_log($msg);
     }
 
     public function __toString(): string
