@@ -19,6 +19,9 @@ class BlogPosting extends ResourceObject
         'article' => 1
     ];
 
+    /**
+     * @Embed(rel="comment", src="page://self/html/comment")
+     */
     #[Embed(rel: "comment", src: "page://self/html/comment")]
     public function onGet(int $id = 0)
     {

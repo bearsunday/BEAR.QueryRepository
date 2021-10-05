@@ -15,27 +15,25 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: 8.0
-          tools: phpstan, cs2pr
+          tools: cs2pr
           coverage: none
 
       - name: Get composer cache directory
         id: composer-cache
         run: echo "::set-output name=dir::$(composer config cache-files-dir)"
 
-      - name: Cache composer dependencies
+      - name: Cache dependencies
         uses: actions/cache@v2
         with:
-          path: '${{ steps.composer-cache.outputs.dir }}'
-          key: '${{ runner.os }}-composer-${{ hashFiles(''**/composer.json'') }}'
-          restore-keys: '${{ runner.os }}-composer-'
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
 
       - name: Install dependencies
         run: composer install --no-interaction --no-progress --prefer-dist
 
       - name: Run PHPStan
-        run: >-
-          phpstan analyse -c phpstan.neon --no-progress --no-interaction
-          --error-format=checkstyle | cs2pr
+        run: ./vendor/bin/phpstan analyse -c phpstan.neon --no-progress --no-interaction --error-format=checkstyle | cs2pr
 
   static-analysis-psalm:
     name: Static Analysis with Psalm
@@ -81,7 +79,7 @@ jobs:
       - name: Install dependencies
         run: |
           composer install --no-interaction --no-progress --prefer-dist
-          composer bin tools require --dev maglnet/composer-require-checker ^3.0
+          composer require --dev maglnet/composer-require-checker ^3.0
 
       - name: Run composer-require-checker
         run: ./vendor/bin/composer-require-checker check --config-file=./php-require-checker.config.json ./composer.json

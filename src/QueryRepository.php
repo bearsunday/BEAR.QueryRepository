@@ -105,9 +105,6 @@ final class QueryRepository implements QueryRepositoryInterface
         return $this->reader->getClassAnnotation(new ReflectionClass($ro), HttpCache::class);
     }
 
-    /**
-     * @return ?Cacheable
-     */
     private function getCacheableAnnotation(ResourceObject $ro): ?Cacheable
     {
         return $this->reader->getClassAnnotation(new ReflectionClass($ro), Cacheable::class);

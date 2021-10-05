@@ -166,9 +166,6 @@ class QueryRepositoryTest extends TestCase
         $this->assertTrue($this->httpCache->isNotModified($server2), 'id:2 is not modified');
     }
 
-    /**
-     * @covers \BEAR\QueryRepository\QueryRepository::saveViewCache
-     */
     public function testRenderView(): void
     {
         $ro = new NullView();

@@ -9,9 +9,12 @@ use BEAR\Resource\ResourceObject;
 /**
  * @Cacheable
  */
-#[Cacheable(type: 'view')]
+#[Cacheable]
 class Comment extends ResourceObject
 {
+    /**
+     * @Embed(rel="like", src="page://self/html/like")
+     */
     #[Embed(rel: "like", src: "page://self/html/like")]
     public function onGet()
     {

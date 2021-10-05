@@ -43,16 +43,13 @@ class DonutQueryInterceptorPurgeTest extends TestCase
 
     public function testStatePurge(): void
     {
-        error_log("get('page://self/html/blog-posting')");
         $ro1 = $this->resource->get('page://self/html/blog-posting');
         $this->assertFalse($this->isCreatedByState($ro1));
         $this->assertTrue($this->isStateCached());
 
-        error_log("purge('page://self/html/blog-posting')");
         assert($this->repository->purge(new Uri('page://self/html/blog-posting')));
         $this->assertFalse($this->isStateCached());
 
-        error_log("get('page://self/html/blog-posting')");
         $ro2 = $this->resource->get('page://self/html/blog-posting');
         $this->assertTrue($this->isCreatedByState($ro2));
         $this->assertTrue($this->isStateCached(), 'Resource state should be cached');
