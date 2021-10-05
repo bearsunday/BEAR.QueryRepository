@@ -20,12 +20,12 @@ use function sprintf;
 
 class DonutCommandInterceptor implements MethodInterceptor
 {
-    /** @var ResourceStorageInterface */
-    private $resourceStorage;
+    /** @var DonutRepositoryInterface */
+    private $repository;
 
-    public function __construct(ResourceStorageInterface $resourceStorage)
+    public function __construct(DonutRepositoryInterface $repository)
     {
-        $this->resourceStorage = $resourceStorage;
+        $this->repository = $repository;
     }
 
     public function invoke(MethodInvocation $invocation): ResourceObject
@@ -44,15 +44,9 @@ class DonutCommandInterceptor implements MethodInterceptor
         $delUri->query = $getQuery;
 
         // purge donut, resource state cache and etag
-        $this->purge($delUri);
+        $this->repository->purge($delUri);
         // update donut and create resource state
         $this->refresh($getQuery, $ro);
-    }
-
-    private function purge(AbstractUri $delUri): void
-    {
-        $this->resourceStorage->deleteDonut($delUri);
-        $this->resourceStorage->deleteEtag($delUri);
     }
 
     /**

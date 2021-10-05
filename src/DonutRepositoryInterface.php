@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceObject;
 
 interface DonutRepositoryInterface
@@ -23,4 +24,9 @@ interface DonutRepositoryInterface
      * @see https://www.computerworld.com/article/2833493/what-exactly-is-donut-caching-.html
      */
     public function createDonut(ResourceObject $ro, ?int $sMaxAge = null, ?int $donutAge = null): ResourceObject;
+
+    /**
+     * Purge donut caching
+     */
+    public function purge(AbstractUri $uri): void;
 }

@@ -84,9 +84,8 @@ final class DonutRepository implements DonutRepositoryInterface
         $this->resource->get((string) $uri);
     }
 
-    private function purge(AbstractUri $uri): void
+    public function purge(AbstractUri $uri): void
     {
-        $this->logger->log('purge donut: uri:', $uri);
         $this->queryRepository->purge($uri);
         $this->resourceStorage->deleteDonut($uri);
     }
@@ -95,7 +94,7 @@ final class DonutRepository implements DonutRepositoryInterface
     {
         $donut = $this->resourceStorage->getDonut($ro->uri);
         if (! $donut instanceof ResourceDonut) {
-            $this->logger->log('no-donut uri:%s', (string) $ro->uri);
+            $this->logger->log('no-donut-found uri:%s', (string) $ro->uri);
 
             return null;
         }

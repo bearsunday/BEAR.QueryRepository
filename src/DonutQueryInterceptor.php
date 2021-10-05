@@ -38,11 +38,11 @@ class DonutQueryInterceptor implements MethodInterceptor
             if ($maybeRo instanceof ResourceObject) {
                 return $maybeRo;
             }
-        } catch (Throwable $e) {
+        } catch (Throwable $e) { // @codeCoverageIgnoreStart
             // when cache server is down
             $this->triggerWarning($e);
 
-            return $invocation->proceed(); // @codeCoverageIgnore
+            return $invocation->proceed(); // @codeCoverageIgnoreStartEnd
         }
 
         /** @var ResourceObject $ro */
