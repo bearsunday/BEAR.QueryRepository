@@ -16,10 +16,10 @@ final class DonutRequest
     /** @var DonutRenderer */
     private $donutStorage;
 
-    /** @var Etags */
+    /** @var SurrogateKeys */
     private $etags;
 
-    public function __construct(AbstractRequest $request, DonutRenderer $donutStorage, Etags $etags)
+    public function __construct(AbstractRequest $request, DonutRenderer $donutStorage, SurrogateKeys $etags)
     {
         $this->request = $request;
         $this->donutStorage = $donutStorage;
@@ -30,7 +30,7 @@ final class DonutRequest
     {
         $view = (string) ($this->request)();
         $uri =  (string) $this->request->resourceObject->uri;
-        $this->etags->addEtag($this->request->resourceObject);
+        $this->etags->addTag($this->request->resourceObject);
         $this->donutStorage->setView($uri, $view);
 
         return sprintf(ResourceDonut::FOMRAT, $uri);

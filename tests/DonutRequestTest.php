@@ -36,7 +36,7 @@ class DonutRequestTest extends TestCase
     public function testToString(): DonutRenderer
     {
         $storage = new DonutRenderer();
-        $request = new DonutRequest($this->request, $storage, new Etags());
+        $request = new DonutRequest($this->request, $storage, new SurrogateKeys());
         $view = (string) $request;
         $this->assertSame('[le:page://self/html/comment]', $view);
 

@@ -37,19 +37,19 @@ final class ResourceDonut
 
     public function refresh(ResourceInterface $resource, ResourceObject $ro): ResourceObject
     {
-        $etags = new Etags();
+        $etags = new SurrogateKeys();
         $refreshView =  preg_replace_callback(self::URI_REGEX, static function (array $matches) use ($resource, $etags): string {
             $uri = (string) $matches[1];
             $ro = $resource->get($uri);
             $ro->toString();
             if (array_key_exists('ETag', $ro->headers)) {
-                $etags->addEtag($ro);
+                $etags->addTag($ro);
             }
 
             return (string) $ro->view;
         }, $this->template);
 
-        $etags->setSurrogateKey($ro);
+        $etags->setSurrogateHeader($ro);
         $ro->view = $refreshView;
 
         return $ro;
@@ -63,7 +63,7 @@ final class ResourceDonut
         return $ro;
     }
 
-    public static function create(ResourceObject $ro, DonutRenderer $storage, Etags $etags, ?int $ttl): self
+    public static function create(ResourceObject $ro, DonutRenderer $storage, SurrogateKeys $etags, ?int $ttl): self
     {
         /** @var mixed $maybeRequest */
         foreach ($ro->body as &$maybeRequest) {
