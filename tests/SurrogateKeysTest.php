@@ -13,16 +13,18 @@ class SurrogateKeysTest extends TestCase
     {
         $etags = new SurrogateKeys();
         $etags->addTag(new class extends ResourceObject{
+            /** @var array<string, string> */
             public $headers = [
                 'ETag' => '1',
                 CacheDependency::SURROGATE_KEY => 'a b',
             ];
         });
         $etags->addTag(new class extends ResourceObject{
-            public $headers = [
-                'ETag' => '2',
-                CacheDependency::SURROGATE_KEY => 'c',
-            ];
+            /** @var array<string, string> */
+                public $headers = [
+                    'ETag' => '2',
+                    CacheDependency::SURROGATE_KEY => 'c',
+                ];
         });
         $ro = new class extends ResourceObject{
         };
