@@ -22,7 +22,7 @@ class HttpCacheInterceptor implements MethodInterceptor
         $ro = $invocation->proceed();
         assert($ro instanceof ResourceObject);
         if ($ro->code === 200 && $cacheControl instanceof AbstractCacheControl) {
-            $ro->headers['Cache-Control'] = (string) $cacheControl;
+            $ro->headers[Header::CACHE_CONTROL] = (string) $cacheControl;
         }
 
         return $ro;

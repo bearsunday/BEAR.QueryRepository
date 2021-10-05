@@ -40,12 +40,12 @@ class BehaviorTest extends TestCase
     {
         $user = $this->resource->get('app://self/user', ['id' => 1]);
         assert($user instanceof ResourceObject);
-        $etag = $user->headers['ETag'];
+        $etag = $user->headers[Header::ETAG];
         // reload (purge repository entry and re-generate by onGet)
         $this->resource->patch('app://self/user', ['id' => 1, 'name' => 'kuma']);
         // load from repository, not invoke onGet method
         $user = $this->resource->get('app://self/user', ['id' => 1]);
-        $newEtag = $user->headers['ETag'];
+        $newEtag = $user->headers[Header::ETAG];
         $this->assertFalse($etag === $newEtag);
 
         // patch request with invalid query
@@ -59,7 +59,7 @@ class BehaviorTest extends TestCase
     {
         $user = $this->resource->get('app://self/user', ['id' => 1]);
         assert($user instanceof ResourceObject);
-        $etag = $user->headers['ETag'];
+        $etag = $user->headers[Header::ETAG];
         $server = [
             'REQUEST_METHOD' => 'GET',
             'HTTP_IF_NONE_MATCH' => $etag,
@@ -68,7 +68,7 @@ class BehaviorTest extends TestCase
         $this->assertTrue($isNotModified);
         $this->resource->delete('app://self/user', ['id' => 1]);
         $user = $this->resource->get('app://self/user', ['id' => 1]);
-        $newEtag = $user->headers['ETag'];
+        $newEtag = $user->headers[Header::ETAG];
         $this->assertFalse($etag === $newEtag);
         $isNotModified = $this->httpCache->isNotModified($server);
         $this->assertFalse($isNotModified);

@@ -61,9 +61,9 @@ final class QueryRepository implements QueryRepositoryInterface
         $httpCache = $this->getHttpCacheAnnotation($ro);
         $ttl = $this->getExpiryTime($ro, $cacheable);
         ($this->headerSetter)($ro, $ttl, $httpCache);
-        if (isset($ro->headers['ETag'])) {
-            $etag = $ro->headers['ETag'];
-            $surrogateKeys = $ro->headers['Surrogate-Key'] ?? '';
+        if (isset($ro->headers[Header::ETAG])) {
+            $etag = $ro->headers[Header::ETAG];
+            $surrogateKeys = $ro->headers[Header::PURGE_KEYS] ?? '';
             $this->storage->updateEtag($ro->uri, $etag, $surrogateKeys, $ttl);
         }
 
@@ -85,7 +85,7 @@ final class QueryRepository implements QueryRepositoryInterface
             return null;
         }
 
-        $state->headers['Age'] = (string) (time() - strtotime($state->headers['Last-Modified']));
+        $state->headers[Header::AGE] = (string) (time() - strtotime($state->headers[Header::LAST_MODIFIED]));
 
         return $state;
     }

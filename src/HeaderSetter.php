@@ -36,21 +36,21 @@ final class HeaderSetter
     private function setCacheControlMaxAge(ResourceObject $ro, int $age)
     {
         $setMaxAge = sprintf('max-age=%d', $age);
-        $hasNoCacheControleHeader = ! isset($ro->headers['Cache-Control']);
+        $hasNoCacheControleHeader = ! isset($ro->headers[Header::CACHE_CONTROL]);
         $headers = $ro->headers;
         if ($hasNoCacheControleHeader) {
-            $ro->headers['Cache-Control'] = $setMaxAge;
+            $ro->headers[Header::CACHE_CONTROL] = $setMaxAge;
 
             return;
         }
 
-        $isMaxAgeAlreadyDefined = strpos($headers['Cache-Control'], 'max-age') !== false;
+        $isMaxAgeAlreadyDefined = strpos($headers[Header::CACHE_CONTROL], 'max-age') !== false;
         if ($isMaxAgeAlreadyDefined) {
             return;
         }
 
-        if (isset($ro->headers['Cache-Control'])) {
-            $ro->headers['Cache-Control'] .= ', ' . $setMaxAge;
+        if (isset($ro->headers[Header::CACHE_CONTROL])) {
+            $ro->headers[Header::CACHE_CONTROL] .= ', ' . $setMaxAge;
         }
     }
 }

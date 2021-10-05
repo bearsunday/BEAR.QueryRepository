@@ -19,10 +19,10 @@ final class MobileEtagSetter implements EtagSetterInterface
     {
         unset($httpCache);
         // etag]
-        $ro->headers['ETag'] = (string) crc32($this->getDevice() . serialize($ro->view) . serialize($ro->body));
+        $ro->headers[Header::ETAG] = (string) crc32($this->getDevice() . serialize($ro->view) . serialize($ro->body));
         // time
         $time = $time ?? time();
-        $ro->headers['Last-Modified'] = gmdate('D, d M Y H:i:s', $time) . ' GMT';
+        $ro->headers[Header::LAST_MODIFIED] = gmdate('D, d M Y H:i:s', $time) . ' GMT';
     }
 
     /**

@@ -11,18 +11,16 @@ use function sprintf;
 
 class CacheDependency implements CacheDependencyInterface
 {
-    public const SURROGATE_KEY = 'Surrogate-Key';
-
     public function depends(ResourceObject $from, ResourceObject $to): void
     {
-        assert(! isset($from->headers[self::SURROGATE_KEY]));
+        assert(! isset($from->headers[Header::PURGE_KEYS]));
 
-        $cacheDepedencyTags = $to->headers['ETag'];
-        if (isset($to->headers[self::SURROGATE_KEY])) {
-            $cacheDepedencyTags .= sprintf(' %s', $to->headers[self::SURROGATE_KEY]);
-            unset($to->headers[self::SURROGATE_KEY]);
+        $cacheDepedencyTags = $to->headers[Header::ETAG];
+        if (isset($to->headers[Header::PURGE_KEYS])) {
+            $cacheDepedencyTags .= sprintf(' %s', $to->headers[Header::PURGE_KEYS]);
+            unset($to->headers[Header::PURGE_KEYS]);
         }
 
-        $from->headers[self::SURROGATE_KEY] = $cacheDepedencyTags;
+        $from->headers[Header::PURGE_KEYS] = $cacheDepedencyTags;
     }
 }

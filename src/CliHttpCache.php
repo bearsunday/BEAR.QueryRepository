@@ -80,8 +80,8 @@ final class CliHttpCache implements HttpCacheInterface
             $server = $this->getServer((string) $server['argv'][3]);
         }
 
-        $hasValidEtag = isset($server['HTTP_IF_NONE_MATCH']) && is_string($server['HTTP_IF_NONE_MATCH']);
+        $hasValidEtag = isset($server[Header::HTTP_IF_NONE_MATCH]) && is_string($server[Header::HTTP_IF_NONE_MATCH]);
 
-        return $hasValidEtag ? $server['HTTP_IF_NONE_MATCH'] : null;
+        return $hasValidEtag ? $server[Header::HTTP_IF_NONE_MATCH] : null;
     }
 }

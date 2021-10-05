@@ -25,14 +25,14 @@ class CdnCacheControlHeaderTest extends TestCase
         $resource = $injector->getInstance(ResourceInterface::class);
         $ro = $resource->get('page://self/html/blog-posting');
         assert($ro instanceof ResourceObject);
-        $this->assertArrayHasKey('CDN-Cache-Control', $ro->headers);
-        $this->assertSame($ro->headers['CDN-Cache-Control'], 'max-age=31536000');
+        $this->assertArrayHasKey(Header::CDN_CACHE_CONTROL, $ro->headers);
+        $this->assertSame($ro->headers[Header::CDN_CACHE_CONTROL], 'max-age=31536000');
         $repository = $injector->getInstance(QueryRepositoryInterface::class);
         assert($repository->purge(new Uri('page://self/html/comment')));
 
         $donutRo = $resource->get('page://self/html/blog-posting');
-        $this->assertSame('r', $donutRo->headers['ETag'][-1]);
-        $this->assertArrayHasKey('CDN-Cache-Control', $donutRo->headers, 'Even if it is made from donut, it should have a CDN header.');
+        $this->assertSame('r', $donutRo->headers[Header::ETAG][-1]);
+        $this->assertArrayHasKey(Header::CDN_CACHE_CONTROL, $donutRo->headers, 'Even if it is made from donut, it should have a CDN header.');
     }
 
     public function testFastlyModule(): void
@@ -56,7 +56,7 @@ class CdnCacheControlHeaderTest extends TestCase
         $ro = $resource->get('page://self/html/blog-posting');
         assert($ro instanceof ResourceObject);
         $this->assertArrayNotHasKey('Surrogate-Control', $ro->headers);
-        $this->assertArrayNotHasKey('CDN-Cache-Control', $ro->headers);
+        $this->assertArrayNotHasKey('Header::CDN_CACHE_CONTROL_HEADER', $ro->headers);
     }
 
     private function getModule(): AbstractModule

@@ -96,7 +96,7 @@ final class DonutRepository implements DonutRepositoryInterface
         $this->logger->log('refresh-donut: uri:%s', $ro->uri);
         $donut->refresh($this->resource, $ro);
         ($this->headerSetter)($ro, $donut->ttl, null);
-        $ro->headers['ETag'] .= 'r'; // mark refreshed by resource static
+        $ro->headers[Header::ETAG] .= 'r'; // mark refreshed by resource static
         ($this->cacheControlHeaderSetter)($ro, $donut->ttl);
         $this->saveView($ro, $donut->ttl);
 
@@ -105,9 +105,9 @@ final class DonutRepository implements DonutRepositoryInterface
 
     private function saveView(ResourceObject $ro, ?int $ttl): bool
     {
-        assert(isset($ro->headers['ETag']));
-        $surrogateKeys = $ro->headers['Surrogate-Key'] ?? '';
-        $this->resourceStorage->updateEtag($ro->uri, $ro->headers['ETag'], $surrogateKeys, $ttl);
+        assert(isset($ro->headers[Header::ETAG]));
+        $surrogateKeys = $ro->headers[Header::PURGE_KEYS] ?? '';
+        $this->resourceStorage->updateEtag($ro->uri, $ro->headers[Header::ETAG], $surrogateKeys, $ttl);
 
         return $this->resourceStorage->saveDonutView($ro, $ttl);
     }

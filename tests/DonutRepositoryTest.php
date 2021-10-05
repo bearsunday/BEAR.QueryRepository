@@ -83,7 +83,7 @@ class DonutRepositoryTest extends TestCase
         // create by static
         $donutRo = $this->resource->get('page://self/html/blog-posting');
         assert($donutRo instanceof ResourceObject);
-        $this->assertSame('r', $donutRo->headers['ETag'][-1]);
+        $this->assertSame('r', $donutRo->headers[Header::ETAG][-1]);
     }
 
     /**
@@ -120,6 +120,6 @@ class DonutRepositoryTest extends TestCase
         $resource->get('page://self/html/blog-posting');
         assert($queryRepository->purge(new Uri('page://self/html/blog-posting')));
         $donutRo = $resource->get('page://self/html/blog-posting');
-        $this->assertSame('r', $donutRo->headers['ETag'][-1]);
+        $this->assertSame('r', $donutRo->headers[Header::ETAG][-1]);
     }
 }

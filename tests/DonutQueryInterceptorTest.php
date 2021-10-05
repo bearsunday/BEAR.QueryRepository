@@ -45,7 +45,7 @@ class DonutQueryInterceptorTest extends TestCase
         $view = (string) $blogPosting;
         $this->assertSame('blog-posting<comment>comment01</comment>', $view);
 
-        return $blogPosting->headers[CacheDependency::SURROGATE_KEY];
+        return $blogPosting->headers[Header::PURGE_KEYS];
     }
 
     /**
@@ -55,8 +55,8 @@ class DonutQueryInterceptorTest extends TestCase
     {
         // test surrogate key
         $comment = $this->resource->get('page://self/html/comment');
-        assert($comment instanceof Comment && isset($comment->headers['ETag']));
-        $commentEtag = $comment->headers['ETag'];
+        assert($comment instanceof Comment && isset($comment->headers[Header::ETAG]));
+        $commentEtag = $comment->headers[Header::ETAG];
         $this->assertSame($surrogateKey, $commentEtag);
     }
 
@@ -69,12 +69,12 @@ class DonutQueryInterceptorTest extends TestCase
         $blogPosting = $this->resource->get('page://self/html/blog-posting');
         assert($blogPosting instanceof BlogPosting);
         $this->assertArrayHasKey('Age', $blogPosting->headers);
-        $this->assertArrayHasKey('CDN-Cache-Control', $blogPosting->headers);
+        $this->assertArrayHasKey(Header::CDN_CACHE_CONTROL, $blogPosting->headers);
     }
 
     public function testCreatDonutInResourceObject(): void
     {
         $blogPostingCacheControl = $this->resource->get('page://self/html/blog-posting-cache-control');
-        $this->assertArrayHasKey(CdnCacheControlHeaderSetter::CDN_CACHE_CONTROL_HEADER, $blogPostingCacheControl->headers);
+        $this->assertArrayHasKey(Header::CDN_CACHE_CONTROL, $blogPostingCacheControl->headers);
     }
 }

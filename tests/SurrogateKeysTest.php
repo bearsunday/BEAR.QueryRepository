@@ -15,21 +15,21 @@ class SurrogateKeysTest extends TestCase
         $etags->addTag(new class extends ResourceObject{
             /** @var array<string, string> */
             public $headers = [
-                'ETag' => '1',
-                CacheDependency::SURROGATE_KEY => 'a b',
+                Header::ETAG => '1',
+                Header::PURGE_KEYS => 'a b',
             ];
         });
         $etags->addTag(new class extends ResourceObject{
             /** @var array<string, string> */
                 public $headers = [
-                    'ETag' => '2',
-                    CacheDependency::SURROGATE_KEY => 'c',
+                    Header::ETAG => '2',
+                    Header::PURGE_KEYS => 'c',
                 ];
         });
         $ro = new class extends ResourceObject{
         };
         $etags->setSurrogateHeader($ro);
-        $this->assertSame('1 a b 2 c', $ro->headers[CacheDependency::SURROGATE_KEY]);
+        $this->assertSame('1 a b 2 c', $ro->headers[Header::PURGE_KEYS]);
     }
 
     public function testNoEtag(): void
@@ -40,6 +40,6 @@ class SurrogateKeysTest extends TestCase
         $ro = new class extends ResourceObject{
         };
         $etags->setSurrogateHeader($ro);
-        $this->assertArrayNotHasKey(CacheDependency::SURROGATE_KEY, $ro->headers);
+        $this->assertArrayNotHasKey(Header::PURGE_KEYS, $ro->headers);
     }
 }

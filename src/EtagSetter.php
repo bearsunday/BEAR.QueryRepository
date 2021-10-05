@@ -37,8 +37,8 @@ final class EtagSetter implements EtagSetterInterface
         }
 
         $etag =  $this->getEtag($ro, $httpCache);
-        $ro->headers['ETag'] = $etag;
-        $ro->headers['Last-Modified'] = gmdate('D, d M Y H:i:s', $time) . ' GMT'; // @todo 定数に
+        $ro->headers[Header::ETAG] = $etag;
+        $ro->headers[Header::LAST_MODIFIED] = gmdate('D, d M Y H:i:s', $time) . ' GMT'; // @todo 定数に
         $this->setCacheDependency($ro);
     }
 
@@ -78,7 +78,7 @@ final class EtagSetter implements EtagSetterInterface
     {
         /** @var mixed $body */
         foreach ((array) $ro->body as $body) {
-            if ($body instanceof Request && isset($body->resourceObject->headers['ETag'])) {
+            if ($body instanceof Request && isset($body->resourceObject->headers[Header::ETAG])) {
                 $this->cacheDeperency->depends($ro, $body->resourceObject);
             }
         }

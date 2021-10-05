@@ -27,8 +27,8 @@ class EtagSetterTest extends TestCase
         $ro = new Code();
         $ro->code = 500;
         $setEtag($ro);
-        // $ro->headers['ETag']
-        $this->assertArrayNotHasKey('Etag', $ro->headers);
+        // $ro->headers[Header::ETAG]
+        $this->assertArrayNotHasKey(Header::ETAG, $ro->headers);
     }
 
     public function testInvoke(): void
@@ -39,6 +39,6 @@ class EtagSetterTest extends TestCase
         $setEtag($ro, $time);
         $expect = 'Thu, 01 Jan 1970 00:00:00 GMT';
         $this->assertSame($expect, $ro->headers['Last-Modified']);
-        $this->assertIsString($ro->headers['ETag']);
+        $this->assertIsString($ro->headers[Header::ETAG]);
     }
 }

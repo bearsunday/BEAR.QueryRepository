@@ -171,9 +171,9 @@ final class ResourceStorage implements ResourceStorageInterface
      */
     private function getTags(ResourceObject $ro): array
     {
-        $etags = [$ro->headers['ETag']];
-        if (isset($ro->headers[CacheDependency::SURROGATE_KEY])) {
-            $etags = array_merge($etags, explode(' ', $ro->headers[CacheDependency::SURROGATE_KEY]));
+        $etags = [$ro->headers[Header::ETAG]];
+        if (isset($ro->headers[Header::PURGE_KEYS])) {
+            $etags = array_merge($etags, explode(' ', $ro->headers[Header::PURGE_KEYS]));
         }
 
         return $etags;
@@ -257,8 +257,8 @@ final class ResourceStorage implements ResourceStorageInterface
         $tags = $this->getTags($ro);
         $roPoolItem->tag($tags);
         $this->etagPool->save($roPoolItem);
-        $surrogateKeys = $ro->headers['Surrogate-Key'] ?? '';
-        $this->saveEtag($ro->uri, $ro->headers['ETag'], $surrogateKeys, null);
+        $surrogateKeys = $ro->headers[Header::PURGE_KEYS] ?? '';
+        $this->saveEtag($ro->uri, $ro->headers[Header::ETAG], $surrogateKeys, null);
     }
 
     /**

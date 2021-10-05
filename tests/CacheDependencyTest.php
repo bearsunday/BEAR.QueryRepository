@@ -40,7 +40,7 @@ class CacheDependencyTest extends TestCase
         $one1 = $this->repository->get(new Uri('page://self/dep/level-one'));
         $this->assertInstanceOf(ResourceState::class, $one1);
         assert($one1 instanceof ResourceState);
-        $etag1 = $one1->headers['ETag'];
+        $etag1 = $one1->headers[Header::ETAG];
         // destroy by child
         $this->repository->purge(new Uri('page://self/dep/level-two'));
         $one2 = $this->repository->get(new Uri('page://self/dep/level-one'));
@@ -57,7 +57,7 @@ class CacheDependencyTest extends TestCase
         $one2 = $this->repository->get(new Uri('page://self/dep/level-one'));
         $this->assertNull($one2);
         assert($one1 instanceof ResourceState);
-        $etag1 = $one1->headers['ETag'];
+        $etag1 = $one1->headers[Header::ETAG];
         $surrogateKeys = explode(' ', $one1->headers['Surrogate-Key']);
         $etag2 = $surrogateKeys[0];
         $etag3 = $surrogateKeys[1];

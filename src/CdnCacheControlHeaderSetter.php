@@ -14,7 +14,7 @@ use function sprintf;
  */
 final class CdnCacheControlHeaderSetter implements CdnCacheControlHeaderSetterInterface
 {
-    public const CDN_CACHE_CONTROL_HEADER = 'CDN-Cache-Control';
+    private const CDN_CACHE_CONTROL_HEADER = Header::CDN_CACHE_CONTROL;
 
     public function __invoke(ResourceObject $ro, ?int $sMaxAge): void
     {

@@ -84,8 +84,8 @@ class GetInterceptorTest extends TestCase
         $ro1 = $this->resource->get('app://self/etag');
         $ro2 = $this->resource->get('app://self/etag');
         $ro3 = $this->resource->get('app://self/etag', ['updatedAt' => 1]);
-        $this->assertSame($ro1->headers['ETag'], $ro2->headers['ETag']);
-        $this->assertNotSame($ro1->headers['ETag'], $ro3->headers['ETag']);
+        $this->assertSame($ro1->headers[Header::ETAG], $ro2->headers[Header::ETAG]);
+        $this->assertNotSame($ro1->headers[Header::ETAG], $ro3->headers[Header::ETAG]);
     }
 
     public function testHttpCacheVary(): void

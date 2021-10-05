@@ -61,6 +61,6 @@ class DonutQueryInterceptorPurgeTest extends TestCase
 
     private function isCreatedByState(ResourceObject $ro): bool
     {
-        return $ro->headers['ETag'][-1] === 'r';
+        return $ro->headers[Header::ETAG][-1] === 'r';
     }
 }

@@ -42,7 +42,7 @@ final class ResourceDonut
             $uri = (string) $matches[1];
             $ro = $resource->get($uri);
             $ro->toString();
-            if (array_key_exists('ETag', $ro->headers)) {
+            if (array_key_exists(Header::ETAG, $ro->headers)) {
                 $etags->addTag($ro);
             }
 
