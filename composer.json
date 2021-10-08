@@ -28,9 +28,10 @@
         "koriym/attributes": "^1.0.1",
         "madapaja/twig-module": "^2.3",
         "phpunit/phpunit": "^9.5",
+        "psr/log": "^1.1",
+        "ray/object-visual-grapher": "^1.0",
         "symfony/process": "^4.3",
-        "twig/twig": "2.14",
-        "psr/log": "^1.1"
+        "twig/twig": "2.14"
     },
     "autoload": {
         "psr-4": {
