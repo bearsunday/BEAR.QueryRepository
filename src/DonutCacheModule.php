@@ -8,12 +8,21 @@ use BEAR\RepositoryModule\Annotation\DonutCache;
 use Ray\Di\AbstractModule;
 use Ray\Di\Scope;
 
-class DonutAopModule extends AbstractModule
+class DonutCacheModule extends AbstractModule
 {
     /**
      * {@inheritdoc}
      */
     protected function configure()
+    {
+        $this->bind(HeaderSetter::class);
+        $this->bind(CdnCacheControlHeaderSetterInterface::class)->to(CdnCacheControlHeaderSetter::class);
+        $this->bind(DonutRepositoryInterface::class)->to(DonutRepository::class)->in(Scope::SINGLETON);
+        $this->bind(RepositoryLoggerInterface::class)->to(RepositoryLogger::class)->in(Scope::SINGLETON);
+        $this->installAopModule();
+    }
+
+    private function installAopModule(): void
     {
         $this->bind(DonutRepository::class)->in(Scope::SINGLETON);
         $this->bindPriorityInterceptor(

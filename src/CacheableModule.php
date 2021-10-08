@@ -6,16 +6,27 @@ namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\AbstractCacheControl;
 use BEAR\RepositoryModule\Annotation\Cacheable;
+use BEAR\RepositoryModule\Annotation\Commands;
 use BEAR\RepositoryModule\Annotation\Purge;
 use BEAR\RepositoryModule\Annotation\Refresh;
+use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
 use Ray\Di\AbstractModule;
 
-class QueryRepositoryAopModule extends AbstractModule
+class CacheableModule extends AbstractModule
 {
     /**
      * {@inheritdoc}
      */
     protected function configure()
+    {
+        $this->bind(HttpCacheInterface::class)->to(HttpCache::class);
+        $this->bind()->annotatedWith(Commands::class)->toProvider(CommandsProvider::class);
+        $this->bind(RefreshInterceptor::class);
+        $this->install(new StorageExpiryModule(60, 60 * 60, 60 * 60 * 24));
+        $this->installAopModule();
+    }
+
+    protected function installAopModule(): void
     {
         $this->bindPriorityInterceptor(
             $this->matcher->annotatedWith(Cacheable::class),
