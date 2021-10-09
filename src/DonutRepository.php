@@ -65,12 +65,12 @@ final class DonutRepository implements DonutRepositoryInterface
         $this->logger->log('create-donut: uri:%s s-maxage:%d donut-age:%s', (string) $ro->uri, $sMaxAge, $donutAge);
         $renderer = new DonutRenderer();
         $etags = new SurrogateKeys();
-        ($this->cacheControlHeaderSetter)($ro, $sMaxAge);
         $donut = ResourceDonut::create($ro, $renderer, $etags, $sMaxAge);
         $this->resourceStorage->saveDonut($ro->uri, $donut, $donutAge);
 
         $donut->render($ro, $renderer);
         $etags->setSurrogateHeader($ro);
+        ($this->cacheControlHeaderSetter)($ro, $sMaxAge);
         ($this->headerSetter)($ro, 0, null);
         ($this->cacheControlHeaderSetter)($ro, $donut->ttl);
         $this->saveView($ro, $sMaxAge);

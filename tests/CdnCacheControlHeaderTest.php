@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Cdn\AkamaiModule;
 use BEAR\QueryRepository\Cdn\FastlyModule;
 use BEAR\Resource\Module\ResourceModule;
 use BEAR\Resource\ResourceInterface;
@@ -46,6 +47,20 @@ class CdnCacheControlHeaderTest extends TestCase
         assert($ro instanceof ResourceObject);
         $this->assertArrayHasKey('Surrogate-Control', $ro->headers);
         $this->assertSame($ro->headers['Surrogate-Control'], 'max-age=31536000');
+        $this->assertArrayHasKey('Surrogate-Key', $ro->headers);
+    }
+
+    public function testAkamaiModule(): void
+    {
+        $module = $this->getModule();
+        $module->override(new AkamaiModule());
+        $injector =  new Injector($module, $_ENV['TMP_DIR']);
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $ro = $resource->get('page://self/html/blog-posting');
+        assert($ro instanceof ResourceObject);
+        $this->assertArrayHasKey('Akamai-Cache-Control', $ro->headers);
+        $this->assertArrayHasKey('Edge-Cache-Tag', $ro->headers);
+        $this->assertSame($ro->headers['Akamai-Cache-Control'], 'max-age=31536000');
     }
 
     public function testNullCdnCacheControlModule(): void
