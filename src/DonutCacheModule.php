@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\RepositoryModule\Annotation\CacheableResponse;
 use BEAR\RepositoryModule\Annotation\DonutCache;
+use BEAR\RepositoryModule\Annotation\RefreshCache;
 use Ray\Di\AbstractModule;
 use Ray\Di\Scope;
 
@@ -19,10 +21,11 @@ class DonutCacheModule extends AbstractModule
         $this->bind(CdnCacheControlHeaderSetterInterface::class)->to(CdnCacheControlHeaderSetter::class);
         $this->bind(DonutRepositoryInterface::class)->to(DonutRepository::class)->in(Scope::SINGLETON);
         $this->bind(RepositoryLoggerInterface::class)->to(RepositoryLogger::class)->in(Scope::SINGLETON);
-        $this->installAopModule();
+        $this->installAopClassModule();
+        $this->installAopMethodModule();
     }
 
-    private function installAopModule(): void
+    private function installAopClassModule(): void
     {
         $this->bind(DonutRepository::class)->in(Scope::SINGLETON);
         $this->bindPriorityInterceptor(
@@ -41,6 +44,20 @@ class DonutCacheModule extends AbstractModule
                 )
             ),
             [DonutCommandInterceptor::class]
+        );
+    }
+
+    private function installAopMethodModule(): void
+    {
+        $this->bindInterceptor(
+            $this->matcher->any(),
+            $this->matcher->annotatedWith(CacheableResponse::class),
+            [DonutQueryInterceptor::class]
+        );
+        $this->bindInterceptor(
+            $this->matcher->any(),
+            $this->matcher->annotatedWith(RefreshCache::class),
+            [DonutQueryInterceptor::class]
         );
     }
 }
