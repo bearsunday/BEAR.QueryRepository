@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
-namespace BEAR\QueryRepository;
+namespace BEAR\QueryRepository\Cdn;
 
+use BEAR\QueryRepository\CdnCacheControlHeaderSetterInterface;
 use BEAR\Resource\ResourceObject;
 
 use function sprintf;
