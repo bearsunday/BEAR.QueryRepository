@@ -112,10 +112,10 @@ class DonutRepositoryTest extends TestCase
     public function testRefresh(): void
     {
         $injector = $this->getInjector();
-        /** @var ResourceInterface $resource */
         $resource = $injector->getInstance(ResourceInterface::class);
-        /** @var QueryRepositoryInterface $queryRepository */
+        assert($resource instanceof ResourceInterface);
         $queryRepository = $injector->getInstance(QueryRepositoryInterface::class);
+        assert($queryRepository instanceof QueryRepositoryInterface);
 
         $resource->get('page://self/html/blog-posting');
         assert($queryRepository->purge(new Uri('page://self/html/blog-posting')));

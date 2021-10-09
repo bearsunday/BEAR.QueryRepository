@@ -2,16 +2,14 @@
 
 namespace FakeVendor\HelloWorld\Resource\Page\Html;
 
-use BEAR\QueryRepository\DonutRepositoryInterface;
-use BEAR\RepositoryModule\Annotation\Cacheable;
-use BEAR\RepositoryModule\Annotation\DonutCache;
+use BEAR\RepositoryModule\Annotation\CacheableResponse;
 use BEAR\Resource\Annotation\Embed;
 use BEAR\Resource\ResourceObject;
 
 /**
- * @DonutCache
+ * @CacheableResponse
  */
-#[DonutCache]
+#[CacheableResponse]
 class BlogPosting extends ResourceObject
 {
     /** @var array */

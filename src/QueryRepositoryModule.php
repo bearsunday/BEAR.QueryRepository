@@ -28,7 +28,7 @@ class QueryRepositoryModule extends AbstractModule
         $this->bind(PurgerInterface::class)->to(NullPurger::class);
         // #[Cacheable]
         $this->install(new CacheableModule());
-        // #[DonutCache]
+        // #[CacheableResponse]
         $this->install(new DonutCacheModule());
     }
 }

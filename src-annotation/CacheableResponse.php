@@ -5,15 +5,18 @@ declare(strict_types=1);
 namespace BEAR\RepositoryModule\Annotation;
 
 use Attribute;
+use BEAR\QueryRepository\DonutCacheModule;
 use BEAR\QueryRepository\DonutCommandInterceptor;
 
 /**
  * @Annotation
- * @Target("METHOD")
+ * @Target({"METHOD","CLASS"})
  *
+ * @see DonutCacheModule
+ * @see DonutQueryInterceptor
  * @see DonutCommandInterceptor
  */
-#[Attribute(Attribute::TARGET_METHOD)]
+#[Attribute(Attribute::TARGET_METHOD|Attribute::TARGET_CLASS)]
 final class CacheableResponse
 {
 }
