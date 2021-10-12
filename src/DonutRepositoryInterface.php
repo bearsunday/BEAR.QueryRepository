@@ -17,13 +17,13 @@ interface DonutRepositoryInterface
     /**
      * Create donut-caching
      *
-     * @param ResourceObject $ro       request invoked ResourceObject
-     * @param ?int           $sMaxAge  TTL, used as `max-age` in CDN cache control
-     * @param ?int           $donutAge TTL for the donut (not for donut-hole)
+     * @param ResourceObject $ro      request invoked ResourceObject
+     * @param ?int           $ttl     TTL for the donut (not for donut-hole)
+     * @param ?int           $sMaxAge TTL, used as `max-age` in CDN cache control
      *
      * @see https://www.computerworld.com/article/2833493/what-exactly-is-donut-caching-.html
      */
-    public function createDonut(ResourceObject $ro, ?int $sMaxAge = null, ?int $donutAge = null): ResourceObject;
+    public function put(ResourceObject $ro, ?int $ttl = null, ?int $sMaxAge = null): ResourceObject;
 
     /**
      * Purge donut caching

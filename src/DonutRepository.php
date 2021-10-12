@@ -60,13 +60,13 @@ final class DonutRepository implements DonutRepositoryInterface
         return $this->refreshDonut($ro);
     }
 
-    public function createDonut(ResourceObject $ro, ?int $sMaxAge = null, ?int $donutAge = null): ResourceObject
+    public function put(ResourceObject $ro, ?int $ttl = null, ?int $sMaxAge = null): ResourceObject
     {
-        $this->logger->log('create-donut: uri:%s s-maxage:%d donut-age:%s', (string) $ro->uri, $sMaxAge, $donutAge);
+        $this->logger->log('create-donut: uri:%s ttl:%s s-maxage:%d', (string) $ro->uri, $sMaxAge, $ttl);
         $renderer = new DonutRenderer();
         $etags = new SurrogateKeys();
         $donut = ResourceDonut::create($ro, $renderer, $etags, $sMaxAge);
-        $this->resourceStorage->saveDonut($ro->uri, $donut, $donutAge);
+        $this->resourceStorage->saveDonut($ro->uri, $donut, $ttl);
 
         $donut->render($ro, $renderer);
         $etags->setSurrogateHeader($ro);

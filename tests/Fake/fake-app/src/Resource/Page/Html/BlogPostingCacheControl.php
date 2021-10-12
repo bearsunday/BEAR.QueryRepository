@@ -35,7 +35,7 @@ class BlogPostingCacheControl extends ResourceObject
     {
         $this->body['article'] = '1';
 
-        $this->repository->createDonut($this, 10, 100);
+        $this->repository->put($this, 100, 10);
 
         return $this;
     }
