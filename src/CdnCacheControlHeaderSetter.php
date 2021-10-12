@@ -20,7 +20,7 @@ final class CdnCacheControlHeaderSetter implements CdnCacheControlHeaderSetterIn
     {
         $sMaxAge = $sMaxAge ?? 10;
         if (! isset($ro->headers[self::CDN_CACHE_CONTROL_HEADER])) {
-            $ro->headers[self::CDN_CACHE_CONTROL_HEADER] = sprintf('max-age=%s', (string) $sMaxAge);
+            $ro->headers[self::CDN_CACHE_CONTROL_HEADER] = sprintf('max-age=%s stale-while-revalidate=10', (string) $sMaxAge);
         }
     }
 }

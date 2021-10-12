@@ -28,7 +28,7 @@ class CdnCacheControlHeaderTest extends TestCase
         $ro = $resource->get('page://self/html/blog-posting');
         assert($ro instanceof ResourceObject);
         $this->assertArrayHasKey(Header::CDN_CACHE_CONTROL, $ro->headers);
-        $this->assertSame($ro->headers[Header::CDN_CACHE_CONTROL], 'max-age=10');
+        $this->assertSame($ro->headers[Header::CDN_CACHE_CONTROL], 'max-age=10 stale-while-revalidate=10');
         $repository = $injector->getInstance(QueryRepositoryInterface::class);
         assert($repository->purge(new Uri('page://self/html/comment')));
 
