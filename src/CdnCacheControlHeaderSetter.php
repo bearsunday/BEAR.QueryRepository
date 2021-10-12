@@ -18,7 +18,9 @@ final class CdnCacheControlHeaderSetter implements CdnCacheControlHeaderSetterIn
 
     public function __invoke(ResourceObject $ro, ?int $sMaxAge): void
     {
-        $sMaxAge = $sMaxAge ?? 31536000;
-        $ro->headers[self::CDN_CACHE_CONTROL_HEADER] = sprintf('max-age=%s', (string) $sMaxAge);
+        $sMaxAge = $sMaxAge ?? 10;
+        if (! isset($ro->headers[self::CDN_CACHE_CONTROL_HEADER])) {
+            $ro->headers[self::CDN_CACHE_CONTROL_HEADER] = sprintf('max-age=%s', (string) $sMaxAge);
+        }
     }
 }

@@ -23,6 +23,8 @@ final class AkamaiCacheControlHeaderSetter implements CdnCacheControlHeaderSette
             unset($ro->headers[Header::PURGE_KEYS]);
         }
 
-        $ro->headers[self::CDN_CACHE_CONTROL_HEADER] = sprintf('max-age=%s', (string) $sMaxAge);
+        if (! isset($ro->headers[self::CDN_CACHE_CONTROL_HEADER])) {
+            $ro->headers[self::CDN_CACHE_CONTROL_HEADER] = sprintf('max-age=%s', (string) $sMaxAge);
+        }
     }
 }
