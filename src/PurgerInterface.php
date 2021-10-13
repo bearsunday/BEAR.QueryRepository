@@ -6,5 +6,5 @@ namespace BEAR\QueryRepository;
 
 interface PurgerInterface
 {
-    public function __invoke(string $etag): void;
+    public function __invoke(string $tag): void;
 }

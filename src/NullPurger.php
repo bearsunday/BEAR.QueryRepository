@@ -6,7 +6,7 @@ namespace BEAR\QueryRepository;
 
 final class NullPurger implements PurgerInterface
 {
-    public function __invoke(string $etag): void
+    public function __invoke(string $tag): void
     {
     }
 }
