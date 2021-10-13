@@ -43,7 +43,7 @@ class DonutQueryInterceptorTest extends TestCase
         assert($blogPosting instanceof BlogPosting);
         $this->assertArrayNotHasKey('Age', $blogPosting->headers);
         $view = (string) $blogPosting;
-        $this->assertSame('blog-posting<comment>comment01</comment>', $view);
+        $this->assertSame('blog-posting:1<comment>comment01</comment>', $view);
 
         return $blogPosting->headers[Header::PURGE_KEYS];
     }
