@@ -39,4 +39,13 @@ final class ResourceState
 
         return $state;
     }
+
+    public function visit(ResourceObject $ro): void
+    {
+        $ro->uri = $this->uri;
+        $ro->code = $this->code;
+        $ro->headers = $this->headers;
+        $ro->body = $this->body;
+        $ro->view = $this->view;
+    }
 }
