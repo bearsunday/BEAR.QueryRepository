@@ -13,10 +13,10 @@ use function strpos;
 
 final class HeaderSetter
 {
-    /** @var EtagSetter */
+    /** @var EtagSetterInterface */
     private $etagSetter;
 
-    public function __construct(EtagSetter $etagSetter)
+    public function __construct(EtagSetterInterface $etagSetter)
     {
         $this->etagSetter = $etagSetter;
     }
@@ -30,10 +30,7 @@ final class HeaderSetter
         }
     }
 
-    /**
-     * @return void
-     */
-    private function setCacheControlMaxAge(ResourceObject $ro, int $age)
+    private function setCacheControlMaxAge(ResourceObject $ro, int $age): void
     {
         $setMaxAge = sprintf('max-age=%d', $age);
         $hasNoCacheControleHeader = ! isset($ro->headers[Header::CACHE_CONTROL]);
