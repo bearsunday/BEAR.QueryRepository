@@ -48,15 +48,14 @@ class DonutCommandInterceptorTest extends TestCase
         $this->logger->log('get');
         $log = (string) $this->logger;
         $this->assertStringContainsString('delete
-purge-query uri:page://self/html/blog-posting?id=0
+purge-query-repository uri:page://self/html/blog-posting?id=0
 delete-etag uri:page://self/html/blog-posting?id=0
 delete-donut uri:page://self/html/blog-posting?id=0
 no-donut-found uri:page://self/html/blog-posting?id=0
 create-donut: uri:page://self/html/blog-posting?id=0 ttl: s-maxage:0
 save-donut uri:page://self/html/blog-posting?id=0 s-maxage:
-delete-etag uri:page://self/html/blog-posting?id=0
-save-etag: uri:page://self/html/blog-posting?id=0 ttl:
-get', $log);
+save-view uri:page://self/html/blog-posting?id=0 ttl:0
+update-etag uri:page://self/html/blog-posting?id=0 etag:', $log);
         $ro = $this->resource->get('page://self/html/blog-posting?id=0');
         $this->assertArrayHasKey('Age', $ro->headers);
     }

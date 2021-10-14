@@ -105,6 +105,7 @@ final class DonutRepository implements DonutRepositoryInterface
 
     private function saveView(ResourceObject $ro, ?int $ttl): bool
     {
+        $this->logger->log('save-view uri:%s ttl:%d', $ro->uri, $ttl);
         assert(isset($ro->headers[Header::ETAG]));
         $surrogateKeys = $ro->headers[Header::PURGE_KEYS] ?? '';
         $this->resourceStorage->updateEtag($ro->uri, $ro->headers[Header::ETAG], $surrogateKeys, $ttl);

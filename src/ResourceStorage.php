@@ -108,6 +108,7 @@ final class ResourceStorage implements ResourceStorageInterface
      */
     public function updateEtag(AbstractUri $uri, string $etag, string $surrogateKeys, ?int $ttl)
     {
+        $this->logger->log('update-etag uri:%s etag:%s surrogate-keys:%s', $uri, $etag, $surrogateKeys);
         $this->deleteEtag($uri); // old
         $this->saveEtag($uri, $etag, $surrogateKeys, $ttl); // new
     }
@@ -119,7 +120,6 @@ final class ResourceStorage implements ResourceStorageInterface
     {
         $cachedEtag = $this->loadEtag($uri);
         if (is_string($cachedEtag)) {
-            $this->logger->log('delete-etag uri:%s', $uri);
             $this->roPool->invalidateTags([$cachedEtag]); // remove ro
             $this->etagPool->deleteItem($cachedEtag);
             $this->etagPool->invalidateTags([$cachedEtag]);
@@ -310,7 +310,6 @@ final class ResourceStorage implements ResourceStorageInterface
 
     private function saveEtag(AbstractUri $uri, string $etag, string $surrogateKeys, ?int $ttl): void
     {
-        $this->logger->log('save-etag: uri:%s ttl:%s', (string) $uri, $ttl);
         // save ETag uri
         $uriKey = $this->getUriKey($uri, self::KEY_ETAG_TABLE);
         $uriItem = $this->roPool->getItem($uriKey);

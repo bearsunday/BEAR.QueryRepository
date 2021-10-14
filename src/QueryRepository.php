@@ -55,7 +55,7 @@ final class QueryRepository implements QueryRepositoryInterface
      */
     public function put(ResourceObject $ro)
     {
-        $this->logger->log('put-query uri:%s', $ro->uri);
+        $this->logger->log('put-query-repository uri:%s', $ro->uri);
         $ro->toString();
         $cacheable = $this->getCacheableAnnotation($ro);
         $httpCache = $this->getHttpCacheAnnotation($ro);
@@ -95,7 +95,8 @@ final class QueryRepository implements QueryRepositoryInterface
      */
     public function purge(AbstractUri $uri)
     {
-        $this->logger->log('purge-query uri:%s', $uri);
+        $this->logger->log('purge-query-repository uri:%s', $uri);
+        $this->logger->log('delete-etag uri:%s', $uri);
 
         return $this->storage->deleteEtag($uri);
     }
