@@ -14,7 +14,6 @@ use Psr\Cache\CacheItemPoolInterface;
 use Ray\PsrCacheModule\Annotation\Shared;
 use Symfony\Component\Cache\Adapter\AdapterInterface;
 use Symfony\Component\Cache\Adapter\DoctrineAdapter;
-use Symfony\Component\Cache\CacheItem;
 use Symfony\Contracts\Cache\ItemInterface;
 
 use function array_merge;
@@ -213,10 +212,6 @@ final class ResourceStorage implements ResourceStorageInterface
         $tag = $this->getTags($ro);
         $item->tag($tag);
 
-        // save ETags
-        $this->logger->log('save-donut-view uri:%s ttl:%s', $ro->uri, $ttl);
-        $this->saveStaticTag($ro, $item);
-
         // save view
         return $this->roPool->save($item);
     }
@@ -250,15 +245,6 @@ final class ResourceStorage implements ResourceStorageInterface
         }
 
         assert($this->roPool->save($item));
-    }
-
-    private function saveStaticTag(ResourceObject $ro, CacheItem $roPoolItem): void
-    {
-        $tags = $this->getTags($ro);
-        $roPoolItem->tag($tags);
-        $this->etagPool->save($roPoolItem);
-        $surrogateKeys = $ro->headers[Header::PURGE_KEYS] ?? '';
-        $this->saveEtag($ro->uri, $ro->headers[Header::ETAG], $surrogateKeys, null);
     }
 
     /**

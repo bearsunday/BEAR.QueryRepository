@@ -56,8 +56,6 @@ create-donut: uri:page://self/html/blog-posting?id=0 ttl: s-maxage:0
 save-donut uri:page://self/html/blog-posting?id=0 s-maxage:
 delete-etag uri:page://self/html/blog-posting?id=0
 save-etag: uri:page://self/html/blog-posting?id=0 ttl:
-save-donut-view uri:page://self/html/blog-posting?id=0 ttl:
-save-etag: uri:page://self/html/blog-posting?id=0 ttl:
 get', $log);
         $ro = $this->resource->get('page://self/html/blog-posting?id=0');
         $this->assertArrayHasKey('Age', $ro->headers);
