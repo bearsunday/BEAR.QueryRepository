@@ -31,7 +31,7 @@ class ResourceStorageTest extends TestCase
 
     public function testSaveGetStatic(): void
     {
-        $donut = ResourceDonut::create($this->ro, new DonutRenderer(), new SurrogateKeys(), null);
+        $donut = ResourceDonut::create($this->ro, new DonutRenderer(), new SurrogateKeys(new Uri('app://self/')), null);
         $this->storage->saveDonut($this->ro->uri, $donut, null);
         $donut = $this->storage->getDonut($this->ro->uri);
         $this->assertInstanceOf(ResourceDonut::class, $donut);

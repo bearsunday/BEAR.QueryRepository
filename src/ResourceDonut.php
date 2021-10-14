@@ -37,7 +37,7 @@ final class ResourceDonut
 
     public function refresh(ResourceInterface $resource, ResourceObject $ro): ResourceObject
     {
-        $etags = new SurrogateKeys();
+        $etags = new SurrogateKeys($ro->uri);
         $refreshView =  preg_replace_callback(self::URI_REGEX, static function (array $matches) use ($resource, $etags): string {
             $uri = (string) $matches[1];
             $ro = $resource->get($uri);
@@ -72,6 +72,7 @@ final class ResourceDonut
             }
         }
 
+        unset($maybeRequest);
         $donutTemplate = (string) $ro;
 
         return new self($donutTemplate, $ttl);

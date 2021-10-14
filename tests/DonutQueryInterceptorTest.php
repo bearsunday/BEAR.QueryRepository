@@ -60,7 +60,7 @@ class DonutQueryInterceptorTest extends TestCase
         $comment = $this->resource->get('page://self/html/comment');
         assert($comment instanceof Comment && isset($comment->headers[Header::ETAG]));
         $commentEtag = $comment->headers[Header::ETAG];
-        $this->assertSame($surrogateKey, $commentEtag);
+        $this->assertStringContainsString($commentEtag, $surrogateKey);
     }
 
     /**
@@ -80,7 +80,7 @@ update-etag uri:page://self/html/comment etag:_html_comment_ surrogate-keys:
 save-value uri:page://self/html/comment ttl:31536000
 save-donut uri:page://self/html/blog-posting s-maxage:
 save-view uri:page://self/html/blog-posting ttl:0
-update-etag uri:page://self/html/blog-posting etag:_html_blog-posting_ surrogate-keys:_html_comment_
+update-etag uri:page://self/html/blog-posting etag:_html_blog-posting_ surrogate-keys:_html_blog-posting_ _html_comment_
 get
 get-donut-cache: uri:page://self/html/blog-posting', $log);
         $this->assertArrayHasKey('Age', $blogPosting->headers);

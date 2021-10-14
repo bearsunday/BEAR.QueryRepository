@@ -55,7 +55,7 @@ no-donut-found uri:page://self/html/blog-posting?id=0
 create-donut: uri:page://self/html/blog-posting?id=0 ttl: s-maxage:0
 save-donut uri:page://self/html/blog-posting?id=0 s-maxage:
 save-view uri:page://self/html/blog-posting?id=0 ttl:0
-update-etag uri:page://self/html/blog-posting?id=0 etag:_html_blog-posting_id=0 surrogate-keys:_html_comment_
+update-etag uri:page://self/html/blog-posting?id=0 etag:_html_blog-posting_id=0 surrogate-keys:_html_blog-posting_id=0 _html_comment_
 get', $log);
         $ro = $this->resource->get('page://self/html/blog-posting?id=0');
         $this->assertArrayHasKey('Age', $ro->headers);

@@ -7,6 +7,7 @@ namespace BEAR\QueryRepository;
 use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\Module\ResourceModule;
 use BEAR\Resource\ResourceInterface;
+use BEAR\Resource\Uri;
 use Madapaja\TwigModule\TwigModule;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
@@ -36,7 +37,7 @@ class DonutRequestTest extends TestCase
     public function testToString(): DonutRenderer
     {
         $storage = new DonutRenderer();
-        $request = new DonutRequest($this->request, $storage, new SurrogateKeys());
+        $request = new DonutRequest($this->request, $storage, new SurrogateKeys(new Uri('app://self/foo')));
         $view = (string) $request;
         $this->assertSame('[le:page://self/html/comment]', $view);
 
