@@ -63,7 +63,7 @@ final class QueryRepository implements QueryRepositoryInterface
         ($this->headerSetter)($ro, $ttl, $httpCache);
         if (isset($ro->headers[Header::ETAG])) {
             $etag = $ro->headers[Header::ETAG];
-            $surrogateKeys = $ro->headers[Header::PURGE_KEYS] ?? '';
+            $surrogateKeys = $ro->headers[Header::SURROGATE_KEY] ?? '';
             $this->storage->updateEtag($ro->uri, $etag, $surrogateKeys, $ttl);
         }
 

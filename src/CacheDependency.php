@@ -13,14 +13,14 @@ class CacheDependency implements CacheDependencyInterface
 {
     public function depends(ResourceObject $from, ResourceObject $to): void
     {
-        assert(! isset($from->headers[Header::PURGE_KEYS]));
+        assert(! isset($from->headers[Header::SURROGATE_KEY]));
 
         $cacheDepedencyTags = $to->headers[Header::ETAG];
-        if (isset($to->headers[Header::PURGE_KEYS])) {
-            $cacheDepedencyTags .= sprintf(' %s', $to->headers[Header::PURGE_KEYS]);
-            unset($to->headers[Header::PURGE_KEYS]);
+        if (isset($to->headers[Header::SURROGATE_KEY])) {
+            $cacheDepedencyTags .= sprintf(' %s', $to->headers[Header::SURROGATE_KEY]);
+            unset($to->headers[Header::SURROGATE_KEY]);
         }
 
-        $from->headers[Header::PURGE_KEYS] = $cacheDepedencyTags;
+        $from->headers[Header::SURROGATE_KEY] = $cacheDepedencyTags;
     }
 }

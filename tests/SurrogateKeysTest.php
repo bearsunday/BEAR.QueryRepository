@@ -18,21 +18,21 @@ class SurrogateKeysTest extends TestCase
             /** @var array<string, string> */
             public $headers = [
                 Header::ETAG => '1',
-                Header::PURGE_KEYS => 'a b',
+                Header::SURROGATE_KEY => 'a b',
             ];
         });
         $etags->addTag(new class extends ResourceObject{
             /** @var array<string, string> */
                 public $headers = [
                     Header::ETAG => '2',
-                    Header::PURGE_KEYS => 'c',
+                    Header::SURROGATE_KEY => 'c',
                 ];
         });
         $ro = new class extends ResourceObject{
         };
         $ro->uri = $uri;
         $etags->setSurrogateHeader($ro);
-        $this->assertSame('_foo_ 1 a b 2 c', $ro->headers[Header::PURGE_KEYS]);
+        $this->assertSame('_foo_ 1 a b 2 c', $ro->headers[Header::SURROGATE_KEY]);
     }
 
     public function testOnePurgeKey(): void
@@ -45,6 +45,6 @@ class SurrogateKeysTest extends TestCase
         };
         $ro->uri = $uri;
         $etags->setSurrogateHeader($ro);
-        $this->assertSame('_foo_', $ro->headers[Header::PURGE_KEYS]);
+        $this->assertSame('_foo_', $ro->headers[Header::SURROGATE_KEY]);
     }
 }

@@ -171,8 +171,8 @@ final class ResourceStorage implements ResourceStorageInterface
     private function getTags(ResourceObject $ro): array
     {
         $etags = [$ro->headers[Header::ETAG]];
-        if (isset($ro->headers[Header::PURGE_KEYS])) {
-            $etags = array_merge($etags, explode(' ', $ro->headers[Header::PURGE_KEYS]));
+        if (isset($ro->headers[Header::SURROGATE_KEY])) {
+            $etags = array_merge($etags, explode(' ', $ro->headers[Header::SURROGATE_KEY]));
         }
 
         return $etags;

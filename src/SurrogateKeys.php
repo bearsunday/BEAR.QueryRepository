@@ -36,13 +36,13 @@ final class SurrogateKeys
         }
 
         $this->surrogateKeys[] = $ro->headers[Header::ETAG];
-        if (array_key_exists(Header::PURGE_KEYS, $ro->headers)) {
-            $this->surrogateKeys = array_merge($this->surrogateKeys, explode(' ', $ro->headers[Header::PURGE_KEYS]));
+        if (array_key_exists(Header::SURROGATE_KEY, $ro->headers)) {
+            $this->surrogateKeys = array_merge($this->surrogateKeys, explode(' ', $ro->headers[Header::SURROGATE_KEY]));
         }
     }
 
     public function setSurrogateHeader(ResourceObject $ro): void
     {
-        $ro->headers[Header::PURGE_KEYS] = implode(' ', $this->surrogateKeys);
+        $ro->headers[Header::SURROGATE_KEY] = implode(' ', $this->surrogateKeys);
     }
 }

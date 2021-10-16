@@ -48,7 +48,7 @@ class DonutQueryInterceptorTest extends TestCase
         $view = (string) $blogPosting;
         $this->assertSame('blog-posting:1<comment>comment01</comment>', $view);
 
-        return $blogPosting->headers[Header::PURGE_KEYS];
+        return $blogPosting->headers[Header::SURROGATE_KEY];
     }
 
     /**
