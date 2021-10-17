@@ -23,7 +23,6 @@ use function is_array;
 use function is_int;
 use function is_string;
 use function sprintf;
-use function str_replace;
 use function strtoupper;
 
 final class ResourceStorage implements ResourceStorageInterface
@@ -176,7 +175,7 @@ final class ResourceStorage implements ResourceStorageInterface
     private function getTags(ResourceObject $ro): array
     {
         $etag = $ro->headers['ETag'];
-        $tags = [$etag, (new CacheKey())($ro->uri)];
+        $tags = [$etag, ($this->cacheKey)($ro->uri)];
         if (isset($ro->headers[Header::SURROGATE_KEY])) {
             $tags = array_merge($tags, explode(' ', $ro->headers[Header::SURROGATE_KEY]));
         }
@@ -333,5 +332,14 @@ final class ResourceStorage implements ResourceStorageInterface
         }
 
         $this->etagPool->save($etagItem);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function invalidateTags(array $tags): void
+    {
+        $this->roPool->invalidateTags($tags);
+        $this->etagPool->invalidateTags($tags);
     }
 }

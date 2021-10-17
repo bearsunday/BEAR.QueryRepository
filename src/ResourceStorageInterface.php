@@ -66,4 +66,11 @@ interface ResourceStorageInterface
      * Delete donut-cacheable page
      */
     public function deleteDonut(AbstractUri $uri): void;
+
+    /**
+     * Invalidate tags
+     *
+     * @param list<string> $tags
+     */
+    public function invalidateTags(array $tags): void;
 }
