@@ -12,12 +12,12 @@ use function assert;
 
 final class ResourceStorageSaver
 {
-    /** @var CacheKey */
-    private $cacheKey;
+    /** @var UriTagInterface */
+    private $uriTag;
 
-    public function __construct(CacheKey $cacheKey)
+    public function __construct(UriTagInterface $uriTag)
     {
-        $this->cacheKey = $cacheKey;
+        $this->uriTag = $uriTag;
     }
 
     /**
@@ -33,7 +33,7 @@ final class ResourceStorageSaver
             $cacheItem->expiresAfter($ttl);
         }
 
-        $tags[] = ($this->cacheKey)($uri);
+        $tags[] = ($this->uriTag)($uri);
         $cacheItem->tag($tags);
 
         return $pool->save($cacheItem);

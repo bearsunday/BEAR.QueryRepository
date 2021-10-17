@@ -55,8 +55,8 @@ final class ResourceStorage implements ResourceStorageInterface
     /** @var PurgerInterface */
     private $purger;
 
-    /** @var CacheKey */
-    private $cacheKey;
+    /** @var UriTagInterface */
+    private $uriTag;
 
     /** @var ResourceStorageSaver */
     private $saver;
@@ -69,15 +69,15 @@ final class ResourceStorage implements ResourceStorageInterface
     public function __construct(
         RepositoryLoggerInterface $logger,
         PurgerInterface $etagDeleter,
-        CacheKey $cacheKey,
+        UriTagInterface $uriTag,
         ?CacheItemPoolInterface $pool = null,
         ?CacheItemPoolInterface $etagPool = null,
         ?CacheProvider $cache = null
     ) {
         $this->logger = $logger;
         $this->purger = $etagDeleter;
-        $this->cacheKey = $cacheKey;
-        $this->saver = new ResourceStorageSaver(new CacheKey());
+        $this->uriTag = $uriTag;
+        $this->saver = new ResourceStorageSaver(new UriTag());
         if ($pool === null && $cache instanceof CacheProvider) {
             $this->injectDoctrineCache($cache);
 
@@ -150,7 +150,7 @@ final class ResourceStorage implements ResourceStorageInterface
      */
     public function deleteEtag(AbstractUri $uri)
     {
-        $uriTag = ($this->cacheKey)($uri);
+        $uriTag = ($this->uriTag)($uri);
         $result = $this->invalidateTags([$uriTag]);
         ($this->purger)($uriTag);
 
@@ -215,7 +215,7 @@ final class ResourceStorage implements ResourceStorageInterface
     private function getTags(ResourceObject $ro): array
     {
         $etag = $ro->headers['ETag'];
-        $tags = [$etag, ($this->cacheKey)($ro->uri)];
+        $tags = [$etag, ($this->uriTag)($ro->uri)];
         if (isset($ro->headers[Header::SURROGATE_KEY])) {
             $tags = array_merge($tags, explode(' ', $ro->headers[Header::SURROGATE_KEY]));
         }
@@ -253,7 +253,7 @@ final class ResourceStorage implements ResourceStorageInterface
 
     private function getUriKey(AbstractUri $uri, string $type): string
     {
-        return $type . ($this->cacheKey)($uri) . (isset($_SERVER['X_VARY']) ? $this->getVary() : '');
+        return $type . ($this->uriTag)($uri) . (isset($_SERVER['X_VARY']) ? $this->getVary() : '');
     }
 
     private function getVary(): string

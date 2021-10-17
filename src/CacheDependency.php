@@ -11,19 +11,19 @@ use function sprintf;
 
 final class CacheDependency implements CacheDependencyInterface
 {
-    /** @var CacheKey */
-    private $cacheKey;
+    /** @var UriTagInterface */
+    private $uriTag;
 
-    public function __construct(CacheKey $cacheKey)
+    public function __construct(UriTagInterface $uriTag)
     {
-        $this->cacheKey = $cacheKey;
+        $this->uriTag = $uriTag;
     }
 
     public function depends(ResourceObject $from, ResourceObject $to): void
     {
         assert(! isset($from->headers[Header::SURROGATE_KEY]));
 
-        $cacheDepedencyTags = ($this->cacheKey)($to->uri);
+        $cacheDepedencyTags = ($this->uriTag)($to->uri);
         if (isset($to->headers[Header::SURROGATE_KEY])) {
             $cacheDepedencyTags .= sprintf(' %s', $to->headers[Header::SURROGATE_KEY]);
             unset($to->headers[Header::SURROGATE_KEY]);

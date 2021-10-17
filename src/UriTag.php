@@ -11,7 +11,7 @@ use function ksort;
 use function sprintf;
 use function str_replace;
 
-final class CacheKey
+final class UriTag implements UriTagInterface
 {
     public function __invoke(AbstractUri $uri): string
     {

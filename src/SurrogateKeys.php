@@ -21,14 +21,14 @@ final class SurrogateKeys
     /** @var array<string> */
     private $surrogateKeys;
 
-    /** @var CacheKey */
-    private $cacheKey;
+    /** @var UriTagInterface */
+    private $uriTag;
 
     public function __construct(AbstractUri $uri)
     {
         $uriKey = sprintf('%s_%s', str_replace('/', '_', $uri->path), http_build_query($uri->query));
         $this->surrogateKeys = [$uriKey];
-        $this->cacheKey = new CacheKey();
+        $this->uriTag = new UriTag();
     }
 
     /**
@@ -36,7 +36,7 @@ final class SurrogateKeys
      */
     public function addTag(ResourceObject $ro): void
     {
-        $this->surrogateKeys[] = ($this->cacheKey)($ro->uri);
+        $this->surrogateKeys[] = ($this->uriTag)($ro->uri);
         if (array_key_exists(Header::SURROGATE_KEY, $ro->headers)) {
             $this->surrogateKeys = array_merge($this->surrogateKeys, explode(' ', $ro->headers[Header::SURROGATE_KEY]));
         }

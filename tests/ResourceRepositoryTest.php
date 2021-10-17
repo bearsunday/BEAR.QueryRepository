@@ -31,16 +31,16 @@ class ResourceRepositoryTest extends TestCase
     {
         $this->repository = new Repository(
             new RepositoryLogger(),
-            new HeaderSetter(new EtagSetter(new CacheDependency(new CacheKey()))),
+            new HeaderSetter(new EtagSetter(new CacheDependency(new UriTag()))),
             new ResourceStorage(
                 new RepositoryLogger(),
                 new NullPurger(),
-                new CacheKey(),
+                new UriTag(),
                 new FilesystemAdapter('', 0, $_ENV['TMP_DIR'])
             ),
             new AnnotationReader(),
             new Expiry(0, 0, 0),
-            new CacheKey()
+            new UriTag()
         );
         $this->ro = new Index();
         $this->ro->uri = new Uri('page://self/user');
@@ -108,18 +108,18 @@ class ResourceRepositoryTest extends TestCase
         // phpcs:enable
         $repository = new Repository(
             new RepositoryLogger(),
-            new HeaderSetter(new EtagSetter(new CacheDependency(new CacheKey()))),
+            new HeaderSetter(new EtagSetter(new CacheDependency(new UriTag()))),
             new ResourceStorage(
                 new RepositoryLogger(),
                 new NullPurger(),
-                new CacheKey(),
+                new UriTag(),
                 null,
                 null,
                 $doctrineCache
             ),
             new AnnotationReader(),
             new Expiry(0, 0, 0),
-            new CacheKey()
+            new UriTag()
         );
         $this->assertInstanceOf(Repository::class, $repository);
     }
