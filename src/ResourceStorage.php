@@ -57,6 +57,9 @@ final class ResourceStorage implements ResourceStorageInterface
     /** @var CacheKey */
     private $cacheKey;
 
+    /** @var ResourceStorageSaver */
+    private $saver;
+
     /**
      * @Shared("pool")
      * @EtagPool("etagPool")
@@ -73,6 +76,7 @@ final class ResourceStorage implements ResourceStorageInterface
         $this->logger = $logger;
         $this->etagDeleter = $etagDeleter;
         $this->cacheKey = $cacheKey;
+        $this->saver = new ResourceStorageSaver(new CacheKey());
         if ($pool === null && $cache instanceof CacheProvider) {
             $this->injectDoctrineCache($cache);
 
@@ -158,15 +162,11 @@ final class ResourceStorage implements ResourceStorageInterface
         $this->logger->log('save-value uri:%s ttl:%s', $ro->uri, $ttl);
         /** @psalm-suppress MixedAssignment $body */
         $body = $this->evaluateBody($ro->body);
-        $val = ResourceState::create($ro, $body, null);
+        $value = ResourceState::create($ro, $body, null);
         $key = $this->getUriKey($ro->uri, self::KEY_RO);
-        $item = $this->roPool->getItem($key);
-        $item->set($val);
-        $item->expiresAfter($ttl);
         $tags = $this->getTags($ro);
-        $item->tag($tags);
 
-        return $this->roPool->save($item);
+        return $this->saver->__invoke($key, $value, $this->roPool, $ro->uri, $tags, $ttl);
     }
 
     /**
