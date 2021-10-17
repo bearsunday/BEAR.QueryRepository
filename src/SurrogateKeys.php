@@ -9,6 +9,7 @@ use BEAR\Resource\ResourceObject;
 
 use function array_key_exists;
 use function array_merge;
+use function array_unique;
 use function explode;
 use function http_build_query;
 use function implode;
@@ -20,10 +21,14 @@ final class SurrogateKeys
     /** @var array<string> */
     private $surrogateKeys;
 
+    /** @var CacheKey */
+    private $cacheKey;
+
     public function __construct(AbstractUri $uri)
     {
         $uriKey = sprintf('%s_%s', str_replace('/', '_', $uri->path), http_build_query($uri->query));
         $this->surrogateKeys = [$uriKey];
+        $this->cacheKey = new CacheKey();
     }
 
     /**
@@ -31,11 +36,7 @@ final class SurrogateKeys
      */
     public function addTag(ResourceObject $ro): void
     {
-        if (! array_key_exists(Header::ETAG, $ro->headers)) {
-            return;
-        }
-
-        $this->surrogateKeys[] = $ro->headers[Header::ETAG];
+        $this->surrogateKeys[] = ($this->cacheKey)($ro->uri);
         if (array_key_exists(Header::SURROGATE_KEY, $ro->headers)) {
             $this->surrogateKeys = array_merge($this->surrogateKeys, explode(' ', $ro->headers[Header::SURROGATE_KEY]));
         }
@@ -43,6 +44,6 @@ final class SurrogateKeys
 
     public function setSurrogateHeader(ResourceObject $ro): void
     {
-        $ro->headers[Header::SURROGATE_KEY] = implode(' ', $this->surrogateKeys);
+        $ro->headers[Header::SURROGATE_KEY] = implode(' ', array_unique($this->surrogateKeys));
     }
 }

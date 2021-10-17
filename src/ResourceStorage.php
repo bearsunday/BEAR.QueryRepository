@@ -17,10 +17,11 @@ use Symfony\Component\Cache\Adapter\DoctrineAdapter;
 use Symfony\Contracts\Cache\ItemInterface;
 
 use function array_merge;
+use function array_unique;
 use function assert;
 use function explode;
+use function implode;
 use function is_array;
-use function is_int;
 use function is_string;
 use function sprintf;
 use function strtoupper;
@@ -40,7 +41,7 @@ final class ResourceStorage implements ResourceStorageInterface
     /**
      * Resource static cache prifix
      */
-    private const KEY_STATIC = 'st-';
+    private const KEY_DONUT = 'donut-';
 
     /** @var RepositoryLoggerInterface */
     private $logger;
@@ -52,7 +53,7 @@ final class ResourceStorage implements ResourceStorageInterface
     private $etagPool;
 
     /** @var PurgerInterface */
-    private $etagDeleter;
+    private $purger;
 
     /** @var CacheKey */
     private $cacheKey;
@@ -74,7 +75,7 @@ final class ResourceStorage implements ResourceStorageInterface
         ?CacheProvider $cache = null
     ) {
         $this->logger = $logger;
-        $this->etagDeleter = $etagDeleter;
+        $this->purger = $etagDeleter;
         $this->cacheKey = $cacheKey;
         $this->saver = new ResourceStorageSaver(new CacheKey());
         if ($pool === null && $cache instanceof CacheProvider) {
@@ -116,7 +117,7 @@ final class ResourceStorage implements ResourceStorageInterface
 
     public function getDonut(AbstractUri $uri): ?ResourceDonut
     {
-        $key = $this->getUriKey($uri, self::KEY_STATIC);
+        $key = $this->getUriKey($uri, self::KEY_DONUT);
         $item = $this->roPool->getItem($key);
         assert($item instanceof ItemInterface);
         $donut = $item->get();
@@ -140,7 +141,6 @@ final class ResourceStorage implements ResourceStorageInterface
      */
     public function updateEtag(AbstractUri $uri, string $etag, string $surrogateKeys, ?int $ttl)
     {
-        $this->logger->log('update-etag uri:%s etag:%s surrogate-keys:%s', $uri, $etag, $surrogateKeys);
         $this->deleteEtag($uri); // old
         $this->saveEtag($uri, $etag, $surrogateKeys, $ttl); // new
     }
@@ -150,17 +150,11 @@ final class ResourceStorage implements ResourceStorageInterface
      */
     public function deleteEtag(AbstractUri $uri)
     {
-        $cachedEtag = $this->loadEtag($uri);
-        if (is_string($cachedEtag)) {
-            $this->roPool->invalidateTags([$cachedEtag]); // remove ro
-            $this->etagPool->deleteItem($cachedEtag);
-            $this->etagPool->invalidateTags([$cachedEtag]);
-            ($this->etagDeleter)($cachedEtag);
+        $uriTag = ($this->cacheKey)($uri);
+        $result = $this->invalidateTags([$uriTag]);
+        ($this->purger)($uriTag);
 
-            return true;
-        }
-
-        return false;
+        return $result;
     }
 
     /**
@@ -170,12 +164,12 @@ final class ResourceStorage implements ResourceStorageInterface
      */
     public function saveValue(ResourceObject $ro, int $ttl)
     {
-        $this->logger->log('save-value uri:%s ttl:%s', $ro->uri, $ttl);
         /** @psalm-suppress MixedAssignment $body */
         $body = $this->evaluateBody($ro->body);
         $value = ResourceState::create($ro, $body, null);
         $key = $this->getUriKey($ro->uri, self::KEY_RO);
         $tags = $this->getTags($ro);
+        $this->logger->log('save-value uri:%s tags:%s ttl:%s', $ro->uri, $tags, $ttl);
 
         return $this->saver->__invoke($key, $value, $this->roPool, $ro->uri, $tags, $ttl);
     }
@@ -190,51 +184,35 @@ final class ResourceStorage implements ResourceStorageInterface
         $this->logger->log('save-view uri:%s ttl:%s', $ro->uri, $ttl);
         /** @psalm-suppress MixedAssignment $body */
         $body = $this->evaluateBody($ro->body);
-        $val = ResourceState::create($ro, $body, $ro->view);
+        $value = ResourceState::create($ro, $body, $ro->view);
         $key = $this->getUriKey($ro->uri, self::KEY_RO);
-        $item = $this->roPool->getItem($key);
-        $item->set($val);
-        $item->expiresAfter($ttl);
-        $tag = $this->getTags($ro);
-        $item->tag($tag);
+        $tags = $this->getTags($ro);
 
-        return $this->roPool->save($item);
+        return $this->saver->__invoke($key, $value, $this->roPool, $ro->uri, $tags, $ttl);
     }
 
     public function saveDonut(AbstractUri $uri, ResourceDonut $donut, ?int $sMaxAge): void
     {
+        $key = $this->getUriKey($uri, self::KEY_DONUT);
         $this->logger->log('save-donut uri:%s s-maxage:%s', $uri, $sMaxAge);
-        $key = $this->getUriKey($uri, self::KEY_STATIC);
-        $item = $this->roPool->getItem($key);
-        $item->set($donut);
-        if (is_int($sMaxAge)) {
-            $item->expiresAfter($sMaxAge);
-        }
 
-        assert($this->roPool->save($item));
+        $this->saver->__invoke($key, $donut, $this->roPool, $uri, [], $sMaxAge);
     }
 
     public function saveDonutView(ResourceObject $ro, ?int $ttl): bool
     {
-        $val = ResourceState::create($ro, [], $ro->view);
+        $resourceState = ResourceState::create($ro, [], $ro->view);
         $key = $this->getUriKey($ro->uri, self::KEY_RO);
-        $item = $this->roPool->getItem($key);
-        if (is_int($ttl)) {
-            $item->expiresAfter($ttl);
-        }
+        $tags = $this->getTags($ro);
+        $this->logger->log('save-donut-view uri:%s surrogate-keys:%s s-maxage:%s', $ro->uri, $tags, $ttl);
 
-        $item->set($val);
-        $tag = $this->getTags($ro);
-        $item->tag($tag);
-
-        // save view
-        return $this->roPool->save($item);
+        return $this->saver->__invoke($key, $resourceState, $this->roPool, $ro->uri, $tags, $ttl);
     }
 
     public function deleteDonut(AbstractUri $uri): void
     {
         $this->logger->log('delete-donut uri:%s', (string) $uri);
-        $key = $this->getUriKey($uri, self::KEY_STATIC);
+        $key = $this->getUriKey($uri, self::KEY_DONUT);
         $this->roPool->delete($key);
     }
 
@@ -249,7 +227,10 @@ final class ResourceStorage implements ResourceStorageInterface
             $tags = array_merge($tags, explode(' ', $ro->headers[Header::SURROGATE_KEY]));
         }
 
-        return $tags;
+        /** @var list<string> $uniqueTags */
+        $uniqueTags = array_unique($tags);
+
+        return $uniqueTags;
     }
 
     /**
@@ -277,15 +258,6 @@ final class ResourceStorage implements ResourceStorageInterface
         return $body;
     }
 
-    private function loadEtag(AbstractUri $uri): ?string
-    {
-        $key = $this->getUriKey($uri, self::KEY_ETAG_TABLE);
-        /** @var ?string $cachedEtag */
-        $cachedEtag = $this->etagPool->getItem($key)->get();
-
-        return $cachedEtag;
-    }
-
     private function getUriKey(AbstractUri $uri, string $type): string
     {
         return $type . ($this->cacheKey)($uri) . (isset($_SERVER['X_VARY']) ? $this->getVary() : '');
@@ -309,37 +281,21 @@ final class ResourceStorage implements ResourceStorageInterface
 
     private function saveEtag(AbstractUri $uri, string $etag, string $surrogateKeys, ?int $ttl): void
     {
-        // save ETag uri
-        $uriKey = $this->getUriKey($uri, self::KEY_ETAG_TABLE);
-        $uriItem = $this->roPool->getItem($uriKey);
-        $uriItem->set($etag);
-        if (is_int($ttl)) {
-            $uriItem->expiresAfter($ttl);
-        }
-
-        // save ETag value
-        $this->etagPool->save($uriItem);
-
-        $etagItem = $this->roPool->getItem($etag);
-        $etagItem->set($uriKey);
-        $tags = $surrogateKeys ? explode(' ', $surrogateKeys) : null;
-        if (is_array($tags)) {
-            $etagItem->tag($tags);
-        }
-
-        if (is_int($ttl)) {
-            $etagItem->expiresAfter($ttl);
-        }
-
-        $this->etagPool->save($etagItem);
+        $tags = $surrogateKeys ? explode(' ', $surrogateKeys) : [];
+        $this->logger->log('save-etag uri:%s etag:%s surrogate-keys:%s', $uri, $etag, $surrogateKeys);
+        $this->saver->__invoke($etag, 'etag', $this->etagPool, $uri, $tags, $ttl);
     }
 
     /**
      * {@inheritDoc}
      */
-    public function invalidateTags(array $tags): void
+    public function invalidateTags(array $tags): bool
     {
-        $this->roPool->invalidateTags($tags);
-        $this->etagPool->invalidateTags($tags);
+        $tag = $tags ? implode(' ', $tags) : '';
+        $this->logger->log('invalidate-etag tags:%s', $tag);
+        $valid1 = $this->roPool->invalidateTags($tags);
+        $valid2 = $this->etagPool->invalidateTags($tags);
+
+        return $valid1 && $valid2;
     }
 }

@@ -101,12 +101,9 @@ final class QueryRepository implements QueryRepositoryInterface
     public function purge(AbstractUri $uri)
     {
         $this->logger->log('purge-query-repository uri:%s', $uri);
-        $this->logger->log('delete-etag uri:%s', $uri);
-
         $tag = ($this->cacheKey)($uri);
-        $this->storage->invalidateTags([$tag]);
 
-        return $this->storage->deleteEtag($uri);
+        return $this->storage->invalidateTags([$tag]);
     }
 
     private function getHttpCacheAnnotation(ResourceObject $ro): ?HttpCache

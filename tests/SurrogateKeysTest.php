@@ -14,37 +14,34 @@ class SurrogateKeysTest extends TestCase
     {
         $uri = new Uri('app://self/foo');
         $etags = new SurrogateKeys($uri);
-        $etags->addTag(new class extends ResourceObject{
+        $foo1 = new class extends ResourceObject{
             /** @var array<string, string> */
-            public $headers = [
-                Header::ETAG => '1',
-                Header::SURROGATE_KEY => 'a b',
-            ];
-        });
-        $etags->addTag(new class extends ResourceObject{
+            public $headers = [Header::SURROGATE_KEY => 'a b'];
+        };
+        $foo1->uri = new Uri('app://self/foo1');
+        $foo2 = new class extends ResourceObject{
             /** @var array<string, string> */
-                public $headers = [
-                    Header::ETAG => '2',
-                    Header::SURROGATE_KEY => 'c',
-                ];
-        });
+            public $headers = [Header::SURROGATE_KEY => 'a b'];
+        };
+        $foo2->uri = new Uri('app://self/foo2');
+        $etags->addTag($foo1);
+        $etags->addTag($foo2);
         $ro = new class extends ResourceObject{
         };
         $ro->uri = $uri;
         $etags->setSurrogateHeader($ro);
-        $this->assertSame('_foo_ 1 a b 2 c', $ro->headers[Header::SURROGATE_KEY]);
+        $this->assertSame('_foo_ _foo1_ a b _foo2_', $ro->headers[Header::SURROGATE_KEY]);
     }
 
     public function testOnePurgeKey(): void
     {
         $uri = new Uri('app://self/foo');
         $etags = new SurrogateKeys($uri);
-        $etags->addTag(new class extends ResourceObject{
-        });
-        $ro = new class extends ResourceObject{
+        $foo = new class extends ResourceObject{
         };
-        $ro->uri = $uri;
-        $etags->setSurrogateHeader($ro);
-        $this->assertSame('_foo_', $ro->headers[Header::SURROGATE_KEY]);
+        $foo->uri = $uri;
+        $etags->addTag($foo);
+        $etags->setSurrogateHeader($foo);
+        $this->assertSame('_foo_', $foo->headers[Header::SURROGATE_KEY]);
     }
 }

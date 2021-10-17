@@ -66,7 +66,6 @@ final class DonutRepository implements DonutRepositoryInterface
         $renderer = new DonutRenderer();
         $etags = new SurrogateKeys($ro->uri);
         $donut = ResourceDonut::create($ro, $renderer, $etags, $sMaxAge);
-        $this->resourceStorage->saveDonut($ro->uri, $donut, $ttl);
 
         $donut->render($ro, $renderer);
         $etags->setSurrogateHeader($ro);
@@ -74,6 +73,7 @@ final class DonutRepository implements DonutRepositoryInterface
         ($this->headerSetter)($ro, 0, null);
         ($this->cacheControlHeaderSetter)($ro, $donut->ttl);
         $this->saveView($ro, $sMaxAge);
+        $this->resourceStorage->saveDonut($ro->uri, $donut, $ttl);
 
         return $ro;
     }
@@ -81,7 +81,6 @@ final class DonutRepository implements DonutRepositoryInterface
     public function purge(AbstractUri $uri): void
     {
         $this->queryRepository->purge($uri);
-        $this->resourceStorage->deleteDonut($uri);
     }
 
     private function refreshDonut(ResourceObject $ro): ?ResourceObject
@@ -105,10 +104,10 @@ final class DonutRepository implements DonutRepositoryInterface
 
     private function saveView(ResourceObject $ro, ?int $ttl): bool
     {
-        $this->logger->log('save-view uri:%s ttl:%d', $ro->uri, $ttl);
         assert(isset($ro->headers[Header::ETAG]));
         $surrogateKeys = $ro->headers[Header::SURROGATE_KEY] ?? '';
         $this->resourceStorage->updateEtag($ro->uri, $ro->headers[Header::ETAG], $surrogateKeys, $ttl);
+        $this->logger->log('save-view uri:%s surrogate-keys:%s ttl:%d', $ro->uri, $surrogateKeys, $ttl);
 
         return $this->resourceStorage->saveDonutView($ro, $ttl);
     }

@@ -118,7 +118,7 @@ class DonutRepositoryTest extends TestCase
         assert($queryRepository instanceof QueryRepositoryInterface);
 
         $resource->get('page://self/html/blog-posting');
-        assert($queryRepository->purge(new Uri('page://self/html/blog-posting')));
+        assert($queryRepository->purge(new Uri('page://self/html/comment')));
         $donutRo = $resource->get('page://self/html/blog-posting');
         $this->assertSame('r', $donutRo->headers[Header::ETAG][-1]);
     }

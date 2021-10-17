@@ -19,6 +19,7 @@ use Ray\Di\Injector;
 use Ray\PsrCacheModule\Annotation\Shared;
 
 use function assert;
+use function usleep;
 
 class QueryRepositoryTest extends TestCase
 {
@@ -66,6 +67,7 @@ class QueryRepositoryTest extends TestCase
         $isNotModified = $this->httpCache->isNotModified($server);
         $this->assertTrue($isNotModified);
         $this->resource->delete('app://self/user', ['id' => 1]);
+        usleep(150000);
         $user = $this->resource->get('app://self/user', ['id' => 1]);
         $newEtag = $user->headers[Header::ETAG];
         $this->assertFalse($etag === $newEtag);
@@ -159,9 +161,8 @@ class QueryRepositoryTest extends TestCase
             'HTTP_IF_NONE_MATCH' => $ro2->headers[Header::ETAG],
         ];
         $this->assertTrue($this->httpCache->isNotModified($server2), 'id:2 is not modified');
-
         $this->resource->delete('app://self/sometimes-same-response', ['id' => 1]);
-
+        usleep(150000);
         $this->assertFalse($this->httpCache->isNotModified($server1), 'id:1 is modified');
         $this->assertTrue($this->httpCache->isNotModified($server2), 'id:2 is not modified');
     }

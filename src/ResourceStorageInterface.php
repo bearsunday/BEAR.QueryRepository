@@ -72,5 +72,5 @@ interface ResourceStorageInterface
      *
      * @param list<string> $tags
      */
-    public function invalidateTags(array $tags): void;
+    public function invalidateTags(array $tags): bool;
 }
