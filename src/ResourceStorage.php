@@ -55,6 +55,9 @@ final class ResourceStorage implements ResourceStorageInterface
     /** @var PurgerInterface */
     private $etagDeleter;
 
+    /** @var CacheKey */
+    private $cacheKey;
+
     /**
      * @Shared("pool")
      * @EtagPool("etagPool")
@@ -63,12 +66,14 @@ final class ResourceStorage implements ResourceStorageInterface
     public function __construct(
         RepositoryLoggerInterface $logger,
         PurgerInterface $etagDeleter,
+        CacheKey $cacheKey,
         ?CacheItemPoolInterface $pool = null,
         ?CacheItemPoolInterface $etagPool = null,
         ?CacheProvider $cache = null
     ) {
         $this->logger = $logger;
         $this->etagDeleter = $etagDeleter;
+        $this->cacheKey = $cacheKey;
         if ($pool === null && $cache instanceof CacheProvider) {
             $this->injectDoctrineCache($cache);
 
@@ -170,12 +175,13 @@ final class ResourceStorage implements ResourceStorageInterface
      */
     private function getTags(ResourceObject $ro): array
     {
-        $etags = [$ro->headers[Header::ETAG]];
+        $etag = $ro->headers['ETag'];
+        $tags = [$etag, (new CacheKey())($ro->uri)];
         if (isset($ro->headers[Header::SURROGATE_KEY])) {
-            $etags = array_merge($etags, explode(' ', $ro->headers[Header::SURROGATE_KEY]));
+            $tags = array_merge($tags, explode(' ', $ro->headers[Header::SURROGATE_KEY]));
         }
 
-        return $etags;
+        return $tags;
     }
 
     /**
@@ -283,29 +289,23 @@ final class ResourceStorage implements ResourceStorageInterface
 
     private function getUriKey(AbstractUri $uri, string $type): string
     {
-        $key =  $type . $this->getVaryUri($uri);
-
-        return str_replace([':', '/'], ['_', '-'], $key);
+        return $type . ($this->cacheKey)($uri) . (isset($_SERVER['X_VARY']) ? $this->getVary() : '');
     }
 
-    private function getVaryUri(AbstractUri $uri): string
+    private function getVary(): string
     {
-        if (! isset($_SERVER['X_VARY'])) {
-            return (string) $uri;
-        }
-
         $xvary = $_SERVER['X_VARY'];
         assert(is_string($xvary));
         $varys = explode(',', $xvary);
-        $varyId = '';
+        $varyString = '';
         foreach ($varys as $vary) {
             $phpVaryKey = sprintf('X_%s', strtoupper($vary));
             if (isset($_SERVER[$phpVaryKey]) && is_string($_SERVER[$phpVaryKey])) {
-                $varyId .= $_SERVER[$phpVaryKey];
+                $varyString .= $_SERVER[$phpVaryKey];
             }
         }
 
-        return $uri . $varyId;
+        return $varyString;
     }
 
     private function saveEtag(AbstractUri $uri, string $etag, string $surrogateKeys, ?int $ttl): void
