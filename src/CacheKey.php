@@ -18,6 +18,6 @@ final class CacheKey
         $query = $uri->query;
         ksort($query);
 
-        return str_replace([':', '/', '&'], ['_', '_', '_'], sprintf('%s_%s', $uri->path, http_build_query($query)));
+        return str_replace('/', '_', sprintf('%s_%s', $uri->path, http_build_query($query)));
     }
 }

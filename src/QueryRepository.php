@@ -36,18 +36,23 @@ final class QueryRepository implements QueryRepositoryInterface
     /** @var RepositoryLoggerInterface */
     private $logger;
 
+    /** @var CacheKey  */
+    private $cacheKey;
+
     public function __construct(
         RepositoryLoggerInterface $logger,
         HeaderSetter $headerSetter,
         ResourceStorageInterface $storage,
         Reader $reader,
-        Expiry $expiry
+        Expiry $expiry,
+        CacheKey $cacheKey
     ) {
         $this->headerSetter = $headerSetter;
         $this->reader = $reader;
         $this->storage = $storage;
         $this->expiry = $expiry;
         $this->logger = $logger;
+        $this->cacheKey = $cacheKey;
     }
 
     /**
@@ -97,6 +102,9 @@ final class QueryRepository implements QueryRepositoryInterface
     {
         $this->logger->log('purge-query-repository uri:%s', $uri);
         $this->logger->log('delete-etag uri:%s', $uri);
+
+        $tag = ($this->cacheKey)($uri);
+        $this->storage->invalidateTags([$tag]);
 
         return $this->storage->deleteEtag($uri);
     }
