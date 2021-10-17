@@ -104,6 +104,30 @@ final class ResourceStorage implements ResourceStorageInterface
     /**
      * {@inheritdoc}
      */
+    public function get(AbstractUri $uri): ?ResourceState
+    {
+        $item = $this->roPool->getItem($this->getUriKey($uri, self::KEY_RO));
+        assert($item instanceof ItemInterface);
+        $state = $item->get();
+        assert($state instanceof ResourceState || $state === null);
+
+        return $state;
+    }
+
+    public function getDonut(AbstractUri $uri): ?ResourceDonut
+    {
+        $key = $this->getUriKey($uri, self::KEY_STATIC);
+        $item = $this->roPool->getItem($key);
+        assert($item instanceof ItemInterface);
+        $donut = $item->get();
+        assert($donut instanceof ResourceDonut || $donut === null);
+
+        return $donut;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
     public function hasEtag(string $etag): bool
     {
         return $this->etagPool->hasItem($etag);
@@ -141,19 +165,6 @@ final class ResourceStorage implements ResourceStorageInterface
 
     /**
      * {@inheritdoc}
-     */
-    public function get(AbstractUri $uri): ?ResourceState
-    {
-        $item = $this->roPool->getItem($this->getUriKey($uri, self::KEY_RO));
-        assert($item instanceof ItemInterface);
-        $state = $item->get();
-        assert($state instanceof ResourceState || $state === null);
-
-        return $state;
-    }
-
-    /**
-     * {@inheritdoc}
      *
      * @return bool
      */
@@ -167,20 +178,6 @@ final class ResourceStorage implements ResourceStorageInterface
         $tags = $this->getTags($ro);
 
         return $this->saver->__invoke($key, $value, $this->roPool, $ro->uri, $tags, $ttl);
-    }
-
-    /**
-     * @return list<string>
-     */
-    private function getTags(ResourceObject $ro): array
-    {
-        $etag = $ro->headers['ETag'];
-        $tags = [$etag, ($this->cacheKey)($ro->uri)];
-        if (isset($ro->headers[Header::SURROGATE_KEY])) {
-            $tags = array_merge($tags, explode(' ', $ro->headers[Header::SURROGATE_KEY]));
-        }
-
-        return $tags;
     }
 
     /**
@@ -204,6 +201,19 @@ final class ResourceStorage implements ResourceStorageInterface
         return $this->roPool->save($item);
     }
 
+    public function saveDonut(AbstractUri $uri, ResourceDonut $donut, ?int $sMaxAge): void
+    {
+        $this->logger->log('save-donut uri:%s s-maxage:%s', $uri, $sMaxAge);
+        $key = $this->getUriKey($uri, self::KEY_STATIC);
+        $item = $this->roPool->getItem($key);
+        $item->set($donut);
+        if (is_int($sMaxAge)) {
+            $item->expiresAfter($sMaxAge);
+        }
+
+        assert($this->roPool->save($item));
+    }
+
     public function saveDonutView(ResourceObject $ro, ?int $ttl): bool
     {
         $val = ResourceState::create($ro, [], $ro->view);
@@ -221,17 +231,6 @@ final class ResourceStorage implements ResourceStorageInterface
         return $this->roPool->save($item);
     }
 
-    public function getDonut(AbstractUri $uri): ?ResourceDonut
-    {
-        $key = $this->getUriKey($uri, self::KEY_STATIC);
-        $item = $this->roPool->getItem($key);
-        assert($item instanceof ItemInterface);
-        $donut = $item->get();
-        assert($donut instanceof ResourceDonut || $donut === null);
-
-        return $donut;
-    }
-
     public function deleteDonut(AbstractUri $uri): void
     {
         $this->logger->log('delete-donut uri:%s', (string) $uri);
@@ -239,17 +238,18 @@ final class ResourceStorage implements ResourceStorageInterface
         $this->roPool->delete($key);
     }
 
-    public function saveDonut(AbstractUri $uri, ResourceDonut $donut, ?int $sMaxAge): void
+    /**
+     * @return list<string>
+     */
+    private function getTags(ResourceObject $ro): array
     {
-        $this->logger->log('save-donut uri:%s s-maxage:%s', $uri, $sMaxAge);
-        $key = $this->getUriKey($uri, self::KEY_STATIC);
-        $item = $this->roPool->getItem($key);
-        $item->set($donut);
-        if (is_int($sMaxAge)) {
-            $item->expiresAfter($sMaxAge);
+        $etag = $ro->headers['ETag'];
+        $tags = [$etag, ($this->cacheKey)($ro->uri)];
+        if (isset($ro->headers[Header::SURROGATE_KEY])) {
+            $tags = array_merge($tags, explode(' ', $ro->headers[Header::SURROGATE_KEY]));
         }
 
-        assert($this->roPool->save($item));
+        return $tags;
     }
 
     /**
