@@ -35,6 +35,7 @@ class ResourceRepositoryTest extends TestCase
             new ResourceStorage(
                 new RepositoryLogger(),
                 new NullPurger(),
+                new CacheKey(),
                 new FilesystemAdapter('', 0, $_ENV['TMP_DIR'])
             ),
             new AnnotationReader(),
@@ -110,6 +111,7 @@ class ResourceRepositoryTest extends TestCase
             new ResourceStorage(
                 new RepositoryLogger(),
                 new NullPurger(),
+                new CacheKey(),
                 null,
                 null,
                 $doctrineCache

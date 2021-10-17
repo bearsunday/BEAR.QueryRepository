@@ -20,6 +20,7 @@ class DonutCacheModule extends AbstractModule
         $this->bind(CdnCacheControlHeaderSetterInterface::class)->to(CdnCacheControlHeaderSetter::class);
         $this->bind(DonutRepositoryInterface::class)->to(DonutRepository::class)->in(Scope::SINGLETON);
         $this->bind(RepositoryLoggerInterface::class)->to(RepositoryLogger::class)->in(Scope::SINGLETON);
+        $this->bind(PurgerInterface::class)->to(NullPurger::class);
         $this->installAopClassModule();
         $this->installAopMethodModule();
     }
