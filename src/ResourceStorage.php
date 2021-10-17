@@ -209,13 +209,6 @@ final class ResourceStorage implements ResourceStorageInterface
         return $this->saver->__invoke($key, $resourceState, $this->roPool, $ro->uri, $tags, $ttl);
     }
 
-    public function deleteDonut(AbstractUri $uri): void
-    {
-        $this->logger->log('delete-donut uri:%s', (string) $uri);
-        $key = $this->getUriKey($uri, self::KEY_DONUT);
-        $this->roPool->delete($key);
-    }
-
     /**
      * @return list<string>
      */
