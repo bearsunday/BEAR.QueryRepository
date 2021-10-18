@@ -60,6 +60,9 @@ final class DonutRepository implements DonutRepositoryInterface
         return $this->refreshDonut($ro);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public function put(ResourceObject $ro, ?int $ttl = null, ?int $sMaxAge = null): ResourceObject
     {
         $this->logger->log('create-donut: uri:%s ttl:%s s-maxage:%d', (string) $ro->uri, $sMaxAge, $ttl);
@@ -78,9 +81,20 @@ final class DonutRepository implements DonutRepositoryInterface
         return $ro;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public function purge(AbstractUri $uri): void
     {
         $this->queryRepository->purge($uri);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function invalidateTags(array $tags): void
+    {
+        $this->resourceStorage->invalidateTags($tags);
     }
 
     private function refreshDonut(ResourceObject $ro): ?ResourceObject

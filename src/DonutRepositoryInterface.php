@@ -29,4 +29,9 @@ interface DonutRepositoryInterface
      * Purge donut caching
      */
     public function purge(AbstractUri $uri): void;
+
+    /**
+     * @param list<string> $tags
+     */
+    public function invalidateTags(array $tags): void;
 }
