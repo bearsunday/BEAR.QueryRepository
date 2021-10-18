@@ -151,10 +151,22 @@ final class ResourceStorage implements ResourceStorageInterface
     public function deleteEtag(AbstractUri $uri)
     {
         $uriTag = ($this->uriTag)($uri);
-        $result = $this->invalidateTags([$uriTag]);
-        ($this->purger)($uriTag);
 
-        return $result;
+        return $this->invalidateTags([$uriTag]);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function invalidateTags(array $tags): bool
+    {
+        $tag = $tags ? implode(' ', $tags) : '';
+        $this->logger->log('invalidate-etag tags:%s', $tag);
+        $valid1 = $this->roPool->invalidateTags($tags);
+        $valid2 = $this->etagPool->invalidateTags($tags);
+        ($this->purger)(implode(' ', $tags));
+
+        return $valid1 && $valid2;
     }
 
     /**
@@ -277,18 +289,5 @@ final class ResourceStorage implements ResourceStorageInterface
         $tags = $surrogateKeys ? explode(' ', $surrogateKeys) : [];
         $this->logger->log('save-etag uri:%s etag:%s surrogate-keys:%s', $uri, $etag, $surrogateKeys);
         $this->saver->__invoke($etag, 'etag', $this->etagPool, $uri, $tags, $ttl);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function invalidateTags(array $tags): bool
-    {
-        $tag = $tags ? implode(' ', $tags) : '';
-        $this->logger->log('invalidate-etag tags:%s', $tag);
-        $valid1 = $this->roPool->invalidateTags($tags);
-        $valid2 = $this->etagPool->invalidateTags($tags);
-
-        return $valid1 && $valid2;
     }
 }
