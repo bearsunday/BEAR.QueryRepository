@@ -86,7 +86,7 @@ final class ResourceStorage implements ResourceStorageInterface
 
         assert($pool instanceof AdapterInterface);
         if ($etagPool instanceof AdapterInterface) {
-            $this->roPool = new TagAwareAdapter($pool, $etagPool);
+            $this->roPool = new TagAwareAdapter($pool, $etagPool, 0);
             $this->etagPool = new TagAwareAdapter($etagPool);
 
             return;
