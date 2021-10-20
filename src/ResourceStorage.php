@@ -136,17 +136,6 @@ final class ResourceStorage implements ResourceStorageInterface
 
     /**
      * {@inheritdoc}
-     *
-     * @return void
-     */
-    public function updateEtag(AbstractUri $uri, string $etag, string $surrogateKeys, ?int $ttl)
-    {
-        $this->deleteEtag($uri); // old
-        $this->saveEtag($uri, $etag, $surrogateKeys, $ttl); // new
-    }
-
-    /**
-     * {@inheritdoc}
      */
     public function deleteEtag(AbstractUri $uri)
     {
@@ -284,7 +273,7 @@ final class ResourceStorage implements ResourceStorageInterface
         return $varyString;
     }
 
-    private function saveEtag(AbstractUri $uri, string $etag, string $surrogateKeys, ?int $ttl): void
+    public function saveEtag(AbstractUri $uri, string $etag, string $surrogateKeys, ?int $ttl): void
     {
         $tags = $surrogateKeys ? explode(' ', $surrogateKeys) : [];
         $this->logger->log('save-etag uri:%s etag:%s surrogate-keys:%s', $uri, $etag, $surrogateKeys);

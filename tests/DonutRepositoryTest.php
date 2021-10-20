@@ -30,6 +30,9 @@ class DonutRepositoryTest extends TestCase
     /** @var Uri */
     private $uri;
 
+    /** @var ResourceStorageInterface */
+    private $resourceStorage;
+
     public function setUp(): void
     {
         static $injector;
@@ -41,6 +44,7 @@ class DonutRepositoryTest extends TestCase
         $this->resource = $injector->getInstance(ResourceInterface::class);
         $this->donutRepository = $injector->getInstance(DonutRepositoryInterface::class);
         $this->queryRepository = $injector->getInstance(QueryRepositoryInterface::class);
+        $this->resourceStorage = $injector->getInstance(ResourceStorageInterface::class);
         $uri = 'page://self/html/blog-posting';
         $this->uri = new Uri($uri);
         parent::setUp();
@@ -81,7 +85,11 @@ class DonutRepositoryTest extends TestCase
      */
     public function testCreatedByDonut(): void
     {
-        // create by static
+        // create donut
+        $this->resource->get('page://self/html/blog-posting');
+        // delete comment and blog-posting view
+        $this->resourceStorage->invalidateTags([(new UriTag())(new Uri('page://self/html/comment'))]);
+        // create by donut
         $donutRo = $this->resource->get('page://self/html/blog-posting');
         assert($donutRo instanceof ResourceObject);
         $this->assertSame('r', $donutRo->headers[Header::ETAG][-1]);

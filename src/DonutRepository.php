@@ -49,8 +49,9 @@ final class DonutRepository implements DonutRepositoryInterface
     public function get(ResourceObject $ro): ?ResourceObject
     {
         $maybeState = $this->queryRepository->get($ro->uri);
+        $this->logger->log('try-donut-view: uri:%s', $ro->uri);
         if ($maybeState instanceof ResourceState) {
-            $this->logger->log('get-donut-cache: uri:%s', $ro->uri);
+            $this->logger->log('found-donut-view: uri:%s', $ro->uri);
             $ro->headers = $maybeState->headers;
             $ro->view = $maybeState->view;
 
@@ -75,6 +76,7 @@ final class DonutRepository implements DonutRepositoryInterface
         ($this->cacheControlHeaderSetter)($ro, $sMaxAge);
         ($this->headerSetter)($ro, 0, null);
         ($this->cacheControlHeaderSetter)($ro, $donut->ttl);
+        $this->resourceStorage->invalidateTags([(new UriTag())($ro->uri)]);
         $this->saveView($ro, $sMaxAge);
         $this->resourceStorage->saveDonut($ro->uri, $donut, $ttl);
 
@@ -100,6 +102,7 @@ final class DonutRepository implements DonutRepositoryInterface
     private function refreshDonut(ResourceObject $ro): ?ResourceObject
     {
         $donut = $this->resourceStorage->getDonut($ro->uri);
+        $this->logger->log('try-donut uri:%s', (string) $ro->uri);
         if (! $donut instanceof ResourceDonut) {
             $this->logger->log('no-donut-found uri:%s', (string) $ro->uri);
 
@@ -120,8 +123,7 @@ final class DonutRepository implements DonutRepositoryInterface
     {
         assert(isset($ro->headers[Header::ETAG]));
         $surrogateKeys = $ro->headers[Header::SURROGATE_KEY] ?? '';
-        $this->resourceStorage->updateEtag($ro->uri, $ro->headers[Header::ETAG], $surrogateKeys, $ttl);
-        $this->logger->log('save-view uri:%s surrogate-keys:%s ttl:%d', $ro->uri, $surrogateKeys, $ttl);
+        $this->resourceStorage->saveEtag($ro->uri, $ro->headers[Header::ETAG], $surrogateKeys, $ttl);
 
         return $this->resourceStorage->saveDonutView($ro, $ttl);
     }

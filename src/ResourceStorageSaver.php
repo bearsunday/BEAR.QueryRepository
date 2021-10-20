@@ -12,14 +12,6 @@ use function assert;
 
 final class ResourceStorageSaver
 {
-    /** @var UriTagInterface */
-    private $uriTag;
-
-    public function __construct(UriTagInterface $uriTag)
-    {
-        $this->uriTag = $uriTag;
-    }
-
     /**
      * @param mixed        $value
      * @param list<string> $tags
@@ -29,12 +21,11 @@ final class ResourceStorageSaver
         $cacheItem = $pool->getItem($key);
         $cacheItem->set($value);
         assert($cacheItem instanceof CacheItem);
+        $cacheItem->tag($tags);
+
         if ($ttl) {
             $cacheItem->expiresAfter($ttl);
         }
-
-        $tags[] = ($this->uriTag)($uri);
-        $cacheItem->tag($tags);
 
         return $pool->save($cacheItem);
     }

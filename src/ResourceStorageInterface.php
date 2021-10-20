@@ -15,11 +15,9 @@ interface ResourceStorageInterface
     public function hasEtag(string $etag): bool;
 
     /**
-     * Update or save new Etag
-     *
-     * @return void
+     * Save Etag
      */
-    public function updateEtag(AbstractUri $uri, string $etag, string $surrogateKeys, ?int $ttl);
+    public function saveEtag(AbstractUri $uri, string $etag, string $surrogateKeys, ?int $ttl): void;
 
     /**
      * Delete Etag

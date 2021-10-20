@@ -73,19 +73,20 @@ class DonutQueryInterceptorTest extends TestCase
         $blogPosting = $this->resource->get('page://self/html/blog-posting');
         assert($blogPosting instanceof BlogPosting);
         $log = (string) $this->logger;
-        $this->assertSame('no-donut-found uri:page://self/html/blog-posting
+        $this->assertSame('try-donut-view: uri:page://self/html/blog-posting
+try-donut uri:page://self/html/blog-posting
+no-donut-found uri:page://self/html/blog-posting
 create-donut: uri:page://self/html/blog-posting ttl: s-maxage:0
 put-query-repository uri:page://self/html/comment
-invalidate-etag tags:_html_comment_
-save-etag uri:page://self/html/comment etag:_html_comment_ surrogate-keys:
+save-etag uri:page://self/html/comment etag:_html_comment_ surrogate-keys:_html_comment_
 save-value uri:page://self/html/comment tags:_html_comment_ ttl:31536000
 invalidate-etag tags:_html_blog-posting_
-save-etag uri:page://self/html/blog-posting etag:_html_blog-posting_ surrogate-keys:_html_blog-posting_ _html_comment_
-save-view uri:page://self/html/blog-posting surrogate-keys:_html_blog-posting_ _html_comment_ ttl:0
+save-etag uri:page://self/html/blog-posting etag:_html_blog-posting_ surrogate-keys:_html_blog-posting_ _html_comment_ _html_blog-posting_
 save-donut-view uri:page://self/html/blog-posting surrogate-keys:_html_blog-posting_ _html_comment_ s-maxage:
 save-donut uri:page://self/html/blog-posting s-maxage:
 get
-get-donut-cache: uri:page://self/html/blog-posting', $log);
+try-donut-view: uri:page://self/html/blog-posting
+found-donut-view: uri:page://self/html/blog-posting', $log);
         $this->assertArrayHasKey('Age', $blogPosting->headers);
         $this->assertArrayHasKey(Header::CDN_CACHE_CONTROL, $blogPosting->headers);
     }

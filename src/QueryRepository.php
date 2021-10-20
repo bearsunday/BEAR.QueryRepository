@@ -64,7 +64,7 @@ final class QueryRepository implements QueryRepositoryInterface
         if (isset($ro->headers[Header::ETAG])) {
             $etag = $ro->headers[Header::ETAG];
             $surrogateKeys = $ro->headers[Header::SURROGATE_KEY] ?? '';
-            $this->storage->updateEtag($ro->uri, $etag, $surrogateKeys, $ttl);
+            $this->storage->saveEtag($ro->uri, $etag, $surrogateKeys, $ttl);
         }
 
         if ($cacheable instanceof Cacheable && $cacheable->type === 'view') {

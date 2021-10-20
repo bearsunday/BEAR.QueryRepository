@@ -62,11 +62,14 @@ class DonutCommandInterceptorTest extends TestCase
         $this->assertStringContainsString('delete
 purge-query-repository uri:page://self/html/blog-posting?id=0
 invalidate-etag tags:_html_blog-posting_id=0
-refresh-donut: uri:page://self/html/blog-posting?id=0
+try-donut-view: uri:page://self/html/blog-posting?id=0
+try-donut uri:page://self/html/blog-posting?id=0
+no-donut-found uri:page://self/html/blog-posting?id=0
+create-donut: uri:page://self/html/blog-posting?id=0 ttl: s-maxage:0
 invalidate-etag tags:_html_blog-posting_id=0
-save-etag uri:page://self/html/blog-posting?id=0 etag:_html_blog-posting_id=0r surrogate-keys:_html_blog-posting_id=0 _html_comment_
-save-view uri:page://self/html/blog-posting?id=0 surrogate-keys:_html_blog-posting_id=0 _html_comment_ ttl:0
-save-donut-view uri:page://self/html/blog-posting?id=0 surrogate-keys:_html_blog-posting_id=0r _html_blog-posting_id=0 _html_comment_ s-maxage:
+save-etag uri:page://self/html/blog-posting?id=0 etag:_html_blog-posting_id=0 surrogate-keys:_html_blog-posting_id=0 _html_comment_
+save-donut-view uri:page://self/html/blog-posting?id=0 surrogate-keys:_html_blog-posting_id=0 _html_comment_ s-maxage:
+save-donut uri:page://self/html/blog-posting?id=0 s-maxage:
 get', $log);
         $ro = $this->resource->get('page://self/html/blog-posting?id=0');
         $this->assertArrayHasKey('Age', $ro->headers);
