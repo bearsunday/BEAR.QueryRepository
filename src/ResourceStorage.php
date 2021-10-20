@@ -80,7 +80,7 @@ final class ResourceStorage implements ResourceStorageInterface
         $this->logger = $logger;
         $this->purger = $etagDeleter;
         $this->uriTag = $uriTag;
-        $this->saver = new ResourceStorageSaver(new UriTag());
+        $this->saver = new ResourceStorageSaver();
         if ($pool === null && $cache instanceof CacheProvider) {
             $this->injectDoctrineCache($cache);
 
@@ -88,9 +88,10 @@ final class ResourceStorage implements ResourceStorageInterface
         }
 
         assert($pool instanceof AdapterInterface);
-        if ($etagPool instanceof AdapterInterface) {
+        $etagPool = $etagPool ?? $pool;
+        if (! $etagPool instanceof AdapterInterface) {
             $this->roPool = new TagAwareAdapter($pool, $etagPool, $knownTagTtl);
-            $this->etagPool = new TagAwareAdapter($etagPool);
+            $this->etagPool = new TagAwareAdapter($etagPool, null, $knownTagTtl);
 
             return;
         }
@@ -279,7 +280,8 @@ final class ResourceStorage implements ResourceStorageInterface
     public function saveEtag(AbstractUri $uri, string $etag, string $surrogateKeys, ?int $ttl): void
     {
         $tags = $surrogateKeys ? explode(' ', $surrogateKeys) : [];
-        $this->logger->log('save-etag uri:%s etag:%s surrogate-keys:%s', $uri, $etag, $surrogateKeys);
+        $tags[] = (new UriTag())($uri);
+        $this->logger->log('save-etag uri:%s etag:%s surrogate-keys:%s', $uri, $etag, $tags);
         $this->saver->__invoke($etag, 'etag', $this->etagPool, $uri, $tags, $ttl);
     }
 }
