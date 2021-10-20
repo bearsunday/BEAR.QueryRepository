@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\SerializableTagAwareAdapter as TagAwareAdapter;
 use BEAR\RepositoryModule\Annotation\EtagPool;
+use BEAR\RepositoryModule\Annotation\KnownTagTtl;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\RequestInterface;
 use BEAR\Resource\ResourceObject;
@@ -64,15 +65,17 @@ final class ResourceStorage implements ResourceStorageInterface
     /**
      * @Shared("pool")
      * @EtagPool("etagPool")
+     * @KnownTagTtl("knownTagTtl")
      */
-    #[Shared('pool'), EtagPool('etagPool')]
+    #[Shared('pool'), EtagPool('etagPool'), KnownTagTtl('knownTagTtl')]
     public function __construct(
         RepositoryLoggerInterface $logger,
         PurgerInterface $etagDeleter,
         UriTagInterface $uriTag,
         ?CacheItemPoolInterface $pool = null,
         ?CacheItemPoolInterface $etagPool = null,
-        ?CacheProvider $cache = null
+        ?CacheProvider $cache = null,
+        float $knownTagTtl = 0.0
     ) {
         $this->logger = $logger;
         $this->purger = $etagDeleter;
@@ -86,13 +89,13 @@ final class ResourceStorage implements ResourceStorageInterface
 
         assert($pool instanceof AdapterInterface);
         if ($etagPool instanceof AdapterInterface) {
-            $this->roPool = new TagAwareAdapter($pool, $etagPool, 0);
+            $this->roPool = new TagAwareAdapter($pool, $etagPool, $knownTagTtl);
             $this->etagPool = new TagAwareAdapter($etagPool);
 
             return;
         }
 
-        $this->roPool = new TagAwareAdapter($pool);
+        $this->roPool = new TagAwareAdapter($pool, null, $knownTagTtl);
         $this->etagPool = $this->roPool;
     }
 
