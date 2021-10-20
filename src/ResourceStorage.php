@@ -281,7 +281,9 @@ final class ResourceStorage implements ResourceStorageInterface
     {
         $tags = $surrogateKeys ? explode(' ', $surrogateKeys) : [];
         $tags[] = (new UriTag())($uri);
-        $this->logger->log('save-etag uri:%s etag:%s surrogate-keys:%s', $uri, $etag, $tags);
-        $this->saver->__invoke($etag, 'etag', $this->etagPool, $uri, $tags, $ttl);
+        /** @var list<string> $uniqueTags */
+        $uniqueTags = array_unique($tags);
+        $this->logger->log('save-etag uri:%s etag:%s surrogate-keys:%s', $uri, $etag, $uniqueTags);
+        $this->saver->__invoke($etag, 'etag', $this->etagPool, $uri, $uniqueTags, $ttl);
     }
 }
