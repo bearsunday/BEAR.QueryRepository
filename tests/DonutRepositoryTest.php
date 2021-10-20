@@ -14,7 +14,6 @@ use Ray\Di\Injector;
 
 use function assert;
 use function dirname;
-use function usleep;
 
 class DonutRepositoryTest extends TestCase
 {
@@ -144,7 +143,6 @@ class DonutRepositoryTest extends TestCase
         $ro1 = $queryRepository->get(new Uri('page://self/html/blog-posting'));
         $this->assertInstanceOf(ResourceState::class, $ro1);
         $donutRepository->invalidateTags([(new UriTag())(new Uri('page://self/html/blog-posting'))]);
-        usleep(150000);
         $ro2 = $queryRepository->get(new Uri('page://self/html/blog-posting'));
         $this->assertNull($ro2);
     }

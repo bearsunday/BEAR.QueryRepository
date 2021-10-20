@@ -67,7 +67,6 @@ class QueryRepositoryTest extends TestCase
         $isNotModified = $this->httpCache->isNotModified($server);
         $this->assertTrue($isNotModified);
         $this->resource->delete('app://self/user', ['id' => 1]);
-        usleep(150000);
         $user = $this->resource->get('app://self/user', ['id' => 1]);
         $newEtag = $user->headers[Header::ETAG];
         $this->assertFalse($etag === $newEtag);
