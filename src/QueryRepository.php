@@ -56,6 +56,7 @@ final class QueryRepository implements QueryRepositoryInterface
     public function put(ResourceObject $ro)
     {
         $this->logger->log('put-query-repository uri:%s', $ro->uri);
+        $this->storage->deleteEtag($ro->uri);
         $ro->toString();
         $cacheable = $this->getCacheableAnnotation($ro);
         $httpCache = $this->getHttpCacheAnnotation($ro);

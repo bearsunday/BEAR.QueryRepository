@@ -85,10 +85,11 @@ try-donut uri:page://self/html/blog-posting
 no-donut-found uri:page://self/html/blog-posting
 create-donut: uri:page://self/html/blog-posting ttl: s-maxage:0
 put-query-repository uri:page://self/html/comment
+invalidate-etag tags:_html_comment_
 save-etag uri:page://self/html/comment etag:_html_comment_ surrogate-keys:_html_comment_
 save-value uri:page://self/html/comment tags:_html_comment_ ttl:31536000
 invalidate-etag tags:_html_blog-posting_
-save-etag uri:page://self/html/blog-posting etag:_html_blog-posting_ surrogate-keys:_html_blog-posting_ _html_comment_ _html_blog-posting_
+save-etag uri:page://self/html/blog-posting etag:_html_blog-posting_ surrogate-keys:_html_blog-posting_ _html_comment_
 save-donut-view uri:page://self/html/blog-posting surrogate-keys:_html_blog-posting_ _html_comment_ s-maxage:
 save-donut uri:page://self/html/blog-posting s-maxage:
 get
