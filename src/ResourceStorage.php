@@ -88,16 +88,9 @@ final class ResourceStorage implements ResourceStorageInterface
         }
 
         assert($pool instanceof AdapterInterface);
-        $etagPool = $etagPool ?? $pool;
-        if (! $etagPool instanceof AdapterInterface) {
-            $this->roPool = new TagAwareAdapter($pool, $etagPool, $knownTagTtl);
-            $this->etagPool = new TagAwareAdapter($etagPool, null, $knownTagTtl);
-
-            return;
-        }
-
-        $this->roPool = new TagAwareAdapter($pool, null, $knownTagTtl);
-        $this->etagPool = $this->roPool;
+        $etagPool =  $etagPool instanceof AdapterInterface ? $etagPool : $pool;
+        $this->roPool = new TagAwareAdapter($pool, $etagPool, $knownTagTtl);
+        $this->etagPool = new TagAwareAdapter($etagPool, $etagPool, $knownTagTtl);
     }
 
     private function injectDoctrineCache(CacheProvider $cache): void
