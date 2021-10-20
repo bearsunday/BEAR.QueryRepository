@@ -23,6 +23,9 @@ class DonutQueryInterceptorPurgeTest extends TestCase
     /** @var QueryRepository */
     private $repository;
 
+    /** @var RepositoryLoggerInterface */
+    private $logger;
+
     protected function setUp(): void
     {
         static $injector;
@@ -36,8 +39,15 @@ class DonutQueryInterceptorPurgeTest extends TestCase
 
         $this->resource = $injector->getInstance(ResourceInterface::class);
         $this->repository = $injector->getInstance(QueryRepository::class);
-
+        $this->logger = $injector->getInstance(RepositoryLoggerInterface::class);
         parent::setUp();
+    }
+
+    protected function tearDown(): void
+    {
+        $log = ((string) $this->logger);
+        // error_log((string) $log);  // uncomment to see the debug log
+        unset($log);
     }
 
     public function testStatePurge(): void

@@ -32,7 +32,7 @@ class DonutCommandInterceptorTest extends TestCase
     protected function setUp(): void
     {
         $namespace = 'FakeVendor\HelloWorld';
-        $module = new DevEtagModule((new FakeEtagPoolModule(new QueryRepositoryModule(new ResourceModule($namespace)))));
+        $module = new FakeEtagPoolModule(new QueryRepositoryModule(new ResourceModule($namespace)));
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
         $injector = new Injector($module, $_ENV['TMP_DIR']);
         $this->resource = $injector->getInstance(ResourceInterface::class);
@@ -40,6 +40,13 @@ class DonutCommandInterceptorTest extends TestCase
         $this->httpCache = $injector->getInstance(HttpCacheInterfaceAlias::class);
 
         parent::setUp();
+    }
+
+    protected function tearDown(): void
+    {
+        $log = ((string) $this->logger);
+        // error_log((string) $log);  // uncomment to see the debug log
+        unset($log);
     }
 
     public function testCommandInterceptorRefresh(): void
@@ -56,21 +63,9 @@ class DonutCommandInterceptorTest extends TestCase
         $this->assertArrayHasKey('Age', $ro1->headers);
         $this->logger->log('delete');
         $this->resource->delete('page://self/html/blog-posting?id=0');
-        $this->assertTrue($this->httpCache->isNotModified($server));
+        $this->assertFalse($this->httpCache->isNotModified($server));
+        $this->logger->log('server:%s', $server);
         $this->logger->log('get');
-        $log = (string) $this->logger;
-        $this->assertStringContainsString('delete
-purge-query-repository uri:page://self/html/blog-posting?id=0
-invalidate-etag tags:_html_blog-posting_id=0
-try-donut-view: uri:page://self/html/blog-posting?id=0
-try-donut uri:page://self/html/blog-posting?id=0
-no-donut-found uri:page://self/html/blog-posting?id=0
-create-donut: uri:page://self/html/blog-posting?id=0 ttl: s-maxage:0
-invalidate-etag tags:_html_blog-posting_id=0
-save-etag uri:page://self/html/blog-posting?id=0 etag:_html_blog-posting_id=0 surrogate-keys:_html_blog-posting_id=0 _html_comment_
-save-donut-view uri:page://self/html/blog-posting?id=0 surrogate-keys:_html_blog-posting_id=0 _html_comment_ s-maxage:
-save-donut uri:page://self/html/blog-posting?id=0 s-maxage:
-get', $log);
         $ro = $this->resource->get('page://self/html/blog-posting?id=0');
         $this->assertArrayHasKey('Age', $ro->headers);
     }

@@ -39,6 +39,13 @@ class DonutQueryInterceptorTest extends TestCase
         parent::setUp();
     }
 
+    protected function tearDown(): void
+    {
+        $log = ((string) $this->logger);
+        // error_log((string) $log);  // uncomment to see the debug log
+        unset($log);
+    }
+
     public function testInitialRequest(): string
     {
         // initial request

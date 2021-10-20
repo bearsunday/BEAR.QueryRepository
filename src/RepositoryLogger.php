@@ -32,7 +32,6 @@ final class RepositoryLogger implements RepositoryLoggerInterface
         $msg = sprintf($template, ...$values);
 
         $this->logs[] = $msg;
-        // error_log($msg);
     }
 
     public function __toString(): string

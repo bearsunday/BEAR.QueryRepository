@@ -19,7 +19,6 @@ use Ray\Di\Injector;
 use Ray\PsrCacheModule\Annotation\Shared;
 
 use function assert;
-use function usleep;
 
 class QueryRepositoryTest extends TestCase
 {
@@ -32,6 +31,9 @@ class QueryRepositoryTest extends TestCase
     /** @var HttpCacheInterface */
     private $httpCache;
 
+    /** @var RepositoryLoggerInterface  */
+    private $logger;
+
     protected function setUp(): void
     {
         $namespace = 'FakeVendor\HelloWorld';
@@ -39,7 +41,15 @@ class QueryRepositoryTest extends TestCase
         $this->repository = $injector->getInstance(QueryRepositoryInterface::class);
         $this->resource = $injector->getInstance(ResourceInterface::class);
         $this->httpCache = $injector->getInstance(HttpCacheInterface::class);
+        $this->logger = $injector->getInstance(RepositoryLoggerInterface::class);
         parent::setUp();
+    }
+
+    protected function tearDown(): void
+    {
+        $log = ((string) $this->logger);
+        // error_log((string) $log);  // uncomment to see the debug log
+        unset($log);
     }
 
     public function testPurgeSameResourceObjectByPatch(): void
@@ -161,7 +171,6 @@ class QueryRepositoryTest extends TestCase
         ];
         $this->assertTrue($this->httpCache->isNotModified($server2), 'id:2 is not modified');
         $this->resource->delete('app://self/sometimes-same-response', ['id' => 1]);
-        usleep(150000);
         $this->assertFalse($this->httpCache->isNotModified($server1), 'id:1 is modified');
         $this->assertTrue($this->httpCache->isNotModified($server2), 'id:2 is not modified');
     }
