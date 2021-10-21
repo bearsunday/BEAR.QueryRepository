@@ -15,7 +15,10 @@ interface DonutRepositoryInterface
     public function get(ResourceObject $ro): ?ResourceObject;
 
     /**
-     * Create donut-caching
+     * Create cacheable donut-caching
+     *
+     * The entire donut, including the donut and the hole, can be cached,
+     * and cache headers such as Cdn-Cache-Control, ETag, and Age will be given.
      *
      * @param ResourceObject $ro      request invoked ResourceObject
      * @param ?int           $ttl     TTL for the donut (not for donut-hole)
@@ -24,6 +27,14 @@ interface DonutRepositoryInterface
      * @see https://www.computerworld.com/article/2833493/what-exactly-is-donut-caching-.html
      */
     public function putStatic(ResourceObject $ro, ?int $ttl = null, ?int $sMaxAge = null): ResourceObject;
+
+    /**
+     * Create un-cacheable donut-caching
+     *
+     * The donut and the hole can be cached individually, but not the whole donut,
+     * and cache headers such as Cdn-Cache-Control, ETag, and Age will not be given.
+     */
+    public function putDonut(ResourceObject $ro, ?int $donutTtl): ResourceObject;
 
     /**
      * Purge donut caching

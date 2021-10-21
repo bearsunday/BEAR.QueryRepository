@@ -18,8 +18,11 @@ use const E_USER_WARNING;
 
 class DonutQueryInterceptor implements MethodInterceptor
 {
+    private const IS_ENTIRE_CONTENT_CACHEABLE = true;
+
     /** @var DonutRepositoryInterface */
     private $donutRepository;
+
 
     public function __construct(DonutRepositoryInterface $donutRepository)
     {
@@ -51,7 +54,9 @@ class DonutQueryInterceptor implements MethodInterceptor
             return $ro; // donut created in ResourceObject
         }
 
-        return $this->donutRepository->putStatic($ro, null, null);
+        return static::IS_ENTIRE_CONTENT_CACHEABLE ?
+            $this->donutRepository->putStatic($ro, null, null) :
+            $this->donutRepository->putDonut($ro, null);
     }
 
     /**

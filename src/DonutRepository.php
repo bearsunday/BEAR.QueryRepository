@@ -73,14 +73,32 @@ final class DonutRepository implements DonutRepositoryInterface
     {
         $this->logger->log('put-donut: uri:%s ttl:%s s-maxage:%d', (string) $ro->uri, $sMaxAge, $ttl);
         $keys = new SurrogateKeys($ro->uri);
-        $donut = ResourceDonut::create($ro, $this->renderer, $keys, $sMaxAge);
+        $donut = ResourceDonut::create($ro, $this->renderer, $keys, $sMaxAge, true);
         $donut->render($ro, $this->renderer);
         $this->setHeaders($keys, $ro, $sMaxAge);
         // delete
         $this->resourceStorage->invalidateTags([(new UriTag())($ro->uri)]);
-        // save
+        // save content cache and donut
         $this->saveView($ro, $sMaxAge);
         $this->resourceStorage->saveDonut($ro->uri, $donut, $ttl);
+
+        return $ro;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function putDonut(ResourceObject $ro, ?int $donutTtl): ResourceObject
+    {
+        $this->logger->log('put-donut: uri:%s ttl:%s', (string) $ro->uri, $donutTtl);
+        $keys = new SurrogateKeys($ro->uri);
+        $donut = ResourceDonut::create($ro, $this->renderer, $keys, $donutTtl, false);
+        $donut->render($ro, $this->renderer);
+        $keys->setSurrogateHeader($ro);
+        // delete
+        $this->resourceStorage->invalidateTags([(new UriTag())($ro->uri)]);
+        // save donut
+        $this->resourceStorage->saveDonut($ro->uri, $donut, $donutTtl);
 
         return $ro;
     }
@@ -113,6 +131,10 @@ final class DonutRepository implements DonutRepositoryInterface
 
         $this->logger->log('refresh-donut: uri:%s', $ro->uri);
         $donut->refresh($this->resource, $ro);
+        if (! $donut->isCacheble) {
+            return $ro;
+        }
+
         ($this->headerSetter)($ro, $donut->ttl, null);
         $ro->headers[Header::ETAG] .= 'r'; // mark refreshed by resource static
         ($this->cdnCacheControlHeaderSetter)($ro, $donut->ttl);

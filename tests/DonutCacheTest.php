@@ -31,7 +31,7 @@ class DonutCacheTest extends TestCase
 
     public function testGetState(): void
     {
-        $donut = new ResourceDonut('cmt=[le:page://self/html/comment]', null);
+        $donut = new ResourceDonut('cmt=[le:page://self/html/comment]', null, true);
         $blog = $this->resource->get('page://self/html/blog-posting');
         $ro = $donut->refresh($this->resource, $blog);
         $this->assertInstanceOf(ResourceObject::class, $ro);

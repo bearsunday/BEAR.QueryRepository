@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\CacheableResponse;
+use BEAR\RepositoryModule\Annotation\DonutCache;
 use BEAR\RepositoryModule\Annotation\RefreshCache;
 use Ray\Di\AbstractModule;
 use Ray\Di\Scope;
@@ -33,6 +34,11 @@ class DonutCacheModule extends AbstractModule
             $this->matcher->annotatedWith(CacheableResponse::class),
             $this->matcher->startsWith('onGet'),
             [DonutQueryInterceptor::class]
+        );
+        $this->bindPriorityInterceptor(
+            $this->matcher->annotatedWith(DonutCache::class),
+            $this->matcher->startsWith('onGet'),
+            [DonutCacheInterceptor::class]
         );
 
         $this->bindInterceptor(

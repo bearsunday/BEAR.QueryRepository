@@ -27,12 +27,19 @@ final class ResourceDonut
      */
     public $ttl;
 
+    /**
+     * @var bool
+     * @readonly
+     */
+    public $isCacheble;
+
     private const URI_REGEX = '/\[le:(.+)\]/';
 
-    public function __construct(string $template, ?int $ttl)
+    public function __construct(string $template, ?int $ttl, bool $isCacheble)
     {
         $this->template = $template;
         $this->ttl = $ttl;
+        $this->isCacheble = $isCacheble;
     }
 
     public function refresh(ResourceInterface $resource, ResourceObject $ro): ResourceObject
@@ -63,7 +70,7 @@ final class ResourceDonut
         return $ro;
     }
 
-    public static function create(ResourceObject $ro, DonutRenderer $storage, SurrogateKeys $etags, ?int $ttl): self
+    public static function create(ResourceObject $ro, DonutRenderer $storage, SurrogateKeys $etags, ?int $ttl, bool $isCacheble): self
     {
         /** @var mixed $maybeRequest */
         foreach ($ro->body as &$maybeRequest) {
@@ -75,6 +82,6 @@ final class ResourceDonut
         unset($maybeRequest);
         $donutTemplate = (string) $ro;
 
-        return new self($donutTemplate, $ttl);
+        return new self($donutTemplate, $ttl, $isCacheble);
     }
 }
