@@ -69,7 +69,7 @@ final class DonutRepository implements DonutRepositoryInterface
     /**
      * {@inheritDoc}
      */
-    public function put(ResourceObject $ro, ?int $ttl = null, ?int $sMaxAge = null): ResourceObject
+    public function putStatic(ResourceObject $ro, ?int $ttl = null, ?int $sMaxAge = null): ResourceObject
     {
         $this->logger->log('put-donut: uri:%s ttl:%s s-maxage:%d', (string) $ro->uri, $sMaxAge, $ttl);
         $keys = new SurrogateKeys($ro->uri);

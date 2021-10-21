@@ -23,7 +23,7 @@ interface DonutRepositoryInterface
      *
      * @see https://www.computerworld.com/article/2833493/what-exactly-is-donut-caching-.html
      */
-    public function put(ResourceObject $ro, ?int $ttl = null, ?int $sMaxAge = null): ResourceObject;
+    public function putStatic(ResourceObject $ro, ?int $ttl = null, ?int $sMaxAge = null): ResourceObject;
 
     /**
      * Purge donut caching

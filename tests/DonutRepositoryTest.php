@@ -64,7 +64,7 @@ class DonutRepositoryTest extends TestCase
         $this->assertNull($maybeNull);
         // assert cache created in query repository
         $blogPosting = $this->resource->get((string) $this->uri);
-        $this->donutRepository->put($blogPosting, null, null);
+        $this->donutRepository->putStatic($blogPosting, null, null);
         $state = $this->queryRepository->get($this->uri);
         $this->assertInstanceOf(ResourceState::class, $state);
     }

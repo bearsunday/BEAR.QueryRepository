@@ -51,7 +51,7 @@ class DonutQueryInterceptor implements MethodInterceptor
             return $ro; // donut created in ResourceObject
         }
 
-        return $this->donutRepository->put($ro, null, null);
+        return $this->donutRepository->putStatic($ro, null, null);
     }
 
     /**
