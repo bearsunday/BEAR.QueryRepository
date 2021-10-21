@@ -83,7 +83,7 @@ class DonutQueryInterceptorTest extends TestCase
         $this->assertSame('try-donut-view: uri:page://self/html/blog-posting
 try-donut uri:page://self/html/blog-posting
 no-donut-found uri:page://self/html/blog-posting
-create-donut: uri:page://self/html/blog-posting ttl: s-maxage:0
+put-donut: uri:page://self/html/blog-posting ttl: s-maxage:0
 put-query-repository uri:page://self/html/comment
 invalidate-etag tags:_html_comment_
 save-etag uri:page://self/html/comment etag:_html_comment_ surrogate-keys:_html_comment_
