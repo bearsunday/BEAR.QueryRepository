@@ -13,7 +13,7 @@ use BEAR\QueryRepository\DonutCommandInterceptor;
  * @Target({"METHOD","CLASS"})
  *
  * @see DonutCacheModule
- * @see DonutQueryInterceptor
+ * @see DonutCacheInterceptor
  * @see DonutCommandInterceptor
  */
 #[Attribute(Attribute::TARGET_METHOD|Attribute::TARGET_CLASS)]

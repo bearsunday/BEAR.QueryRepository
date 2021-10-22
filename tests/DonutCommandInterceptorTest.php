@@ -78,9 +78,9 @@ class DonutCommandInterceptorTest extends TestCase
         $interceptors = array_map(static function (object $object): string {
             return get_class($object);
         }, $ro->bindings['onGet']);
-        $this->assertContains(DonutQueryInterceptor::class, $interceptors);
+        $this->assertContains(DonutCacheInterceptor::class, $interceptors);
         assert(isset($ro->bindings['onGet'][0]));
         assert(isset($ro->bindings['onDelete'][0]));
-        $this->assertInstanceOf(DonutQueryInterceptor::class, $ro->bindings['onDelete'][0]);
+        $this->assertInstanceOf(DonutCacheInterceptor::class, $ro->bindings['onDelete'][0]);
     }
 }

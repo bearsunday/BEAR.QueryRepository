@@ -33,7 +33,7 @@ class DonutCacheModule extends AbstractModule
         $this->bindPriorityInterceptor(
             $this->matcher->annotatedWith(CacheableResponse::class),
             $this->matcher->startsWith('onGet'),
-            [DonutQueryInterceptor::class]
+            [DonutCacheableResponseInterceptor::class]
         );
         $this->bindPriorityInterceptor(
             $this->matcher->annotatedWith(DonutCache::class),
@@ -59,12 +59,12 @@ class DonutCacheModule extends AbstractModule
         $this->bindInterceptor(
             $this->matcher->any(),
             $this->matcher->annotatedWith(CacheableResponse::class),
-            [DonutQueryInterceptor::class]
+            [DonutCacheInterceptor::class]
         );
         $this->bindInterceptor(
             $this->matcher->any(),
             $this->matcher->annotatedWith(RefreshCache::class),
-            [DonutQueryInterceptor::class]
+            [DonutCacheInterceptor::class]
         );
     }
 }

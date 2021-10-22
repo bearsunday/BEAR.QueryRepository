@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BEAR\RepositoryModule\Annotation;
 
 use Attribute;
+use BEAR\QueryRepository\DonutCacheableResponseInterceptor;
 use BEAR\QueryRepository\DonutCacheModule;
 use BEAR\QueryRepository\DonutCommandInterceptor;
 
@@ -13,7 +14,7 @@ use BEAR\QueryRepository\DonutCommandInterceptor;
  * @Target({"METHOD","CLASS"})
  *
  * @see DonutCacheModule
- * @see DonutQueryInterceptor
+ * @see DonutCacheableResponseInterceptor
  * @see DonutCommandInterceptor
  */
 #[Attribute(Attribute::TARGET_METHOD|Attribute::TARGET_CLASS)]
