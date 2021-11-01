@@ -6,7 +6,7 @@ namespace BEAR\QueryRepository;
 
 use Ray\Di\AbstractModule;
 
-class DevEtagModule extends AbstractModule
+final class DevEtagModule extends AbstractModule
 {
     /**
      * {@inheritdoc}

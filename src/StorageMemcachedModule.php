@@ -7,7 +7,7 @@ namespace BEAR\QueryRepository;
 use Ray\Di\AbstractModule;
 use Ray\PsrCacheModule\Psr6MemcachedModule;
 
-class StorageMemcachedModule extends AbstractModule
+final class StorageMemcachedModule extends AbstractModule
 {
     /** @var string */
     private $servers;

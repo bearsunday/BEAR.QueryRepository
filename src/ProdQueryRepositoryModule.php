@@ -7,7 +7,7 @@ namespace BEAR\QueryRepository;
 use BEAR\RepositoryModule\Annotation\KnownTagTtl;
 use Ray\Di\AbstractModule;
 
-class ProdQueryRepositoryModule extends AbstractModule
+final class ProdQueryRepositoryModule extends AbstractModule
 {
     /**
      * {@inheritdoc}

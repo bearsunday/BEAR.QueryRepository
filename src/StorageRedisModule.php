@@ -7,7 +7,7 @@ namespace BEAR\QueryRepository;
 use Ray\Di\AbstractModule;
 use Ray\PsrCacheModule\Psr6RedisModule;
 
-class StorageRedisModule extends AbstractModule
+final class StorageRedisModule extends AbstractModule
 {
     /** @var string */
     private $server;

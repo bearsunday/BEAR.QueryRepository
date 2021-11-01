@@ -11,7 +11,7 @@ use Ray\Aop\MethodInvocation;
 
 use function assert;
 
-class HttpCacheInterceptor implements MethodInterceptor
+final class HttpCacheInterceptor implements MethodInterceptor
 {
     /**
      * {@inheritdoc}

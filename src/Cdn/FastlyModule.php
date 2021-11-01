@@ -7,7 +7,7 @@ namespace BEAR\QueryRepository\Cdn;
 use BEAR\QueryRepository\CdnCacheControlHeaderSetterInterface;
 use Ray\Di\AbstractModule;
 
-class FastlyModule extends AbstractModule
+final class FastlyModule extends AbstractModule
 {
     /**
      * {@inheritdoc}

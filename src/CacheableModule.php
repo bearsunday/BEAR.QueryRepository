@@ -12,7 +12,7 @@ use BEAR\RepositoryModule\Annotation\Refresh;
 use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
 use Ray\Di\AbstractModule;
 
-class CacheableModule extends AbstractModule
+final class CacheableModule extends AbstractModule
 {
     /**
      * {@inheritdoc}

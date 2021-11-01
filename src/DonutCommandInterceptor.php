@@ -18,7 +18,7 @@ use function get_class;
 use function is_callable;
 use function sprintf;
 
-class DonutCommandInterceptor implements MethodInterceptor
+final class DonutCommandInterceptor implements MethodInterceptor
 {
     /** @var DonutRepositoryInterface */
     private $repository;

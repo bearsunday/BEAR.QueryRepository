@@ -6,7 +6,7 @@ namespace BEAR\QueryRepository;
 
 use Ray\Di\AbstractModule;
 
-class StorageExpiryModule extends AbstractModule
+final class StorageExpiryModule extends AbstractModule
 {
     /** @var int */
     private $short;

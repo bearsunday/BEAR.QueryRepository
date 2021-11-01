@@ -16,7 +16,7 @@ use function unserialize;
 /**
  * Serializable TagAwareAdapter
  */
-class SerializableTagAwareAdapter extends OriginAdapter implements Serializable
+final class SerializableTagAwareAdapter extends OriginAdapter implements Serializable
 {
     /** @var array<int, mixed> */
     private $args;

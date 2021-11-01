@@ -7,7 +7,7 @@ namespace BEAR\QueryRepository;
 use Ray\Di\AbstractModule;
 use Ray\Di\Scope;
 
-class MobileEtagModule extends AbstractModule
+final class MobileEtagModule extends AbstractModule
 {
     /**
      * {@inheritdoc}

@@ -7,7 +7,7 @@ namespace BEAR\QueryRepository;
 use Ray\Di\AbstractModule;
 use Ray\PsrCacheModule\CacheNamespaceModule;
 
-class CacheVersionModule extends AbstractModule
+final class CacheVersionModule extends AbstractModule
 {
     /** @var string */
     private $version;

@@ -10,7 +10,7 @@ use BEAR\RepositoryModule\Annotation\RefreshCache;
 use Ray\Di\AbstractModule;
 use Ray\Di\Scope;
 
-class DonutCacheModule extends AbstractModule
+final class DonutCacheModule extends AbstractModule
 {
     /**
      * {@inheritdoc}

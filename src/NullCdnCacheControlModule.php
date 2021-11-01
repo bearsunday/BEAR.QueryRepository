@@ -6,7 +6,7 @@ namespace BEAR\QueryRepository;
 
 use Ray\Di\AbstractModule;
 
-class NullCdnCacheControlModule extends AbstractModule
+final class NullCdnCacheControlModule extends AbstractModule
 {
     /**
      * {@inheritdoc}
