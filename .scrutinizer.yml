@@ -1,0 +1,13 @@
+filter:
+    paths: ["src/*"]
+
+tools:
+    php_sim: true
+    php_pdepend: true
+    php_analyzer: true
+build:
+    nodes:
+        analysis:
+            tests:
+                override:
+                    - php-scrutinizer-run --enable-security-analysis
