@@ -23,7 +23,6 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
     /** @var DonutRepositoryInterface */
     private $donutRepository;
 
-
     public function __construct(DonutRepositoryInterface $donutRepository)
     {
         $this->donutRepository = $donutRepository;
@@ -32,7 +31,7 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
     /**
      * {@inheritdoc}
      */
-    public function invoke(MethodInvocation $invocation)
+    final public function invoke(MethodInvocation $invocation)
     {
         $ro = $invocation->getThis();
         assert($ro instanceof ResourceObject);
