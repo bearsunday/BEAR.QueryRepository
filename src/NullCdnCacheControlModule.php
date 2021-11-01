@@ -11,7 +11,7 @@ final class NullCdnCacheControlModule extends AbstractModule
     /**
      * {@inheritdoc}
      */
-    protected function configure()
+    protected function configure(): void
     {
         $this->bind(CdnCacheControlHeaderSetterInterface::class)->to(NullCacheControlHeaderSetter::class);
     }

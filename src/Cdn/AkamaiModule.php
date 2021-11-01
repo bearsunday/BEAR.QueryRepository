@@ -17,7 +17,7 @@ final class AkamaiModule extends AbstractModule
     /**
      * {@inheritdoc}
      */
-    protected function configure()
+    protected function configure(): void
     {
         $this->bind(CdnCacheControlHeaderSetterInterface::class)->to(AkamaiCacheControlHeaderSetter::class);
     }

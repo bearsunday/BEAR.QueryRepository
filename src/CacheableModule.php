@@ -17,7 +17,7 @@ final class CacheableModule extends AbstractModule
     /**
      * {@inheritdoc}
      */
-    protected function configure()
+    protected function configure(): void
     {
         $this->bind(HttpCacheInterface::class)->to(HttpCache::class);
         $this->bind()->annotatedWith(Commands::class)->toProvider(CommandsProvider::class);

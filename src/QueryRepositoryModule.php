@@ -15,7 +15,7 @@ final class QueryRepositoryModule extends AbstractModule
     /**
      * {@inheritdoc}
      */
-    protected function configure()
+    protected function configure(): void
     {
         $this->install(new Psr6ArrayModule());
         // core

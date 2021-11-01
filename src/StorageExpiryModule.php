@@ -28,7 +28,7 @@ final class StorageExpiryModule extends AbstractModule
     /**
      * {@inheritdoc}
      */
-    protected function configure()
+    protected function configure(): void
     {
         $this->bind(Expiry::class)->toInstance(new Expiry($this->short, $this->medium, $this->long));
     }
