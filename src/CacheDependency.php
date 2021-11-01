@@ -9,20 +9,26 @@ use BEAR\Resource\ResourceObject;
 use function assert;
 use function sprintf;
 
-class CacheDependency implements CacheDependencyInterface
+final class CacheDependency implements CacheDependencyInterface
 {
-    public const CACHE_DEPENDENCY = 'cache_deps';
+    /** @var UriTagInterface */
+    private $uriTag;
+
+    public function __construct(UriTagInterface $uriTag)
+    {
+        $this->uriTag = $uriTag;
+    }
 
     public function depends(ResourceObject $from, ResourceObject $to): void
     {
-        assert(! isset($from->headers[self::CACHE_DEPENDENCY]));
+        assert(! isset($from->headers[Header::SURROGATE_KEY]));
 
-        $cacheDepedencyTags = $to->headers['ETag'];
-        if (isset($to->headers[self::CACHE_DEPENDENCY])) {
-            $cacheDepedencyTags .= sprintf(' %s', $to->headers[self::CACHE_DEPENDENCY]);
-            unset($to->headers[self::CACHE_DEPENDENCY]);
+        $cacheDepedencyTags = ($this->uriTag)($to->uri);
+        if (isset($to->headers[Header::SURROGATE_KEY])) {
+            $cacheDepedencyTags .= sprintf(' %s', $to->headers[Header::SURROGATE_KEY]);
+            unset($to->headers[Header::SURROGATE_KEY]);
         }
 
-        $from->headers[self::CACHE_DEPENDENCY] = $cacheDepedencyTags;
+        $from->headers[Header::SURROGATE_KEY] = $cacheDepedencyTags;
     }
 }

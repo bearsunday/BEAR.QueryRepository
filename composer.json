@@ -10,23 +10,28 @@
     ],
     "require": {
         "php": "^7.2 || ^8.0",
-        "bear/resource": "^1.15.6",
-        "bear/sunday": "^1.5.5",
+        "bear/resource": "^1.15",
+        "bear/sunday": "^1.5",
         "doctrine/annotations": "^1.8",
-        "doctrine/cache": "^1.10 || ^2.0",
+        "doctrine/cache": "^2.0",
         "mobiledetect/mobiledetectlib": "^2.8",
         "psr/cache": "^1.0",
         "ray/aop": "^2.10",
         "ray/di": "^2.12",
         "ray/psr-cache-module": "^1.0",
-        "symfony/cache": "^5.3"
+        "symfony/cache": "^v5.3",
+        "symfony/cache-contracts": "^2.4"
     },
     "require-dev": {
         "ext-redis": "*",
         "bamarni/composer-bin-plugin": "^1.4",
         "koriym/attributes": "^1.0.1",
+        "madapaja/twig-module": "^2.3",
         "phpunit/phpunit": "^9.5",
-        "symfony/process": "^4.3"
+        "psr/log": "^1.1",
+        "ray/object-visual-grapher": "^1.0",
+        "symfony/process": "^4.3",
+        "twig/twig": "2.14"
     },
     "autoload": {
         "psr-4": {

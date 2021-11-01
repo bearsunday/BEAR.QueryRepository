@@ -30,8 +30,12 @@ class ResourceRepositoryTest extends TestCase
     protected function setUp(): void
     {
         $this->repository = new Repository(
-            new EtagSetter(new CacheDependency()),
+            new RepositoryLogger(),
+            new HeaderSetter(new EtagSetter(new CacheDependency(new UriTag()))),
             new ResourceStorage(
+                new RepositoryLogger(),
+                new NullPurger(),
+                new UriTag(),
                 new FilesystemAdapter('', 0, $_ENV['TMP_DIR'])
             ),
             new AnnotationReader(),
@@ -102,8 +106,12 @@ class ResourceRepositoryTest extends TestCase
         };
         // phpcs:enable
         $repository = new Repository(
-            new EtagSetter(new CacheDependency()),
+            new RepositoryLogger(),
+            new HeaderSetter(new EtagSetter(new CacheDependency(new UriTag()))),
             new ResourceStorage(
+                new RepositoryLogger(),
+                new NullPurger(),
+                new UriTag(),
                 null,
                 null,
                 $doctrineCache

@@ -23,22 +23,22 @@ class EtagSetterTest extends TestCase
 
     public function testStatusNotOk(): void
     {
-        $setEtag = new EtagSetter(new CacheDependency());
+        $setEtag = new EtagSetter(new CacheDependency(new UriTag()));
         $ro = new Code();
         $ro->code = 500;
         $setEtag($ro);
-        // $ro->headers['ETag']
-        $this->assertArrayNotHasKey('Etag', $ro->headers);
+        // $ro->headers[Header::ETAG]
+        $this->assertArrayNotHasKey(Header::ETAG, $ro->headers);
     }
 
     public function testInvoke(): void
     {
         $ro = $this->resource->get('app://self/user', ['id' => 1]);
-        $setEtag = new EtagSetter(new CacheDependency());
+        $setEtag = new EtagSetter(new CacheDependency(new UriTag()));
         $time = 0;
         $setEtag($ro, $time);
         $expect = 'Thu, 01 Jan 1970 00:00:00 GMT';
         $this->assertSame($expect, $ro->headers['Last-Modified']);
-        $this->assertIsString($ro->headers['ETag']);
+        $this->assertIsString($ro->headers[Header::ETAG]);
     }
 }

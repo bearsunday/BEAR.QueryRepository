@@ -18,7 +18,7 @@ class HttpCacheTest extends TestCase
 {
     public function testisNotModifiedFale(): CliHttpCache
     {
-        $httpCache = new CliHttpCache(new ResourceStorage(new ArrayAdapter()));
+        $httpCache = new CliHttpCache(new ResourceStorage(new RepositoryLogger(), new NullPurger(), new UriTag(), new ArrayAdapter()));
         $server = [];
         $this->assertFalse($httpCache->isNotModified($server));
 
@@ -30,10 +30,10 @@ class HttpCacheTest extends TestCase
         $resource = (new Injector(new QueryRepositoryModule(new ResourceModule('FakeVendor\HelloWorld'))))->getInstance(ResourceInterface::class);
         $user = $resource->get('app://self/user', ['id' => 1]);
         assert($user instanceof ResourceObject);
-        $storage = new ResourceStorage(new ArrayAdapter());
-        $storage->updateEtag($user->uri, $user->headers['ETag'], 10);
+        $storage = new ResourceStorage(new RepositoryLogger(), new NullPurger(), new UriTag(), new ArrayAdapter());
+        $storage->saveEtag($user->uri, $user->headers[Header::ETAG], '', 10);
         $httpCache = new CliHttpCache($storage);
-        $server = ['HTTP_IF_NONE_MATCH' => $user->headers['ETag']];
+        $server = ['HTTP_IF_NONE_MATCH' => $user->headers[Header::ETAG]];
         $this->assertTrue($httpCache->isNotModified($server));
 
         return $httpCache;
@@ -54,7 +54,7 @@ class HttpCacheTest extends TestCase
      */
     public function testHttpCacheTransfer(): void
     {
-        $httpCache = new HttpCache(new ResourceStorage(new ArrayAdapter()));
+        $httpCache = new HttpCache(new ResourceStorage(new RepositoryLogger(), new NullPurger(), new UriTag(), new ArrayAdapter()));
         $httpCache->transfer();
         $this->assertSame(304, http_response_code());
     }
@@ -67,10 +67,10 @@ class HttpCacheTest extends TestCase
         $resource = (new Injector(new QueryRepositoryModule(new ResourceModule('FakeVendor\HelloWorld'))))->getInstance(ResourceInterface::class);
         $user = $resource->get('app://self/user', ['id' => 1]);
         assert($user instanceof ResourceObject);
-        $storage = new ResourceStorage(new ArrayAdapter());
-        $storage->updateEtag($user->uri, $user->headers['ETag'], 10);
+        $storage = new ResourceStorage(new RepositoryLogger(), new NullPurger(), new UriTag(), new ArrayAdapter());
+        $storage->saveEtag($user->uri, $user->headers[Header::ETAG], '', 10);
         $httpCache = new CliHttpCache($storage);
-        $header = 'IF_NONE_MATCH=' . $user->headers['ETag'];
+        $header = 'IF_NONE_MATCH=' . $user->headers[Header::ETAG];
         $server = [
             'argc' => 4,
             'argv' => [3 => $header],

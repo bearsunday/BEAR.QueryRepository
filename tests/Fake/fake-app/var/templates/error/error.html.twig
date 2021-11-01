@@ -1,0 +1,14 @@
+{% extends 'layout/base.html.twig' %}
+{% block title %}{{ status.code }} {{ status.message }}{% endblock %}
+{% block content %}
+    <h1>{{ status.code }} {{ status.message }}</h1>
+    {% if status.code == 404 %}
+        <p class="lead">The requested URL was not found on this server.</p>
+    {% elseif status.code == 500 %}
+        <p class="lead">The server encountered an internal error.</p>
+        <p > logref: {{ logref }}</p>
+    {% elseif status.code == 503 %}
+        <p class="lead">The server is temporarily unable to service your request due to maintenance downtime or capacity problems. Please try again later.</p>
+        <p > logref: {{ logref }}</p>
+    {% endif %}
+{% endblock %}

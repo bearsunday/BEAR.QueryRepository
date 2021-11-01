@@ -8,3 +8,4 @@
 /vendor-bin/**/vendor
 /.php_cs.cache
 /.phpunit-cache/
+/.dump.rdb

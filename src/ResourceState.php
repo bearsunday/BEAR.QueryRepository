@@ -7,16 +7,17 @@ namespace BEAR\QueryRepository;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceObject;
 
+/** @psalm-suppress MissingConstructor */
 final class ResourceState
 {
     /** @var int  */
-    public $code;
+    public $code = 200;
 
-    /** @var AbstractUri  */
+    /** @var AbstractUri */
     public $uri;
 
     /** @var array<string, string> */
-    public $headers;
+    public $headers = [];
 
     /** @var mixed  */
     public $body;
@@ -27,12 +28,24 @@ final class ResourceState
     /**
      * @param mixed $body
      */
-    public function __construct(ResourceObject $ro, $body, ?string $view)
+    public static function create(ResourceObject $ro, $body, ?string $view): self
     {
-        $this->code = $ro->code;
-        $this->uri = $ro->uri;
-        $this->headers = $ro->headers;
-        $this->view = $view;
-        $this->body = $body;
+        $state = new self();
+        $state->code = $ro->code;
+        $state->uri = $ro->uri;
+        $state->headers = $ro->headers;
+        $state->view = $view;
+        $state->body = $body;
+
+        return $state;
+    }
+
+    public function visit(ResourceObject $ro): void
+    {
+        $ro->uri = $this->uri;
+        $ro->code = $this->code;
+        $ro->headers = $this->headers;
+        $ro->body = $this->body;
+        $ro->view = $this->view;
     }
 }

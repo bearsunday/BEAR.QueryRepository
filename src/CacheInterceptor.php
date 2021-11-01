@@ -44,11 +44,7 @@ class CacheInterceptor implements MethodInterceptor
         }
 
         if ($state) {
-            $ro->uri = $state->uri;
-            $ro->code = $state->code;
-            $ro->headers = $state->headers;
-            $ro->body = $state->body;
-            $ro->view = $state->view;
+            $state->visit($ro);
 
             return $ro;
         }

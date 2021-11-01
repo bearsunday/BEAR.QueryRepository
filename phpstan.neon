@@ -6,6 +6,10 @@ parameters:
     - tests/Fake/fake-app/src/Resource/App/User.php
     - tests/Fake/fake-app/src/Resource/App/User/Profile.php
     - tests/Fake/fake-app/src/Resource/Page/Index.php
+    - tests/Fake/fake-app/src/Resource/Page/Html/BlogPosting.php
+    - tests/Fake/fake-app/src/Resource/Page/Html/BlogPostingDonut.php
+    - tests/Fake/fake-app/src/Resource/Page/Html/Comment.php
+    - tests/Fake/fake-app/src/Resource/Page/Html/Like.php
   level: max
   paths:
     - src

@@ -7,6 +7,7 @@ namespace BEAR\QueryRepository;
 use BEAR\RepositoryModule\Annotation\HttpCache;
 use BEAR\Resource\Request;
 use BEAR\Resource\ResourceObject;
+use DateTimeInterface;
 
 use function assert;
 use function crc32;
@@ -37,8 +38,8 @@ final class EtagSetter implements EtagSetterInterface
         }
 
         $etag =  $this->getEtag($ro, $httpCache);
-        $ro->headers['ETag'] = $etag;
-        $ro->headers['Last-Modified'] = gmdate('D, d M Y H:i:s', $time) . ' GMT';
+        $ro->headers[Header::ETAG] = $etag;
+        $ro->headers[Header::LAST_MODIFIED] = gmdate(DateTimeInterface::RFC7231, $time);
         $this->setCacheDependency($ro);
     }
 
@@ -78,7 +79,7 @@ final class EtagSetter implements EtagSetterInterface
     {
         /** @var mixed $body */
         foreach ((array) $ro->body as $body) {
-            if ($body instanceof Request && isset($body->resourceObject->headers['ETag'])) {
+            if ($body instanceof Request && isset($body->resourceObject->headers[Header::ETAG])) {
                 $this->cacheDeperency->depends($ro, $body->resourceObject);
             }
         }

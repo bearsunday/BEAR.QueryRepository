@@ -29,7 +29,7 @@ class CommandsProvider implements ProviderInterface
     public function get()
     {
         return [
-            new RefreshSameCommand($this->repository),
+            new RefreshSameCommand($this->repository, new MatchQuery()),
             new RefreshAnnotatedCommand($this->repository, $this->resource),
         ];
     }
