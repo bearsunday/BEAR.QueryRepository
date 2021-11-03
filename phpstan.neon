@@ -22,3 +22,5 @@ parameters:
     -
       message: '#but return statement is missing#'
       path: tests/ResourceRepositoryTest.php
+  stubFiles:
+  		- tests/stubs/Injector.phpstub
