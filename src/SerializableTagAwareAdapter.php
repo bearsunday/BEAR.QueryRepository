@@ -42,6 +42,6 @@ final class SerializableTagAwareAdapter extends OriginAdapter implements Seriali
      */
     public function unserialize($data)
     {
-        call_user_func_array([$this, '__construct'], unserialize($data));
+        call_user_func_array([$this, '__construct'], unserialize($data)); // @phpstan-ignore-line
     }
 }

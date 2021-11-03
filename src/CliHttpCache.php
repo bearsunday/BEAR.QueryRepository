@@ -74,14 +74,19 @@ final class CliHttpCache implements HttpCacheInterface
      */
     private function getEtag(array $server): ?string
     {
-        $hasRequestHeaderInCli = isset($server['argc']) && $server['argc'] === 4 && isset($server['argv'][3]);
+        /** @psalm-suppress MixedAssignment */
+        $arg3 = $server['argv'][3] ?? ''; // @phpstan-ignore-line
+        assert(is_string($arg3));
+        $hasRequestHeaderInCli = isset($server['argc']) && $server['argc'] === 4 && $arg3;
         if ($hasRequestHeaderInCli) {
             /** @psalm-suppress MixedArrayAccess */
-            $server = $this->getServer((string) $server['argv'][3]);
+            $server = $this->getServer($arg3);
         }
 
-        $hasValidEtag = isset($server[Header::HTTP_IF_NONE_MATCH]) && is_string($server[Header::HTTP_IF_NONE_MATCH]);
+        if (isset($server[Header::HTTP_IF_NONE_MATCH]) && is_string($server[Header::HTTP_IF_NONE_MATCH])) {
+            return $server[Header::HTTP_IF_NONE_MATCH];
+        }
 
-        return $hasValidEtag ? $server[Header::HTTP_IF_NONE_MATCH] : null;
+        return null;
     }
 }

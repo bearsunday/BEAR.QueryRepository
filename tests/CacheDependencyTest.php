@@ -18,7 +18,7 @@ class CacheDependencyTest extends TestCase
     /** @var ResourceInterface */
     private $resource;
 
-    /** @var QueryRepository */
+    /** @var QueryRepositoryInterface */
     private $repository;
 
     /** @var ResourceStorageInterface */

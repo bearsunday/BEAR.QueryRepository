@@ -28,7 +28,7 @@ final class RepositoryLogger implements RepositoryLoggerInterface
         }
 
         unset($value);
-        /** @psalm-suppress MixedArgument */
+        /** @var list<string> $values */
         $msg = sprintf($template, ...$values);
 
         $this->logs[] = $msg;

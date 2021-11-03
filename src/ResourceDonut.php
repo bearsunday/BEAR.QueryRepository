@@ -9,6 +9,8 @@ use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 
 use function array_key_exists;
+use function assert;
+use function is_iterable;
 use function preg_replace_callback;
 
 /**
@@ -72,6 +74,7 @@ final class ResourceDonut
 
     public static function create(ResourceObject $ro, DonutRenderer $storage, SurrogateKeys $etags, ?int $ttl, bool $isCacheble): self
     {
+        assert(is_iterable($ro->body));
         /** @var mixed $maybeRequest */
         foreach ($ro->body as &$maybeRequest) {
             if ($maybeRequest instanceof AbstractRequest) {
