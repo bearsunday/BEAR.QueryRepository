@@ -14,7 +14,7 @@ parameters:
   paths:
     - src
     - tests
-  excludes_analyse:
+  excludePaths:
     - */tests/tmp/*
     - */tests/Fake/*
     - */src/StorageRedisCacheProvider.php*
