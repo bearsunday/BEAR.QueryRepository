@@ -12,5 +12,7 @@ build:
                 override:
                     - php-scrutinizer-run --enable-security-analysis
     environment:
-        # For available tags, see https://hub.docker.com/_/redis/
-        redis: 4
+        redis: true
+        php:
+            pecl_extensions:
+                - redis
