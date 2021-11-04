@@ -12,12 +12,12 @@ use Ray\Di\AbstractModule;
  * @see https://www.akamai.com/blog/news/targeted-cache-control for Akamai-Cache-Control
  * @see https://techdocs.akamai.com/purge-cache/reference/api for purge API
  */
-class AkamaiModule extends AbstractModule
+final class AkamaiModule extends AbstractModule
 {
     /**
      * {@inheritdoc}
      */
-    protected function configure()
+    protected function configure(): void
     {
         $this->bind(CdnCacheControlHeaderSetterInterface::class)->to(AkamaiCacheControlHeaderSetter::class);
     }

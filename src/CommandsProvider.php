@@ -7,7 +7,7 @@ namespace BEAR\QueryRepository;
 use BEAR\Resource\ResourceInterface;
 use Ray\Di\ProviderInterface;
 
-class CommandsProvider implements ProviderInterface
+final class CommandsProvider implements ProviderInterface
 {
     /** @var QueryRepositoryInterface */
     private $repository;

@@ -12,7 +12,7 @@ class ProdQueryRepositoryModuleTest extends TestCase
 {
     public function testBind(): void
     {
-        $ttl = (new Injector(new ProdQueryRepositoryModule()))->getInstance('', KnownTagTtl::class);
+        $ttl = (new Injector(new ProdQueryRepositoryModule()))->getInstance('', KnownTagTtl::class); // @phpstan-ignore-line
         $this->assertSame(0.15, $ttl);
     }
 }

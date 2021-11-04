@@ -30,11 +30,6 @@ use function strtoupper;
 final class ResourceStorage implements ResourceStorageInterface
 {
     /**
-     * ETag URI table prefix
-     */
-    private const KEY_ETAG_TABLE = 'etag-t';
-
-    /**
      * Resource object cache prefix
      */
     private const KEY_RO = 'ro-';

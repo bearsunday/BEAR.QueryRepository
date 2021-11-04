@@ -10,12 +10,12 @@ use BEAR\RepositoryModule\Annotation\RefreshCache;
 use Ray\Di\AbstractModule;
 use Ray\Di\Scope;
 
-class DonutCacheModule extends AbstractModule
+final class DonutCacheModule extends AbstractModule
 {
     /**
      * {@inheritdoc}
      */
-    protected function configure()
+    protected function configure(): void
     {
         $this->bind(HeaderSetter::class);
         $this->bind(CdnCacheControlHeaderSetterInterface::class)->to(CdnCacheControlHeaderSetter::class);

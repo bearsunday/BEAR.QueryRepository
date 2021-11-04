@@ -6,12 +6,12 @@ namespace BEAR\QueryRepository;
 
 use Ray\Di\AbstractModule;
 
-class NullCdnCacheControlModule extends AbstractModule
+final class NullCdnCacheControlModule extends AbstractModule
 {
     /**
      * {@inheritdoc}
      */
-    protected function configure()
+    protected function configure(): void
     {
         $this->bind(CdnCacheControlHeaderSetterInterface::class)->to(NullCacheControlHeaderSetter::class);
     }

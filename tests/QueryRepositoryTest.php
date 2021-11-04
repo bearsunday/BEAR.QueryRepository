@@ -19,13 +19,14 @@ use Ray\Di\Injector;
 use Ray\PsrCacheModule\Annotation\Shared;
 
 use function assert;
+use function is_array;
 
 class QueryRepositoryTest extends TestCase
 {
     /** @var ResourceInterface */
     private $resource;
 
-    /** @var QueryRepository */
+    /** @var QueryRepositoryInterface */
     private $repository;
 
     /** @var HttpCacheInterface */
@@ -108,6 +109,7 @@ class QueryRepositoryTest extends TestCase
         $this->repository->put($ro);
         $state = $this->repository->get(new Uri($uri));
         assert($state instanceof ResourceState);
+        assert(is_array($state->body));
         $this->assertSame(1, $state->body['num']);
         $this->assertSame('{
     "time": {
@@ -125,6 +127,7 @@ class QueryRepositoryTest extends TestCase
         $this->repository->put($ro);
         $state = $this->repository->get(new Uri($uri));
         assert($state instanceof ResourceState);
+        assert(is_array($state->body));
         $this->assertSame(1, $state->body['num']);
         $this->assertNull($state->view);
     }

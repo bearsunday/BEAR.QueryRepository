@@ -7,7 +7,7 @@ namespace BEAR\QueryRepository;
 use Ray\Di\AbstractModule;
 use Ray\PsrCacheModule\Psr6MemcachedModule;
 
-class StorageMemcachedModule extends AbstractModule
+final class StorageMemcachedModule extends AbstractModule
 {
     /** @var string */
     private $servers;
@@ -24,7 +24,7 @@ class StorageMemcachedModule extends AbstractModule
     /**
      * {@inheritdoc}
      */
-    protected function configure()
+    protected function configure(): void
     {
         $this->install(new Psr6MemcachedModule($this->servers));
     }

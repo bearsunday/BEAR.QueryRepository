@@ -24,6 +24,7 @@ class CdnCacheControlHeaderTest extends TestCase
     {
         $module = $this->getModule();
         $injector =  new Injector($module, $_ENV['TMP_DIR']);
+        /** @var ResourceInterface $resource */
         $resource = $injector->getInstance(ResourceInterface::class);
         $ro = $resource->get('page://self/html/blog-posting');
         assert($ro instanceof ResourceObject);

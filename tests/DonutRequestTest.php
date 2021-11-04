@@ -30,7 +30,9 @@ class DonutRequestTest extends TestCase
         $module->override(new TwigModule([$path]));
         $injector = new Injector($module, $_ENV['TMP_DIR']);
         $this->resource = $injector->getInstance(ResourceInterface::class);
-        $this->request = $this->resource->get->uri('page://self/html/comment');
+        /** @var AbstractRequest $request */
+        $request = $this->resource->get->uri('page://self/html/comment');
+        $this->request = $request;
         parent::setUp();
     }
 

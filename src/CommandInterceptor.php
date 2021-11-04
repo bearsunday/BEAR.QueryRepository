@@ -13,7 +13,7 @@ use Ray\Aop\MethodInvocation;
 
 use function get_class;
 
-class CommandInterceptor implements MethodInterceptor
+final class CommandInterceptor implements MethodInterceptor
 {
     /** @var CommandInterface[] */
     private $commands = [];

@@ -17,7 +17,7 @@ use function trigger_error;
 
 use const E_USER_WARNING;
 
-class CacheInterceptor implements MethodInterceptor
+final class CacheInterceptor implements MethodInterceptor
 {
     /** @var QueryRepositoryInterface */
     private $repository;

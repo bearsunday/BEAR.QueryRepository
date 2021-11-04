@@ -10,12 +10,12 @@ use Ray\Di\AbstractModule;
 use Ray\Di\Scope;
 use Ray\PsrCacheModule\Psr6ArrayModule;
 
-class QueryRepositoryModule extends AbstractModule
+final class QueryRepositoryModule extends AbstractModule
 {
     /**
      * {@inheritdoc}
      */
-    protected function configure()
+    protected function configure(): void
     {
         $this->install(new Psr6ArrayModule());
         // core

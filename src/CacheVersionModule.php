@@ -7,7 +7,7 @@ namespace BEAR\QueryRepository;
 use Ray\Di\AbstractModule;
 use Ray\PsrCacheModule\CacheNamespaceModule;
 
-class CacheVersionModule extends AbstractModule
+final class CacheVersionModule extends AbstractModule
 {
     /** @var string */
     private $version;
@@ -21,7 +21,7 @@ class CacheVersionModule extends AbstractModule
     /**
      * {@inheritdoc}
      */
-    protected function configure()
+    protected function configure(): void
     {
         $this->install(new CacheNamespaceModule($this->version));
     }

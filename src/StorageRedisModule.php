@@ -7,7 +7,7 @@ namespace BEAR\QueryRepository;
 use Ray\Di\AbstractModule;
 use Ray\PsrCacheModule\Psr6RedisModule;
 
-class StorageRedisModule extends AbstractModule
+final class StorageRedisModule extends AbstractModule
 {
     /** @var string */
     private $server;
@@ -24,7 +24,7 @@ class StorageRedisModule extends AbstractModule
     /**
      * {@inheritdoc}
      */
-    protected function configure()
+    protected function configure(): void
     {
         $this->install(new Psr6RedisModule($this->server));
     }

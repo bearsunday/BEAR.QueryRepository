@@ -7,7 +7,7 @@ namespace BEAR\QueryRepository;
 use BEAR\RepositoryModule\Annotation\KnownTagTtl;
 use Ray\Di\AbstractModule;
 
-class ProdQueryRepositoryModule extends AbstractModule
+final class ProdQueryRepositoryModule extends AbstractModule
 {
     /**
      * {@inheritdoc}
@@ -15,7 +15,7 @@ class ProdQueryRepositoryModule extends AbstractModule
      * @see https://github.com/symfony/cache/blob/5.3/Adapter/TagAwareAdapter.php
      * @codeCoverageIgnore
      */
-    protected function configure()
+    protected function configure(): void
     {
         // boost the performance of symfony/cache
         $this->bind()->annotatedWith(KnownTagTtl::class)->toInstance(0.15);

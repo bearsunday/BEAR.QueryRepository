@@ -12,12 +12,12 @@ use BEAR\RepositoryModule\Annotation\Refresh;
 use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
 use Ray\Di\AbstractModule;
 
-class CacheableModule extends AbstractModule
+final class CacheableModule extends AbstractModule
 {
     /**
      * {@inheritdoc}
      */
-    protected function configure()
+    protected function configure(): void
     {
         $this->bind(HttpCacheInterface::class)->to(HttpCache::class);
         $this->bind()->annotatedWith(Commands::class)->toProvider(CommandsProvider::class);

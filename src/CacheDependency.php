@@ -23,12 +23,12 @@ final class CacheDependency implements CacheDependencyInterface
     {
         assert(! isset($from->headers[Header::SURROGATE_KEY]));
 
-        $cacheDepedencyTags = ($this->uriTag)($to->uri);
+        $cacheDependencyTags = ($this->uriTag)($to->uri);
         if (isset($to->headers[Header::SURROGATE_KEY])) {
-            $cacheDepedencyTags .= sprintf(' %s', $to->headers[Header::SURROGATE_KEY]);
+            $cacheDependencyTags .= sprintf(' %s', $to->headers[Header::SURROGATE_KEY]);
             unset($to->headers[Header::SURROGATE_KEY]);
         }
 
-        $from->headers[Header::SURROGATE_KEY] = $cacheDepedencyTags;
+        $from->headers[Header::SURROGATE_KEY] = $cacheDependencyTags;
     }
 }

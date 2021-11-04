@@ -7,12 +7,12 @@ namespace BEAR\QueryRepository;
 use Ray\Di\AbstractModule;
 use Ray\Di\Scope;
 
-class MobileEtagModule extends AbstractModule
+final class MobileEtagModule extends AbstractModule
 {
     /**
      * {@inheritdoc}
      */
-    protected function configure()
+    protected function configure(): void
     {
         $this->bind(EtagSetterInterface::class)->to(MobileEtagSetter::class)->in(Scope::SINGLETON);
     }

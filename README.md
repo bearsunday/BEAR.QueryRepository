@@ -6,7 +6,7 @@
 
 [CQRS](http://martinfowler.com/bliki/CQRS.html) inspired **BEAR.QueryRepository** segregates reads and writes into two separate repository.
 
-Documentation is available at [BEAR.Sunday resource manual](http://bearsunday.github.io/manuals/1.0/en/resource.html).
+Documentation is available at [BEAR.Sunday cache manual](http://bearsunday.github.io/manuals/1.0/ja/cache.html).
 
 
 ## Demo
