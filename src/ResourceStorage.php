@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\QueryRepository\SerializableTagAwareAdapter as TagAwareAdapter;
 use BEAR\RepositoryModule\Annotation\EtagPool;
 use BEAR\RepositoryModule\Annotation\KnownTagTtl;
 use BEAR\Resource\AbstractUri;
@@ -12,9 +11,13 @@ use BEAR\Resource\RequestInterface;
 use BEAR\Resource\ResourceObject;
 use Doctrine\Common\Cache\CacheProvider;
 use Psr\Cache\CacheItemPoolInterface;
+use Ray\Di\Di\Inject;
+use Ray\Di\InjectorInterface;
 use Ray\PsrCacheModule\Annotation\Shared;
+use Serializable;
 use Symfony\Component\Cache\Adapter\AdapterInterface;
 use Symfony\Component\Cache\Adapter\DoctrineAdapter;
+use Symfony\Component\Cache\Adapter\TagAwareAdapter;
 use Symfony\Contracts\Cache\ItemInterface;
 
 use function array_merge;
@@ -27,8 +30,10 @@ use function is_string;
 use function sprintf;
 use function strtoupper;
 
-final class ResourceStorage implements ResourceStorageInterface
+final class ResourceStorage implements ResourceStorageInterface, Serializable
 {
+    use Php73BcSerializableTrait;
+
     /**
      * Resource object cache prefix
      */
@@ -57,6 +62,15 @@ final class ResourceStorage implements ResourceStorageInterface
     /** @var ResourceStorageSaver */
     private $saver;
 
+    /** @var float */
+    private $knownTagTtl;
+
+    /**
+     * @var InjectorInterface
+     * @psalm-suppress PropertyNotSetInConstructor
+     */
+    protected $injector;
+
     /**
      * @Shared("pool")
      * @EtagPool("etagPool")
@@ -82,10 +96,20 @@ final class ResourceStorage implements ResourceStorageInterface
             return;
         }
 
+        $this->knownTagTtl = $knownTagTtl;
         assert($pool instanceof AdapterInterface);
         $etagPool =  $etagPool instanceof AdapterInterface ? $etagPool : $pool;
         $this->roPool = new TagAwareAdapter($pool, $etagPool, $knownTagTtl);
         $this->etagPool = new TagAwareAdapter($etagPool, $etagPool, $knownTagTtl);
+    }
+
+    /**
+     * @Inject
+     */
+    #[Inject]
+    public function setInjector(InjectorInterface $injector): void
+    {
+        $this->injector = $injector;
     }
 
     private function injectDoctrineCache(CacheProvider $cache): void
@@ -273,5 +297,37 @@ final class ResourceStorage implements ResourceStorageInterface
         $uniqueTags = array_unique($tags);
         $this->logger->log('save-etag uri:%s etag:%s surrogate-keys:%s', $uri, $etag, $uniqueTags);
         $this->saver->__invoke($etag, 'etag', $this->etagPool, $uri, $uniqueTags, $ttl);
+    }
+
+    /**
+     * @return array{logger: RepositoryLoggerInterface, purger: PurgerInterface, uriTag: UriTagInterface, saver: ResourceStorageSaver, knownTagTtl: float, injector: InjectorInterface}
+     */
+    public function __serialize(): array
+    {
+        return [
+            'logger' => $this->logger,
+            'purger' => $this->purger,
+            'uriTag' => $this->uriTag,
+            'saver' => $this->saver,
+            'knownTagTtl' => $this->knownTagTtl,
+            'injector' => $this->injector,
+        ];
+    }
+
+    /**
+     * @param array{logger: RepositoryLoggerInterface, purger: PurgerInterface, uriTag: UriTagInterface, saver: ResourceStorageSaver, knownTagTtl: float, injector: InjectorInterface} $data
+     */
+    public function __unserialize(array $data): void
+    {
+        $this->logger = $data['logger'];
+        $this->purger = $data['purger'];
+        $this->uriTag = $data['uriTag'];
+        $this->saver = $data['saver'];
+        $pool = $data['injector']->getInstance(CacheItemPoolInterface::class, Shared::class);
+        $etagPool = $data['injector']->getInstance(CacheItemPoolInterface::class, EtagPool::class);
+        assert($pool instanceof AdapterInterface);
+        assert($etagPool instanceof AdapterInterface);
+        $this->roPool = new TagAwareAdapter($pool, $etagPool, $data['knownTagTtl']);
+        $this->etagPool = new TagAwareAdapter($etagPool, $etagPool, $data['knownTagTtl']);
     }
 }
