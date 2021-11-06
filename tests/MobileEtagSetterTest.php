@@ -56,4 +56,9 @@ class MobileEtagSetterTest extends TestCase
         $expected = 'pc';
         $this->assertSame($expected, FakeMobileEtagSetter::$device);
     }
+
+    public function testModule(): void
+    {
+        $this->assertInstanceOf(MobileEtagModule::class, new MobileEtagModule());
+    }
 }

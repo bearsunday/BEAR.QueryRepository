@@ -10,7 +10,7 @@ use Doctrine\Common\Annotations\AnnotationReader;
 use Doctrine\Common\Cache\CacheProvider;
 use FakeVendor\HelloWorld\Resource\Page\Index;
 use PHPUnit\Framework\TestCase;
-use Ray\PsrCacheModule\FilesystemAdapter;
+use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 
 use function array_change_key_case;
 use function assert;

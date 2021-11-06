@@ -45,7 +45,7 @@ class QueryRepositoryTest extends TestCase
     protected function setUp(): void
     {
         $namespace = 'FakeVendor\HelloWorld';
-        $injector = new Injector(new FakeEtagPoolModule(new QueryRepositoryModule(new MobileEtagModule(new ResourceModule($namespace)))), $_ENV['TMP_DIR']);
+        $injector = new Injector(new FakeEtagPoolModule(ModuleFactory::getInstance($namespace)), $_ENV['TMP_DIR']);
         $this->repository = $injector->getInstance(QueryRepositoryInterface::class);
         $this->resource = $injector->getInstance(ResourceInterface::class);
         $this->httpCache = $injector->getInstance(HttpCacheInterface::class);
@@ -149,7 +149,7 @@ class QueryRepositoryTest extends TestCase
     public function testErrorInCacheRead(): void
     {
         $namespace = 'FakeVendor\HelloWorld';
-        $module = new QueryRepositoryModule(new MobileEtagModule(new ResourceModule($namespace)));
+        $module = ModuleFactory::getInstance($namespace);
 
         $module->override(new class extends AbstractModule {
             protected function configure()
@@ -197,7 +197,7 @@ class QueryRepositoryTest extends TestCase
     public function testSerializable(): void
     {
         $namespace = 'FakeVendor\HelloWorld';
-        $module = new QueryRepositoryModule();
+        $module = new QueryRepositoryModule(new ResourceModule($namespace));
         $module->override(new class extends AbstractModule{
             protected function configure()
             {
