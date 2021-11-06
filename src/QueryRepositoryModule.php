@@ -6,9 +6,11 @@ namespace BEAR\QueryRepository;
 
 use BEAR\Resource\NamedParameter;
 use BEAR\Resource\NamedParameterInterface;
+use Psr\Cache\CacheItemPoolInterface;
 use Ray\Di\AbstractModule;
 use Ray\Di\Scope;
-use Ray\PsrCacheModule\Psr6ArrayModule;
+use Ray\PsrCacheModule\Annotation\Shared;
+use Symfony\Component\Cache\Adapter\NullAdapter;
 
 final class QueryRepositoryModule extends AbstractModule
 {
@@ -17,7 +19,8 @@ final class QueryRepositoryModule extends AbstractModule
      */
     protected function configure(): void
     {
-        $this->install(new Psr6ArrayModule());
+        // Null cache default
+        $this->bind(CacheItemPoolInterface::class)->annotatedWith(Shared::class)->to(NullAdapter::class)->in(Scope::SINGLETON);
         // core
         $this->bind(QueryRepositoryInterface::class)->to(QueryRepository::class)->in(Scope::SINGLETON);
         $this->bind(CacheDependencyInterface::class)->to(CacheDependency::class);
