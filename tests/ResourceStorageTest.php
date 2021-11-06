@@ -7,7 +7,7 @@ namespace BEAR\QueryRepository;
 use BEAR\Resource\Uri;
 use FakeVendor\HelloWorld\Resource\Page\Index;
 use PHPUnit\Framework\TestCase;
-use Ray\PsrCacheModule\FilesystemAdapter;
+use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 
 class ResourceStorageTest extends TestCase
 {
