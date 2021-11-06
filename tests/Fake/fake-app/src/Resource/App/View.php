@@ -17,7 +17,7 @@ class View extends ResourceObject
 {
     public static $i = 1;
 
-    public function toString()
+    public function toString(): string
     {
         if ($this->view) {
             return $this->view;

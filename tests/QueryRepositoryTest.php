@@ -4,11 +4,15 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\QueryRepository as Repository;
+use BEAR\RepositoryModule\Annotation\EtagPool;
 use BEAR\Resource\Module\ResourceModule;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
 use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
+use Doctrine\Common\Annotations\AnnotationReader;
+use Doctrine\Common\Annotations\Reader;
 use FakeVendor\HelloWorld\Resource\App\NullView;
 use FakeVendor\HelloWorld\Resource\App\User\Profile;
 use FakeVendor\HelloWorld\Resource\Page\None;
@@ -17,9 +21,12 @@ use Psr\Cache\CacheItemPoolInterface;
 use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
 use Ray\PsrCacheModule\Annotation\Shared;
+use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 
 use function assert;
 use function is_array;
+use function serialize;
+use function unserialize;
 
 class QueryRepositoryTest extends TestCase
 {
@@ -185,5 +192,22 @@ class QueryRepositoryTest extends TestCase
         $ro->body = ['time' => '0'];
         $this->repository->put($ro);
         $this->assertIsString($ro->view);
+    }
+
+    public function testSerializable(): void
+    {
+        $namespace = 'FakeVendor\HelloWorld';
+        $module = new QueryRepositoryModule();
+        $module->override(new class extends AbstractModule{
+            protected function configure()
+            {
+                $this->bind(CacheItemPoolInterface::class)->annotatedWith(Shared::class)->to(FilesystemAdapter::class);
+                $this->bind(CacheItemPoolInterface::class)->annotatedWith(EtagPool::class)->to(FilesystemAdapter::class);
+                $this->bind(Reader::class)->to(AnnotationReader::class);
+            }
+        });
+        $repository = (new Injector($module))->getInstance(QueryRepositoryInterface::class);
+        $unserilizedRepository = unserialize(serialize($repository));
+        $this->assertInstanceOf(Repository::class, $unserilizedRepository);
     }
 }

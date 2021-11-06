@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\QueryRepository\SerializableTagAwareAdapter as TagAwareAdapter;
 use BEAR\RepositoryModule\Annotation\EtagPool;
 use BEAR\RepositoryModule\Annotation\KnownTagTtl;
 use BEAR\Resource\AbstractUri;
@@ -13,8 +12,10 @@ use BEAR\Resource\ResourceObject;
 use Doctrine\Common\Cache\CacheProvider;
 use Psr\Cache\CacheItemPoolInterface;
 use Ray\PsrCacheModule\Annotation\Shared;
+use Serializable;
 use Symfony\Component\Cache\Adapter\AdapterInterface;
 use Symfony\Component\Cache\Adapter\DoctrineAdapter;
+use Symfony\Component\Cache\Adapter\TagAwareAdapter;
 use Symfony\Contracts\Cache\ItemInterface;
 
 use function array_merge;
@@ -27,8 +28,10 @@ use function is_string;
 use function sprintf;
 use function strtoupper;
 
-final class ResourceStorage implements ResourceStorageInterface
+final class ResourceStorage implements ResourceStorageInterface, Serializable
 {
+    use ResourceStorageCacheableTrait;
+
     /**
      * Resource object cache prefix
      */
@@ -57,6 +60,9 @@ final class ResourceStorage implements ResourceStorageInterface
     /** @var ResourceStorageSaver */
     private $saver;
 
+    /** @var float */
+    private $knownTagTtl;
+
     /**
      * @Shared("pool")
      * @EtagPool("etagPool")
@@ -82,6 +88,7 @@ final class ResourceStorage implements ResourceStorageInterface
             return;
         }
 
+        $this->knownTagTtl = $knownTagTtl;
         assert($pool instanceof AdapterInterface);
         $etagPool =  $etagPool instanceof AdapterInterface ? $etagPool : $pool;
         $this->roPool = new TagAwareAdapter($pool, $etagPool, $knownTagTtl);
