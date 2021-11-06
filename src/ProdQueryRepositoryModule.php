@@ -13,7 +13,6 @@ final class ProdQueryRepositoryModule extends AbstractModule
      * {@inheritdoc}
      *
      * @see https://github.com/symfony/cache/blob/5.3/Adapter/TagAwareAdapter.php
-     * @codeCoverageIgnore
      */
     protected function configure(): void
     {
