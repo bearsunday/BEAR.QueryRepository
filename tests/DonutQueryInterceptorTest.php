@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\Resource\Module\ResourceModule;
 use BEAR\Resource\ResourceInterface;
 use FakeVendor\HelloWorld\Resource\Page\Html\BlogPosting;
 use FakeVendor\HelloWorld\Resource\Page\Html\Comment;
@@ -28,7 +27,7 @@ class DonutQueryInterceptorTest extends TestCase
         static $injector;
 
         $namespace = 'FakeVendor\HelloWorld';
-        $module = new DevEtagModule((new FakeEtagPoolModule(new QueryRepositoryModule(new ResourceModule($namespace)))));
+        $module = new DevEtagModule((new FakeEtagPoolModule(ModuleFactory::getInstance($namespace))));
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
         if (! $injector) {
             $injector = new Injector($module, $_ENV['TMP_DIR']);

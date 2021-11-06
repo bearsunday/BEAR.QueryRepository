@@ -6,7 +6,6 @@ namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Cdn\AkamaiModule;
 use BEAR\QueryRepository\Cdn\FastlyModule;
-use BEAR\Resource\Module\ResourceModule;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
@@ -79,7 +78,7 @@ class CdnCacheControlHeaderTest extends TestCase
     private function getModule(): AbstractModule
     {
         $namespace = 'FakeVendor\HelloWorld';
-        $module = new FakeEtagPoolModule(new QueryRepositoryModule(new ResourceModule($namespace)));
+        $module = new FakeEtagPoolModule(ModuleFactory::getInstance($namespace));
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
 
         return $module;

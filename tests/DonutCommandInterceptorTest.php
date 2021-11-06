@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\Resource\Module\ResourceModule;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Sunday\Extension\Transfer\HttpCacheInterface as HttpCacheInterfaceAlias;
 use Madapaja\TwigModule\TwigModule;
@@ -32,7 +31,7 @@ class DonutCommandInterceptorTest extends TestCase
     protected function setUp(): void
     {
         $namespace = 'FakeVendor\HelloWorld';
-        $module = new FakeEtagPoolModule(new QueryRepositoryModule(new ResourceModule($namespace)));
+        $module = new FakeEtagPoolModule(ModuleFactory::getInstance($namespace));
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
         $injector = new Injector($module, $_ENV['TMP_DIR']);
         $this->resource = $injector->getInstance(ResourceInterface::class);

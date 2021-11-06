@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\Resource\Module\ResourceModule;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
 use PHPUnit\Framework\TestCase;
@@ -27,7 +26,7 @@ class CacheDependencyTest extends TestCase
     protected function setUp(): void
     {
         $namespace = 'FakeVendor\HelloWorld';
-        $injector = new Injector(new FakeEtagPoolModule(new QueryRepositoryModule(new ResourceModule($namespace))), $_ENV['TMP_DIR']);
+        $injector = new Injector(new FakeEtagPoolModule(ModuleFactory::getInstance($namespace)), $_ENV['TMP_DIR']);
         $this->repository = $injector->getInstance(QueryRepositoryInterface::class);
         $this->resource = $injector->getInstance(ResourceInterface::class);
         $this->storage = $injector->getInstance(ResourceStorageInterface::class);

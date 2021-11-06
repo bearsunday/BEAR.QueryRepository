@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\Resource\Module\ResourceModule;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use PHPUnit\Framework\TestCase;
@@ -27,7 +26,7 @@ class HttpCacheTest extends TestCase
 
     public function testisNotModifiedTrue(): CliHttpCache
     {
-        $resource = (new Injector(new QueryRepositoryModule(new ResourceModule('FakeVendor\HelloWorld'))))->getInstance(ResourceInterface::class);
+        $resource = (new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld')))->getInstance(ResourceInterface::class);
         $user = $resource->get('app://self/user', ['id' => 1]);
         assert($user instanceof ResourceObject);
         $storage = new ResourceStorage(new RepositoryLogger(), new NullPurger(), new UriTag(), new ArrayAdapter());
@@ -64,7 +63,7 @@ class HttpCacheTest extends TestCase
      */
     public function testHeaderSetInCli(): void
     {
-        $resource = (new Injector(new QueryRepositoryModule(new ResourceModule('FakeVendor\HelloWorld'))))->getInstance(ResourceInterface::class);
+        $resource = (new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld')))->getInstance(ResourceInterface::class);
         $user = $resource->get('app://self/user', ['id' => 1]);
         assert($user instanceof ResourceObject);
         $storage = new ResourceStorage(new RepositoryLogger(), new NullPurger(), new UriTag(), new ArrayAdapter());
