@@ -4,8 +4,13 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\RepositoryModule\Annotation\EtagPool;
+use Psr\Cache\CacheItemPoolInterface;
 use Ray\Di\AbstractModule;
+use Ray\PsrCacheModule\Annotation\CacheNamespace;
+use Ray\PsrCacheModule\Annotation\RedisInstance;
 use Ray\PsrCacheModule\Psr6RedisModule;
+use Symfony\Component\Cache\Adapter\RedisAdapter;
 
 final class StorageRedisModule extends AbstractModule
 {
@@ -27,5 +32,9 @@ final class StorageRedisModule extends AbstractModule
     protected function configure(): void
     {
         $this->install(new Psr6RedisModule($this->server));
+        $this->bind(CacheItemPoolInterface::class)->annotatedWith(EtagPool::class)->toConstructor(RedisAdapter::class, [
+            'redis' => RedisInstance::class,
+            'namespace' => CacheNamespace::class,
+        ]);
     }
 }
