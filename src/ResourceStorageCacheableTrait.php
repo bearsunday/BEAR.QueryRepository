@@ -65,5 +65,7 @@ trait ResourceStorageCacheableTrait
         assert($etagPool instanceof AdapterInterface);
         $this->roPool = new TagAwareAdapter($pool, $etagPool, $data['knownTagTtl']);
         $this->etagPool = new TagAwareAdapter($etagPool, $etagPool, $data['knownTagTtl']);
+        $this->knownTagTtl = $data['knownTagTtl'];
+        $this->injector = $data['injector'];
     }
 }
