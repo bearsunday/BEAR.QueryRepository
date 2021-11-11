@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
+
 use function assert;
 use function is_string;
 use function parse_str;
 use function sprintf;
 use function str_replace;
 use function strtoupper;
+
 use const PHP_EOL;
 
 final class CliHttpCache implements HttpCacheInterface
@@ -73,7 +75,7 @@ final class CliHttpCache implements HttpCacheInterface
     private function getEtag(array $server): ?string
     {
         /** @psalm-suppress MixedAssignment */
-        $arg3 = $server['argv'][3] ?? '';
+        $arg3 = $server['argv'][3] ?? ''; /* @phpstan-ignore-line */
         assert(is_string($arg3));
         $hasRequestHeaderInCli = isset($server['argc']) && $server['argc'] === 4 && $arg3;
         if ($hasRequestHeaderInCli) {

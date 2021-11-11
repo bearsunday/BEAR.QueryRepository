@@ -60,9 +60,10 @@ trait ResourceStorageCacheableTrait
         $this->uriTag = $data['uriTag'];
         $this->saver = $data['saver'];
         $pool = $data['injector']->getInstance(CacheItemPoolInterface::class, Shared::class);
-        $etagPool = $data['injector']->getInstance(CacheItemPoolInterface::class, EtagPool::class);
+        $maybeEtagPool = $data['injector']->getInstance(CacheItemPoolInterface::class, EtagPool::class);
         assert($pool instanceof AdapterInterface);
-        assert($etagPool instanceof AdapterInterface);
+        /** @psalm-suppress all */
+        $etagPool = $maybeEtagPool instanceof AdapterInterface ? $maybeEtagPool : $pool;
         $this->roPool = new TagAwareAdapter($pool, $etagPool, $data['knownTagTtl']);
         $this->etagPool = new TagAwareAdapter($etagPool, $etagPool, $data['knownTagTtl']);
         $this->knownTagTtl = $data['knownTagTtl'];
