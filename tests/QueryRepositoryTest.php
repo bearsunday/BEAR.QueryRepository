@@ -207,7 +207,7 @@ class QueryRepositoryTest extends TestCase
             }
         });
         $repository = (new Injector($module))->getInstance(QueryRepositoryInterface::class);
-        $unserilizedRepository = unserialize(serialize($repository));
+        $unserilizedRepository = unserialize(serialize(unserialize(serialize($repository))));
         $this->assertInstanceOf(Repository::class, $unserilizedRepository);
     }
 }
