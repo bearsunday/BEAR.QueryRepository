@@ -22,8 +22,7 @@ final class QueryRepositoryModule extends AbstractModule
     {
         // Null cache default
         $this->bind(CacheItemPoolInterface::class)->annotatedWith(Shared::class)->to(NullAdapter::class)->in(Scope::SINGLETON);
-
-        $this->bind(CacheItemPoolInterface::class)->annotatedWith(EtagPool::class)->to(NullAdapter::class)->in(Scope::SINGLETON);
+        $this->bind(CacheItemPoolInterface::class)->annotatedWith(EtagPool::class)->toInstance(null);
         // core
         $this->bind(QueryRepositoryInterface::class)->to(QueryRepository::class)->in(Scope::SINGLETON);
         $this->bind(CacheDependencyInterface::class)->to(CacheDependency::class);
