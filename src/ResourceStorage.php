@@ -97,6 +97,7 @@ final class ResourceStorage implements ResourceStorageInterface, Serializable
 
     private function injectDoctrineCache(CacheProvider $cache): void
     {
+        /** @psalm-suppress DeprecatedClass */
         $this->roPool = new TagAwareAdapter(new DoctrineAdapter($cache));
         $this->etagPool = $this->roPool;
     }

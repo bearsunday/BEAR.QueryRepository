@@ -60,7 +60,10 @@
         ]
     },
     "config": {
-        "sort-packages": true
+        "sort-packages": true,
+        "allow-plugins": {
+            "bamarni/composer-bin-plugin": true
+        }
     },
     "scripts" :{
         "post-install-cmd": ["@composer bin all install --ansi"],
