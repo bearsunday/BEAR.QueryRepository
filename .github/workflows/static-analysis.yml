@@ -56,7 +56,7 @@ jobs:
         run: composer install --no-interaction --no-progress --prefer-dist
 
       - name: Run Psalm
-        run: psalm --show-info=false --output-format=checkstyle --shepherd
+        run: ./vendor/bin/psalm --show-info=false --output-format=checkstyle --shepherd
 
   static-analysis-composer-require-checker:
     name: Static Analysis with ComposerRequireChecker
