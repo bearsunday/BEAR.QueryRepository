@@ -17,7 +17,6 @@ use Symfony\Component\Cache\Adapter\AdapterInterface;
 use Symfony\Component\Cache\Adapter\DoctrineAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapter;
 use Symfony\Contracts\Cache\ItemInterface;
-
 use function array_merge;
 use function array_unique;
 use function assert;
@@ -97,6 +96,7 @@ final class ResourceStorage implements ResourceStorageInterface, Serializable
 
     private function injectDoctrineCache(CacheProvider $cache): void
     {
+        /** @psalm-suppress DeprecatedClass */
         $this->roPool = new TagAwareAdapter(new DoctrineAdapter($cache));
         $this->etagPool = $this->roPool;
     }
