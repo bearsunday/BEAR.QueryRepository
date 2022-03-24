@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\UnmatchedQuery;
 use BEAR\Resource\AbstractUri;
+use BEAR\Resource\Code;
 use BEAR\Resource\ResourceObject;
 use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
@@ -36,6 +37,10 @@ final class DonutCommandInterceptor implements MethodInterceptor
     {
         $ro = $invocation->proceed();
         assert($ro instanceof ResourceObject);
+        if ($ro->code >= Code::BAD_REQUEST) {
+            return $ro;
+        }
+
         $this->refreshDonutAndState($ro);
 
         return $ro;

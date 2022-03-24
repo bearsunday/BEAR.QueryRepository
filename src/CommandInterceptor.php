@@ -43,7 +43,7 @@ final class CommandInterceptor implements MethodInterceptor
         }
 
         if ($ro->code >= Code::BAD_REQUEST) {
-            return $this;
+            return $ro;
         }
 
         foreach ($this->commands as $command) {
