@@ -5,6 +5,7 @@ namespace FakeVendor\HelloWorld\Resource\Page\Html;
 use BEAR\QueryRepository\Header;
 use BEAR\RepositoryModule\Annotation\CacheableResponse;
 use BEAR\Resource\Annotation\Embed;
+use BEAR\Resource\Code;
 use BEAR\Resource\ResourceObject;
 use Koriym\HttpConstants\CacheControl;
 use Koriym\HttpConstants\ResponseHeader;
@@ -30,6 +31,12 @@ class BlogPosting extends ResourceObject
 
     public function onDelete(int $id = 0)
     {
+        if ($id !== 0) {
+            $this->code = Code::BAD_REQUEST;
+
+            return $this;
+        }
+
         return $this;
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\Resource\Code;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Sunday\Extension\Transfer\HttpCacheInterface as HttpCacheInterfaceAlias;
 use Madapaja\TwigModule\TwigModule;
@@ -65,6 +66,21 @@ class DonutCommandInterceptorTest extends TestCase
         $this->assertFalse($this->httpCache->isNotModified($server));
         $this->logger->log('server:%s', $server);
         $this->logger->log('get');
+        $ro = $this->resource->get('page://self/html/blog-posting?id=0');
+        $this->assertArrayHasKey('Age', $ro->headers);
+    }
+
+    public function testCommandInterceptorRefreshOnErrorCode(): void
+    {
+        $this->resource->get('page://self/html/comment');
+        $ro = $this->resource->delete('page://self/html/comment');
+        $this->assertSame(Code::BAD_REQUEST, $ro->code);
+        $ro = $this->resource->get('page://self/html/comment');
+        $this->assertArrayHasKey('Age', $ro->headers);
+
+        $this->resource->get('page://self/html/blog-posting?id=0');
+        $ro = $this->resource->delete('page://self/html/blog-posting', ['id' => 9999]);
+        $this->assertSame(Code::BAD_REQUEST, $ro->code);
         $ro = $this->resource->get('page://self/html/blog-posting?id=0');
         $this->assertArrayHasKey('Age', $ro->headers);
     }
