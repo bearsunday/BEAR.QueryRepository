@@ -8,7 +8,7 @@ use BEAR\Resource\ResourceInterface;
 use Ray\Di\ProviderInterface;
 
 /**
- * @implements ProviderInterface<CommandInterface[]>
+ * @implements ProviderInterface<array<CommandInterface>>
  */
 final class CommandsProvider implements ProviderInterface
 {
