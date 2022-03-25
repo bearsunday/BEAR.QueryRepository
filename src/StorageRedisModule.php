@@ -12,6 +12,17 @@ use Ray\PsrCacheModule\Annotation\RedisInstance;
 use Ray\PsrCacheModule\Psr6RedisModule;
 use Symfony\Component\Cache\Adapter\RedisAdapter;
 
+/**
+ * Provides ResourceStorageInterface and derived bindings
+ *
+ * The following bindings are provided:
+ *
+ * CacheItemPoolInterface-EtagPool::class
+ *
+ * The following module are installed:
+ *
+ * Psr6RedisModule
+ */
 final class StorageRedisModule extends AbstractModule
 {
     /** @var string */
