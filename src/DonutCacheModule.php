@@ -10,6 +10,25 @@ use BEAR\RepositoryModule\Annotation\RefreshCache;
 use Ray\Di\AbstractModule;
 use Ray\Di\Scope;
 
+/**
+ * Provides ResourceStorageInterface and derived bindings
+ *
+ * The following bindings are provided:
+ *
+ * HeaderSetter
+ * CdnCacheControlHeaderSetterInterface
+ * DonutRepositoryInterface
+ * RepositoryLoggerInterface
+ * PurgerInterface
+ * UriTagInterface
+ *
+ * The following interceptors are provided:
+ *
+ * DonutCacheableResponseInterceptor
+ * DonutCacheInterceptor
+ * DonutCommandInterceptor
+ * DonutCacheInterceptor
+ */
 final class DonutCacheModule extends AbstractModule
 {
     /**

@@ -13,6 +13,27 @@ use Ray\Di\Scope;
 use Ray\PsrCacheModule\Annotation\Shared;
 use Symfony\Component\Cache\Adapter\NullAdapter;
 
+/**
+ *  Provides ResourceStorageInterface and derived bindings
+ *
+ *  The following bindings are provided:
+ *
+ *  CacheItemPoolInterface-Shared::class
+ *  CacheItemPoolInterface-EtagPool::class
+ *  QueryRepositoryInterface
+ *  CacheDependencyInterface
+ *  EtagSetterInterface
+ *  NamedParameterInterface
+ *  ResourceStorageInterface
+ *  MatchQueryInterface
+ *  UriTag
+ *  MatchQueryInterface
+ *
+ *  The following module are installed.
+ *
+ *  CacheableModule
+ *  DonutCacheModule
+ */
 final class QueryRepositoryModule extends AbstractModule
 {
     /**

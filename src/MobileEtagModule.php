@@ -7,6 +7,13 @@ namespace BEAR\QueryRepository;
 use Ray\Di\AbstractModule;
 use Ray\Di\Scope;
 
+/**
+ * Provides EtagSetterInterface
+ *
+ * The following bindings are provided:
+ *
+ * EtagSetterInterface
+ */
 final class MobileEtagModule extends AbstractModule
 {
     /**
