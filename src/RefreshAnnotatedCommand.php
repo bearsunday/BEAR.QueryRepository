@@ -13,6 +13,7 @@ use BEAR\Resource\Uri;
 use Ray\Aop\MethodInvocation;
 
 use function is_array;
+use function uri_template;
 
 final class RefreshAnnotatedCommand implements CommandInterface
 {
