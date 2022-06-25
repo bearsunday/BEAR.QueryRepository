@@ -23,7 +23,7 @@ final class RepositoryLogger implements RepositoryLoggerInterface
         /** @var bool|float|int|string|list<string>|null $value */
         foreach ($values as &$value) {
             if (is_array($value)) {
-                $value = $value ? implode(' ', $value) : '';
+                $value = $value !== [] ? implode(' ', $value) : '';
             }
         }
 

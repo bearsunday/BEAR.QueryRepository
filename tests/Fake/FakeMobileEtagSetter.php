@@ -30,9 +30,8 @@ class FakeMobileEtagSetter implements EtagSetterInterface
     private function getDevice()
     {
         $detect = new \Mobile_Detect;
-        $mobileDeviceType = $detect->isMobile() && ! $detect->isTablet() ? 'mobile' : 'pc';
 
-        return $mobileDeviceType;
+        return $detect->isMobile() && ! $detect->isTablet() ? 'mobile' : 'pc';
     }
 
 }

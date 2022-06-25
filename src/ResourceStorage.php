@@ -148,7 +148,7 @@ final class ResourceStorage implements ResourceStorageInterface
      */
     public function invalidateTags(array $tags): bool
     {
-        $tag = $tags ? implode(' ', $tags) : '';
+        $tag = $tags !== [] ? implode(' ', $tags) : '';
         $this->logger->log('invalidate-etag tags:%s', $tag);
         $valid1 = $this->roPool->invalidateTags($tags);
         $valid2 = $this->etagPool->invalidateTags($tags);
@@ -274,7 +274,7 @@ final class ResourceStorage implements ResourceStorageInterface
 
     public function saveEtag(AbstractUri $uri, string $etag, string $surrogateKeys, ?int $ttl): void
     {
-        $tags = $surrogateKeys ? explode(' ', $surrogateKeys) : [];
+        $tags = $surrogateKeys !== '' && $surrogateKeys !== '0' ? explode(' ', $surrogateKeys) : [];
         $tags[] = (new UriTag())($uri);
         /** @var list<string> $uniqueTags */
         $uniqueTags = array_unique($tags);
