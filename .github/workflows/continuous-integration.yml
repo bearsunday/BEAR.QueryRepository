@@ -90,7 +90,7 @@ jobs:
           file: ./coverage.xml
 
       - name: Update dependencies for demo
-        run: composer require doctrine/cache ^1
+        run: composer require doctrine/cache ^1 ${{ env.COMPOSER_UPDATE_FLAGS }} ${{ env.COMPOSER_FLAGS }}
 
       - name: Run additional script
         if: ${{ env.script }}
