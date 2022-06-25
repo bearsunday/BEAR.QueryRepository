@@ -35,7 +35,7 @@ final class ResourceDonut
      */
     public $isCacheble;
 
-    private const URI_REGEX = '/\[le:(.+)\]/';
+    private const URI_REGEX = '/\[le:(.+)]/';
 
     public function __construct(string $template, ?int $ttl, bool $isCacheble)
     {
@@ -48,7 +48,7 @@ final class ResourceDonut
     {
         $etags = new SurrogateKeys($ro->uri);
         $refreshView =  preg_replace_callback(self::URI_REGEX, static function (array $matches) use ($resource, $etags): string {
-            $uri = (string) $matches[1];
+            $uri = $matches[1];
             $ro = $resource->get($uri);
             $ro->toString();
             if (array_key_exists(Header::ETAG, $ro->headers)) {

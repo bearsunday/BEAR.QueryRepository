@@ -12,7 +12,6 @@ use BEAR\Resource\ResourceObject;
 use Doctrine\Common\Cache\CacheProvider;
 use Psr\Cache\CacheItemPoolInterface;
 use Ray\PsrCacheModule\Annotation\Shared;
-use Serializable;
 use Symfony\Component\Cache\Adapter\AdapterInterface;
 use Symfony\Component\Cache\Adapter\DoctrineAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapter;
@@ -28,7 +27,7 @@ use function is_string;
 use function sprintf;
 use function strtoupper;
 
-final class ResourceStorage implements ResourceStorageInterface, Serializable
+final class ResourceStorage implements ResourceStorageInterface
 {
     use ResourceStorageCacheableTrait;
 
@@ -172,7 +171,7 @@ final class ResourceStorage implements ResourceStorageInterface, Serializable
         $tags = $this->getTags($ro);
         $this->logger->log('save-value uri:%s tags:%s ttl:%s', $ro->uri, $tags, $ttl);
 
-        return $this->saver->__invoke($key, $value, $this->roPool, $ro->uri, $tags, $ttl);
+        return $this->saver->__invoke($key, $value, $this->roPool, $tags, $ttl);
     }
 
     /**
@@ -189,7 +188,7 @@ final class ResourceStorage implements ResourceStorageInterface, Serializable
         $key = $this->getUriKey($ro->uri, self::KEY_RO);
         $tags = $this->getTags($ro);
 
-        return $this->saver->__invoke($key, $value, $this->roPool, $ro->uri, $tags, $ttl);
+        return $this->saver->__invoke($key, $value, $this->roPool, $tags, $ttl);
     }
 
     public function saveDonut(AbstractUri $uri, ResourceDonut $donut, ?int $sMaxAge): void
@@ -197,7 +196,7 @@ final class ResourceStorage implements ResourceStorageInterface, Serializable
         $key = $this->getUriKey($uri, self::KEY_DONUT);
         $this->logger->log('save-donut uri:%s s-maxage:%s', $uri, $sMaxAge);
 
-        $this->saver->__invoke($key, $donut, $this->roPool, $uri, [], $sMaxAge);
+        $this->saver->__invoke($key, $donut, $this->roPool, [], $sMaxAge);
     }
 
     public function saveDonutView(ResourceObject $ro, ?int $ttl): bool
@@ -207,7 +206,7 @@ final class ResourceStorage implements ResourceStorageInterface, Serializable
         $tags = $this->getTags($ro);
         $this->logger->log('save-donut-view uri:%s surrogate-keys:%s s-maxage:%s', $ro->uri, $tags, $ttl);
 
-        return $this->saver->__invoke($key, $resourceState, $this->roPool, $ro->uri, $tags, $ttl);
+        return $this->saver->__invoke($key, $resourceState, $this->roPool, $tags, $ttl);
     }
 
     /**
@@ -280,6 +279,6 @@ final class ResourceStorage implements ResourceStorageInterface, Serializable
         /** @var list<string> $uniqueTags */
         $uniqueTags = array_unique($tags);
         $this->logger->log('save-etag uri:%s etag:%s surrogate-keys:%s', $uri, $etag, $uniqueTags);
-        $this->saver->__invoke($etag, 'etag', $this->etagPool, $uri, $uniqueTags, $ttl);
+        $this->saver->__invoke($etag, 'etag', $this->etagPool, $uniqueTags, $ttl);
     }
 }
