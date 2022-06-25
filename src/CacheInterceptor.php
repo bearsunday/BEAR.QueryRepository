@@ -42,7 +42,7 @@ final class CacheInterceptor implements MethodInterceptor
             return $invocation->proceed(); // @codeCoverageIgnore
         }
 
-        if ($state !== null) {
+        if ($state instanceof ResourceState) {
             $state->visit($ro);
 
             return $ro;

@@ -274,7 +274,7 @@ final class ResourceStorage implements ResourceStorageInterface
 
     public function saveEtag(AbstractUri $uri, string $etag, string $surrogateKeys, ?int $ttl): void
     {
-        $tags = $surrogateKeys !== '' && $surrogateKeys !== '0' ? explode(' ', $surrogateKeys) : [];
+        $tags = $surrogateKeys !== '' ? explode(' ', $surrogateKeys) : [];
         $tags[] = (new UriTag())($uri);
         /** @var list<string> $uniqueTags */
         $uniqueTags = array_unique($tags);

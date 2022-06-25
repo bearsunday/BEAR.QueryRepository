@@ -72,7 +72,7 @@ final class QueryRepository implements QueryRepositoryInterface
     {
         $state = $this->storage->get($uri);
 
-        if (!$state instanceof \BEAR\QueryRepository\ResourceState) {
+        if (! $state instanceof ResourceState) {
             return null;
         }
 
@@ -107,7 +107,7 @@ final class QueryRepository implements QueryRepositoryInterface
             return 0;
         }
 
-        if ($cacheable->expiryAt !== '' && $cacheable->expiryAt !== '0') {
+        if ($cacheable->expiryAt !== '') {
             return $this->getExpiryAtSec($ro, $cacheable);
         }
 
