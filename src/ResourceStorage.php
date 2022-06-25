@@ -12,7 +12,6 @@ use BEAR\Resource\ResourceObject;
 use Doctrine\Common\Cache\CacheProvider;
 use Psr\Cache\CacheItemPoolInterface;
 use Ray\PsrCacheModule\Annotation\Shared;
-use Serializable;
 use Symfony\Component\Cache\Adapter\AdapterInterface;
 use Symfony\Component\Cache\Adapter\DoctrineAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapter;
@@ -28,7 +27,7 @@ use function is_string;
 use function sprintf;
 use function strtoupper;
 
-final class ResourceStorage implements ResourceStorageInterface, Serializable
+final class ResourceStorage implements ResourceStorageInterface
 {
     use ResourceStorageCacheableTrait;
 

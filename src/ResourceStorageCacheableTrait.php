@@ -16,8 +16,6 @@ use function assert;
 
 trait ResourceStorageCacheableTrait
 {
-    use Php73BcSerializableTrait;
-
     /**
      * @var ?InjectorInterface
      * @psalm-suppress PropertyNotSetInConstructor
