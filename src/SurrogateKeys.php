@@ -20,8 +20,7 @@ final class SurrogateKeys
 {
     /** @var array<string> */
     private array $surrogateKeys;
-
-    private \BEAR\QueryRepository\UriTagInterface $uriTag;
+    private UriTagInterface $uriTag;
 
     public function __construct(AbstractUri $uri)
     {

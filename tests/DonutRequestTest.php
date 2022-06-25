@@ -15,9 +15,8 @@ use function dirname;
 
 class DonutRequestTest extends TestCase
 {
-    private \BEAR\Resource\AbstractRequest $request;
-
-    private \BEAR\Resource\ResourceInterface $resource;
+    private AbstractRequest $request;
+    private ResourceInterface $resource;
 
     protected function setUp(): void
     {

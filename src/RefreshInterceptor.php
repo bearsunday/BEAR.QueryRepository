@@ -14,7 +14,7 @@ use function get_class;
 
 final class RefreshInterceptor implements MethodInterceptor
 {
-    private \BEAR\QueryRepository\RefreshAnnotatedCommand $command;
+    private RefreshAnnotatedCommand $command;
 
     public function __construct(RefreshAnnotatedCommand $command)
     {

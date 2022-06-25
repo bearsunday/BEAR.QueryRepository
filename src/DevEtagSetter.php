@@ -16,7 +16,7 @@ use function str_replace;
 
 final class DevEtagSetter implements EtagSetterInterface
 {
-    private \BEAR\QueryRepository\CacheDependencyInterface $cacheDeperency;
+    private CacheDependencyInterface $cacheDeperency;
 
     public function __construct(CacheDependencyInterface $cacheDependency)
     {

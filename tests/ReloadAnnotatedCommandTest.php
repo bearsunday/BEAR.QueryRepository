@@ -10,7 +10,7 @@ use Ray\Di\Injector;
 
 class ReloadAnnotatedCommandTest extends TestCase
 {
-    private \BEAR\Resource\ResourceInterface $resource;
+    private ResourceInterface $resource;
 
     protected function setUp(): void
     {

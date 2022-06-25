@@ -14,7 +14,7 @@ use function dirname;
 
 class DonutCacheTest extends TestCase
 {
-    private \BEAR\Resource\ResourceInterface $resource;
+    private ResourceInterface $resource;
 
     protected function setUp(): void
     {

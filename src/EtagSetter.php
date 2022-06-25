@@ -19,7 +19,7 @@ use function time;
 
 final class EtagSetter implements EtagSetterInterface
 {
-    private \BEAR\QueryRepository\CacheDependencyInterface $cacheDeperency;
+    private CacheDependencyInterface $cacheDeperency;
 
     public function __construct(CacheDependencyInterface $cacheDependency)
     {

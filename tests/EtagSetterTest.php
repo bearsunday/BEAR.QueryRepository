@@ -11,7 +11,7 @@ use Ray\Di\Injector;
 
 class EtagSetterTest extends TestCase
 {
-    private \BEAR\Resource\ResourceInterface $resource;
+    private ResourceInterface $resource;
 
     protected function setUp(): void
     {

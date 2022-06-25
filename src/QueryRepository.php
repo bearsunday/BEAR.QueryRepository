@@ -20,15 +20,11 @@ use function time;
 
 final class QueryRepository implements QueryRepositoryInterface
 {
-    private \BEAR\QueryRepository\ResourceStorageInterface $storage;
-
-    private \Doctrine\Common\Annotations\Reader $reader;
-
-    private \BEAR\QueryRepository\Expiry $expiry;
-
-    private \BEAR\QueryRepository\HeaderSetter $headerSetter;
-
-    private \BEAR\QueryRepository\RepositoryLoggerInterface $logger;
+    private ResourceStorageInterface $storage;
+    private Reader $reader;
+    private Expiry $expiry;
+    private HeaderSetter $headerSetter;
+    private RepositoryLoggerInterface $logger;
 
     public function __construct(
         RepositoryLoggerInterface $logger,

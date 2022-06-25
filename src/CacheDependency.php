@@ -11,7 +11,7 @@ use function sprintf;
 
 final class CacheDependency implements CacheDependencyInterface
 {
-    private \BEAR\QueryRepository\UriTagInterface $uriTag;
+    private UriTagInterface $uriTag;
 
     public function __construct(UriTagInterface $uriTag)
     {

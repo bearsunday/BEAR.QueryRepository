@@ -12,9 +12,8 @@ use Ray\Di\ProviderInterface;
  */
 final class CommandsProvider implements ProviderInterface
 {
-    private \BEAR\QueryRepository\QueryRepositoryInterface $repository;
-
-    private \BEAR\Resource\ResourceInterface $resource;
+    private QueryRepositoryInterface $repository;
+    private ResourceInterface $resource;
 
     public function __construct(
         QueryRepositoryInterface $repository,

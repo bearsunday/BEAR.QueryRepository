@@ -10,11 +10,9 @@ use function sprintf;
 
 final class DonutRequest
 {
-    private \BEAR\Resource\AbstractRequest $request;
-
-    private \BEAR\QueryRepository\DonutRenderer $donutStorage;
-
-    private \BEAR\QueryRepository\SurrogateKeys $etags;
+    private AbstractRequest $request;
+    private DonutRenderer $donutStorage;
+    private SurrogateKeys $etags;
 
     public function __construct(AbstractRequest $request, DonutRenderer $donutStorage, SurrogateKeys $etags)
     {

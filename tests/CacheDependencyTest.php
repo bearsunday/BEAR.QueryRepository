@@ -14,11 +14,9 @@ use function explode;
 
 class CacheDependencyTest extends TestCase
 {
-    private \BEAR\Resource\ResourceInterface $resource;
-
-    private \BEAR\QueryRepository\QueryRepositoryInterface $repository;
-
-    private \BEAR\QueryRepository\ResourceStorageInterface $storage;
+    private ResourceInterface $resource;
+    private QueryRepositoryInterface $repository;
+    private ResourceStorageInterface $storage;
 
     protected function setUp(): void
     {

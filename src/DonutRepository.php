@@ -12,19 +12,13 @@ use function assert;
 
 final class DonutRepository implements DonutRepositoryInterface
 {
-    private \BEAR\QueryRepository\ResourceStorageInterface $resourceStorage;
-
-    private \BEAR\QueryRepository\HeaderSetter $headerSetter;
-
-    private \BEAR\Resource\ResourceInterface $resource;
-
-    private \BEAR\QueryRepository\QueryRepository $queryRepository;
-
-    private \BEAR\QueryRepository\CdnCacheControlHeaderSetterInterface $cdnCacheControlHeaderSetter;
-
-    private \BEAR\QueryRepository\RepositoryLoggerInterface $logger;
-
-    private \BEAR\QueryRepository\DonutRenderer $renderer;
+    private ResourceStorageInterface $resourceStorage;
+    private HeaderSetter $headerSetter;
+    private ResourceInterface $resource;
+    private QueryRepository $queryRepository;
+    private CdnCacheControlHeaderSetterInterface $cdnCacheControlHeaderSetter;
+    private RepositoryLoggerInterface $logger;
+    private DonutRenderer $renderer;
 
     public function __construct(
         QueryRepository $queryRepository,

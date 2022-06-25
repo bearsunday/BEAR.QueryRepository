@@ -20,8 +20,7 @@ use function assert;
 
 class BehaviorTest extends TestCase
 {
-    private \BEAR\Resource\ResourceInterface $resource;
-
+    private ResourceInterface $resource;
     private \BEAR\QueryRepository\HttpCacheInterface $httpCache;
 
     protected function setUp(): void
