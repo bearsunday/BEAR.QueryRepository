@@ -10,10 +10,10 @@ use function str_replace;
 final class DonutRenderer
 {
     /** @var list<string> */
-    private $searches = [];
+    private array $searches = [];
 
     /** @var list<string> */
-    private $views = [];
+    private array $views = [];
 
     public function setView(string $uri, string $view): void
     {

@@ -13,10 +13,8 @@ use function is_callable;
 
 final class RefreshSameCommand implements CommandInterface
 {
-    /** @var QueryRepositoryInterface */
-    private $repository;
-    /** @var MatchQueryInterface */
-    private $matchQuery;
+    private \BEAR\QueryRepository\QueryRepositoryInterface $repository;
+    private \BEAR\QueryRepository\MatchQueryInterface $matchQuery;
 
     public function __construct(QueryRepositoryInterface $repository, MatchQueryInterface $matchQuery)
     {

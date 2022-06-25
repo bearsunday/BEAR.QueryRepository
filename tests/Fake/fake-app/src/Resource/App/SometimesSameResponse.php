@@ -15,7 +15,7 @@ use BEAR\Resource\ResourceObject;
 #[Cacheable]
 class SometimesSameResponse extends ResourceObject
 {
-    private $data = [
+    private array $data = [
         1 => 'same message',
         2 => 'same message',
         3 => 'same message',
@@ -24,7 +24,7 @@ class SometimesSameResponse extends ResourceObject
 
     public function onGet($id)
     {
-        $this['message'] = isset($this->data[$id]) ? $this->data[$id] : '';
+        $this['message'] = $this->data[$id] ?? '';
 
         return $this;
     }

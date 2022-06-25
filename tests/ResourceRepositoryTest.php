@@ -19,11 +19,9 @@ use const CASE_LOWER;
 
 class ResourceRepositoryTest extends TestCase
 {
-    /** @var QueryRepository */
-    private $repository;
+    private \BEAR\QueryRepository\QueryRepository $repository;
 
-    /** @var Index */
-    private $ro;
+    private \FakeVendor\HelloWorld\Resource\Page\Index $ro;
 
     protected function setUp(): void
     {

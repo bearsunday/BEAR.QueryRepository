@@ -21,11 +21,9 @@ use function sprintf;
 
 final class DonutCommandInterceptor implements MethodInterceptor
 {
-    /** @var DonutRepositoryInterface */
-    private $repository;
+    private \BEAR\QueryRepository\DonutRepositoryInterface $repository;
 
-    /** @var MatchQueryInterface */
-    private $matchQuery;
+    private \BEAR\QueryRepository\MatchQueryInterface $matchQuery;
 
     public function __construct(DonutRepositoryInterface $repository, MatchQueryInterface $matchQuery)
     {

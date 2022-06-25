@@ -19,8 +19,7 @@ use function time;
 
 final class EtagSetter implements EtagSetterInterface
 {
-    /** @var CacheDependencyInterface */
-    private $cacheDeperency;
+    private \BEAR\QueryRepository\CacheDependencyInterface $cacheDeperency;
 
     public function __construct(CacheDependencyInterface $cacheDependency)
     {
@@ -32,7 +31,7 @@ final class EtagSetter implements EtagSetterInterface
      */
     public function __invoke(ResourceObject $ro, ?int $time = null, ?HttpCache $httpCache = null)
     {
-        $time = $time ?? time();
+        $time ??= time();
         if ($ro->code !== 200) {
             return;
         }

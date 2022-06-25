@@ -13,7 +13,7 @@ use const PHP_EOL;
 final class RepositoryLogger implements RepositoryLoggerInterface
 {
     /** @var list<string> */
-    private $logs = [];
+    private array $logs = [];
 
     /**
      * {@inheritDoc}

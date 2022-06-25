@@ -1,6 +1,6 @@
 <?php
 
-if (! class_exists('RedisException')) {
+if (! class_exists(\RedisException::class)) {
     class RedisException
     {
     }

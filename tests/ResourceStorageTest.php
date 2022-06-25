@@ -11,11 +11,9 @@ use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 
 class ResourceStorageTest extends TestCase
 {
-    /** @var ResourceStorage */
-    private $storage;
+    private \BEAR\QueryRepository\ResourceStorage $storage;
 
-    /** @var Index */
-    private $ro;
+    private \FakeVendor\HelloWorld\Resource\Page\Index $ro;
 
     protected function setUp(): void
     {

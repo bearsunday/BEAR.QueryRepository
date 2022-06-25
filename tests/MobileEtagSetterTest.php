@@ -16,14 +16,11 @@ class MobileEtagSetterTest extends TestCase
 
     public const IPAD = 'Mozilla/5.0 (iPad; CPU OS 6_0 like Mac OS X) AppleWebKit/536.26 (KHTML, like Gecko) Version/6.0 Mobile/10A403 Safari/8536.25';
 
-    /** @var FakeMobileEtagSetter */
-    private $etagSetter;
+    private \BEAR\QueryRepository\FakeMobileEtagSetter $etagSetter;
 
-    /** @var int */
-    private $time;
+    private int $time;
 
-    /** @var User */
-    private $obj;
+    private \FakeVendor\HelloWorld\Resource\App\User $obj;
 
     protected function setUp(): void
     {

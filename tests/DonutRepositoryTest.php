@@ -25,8 +25,7 @@ class DonutRepositoryTest extends TestCase
     /** @var DonutRepositoryInterface  */
     private $donutRepository;
 
-    /** @var Uri */
-    private $uri;
+    private \BEAR\Resource\Uri $uri;
 
     /** @var ResourceStorageInterface */
     private $resourceStorage;

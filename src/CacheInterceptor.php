@@ -19,8 +19,7 @@ use const E_USER_WARNING;
 
 final class CacheInterceptor implements MethodInterceptor
 {
-    /** @var QueryRepositoryInterface */
-    private $repository;
+    private \BEAR\QueryRepository\QueryRepositoryInterface $repository;
 
     public function __construct(
         QueryRepositoryInterface $repository

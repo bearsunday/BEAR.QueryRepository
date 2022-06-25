@@ -13,8 +13,7 @@ use Symfony\Component\Cache\Adapter\MemcachedAdapter;
 
 final class StorageMemcachedModule extends AbstractModule
 {
-    /** @var string */
-    private $servers;
+    private string $servers;
 
     /**
      * @param string $servers 'mem1.domain.com:11211:33,mem2.domain.com:11211:67' {host}:{port}:{weight}

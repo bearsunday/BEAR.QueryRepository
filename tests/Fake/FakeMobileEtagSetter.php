@@ -13,10 +13,7 @@ class FakeMobileEtagSetter implements EtagSetterInterface
 {
     public static $device;
 
-    /**
-     * @var MobileEtagSetter
-     */
-    private $mobileEtagSetter;
+    private \BEAR\QueryRepository\MobileEtagSetter $mobileEtagSetter;
 
     public function __construct(MobileEtagSetter $mobileEtagSetter)
     {

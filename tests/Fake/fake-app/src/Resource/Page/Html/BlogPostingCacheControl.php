@@ -19,8 +19,7 @@ class BlogPostingCacheControl extends ResourceObject
         RequestHeader::CACHE_CONTROL => CacheControl::NO_STORE
     ];
 
-    /** @var DonutRepositoryInterface */
-    private $repository;
+    private \BEAR\QueryRepository\DonutRepositoryInterface $repository;
 
     public function __construct(DonutRepositoryInterface $repository)
     {

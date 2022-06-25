@@ -13,8 +13,7 @@ use function strpos;
 
 final class HeaderSetter
 {
-    /** @var EtagSetterInterface */
-    private $etagSetter;
+    private \BEAR\QueryRepository\EtagSetterInterface $etagSetter;
 
     public function __construct(EtagSetterInterface $etagSetter)
     {

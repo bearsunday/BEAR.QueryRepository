@@ -20,20 +20,15 @@ use function time;
 
 final class QueryRepository implements QueryRepositoryInterface
 {
-    /** @var ResourceStorageInterface */
-    private $storage;
+    private \BEAR\QueryRepository\ResourceStorageInterface $storage;
 
-    /** @var Reader */
-    private $reader;
+    private \Doctrine\Common\Annotations\Reader $reader;
 
-    /** @var Expiry */
-    private $expiry;
+    private \BEAR\QueryRepository\Expiry $expiry;
 
-    /** @var HeaderSetter */
-    private $headerSetter;
+    private \BEAR\QueryRepository\HeaderSetter $headerSetter;
 
-    /** @var RepositoryLoggerInterface */
-    private $logger;
+    private \BEAR\QueryRepository\RepositoryLoggerInterface $logger;
 
     public function __construct(
         RepositoryLoggerInterface $logger,
@@ -120,7 +115,7 @@ final class QueryRepository implements QueryRepositoryInterface
             return $this->getExpiryAtSec($ro, $cacheable);
         }
 
-        return $cacheable->expirySecond ? $cacheable->expirySecond : $this->expiry->getTime($cacheable->expiry);
+        return $cacheable->expirySecond ?: $this->expiry->getTime($cacheable->expiry);
     }
 
     private function getExpiryAtSec(ResourceObject $ro, Cacheable $cacheable): int
