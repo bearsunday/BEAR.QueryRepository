@@ -35,7 +35,7 @@ final class ResourceDonut
      */
     public $isCacheble;
 
-    private const URI_REGEX = '/\[le:(.+)\]/';
+    private const URI_REGEX = '/\[le:(.+)]/';
 
     public function __construct(string $template, ?int $ttl, bool $isCacheble)
     {
