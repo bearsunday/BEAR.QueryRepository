@@ -10,9 +10,6 @@ on:
 env:
   COMPOSER_FLAGS: "--ansi --no-interaction --no-progress --prefer-dist"
   COMPOSER_UPDATE_FLAGS: ""
-  old_stable: ["7.4", "8.0"]
-  current_stable: 8.1
-  next_stable: 8.2
   script: demo/run.php
 
 jobs:
@@ -27,18 +24,20 @@ jobs:
         options: --health-cmd="redis-cli ping" --health-interval=10s --health-timeout=5s --health-retries=3
     strategy:
       matrix:
-        php-version: ${{ env.old_stable }}
+        php-version:
+          - 7.4
+          - 8.0
         dependencies: [highest, lowest]
         os: [ubuntu-latest]
         include:
-          - php-version: ${{ env.current_stable }}
+          - php-version: 8.1
             os: windows-latest
-          - php-version: ${{ env.current_stable }}
+          - php-version: 8.1
             os: macos-latest
-          - php-version: ${{ inputs.next_stable }}
+          - php-version: 8.2
             dependencies: lowest-ignore
             os: ubuntu-latest
-          - php-version:  ${{ inputs.next_stable }}
+          - php-version:  8.2
             dependencies: highest-ignore
             os: ubuntu-latest
     steps:
