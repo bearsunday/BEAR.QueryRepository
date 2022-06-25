@@ -14,8 +14,7 @@ use function get_class;
 
 final class RefreshInterceptor implements MethodInterceptor
 {
-    /** @var RefreshAnnotatedCommand */
-    private $command;
+    private RefreshAnnotatedCommand $command;
 
     public function __construct(RefreshAnnotatedCommand $command)
     {

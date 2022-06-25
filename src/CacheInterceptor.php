@@ -19,8 +19,7 @@ use const E_USER_WARNING;
 
 final class CacheInterceptor implements MethodInterceptor
 {
-    /** @var QueryRepositoryInterface */
-    private $repository;
+    private QueryRepositoryInterface $repository;
 
     public function __construct(
         QueryRepositoryInterface $repository
@@ -43,7 +42,7 @@ final class CacheInterceptor implements MethodInterceptor
             return $invocation->proceed(); // @codeCoverageIgnore
         }
 
-        if ($state) {
+        if ($state instanceof ResourceState) {
             $state->visit($ro);
 
             return $ro;

@@ -20,8 +20,7 @@ final class ResourceDonut
 {
     public const FOMRAT = '[le:%s]';
 
-    /** @var string */
-    private $template;
+    private string $template;
 
     /**
      * @var ?int

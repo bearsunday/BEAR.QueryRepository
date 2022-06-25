@@ -14,8 +14,7 @@ use function http_response_code;
  */
 final class HttpCache implements HttpCacheInterface, DeprecatedHttpCacheInterface
 {
-    /** @var ResourceStorageInterface */
-    private $storage;
+    private ResourceStorageInterface $storage;
 
     public function __construct(ResourceStorageInterface $storage)
     {

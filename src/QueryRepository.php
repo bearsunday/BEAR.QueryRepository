@@ -20,20 +20,11 @@ use function time;
 
 final class QueryRepository implements QueryRepositoryInterface
 {
-    /** @var ResourceStorageInterface */
-    private $storage;
-
-    /** @var Reader */
-    private $reader;
-
-    /** @var Expiry */
-    private $expiry;
-
-    /** @var HeaderSetter */
-    private $headerSetter;
-
-    /** @var RepositoryLoggerInterface */
-    private $logger;
+    private ResourceStorageInterface $storage;
+    private Reader $reader;
+    private Expiry $expiry;
+    private HeaderSetter $headerSetter;
+    private RepositoryLoggerInterface $logger;
 
     public function __construct(
         RepositoryLoggerInterface $logger,
@@ -81,7 +72,7 @@ final class QueryRepository implements QueryRepositoryInterface
     {
         $state = $this->storage->get($uri);
 
-        if ($state === null) {
+        if (! $state instanceof ResourceState) {
             return null;
         }
 
@@ -116,11 +107,11 @@ final class QueryRepository implements QueryRepositoryInterface
             return 0;
         }
 
-        if ($cacheable->expiryAt) {
+        if ($cacheable->expiryAt !== '') {
             return $this->getExpiryAtSec($ro, $cacheable);
         }
 
-        return $cacheable->expirySecond ? $cacheable->expirySecond : $this->expiry->getTime($cacheable->expiry);
+        return $cacheable->expirySecond ?: $this->expiry->getTime($cacheable->expiry);
     }
 
     private function getExpiryAtSec(ResourceObject $ro, Cacheable $cacheable): int

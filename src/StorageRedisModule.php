@@ -25,8 +25,7 @@ use Symfony\Component\Cache\Adapter\RedisAdapter;
  */
 final class StorageRedisModule extends AbstractModule
 {
-    /** @var string */
-    private $server;
+    private string $server;
 
     /**
      * @param string $server 'localhost:6379' {host}:{port}

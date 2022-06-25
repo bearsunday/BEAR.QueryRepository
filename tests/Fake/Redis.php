@@ -1,10 +1,10 @@
 <?php
 
-if (! class_exists('Redis')) {
+if (! class_exists(\Redis::class)) {
     class Redis
     {
-        const OPT_SERIALIZER = '';
-        const SERIALIZER_PHP = '';
+        public const OPT_SERIALIZER = '';
+        public const SERIALIZER_PHP = '';
 
         public function connect($host, $port)
         {

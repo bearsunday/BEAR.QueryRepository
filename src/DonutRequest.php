@@ -10,14 +10,9 @@ use function sprintf;
 
 final class DonutRequest
 {
-    /** @var AbstractRequest */
-    private $request;
-
-    /** @var DonutRenderer */
-    private $donutStorage;
-
-    /** @var SurrogateKeys */
-    private $etags;
+    private AbstractRequest $request;
+    private DonutRenderer $donutStorage;
+    private SurrogateKeys $etags;
 
     public function __construct(AbstractRequest $request, DonutRenderer $donutStorage, SurrogateKeys $etags)
     {

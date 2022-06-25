@@ -20,8 +20,7 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
 {
     protected const IS_ENTIRE_CONTENT_CACHEABLE = false;
 
-    /** @var DonutRepositoryInterface */
-    private $donutRepository;
+    private DonutRepositoryInterface $donutRepository;
 
     public function __construct(DonutRepositoryInterface $donutRepository)
     {

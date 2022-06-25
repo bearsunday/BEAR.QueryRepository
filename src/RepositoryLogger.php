@@ -13,7 +13,7 @@ use const PHP_EOL;
 final class RepositoryLogger implements RepositoryLoggerInterface
 {
     /** @var list<string> */
-    private $logs = [];
+    private array $logs = [];
 
     /**
      * {@inheritDoc}
@@ -23,7 +23,7 @@ final class RepositoryLogger implements RepositoryLoggerInterface
         /** @var bool|float|int|string|list<string>|null $value */
         foreach ($values as &$value) {
             if (is_array($value)) {
-                $value = $value ? implode(' ', $value) : '';
+                $value = $value !== [] ? implode(' ', $value) : '';
             }
         }
 

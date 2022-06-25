@@ -8,14 +8,9 @@ use Ray\Di\AbstractModule;
 
 final class StorageExpiryModule extends AbstractModule
 {
-    /** @var int */
-    private $short;
-
-    /** @var int */
-    private $medium;
-
-    /** @var int */
-    private $long;
+    private int $short;
+    private int $medium;
+    private int $long;
 
     public function __construct(int $short, int $medium, int $long, ?AbstractModule $module = null)
     {

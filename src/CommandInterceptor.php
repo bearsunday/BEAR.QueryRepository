@@ -16,7 +16,7 @@ use function get_class;
 final class CommandInterceptor implements MethodInterceptor
 {
     /** @var CommandInterface[] */
-    private $commands = [];
+    private array $commands = [];
 
     /**
      * @param CommandInterface[] $commands

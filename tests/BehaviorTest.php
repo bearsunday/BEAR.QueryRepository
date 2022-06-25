@@ -20,11 +20,8 @@ use function assert;
 
 class BehaviorTest extends TestCase
 {
-    /** @var ResourceInterface */
-    private $resource;
-
-    /** @var HttpCacheInterface */
-    private $httpCache;
+    private ResourceInterface $resource;
+    private HttpCacheInterface $httpCache;
 
     protected function setUp(): void
     {

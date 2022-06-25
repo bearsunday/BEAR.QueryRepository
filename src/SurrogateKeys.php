@@ -19,10 +19,8 @@ use function str_replace;
 final class SurrogateKeys
 {
     /** @var array<string> */
-    private $surrogateKeys;
-
-    /** @var UriTagInterface */
-    private $uriTag;
+    private array $surrogateKeys;
+    private UriTagInterface $uriTag;
 
     public function __construct(AbstractUri $uri)
     {

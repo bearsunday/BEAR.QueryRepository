@@ -11,8 +11,7 @@ use function sprintf;
 
 final class CacheDependency implements CacheDependencyInterface
 {
-    /** @var UriTagInterface */
-    private $uriTag;
+    private UriTagInterface $uriTag;
 
     public function __construct(UriTagInterface $uriTag)
     {

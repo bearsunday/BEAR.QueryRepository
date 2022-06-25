@@ -17,7 +17,7 @@ final class AkamaiCacheControlHeaderSetter implements CdnCacheControlHeaderSette
 
     public function __invoke(ResourceObject $ro, ?int $sMaxAge): void
     {
-        $sMaxAge = $sMaxAge ?? 31536000;
+        $sMaxAge ??= 31_536_000;
         if (isset($ro->headers[Header::SURROGATE_KEY])) {
             $ro->headers[self::PURGE_KEYS] = $ro->headers[Header::SURROGATE_KEY];
             unset($ro->headers[Header::SURROGATE_KEY]);

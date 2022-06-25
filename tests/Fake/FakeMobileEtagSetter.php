@@ -13,10 +13,7 @@ class FakeMobileEtagSetter implements EtagSetterInterface
 {
     public static $device;
 
-    /**
-     * @var MobileEtagSetter
-     */
-    private $mobileEtagSetter;
+    private \BEAR\QueryRepository\MobileEtagSetter $mobileEtagSetter;
 
     public function __construct(MobileEtagSetter $mobileEtagSetter)
     {
@@ -33,9 +30,8 @@ class FakeMobileEtagSetter implements EtagSetterInterface
     private function getDevice()
     {
         $detect = new \Mobile_Detect;
-        $mobileDeviceType = $detect->isMobile() && ! $detect->isTablet() ? 'mobile' : 'pc';
 
-        return $mobileDeviceType;
+        return $detect->isMobile() && ! $detect->isTablet() ? 'mobile' : 'pc';
     }
 
 }

@@ -16,8 +16,7 @@ use Ray\PsrCacheModule\CacheNamespaceModule;
  */
 final class CacheVersionModule extends AbstractModule
 {
-    /** @var string */
-    private $version;
+    private string $version;
 
     public function __construct(string $cacheVersion, ?AbstractModule $module = null)
     {
