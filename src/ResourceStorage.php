@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Annotation\IsOptimizeCache;
 use BEAR\RepositoryModule\Annotation\EtagPool;
 use BEAR\RepositoryModule\Annotation\KnownTagTtl;
 use BEAR\Resource\AbstractUri;
@@ -62,12 +63,16 @@ final class ResourceStorage implements ResourceStorageInterface
     /** @var float */
     private $knownTagTtl;
 
+    /** @var bool */
+    private $isOptimizeCache;
+
     /**
      * @Shared("pool")
      * @EtagPool("etagPool")
      * @KnownTagTtl("knownTagTtl")
+     * @SaveValueInDonutCache("isOptimizeCache")
      */
-    #[Shared('pool'), EtagPool('etagPool'), KnownTagTtl('knownTagTtl')]
+    #[Shared('pool'), EtagPool('etagPool'), KnownTagTtl('knownTagTtl'), IsOptimizeCache('isOptimizeCache')]
     public function __construct(
         RepositoryLoggerInterface $logger,
         PurgerInterface $etagDeleter,
@@ -75,7 +80,8 @@ final class ResourceStorage implements ResourceStorageInterface
         ?CacheItemPoolInterface $pool = null,
         ?CacheItemPoolInterface $etagPool = null,
         ?CacheProvider $cache = null,
-        float $knownTagTtl = 0.0
+        float $knownTagTtl = 0.0,
+        bool $isOptimizeCache = false
     ) {
         $this->logger = $logger;
         $this->purger = $etagDeleter;
@@ -92,6 +98,7 @@ final class ResourceStorage implements ResourceStorageInterface
         $etagPool =  $etagPool instanceof AdapterInterface ? $etagPool : $pool;
         $this->roPool = new TagAwareAdapter($pool, $etagPool, $knownTagTtl);
         $this->etagPool = new TagAwareAdapter($etagPool, $etagPool, $knownTagTtl);
+        $this->isOptimizeCache = $isOptimizeCache;
     }
 
     private function injectDoctrineCache(CacheProvider $cache): void
@@ -201,7 +208,8 @@ final class ResourceStorage implements ResourceStorageInterface
 
     public function saveDonutView(ResourceObject $ro, ?int $ttl): bool
     {
-        $resourceState = ResourceState::create($ro, [], $ro->view);
+        $body = $this->isOptimizeCache ? [] : $ro->body;
+        $resourceState = ResourceState::create($ro, $body, $ro->view);
         $key = $this->getUriKey($ro->uri, self::KEY_RO);
         $tags = $this->getTags($ro);
         $this->logger->log('save-donut-view uri:%s surrogate-keys:%s s-maxage:%s', $ro->uri, $tags, $ttl);

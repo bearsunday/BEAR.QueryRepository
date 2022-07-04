@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Annotation\IsOptimizeCache;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
@@ -20,6 +21,10 @@ final class DonutRepository implements DonutRepositoryInterface
     private RepositoryLoggerInterface $logger;
     private DonutRenderer $renderer;
 
+    /**
+     * @SaveValueInDonutCache("isOptimizeCache")
+     */
+    #[IsOptimizeCache('isOptimizeCache')]
     public function __construct(
         QueryRepository $queryRepository,
         HeaderSetter $headerSetter,
@@ -45,6 +50,7 @@ final class DonutRepository implements DonutRepositoryInterface
         if ($maybeState instanceof ResourceState) {
             $this->logger->log('found-donut-view: uri:%s', $ro->uri);
             $ro->headers = $maybeState->headers;
+            $ro->body = $maybeState->body;
             $ro->view = $maybeState->view;
 
             return $ro;

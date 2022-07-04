@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Annotation\IsOptimizeCache;
 use BEAR\RepositoryModule\Annotation\CacheableResponse;
 use BEAR\RepositoryModule\Annotation\DonutCache;
 use BEAR\RepositoryModule\Annotation\RefreshCache;
@@ -44,6 +45,7 @@ final class DonutCacheModule extends AbstractModule
         $this->bind(UriTagInterface::class)->to(UriTag::class)->in(Scope::SINGLETON);
         $this->installAopClassModule();
         $this->installAopMethodModule();
+        $this->bind()->annotatedWith(IsOptimizeCache::class)->toInstance(false);
     }
 
     private function installAopClassModule(): void
