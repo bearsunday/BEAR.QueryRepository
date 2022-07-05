@@ -218,6 +218,8 @@ final class ResourceStorage implements ResourceStorageInterface
     }
 
     /**
+     * @param array<mixed> $body
+     *
      * @return array<mixed>
      */
     private function evaluateDonutBody(array $body): array
