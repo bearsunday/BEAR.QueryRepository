@@ -70,7 +70,7 @@ final class ResourceStorage implements ResourceStorageInterface
      * @Shared("pool")
      * @EtagPool("etagPool")
      * @KnownTagTtl("knownTagTtl")
-     * @SaveValueInDonutCache("isOptimizeCache")
+     * @IsOptimizeCache("isOptimizeCache")
      */
     #[Shared('pool'), EtagPool('etagPool'), KnownTagTtl('knownTagTtl'), IsOptimizeCache('isOptimizeCache')]
     public function __construct(
@@ -208,13 +208,27 @@ final class ResourceStorage implements ResourceStorageInterface
 
     public function saveDonutView(ResourceObject $ro, ?int $ttl): bool
     {
-        $body = $this->isOptimizeCache ? [] : $ro->body;
+        $body = $this->isOptimizeCache || ! is_array($ro->body) ? [] : $this->evaluateDonutBody($ro->body);
         $resourceState = ResourceState::create($ro, $body, $ro->view);
         $key = $this->getUriKey($ro->uri, self::KEY_RO);
         $tags = $this->getTags($ro);
         $this->logger->log('save-donut-view uri:%s surrogate-keys:%s s-maxage:%s', $ro->uri, $tags, $ttl);
 
         return $this->saver->__invoke($key, $resourceState, $this->roPool, $tags, $ttl);
+    }
+
+    /**
+     * @return array<mixed>
+     */
+    private function evaluateDonutBody(array $body): array
+    {
+        foreach ($body as $key => $item) {
+            if ($item instanceof DonutRequest) {
+                $body[$key] = $item->getBody();
+            }
+        }
+
+        return $body;
     }
 
     /**

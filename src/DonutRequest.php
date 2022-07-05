@@ -13,6 +13,7 @@ final class DonutRequest
     private AbstractRequest $request;
     private DonutRenderer $donutStorage;
     private SurrogateKeys $etags;
+    private $body = null;
 
     public function __construct(AbstractRequest $request, DonutRenderer $donutStorage, SurrogateKeys $etags)
     {
@@ -29,5 +30,14 @@ final class DonutRequest
         $this->donutStorage->setView($uri, $view);
 
         return sprintf(ResourceDonut::FOMRAT, $uri);
+    }
+
+    public function getBody()
+    {
+        if ($this->body === null) {
+            $this->body = ($this->request)()->body;
+        }
+
+        return $this->body;
     }
 }

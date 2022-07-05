@@ -20,9 +20,10 @@ final class DonutRepository implements DonutRepositoryInterface
     private CdnCacheControlHeaderSetterInterface $cdnCacheControlHeaderSetter;
     private RepositoryLoggerInterface $logger;
     private DonutRenderer $renderer;
+    private bool $isOptimizeCache;
 
     /**
-     * @SaveValueInDonutCache("isOptimizeCache")
+     * @IsOptimizeCache("isOptimizeCache")
      */
     #[IsOptimizeCache('isOptimizeCache')]
     public function __construct(
@@ -32,7 +33,8 @@ final class DonutRepository implements DonutRepositoryInterface
         ResourceInterface $resource,
         CdnCacheControlHeaderSetterInterface $cdnCacheControlHeaderSetter,
         RepositoryLoggerInterface $logger,
-        DonutRenderer $renderer
+        DonutRenderer $renderer,
+        bool $isOptimizeCache
     ) {
         $this->resourceStorage = $resourceStorage;
         $this->headerSetter = $headerSetter;
@@ -41,6 +43,7 @@ final class DonutRepository implements DonutRepositoryInterface
         $this->cdnCacheControlHeaderSetter = $cdnCacheControlHeaderSetter;
         $this->logger = $logger;
         $this->renderer = $renderer;
+        $this->isOptimizeCache = $isOptimizeCache;
     }
 
     public function get(ResourceObject $ro): ?ResourceObject
@@ -50,7 +53,10 @@ final class DonutRepository implements DonutRepositoryInterface
         if ($maybeState instanceof ResourceState) {
             $this->logger->log('found-donut-view: uri:%s', $ro->uri);
             $ro->headers = $maybeState->headers;
-            $ro->body = $maybeState->body;
+            if ($this->isOptimizeCache) {
+                $ro->body = $maybeState->body;
+            }
+
             $ro->view = $maybeState->view;
 
             return $ro;
