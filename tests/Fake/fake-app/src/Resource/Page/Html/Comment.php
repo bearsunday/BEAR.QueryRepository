@@ -2,6 +2,7 @@
 
 namespace FakeVendor\HelloWorld\Resource\Page\Html;
 
+use BEAR\QueryRepository\Header;
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\Resource\Annotation\Embed;
 use BEAR\Resource\Code;
@@ -22,6 +23,7 @@ class Comment extends ResourceObject
         $this->body = [
             'comment' => 'comment01'
         ];
+        $this->headers[Header::SURROGATE_KEY] = 'comment01';
 
         return $this;
     }
