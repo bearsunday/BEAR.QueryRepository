@@ -72,8 +72,8 @@ no-donut-found uri:page://self/html/blog-posting-donut
 put-donut: uri:page://self/html/blog-posting-donut ttl:
 put-query-repository uri:page://self/html/comment
 invalidate-etag tags:_html_comment_
-save-etag uri:page://self/html/comment etag:_html_comment_ surrogate-keys:_html_comment_
-save-value uri:page://self/html/comment tags:_html_comment_ ttl:31536000
+save-etag uri:page://self/html/comment etag:_html_comment_ surrogate-keys:comment01 _html_comment_
+save-value uri:page://self/html/comment tags:_html_comment_ comment01 ttl:31536000
 invalidate-etag tags:_html_blog-posting-donut_
 save-donut uri:page://self/html/blog-posting-donut s-maxage:
 get
