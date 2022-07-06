@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\Resource\Code;
 use BEAR\Resource\ResourceObject;
 use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
@@ -48,8 +49,9 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
 
         /** @var ResourceObject $ro */
         $ro = $invocation->proceed();
-        if (isset($ro->headers[Header::ETAG])) {
-            return $ro; // donut created in ResourceObject
+        // donut created in ResourceObject
+        if (isset($ro->headers[Header::ETAG]) || $ro->code >= Code::BAD_REQUEST) {
+            return $ro;
         }
 
         return static::IS_ENTIRE_CONTENT_CACHEABLE ?
