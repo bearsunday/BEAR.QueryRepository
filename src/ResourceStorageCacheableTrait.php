@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Exception\ResourceStorageUnserializeException;
 use BEAR\RepositoryModule\Annotation\EtagPool;
 use Psr\Cache\CacheItemPoolInterface;
 use Ray\Di\Di\Inject;
-use Ray\Di\InjectorInterface;
+use Ray\Di\Exception\Unbound;use Ray\Di\InjectorInterface;
 use Ray\PsrCacheModule\Annotation\Shared;
 use Symfony\Component\Cache\Adapter\AdapterInterface;
 use Symfony\Component\Cache\Adapter\TagAwareAdapter;
@@ -53,12 +54,25 @@ trait ResourceStorageCacheableTrait
      */
     final public function __unserialize(array $data): void
     {
+        try {
+            $this->unserialize($data);
+        } catch (\Error $e) {
+            throw new ResourceStorageUnserializeException($e->getMessage());
+        }
+    }
+
+    private function unserialize(array $data): void
+    {
         $this->logger = $data['logger'];
         $this->purger = $data['purger'];
         $this->uriTag = $data['uriTag'];
         $this->saver = $data['saver'];
         $pool = $data['injector']->getInstance(CacheItemPoolInterface::class, Shared::class);
-        $maybeEtagPool = $data['injector']->getInstance(CacheItemPoolInterface::class, EtagPool::class);
+        try {
+            $maybeEtagPool = $data['injector']->getInstance(CacheItemPoolInterface::class, EtagPool::class);
+        } catch (Unbound $e) {
+            $maybeEtagPool = null;
+        }
         assert($pool instanceof AdapterInterface);
         /** @psalm-suppress all */
         $etagPool = $maybeEtagPool instanceof AdapterInterface ? $maybeEtagPool : $pool;
