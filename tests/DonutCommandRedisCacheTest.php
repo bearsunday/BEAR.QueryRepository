@@ -21,6 +21,7 @@ class DonutCommandRedisCacheTest extends DonutCommandInterceptorTest
         $namespace = 'FakeVendor\HelloWorld';
         $module = new FakeEtagPoolModule(ModuleFactory::getInstance($namespace));
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
+        $module->override(new StorageRedisModule('127.0.0.1:6379'));
         $injector = new Injector($module, $_ENV['TMP_DIR']);
         $this->resource = $injector->getInstance(ResourceInterface::class);
         $this->logger = $injector->getInstance(RepositoryLoggerInterface::class);
