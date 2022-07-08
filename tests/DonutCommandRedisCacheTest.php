@@ -9,6 +9,7 @@ use BEAR\Sunday\Extension\Transfer\HttpCacheInterface as HttpCacheInterfaceAlias
 use Madapaja\TwigModule\TwigModule;
 use Ray\Di\Injector;
 
+use function assert;
 use function dirname;
 use function serialize;
 use function unserialize;
@@ -24,7 +25,9 @@ class DonutCommandRedisCacheTest extends DonutCommandInterceptorTest
         $this->resource = $injector->getInstance(ResourceInterface::class);
         $this->logger = $injector->getInstance(RepositoryLoggerInterface::class);
         $httpCache = $injector->getInstance(HttpCacheInterfaceAlias::class);
-        $this->httpCache = unserialize(serialize($httpCache));
+        $unserializedHttpCache = unserialize(serialize($httpCache));
+        assert($unserializedHttpCache instanceof HttpCacheInterfaceAlias);
+        $this->httpCache = $unserializedHttpCache;
 
         parent::setUp();
     }
