@@ -20,9 +20,9 @@ use function property_exists;
 
 class DonutCommandInterceptorTest extends TestCase
 {
-    private ResourceInterface $resource;
-    private RepositoryLoggerInterface $logger;
-    private HttpCacheInterfaceAlias $httpCache;
+    protected ResourceInterface $resource;
+    protected RepositoryLoggerInterface $logger;
+    protected HttpCacheInterfaceAlias $httpCache;
 
     protected function setUp(): void
     {
