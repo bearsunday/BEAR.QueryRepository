@@ -52,8 +52,10 @@ interface ResourceStorageInterface
 
     /**
      * Save donut-cacheable page
+     *
+     * @param list<string> $headerKeys
      */
-    public function saveDonut(AbstractUri $uri, ResourceDonut $donut, ?int $sMaxAge): void;
+    public function saveDonut(AbstractUri $uri, ResourceDonut $donut, ?int $sMaxAge, array $headerKeys): void;
 
     /**
      * Save donut-cache state

@@ -9,6 +9,7 @@ use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 
 use function assert;
+use function explode;
 
 final class DonutRepository implements DonutRepositoryInterface
 {
@@ -60,6 +61,7 @@ final class DonutRepository implements DonutRepositoryInterface
     {
         $this->logger->log('put-donut: uri:%s ttl:%s s-maxage:%d', (string) $ro->uri, $sMaxAge, $ttl);
         $keys = new SurrogateKeys($ro->uri);
+        $headerKeys = $this->getHeaderKeys($ro);
         $donut = ResourceDonut::create($ro, $this->renderer, $keys, $sMaxAge, true);
         $donut->render($ro, $this->renderer);
         $this->setHeaders($keys, $ro, $sMaxAge);
@@ -67,7 +69,7 @@ final class DonutRepository implements DonutRepositoryInterface
         $this->resourceStorage->invalidateTags([(new UriTag())($ro->uri)]);
         // save content cache and donut
         $this->saveView($ro, $sMaxAge);
-        $this->resourceStorage->saveDonut($ro->uri, $donut, $ttl);
+        $this->resourceStorage->saveDonut($ro->uri, $donut, $ttl, $headerKeys);
 
         return $ro;
     }
@@ -79,13 +81,14 @@ final class DonutRepository implements DonutRepositoryInterface
     {
         $this->logger->log('put-donut: uri:%s ttl:%s', (string) $ro->uri, $donutTtl);
         $keys = new SurrogateKeys($ro->uri);
+        $keyArrays = $this->getHeaderKeys($ro);
         $donut = ResourceDonut::create($ro, $this->renderer, $keys, $donutTtl, false);
         $donut->render($ro, $this->renderer);
         $keys->setSurrogateHeader($ro);
         // delete
         $this->resourceStorage->invalidateTags([(new UriTag())($ro->uri)]);
         // save donut
-        $this->resourceStorage->saveDonut($ro->uri, $donut, $donutTtl);
+        $this->resourceStorage->saveDonut($ro->uri, $donut, $donutTtl, $keyArrays);
 
         return $ro;
     }
@@ -144,5 +147,13 @@ final class DonutRepository implements DonutRepositoryInterface
         $keys->setSurrogateHeader($ro);
         ($this->cdnCacheControlHeaderSetter)($ro, $sMaxAge);
         ($this->headerSetter)($ro, 0, null);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function getHeaderKeys(ResourceObject $ro): array
+    {
+        return isset($ro->headers[Header::SURROGATE_KEY]) ? explode(' ', $ro->headers[Header::SURROGATE_KEY]) : [];
     }
 }

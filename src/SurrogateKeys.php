@@ -18,7 +18,7 @@ use function str_replace;
 
 final class SurrogateKeys
 {
-    /** @var array<string> */
+    /** @var list<string> */
     private array $surrogateKeys;
     private UriTagInterface $uriTag;
 
