@@ -44,6 +44,7 @@ final class DonutCacheModule extends AbstractModule
         $this->bind(UriTagInterface::class)->to(UriTag::class)->in(Scope::SINGLETON);
         $this->installAopClassModule();
         $this->installAopMethodModule();
+        $this->bind(DonutTemplate::class)->in(Scope::SINGLETON);
     }
 
     private function installAopClassModule(): void

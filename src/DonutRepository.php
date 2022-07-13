@@ -19,6 +19,7 @@ final class DonutRepository implements DonutRepositoryInterface
     private CdnCacheControlHeaderSetterInterface $cdnCacheControlHeaderSetter;
     private RepositoryLoggerInterface $logger;
     private DonutRenderer $renderer;
+    private DonutTemplate $donutTemplate;
 
     public function __construct(
         QueryRepository $queryRepository,
@@ -27,7 +28,8 @@ final class DonutRepository implements DonutRepositoryInterface
         ResourceInterface $resource,
         CdnCacheControlHeaderSetterInterface $cdnCacheControlHeaderSetter,
         RepositoryLoggerInterface $logger,
-        DonutRenderer $renderer
+        DonutRenderer $renderer,
+        DonutTemplate $donutTemplate
     ) {
         $this->resourceStorage = $resourceStorage;
         $this->headerSetter = $headerSetter;
@@ -36,6 +38,7 @@ final class DonutRepository implements DonutRepositoryInterface
         $this->cdnCacheControlHeaderSetter = $cdnCacheControlHeaderSetter;
         $this->logger = $logger;
         $this->renderer = $renderer;
+        $this->donutTemplate = $donutTemplate;
     }
 
     public function get(ResourceObject $ro): ?ResourceObject
@@ -118,6 +121,10 @@ final class DonutRepository implements DonutRepositoryInterface
 
         $this->logger->log('refresh-donut: uri:%s', $ro->uri);
         $donut->refresh($this->resource, $ro);
+        if ($this->donutTemplate->disable) {
+            return null;
+        }
+
         if (! $donut->isCacheble) {
             return $ro;
         }
