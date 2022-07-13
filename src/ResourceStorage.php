@@ -125,6 +125,13 @@ final class ResourceStorage implements ResourceStorageInterface
         return $donut;
     }
 
+    public function deleteDonut(AbstractUri $uri): void
+    {
+        $key = $this->getUriKey($uri, self::KEY_DONUT);
+        $item = $this->roPool->deleteItem($key);
+        $this->deleteEtag($uri);
+    }
+
     /**
      * {@inheritdoc}
      */

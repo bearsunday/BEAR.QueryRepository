@@ -50,6 +50,8 @@ interface ResourceStorageInterface
      */
     public function getDonut(AbstractUri $uri): ?ResourceDonut;
 
+    public function deleteDonut(AbstractUri $uri): void;
+
     /**
      * Save donut-cacheable page
      */
