@@ -198,12 +198,12 @@ final class ResourceStorage implements ResourceStorageInterface
         return $this->saver->__invoke($key, $value, $this->roPool, $tags, $ttl);
     }
 
-    public function saveDonut(AbstractUri $uri, ResourceDonut $donut, ?int $sMaxAge): void
+    public function saveDonut(AbstractUri $uri, ResourceDonut $donut, ?int $sMaxAge, SurrogateKeys $keys): void
     {
         $key = $this->getUriKey($uri, self::KEY_DONUT);
         $this->logger->log('save-donut uri:%s s-maxage:%s', $uri, $sMaxAge);
 
-        $this->saver->__invoke($key, $donut, $this->roPool, [], $sMaxAge);
+        $this->saver->__invoke($key, $donut, $this->roPool, $keys->surrogateKeys, $sMaxAge);
     }
 
     public function saveDonutView(ResourceObject $ro, ?int $ttl): bool
