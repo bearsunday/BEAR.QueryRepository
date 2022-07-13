@@ -59,8 +59,10 @@ trait ResourceStorageCacheableTrait
     {
         try {
             $this->unserialize($data);
+            // @codeCoverageIgnoreStart
         } catch (Error $e) {
             throw new ResourceStorageUnserializeException($e->getMessage());
+            // @codeCoverageIgnoreEnd
         }
     }
 
@@ -76,8 +78,10 @@ trait ResourceStorageCacheableTrait
         $pool = $data['injector']->getInstance(CacheItemPoolInterface::class, Shared::class);
         try {
             $maybeEtagPool = $data['injector']->getInstance(CacheItemPoolInterface::class, EtagPool::class);
+            // @codeCoverageIgnoreStart
         } catch (Unbound $e) {
             $maybeEtagPool = null;
+            // @codeCoverageIgnoreEnd
         }
 
         assert($pool instanceof AdapterInterface);
