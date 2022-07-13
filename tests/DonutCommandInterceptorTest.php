@@ -15,6 +15,7 @@ use function array_key_exists;
 use function array_map;
 use function assert;
 use function dirname;
+use function error_log;
 use function get_class;
 use function property_exists;
 

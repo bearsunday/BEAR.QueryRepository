@@ -6,9 +6,11 @@ namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\ResourceStorageUnserializeException;
 use BEAR\RepositoryModule\Annotation\EtagPool;
+use Error;
 use Psr\Cache\CacheItemPoolInterface;
 use Ray\Di\Di\Inject;
-use Ray\Di\Exception\Unbound;use Ray\Di\InjectorInterface;
+use Ray\Di\Exception\Unbound;
+use Ray\Di\InjectorInterface;
 use Ray\PsrCacheModule\Annotation\Shared;
 use Symfony\Component\Cache\Adapter\AdapterInterface;
 use Symfony\Component\Cache\Adapter\TagAwareAdapter;
@@ -56,7 +58,7 @@ trait ResourceStorageCacheableTrait
     {
         try {
             $this->unserialize($data);
-        } catch (\Error $e) {
+        } catch (Error $e) {
             throw new ResourceStorageUnserializeException($e->getMessage());
         }
     }
@@ -73,6 +75,7 @@ trait ResourceStorageCacheableTrait
         } catch (Unbound $e) {
             $maybeEtagPool = null;
         }
+
         assert($pool instanceof AdapterInterface);
         /** @psalm-suppress all */
         $etagPool = $maybeEtagPool instanceof AdapterInterface ? $maybeEtagPool : $pool;
