@@ -121,7 +121,9 @@ final class DonutRepository implements DonutRepositoryInterface
 
         $this->logger->log('refresh-donut: uri:%s', $ro->uri);
         $donut->refresh($this->resource, $ro);
-        if ($this->donutTemplate->disable) {
+        if ($this->donutTemplate::$disable) {
+            $this->donutTemplate->enable();
+
             return null;
         }
 
