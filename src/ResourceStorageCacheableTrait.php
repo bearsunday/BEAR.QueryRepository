@@ -6,7 +6,6 @@ namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\ResourceStorageUnserializeException;
 use BEAR\RepositoryModule\Annotation\EtagPool;
-use BEAR\Resource\LoggerInterface;
 use Error;
 use Psr\Cache\CacheItemPoolInterface;
 use Ray\Di\Di\Inject;
