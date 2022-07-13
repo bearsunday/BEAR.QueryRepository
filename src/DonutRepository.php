@@ -150,7 +150,7 @@ final class DonutRepository implements DonutRepositoryInterface
     }
 
     /**
-     * @return array<string>
+     * @return list<string>
      */
     public function getHeaderKeys(ResourceObject $ro): array
     {

@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\ResourceStorageUnserializeException;
 use BEAR\RepositoryModule\Annotation\EtagPool;
+use BEAR\Resource\LoggerInterface;
 use Error;
 use Psr\Cache\CacheItemPoolInterface;
 use Ray\Di\Di\Inject;
@@ -64,7 +65,7 @@ trait ResourceStorageCacheableTrait
     }
 
     /**
-     * @param array<mixed> $data
+     * @param array{logger: RepositoryLoggerInterface, purger: PurgerInterface, uriTag: UriTagInterface, saver: ResourceStorageSaver, knownTagTtl: float, injector: InjectorInterface} $data
      */
     private function unserialize(array $data): void
     {
