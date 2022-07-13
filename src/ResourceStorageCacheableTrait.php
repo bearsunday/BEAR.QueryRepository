@@ -63,6 +63,9 @@ trait ResourceStorageCacheableTrait
         }
     }
 
+    /**
+     * @param array<mixed> $data
+     */
     private function unserialize(array $data): void
     {
         $this->logger = $data['logger'];
