@@ -61,6 +61,7 @@ final class DonutRepository implements DonutRepositoryInterface
     {
         $this->logger->log('put-donut: uri:%s ttl:%s s-maxage:%d', (string) $ro->uri, $sMaxAge, $ttl);
         $keys = new SurrogateKeys($ro->uri);
+        $keys->addTag($ro);
         $headerKeys = $this->getHeaderKeys($ro);
         $donut = ResourceDonut::create($ro, $this->renderer, $keys, $sMaxAge, true);
         $donut->render($ro, $this->renderer);
