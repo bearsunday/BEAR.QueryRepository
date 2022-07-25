@@ -42,6 +42,14 @@ final class SurrogateKeys
 
     public function setSurrogateHeader(ResourceObject $ro): void
     {
-        $ro->headers[Header::SURROGATE_KEY] = implode(' ', array_unique($this->surrogateKeys));
+        $key = implode(' ', array_unique($this->surrogateKeys));
+        $wasSetManually = isset($ro->headers[Header::SURROGATE_KEY]);
+        if ($wasSetManually) {
+            $ro->headers[Header::SURROGATE_KEY] .= ' ' . $key;
+
+            return;
+        }
+
+        $ro->headers[Header::SURROGATE_KEY] = $key;
     }
 }
