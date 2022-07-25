@@ -25,6 +25,7 @@ class BlogPosting extends ResourceObject
         $this->body += [
             'article' => '1'
         ];
+        $this->headers[Header::SURROGATE_KEY] = 'blog-posting-page';
 
         return $this;
     }
