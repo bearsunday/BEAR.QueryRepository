@@ -9,13 +9,11 @@ use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
 
 use function http_response_code;
 
-/**
- * @psalm-suppress DeprecatedInterface for BC
- */
+/** @psalm-suppress DeprecatedInterface for BC */
 final class HttpCache implements HttpCacheInterface, DeprecatedHttpCacheInterface
 {
     public function __construct(
-        private ResourceStorageInterface $storage
+        private ResourceStorageInterface $storage,
     ) {
     }
 

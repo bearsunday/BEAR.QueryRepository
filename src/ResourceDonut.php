@@ -24,14 +24,10 @@ final class ResourceDonut
 
     public function __construct(
         private string $template,
-        /**
-         * @readonly
-         */
-        public ?int $ttl,
-        /**
-         * @readonly
-         */
-        public bool $isCacheble
+        /** @readonly */
+        public int|null $ttl,
+        /** @readonly */
+        public bool $isCacheble,
     ) {
     }
 
@@ -63,7 +59,7 @@ final class ResourceDonut
         return $ro;
     }
 
-    public static function create(ResourceObject $ro, DonutRenderer $storage, SurrogateKeys $etags, ?int $ttl, bool $isCacheble): self
+    public static function create(ResourceObject $ro, DonutRenderer $storage, SurrogateKeys $etags, int|null $ttl, bool $isCacheble): self
     {
         assert(is_iterable($ro->body));
         /** @var mixed $maybeRequest */

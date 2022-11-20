@@ -12,9 +12,7 @@ trait HttpCacheInject
     /** @var HttpCacheInterface */
     public $httpCache;
 
-    /**
-     * @Inject
-     */
+    /** @Inject */
     #[Inject]
     public function setHttpCache(HttpCacheInterface $httpCache): void
     {

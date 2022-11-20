@@ -13,12 +13,10 @@ use Symfony\Component\Cache\Adapter\MemcachedAdapter;
 
 final class StorageMemcachedModule extends AbstractModule
 {
-    /**
-     * @param string $servers 'mem1.domain.com:11211:33,mem2.domain.com:11211:67' {host}:{port}:{weight}
-     */
+    /** @param string $servers 'mem1.domain.com:11211:33,mem2.domain.com:11211:67' {host}:{port}:{weight} */
     public function __construct(
         private string $servers,
-        ?AbstractModule $module = null
+        AbstractModule|null $module = null,
     ) {
         parent::__construct($module);
     }

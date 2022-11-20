@@ -13,7 +13,7 @@ use Ray\Aop\MethodInvocation;
 final class RefreshInterceptor implements MethodInterceptor
 {
     public function __construct(
-        private RefreshAnnotatedCommand $command
+        private RefreshAnnotatedCommand $command,
     ) {
     }
 

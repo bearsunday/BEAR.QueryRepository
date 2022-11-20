@@ -18,7 +18,7 @@ use const PHP_EOL;
 final class CliHttpCache implements HttpCacheInterface
 {
     public function __construct(
-        private ResourceStorageInterface $storage
+        private ResourceStorageInterface $storage,
     ) {
     }
 
@@ -45,9 +45,7 @@ final class CliHttpCache implements HttpCacheInterface
         echo '304 Not Modified' . PHP_EOL . PHP_EOL;
     }
 
-    /**
-     * @return array<string, string>
-     */
+    /** @return array<string, string> */
     private function getServer(string $query): array
     {
         parse_str($query, $headers);
@@ -66,10 +64,8 @@ final class CliHttpCache implements HttpCacheInterface
         return sprintf('HTTP_%s', strtoupper(str_replace('-', '_', $key)));
     }
 
-    /**
-     * @param array<string, mixed> $server
-     */
-    private function getEtag(array $server): ?string
+    /** @param array<string, mixed> $server */
+    private function getEtag(array $server): string|null
     {
         /** @psalm-suppress MixedAssignment */
         $arg3 = $server['argv'][3] ?? ''; /* @phpstan-ignore-line */

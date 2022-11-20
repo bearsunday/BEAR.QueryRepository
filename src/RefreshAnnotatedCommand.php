@@ -19,7 +19,7 @@ final class RefreshAnnotatedCommand implements CommandInterface
 {
     public function __construct(
         private QueryRepositoryInterface $repository,
-        private ResourceInterface $resource
+        private ResourceInterface $resource,
     ) {
     }
 

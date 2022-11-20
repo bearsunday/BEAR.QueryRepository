@@ -8,5 +8,5 @@ use BEAR\Resource\ResourceObject;
 
 interface CdnCacheControlHeaderSetterInterface
 {
-    public function __invoke(ResourceObject $ro, ?int $sMaxAge): void;
+    public function __invoke(ResourceObject $ro, int|null $sMaxAge): void;
 }

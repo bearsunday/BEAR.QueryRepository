@@ -25,18 +25,14 @@ trait ResourceStorageCacheableTrait
      */
     protected $injector;
 
-    /**
-     * @Inject
-     */
+    /** @Inject */
     #[Inject]
     final public function setInjector(InjectorInterface $injector): void
     {
         $this->injector = $injector;
     }
 
-    /**
-     * @return array{logger: RepositoryLoggerInterface, purger: PurgerInterface, uriTag: UriTagInterface, saver: ResourceStorageSaver, knownTagTtl: float, injector: InjectorInterface}
-     */
+    /** @return array{logger: RepositoryLoggerInterface, purger: PurgerInterface, uriTag: UriTagInterface, saver: ResourceStorageSaver, knownTagTtl: float, injector: InjectorInterface} */
     final public function __serialize(): array
     {
         assert($this->injector instanceof InjectorInterface);
@@ -51,9 +47,7 @@ trait ResourceStorageCacheableTrait
         ];
     }
 
-    /**
-     * @param array{logger: RepositoryLoggerInterface, purger: PurgerInterface, uriTag: UriTagInterface, saver: ResourceStorageSaver, knownTagTtl: float, injector: InjectorInterface} $data
-     */
+    /** @param array{logger: RepositoryLoggerInterface, purger: PurgerInterface, uriTag: UriTagInterface, saver: ResourceStorageSaver, knownTagTtl: float, injector: InjectorInterface} $data */
     final public function __unserialize(array $data): void
     {
         try {
@@ -65,9 +59,7 @@ trait ResourceStorageCacheableTrait
         }
     }
 
-    /**
-     * @param array{logger: RepositoryLoggerInterface, purger: PurgerInterface, uriTag: UriTagInterface, saver: ResourceStorageSaver, knownTagTtl: float, injector: InjectorInterface} $data
-     */
+    /** @param array{logger: RepositoryLoggerInterface, purger: PurgerInterface, uriTag: UriTagInterface, saver: ResourceStorageSaver, knownTagTtl: float, injector: InjectorInterface} $data */
     private function unserialize(array $data): void
     {
         $this->logger = $data['logger'];

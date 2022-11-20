@@ -19,14 +19,14 @@ use function time;
 final class EtagSetter implements EtagSetterInterface
 {
     public function __construct(
-        private CacheDependencyInterface $cacheDeperency
+        private CacheDependencyInterface $cacheDeperency,
     ) {
     }
 
     /**
      * {@inheritdoc}
      */
-    public function __invoke(ResourceObject $ro, ?int $time = null, ?HttpCache $httpCache = null)
+    public function __invoke(ResourceObject $ro, int|null $time = null, HttpCache|null $httpCache = null)
     {
         $time ??= time();
         if ($ro->code !== 200) {
@@ -64,7 +64,7 @@ final class EtagSetter implements EtagSetterInterface
      *
      * @see https://cloud.google.com/storage/docs/hashes-etags
      */
-    private function getEtag(ResourceObject $ro, ?HttpCache $httpCache = null): string
+    private function getEtag(ResourceObject $ro, HttpCache|null $httpCache = null): string
     {
         $etag = $httpCache instanceof HttpCache && $httpCache->etag ? $this->getEtagByPartialBody($httpCache, $ro) : $this->getEtagByEitireView($ro);
 

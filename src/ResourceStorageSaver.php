@@ -11,10 +11,8 @@ use function assert;
 
 final class ResourceStorageSaver
 {
-    /**
-     * @param list<string> $tags
-     */
-    public function __invoke(string $key, mixed $value, CacheItemPoolInterface $pool, array $tags, ?int $ttl): bool
+    /** @param list<string> $tags */
+    public function __invoke(string $key, mixed $value, CacheItemPoolInterface $pool, array $tags, int|null $ttl): bool
     {
         $cacheItem = $pool->getItem($key);
         $cacheItem->set($value);

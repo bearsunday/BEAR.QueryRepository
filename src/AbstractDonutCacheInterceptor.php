@@ -21,7 +21,7 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
     protected const IS_ENTIRE_CONTENT_CACHEABLE = false;
 
     public function __construct(
-        private DonutRepositoryInterface $donutRepository
+        private DonutRepositoryInterface $donutRepository,
     ) {
     }
 
@@ -56,9 +56,7 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
             $this->donutRepository->putDonut($ro, null);
     }
 
-    /**
-     * @codeCoverageIgnore
-     */
+    /** @codeCoverageIgnore */
     private function triggerWarning(Throwable $e): void
     {
         trigger_error(sprintf('%s: %s in %s:%s', $e::class, $e->getMessage(), $e->getFile(), $e->getLine()), E_USER_WARNING);

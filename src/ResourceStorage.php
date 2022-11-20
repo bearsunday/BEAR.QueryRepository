@@ -55,13 +55,10 @@ final class ResourceStorage implements ResourceStorageInterface
         private RepositoryLoggerInterface $logger,
         private PurgerInterface $purger,
         private UriTagInterface $uriTag,
-        #[Shared]
-        ?CacheItemPoolInterface $pool = null,
-        #[EtagPool]
-        ?CacheItemPoolInterface $etagPool = null,
-        ?CacheProvider $cache = null,
-        #[KnownTagTtl]
-        private float $knownTagTtl = 0.0
+        #[Shared] CacheItemPoolInterface|null $pool = null,
+        #[EtagPool] CacheItemPoolInterface|null $etagPool = null,
+        CacheProvider|null $cache = null,
+        #[KnownTagTtl] private float $knownTagTtl = 0.0,
     ) {
         $this->saver = new ResourceStorageSaver();
         if ($pool === null && $cache instanceof CacheProvider) {
@@ -86,7 +83,7 @@ final class ResourceStorage implements ResourceStorageInterface
     /**
      * {@inheritdoc}
      */
-    public function get(AbstractUri $uri): ?ResourceState
+    public function get(AbstractUri $uri): ResourceState|null
     {
         $item = $this->roPool->getItem($this->getUriKey($uri, self::KEY_RO));
         assert($item instanceof ItemInterface);
@@ -96,7 +93,7 @@ final class ResourceStorage implements ResourceStorageInterface
         return $state;
     }
 
-    public function getDonut(AbstractUri $uri): ?ResourceDonut
+    public function getDonut(AbstractUri $uri): ResourceDonut|null
     {
         $key = $this->getUriKey($uri, self::KEY_DONUT);
         $item = $this->roPool->getItem($key);
@@ -176,14 +173,14 @@ final class ResourceStorage implements ResourceStorageInterface
     /**
      * {@inheritDoc}
      */
-    public function saveDonut(AbstractUri $uri, ResourceDonut $donut, ?int $sMaxAge, array $headerKeys): void
+    public function saveDonut(AbstractUri $uri, ResourceDonut $donut, int|null $sMaxAge, array $headerKeys): void
     {
         $key = $this->getUriKey($uri, self::KEY_DONUT);
         $this->logger->log('save-donut uri:%s s-maxage:%s', $uri, $sMaxAge);
         $this->saver->__invoke($key, $donut, $this->roPool, $headerKeys, $sMaxAge);
     }
 
-    public function saveDonutView(ResourceObject $ro, ?int $ttl): bool
+    public function saveDonutView(ResourceObject $ro, int|null $ttl): bool
     {
         $resourceState = ResourceState::create($ro, [], $ro->view);
         $key = $this->getUriKey($ro->uri, self::KEY_RO);
@@ -193,9 +190,7 @@ final class ResourceStorage implements ResourceStorageInterface
         return $this->saver->__invoke($key, $resourceState, $this->roPool, $tags, $ttl);
     }
 
-    /**
-     * @return list<string>
-     */
+    /** @return list<string> */
     private function getTags(ResourceObject $ro): array
     {
         $etag = $ro->headers['ETag'];
@@ -250,7 +245,7 @@ final class ResourceStorage implements ResourceStorageInterface
         return $varyString;
     }
 
-    public function saveEtag(AbstractUri $uri, string $etag, string $surrogateKeys, ?int $ttl): void
+    public function saveEtag(AbstractUri $uri, string $etag, string $surrogateKeys, int|null $ttl): void
     {
         $tags = $surrogateKeys !== '' ? explode(' ', $surrogateKeys) : [];
         $tags[] = (new UriTag())($uri);

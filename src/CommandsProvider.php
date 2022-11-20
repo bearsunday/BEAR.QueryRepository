@@ -7,14 +7,12 @@ namespace BEAR\QueryRepository;
 use BEAR\Resource\ResourceInterface;
 use Ray\Di\ProviderInterface;
 
-/**
- * @implements ProviderInterface<array<CommandInterface>>
- */
+/** @implements ProviderInterface<array<CommandInterface>> */
 final class CommandsProvider implements ProviderInterface
 {
     public function __construct(
         private QueryRepositoryInterface $repository,
-        private ResourceInterface $resource
+        private ResourceInterface $resource,
     ) {
     }
 

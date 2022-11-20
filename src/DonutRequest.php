@@ -14,7 +14,7 @@ final class DonutRequest implements Stringable
     public function __construct(
         private AbstractRequest $request,
         private DonutRenderer $donutStorage,
-        private SurrogateKeys $etags
+        private SurrogateKeys $etags,
     ) {
     }
 

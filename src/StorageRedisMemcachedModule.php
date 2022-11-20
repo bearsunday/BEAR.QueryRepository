@@ -25,13 +25,11 @@ final class StorageRedisMemcachedModule extends AbstractModule
     /** @var list<list<string>> */
     private array $memcacheServer;
 
-    /**
-     * @param string $redisServer 'localhost:6379' {host}:{port}
-     */
+    /** @param string $redisServer 'localhost:6379' {host}:{port} */
     public function __construct(
         private string $redisServer,
         string $memcacheServer,
-        ?AbstractModule $module = null
+        AbstractModule|null $module = null,
     ) {
         $this->memcacheServer = array_map(static fn ($memcacheServer) => explode(':', $memcacheServer), explode(',', $memcacheServer));
         parent::__construct($module);

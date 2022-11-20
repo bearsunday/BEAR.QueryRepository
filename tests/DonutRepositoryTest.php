@@ -59,9 +59,7 @@ class DonutRepositoryTest extends TestCase
         $this->assertInstanceOf(ResourceState::class, $state);
     }
 
-    /**
-     * @depends testCreateDonut
-     */
+    /** @depends testCreateDonut */
     public function testCachePurge(): void
     {
         assert($this->queryRepository->purge($this->uri));
@@ -69,9 +67,7 @@ class DonutRepositoryTest extends TestCase
         $this->assertNull($maybeNullPurged);
     }
 
-    /**
-     * @depends testCreateDonut
-     */
+    /** @depends testCreateDonut */
     public function testCreatedByDonut(): void
     {
         // create donut

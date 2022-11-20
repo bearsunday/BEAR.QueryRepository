@@ -20,11 +20,11 @@ final class DonutRepository implements DonutRepositoryInterface
         private ResourceInterface $resource,
         private CdnCacheControlHeaderSetterInterface $cdnCacheControlHeaderSetter,
         private RepositoryLoggerInterface $logger,
-        private DonutRenderer $renderer
+        private DonutRenderer $renderer,
     ) {
     }
 
-    public function get(ResourceObject $ro): ?ResourceObject
+    public function get(ResourceObject $ro): ResourceObject|null
     {
         $maybeState = $this->queryRepository->get($ro->uri);
         $this->logger->log('try-donut-view: uri:%s', $ro->uri);
@@ -42,7 +42,7 @@ final class DonutRepository implements DonutRepositoryInterface
     /**
      * {@inheritDoc}
      */
-    public function putStatic(ResourceObject $ro, ?int $ttl = null, ?int $sMaxAge = null): ResourceObject
+    public function putStatic(ResourceObject $ro, int|null $ttl = null, int|null $sMaxAge = null): ResourceObject
     {
         $this->logger->log('put-donut: uri:%s ttl:%s s-maxage:%d', (string) $ro->uri, $sMaxAge, $ttl);
         $keys = new SurrogateKeys($ro->uri);
@@ -63,7 +63,7 @@ final class DonutRepository implements DonutRepositoryInterface
     /**
      * {@inheritDoc}
      */
-    public function putDonut(ResourceObject $ro, ?int $donutTtl): ResourceObject
+    public function putDonut(ResourceObject $ro, int|null $donutTtl): ResourceObject
     {
         $this->logger->log('put-donut: uri:%s ttl:%s', (string) $ro->uri, $donutTtl);
         $keys = new SurrogateKeys($ro->uri);
@@ -95,7 +95,7 @@ final class DonutRepository implements DonutRepositoryInterface
         $this->resourceStorage->invalidateTags($tags);
     }
 
-    private function refreshDonut(ResourceObject $ro): ?ResourceObject
+    private function refreshDonut(ResourceObject $ro): ResourceObject|null
     {
         $donut = $this->resourceStorage->getDonut($ro->uri);
         $this->logger->log('try-donut uri:%s', (string) $ro->uri);
@@ -119,7 +119,7 @@ final class DonutRepository implements DonutRepositoryInterface
         return $ro;
     }
 
-    private function saveView(ResourceObject $ro, ?int $ttl): bool
+    private function saveView(ResourceObject $ro, int|null $ttl): bool
     {
         assert(isset($ro->headers[Header::ETAG]));
         $surrogateKeys = $ro->headers[Header::SURROGATE_KEY] ?? '';
@@ -128,16 +128,14 @@ final class DonutRepository implements DonutRepositoryInterface
         return $this->resourceStorage->saveDonutView($ro, $ttl);
     }
 
-    private function setHeaders(SurrogateKeys $keys, ResourceObject $ro, ?int $sMaxAge): void
+    private function setHeaders(SurrogateKeys $keys, ResourceObject $ro, int|null $sMaxAge): void
     {
         $keys->setSurrogateHeader($ro);
         ($this->cdnCacheControlHeaderSetter)($ro, $sMaxAge);
         ($this->headerSetter)($ro, 0, null);
     }
 
-    /**
-     * @return list<string>
-     */
+    /** @return list<string> */
     public function getHeaderKeys(ResourceObject $ro): array
     {
         return isset($ro->headers[Header::SURROGATE_KEY]) ? explode(' ', $ro->headers[Header::SURROGATE_KEY]) : [];

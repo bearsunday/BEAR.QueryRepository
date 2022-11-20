@@ -12,7 +12,7 @@ final class StorageExpiryModule extends AbstractModule
         private int $short,
         private int $medium,
         private int $long,
-        ?AbstractModule $module = null
+        AbstractModule|null $module = null,
     ) {
         parent::__construct($module);
     }

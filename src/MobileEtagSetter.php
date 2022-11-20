@@ -15,7 +15,7 @@ use function time;
 
 final class MobileEtagSetter implements EtagSetterInterface
 {
-    public function __invoke(ResourceObject $ro, ?int $time = null, ?HttpCache $httpCache = null): void
+    public function __invoke(ResourceObject $ro, int|null $time = null, HttpCache|null $httpCache = null): void
     {
         unset($httpCache);
         // etag]

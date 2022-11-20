@@ -14,11 +14,11 @@ use function str_contains;
 final class HeaderSetter
 {
     public function __construct(
-        private EtagSetterInterface $etagSetter
+        private EtagSetterInterface $etagSetter,
     ) {
     }
 
-    public function __invoke(ResourceObject $ro, ?int $concheControlMaxAge, ?HttpCache $httpCache): void
+    public function __invoke(ResourceObject $ro, int|null $concheControlMaxAge, HttpCache|null $httpCache): void
     {
         ($this->etagSetter)($ro, null, $httpCache);
 

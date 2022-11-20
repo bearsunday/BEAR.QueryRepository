@@ -13,7 +13,7 @@ final class FastlyCacheControlHeaderSetter implements CdnCacheControlHeaderSette
 {
     public const CDN_CACHE_CONTROL_HEADER = 'Surrogate-Control';
 
-    public function __invoke(ResourceObject $ro, ?int $sMaxAge): void
+    public function __invoke(ResourceObject $ro, int|null $sMaxAge): void
     {
         $sMaxAge ??= 31_536_000;
         if (! isset($ro->headers[self::CDN_CACHE_CONTROL_HEADER])) {

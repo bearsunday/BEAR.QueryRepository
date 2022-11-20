@@ -18,7 +18,7 @@ final class CacheVersionModule extends AbstractModule
 {
     public function __construct(
         private string $version,
-        ?AbstractModule $module = null
+        AbstractModule|null $module = null,
     ) {
         parent::__construct($module);
     }

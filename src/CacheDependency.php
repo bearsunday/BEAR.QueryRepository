@@ -12,7 +12,7 @@ use function sprintf;
 final class CacheDependency implements CacheDependencyInterface
 {
     public function __construct(
-        private UriTagInterface $uriTag
+        private UriTagInterface $uriTag,
     ) {
     }
 

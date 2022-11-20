@@ -24,7 +24,7 @@ final class QueryRepository implements QueryRepositoryInterface
         private HeaderSetter $headerSetter,
         private ResourceStorageInterface $storage,
         private Reader $reader,
-        private Expiry $expiry
+        private Expiry $expiry,
     ) {
     }
 
@@ -56,7 +56,7 @@ final class QueryRepository implements QueryRepositoryInterface
     /**
      * {@inheritdoc}
      */
-    public function get(AbstractUri $uri): ?ResourceState
+    public function get(AbstractUri $uri): ResourceState|null
     {
         $state = $this->storage->get($uri);
 
@@ -79,17 +79,17 @@ final class QueryRepository implements QueryRepositoryInterface
         return $this->storage->deleteEtag($uri);
     }
 
-    private function getHttpCacheAnnotation(ResourceObject $ro): ?HttpCache
+    private function getHttpCacheAnnotation(ResourceObject $ro): HttpCache|null
     {
         return $this->reader->getClassAnnotation(new ReflectionClass($ro), HttpCache::class);
     }
 
-    private function getCacheableAnnotation(ResourceObject $ro): ?Cacheable
+    private function getCacheableAnnotation(ResourceObject $ro): Cacheable|null
     {
         return $this->reader->getClassAnnotation(new ReflectionClass($ro), Cacheable::class);
     }
 
-    private function getExpiryTime(ResourceObject $ro, ?Cacheable $cacheable = null): int
+    private function getExpiryTime(ResourceObject $ro, Cacheable|null $cacheable = null): int
     {
         if ($cacheable === null) {
             return 0;
