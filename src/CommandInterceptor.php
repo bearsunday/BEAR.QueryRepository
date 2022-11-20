@@ -16,7 +16,6 @@ final class CommandInterceptor implements MethodInterceptor
     /**
      * @param CommandInterface[] $commands
      */
-    #[Commands]
     public function __construct(
         #[Commands] private array $commands
     ) {
