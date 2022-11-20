@@ -28,10 +28,7 @@ final class RefreshAnnotatedCommand implements CommandInterface
         $this->resource = $resource;
     }
 
-    /**
-     * @return void
-     */
-    public function command(MethodInvocation $invocation, ResourceObject $ro)
+    public function command(MethodInvocation $invocation, ResourceObject $ro): void
     {
         $method = $invocation->getMethod();
         $annotations = $method->getAnnotations();
@@ -48,10 +45,7 @@ final class RefreshAnnotatedCommand implements CommandInterface
         return uri_template($annotation->uri, $query);
     }
 
-    /**
-     * @return void
-     */
-    private function request(ResourceObject $ro, object $annotation)
+    private function request(ResourceObject $ro, object $annotation): void
     {
         if (! $annotation instanceof AbstractCommand) {
             return;

@@ -16,7 +16,7 @@ trait HttpCacheInject
      * @Inject
      */
     #[Inject]
-    public function setHttpCache(HttpCacheInterface $httpCache)
+    public function setHttpCache(HttpCacheInterface $httpCache): void
     {
         $this->httpCache = $httpCache;
     }

@@ -228,12 +228,7 @@ final class ResourceStorage implements ResourceStorageInterface
         return $uniqueTags;
     }
 
-    /**
-     * @param mixed $body
-     *
-     * @return mixed
-     */
-    private function evaluateBody($body)
+    private function evaluateBody(mixed $body): mixed
     {
         if (! is_array($body)) {
             return $body;

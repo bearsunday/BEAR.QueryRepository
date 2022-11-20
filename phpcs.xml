@@ -47,7 +47,7 @@
         <exclude name="Squiz.Commenting.FunctionComment.InvalidNoReturn"/>
         <!-- /Base -->
         <!-- Option -->
-        <!--        <exclude name="SlevomatCodingStandard.ControlStructures.EarlyExit.EarlyExitNotUsed"/>-->
+        <exclude name="SlevomatCodingStandard.ControlStructures.EarlyExit.EarlyExitNotUsed"/>
         <exclude name="SlevomatCodingStandard.PHP.RequireExplicitAssertion.RequiredExplicitAssertion"/>
         <!-- /Option -->
         <!-- Exclude Fake files form Doctrine CS -->

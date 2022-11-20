@@ -30,17 +30,10 @@ use function unserialize;
 
 class QueryRepositoryTest extends TestCase
 {
-    /** @var ResourceInterface */
-    private $resource;
-
-    /** @var QueryRepositoryInterface */
-    private $repository;
-
-    /** @var HttpCacheInterface */
-    private $httpCache;
-
-    /** @var RepositoryLoggerInterface  */
-    private $logger;
+    private ResourceInterface $resource;
+    private QueryRepositoryInterface $repository;
+    private HttpCacheInterface $httpCache;
+    private RepositoryLoggerInterface $logger;
 
     protected function setUp(): void
     {
@@ -152,7 +145,7 @@ class QueryRepositoryTest extends TestCase
         $module = ModuleFactory::getInstance($namespace);
 
         $module->override(new class extends AbstractModule {
-            protected function configure()
+            protected function configure(): void
             {
                 $this->bind(CacheItemPoolInterface::class)->annotatedWith(Shared::class)->to(FakeErrorCache::class);
             }
@@ -199,7 +192,7 @@ class QueryRepositoryTest extends TestCase
         $namespace = 'FakeVendor\HelloWorld';
         $module = new QueryRepositoryModule(new ResourceModule($namespace));
         $module->override(new class extends AbstractModule{
-            protected function configure()
+            protected function configure(): void
             {
                 $this->bind(CacheItemPoolInterface::class)->annotatedWith(Shared::class)->to(FilesystemAdapter::class);
                 $this->bind(CacheItemPoolInterface::class)->annotatedWith(EtagPool::class)->to(FilesystemAdapter::class);

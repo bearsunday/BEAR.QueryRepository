@@ -21,10 +21,7 @@ final class RefreshInterceptor implements MethodInterceptor
         $this->command = $command;
     }
 
-    /**
-     * @return ResourceObject
-     */
-    public function invoke(MethodInvocation $invocation)
+    public function invoke(MethodInvocation $invocation): ResourceObject
     {
         /** @psalm-suppress MixedAssignment */
         $ro = $invocation->proceed();

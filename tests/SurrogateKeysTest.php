@@ -38,12 +38,12 @@ class SurrogateKeysTest extends TestCase
         $etags = new SurrogateKeys($uri);
         $foo1 = new class extends ResourceObject{
             /** @var array<string, string> */
-            public $headers = [Header::SURROGATE_KEY => 'a b'];
+            public array $headers = [Header::SURROGATE_KEY => 'a b'];
         };
         $foo1->uri = new Uri('app://self/foo1');
         $foo2 = new class extends ResourceObject{
             /** @var array<string, string> */
-            public $headers = [Header::SURROGATE_KEY => 'a b'];
+            public array $headers = [Header::SURROGATE_KEY => 'a b'];
         };
         $foo2->uri = new Uri('app://self/foo2');
         $etags->addTag($foo1);

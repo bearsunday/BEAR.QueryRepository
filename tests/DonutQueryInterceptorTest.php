@@ -16,11 +16,8 @@ use function dirname;
 
 class DonutQueryInterceptorTest extends TestCase
 {
-    /** @var ResourceInterface */
-    private $resource;
-
-    /** @var RepositoryLoggerInterface */
-    private $logger;
+    private ResourceInterface $resource;
+    private RepositoryLoggerInterface $logger;
 
     protected function setUp(): void
     {

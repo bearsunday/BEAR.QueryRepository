@@ -15,7 +15,7 @@ final class ResourceStorageSaver
      * @param list<string> $tags
      * @param mixed        $value
      */
-    public function __invoke(string $key, $value, CacheItemPoolInterface $pool, array $tags, ?int $ttl): bool
+    public function __invoke(string $key, mixed $value, CacheItemPoolInterface $pool, array $tags, ?int $ttl): bool
     {
         $cacheItem = $pool->getItem($key);
         $cacheItem->set($value);

@@ -16,18 +16,11 @@ use function dirname;
 
 class DonutRepositoryTest extends TestCase
 {
-    /** @var ResourceInterface */
-    private $resource;
-
-    /** @var QueryRepositoryInterface */
-    private $queryRepository;
-
-    /** @var DonutRepositoryInterface  */
-    private $donutRepository;
+    private ResourceInterface $resource;
+    private QueryRepositoryInterface $queryRepository;
+    private DonutRepositoryInterface $donutRepository;
     private Uri $uri;
-
-    /** @var ResourceStorageInterface */
-    private $resourceStorage;
+    private ResourceStorageInterface $resourceStorage;
 
     public function setUp(): void
     {
