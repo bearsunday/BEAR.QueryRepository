@@ -22,17 +22,17 @@ use function explode;
  */
 final class StorageRedisMemcachedModule extends AbstractModule
 {
-    private string $redisServer;
-
     /** @var list<list<string>> */
     private array $memcacheServer;
 
     /**
      * @param string $redisServer 'localhost:6379' {host}:{port}
      */
-    public function __construct(string $redisServer, string $memcacheServer, ?AbstractModule $module = null)
-    {
-        $this->redisServer = $redisServer;
+    public function __construct(
+        private string $redisServer,
+        string $memcacheServer,
+        ?AbstractModule $module = null
+    ) {
         $this->memcacheServer = array_map(static fn ($memcacheServer) => explode(':', $memcacheServer), explode(',', $memcacheServer));
         parent::__construct($module);
     }

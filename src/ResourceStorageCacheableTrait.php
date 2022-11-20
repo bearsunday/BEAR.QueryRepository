@@ -78,7 +78,7 @@ trait ResourceStorageCacheableTrait
         try {
             $maybeEtagPool = $data['injector']->getInstance(CacheItemPoolInterface::class, EtagPool::class);
             // @codeCoverageIgnoreStart
-        } catch (Unbound $e) {
+        } catch (Unbound) {
             $maybeEtagPool = null;
             // @codeCoverageIgnoreEnd
         }

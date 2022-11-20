@@ -13,30 +13,15 @@ use function explode;
 
 final class DonutRepository implements DonutRepositoryInterface
 {
-    private ResourceStorageInterface $resourceStorage;
-    private HeaderSetter $headerSetter;
-    private ResourceInterface $resource;
-    private QueryRepository $queryRepository;
-    private CdnCacheControlHeaderSetterInterface $cdnCacheControlHeaderSetter;
-    private RepositoryLoggerInterface $logger;
-    private DonutRenderer $renderer;
-
     public function __construct(
-        QueryRepository $queryRepository,
-        HeaderSetter $headerSetter,
-        ResourceStorageInterface $resourceStorage,
-        ResourceInterface $resource,
-        CdnCacheControlHeaderSetterInterface $cdnCacheControlHeaderSetter,
-        RepositoryLoggerInterface $logger,
-        DonutRenderer $renderer
+        private QueryRepository $queryRepository,
+        private HeaderSetter $headerSetter,
+        private ResourceStorageInterface $resourceStorage,
+        private ResourceInterface $resource,
+        private CdnCacheControlHeaderSetterInterface $cdnCacheControlHeaderSetter,
+        private RepositoryLoggerInterface $logger,
+        private DonutRenderer $renderer
     ) {
-        $this->resourceStorage = $resourceStorage;
-        $this->headerSetter = $headerSetter;
-        $this->resource = $resource;
-        $this->queryRepository = $queryRepository;
-        $this->cdnCacheControlHeaderSetter = $cdnCacheControlHeaderSetter;
-        $this->logger = $logger;
-        $this->renderer = $renderer;
     }
 
     public function get(ResourceObject $ro): ?ResourceObject

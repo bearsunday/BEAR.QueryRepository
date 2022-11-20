@@ -17,15 +17,10 @@ use function uri_template;
 
 final class RefreshAnnotatedCommand implements CommandInterface
 {
-    private QueryRepositoryInterface $repository;
-    private ResourceInterface $resource;
-
     public function __construct(
-        QueryRepositoryInterface $repository,
-        ResourceInterface $resource
+        private QueryRepositoryInterface $repository,
+        private ResourceInterface $resource
     ) {
-        $this->repository = $repository;
-        $this->resource = $resource;
     }
 
     public function command(MethodInvocation $invocation, ResourceObject $ro): void

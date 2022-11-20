@@ -10,15 +10,11 @@ use BEAR\Resource\ResourceObject;
 use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
 
-use function get_class;
-
 final class RefreshInterceptor implements MethodInterceptor
 {
-    private RefreshAnnotatedCommand $command;
-
-    public function __construct(RefreshAnnotatedCommand $command)
-    {
-        $this->command = $command;
+    public function __construct(
+        private RefreshAnnotatedCommand $command
+    ) {
     }
 
     public function invoke(MethodInvocation $invocation): ResourceObject
@@ -26,7 +22,7 @@ final class RefreshInterceptor implements MethodInterceptor
         /** @psalm-suppress MixedAssignment */
         $ro = $invocation->proceed();
         if (! $ro instanceof ResourceObject) {
-            throw new ReturnValueIsNotResourceObjectException(get_class($invocation->getThis())); // @codeCoverageIgnore
+            throw new ReturnValueIsNotResourceObjectException($invocation->getThis()::class); // @codeCoverageIgnore
         }
 
         if ($ro->code < Code::BAD_REQUEST) {

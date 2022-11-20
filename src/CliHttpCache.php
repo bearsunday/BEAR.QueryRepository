@@ -17,11 +17,9 @@ use const PHP_EOL;
 
 final class CliHttpCache implements HttpCacheInterface
 {
-    private ResourceStorageInterface $storage;
-
-    public function __construct(ResourceStorageInterface $storage)
-    {
-        $this->storage = $storage;
+    public function __construct(
+        private ResourceStorageInterface $storage
+    ) {
     }
 
     /**

@@ -29,13 +29,9 @@ class Unmatch extends ResourceObject
 
     /**
      * @Purge(uri="app://self/user/friend?user_id={id}")
-     *
-     * @param mixed $id
-     * @param mixed $name
-     * @param mixed $age
      */
     #[Purge(uri: 'app://self/user/friend?user_id={id}')]
-    public function onPut($id, $name, $age)
+    public function onPut(mixed $id, mixed $name, mixed $age)
     {
         return $this;
     }

@@ -41,45 +41,28 @@ final class ResourceStorage implements ResourceStorageInterface
      */
     private const KEY_DONUT = 'donut-';
 
-    /** @var RepositoryLoggerInterface */
-    private $logger;
-
     /** @var TagAwareAdapter */
     private $roPool;
 
     /** @var TagAwareAdapter */
     private $etagPool;
 
-    /** @var PurgerInterface */
-    private $purger;
-
-    /** @var UriTagInterface */
-    private $uriTag;
-
     /** @var ResourceStorageSaver */
     private $saver;
 
-    /** @var float */
-    private $knownTagTtl;
-
-    /**
-     * @Shared("pool")
-     * @EtagPool("etagPool")
-     * @KnownTagTtl("knownTagTtl")
-     */
     #[Shared('pool'), EtagPool('etagPool'), KnownTagTtl('knownTagTtl')]
     public function __construct(
-        RepositoryLoggerInterface $logger,
-        PurgerInterface $etagDeleter,
-        UriTagInterface $uriTag,
+        private RepositoryLoggerInterface $logger,
+        private PurgerInterface $purger,
+        private UriTagInterface $uriTag,
+        #[Shared]
         ?CacheItemPoolInterface $pool = null,
+        #[EtagPool]
         ?CacheItemPoolInterface $etagPool = null,
         ?CacheProvider $cache = null,
-        float $knownTagTtl = 0.0
+        #[KnownTagTtl]
+        private float $knownTagTtl = 0.0
     ) {
-        $this->logger = $logger;
-        $this->purger = $etagDeleter;
-        $this->uriTag = $uriTag;
         $this->saver = new ResourceStorageSaver();
         if ($pool === null && $cache instanceof CacheProvider) {
             $this->injectDoctrineCache($cache);
@@ -87,7 +70,6 @@ final class ResourceStorage implements ResourceStorageInterface
             return;
         }
 
-        $this->knownTagTtl = $knownTagTtl;
         assert($pool instanceof AdapterInterface);
         $etagPool =  $etagPool instanceof AdapterInterface ? $etagPool : $pool;
         $this->roPool = new TagAwareAdapter($pool, $etagPool, $knownTagTtl);

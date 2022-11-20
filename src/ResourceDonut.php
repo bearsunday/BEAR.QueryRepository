@@ -20,27 +20,19 @@ final class ResourceDonut
 {
     public const FOMRAT = '[le:%s]';
 
-    private string $template;
-
-    /**
-     * @var ?int
-     * @readonly
-     */
-    public $ttl;
-
-    /**
-     * @var bool
-     * @readonly
-     */
-    public $isCacheble;
-
     private const URI_REGEX = '/\[le:(.+)]/';
 
-    public function __construct(string $template, ?int $ttl, bool $isCacheble)
-    {
-        $this->template = $template;
-        $this->ttl = $ttl;
-        $this->isCacheble = $isCacheble;
+    public function __construct(
+        private string $template,
+        /**
+         * @readonly
+         */
+        public ?int $ttl,
+        /**
+         * @readonly
+         */
+        public bool $isCacheble
+    ) {
     }
 
     public function refresh(ResourceInterface $resource, ResourceObject $ro): ResourceObject

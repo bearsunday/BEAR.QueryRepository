@@ -19,24 +19,13 @@ use function time;
 
 final class QueryRepository implements QueryRepositoryInterface
 {
-    private ResourceStorageInterface $storage;
-    private Reader $reader;
-    private Expiry $expiry;
-    private HeaderSetter $headerSetter;
-    private RepositoryLoggerInterface $logger;
-
     public function __construct(
-        RepositoryLoggerInterface $logger,
-        HeaderSetter $headerSetter,
-        ResourceStorageInterface $storage,
-        Reader $reader,
-        Expiry $expiry
+        private RepositoryLoggerInterface $logger,
+        private HeaderSetter $headerSetter,
+        private ResourceStorageInterface $storage,
+        private Reader $reader,
+        private Expiry $expiry
     ) {
-        $this->headerSetter = $headerSetter;
-        $this->reader = $reader;
-        $this->storage = $storage;
-        $this->expiry = $expiry;
-        $this->logger = $logger;
     }
 
     /**

@@ -18,11 +18,9 @@ use function time;
 
 final class EtagSetter implements EtagSetterInterface
 {
-    private CacheDependencyInterface $cacheDeperency;
-
-    public function __construct(CacheDependencyInterface $cacheDependency)
-    {
-        $this->cacheDeperency = $cacheDependency;
+    public function __construct(
+        private CacheDependencyInterface $cacheDeperency
+    ) {
     }
 
     /**
