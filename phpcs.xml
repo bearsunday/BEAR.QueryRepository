@@ -27,11 +27,16 @@
         <exclude-pattern>*/src/*Interface.php</exclude-pattern>
         <exclude-pattern>*/src/Abstract*.php</exclude-pattern>
         <exclude-pattern>*/src/ResourceObject.php</exclude-pattern>
+        <exclude-pattern>*/tests/SurrogateKeysTest.php</exclude-pattern>
+    </rule>
+    <rule ref="SlevomatCodingStandard.TypeHints.PropertyTypeHint.MissingNativeTypeHint">
+        <include-pattern>*/tests/*</include-pattern>
     </rule>
     <rule ref="SlevomatCodingStandard.TypeHints.ReturnTypeHint.MissingNativeTypeHint">
         <exclude-pattern>*/src/*Interface.php</exclude-pattern>
         <exclude-pattern>*/src/Abstract*.php</exclude-pattern>
         <exclude-pattern>*/src/ResourceObject.php</exclude-pattern>
+        <exclude-pattern>*/tests/ResourceRepositoryTest.php</exclude-pattern>
     </rule>
     <!-- Doctrine Coding Standard -->
     <rule ref="Doctrine">
@@ -42,9 +47,11 @@
         <exclude name="SlevomatCodingStandard.Classes.SuperfluousAbstractClassNaming.SuperfluousPrefix"/>
         <exclude name="SlevomatCodingStandard.Classes.SuperfluousExceptionNaming.SuperfluousSuffix"/>
         <exclude name="SlevomatCodingStandard.Classes.SuperfluousInterfaceNaming.SuperfluousSuffix"/>
+        <exclude name="SlevomatCodingStandard.Classes.SuperfluousTraitNaming.SuperfluousSuffix"/>
         <exclude name="SlevomatCodingStandard.Commenting.InlineDocCommentDeclaration.MissingVariable"/>
         <exclude name="SlevomatCodingStandard.Commenting.UselessInheritDocComment.UselessInheritDocComment"/>
         <exclude name="Squiz.Commenting.FunctionComment.InvalidNoReturn"/>
+        <exclude name="SlevomatCodingStandard.Classes.DisallowLateStaticBindingForConstants.DisallowedLateStaticBindingForConstant"/>
         <!-- /Base -->
         <!-- Option -->
         <exclude name="SlevomatCodingStandard.ControlStructures.EarlyExit.EarlyExitNotUsed"/>
@@ -68,9 +75,6 @@
                 <element value="@throws"/>
             </property>
         </properties>
-    </rule>
-    <rule ref="SlevomatCodingStandard.TypeHints.PropertyTypeHint.MissingNativeTypeHint">
-        <include-pattern>tests/*</include-pattern>
     </rule>
     <rule ref="SlevomatCodingStandard.Classes.PropertySpacing">
         <properties>

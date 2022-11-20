@@ -75,27 +75,27 @@ class ResourceRepositoryTest extends TestCase
     {
         // phpcs:disable SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
         $doctrineCache = new class extends CacheProvider{
-            protected function doFetch($id): void
+            protected function doFetch($id)
             {
             }
 
-            protected function doContains($id): void
+            protected function doContains($id)
             {
             }
 
-            protected function doSave($id, $data, $lifeTime = 0): void
+            protected function doSave($id, $data, $lifeTime = 0)
             {
             }
 
-            protected function doDelete($id): void
+            protected function doDelete($id)
             {
             }
 
-            protected function doFlush(): void
+            protected function doFlush()
             {
             }
 
-            protected function doGetStats(): void
+            protected function doGetStats()
             {
             }
         };

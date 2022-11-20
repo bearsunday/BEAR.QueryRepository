@@ -51,7 +51,7 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
             return $ro;
         }
 
-        return self::IS_ENTIRE_CONTENT_CACHEABLE ?
+        return static::IS_ENTIRE_CONTENT_CACHEABLE ? // phpcs:ignore - not "self"
             $this->donutRepository->putStatic($ro, null, null) :
             $this->donutRepository->putDonut($ro, null);
     }
