@@ -16,7 +16,7 @@ final class CdnCacheControlHeaderSetter implements CdnCacheControlHeaderSetterIn
 {
     private const CDN_CACHE_CONTROL_HEADER = Header::CDN_CACHE_CONTROL;
 
-    public function __invoke(ResourceObject $ro, ?int $sMaxAge): void
+    public function __invoke(ResourceObject $ro, int|null $sMaxAge): void
     {
         $sMaxAge ??= 10;
         if (! isset($ro->headers[self::CDN_CACHE_CONTROL_HEADER])) {

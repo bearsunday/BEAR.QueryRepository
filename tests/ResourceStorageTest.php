@@ -20,7 +20,7 @@ class ResourceStorageTest extends TestCase
             new RepositoryLogger(),
             new NullPurger(),
             new UriTag(),
-            new FilesystemAdapter('', 0, $_ENV['TMP_DIR'])
+            new FilesystemAdapter('', 0, $_ENV['TMP_DIR']),
         );
         $this->ro = new Index();
         $this->ro->uri = new Uri('page://self/user');

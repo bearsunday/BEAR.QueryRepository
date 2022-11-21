@@ -16,26 +16,22 @@ use function str_replace;
 
 final class DevEtagSetter implements EtagSetterInterface
 {
-    private CacheDependencyInterface $cacheDeperency;
-
-    public function __construct(CacheDependencyInterface $cacheDependency)
-    {
-        $this->cacheDeperency = $cacheDependency;
+    public function __construct(
+        private CacheDependencyInterface $cacheDeperency,
+    ) {
     }
 
     /**
      * {@inheritdoc}
      */
-    public function __invoke(ResourceObject $ro, ?int $time = null, ?HttpCache $httpCache = null)
+    public function __invoke(ResourceObject $ro, int|null $time = null, HttpCache|null $httpCache = null)
     {
         $ro->headers[Header::ETAG] =  sprintf('%s_%s', str_replace([':', '/'], ['_', '_'], $ro->uri->path), http_build_query($ro->uri->query));
         $ro->headers[Header::LAST_MODIFIED] = gmdate(DateTimeInterface::RFC7231, 0);
         $this->setCacheDependency($ro);
     }
 
-    /**
-     * @codeCoverageIgnore
-     */
+    /** @codeCoverageIgnore */
     private function setCacheDependency(ResourceObject $ro): void
     {
         /** @var mixed $body */

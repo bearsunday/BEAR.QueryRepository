@@ -11,7 +11,6 @@ use Ray\Aop\MethodInvocation;
 use Throwable;
 
 use function assert;
-use function get_class;
 use function sprintf;
 use function trigger_error;
 
@@ -19,12 +18,9 @@ use const E_USER_WARNING;
 
 final class CacheInterceptor implements MethodInterceptor
 {
-    private QueryRepositoryInterface $repository;
-
     public function __construct(
-        QueryRepositoryInterface $repository
+        private QueryRepositoryInterface $repository,
     ) {
-        $this->repository = $repository;
     }
 
     /**
@@ -71,7 +67,7 @@ final class CacheInterceptor implements MethodInterceptor
      */
     private function triggerWarning(Throwable $e): void
     {
-        $message = sprintf('%s: %s in %s:%s', get_class($e), $e->getMessage(), $e->getFile(), $e->getLine());
+        $message = sprintf('%s: %s in %s:%s', $e::class, $e->getMessage(), $e->getFile(), $e->getLine());
         trigger_error($message, E_USER_WARNING);
     }
 }

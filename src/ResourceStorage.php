@@ -41,45 +41,25 @@ final class ResourceStorage implements ResourceStorageInterface
      */
     private const KEY_DONUT = 'donut-';
 
-    /** @var RepositoryLoggerInterface */
-    private $logger;
-
     /** @var TagAwareAdapter */
     private $roPool;
 
     /** @var TagAwareAdapter */
     private $etagPool;
 
-    /** @var PurgerInterface */
-    private $purger;
-
-    /** @var UriTagInterface */
-    private $uriTag;
-
     /** @var ResourceStorageSaver */
     private $saver;
 
-    /** @var float */
-    private $knownTagTtl;
-
-    /**
-     * @Shared("pool")
-     * @EtagPool("etagPool")
-     * @KnownTagTtl("knownTagTtl")
-     */
     #[Shared('pool'), EtagPool('etagPool'), KnownTagTtl('knownTagTtl')]
     public function __construct(
-        RepositoryLoggerInterface $logger,
-        PurgerInterface $etagDeleter,
-        UriTagInterface $uriTag,
-        ?CacheItemPoolInterface $pool = null,
-        ?CacheItemPoolInterface $etagPool = null,
-        ?CacheProvider $cache = null,
-        float $knownTagTtl = 0.0
+        private RepositoryLoggerInterface $logger,
+        private PurgerInterface $purger,
+        private UriTagInterface $uriTag,
+        #[Shared] CacheItemPoolInterface|null $pool = null,
+        #[EtagPool] CacheItemPoolInterface|null $etagPool = null,
+        CacheProvider|null $cache = null,
+        #[KnownTagTtl] private float $knownTagTtl = 0.0,
     ) {
-        $this->logger = $logger;
-        $this->purger = $etagDeleter;
-        $this->uriTag = $uriTag;
         $this->saver = new ResourceStorageSaver();
         if ($pool === null && $cache instanceof CacheProvider) {
             $this->injectDoctrineCache($cache);
@@ -87,7 +67,6 @@ final class ResourceStorage implements ResourceStorageInterface
             return;
         }
 
-        $this->knownTagTtl = $knownTagTtl;
         assert($pool instanceof AdapterInterface);
         $etagPool =  $etagPool instanceof AdapterInterface ? $etagPool : $pool;
         $this->roPool = new TagAwareAdapter($pool, $etagPool, $knownTagTtl);
@@ -104,7 +83,7 @@ final class ResourceStorage implements ResourceStorageInterface
     /**
      * {@inheritdoc}
      */
-    public function get(AbstractUri $uri): ?ResourceState
+    public function get(AbstractUri $uri): ResourceState|null
     {
         $item = $this->roPool->getItem($this->getUriKey($uri, self::KEY_RO));
         assert($item instanceof ItemInterface);
@@ -114,7 +93,7 @@ final class ResourceStorage implements ResourceStorageInterface
         return $state;
     }
 
-    public function getDonut(AbstractUri $uri): ?ResourceDonut
+    public function getDonut(AbstractUri $uri): ResourceDonut|null
     {
         $key = $this->getUriKey($uri, self::KEY_DONUT);
         $item = $this->roPool->getItem($key);
@@ -194,14 +173,14 @@ final class ResourceStorage implements ResourceStorageInterface
     /**
      * {@inheritDoc}
      */
-    public function saveDonut(AbstractUri $uri, ResourceDonut $donut, ?int $sMaxAge, array $headerKeys): void
+    public function saveDonut(AbstractUri $uri, ResourceDonut $donut, int|null $sMaxAge, array $headerKeys): void
     {
         $key = $this->getUriKey($uri, self::KEY_DONUT);
         $this->logger->log('save-donut uri:%s s-maxage:%s', $uri, $sMaxAge);
         $this->saver->__invoke($key, $donut, $this->roPool, $headerKeys, $sMaxAge);
     }
 
-    public function saveDonutView(ResourceObject $ro, ?int $ttl): bool
+    public function saveDonutView(ResourceObject $ro, int|null $ttl): bool
     {
         $resourceState = ResourceState::create($ro, [], $ro->view);
         $key = $this->getUriKey($ro->uri, self::KEY_RO);
@@ -211,9 +190,7 @@ final class ResourceStorage implements ResourceStorageInterface
         return $this->saver->__invoke($key, $resourceState, $this->roPool, $tags, $ttl);
     }
 
-    /**
-     * @return list<string>
-     */
+    /** @return list<string> */
     private function getTags(ResourceObject $ro): array
     {
         $etag = $ro->headers['ETag'];
@@ -228,12 +205,7 @@ final class ResourceStorage implements ResourceStorageInterface
         return $uniqueTags;
     }
 
-    /**
-     * @param mixed $body
-     *
-     * @return mixed
-     */
-    private function evaluateBody($body)
+    private function evaluateBody(mixed $body): mixed
     {
         if (! is_array($body)) {
             return $body;
@@ -261,7 +233,6 @@ final class ResourceStorage implements ResourceStorageInterface
     private function getVary(): string
     {
         $xvary = $_SERVER['X_VARY'];
-        assert(is_string($xvary));
         $varys = explode(',', $xvary);
         $varyString = '';
         foreach ($varys as $vary) {
@@ -274,7 +245,7 @@ final class ResourceStorage implements ResourceStorageInterface
         return $varyString;
     }
 
-    public function saveEtag(AbstractUri $uri, string $etag, string $surrogateKeys, ?int $ttl): void
+    public function saveEtag(AbstractUri $uri, string $etag, string $surrogateKeys, int|null $ttl): void
     {
         $tags = $surrogateKeys !== '' ? explode(' ', $surrogateKeys) : [];
         $tags[] = (new UriTag())($uri);

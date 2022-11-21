@@ -11,13 +11,8 @@ use BEAR\Resource\ResourceObject;
 
 class RefreshSrc extends ResourceObject
 {
-    /**
-     * @Refresh(uri="app://self/refresh-dest{?id}")
-     *
-     * @param mixed $id
-     */
     #[Refresh(uri: "app://self/refresh-dest{?id}")]
-    public function onPut($id)
+    public function onPut(mixed $id)
     {
         unset($id);
 

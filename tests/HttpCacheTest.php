@@ -38,9 +38,7 @@ class HttpCacheTest extends TestCase
         return $httpCache;
     }
 
-    /**
-     * @depends testisNotModifiedTrue
-     */
+    /** @depends testisNotModifiedTrue */
     public function testCliHttpCacheTransfer(CliHttpCache $httpCache): void
     {
         $this->expectOutputRegex('/\A304 Not Modified/');
@@ -58,9 +56,7 @@ class HttpCacheTest extends TestCase
         $this->assertSame(304, http_response_code());
     }
 
-    /**
-     * @depends testisNotModifiedTrue
-     */
+    /** @depends testisNotModifiedTrue */
     public function testHeaderSetInCli(): void
     {
         $resource = (new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld')))->getInstance(ResourceInterface::class);

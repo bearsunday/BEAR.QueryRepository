@@ -9,18 +9,16 @@ use BEAR\Resource\ResourceObject;
 
 use function is_int;
 use function sprintf;
-use function strpos;
+use function str_contains;
 
 final class HeaderSetter
 {
-    private EtagSetterInterface $etagSetter;
-
-    public function __construct(EtagSetterInterface $etagSetter)
-    {
-        $this->etagSetter = $etagSetter;
+    public function __construct(
+        private EtagSetterInterface $etagSetter,
+    ) {
     }
 
-    public function __invoke(ResourceObject $ro, ?int $concheControlMaxAge, ?HttpCache $httpCache): void
+    public function __invoke(ResourceObject $ro, int|null $concheControlMaxAge, HttpCache|null $httpCache): void
     {
         ($this->etagSetter)($ro, null, $httpCache);
 
@@ -40,7 +38,7 @@ final class HeaderSetter
             return;
         }
 
-        $isMaxAgeAlreadyDefined = strpos($headers[Header::CACHE_CONTROL], 'max-age') !== false;
+        $isMaxAgeAlreadyDefined = str_contains($headers[Header::CACHE_CONTROL], 'max-age');
         if ($isMaxAgeAlreadyDefined) {
             return;
         }

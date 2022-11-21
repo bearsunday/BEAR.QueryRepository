@@ -22,7 +22,7 @@ class UtiTagTest extends TestCase
             [
                 ['id' => '1', 'name' => 'a'],
                 ['id' => '2', 'name' => 'b'],
-            ]
+            ],
         );
         $this->assertSame('_item_id=1 _item_id=2', $list);
     }

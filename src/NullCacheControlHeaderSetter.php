@@ -8,7 +8,7 @@ use BEAR\Resource\ResourceObject;
 
 final class NullCacheControlHeaderSetter implements CdnCacheControlHeaderSetterInterface
 {
-    public function __invoke(ResourceObject $ro, ?int $sMaxAge): void
+    public function __invoke(ResourceObject $ro, int|null $sMaxAge): void
     {
     }
 }

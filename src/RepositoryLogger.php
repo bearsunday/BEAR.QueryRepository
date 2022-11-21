@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use Stringable;
+
 use function implode;
 use function is_array;
 use function sprintf;
 
 use const PHP_EOL;
 
-final class RepositoryLogger implements RepositoryLoggerInterface
+final class RepositoryLogger implements RepositoryLoggerInterface, Stringable
 {
     /** @var list<string> */
     private array $logs = [];

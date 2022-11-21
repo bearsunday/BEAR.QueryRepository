@@ -17,7 +17,7 @@ interface ResourceStorageInterface
     /**
      * Save Etag
      */
-    public function saveEtag(AbstractUri $uri, string $etag, string $surrogateKeys, ?int $ttl): void;
+    public function saveEtag(AbstractUri $uri, string $etag, string $surrogateKeys, int|null $ttl): void;
 
     /**
      * Delete Etag
@@ -29,7 +29,7 @@ interface ResourceStorageInterface
     /**
      * Return cached resource state
      */
-    public function get(AbstractUri $uri): ?ResourceState;
+    public function get(AbstractUri $uri): ResourceState|null;
 
     /**
      * Save resource cache with value
@@ -48,19 +48,19 @@ interface ResourceStorageInterface
     /**
      * Return cached resource static
      */
-    public function getDonut(AbstractUri $uri): ?ResourceDonut;
+    public function getDonut(AbstractUri $uri): ResourceDonut|null;
 
     /**
      * Save donut-cacheable page
      *
      * @param list<string> $headerKeys
      */
-    public function saveDonut(AbstractUri $uri, ResourceDonut $donut, ?int $sMaxAge, array $headerKeys): void;
+    public function saveDonut(AbstractUri $uri, ResourceDonut $donut, int|null $sMaxAge, array $headerKeys): void;
 
     /**
      * Save donut-cache state
      */
-    public function saveDonutView(ResourceObject $ro, ?int $ttl): bool;
+    public function saveDonutView(ResourceObject $ro, int|null $ttl): bool;
 
     /**
      * Invalidate tags

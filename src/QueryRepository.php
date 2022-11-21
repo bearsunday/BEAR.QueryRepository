@@ -12,7 +12,6 @@ use BEAR\Resource\ResourceObject;
 use Doctrine\Common\Annotations\Reader;
 use ReflectionClass;
 
-use function get_class;
 use function is_array;
 use function sprintf;
 use function strtotime;
@@ -20,24 +19,13 @@ use function time;
 
 final class QueryRepository implements QueryRepositoryInterface
 {
-    private ResourceStorageInterface $storage;
-    private Reader $reader;
-    private Expiry $expiry;
-    private HeaderSetter $headerSetter;
-    private RepositoryLoggerInterface $logger;
-
     public function __construct(
-        RepositoryLoggerInterface $logger,
-        HeaderSetter $headerSetter,
-        ResourceStorageInterface $storage,
-        Reader $reader,
-        Expiry $expiry
+        private RepositoryLoggerInterface $logger,
+        private HeaderSetter $headerSetter,
+        private ResourceStorageInterface $storage,
+        private Reader $reader,
+        private Expiry $expiry,
     ) {
-        $this->headerSetter = $headerSetter;
-        $this->reader = $reader;
-        $this->storage = $storage;
-        $this->expiry = $expiry;
-        $this->logger = $logger;
     }
 
     /**
@@ -68,7 +56,7 @@ final class QueryRepository implements QueryRepositoryInterface
     /**
      * {@inheritdoc}
      */
-    public function get(AbstractUri $uri): ?ResourceState
+    public function get(AbstractUri $uri): ResourceState|null
     {
         $state = $this->storage->get($uri);
 
@@ -91,17 +79,17 @@ final class QueryRepository implements QueryRepositoryInterface
         return $this->storage->deleteEtag($uri);
     }
 
-    private function getHttpCacheAnnotation(ResourceObject $ro): ?HttpCache
+    private function getHttpCacheAnnotation(ResourceObject $ro): HttpCache|null
     {
         return $this->reader->getClassAnnotation(new ReflectionClass($ro), HttpCache::class);
     }
 
-    private function getCacheableAnnotation(ResourceObject $ro): ?Cacheable
+    private function getCacheableAnnotation(ResourceObject $ro): Cacheable|null
     {
         return $this->reader->getClassAnnotation(new ReflectionClass($ro), Cacheable::class);
     }
 
-    private function getExpiryTime(ResourceObject $ro, ?Cacheable $cacheable = null): int
+    private function getExpiryTime(ResourceObject $ro, Cacheable|null $cacheable = null): int
     {
         if ($cacheable === null) {
             return 0;
@@ -117,7 +105,7 @@ final class QueryRepository implements QueryRepositoryInterface
     private function getExpiryAtSec(ResourceObject $ro, Cacheable $cacheable): int
     {
         if (! is_array($ro->body) || ! isset($ro->body[$cacheable->expiryAt])) {
-            $msg = sprintf('%s::%s', get_class($ro), $cacheable->expiryAt);
+            $msg = sprintf('%s::%s', $ro::class, $cacheable->expiryAt);
 
             throw new ExpireAtKeyNotExists($msg);
         }

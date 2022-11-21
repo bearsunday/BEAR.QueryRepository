@@ -16,18 +16,11 @@ use function dirname;
 
 class DonutRepositoryTest extends TestCase
 {
-    /** @var ResourceInterface */
-    private $resource;
-
-    /** @var QueryRepositoryInterface */
-    private $queryRepository;
-
-    /** @var DonutRepositoryInterface  */
-    private $donutRepository;
+    private ResourceInterface $resource;
+    private QueryRepositoryInterface $queryRepository;
+    private DonutRepositoryInterface $donutRepository;
     private Uri $uri;
-
-    /** @var ResourceStorageInterface */
-    private $resourceStorage;
+    private ResourceStorageInterface $resourceStorage;
 
     public function setUp(): void
     {
@@ -66,9 +59,7 @@ class DonutRepositoryTest extends TestCase
         $this->assertInstanceOf(ResourceState::class, $state);
     }
 
-    /**
-     * @depends testCreateDonut
-     */
+    /** @depends testCreateDonut */
     public function testCachePurge(): void
     {
         assert($this->queryRepository->purge($this->uri));
@@ -76,9 +67,7 @@ class DonutRepositoryTest extends TestCase
         $this->assertNull($maybeNullPurged);
     }
 
-    /**
-     * @depends testCreateDonut
-     */
+    /** @depends testCreateDonut */
     public function testCreatedByDonut(): void
     {
         // create donut
