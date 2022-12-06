@@ -52,6 +52,7 @@ final class QueryRepositoryModule extends AbstractModule
         $this->bind(ResourceStorageInterface::class)->to(ResourceStorage::class);
         $this->bind(MatchQueryInterface::class)->to(MatchQuery::class)->in(Scope::SINGLETON);
         $this->bind(UriTag::class)->in(Scope::SINGLETON);
+        $this->bind(RefreshAnnotatedCommand::class);
         // #[Cacheable]
         $this->install(new CacheableModule());
         // #[CacheableResponse]

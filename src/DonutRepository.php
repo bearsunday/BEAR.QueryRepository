@@ -14,13 +14,13 @@ use function explode;
 final class DonutRepository implements DonutRepositoryInterface
 {
     public function __construct(
-        private QueryRepository $queryRepository,
+        private QueryRepositoryInterface $queryRepository,
         private HeaderSetter $headerSetter,
         private ResourceStorageInterface $resourceStorage,
         private ResourceInterface $resource,
         private CdnCacheControlHeaderSetterInterface $cdnCacheControlHeaderSetter,
         private RepositoryLoggerInterface $logger,
-        private DonutRenderer $renderer,
+        private DonutRendererInterface $renderer,
     ) {
     }
 

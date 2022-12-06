@@ -49,6 +49,7 @@ final class DonutCacheModule extends AbstractModule
     private function installAopClassModule(): void
     {
         $this->bind(DonutRepository::class)->in(Scope::SINGLETON);
+        $this->bind(DonutRendererInterface::class)->to(DonutRenderer::class);
         $this->bindPriorityInterceptor(
             $this->matcher->annotatedWith(CacheableResponse::class),
             $this->matcher->startsWith('onGet'),
