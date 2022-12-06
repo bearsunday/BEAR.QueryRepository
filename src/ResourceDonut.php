@@ -51,7 +51,7 @@ final class ResourceDonut
         return $ro;
     }
 
-    public function render(ResourceObject $ro, DonutRenderer $storage): ResourceObject
+    public function render(ResourceObject $ro, DonutRendererInterface $storage): ResourceObject
     {
         $view = $storage->render($this->template);
         $ro->view = $view;
@@ -59,7 +59,7 @@ final class ResourceDonut
         return $ro;
     }
 
-    public static function create(ResourceObject $ro, DonutRenderer $storage, SurrogateKeys $etags, int|null $ttl, bool $isCacheble): self
+    public static function create(ResourceObject $ro, DonutRendererInterface $storage, SurrogateKeys $etags, int|null $ttl, bool $isCacheble): self
     {
         assert(is_iterable($ro->body));
         /** @var mixed $maybeRequest */

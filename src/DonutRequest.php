@@ -13,7 +13,7 @@ final class DonutRequest implements Stringable
 {
     public function __construct(
         private AbstractRequest $request,
-        private DonutRenderer $donutStorage,
+        private DonutRendererInterface $donutStorage,
         private SurrogateKeys $etags,
     ) {
     }
