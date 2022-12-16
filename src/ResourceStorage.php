@@ -261,7 +261,6 @@ final class ResourceStorage implements ResourceStorageInterface
     private function getVary(): string
     {
         $xvary = $_SERVER['X_VARY'];
-        assert(is_string($xvary));
         $varys = explode(',', $xvary);
         $varyString = '';
         foreach ($varys as $vary) {
