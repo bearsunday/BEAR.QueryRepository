@@ -11,7 +11,6 @@ use DateTimeInterface;
 
 use function assert;
 use function crc32;
-use function get_class;
 use function gmdate;
 use function is_array;
 use function serialize;
@@ -57,7 +56,7 @@ final class EtagSetter implements EtagSetterInterface
 
     public function getEtagByEitireView(ResourceObject $ro): string
     {
-        return get_class($ro) . serialize($ro->view);
+        return $ro::class . serialize($ro->view);
     }
 
     /**
@@ -71,7 +70,7 @@ final class EtagSetter implements EtagSetterInterface
     {
         $etag = $httpCache instanceof HttpCache && $httpCache->etag ? $this->getEtagByPartialBody($httpCache, $ro) : $this->getEtagByEitireView($ro);
 
-        return (string) crc32(get_class($ro) . $etag . (string) $ro->uri);
+        return (string) crc32($ro::class . $etag . (string) $ro->uri);
     }
 
     private function setCacheDependency(ResourceObject $ro): void

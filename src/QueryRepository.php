@@ -12,7 +12,6 @@ use BEAR\Resource\ResourceObject;
 use Doctrine\Common\Annotations\Reader;
 use ReflectionClass;
 
-use function get_class;
 use function is_array;
 use function sprintf;
 use function strtotime;
@@ -117,7 +116,7 @@ final class QueryRepository implements QueryRepositoryInterface
     private function getExpiryAtSec(ResourceObject $ro, Cacheable $cacheable): int
     {
         if (! is_array($ro->body) || ! isset($ro->body[$cacheable->expiryAt])) {
-            $msg = sprintf('%s::%s', get_class($ro), $cacheable->expiryAt);
+            $msg = sprintf('%s::%s', $ro::class, $cacheable->expiryAt);
 
             throw new ExpireAtKeyNotExists($msg);
         }

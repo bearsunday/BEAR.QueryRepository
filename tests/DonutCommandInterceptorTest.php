@@ -15,7 +15,6 @@ use function array_key_exists;
 use function array_map;
 use function assert;
 use function dirname;
-use function get_class;
 use function property_exists;
 
 class DonutCommandInterceptorTest extends TestCase
@@ -85,7 +84,7 @@ class DonutCommandInterceptorTest extends TestCase
         $ro = $this->resource->get('page://self/html/blog-posting-cache?id=0');
         assert(property_exists($ro, 'bindings'));
         assert(array_key_exists('onGet', $ro->bindings));
-        $interceptors = array_map(static fn (object $object): string => get_class($object), $ro->bindings['onGet']);
+        $interceptors = array_map(static fn (object $object): string => $object::class, $ro->bindings['onGet']);
         $this->assertContains(DonutCacheInterceptor::class, $interceptors);
         assert(isset($ro->bindings['onGet'][0]));
         assert(isset($ro->bindings['onDelete'][0]));

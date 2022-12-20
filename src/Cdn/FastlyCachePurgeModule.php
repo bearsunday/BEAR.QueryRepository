@@ -14,23 +14,15 @@ use Ray\Di\Scope;
 
 final class FastlyCachePurgeModule extends AbstractModule
 {
-    private string $fastlyApiKey;
-    private string $fastlyServiceId;
-    private bool $enableSoftPurge;
-
     /**
      * @SuppressWarnings("PHPMD.BooleanArgumentFlag")
      */
     public function __construct(
-        string $fastlyApiKey,
-        string $fastlyServiceId,
-        bool $enableSoftPurge = true,
+        private string $fastlyApiKey,
+        private string $fastlyServiceId,
+        private bool $enableSoftPurge = true,
         ?AbstractModule $module = null
     ) {
-        $this->fastlyApiKey = $fastlyApiKey;
-        $this->fastlyServiceId = $fastlyServiceId;
-        $this->enableSoftPurge = $enableSoftPurge;
-
         parent::__construct($module);
     }
 

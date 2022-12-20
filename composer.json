@@ -9,7 +9,7 @@
         }
     ],
     "require": {
-        "php": "^7.4 || ^8.0",
+        "php": "^8.0",
         "bear/resource": "^1.16.1",
         "bear/sunday": "^1.5",
         "doctrine/annotations": "^1.8",

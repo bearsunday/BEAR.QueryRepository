@@ -8,7 +8,6 @@ use BEAR\QueryRepository\Exception\UnmatchedQuery;
 use BEAR\Resource\ResourceObject;
 use ReflectionMethod;
 
-use function get_class;
 use function sprintf;
 
 final class MatchQuery implements MatchQueryInterface
@@ -18,7 +17,7 @@ final class MatchQuery implements MatchQueryInterface
      */
     public function __invoke(ResourceObject $ro): array
     {
-        $refParameters = (new ReflectionMethod(get_class($ro), 'onGet'))->getParameters();
+        $refParameters = (new ReflectionMethod($ro::class, 'onGet'))->getParameters();
         $getQuery = [];
         $query = $ro->uri->query;
         foreach ($refParameters as $parameter) {

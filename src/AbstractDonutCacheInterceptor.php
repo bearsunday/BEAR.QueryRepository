@@ -11,7 +11,6 @@ use Ray\Aop\MethodInvocation;
 use Throwable;
 
 use function assert;
-use function get_class;
 use function sprintf;
 use function trigger_error;
 
@@ -64,6 +63,6 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
      */
     private function triggerWarning(Throwable $e): void
     {
-        trigger_error(sprintf('%s: %s in %s:%s', get_class($e), $e->getMessage(), $e->getFile(), $e->getLine()), E_USER_WARNING);
+        trigger_error(sprintf('%s: %s in %s:%s', $e::class, $e->getMessage(), $e->getFile(), $e->getLine()), E_USER_WARNING);
     }
 }
