@@ -17,21 +17,13 @@ use function uri_template;
 
 final class RefreshAnnotatedCommand implements CommandInterface
 {
-    private QueryRepositoryInterface $repository;
-    private ResourceInterface $resource;
-
     public function __construct(
-        QueryRepositoryInterface $repository,
-        ResourceInterface $resource
+        private QueryRepositoryInterface $repository,
+        private ResourceInterface $resource,
     ) {
-        $this->repository = $repository;
-        $this->resource = $resource;
     }
 
-    /**
-     * @return void
-     */
-    public function command(MethodInvocation $invocation, ResourceObject $ro)
+    public function command(MethodInvocation $invocation, ResourceObject $ro): void
     {
         $method = $invocation->getMethod();
         $annotations = $method->getAnnotations();
@@ -48,10 +40,7 @@ final class RefreshAnnotatedCommand implements CommandInterface
         return uri_template($annotation->uri, $query);
     }
 
-    /**
-     * @return void
-     */
-    private function request(ResourceObject $ro, object $annotation)
+    private function request(ResourceObject $ro, object $annotation): void
     {
         if (! $annotation instanceof AbstractCommand) {
             return;

@@ -21,14 +21,10 @@ use function sprintf;
 
 final class DonutCommandInterceptor implements MethodInterceptor
 {
-    private \BEAR\QueryRepository\DonutRepositoryInterface $repository;
-
-    private \BEAR\QueryRepository\MatchQueryInterface $matchQuery;
-
-    public function __construct(DonutRepositoryInterface $repository, MatchQueryInterface $matchQuery)
-    {
-        $this->repository = $repository;
-        $this->matchQuery = $matchQuery;
+    public function __construct(
+        private DonutRepositoryInterface $repository,
+        private MatchQueryInterface $matchQuery
+    ){
     }
 
     public function invoke(MethodInvocation $invocation): ResourceObject

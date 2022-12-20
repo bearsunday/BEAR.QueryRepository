@@ -20,27 +20,15 @@ final class ResourceDonut
 {
     public const FOMRAT = '[le:%s]';
 
-    private string $template;
-
-    /**
-     * @var ?int
-     * @readonly
-     */
-    public $ttl;
-
-    /**
-     * @var bool
-     * @readonly
-     */
-    public $isCacheble;
-
     private const URI_REGEX = '/\[le:(.+)]/';
 
-    public function __construct(string $template, ?int $ttl, bool $isCacheble)
-    {
-        $this->template = $template;
-        $this->ttl = $ttl;
-        $this->isCacheble = $isCacheble;
+    public function __construct(
+        private string $template,
+        /** @readonly */
+        public int|null $ttl,
+        /** @readonly */
+        public bool $isCacheble,
+    ) {
     }
 
     public function refresh(ResourceInterface $resource, ResourceObject $ro): ResourceObject
@@ -63,7 +51,7 @@ final class ResourceDonut
         return $ro;
     }
 
-    public function render(ResourceObject $ro, DonutRenderer $storage): ResourceObject
+    public function render(ResourceObject $ro, DonutRendererInterface $storage): ResourceObject
     {
         $view = $storage->render($this->template);
         $ro->view = $view;
@@ -71,7 +59,7 @@ final class ResourceDonut
         return $ro;
     }
 
-    public static function create(ResourceObject $ro, DonutRenderer $storage, SurrogateKeys $etags, ?int $ttl, bool $isCacheble): self
+    public static function create(ResourceObject $ro, DonutRendererInterface $storage, SurrogateKeys $etags, int|null $ttl, bool $isCacheble): self
     {
         assert(is_iterable($ro->body));
         /** @var mixed $maybeRequest */

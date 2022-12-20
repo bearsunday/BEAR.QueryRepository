@@ -7,7 +7,7 @@ namespace BEAR\QueryRepository;
 use function sprintf;
 use function str_replace;
 
-final class DonutRenderer
+final class DonutRenderer implements DonutRendererInterface
 {
     /** @var list<string> */
     private array $searches = [];

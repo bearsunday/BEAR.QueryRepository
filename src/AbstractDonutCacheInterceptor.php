@@ -20,11 +20,9 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
 {
     protected const IS_ENTIRE_CONTENT_CACHEABLE = false;
 
-    private DonutRepositoryInterface $donutRepository;
-
-    public function __construct(DonutRepositoryInterface $donutRepository)
-    {
-        $this->donutRepository = $donutRepository;
+    public function __construct(
+        private DonutRepositoryInterface $donutRepository,
+    ) {
     }
 
     /**
@@ -53,14 +51,12 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
             return $ro;
         }
 
-        return static::IS_ENTIRE_CONTENT_CACHEABLE ?
+        return static::IS_ENTIRE_CONTENT_CACHEABLE ? // phpcs:ignore - not "self"
             $this->donutRepository->putStatic($ro, null, null) :
             $this->donutRepository->putDonut($ro, null);
     }
 
-    /**
-     * @codeCoverageIgnore
-     */
+    /** @codeCoverageIgnore */
     private function triggerWarning(Throwable $e): void
     {
         trigger_error(sprintf('%s: %s in %s:%s', $e::class, $e->getMessage(), $e->getFile(), $e->getLine()), E_USER_WARNING);

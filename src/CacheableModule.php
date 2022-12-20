@@ -41,7 +41,7 @@ final class CacheableModule extends AbstractModule
         $this->bindPriorityInterceptor(
             $this->matcher->annotatedWith(Cacheable::class),
             $this->matcher->startsWith('onGet'),
-            [CacheInterceptor::class]
+            [CacheInterceptor::class],
         );
         $this->bindInterceptor(
             $this->matcher->annotatedWith(Cacheable::class),
@@ -49,26 +49,26 @@ final class CacheableModule extends AbstractModule
                 $this->matcher->startsWith('onPut'),
                 $this->matcher->logicalOr(
                     $this->matcher->startsWith('onPatch'),
-                    $this->matcher->startsWith('onDelete')
-                )
+                    $this->matcher->startsWith('onDelete'),
+                ),
             ),
-            [CommandInterceptor::class]
+            [CommandInterceptor::class],
         );
         $this->bindInterceptor(
             $this->matcher->logicalNot(
-                $this->matcher->annotatedWith(Cacheable::class)
+                $this->matcher->annotatedWith(Cacheable::class),
             ),
             $this->matcher->logicalOr(
                 $this->matcher->annotatedWith(Purge::class),
-                $this->matcher->annotatedWith(Refresh::class)
+                $this->matcher->annotatedWith(Refresh::class),
             ),
-            [RefreshInterceptor::class]
+            [RefreshInterceptor::class],
         );
 
         $this->bindInterceptor(
             $this->matcher->annotatedWith(AbstractCacheControl::class),
             $this->matcher->startsWith('onGet'),
-            [HttpCacheInterceptor::class]
+            [HttpCacheInterceptor::class],
         );
     }
 }

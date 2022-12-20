@@ -15,7 +15,7 @@ final class AkamaiCacheControlHeaderSetter implements CdnCacheControlHeaderSette
     public const CDN_CACHE_CONTROL_HEADER = 'Akamai-Cache-Control';
     private const PURGE_KEYS = 'Edge-Cache-Tag';
 
-    public function __invoke(ResourceObject $ro, ?int $sMaxAge): void
+    public function __invoke(ResourceObject $ro, int|null $sMaxAge): void
     {
         $sMaxAge ??= 31_536_000;
         if (isset($ro->headers[Header::SURROGATE_KEY])) {

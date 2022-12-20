@@ -42,9 +42,7 @@ class DonutRequestTest extends TestCase
         return $storage;
     }
 
-    /**
-     * @depends testToString
-     */
+    /** @depends testToString */
     public function testRender(DonutRenderer $storage): void
     {
         $view = $storage->render('cmt=[le:page://self/html/comment]');

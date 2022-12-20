@@ -44,12 +44,8 @@ class Entry extends ResourceObject
     /**
      * @Purge(uri="app://self/user/friend?user_id={id}")
      * @Refresh(uri="app://self/user/profile?user_id={id}")
-     *
-     * @param mixed $id
-     * @param mixed $name
-     * @param mixed $age
      */
-    public function onPut($id, $name, $age)
+    public function onPut(mixed $id, mixed $name, mixed $age)
     {
         if (!is_numeric($age)) {
             $this->code = Code::BAD_REQUEST;

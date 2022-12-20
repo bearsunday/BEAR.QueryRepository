@@ -15,11 +15,8 @@ use function dirname;
 
 class DonutCacheInterceptorTest extends TestCase
 {
-    /** @var ResourceInterface */
-    private $resource;
-
-    /** @var RepositoryLoggerInterface */
-    private $logger;
+    private ResourceInterface $resource;
+    private RepositoryLoggerInterface $logger;
 
     protected function setUp(): void
     {
@@ -56,9 +53,7 @@ class DonutCacheInterceptorTest extends TestCase
         return $blogPosting->headers[Header::SURROGATE_KEY];
     }
 
-    /**
-     * @depends testInitialRequest
-     */
+    /** @depends testInitialRequest */
     public function testCached(): void
     {
         // test cached

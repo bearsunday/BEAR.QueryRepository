@@ -31,10 +31,10 @@ class ResourceRepositoryTest extends TestCase
                 new RepositoryLogger(),
                 new NullPurger(),
                 new UriTag(),
-                new FilesystemAdapter('', 0, $_ENV['TMP_DIR'])
+                new FilesystemAdapter('', 0, $_ENV['TMP_DIR']),
             ),
             new AnnotationReader(),
-            new Expiry(0, 0, 0)
+            new Expiry(0, 0, 0),
         );
         $this->ro = new Index();
         $this->ro->uri = new Uri('page://self/user');
@@ -109,10 +109,10 @@ class ResourceRepositoryTest extends TestCase
                 new UriTag(),
                 null,
                 null,
-                $doctrineCache
+                $doctrineCache,
             ),
             new AnnotationReader(),
-            new Expiry(0, 0, 0)
+            new Expiry(0, 0, 0),
         );
         $this->assertInstanceOf(Repository::class, $repository);
     }

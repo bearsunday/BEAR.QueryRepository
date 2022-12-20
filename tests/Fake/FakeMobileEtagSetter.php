@@ -13,11 +13,9 @@ class FakeMobileEtagSetter implements EtagSetterInterface
 {
     public static $device;
 
-    private \BEAR\QueryRepository\MobileEtagSetter $mobileEtagSetter;
-
-    public function __construct(MobileEtagSetter $mobileEtagSetter)
-    {
-        $this->mobileEtagSetter = $mobileEtagSetter;
+    public function __construct(
+        private MobileEtagSetter $mobileEtagSetter
+    ){
     }
 
     public function __invoke(ResourceObject $ro, int $time = null, HttpCache $httpCache = null)

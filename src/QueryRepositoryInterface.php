@@ -9,15 +9,11 @@ use BEAR\Resource\ResourceObject;
 
 interface QueryRepositoryInterface
 {
-    /**
-     * @return bool Is successfully stored
-     */
+    /** @return bool Is successfully stored */
     public function put(ResourceObject $ro);
 
-    public function get(AbstractUri $uri): ?ResourceState;
+    public function get(AbstractUri $uri): ResourceState|null;
 
-    /**
-     * @return bool Is successfully deleted
-     */
+    /** @return bool Is successfully deleted */
     public function purge(AbstractUri $uri);
 }

@@ -49,15 +49,16 @@ final class DonutCacheModule extends AbstractModule
     private function installAopClassModule(): void
     {
         $this->bind(DonutRepository::class)->in(Scope::SINGLETON);
+        $this->bind(DonutRendererInterface::class)->to(DonutRenderer::class);
         $this->bindPriorityInterceptor(
             $this->matcher->annotatedWith(CacheableResponse::class),
             $this->matcher->startsWith('onGet'),
-            [DonutCacheableResponseInterceptor::class]
+            [DonutCacheableResponseInterceptor::class],
         );
         $this->bindPriorityInterceptor(
             $this->matcher->annotatedWith(DonutCache::class),
             $this->matcher->startsWith('onGet'),
-            [DonutCacheInterceptor::class]
+            [DonutCacheInterceptor::class],
         );
 
         $this->bindInterceptor(
@@ -66,10 +67,10 @@ final class DonutCacheModule extends AbstractModule
                 $this->matcher->startsWith('onPut'),
                 $this->matcher->logicalOr(
                     $this->matcher->startsWith('onPatch'),
-                    $this->matcher->startsWith('onDelete')
-                )
+                    $this->matcher->startsWith('onDelete'),
+                ),
             ),
-            [DonutCommandInterceptor::class]
+            [DonutCommandInterceptor::class],
         );
     }
 
@@ -78,12 +79,12 @@ final class DonutCacheModule extends AbstractModule
         $this->bindInterceptor(
             $this->matcher->any(),
             $this->matcher->annotatedWith(CacheableResponse::class),
-            [DonutCacheInterceptor::class]
+            [DonutCacheInterceptor::class],
         );
         $this->bindInterceptor(
             $this->matcher->any(),
             $this->matcher->annotatedWith(RefreshCache::class),
-            [DonutCacheInterceptor::class]
+            [DonutCacheInterceptor::class],
         );
     }
 }

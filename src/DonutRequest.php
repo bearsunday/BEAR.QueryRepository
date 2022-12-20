@@ -5,20 +5,17 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\Resource\AbstractRequest;
+use Stringable;
 
 use function sprintf;
 
-final class DonutRequest
+final class DonutRequest implements Stringable
 {
-    private AbstractRequest $request;
-    private DonutRenderer $donutStorage;
-    private SurrogateKeys $etags;
-
-    public function __construct(AbstractRequest $request, DonutRenderer $donutStorage, SurrogateKeys $etags)
-    {
-        $this->request = $request;
-        $this->donutStorage = $donutStorage;
-        $this->etags = $etags;
+    public function __construct(
+        private AbstractRequest $request,
+        private DonutRendererInterface $donutStorage,
+        private SurrogateKeys $etags,
+    ) {
     }
 
     public function __toString(): string

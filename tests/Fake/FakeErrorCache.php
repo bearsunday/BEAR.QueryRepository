@@ -16,7 +16,7 @@ class FakeErrorCache implements AdapterInterface
         throw new RuntimeException();
     }
 
-    public function getItems(array $keys = array())
+    public function getItems(array $keys = [])
     {
     }
 

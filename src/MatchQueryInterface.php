@@ -8,8 +8,6 @@ use BEAR\Resource\ResourceObject;
 
 interface MatchQueryInterface
 {
-    /**
-     * @return array<string, mixed>
-     */
+    /** @return array<string, mixed> */
     public function __invoke(ResourceObject $ro): array;
 }
