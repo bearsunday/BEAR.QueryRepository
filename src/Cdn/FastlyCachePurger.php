@@ -13,22 +13,15 @@ use function explode;
 
 final class FastlyCachePurger implements PurgerInterface
 {
-    private PurgeApi $purgeApi;
-    private string $fastlyServiceId;
-    private bool $enableSoftPurge;
-
     /**
      * @SuppressWarnings("PHPMD.BooleanArgumentFlag")
      * @Named("fastlyServiceId=fastlyServiceId,enableSoftPurge=fastlyEnableSofrPurge")
      */
     public function __construct(
-        PurgeApi $purgeApi,
-        #[Named('fastlyServiceId')] string $fastlyServiceId,
-        #[Named('fastlyEnableSoftPurge')] bool $enableSoftPurge
+        private PurgeApi $purgeApi,
+        #[Named('fastlyServiceId')] private string $fastlyServiceId,
+        #[Named('fastlyEnableSoftPurge')] private bool $enableSoftPurge,
     ) {
-        $this->purgeApi = $purgeApi;
-        $this->fastlyServiceId = $fastlyServiceId;
-        $this->enableSoftPurge = $enableSoftPurge;
     }
 
     /**

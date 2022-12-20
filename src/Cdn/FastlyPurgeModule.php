@@ -14,25 +14,21 @@ use Ray\Di\Scope;
 
 final class FastlyPurgeModule extends AbstractModule
 {
-    /**
-     * @SuppressWarnings("PHPMD.BooleanArgumentFlag")
-     */
+    /** @SuppressWarnings("PHPMD.BooleanArgumentFlag") */
     public function __construct(
         private string $fastlyApiKey,
         private string $fastlyServiceId,
         private bool $enableSoftPurge = true,
-        ?AbstractModule $module = null
+        AbstractModule|null $module = null,
     ) {
         parent::__construct($module);
     }
 
-    /**
-     * {@inheritdoc}
-     */
+    /** {@inheritdoc} */
     protected function configure(): void
     {
         $this->bind(Configuration::class)->annotatedWith(Configuration::class)->toInstance(
-            Configuration::getDefaultConfiguration()->setApiToken($this->fastlyApiKey)
+            Configuration::getDefaultConfiguration()->setApiToken($this->fastlyApiKey),
         );
         $this->bind(PurgeApi::class)->toConstructor(PurgeApi::class, [
             'config' => Configuration::class,
