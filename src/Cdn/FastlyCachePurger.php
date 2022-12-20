@@ -19,12 +19,12 @@ final class FastlyCachePurger implements PurgerInterface
 
     /**
      * @SuppressWarnings("PHPMD.BooleanArgumentFlag")
-     * @Named("fastlyServiceId=FASTLY_SERVICE_ID,enableSoftPurge=FASTLY_ENABLE_SOFT_PURGE")
+     * @Named("fastlyServiceId=fastlyServiceId,enableSoftPurge=fastlyEnableSofrPurge")
      */
     public function __construct(
         PurgeApi $purgeApi,
-        #[Named('FASTLY_SERVICE_ID')] string $fastlyServiceId,
-        #[Named('FASTLY_ENABLE_SOFT_PURGE')] bool $enableSoftPurge
+        #[Named('fastlyServiceId')] string $fastlyServiceId,
+        #[Named('fastlyEnableSoftPurge')] bool $enableSoftPurge
     ) {
         $this->purgeApi = $purgeApi;
         $this->fastlyServiceId = $fastlyServiceId;
@@ -33,19 +33,15 @@ final class FastlyCachePurger implements PurgerInterface
 
     /**
      * @throws ApiException
+     *
+     * @see https://developer.fastly.com/reference/api/purging/
      */
     public function __invoke(string $tag): void
     {
-        if (empty($this->fastlyServiceId) || empty($tag)) {
-            return;
-        }
-
         $this->purgeApi->bulkPurgeTag([
             'fastly_soft_purge' => (int) $this->enableSoftPurge,
             'service_id' => $this->fastlyServiceId,
-            'purge_response' => [
-                'surrogate_keys' => explode(' ', $tag),
-            ],
+            'purge_response' => ['surrogate_keys' => explode(' ', $tag)],
         ]);
     }
 }
