@@ -12,7 +12,7 @@ use GuzzleHttp\ClientInterface;
 use Ray\Di\AbstractModule;
 use Ray\Di\Scope;
 
-final class FastlyCachePurgeModule extends AbstractModule
+final class FastlyPurgeModule extends AbstractModule
 {
     /**
      * @SuppressWarnings("PHPMD.BooleanArgumentFlag")

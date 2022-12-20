@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\QueryRepository\Cdn\FastlyCachePurgeModule;
 use BEAR\QueryRepository\Cdn\FastlyCachePurger;
+use BEAR\QueryRepository\Cdn\FastlyPurgeModule;
 use BEAR\Resource\ResourceInterface;
 use Fastly\Api\PurgeApi;
 use Madapaja\TwigModule\TwigModule;
@@ -20,7 +20,7 @@ class FastlyCachePurgeModuleTest extends TestCase
 {
     public function testModule(): void
     {
-        $module = new FastlyCachePurgeModule('apiKey', 'serviceId', true);
+        $module = new FastlyPurgeModule('apiKey', 'serviceId', true);
         $injector = new Injector($module, $_ENV['TMP_DIR']);
 
         $this->assertInstanceOf(PurgeApi::class, $injector->getInstance(PurgeApi::class));
@@ -30,7 +30,7 @@ class FastlyCachePurgeModuleTest extends TestCase
     public function testPurge(): void
     {
         $module = $this->getModule();
-        $module->override(new FakeFastlyCachePurgeModule('apiKey', 'serviceId', true));
+        $module->override(new FakeFastlyPurgeModule('apiKey', 'serviceId', true));
         $injector =  new Injector($module, $_ENV['TMP_DIR']);
         $resource = $injector->getInstance(ResourceInterface::class);
         $resource->get('page://self/html/blog-posting');

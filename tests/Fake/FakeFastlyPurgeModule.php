@@ -10,7 +10,7 @@ use GuzzleHttp\ClientInterface;
 use Ray\Di\AbstractModule;
 use Ray\Di\Scope;
 
-final class FakeFastlyCachePurgeModule extends AbstractModule
+final class FakeFastlyPurgeModule extends AbstractModule
 {
     private string $fastlyApiKey;
     private string $fastlyServiceId;
