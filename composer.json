@@ -30,7 +30,7 @@
         "phpmd/phpmd": "^2.13",
         "phpmetrics/phpmetrics": "^2.8",
         "phpstan/phpstan": "^1.9",
-        "phpunit/phpunit": "^9.5",
+        "phpunit/phpunit": "^9.5.28",
         "psalm/plugin-phpunit": "^0.18.4",
         "psr/log": "^1.1",
         "ray/object-visual-grapher": "^1.0",
