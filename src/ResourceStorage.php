@@ -52,10 +52,6 @@ final class ResourceStorage implements ResourceStorageInterface
     /** @var ResourceStorageSaver */
     private $saver;
 
-    #[Shared('pool')]
-    #[EtagPool('etagPool')]
-
-    #[KnownTagTtl('knownTagTtl')]
     public function __construct(
         private RepositoryLoggerInterface $logger,
         private PurgerInterface $purger,
