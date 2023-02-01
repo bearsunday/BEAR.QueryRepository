@@ -19,7 +19,7 @@
         "ray/aop": "^2.10",
         "ray/di": "^2.13.1",
         "ray/psr-cache-module": "^1.1.2",
-        "symfony/cache": "^v5.3",
+        "symfony/cache": "^5.3 || ^6.0",
         "symfony/cache-contracts": "^2.4"
     },
     "require-dev": {
