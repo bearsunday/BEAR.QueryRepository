@@ -20,7 +20,7 @@
         "ray/di": "^2.13.1",
         "ray/psr-cache-module": "^1.1.2",
         "symfony/cache": "^5.3 || ^6.0",
-        "symfony/cache-contracts": "^2.4"
+        "symfony/cache-contracts": "^2.4 || ^3.0"
     },
     "require-dev": {
         "ext-redis": "*",
