@@ -47,5 +47,6 @@ class FakeErrorCache implements AdapterInterface
 
     public function commit(): bool
     {
+        return false;
     }
 }
