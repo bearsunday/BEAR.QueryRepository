@@ -24,7 +24,7 @@
     },
     "require-dev": {
         "ext-redis": "*",
-        "doctrine/coding-standard": "^10.0",
+        "doctrine/coding-standard": "^11.1",
         "koriym/attributes": "^1.0.1",
         "madapaja/twig-module": "^2.3",
         "phpmd/phpmd": "^2.9",
