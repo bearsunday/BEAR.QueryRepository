@@ -24,6 +24,7 @@ class DonutCacheTest extends TestCase
         $module->override(new TwigModule([$path]));
         $injector = new Injector($module, $_ENV['TMP_DIR']);
         $this->resource = $injector->getInstance(ResourceInterface::class);
+
         parent::setUp();
     }
 

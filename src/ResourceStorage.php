@@ -52,15 +52,21 @@ final class ResourceStorage implements ResourceStorageInterface
     /** @var ResourceStorageSaver */
     private $saver;
 
-    #[Shared('pool'), EtagPool('etagPool'), KnownTagTtl('knownTagTtl')]
+    #[Shared('pool')]
+    #[EtagPool('etagPool')]
+
+    #[KnownTagTtl('knownTagTtl')]
     public function __construct(
         private RepositoryLoggerInterface $logger,
         private PurgerInterface $purger,
         private UriTagInterface $uriTag,
-        #[Shared] CacheItemPoolInterface|null $pool = null,
-        #[EtagPool] CacheItemPoolInterface|null $etagPool = null,
+        #[Shared]
+        CacheItemPoolInterface|null $pool = null,
+        #[EtagPool]
+        CacheItemPoolInterface|null $etagPool = null,
         CacheProvider|null $cache = null,
-        #[KnownTagTtl] private float $knownTagTtl = 0.0,
+        #[KnownTagTtl]
+        private float $knownTagTtl = 0.0,
     ) {
         $this->saver = new ResourceStorageSaver();
         if ($pool === null && $cache instanceof CacheProvider) {

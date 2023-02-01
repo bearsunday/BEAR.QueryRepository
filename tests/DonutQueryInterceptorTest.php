@@ -32,6 +32,7 @@ class DonutQueryInterceptorTest extends TestCase
 
         $this->resource = $injector->getInstance(ResourceInterface::class);
         $this->logger = $injector->getInstance(RepositoryLoggerInterface::class);
+
         parent::setUp();
     }
 

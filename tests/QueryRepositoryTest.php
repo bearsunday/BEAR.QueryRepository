@@ -43,6 +43,7 @@ class QueryRepositoryTest extends TestCase
         $this->resource = $injector->getInstance(ResourceInterface::class);
         $this->httpCache = $injector->getInstance(HttpCacheInterface::class);
         $this->logger = $injector->getInstance(RepositoryLoggerInterface::class);
+
         parent::setUp();
     }
 

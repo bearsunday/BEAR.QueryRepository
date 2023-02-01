@@ -34,6 +34,7 @@ class DonutQueryInterceptorPurgeTest extends TestCase
         $this->resource = $injector->getInstance(ResourceInterface::class);
         $this->repository = $injector->getInstance(QueryRepository::class);
         $this->logger = $injector->getInstance(RepositoryLoggerInterface::class);
+
         parent::setUp();
     }
 
