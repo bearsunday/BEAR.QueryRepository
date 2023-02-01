@@ -5,46 +5,47 @@ namespace BEAR\QueryRepository;
 use Psr\Cache\CacheItemInterface;
 use RuntimeException;
 use Symfony\Component\Cache\Adapter\AdapterInterface;
+use Symfony\Component\Cache\CacheItem;
 
 /**
  * Error cache driver
  */
 class FakeErrorCache implements AdapterInterface
 {
-    public function getItem($key)
+    public function getItem($key): CacheItem
     {
         throw new RuntimeException();
     }
 
-    public function getItems(array $keys = [])
+    public function getItems(array $keys = []): iterable
     {
     }
 
-    public function hasItem($key)
+    public function hasItem($key): bool
     {
     }
 
-    public function clear(string $prefix = '')
+    public function clear(string $prefix = ''): bool
     {
     }
 
-    public function deleteItem($key)
+    public function deleteItem($key): bool
     {
     }
 
-    public function deleteItems(array $keys)
+    public function deleteItems(array $keys): bool
     {
     }
 
-    public function save(CacheItemInterface $item)
+    public function save(CacheItemInterface $item): bool
     {
     }
 
-    public function saveDeferred(CacheItemInterface $item)
+    public function saveDeferred(CacheItemInterface $item): bool
     {
     }
 
-    public function commit()
+    public function commit(): bool
     {
     }
 }
