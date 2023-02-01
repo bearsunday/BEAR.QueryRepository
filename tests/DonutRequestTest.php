@@ -27,7 +27,7 @@ class DonutRequestTest extends TestCase
         $injector = new Injector($module, $_ENV['TMP_DIR']);
         $this->resource = $injector->getInstance(ResourceInterface::class);
         /** @var AbstractRequest $request */
-        $request = $this->resource->get->uri('page://self/html/comment');
+        $request = $this->resource->get->uri('page://self/html/comment'); // @phpstan-ignore-line
         $this->request = $request;
 
         parent::setUp();
