@@ -29,6 +29,7 @@ class BehaviorTest extends TestCase
         $injector = new Injector(ModuleFactory::getInstance($namespace), $_ENV['TMP_DIR']);
         $this->resource = $injector->getInstance(ResourceInterface::class);
         $this->httpCache = $injector->getInstance(HttpCacheInterface::class);
+
         parent::setUp();
     }
 

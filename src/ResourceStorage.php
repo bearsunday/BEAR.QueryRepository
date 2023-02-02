@@ -10,11 +10,13 @@ use BEAR\Resource\AbstractUri;
 use BEAR\Resource\RequestInterface;
 use BEAR\Resource\ResourceObject;
 use Doctrine\Common\Cache\CacheProvider;
+use Doctrine\Common\Cache\Psr6\CacheAdapter;
 use Psr\Cache\CacheItemPoolInterface;
 use Ray\PsrCacheModule\Annotation\Shared;
 use Symfony\Component\Cache\Adapter\AdapterInterface;
-use Symfony\Component\Cache\Adapter\DoctrineAdapter;
+use Symfony\Component\Cache\Adapter\Psr16Adapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapter;
+use Symfony\Component\Cache\Psr16Cache;
 use Symfony\Contracts\Cache\ItemInterface;
 
 use function array_merge;
@@ -50,15 +52,17 @@ final class ResourceStorage implements ResourceStorageInterface
     /** @var ResourceStorageSaver */
     private $saver;
 
-    #[Shared('pool'), EtagPool('etagPool'), KnownTagTtl('knownTagTtl')]
     public function __construct(
         private RepositoryLoggerInterface $logger,
         private PurgerInterface $purger,
         private UriTagInterface $uriTag,
-        #[Shared] CacheItemPoolInterface|null $pool = null,
-        #[EtagPool] CacheItemPoolInterface|null $etagPool = null,
+        #[Shared]
+        CacheItemPoolInterface|null $pool = null,
+        #[EtagPool]
+        CacheItemPoolInterface|null $etagPool = null,
         CacheProvider|null $cache = null,
-        #[KnownTagTtl] private float $knownTagTtl = 0.0,
+        #[KnownTagTtl]
+        private float $knownTagTtl = 0.0,
     ) {
         $this->saver = new ResourceStorageSaver();
         if ($pool === null && $cache instanceof CacheProvider) {
@@ -75,8 +79,9 @@ final class ResourceStorage implements ResourceStorageInterface
 
     private function injectDoctrineCache(CacheProvider $cache): void
     {
-        /** @psalm-suppress DeprecatedClass */
-        $this->roPool = new TagAwareAdapter(new DoctrineAdapter($cache));
+        $psr16Cache = new Psr16Cache(CacheAdapter::wrap($cache));
+
+        $this->roPool = new TagAwareAdapter(new Psr16Adapter($psr16Cache));
         $this->etagPool = $this->roPool;
     }
 

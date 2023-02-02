@@ -25,6 +25,7 @@ class CacheDependencyTest extends TestCase
         $this->repository = $injector->getInstance(QueryRepositoryInterface::class);
         $this->resource = $injector->getInstance(ResourceInterface::class);
         $this->storage = $injector->getInstance(ResourceStorageInterface::class);
+
         parent::setUp();
     }
 

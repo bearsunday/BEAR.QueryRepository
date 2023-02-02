@@ -29,6 +29,7 @@ class DonutRequestTest extends TestCase
         /** @var AbstractRequest $request */
         $request = $this->resource->get->uri('page://self/html/comment');
         $this->request = $request;
+
         parent::setUp();
     }
 

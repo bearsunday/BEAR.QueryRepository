@@ -29,6 +29,7 @@ class SurrogateKeysTest extends TestCase
         }
 
         $this->resource = $injector->getInstance(ResourceInterface::class);
+
         parent::setUp();
     }
 
