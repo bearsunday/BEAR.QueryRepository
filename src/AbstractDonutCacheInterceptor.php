@@ -43,7 +43,7 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
             // when cache server is down
             $this->triggerWarning($e);
 
-            return $invocation->proceed(); // @codeCoverageIgnoreStartEnd
+            return $invocation->proceed(); // @codeCoverageIgnoreEnd
         }
 
         /** @var ResourceObject $ro */
