@@ -43,8 +43,8 @@
     },
     "autoload": {
         "psr-4": {
-            "BEAR\\QueryRepository\\": ["src/", "src-deprecated/", "src-annotation-deprecated"],
-            "BEAR\\RepositoryModule\\Annotation\\": "src-annotation/"
+            "BEAR\\QueryRepository\\": ["src/", "src-deprecated/"],
+            "BEAR\\RepositoryModule\\Annotation\\": ["src-annotation/", "src-annotation-deprecated"]
         }
     },
     "autoload-dev": {
