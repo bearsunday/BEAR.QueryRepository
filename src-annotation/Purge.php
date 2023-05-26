@@ -12,7 +12,7 @@ use Attribute;
  *
  * @see RefreshInterceptor
  */
-#[Attribute(Attribute::TARGET_METHOD)]
+#[Attribute(Attribute::TARGET_METHOD | Attribute::IS_REPEATABLE)]
 final class Purge extends AbstractCommand
 {
 }
