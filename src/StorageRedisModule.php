@@ -8,8 +8,6 @@ use BEAR\RepositoryModule\Annotation\EtagPool;
 use Psr\Cache\CacheItemPoolInterface;
 use Ray\Di\AbstractModule;
 use Ray\PsrCacheModule\Annotation\CacheNamespace;
-use Ray\PsrCacheModule\Annotation\RedisInstance;
-use Ray\PsrCacheModule\Annotation\Shared;
 use Ray\PsrCacheModule\Psr6RedisModule;
 use Ray\PsrCacheModule\RedisAdapter;
 
