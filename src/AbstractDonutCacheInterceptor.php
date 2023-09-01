@@ -18,6 +18,8 @@ use const E_USER_WARNING;
 
 abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
 {
+    // @phpcs:ignore SlevomatCodingStandard.TypeHints.UselessConstantTypeHint.UselessDocComment
+    /** @var bool */
     protected const IS_ENTIRE_CONTENT_CACHEABLE = false;
 
     public function __construct(
@@ -41,7 +43,7 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
             // when cache server is down
             $this->triggerWarning($e);
 
-            return $invocation->proceed(); // @codeCoverageIgnoreStartEnd
+            return $invocation->proceed(); // @codeCoverageIgnoreEnd
         }
 
         /** @var ResourceObject $ro */

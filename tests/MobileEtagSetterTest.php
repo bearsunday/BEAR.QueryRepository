@@ -23,6 +23,7 @@ class MobileEtagSetterTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
         $this->obj = new User();
         $this->etagSetter = new FakeMobileEtagSetter(new MobileEtagSetter());
         $this->time = time();

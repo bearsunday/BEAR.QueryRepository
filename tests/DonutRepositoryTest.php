@@ -36,6 +36,7 @@ class DonutRepositoryTest extends TestCase
         $this->resourceStorage = $injector->getInstance(ResourceStorageInterface::class);
         $uri = 'page://self/html/blog-posting';
         $this->uri = new Uri($uri);
+
         parent::setUp();
     }
 

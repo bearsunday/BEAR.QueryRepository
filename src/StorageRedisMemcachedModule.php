@@ -32,6 +32,7 @@ final class StorageRedisMemcachedModule extends AbstractModule
         AbstractModule|null $module = null,
     ) {
         $this->memcacheServer = array_map(static fn ($memcacheServer) => explode(':', $memcacheServer), explode(',', $memcacheServer));
+
         parent::__construct($module);
     }
 
