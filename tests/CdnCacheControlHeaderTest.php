@@ -40,7 +40,8 @@ class CdnCacheControlHeaderTest extends TestCase
     public function testFastlyModule(): void
     {
         $module = $this->getModule();
-        $module->override(new FastlyModule());
+        $module->override(new FastlyModule('apiKey', 'serviceId'));
+        $module->override(new FakeFastlyPurgeModule());
         $injector =  new Injector($module, $_ENV['TMP_DIR']);
         $resource = $injector->getInstance(ResourceInterface::class);
         $ro = $resource->get('page://self/html/blog-posting');
