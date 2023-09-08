@@ -10,11 +10,11 @@
     ],
     "require": {
         "php": "^8.0",
+        "bear/fastly-module": "dev-remove-bear-query-repository as 0.1.1",
         "bear/resource": "^1.16.1",
         "bear/sunday": "^1.5",
         "doctrine/annotations": "^1.8",
         "doctrine/cache": "^1.12 || ^2.0",
-        "fastly/fastly": "^1.0",
         "guzzlehttp/guzzle": "^7.5",
         "mobiledetect/mobiledetectlib": "^2.8",
         "psr/cache": "^1.0 || ^2.0 || ^3.0",

@@ -12,39 +12,19 @@ use Ray\Di\Scope;
 
 final class FakeFastlyPurgeModule extends AbstractModule
 {
-    private string $fastlyApiKey;
-    private string $fastlyServiceId;
-    private bool $enableSoftPurge;
-
-    /**
-     * @SuppressWarnings("PHPMD.BooleanArgumentFlag")
-     */
-    public function __construct(
-        string $fastlyApiKey,
-        string $fastlyServiceId,
-        bool $enableSoftPurge = true,
-        ?AbstractModule $module = null
-    ) {
-        $this->fastlyApiKey = $fastlyApiKey;
-        $this->fastlyServiceId = $fastlyServiceId;
-        $this->enableSoftPurge = $enableSoftPurge;
-
-        parent::__construct($module);
-    }
-
     /**
      * {@inheritdoc}
      */
     protected function configure(): void
     {
         $this->bind(Configuration::class)->annotatedWith(Configuration::class)->toInstance(
-            Configuration::getDefaultConfiguration()->setApiToken($this->fastlyApiKey)
+            Configuration::getDefaultConfiguration()->setApiToken('fakeKey')
         );
         $this->bind(PurgeApi::class)->toConstructor(FakeFastlyPurgeApi::class, [
             'config' => Configuration::class,
         ])->in(Scope::SINGLETON);
-        $this->bind()->annotatedWith('fastlyServiceId')->toInstance($this->fastlyServiceId);
-        $this->bind()->annotatedWith('fastlyEnableSoftPurge')->toInstance($this->enableSoftPurge);
+        $this->bind()->annotatedWith('fastlyServiceId')->toInstance('fakeServiceId');
+        $this->bind()->annotatedWith('fastlyEnableSoftPurge')->toInstance(true);
         $this->bind(ClientInterface::class)->annotatedWith('fastlyApi')->to(Client::class);
         $this->bind(PurgerInterface::class)->to(FastlyCachePurger::class);
     }
