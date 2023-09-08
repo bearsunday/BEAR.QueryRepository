@@ -10,7 +10,7 @@
     ],
     "require": {
         "php": "^8.0",
-        "bear/fastly-module": "dev-remove-bear-query-repository as 0.1.1",
+        "bear/fastly-module": "^0.1",
         "bear/resource": "^1.16.1",
         "bear/sunday": "^1.5",
         "doctrine/annotations": "^1.8 || ^2.0",
