@@ -22,8 +22,10 @@ final class ResourceDonut
 
     private const URI_REGEX = '/\[le:(.+)]/';
 
+    /** @param array<string, string> $headers */
     public function __construct(
         private string $template,
+        private array $headers,
         /** @readonly */
         public int|null $ttl,
         /** @readonly */
@@ -45,8 +47,9 @@ final class ResourceDonut
             return (string) $ro->view;
         }, $this->template);
 
-        $etags->setSurrogateHeader($ro);
+        $ro->headers = $this->headers;
         $ro->view = $refreshView;
+        $etags->setSurrogateHeader($ro);
 
         return $ro;
     }
@@ -72,6 +75,6 @@ final class ResourceDonut
         unset($maybeRequest);
         $donutTemplate = (string) $ro;
 
-        return new self($donutTemplate, $ttl, $isCacheble);
+        return new self($donutTemplate, $ro->headers, $ttl, $isCacheble);
     }
 }

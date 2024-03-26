@@ -19,7 +19,7 @@ final class ResourceStorageSaver
         assert($cacheItem instanceof CacheItem);
         $cacheItem->tag($tags);
 
-        if ($ttl) {
+        if ($ttl !== null && $ttl > 0) {
             $cacheItem->expiresAfter($ttl);
         }
 
