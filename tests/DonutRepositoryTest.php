@@ -116,6 +116,7 @@ class DonutRepositoryTest extends TestCase
         assert($queryRepository->purge(new Uri('page://self/html/comment')));
         $donutRo = $resource->get('page://self/html/blog-posting');
         $this->assertSame('r', $donutRo->headers[Header::ETAG][-1]);
+        $this->assertStringContainsString('blog-posting-page', $donutRo->headers[Header::SURROGATE_KEY]);
     }
 
     public function testInvalidateTags(): void
