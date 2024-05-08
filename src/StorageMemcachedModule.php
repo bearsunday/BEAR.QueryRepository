@@ -8,8 +8,8 @@ use BEAR\RepositoryModule\Annotation\EtagPool;
 use Psr\Cache\CacheItemPoolInterface;
 use Ray\Di\AbstractModule;
 use Ray\PsrCacheModule\Annotation\CacheNamespace;
+use Ray\PsrCacheModule\MemcachedAdapter;
 use Ray\PsrCacheModule\Psr6MemcachedModule;
-use Symfony\Component\Cache\Adapter\MemcachedAdapter;
 
 final class StorageMemcachedModule extends AbstractModule
 {
@@ -27,8 +27,9 @@ final class StorageMemcachedModule extends AbstractModule
     protected function configure(): void
     {
         $this->install(new Psr6MemcachedModule($this->servers));
-        $this->bind(CacheItemPoolInterface::class)->annotatedWith(EtagPool::class)->toConstructor(MemcachedAdapter::class, [
+        $this->bind(CacheItemPoolInterface::class)->annotatedWith(EtagPool::class)->toConstructor(MemcachedAdapter::class::class, [
             'namespace' => CacheNamespace::class,
+            'clientProvider' => 'memcached',
         ]);
     }
 }
