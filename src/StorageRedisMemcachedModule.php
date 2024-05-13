@@ -47,6 +47,7 @@ final class StorageRedisMemcachedModule extends AbstractModule
             'clientProvider' => 'memcached',
         ]);
         $this->bind()->annotatedWith(MemcacheConfig::class)->toInstance($this->memcacheServer);
+        $this->bind(MemcachedProvider::class);
         $this->bind(Memcached::class)->toProvider(MemcachedProvider::class);
     }
 }
