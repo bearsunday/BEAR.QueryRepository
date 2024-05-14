@@ -32,6 +32,8 @@ final class HttpCache implements HttpCacheInterface, DeprecatedHttpCacheInterfac
      */
     public function transfer()
     {
+        // @codeCoverageIgnoreStart
         http_response_code(304);
+        // @codeCoverageIgnoreEnd
     }
 }
