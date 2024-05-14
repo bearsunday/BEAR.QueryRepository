@@ -8,11 +8,11 @@ use PHPUnit\Framework\TestCase;
 use Psr\Cache\CacheItemPoolInterface;
 use Ray\Di\Injector;
 use Ray\PsrCacheModule\Annotation\Shared;
-use Symfony\Component\Cache\Adapter\MemcachedAdapter;
+use Ray\PsrCacheModule\MemcachedAdapter;
 
 class StorageMemcachedModuleTest extends TestCase
 {
-    public function testNew()
+    public function testNew(): void
     {
         // @see http://php.net/manual/en/memcached.addservers.php
         $servers = 'mem1.domain.com:11211:33,mem2.domain.com:11211:67';

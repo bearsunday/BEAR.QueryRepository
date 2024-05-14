@@ -10,9 +10,9 @@ use Psr\Cache\CacheItemPoolInterface;
 use Ray\Di\AbstractModule;
 use Ray\PsrCacheModule\Annotation\CacheNamespace;
 use Ray\PsrCacheModule\Annotation\MemcacheConfig;
+use Ray\PsrCacheModule\MemcachedAdapter;
 use Ray\PsrCacheModule\MemcachedProvider;
 use Ray\PsrCacheModule\Psr6RedisModule;
-use Symfony\Component\Cache\Adapter\MemcachedAdapter;
 
 use function array_map;
 use function explode;
@@ -44,8 +44,10 @@ final class StorageRedisMemcachedModule extends AbstractModule
         $this->install(new Psr6RedisModule($this->redisServer));
         $this->bind(CacheItemPoolInterface::class)->annotatedWith(EtagPool::class)->toConstructor(MemcachedAdapter::class, [
             'namespace' => CacheNamespace::class,
+            'clientProvider' => 'memcached',
         ]);
         $this->bind()->annotatedWith(MemcacheConfig::class)->toInstance($this->memcacheServer);
+        $this->bind(MemcachedProvider::class);
         $this->bind(Memcached::class)->toProvider(MemcachedProvider::class);
     }
 }
