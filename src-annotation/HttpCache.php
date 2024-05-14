@@ -7,7 +7,9 @@ namespace BEAR\RepositoryModule\Annotation;
 use Attribute;
 use BEAR\QueryRepository\HttpCacheInterceptor;
 use Doctrine\Common\Annotations\Annotation\NamedArgumentConstructor;
-use Doctrine\Common\Annotations\NamedArgumentConstructorAnnotation;
+
+use function implode;
+use function sprintf;
 
 /**
  * HTTP Cache Control
@@ -19,15 +21,12 @@ use Doctrine\Common\Annotations\NamedArgumentConstructorAnnotation;
  * @NamedArgumentConstructor()
  *
  * {@inheritdoc}
- *
  * @see HttpCacheInterceptor
  */
 #[Attribute(Attribute::TARGET_CLASS)]
 final class HttpCache extends AbstractCacheControl
 {
-    /**
-     * @param array<string> $etag
-     */
+    /** @param array<string> $etag */
     public function __construct(
         /**
          * Is private cache
@@ -70,9 +69,8 @@ final class HttpCache extends AbstractCacheControl
         /**
          * Resource body index of Etag
          */
-        public array $etag = []
-    )
-    {
+        public array $etag = [],
+    ) {
     }
 
     public function __toString(): string
@@ -81,22 +79,27 @@ final class HttpCache extends AbstractCacheControl
         if ($this->isPrivate) {
             $control[] = 'private';
         }
+
         if ($this->noCache) {
             $control[] = 'no-cache';
         }
+
         if ($this->noStore) {
             $control[] = 'no-store';
         }
+
         if ($this->mustRevalidate) {
             $control[] = 'must-revalidate';
         }
+
         if ($this->maxAge) {
-            $control[] = \sprintf('max-age=%d', $this->maxAge);
-        }
-        if ($this->sMaxAge) {
-            $control[] = \sprintf('s-maxage=%d', $this->sMaxAge);
+            $control[] = sprintf('max-age=%d', $this->maxAge);
         }
 
-        return  \implode(', ', $control);
+        if ($this->sMaxAge) {
+            $control[] = sprintf('s-maxage=%d', $this->sMaxAge);
+        }
+
+        return implode(', ', $control);
     }
 }

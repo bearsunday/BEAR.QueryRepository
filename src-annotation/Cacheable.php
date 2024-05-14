@@ -5,16 +5,12 @@ declare(strict_types=1);
 namespace BEAR\RepositoryModule\Annotation;
 
 use Attribute;
-
 use BEAR\QueryRepository\CacheInterceptor;
 use Doctrine\Common\Annotations\Annotation\NamedArgumentConstructor;
-use Doctrine\Common\Annotations\NamedArgumentConstructorAnnotation;
-use function is_string;
 
 /**
  * @Annotation
  * @Target("CLASS")
- *
  * @see CacheInterceptor
  * @NamedArgumentConstructor()
  */
@@ -30,7 +26,7 @@ final class Cacheable
         public int $expirySecond = 0,
         public string $expiryAt = '',
         public bool $update = false,
-        public string $type = 'value'
-    ){
+        public string $type = 'value',
+    ) {
     }
 }
