@@ -6,6 +6,7 @@ tools:
     php_pdepend: true
     php_analyzer: true
 build:
+    image: default-bionic
     nodes:
         analysis:
             tests:
@@ -14,5 +15,6 @@ build:
     environment:
         redis: true
         php:
+            version: 8.2
             pecl_extensions:
                 - redis
