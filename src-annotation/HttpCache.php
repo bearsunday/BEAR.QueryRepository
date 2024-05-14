@@ -6,6 +6,7 @@ namespace BEAR\RepositoryModule\Annotation;
 
 use Attribute;
 use BEAR\QueryRepository\HttpCacheInterceptor;
+use Doctrine\Common\Annotations\Annotation\NamedArgumentConstructor;
 use Doctrine\Common\Annotations\NamedArgumentConstructorAnnotation;
 
 /**
@@ -15,12 +16,14 @@ use Doctrine\Common\Annotations\NamedArgumentConstructorAnnotation;
  *
  * @Annotation
  * @Target("CLASS")
+ * @NamedArgumentConstructor()
+ *
  * {@inheritdoc}
  *
  * @see HttpCacheInterceptor
  */
 #[Attribute(Attribute::TARGET_CLASS)]
-final class HttpCache extends AbstractCacheControl implements NamedArgumentConstructorAnnotation
+final class HttpCache extends AbstractCacheControl
 {
     /**
      * @param array<string> $etag
@@ -72,7 +75,7 @@ final class HttpCache extends AbstractCacheControl implements NamedArgumentConst
     {
     }
 
-    public function __toString()
+    public function __toString(): string
     {
         $control = [];
         if ($this->isPrivate) {

@@ -6,10 +6,12 @@ namespace BEAR\RepositoryModule\Annotation;
 
 use Attribute;
 use BEAR\QueryRepository\RefreshInterceptor;
+use Doctrine\Common\Annotations\Annotation\NamedArgumentConstructor;
 
 /**
  * @Annotation
  * @Target("METHOD")
+ * @NamedArgumentConstructor()
  *
  * @see RefreshInterceptor
  */

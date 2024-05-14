@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace BEAR\RepositoryModule\Annotation;
 
 use Attribute;
+use Doctrine\Common\Annotations\Annotation\NamedArgumentConstructor;
 
 /**
  * @Annotation
  * @Target("METHOD")
+ * @NamedArgumentConstructor()
  *
  * @see RefreshInterceptor
  */
