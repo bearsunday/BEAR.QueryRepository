@@ -11,11 +11,9 @@ use Madapaja\TwigModule\TwigModule;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 
-use function array_key_exists;
 use function array_map;
 use function assert;
 use function dirname;
-use function property_exists;
 
 class DonutCommandInterceptorTest extends TestCase
 {
@@ -82,9 +80,7 @@ class DonutCommandInterceptorTest extends TestCase
     public function testCacheableResponse(): void
     {
         $ro = $this->resource->get('page://self/html/blog-posting-cache?id=0');
-        assert(property_exists($ro, 'bindings'));
-        assert(array_key_exists('onGet', $ro->bindings));
-        $interceptors = array_map(static fn (object $object): string => $object::class, $ro->bindings['onGet']);
+        $interceptors = array_map(static fn (object $object): string => $object::class, $ro->bindings['onGet']); // @phpstan-ignore-line
         $this->assertContains(DonutCacheInterceptor::class, $interceptors);
         assert(isset($ro->bindings['onGet'][0]));
         assert(isset($ro->bindings['onDelete'][0]));
