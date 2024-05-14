@@ -29,7 +29,6 @@ final class StorageMemcachedModule extends AbstractModule
         $this->install(new Psr6MemcachedModule($this->servers));
         $this->bind(CacheItemPoolInterface::class)->annotatedWith(EtagPool::class)->toConstructor(MemcachedAdapter::class, [
             'namespace' => CacheNamespace::class,
-            'clientProvider' => 'memcached',
         ]);
     }
 }
