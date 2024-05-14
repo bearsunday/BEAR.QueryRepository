@@ -24,8 +24,8 @@ final class ResourceDonut
 
     /** @param array<string, string> $headers */
     public function __construct(
-        private string $template,
-        private array $headers,
+        private readonly string $template,
+        private readonly array $headers,
         /** @readonly */
         public int|null $ttl,
         /** @readonly */

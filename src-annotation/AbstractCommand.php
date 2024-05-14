@@ -8,13 +8,7 @@ use Doctrine\Common\Annotations\NamedArgumentConstructorAnnotation;
 
 abstract class AbstractCommand implements NamedArgumentConstructorAnnotation
 {
-    /**
-     * @var string
-     */
-    public $uri = false;
-
-    public function __construct(string $uri)
+    public function __construct(public string $uri)
     {
-        $this->uri = $uri;
     }
 }

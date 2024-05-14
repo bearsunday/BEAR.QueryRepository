@@ -9,7 +9,7 @@ use BEAR\QueryRepository\PurgerInterface;
 
 final class FastlyCachePurger implements PurgerInterface
 {
-    public function __construct(private FastlyCachePurgerInterface $fastlyCachePurger)
+    public function __construct(private readonly FastlyCachePurgerInterface $fastlyCachePurger)
     {
     }
 

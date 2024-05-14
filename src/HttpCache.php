@@ -13,7 +13,7 @@ use function http_response_code;
 final class HttpCache implements HttpCacheInterface, DeprecatedHttpCacheInterface
 {
     public function __construct(
-        private ResourceStorageInterface $storage,
+        private readonly ResourceStorageInterface $storage,
     ) {
     }
 

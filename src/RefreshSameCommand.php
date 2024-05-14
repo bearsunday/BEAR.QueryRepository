@@ -14,8 +14,8 @@ use function is_callable;
 final class RefreshSameCommand implements CommandInterface
 {
     public function __construct(
-        private QueryRepositoryInterface $repository,
-        private MatchQueryInterface $matchQuery
+        private readonly QueryRepositoryInterface $repository,
+        private readonly MatchQueryInterface $matchQuery
     ){
     }
 

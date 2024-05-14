@@ -20,42 +20,10 @@ use function is_string;
 final class Cacheable implements NamedArgumentConstructorAnnotation
 {
     /**
-     * @var 'short'|'medium'|'long'|'never'
-     * @Enum({"short", "medium", "long", "never"})
-     */
-    public $expiry;
-
-    /**
-     * @var int
-     */
-    public $expirySecond;
-
-    /**
-     * @var string
-     */
-    public $expiryAt;
-
-    /**
-     * @var bool
-     */
-    public $update;
-
-    /**
-     * @var 'value'|'view'
-     * @Enum({"value", "view"})
-     */
-    public $type;
-
-    /**
      * @param 'short'|'medium'|'long'|'never' $expiry
      * @param 'value'|'view'                  $type
      */
-    public function __construct(string $expiry = 'never', int $expirySecond = 0, string $expiryAt = '', bool $update = false, string $type = 'value')
+    public function __construct(public string $expiry = 'never', public int $expirySecond = 0, public string $expiryAt = '', public bool $update = false, public string $type = 'value')
     {
-        $this->expiry = $expiry;
-        $this->expirySecond = $expirySecond;
-        $this->expiryAt = $expiryAt;
-        $this->update = $update;
-        $this->type = $type;
     }
 }

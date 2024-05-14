@@ -16,11 +16,7 @@ use Ray\Di\Di\Qualifier;
 #[Attribute(Attribute::TARGET_PARAMETER | Attribute::TARGET_METHOD), Qualifier]
 final class EtagPool
 {
-    /** @var string */
-    public $value;
-
-    public function __construct(string $value = '')
+    public function __construct(public string $value = '')
     {
-        $this->value = $value;
     }
 }

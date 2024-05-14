@@ -23,11 +23,11 @@ use function explode;
 final class StorageRedisMemcachedModule extends AbstractModule
 {
     /** @var list<list<string>> */
-    private array $memcacheServer;
+    private readonly array $memcacheServer;
 
     /** @param string $redisServer 'localhost:6379' {host}:{port} */
     public function __construct(
-        private string $redisServer,
+        private readonly string $redisServer,
         string $memcacheServer,
         AbstractModule|null $module = null,
     ) {

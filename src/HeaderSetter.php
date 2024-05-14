@@ -14,7 +14,7 @@ use function str_contains;
 final class HeaderSetter
 {
     public function __construct(
-        private EtagSetterInterface $etagSetter,
+        private readonly EtagSetterInterface $etagSetter,
     ) {
     }
 

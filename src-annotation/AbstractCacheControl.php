@@ -6,7 +6,7 @@ namespace BEAR\RepositoryModule\Annotation;
 
 use Doctrine\Common\Annotations\NamedArgumentConstructorAnnotation;
 
-abstract class AbstractCacheControl
+abstract class AbstractCacheControl implements \Stringable
 {
-    abstract function __toString();
+    abstract function __toString(): string;
 }

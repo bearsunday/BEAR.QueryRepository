@@ -12,8 +12,8 @@ use Ray\Di\AbstractModule;
 final class FastlyModule extends AbstractModule
 {
     public function __construct(
-        private string $fastlyApiKey,
-        private string $fastlyServiceId,
+        private readonly string $fastlyApiKey,
+        private readonly string $fastlyServiceId,
         AbstractModule|null $module = null,
     ) {
         parent::__construct($module);
