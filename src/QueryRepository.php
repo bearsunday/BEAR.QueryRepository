@@ -20,11 +20,11 @@ use function time;
 final class QueryRepository implements QueryRepositoryInterface
 {
     public function __construct(
-        private RepositoryLoggerInterface $logger,
-        private HeaderSetter $headerSetter,
-        private ResourceStorageInterface $storage,
-        private Reader $reader,
-        private Expiry $expiry,
+        private readonly RepositoryLoggerInterface $logger,
+        private readonly HeaderSetter $headerSetter,
+        private readonly ResourceStorageInterface $storage,
+        private readonly Reader $reader,
+        private readonly Expiry $expiry,
     ) {
     }
 

@@ -6,7 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\HttpCache;
 use BEAR\Resource\ResourceObject;
-use Mobile_Detect;
+use Detection\MobileDetect;
 
 use function crc32;
 use function gmdate;
@@ -30,7 +30,7 @@ final class MobileEtagSetter implements EtagSetterInterface
      */
     private function getDevice(): string
     {
-        $detect = new Mobile_Detect();
+        $detect = new MobileDetect();
 
         return $detect->isMobile() && ! $detect->isTablet() ? 'mobile' : 'pc';
     }

@@ -8,6 +8,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\HttpCache;
 use BEAR\Resource\ResourceObject;
+use Detection\MobileDetect;
 
 class FakeMobileEtagSetter implements EtagSetterInterface
 {
@@ -27,7 +28,7 @@ class FakeMobileEtagSetter implements EtagSetterInterface
 
     private function getDevice()
     {
-        $detect = new \Mobile_Detect;
+        $detect = new MobileDetect();
 
         return $detect->isMobile() && ! $detect->isTablet() ? 'mobile' : 'pc';
     }

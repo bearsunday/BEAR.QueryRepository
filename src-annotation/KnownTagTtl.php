@@ -13,14 +13,12 @@ use Ray\Di\Di\Qualifier;
  * @Qualifier
  * @NamedArgumentConstructor
  */
-#[Attribute(Attribute::TARGET_PARAMETER | Attribute::TARGET_METHOD), Qualifier]
+#[Attribute(Attribute::TARGET_PARAMETER | Attribute::TARGET_METHOD)]
+#[Qualifier]
 final class KnownTagTtl
 {
-    /** @var string */
-    public $value;
-
-    public function __construct(string $value = '')
-    {
-        $this->value = $value;
+    public function __construct(
+        public string $value = '',
+    ) {
     }
 }

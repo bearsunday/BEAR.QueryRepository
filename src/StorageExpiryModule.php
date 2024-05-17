@@ -9,9 +9,9 @@ use Ray\Di\AbstractModule;
 final class StorageExpiryModule extends AbstractModule
 {
     public function __construct(
-        private int $short,
-        private int $medium,
-        private int $long,
+        private readonly int $short,
+        private readonly int $medium,
+        private readonly int $long,
         AbstractModule|null $module = null,
     ) {
         parent::__construct($module);

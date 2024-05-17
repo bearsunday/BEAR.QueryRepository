@@ -24,8 +24,6 @@ jobs:
         options: --health-cmd="redis-cli ping" --health-interval=10s --health-timeout=5s --health-retries=3
     strategy:
       matrix:
-        php-version:
-          - 8.0
         dependencies: [highest, lowest]
         os: [ubuntu-latest]
         include:
@@ -34,10 +32,16 @@ jobs:
           - php-version: 8.1
             os: macos-latest
           - php-version: 8.2
-            dependencies: lowest-ignore
+            dependencies: lowest
             os: ubuntu-latest
           - php-version:  8.2
-            dependencies: highest-ignore
+            dependencies: highest
+            os: ubuntu-latest
+          - php-version:  8.3
+            dependencies: highest
+            os: ubuntu-latest
+          - php-version: 8.3
+            dependencies: lowest
             os: ubuntu-latest
     steps:
       - name: Checkout

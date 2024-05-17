@@ -16,6 +16,7 @@
 
     <!-- Directories to be checked -->
     <file>src</file>
+    <file>src-annotation</file>
     <file>tests</file>
     <exclude-pattern>*/tests/tmp/*</exclude-pattern>
 
@@ -25,7 +26,6 @@
     <!-- Exclude NativeTypeHintrule from interface and abstract class -->
     <rule ref="SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingNativeTypeHint">
         <exclude-pattern>*/src/*Interface.php</exclude-pattern>
-        <exclude-pattern>*/src/Abstract*.php</exclude-pattern>
         <exclude-pattern>*/src/ResourceObject.php</exclude-pattern>
         <exclude-pattern>*/tests/SurrogateKeysTest.php</exclude-pattern>
     </rule>

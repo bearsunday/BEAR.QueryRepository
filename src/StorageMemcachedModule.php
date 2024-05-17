@@ -15,7 +15,7 @@ final class StorageMemcachedModule extends AbstractModule
 {
     /** @param string $servers 'mem1.domain.com:11211:33,mem2.domain.com:11211:67' {host}:{port}:{weight} */
     public function __construct(
-        private string $servers,
+        private readonly string $servers,
         AbstractModule|null $module = null,
     ) {
         parent::__construct($module);

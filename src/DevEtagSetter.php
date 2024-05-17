@@ -17,7 +17,7 @@ use function str_replace;
 final class DevEtagSetter implements EtagSetterInterface
 {
     public function __construct(
-        private CacheDependencyInterface $cacheDeperency,
+        private readonly CacheDependencyInterface $cacheDeperency,
     ) {
     }
 

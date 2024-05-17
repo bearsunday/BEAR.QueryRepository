@@ -26,7 +26,7 @@ final class StorageRedisModule extends AbstractModule
 {
     /** @param string $server 'localhost:6379' {host}:{port} */
     public function __construct(
-        private string $server,
+        private readonly string $server,
         AbstractModule|null $module = null,
     ) {
         parent::__construct($module);

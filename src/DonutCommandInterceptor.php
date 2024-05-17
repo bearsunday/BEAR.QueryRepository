@@ -22,8 +22,8 @@ use function sprintf;
 final class DonutCommandInterceptor implements MethodInterceptor
 {
     public function __construct(
-        private DonutRepositoryInterface $repository,
-        private MatchQueryInterface $matchQuery
+        private readonly DonutRepositoryInterface $repository,
+        private readonly MatchQueryInterface $matchQuery
     ){
     }
 

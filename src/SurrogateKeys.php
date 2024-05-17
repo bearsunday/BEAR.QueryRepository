@@ -20,7 +20,7 @@ final class SurrogateKeys
 {
     /** @var list<string> */
     private array $surrogateKeys;
-    private UriTagInterface $uriTag;
+    private readonly UriTagInterface $uriTag;
 
     public function __construct(AbstractUri $uri)
     {

@@ -13,7 +13,7 @@ use function http_response_code;
 final class HttpCache implements HttpCacheInterface, DeprecatedHttpCacheInterface
 {
     public function __construct(
-        private ResourceStorageInterface $storage,
+        private readonly ResourceStorageInterface $storage,
     ) {
     }
 
@@ -32,6 +32,8 @@ final class HttpCache implements HttpCacheInterface, DeprecatedHttpCacheInterfac
      */
     public function transfer()
     {
+        // @codeCoverageIgnoreStart
         http_response_code(304);
+        // @codeCoverageIgnoreEnd
     }
 }

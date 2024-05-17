@@ -7,7 +7,7 @@ namespace BEAR\QueryRepository;
 final class Expiry
 {
     /** @var array<string, int> */
-    private array $time;
+    private readonly array $time;
 
     public function __construct(int $short = 60, int $medium = 3600, int $long = 86400, int $never = 31_536_000)
     {

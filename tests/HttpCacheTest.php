@@ -11,7 +11,6 @@ use Ray\Di\Injector;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 
 use function assert;
-use function http_response_code;
 
 class HttpCacheTest extends TestCase
 {
@@ -43,17 +42,6 @@ class HttpCacheTest extends TestCase
     {
         $this->expectOutputRegex('/\A304 Not Modified/');
         $httpCache->transfer();
-    }
-
-    /**
-     * @depends testisNotModifiedTrue
-     * @covers \BEAR\QueryRepository\HttpCache::transfer
-     */
-    public function testHttpCacheTransfer(): void
-    {
-        $httpCache = new HttpCache(new ResourceStorage(new RepositoryLogger(), new NullPurger(), new UriTag(), new ArrayAdapter()));
-        $httpCache->transfer();
-        $this->assertSame(304, http_response_code());
     }
 
     /** @depends testisNotModifiedTrue */

@@ -14,16 +14,12 @@ use BEAR\QueryRepository\HttpCacheInterceptor;
  *
  * @Annotation
  * @Target("CLASS")
- *
  * @see HttpCacheInterceptor
  */
 #[Attribute(Attribute::TARGET_CLASS)]
 final class NoHttpCache extends AbstractCacheControl
 {
-    /**
-     * @return string
-     */
-    public function __toString()
+    public function __toString(): string
     {
         return 'private, no-store, no-cache, must-revalidate';
     }
