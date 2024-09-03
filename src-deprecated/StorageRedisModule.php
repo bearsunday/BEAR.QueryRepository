@@ -21,6 +21,8 @@ use Ray\PsrCacheModule\RedisAdapter;
  * The following module are installed:
  *
  * Psr6RedisModule
+ *
+ * @deprecated Use StorageRedisDnsModule instead
  */
 final class StorageRedisModule extends AbstractModule
 {
