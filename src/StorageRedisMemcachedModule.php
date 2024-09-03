@@ -37,7 +37,7 @@ final class StorageRedisMemcachedModule extends AbstractModule
     }
 
     /**
-     * {@inheritdoc}
+     * {@inheritDoc}
      */
     protected function configure(): void
     {

@@ -8,5 +8,5 @@ use Stringable;
 
 abstract class AbstractCacheControl implements Stringable
 {
-    abstract function __toString(): string;
+    abstract public function __toString(): string;
 }

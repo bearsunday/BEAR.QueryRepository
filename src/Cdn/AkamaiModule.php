@@ -15,7 +15,7 @@ use Ray\Di\AbstractModule;
 final class AkamaiModule extends AbstractModule
 {
     /**
-     * {@inheritdoc}
+     * {@inheritDoc}
      */
     protected function configure(): void
     {

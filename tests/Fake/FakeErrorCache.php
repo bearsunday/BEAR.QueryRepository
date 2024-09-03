@@ -19,6 +19,7 @@ class FakeErrorCache implements AdapterInterface
 
     public function getItems(array $keys = []): iterable
     {
+        return [];
     }
 
     public function hasItem($key): bool

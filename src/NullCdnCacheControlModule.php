@@ -9,7 +9,7 @@ use Ray\Di\AbstractModule;
 final class NullCdnCacheControlModule extends AbstractModule
 {
     /**
-     * {@inheritdoc}
+     * {@inheritDoc}
      */
     protected function configure(): void
     {

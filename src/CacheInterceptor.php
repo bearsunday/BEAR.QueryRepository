@@ -24,7 +24,7 @@ final class CacheInterceptor implements MethodInterceptor
     }
 
     /**
-     * {@inheritdoc}
+     * {@inheritDoc}
      */
     public function invoke(MethodInvocation $invocation)
     {

@@ -21,7 +21,7 @@ final class CommandInterceptor implements MethodInterceptor
     }
 
     /**
-     * {@inheritdoc}
+     * {@inheritDoc}
      *
      * @throws ReturnValueIsNotResourceObjectException
      */

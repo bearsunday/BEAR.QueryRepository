@@ -10,7 +10,7 @@ use Ray\Di\AbstractModule;
 final class ProdQueryRepositoryModule extends AbstractModule
 {
     /**
-     * {@inheritdoc}
+     * {@inheritDoc}
      *
      * @see https://github.com/symfony/cache/blob/5.3/Adapter/TagAwareAdapter.php
      */

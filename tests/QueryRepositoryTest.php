@@ -25,8 +25,12 @@ use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 
 use function assert;
 use function is_array;
+use function restore_error_handler;
 use function serialize;
+use function set_error_handler;
 use function unserialize;
+
+use const E_USER_WARNING;
 
 class QueryRepositoryTest extends TestCase
 {
@@ -143,6 +147,15 @@ class QueryRepositoryTest extends TestCase
         $namespace = 'FakeVendor\HelloWorld';
         $module = ModuleFactory::getInstance($namespace);
 
+        $errorCaught = false;
+        set_error_handler(static function (int $errno, string $errstr, string $errfile, int $errline) use (&$errorCaught): bool {
+            unset($errstr, $errfile, $errline);
+            if ($errno === E_USER_WARNING) {
+                $errorCaught = true;
+            }
+
+            return true; // PHP に通常のエラーハンドリングを停止させるために true を返す
+        });
         $module->override(new class extends AbstractModule {
             protected function configure(): void
             {
@@ -151,10 +164,9 @@ class QueryRepositoryTest extends TestCase
         });
         $resource = (new Injector($module, $_ENV['TMP_DIR']))->getInstance(ResourceInterface::class);
         assert($resource instanceof ResourceInterface);
-        $this->expectWarning();
         $resource->get('app://self/user', ['id' => 1]);
-        $this->assertSame(2, $GLOBALS['BEAR\QueryRepository\syslog'][0]);
-        $this->assertContains('Exception: DoctrineNamespaceCacheKey[]', $GLOBALS['BEAR\QueryRepository\syslog'][1]);
+        $this->assertTrue($errorCaught, 'E_USER_WARNING should have been caught.');
+        restore_error_handler();
     }
 
     public function testSameResponseButDifferentParameter(): void

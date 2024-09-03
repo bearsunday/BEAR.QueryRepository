@@ -25,7 +25,7 @@ use Ray\Di\AbstractModule;
 final class CacheableModule extends AbstractModule
 {
     /**
-     * {@inheritdoc}
+     * {@inheritDoc}
      */
     protected function configure(): void
     {

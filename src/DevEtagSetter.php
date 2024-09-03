@@ -22,7 +22,7 @@ final class DevEtagSetter implements EtagSetterInterface
     }
 
     /**
-     * {@inheritdoc}
+     * {@inheritDoc}
      */
     public function __invoke(ResourceObject $ro, int|null $time = null, HttpCache|null $httpCache = null)
     {
