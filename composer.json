@@ -32,6 +32,7 @@
         "phpmetrics/phpmetrics": "^2.8",
         "phpstan/phpstan": "^1.9",
         "phpunit/phpunit": "^9.5.28",
+        "predis/predis": "^2.2",
         "psalm/plugin-phpunit": "^0.18.4",
         "ray/object-visual-grapher": "^1.0",
         "ray/rector-ray": "^1.0",
