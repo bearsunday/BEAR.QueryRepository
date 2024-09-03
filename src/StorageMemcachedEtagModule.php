@@ -24,7 +24,6 @@ final class StorageMemcachedEtagModule extends AbstractModule
     /** @var list<list<string>> */
     private readonly array $memcacheServer;
 
-    /** @param string $redisServer 'localhost:6379' {host}:{port} */
     public function __construct(
         string $memcacheServer,
         AbstractModule|null $module = null,
