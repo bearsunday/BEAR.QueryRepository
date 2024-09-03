@@ -23,7 +23,7 @@ final class CliHttpCache implements HttpCacheInterface
     }
 
     /**
-     * {@inheritdoc}
+     * {@inheritDoc}
      */
     public function isNotModified(array $server): bool
     {
@@ -36,7 +36,7 @@ final class CliHttpCache implements HttpCacheInterface
     }
 
     /**
-     * {@inheritdoc}
+     * {@inheritDoc}
      *
      * @return void
      */

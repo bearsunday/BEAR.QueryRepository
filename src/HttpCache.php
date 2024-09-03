@@ -18,7 +18,7 @@ final class HttpCache implements HttpCacheInterface, DeprecatedHttpCacheInterfac
     }
 
     /**
-     * {@inheritdoc}
+     * {@inheritDoc}
      */
     public function isNotModified(array $server): bool
     {
@@ -26,7 +26,7 @@ final class HttpCache implements HttpCacheInterface, DeprecatedHttpCacheInterfac
     }
 
     /**
-     * {@inheritdoc}
+     * {@inheritDoc}
      *
      * @return void
      */

@@ -37,7 +37,7 @@ use Symfony\Component\Cache\Adapter\NullAdapter;
 final class QueryRepositoryModule extends AbstractModule
 {
     /**
-     * {@inheritdoc}
+     * {@inheritDoc}
      */
     protected function configure(): void
     {

@@ -17,7 +17,7 @@ use Ray\Di\Scope;
 final class MobileEtagModule extends AbstractModule
 {
     /**
-     * {@inheritdoc}
+     * {@inheritDoc}
      */
     protected function configure(): void
     {

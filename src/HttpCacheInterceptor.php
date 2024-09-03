@@ -14,7 +14,7 @@ use function assert;
 final class HttpCacheInterceptor implements MethodInterceptor
 {
     /**
-     * {@inheritdoc}
+     * {@inheritDoc}
      */
     public function invoke(MethodInvocation $invocation)
     {

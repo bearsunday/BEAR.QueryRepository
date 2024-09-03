@@ -28,7 +28,7 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
     }
 
     /**
-     * {@inheritdoc}
+     * {@inheritDoc}
      */
     final public function invoke(MethodInvocation $invocation)
     {

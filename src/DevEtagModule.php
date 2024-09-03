@@ -16,7 +16,7 @@ use Ray\Di\AbstractModule;
 final class DevEtagModule extends AbstractModule
 {
     /**
-     * {@inheritdoc}
+     * {@inheritDoc}
      */
     protected function configure(): void
     {

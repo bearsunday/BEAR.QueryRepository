@@ -20,7 +20,7 @@ use function sprintf;
  * @Target("CLASS")
  * @NamedArgumentConstructor()
  *
- * {@inheritdoc}
+ * {@inheritDoc}
  * @see HttpCacheInterceptor
  */
 #[Attribute(Attribute::TARGET_CLASS)]

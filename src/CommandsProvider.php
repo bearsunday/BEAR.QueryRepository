@@ -17,7 +17,7 @@ final class CommandsProvider implements ProviderInterface
     }
 
     /**
-     * {@inheritdoc}
+     * {@inheritDoc}
      */
     public function get()
     {

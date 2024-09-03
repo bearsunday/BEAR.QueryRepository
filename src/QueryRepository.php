@@ -29,7 +29,7 @@ final class QueryRepository implements QueryRepositoryInterface
     }
 
     /**
-     * {@inheritdoc}
+     * {@inheritDoc}
      */
     public function put(ResourceObject $ro)
     {
@@ -54,7 +54,7 @@ final class QueryRepository implements QueryRepositoryInterface
     }
 
     /**
-     * {@inheritdoc}
+     * {@inheritDoc}
      */
     public function get(AbstractUri $uri): ResourceState|null
     {
@@ -70,7 +70,7 @@ final class QueryRepository implements QueryRepositoryInterface
     }
 
     /**
-     * {@inheritdoc}
+     * {@inheritDoc}
      */
     public function purge(AbstractUri $uri)
     {

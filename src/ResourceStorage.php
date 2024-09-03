@@ -86,7 +86,7 @@ final class ResourceStorage implements ResourceStorageInterface
     }
 
     /**
-     * {@inheritdoc}
+     * {@inheritDoc}
      */
     public function get(AbstractUri $uri): ResourceState|null
     {
@@ -110,7 +110,7 @@ final class ResourceStorage implements ResourceStorageInterface
     }
 
     /**
-     * {@inheritdoc}
+     * {@inheritDoc}
      */
     public function hasEtag(string $etag): bool
     {
@@ -118,7 +118,7 @@ final class ResourceStorage implements ResourceStorageInterface
     }
 
     /**
-     * {@inheritdoc}
+     * {@inheritDoc}
      */
     public function deleteEtag(AbstractUri $uri)
     {
@@ -128,7 +128,7 @@ final class ResourceStorage implements ResourceStorageInterface
     }
 
     /**
-     * {@inheritdoc}
+     * {@inheritDoc}
      */
     public function invalidateTags(array $tags): bool
     {
@@ -142,7 +142,7 @@ final class ResourceStorage implements ResourceStorageInterface
     }
 
     /**
-     * {@inheritdoc}
+     * {@inheritDoc}
      *
      * @return bool
      */
@@ -159,7 +159,7 @@ final class ResourceStorage implements ResourceStorageInterface
     }
 
     /**
-     * {@inheritdoc}
+     * {@inheritDoc}
      *
      * @return bool
      */
