@@ -46,7 +46,8 @@ class StorageRedisDsnModuleTest extends TestCase
     {
         // @see https://symfony.com/doc/current/components/cache/adapters/redis_adapter.html
         $dsn = 'redis://localhost:6379';
-        $cache = (new Injector(new StorageRedisDsnModule($dsn), __DIR__ . '/tmp'))->getInstance(CacheItemPoolInterface::class, Shared::class);
+        $options = ['timeout' => 10];
+        $cache = (new Injector(new StorageRedisDsnModule($dsn, $options), __DIR__ . '/tmp'))->getInstance(CacheItemPoolInterface::class, Shared::class);
         $this->assertInstanceOf(RedisAdapter::class, $cache);
     }
 }

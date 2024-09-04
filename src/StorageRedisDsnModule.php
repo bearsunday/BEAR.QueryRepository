@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\RedisDsn;
+use BEAR\RepositoryModule\Annotation\RedisDsnOptions;
 use Psr\Cache\CacheItemPoolInterface;
 use Ray\Di\AbstractModule;
 use Ray\Di\ProviderInterface;
@@ -38,9 +39,16 @@ use ReflectionException;
  */
 final class StorageRedisDsnModule extends AbstractModule
 {
+    /**
+     * Redis configuration DSN
+     *
+     * @param string                                                   $dsn     Redis DSN
+     * @param array<string, bool|int|string|array<string, mixed>|null> $options Redis DSN Options
+     */
     public function __construct(
         private readonly string $dsn,
-        AbstractModule|null $module = null,
+        private readonly array  $options = [],
+        AbstractModule|null     $module = null,
     ) {
         parent::__construct($module);
     }
@@ -49,6 +57,7 @@ final class StorageRedisDsnModule extends AbstractModule
     protected function configure(): void
     {
         $this->bind()->annotatedWith(RedisDsn::class)->toInstance($this->dsn);
+        $this->bind()->annotatedWith(RedisDsnOptions::class)->toInstance($this->options);
         $this->bind(CacheItemPoolInterface::class)->annotatedWith(Local::class)->toConstructor(ApcuAdapter::class, ['namespace' => CacheNamespace::class])->in(Scope::SINGLETON);
         $this->bind(CacheItemPoolInterface::class)->annotatedWith(Shared::class)->toConstructor(RedisAdapter::class, [
             'redisProvider' => 'redis',
