@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\RepositoryModule\Annotation\EtagPool;
 use BEAR\RepositoryModule\Annotation\RedisDsn;
 use BEAR\RepositoryModule\Annotation\RedisDsnOptions;
+use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use Psr\Cache\CacheItemPoolInterface;
 use Ray\Di\AbstractModule;
 use Ray\Di\ProviderInterface;
@@ -16,6 +18,8 @@ use Ray\PsrCacheModule\Annotation\Shared;
 use Ray\PsrCacheModule\ApcuAdapter;
 use Ray\PsrCacheModule\RedisAdapter;
 use ReflectionException;
+use Symfony\Component\Cache\Adapter\RedisTagAwareAdapter;
+use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 
 /**
  * Provides ResourceStorageInterface and derived bindings
@@ -47,8 +51,8 @@ final class StorageRedisDsnModule extends AbstractModule
      */
     public function __construct(
         private readonly string $dsn,
-        private readonly array  $options = [],
-        AbstractModule|null     $module = null,
+        private readonly array $options = [],
+        AbstractModule|null $module = null,
     ) {
         parent::__construct($module);
     }
@@ -58,11 +62,21 @@ final class StorageRedisDsnModule extends AbstractModule
     {
         $this->bind()->annotatedWith(RedisDsn::class)->toInstance($this->dsn);
         $this->bind()->annotatedWith(RedisDsnOptions::class)->toInstance($this->options);
+        $this->bind(CacheItemPoolInterface::class)->toConstructor(ApcuAdapter::class, ['namespace' => CacheNamespace::class])->in(Scope::SINGLETON);
         $this->bind(CacheItemPoolInterface::class)->annotatedWith(Local::class)->toConstructor(ApcuAdapter::class, ['namespace' => CacheNamespace::class])->in(Scope::SINGLETON);
         $this->bind(CacheItemPoolInterface::class)->annotatedWith(Shared::class)->toConstructor(RedisAdapter::class, [
             'redisProvider' => 'redis',
             'namespace' => CacheNamespace::class,
         ]);
         $this->bind(ProviderInterface::class)->annotatedWith('redis')->to(RedisDsnProvider::class);
+        $this->bind()->annotatedWith('redis')->toProvider(RedisDsnProvider::class);
+        $this->bind(TagAwareAdapterInterface::class)->annotatedWith(EtagPool::class)->to(NullTagAwareAdapter::class);
+        $this->bind(TagAwareAdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->toConstructor(
+            RedisTagAwareAdapter::class,
+            [
+                'redis' => 'redis',
+                'namespace' => CacheNamespace::class,
+            ],
+        );
     }
 }

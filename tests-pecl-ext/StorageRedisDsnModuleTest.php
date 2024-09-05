@@ -5,12 +5,16 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\EtagPool;
+use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use PHPUnit\Framework\TestCase;
 use Psr\Cache\CacheItemPoolInterface;
 use Ray\Di\Injector;
 use Ray\PsrCacheModule\Annotation\Shared;
 use Ray\PsrCacheModule\MemcachedAdapter;
 use Ray\PsrCacheModule\RedisAdapter;
+use Symfony\Component\Cache\Adapter\RedisTagAwareAdapter;
+use Symfony\Component\Cache\Adapter\TagAwareAdapter;
+use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 use Symfony\Component\Process\Process;
 
 use function getenv;
@@ -47,7 +51,13 @@ class StorageRedisDsnModuleTest extends TestCase
         // @see https://symfony.com/doc/current/components/cache/adapters/redis_adapter.html
         $dsn = 'redis://localhost:6379';
         $options = ['timeout' => 10];
-        $cache = (new Injector(new StorageRedisDsnModule($dsn, $options), __DIR__ . '/tmp'))->getInstance(CacheItemPoolInterface::class, Shared::class);
-        $this->assertInstanceOf(RedisAdapter::class, $cache);
+        $module = new QueryRepositoryModule();
+        $module->override(new StorageRedisDsnModule($dsn, $options));
+        $injector = (new Injector($module, __DIR__ . '/tmp'));
+        $redisAdapter = $injector->getInstance(TagAwareAdapterInterface::class, ResourceObjectPool::class);
+        $this->assertInstanceOf(RedisTagAwareAdapter::class, $redisAdapter);
+        $etagAdapter = $injector->getInstance(TagAwareAdapterInterface::class, EtagPool::class);
+        $this->assertInstanceOf(NullTagAwareAdapter::class, $etagAdapter);
+        $resourceStorage = $injector->getInstance(ResourceStorageInterface::class);
     }
 }

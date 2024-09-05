@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\QueryRepository as Repository;
 use BEAR\RepositoryModule\Annotation\EtagPool;
+use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\Resource\Module\ResourceModule;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
@@ -22,6 +23,8 @@ use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
 use Ray\PsrCacheModule\Annotation\Shared;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
+use Symfony\Component\Cache\Adapter\TagAwareAdapter;
+use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 
 use function assert;
 use function is_array;
@@ -154,12 +157,12 @@ class QueryRepositoryTest extends TestCase
                 $errorCaught = true;
             }
 
-            return true; // PHP に通常のエラーハンドリングを停止させるために true を返す
+            return true; // Return true to tell PHP to stop normal error handling
         });
         $module->override(new class extends AbstractModule {
             protected function configure(): void
             {
-                $this->bind(CacheItemPoolInterface::class)->annotatedWith(Shared::class)->to(FakeErrorCache::class);
+                $this->bind(TagAwareAdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->toInstance(new TagAwareAdapter(new FakeErrorCache()));
             }
         });
         $resource = (new Injector($module, $_ENV['TMP_DIR']))->getInstance(ResourceInterface::class);
@@ -210,6 +213,9 @@ class QueryRepositoryTest extends TestCase
                 $this->bind(Reader::class)->to(AnnotationReader::class);
             }
         });
+        $injector = new Injector($module);
+        serialize($injector);
+
         $repository = (new Injector($module))->getInstance(QueryRepositoryInterface::class);
         $unserilizedRepository = unserialize(serialize(unserialize(serialize($repository))));
         $this->assertInstanceOf(Repository::class, $unserilizedRepository);

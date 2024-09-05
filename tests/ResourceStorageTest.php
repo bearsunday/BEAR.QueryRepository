@@ -7,21 +7,42 @@ namespace BEAR\QueryRepository;
 use BEAR\Resource\Uri;
 use FakeVendor\HelloWorld\Resource\Page\Index;
 use PHPUnit\Framework\TestCase;
+use Ray\Di\ProviderInterface;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
+use Symfony\Component\Cache\Adapter\TagAwareAdapter;
 
 class ResourceStorageTest extends TestCase
 {
     private ResourceStorage $storage;
     private Index $ro;
 
-    protected function setUp(): void
+    public static function getResourceStorageInstance(): ResourceStorage
     {
-        $this->storage = new ResourceStorage(
+        $tagAwareAdapter = new TagAwareAdapter(new FilesystemAdapter('', 0, $_ENV['TMP_DIR']));
+        $tagAwareAdapterProvider = new class ($tagAwareAdapter) implements ProviderInterface{
+            public function __construct(private TagAwareAdapter $tagAwareAdapter)
+            {
+            }
+
+            public function get()
+            {
+                return $this->tagAwareAdapter;
+            }
+        };
+
+        return new ResourceStorage(
             new RepositoryLogger(),
             new NullPurger(),
             new UriTag(),
-            new FilesystemAdapter('', 0, $_ENV['TMP_DIR']),
+            new ResourceStorageSaver(),
+            $tagAwareAdapterProvider,
+            $tagAwareAdapterProvider,
         );
+    }
+
+    protected function setUp(): void
+    {
+        $this->storage = self::getResourceStorageInstance();
         $this->ro = new Index();
         $this->ro->uri = new Uri('page://self/user');
         $this->ro->body = [];

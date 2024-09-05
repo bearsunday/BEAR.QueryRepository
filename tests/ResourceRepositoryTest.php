@@ -10,7 +10,10 @@ use Doctrine\Common\Annotations\AnnotationReader;
 use Doctrine\Common\Cache\CacheProvider;
 use FakeVendor\HelloWorld\Resource\Page\Index;
 use PHPUnit\Framework\TestCase;
+use Ray\Di\ProviderInterface;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
+use Symfony\Component\Cache\Adapter\NullAdapter;
+use Symfony\Component\Cache\Adapter\TagAwareAdapter;
 
 use function array_change_key_case;
 use function assert;
@@ -24,6 +27,17 @@ class ResourceRepositoryTest extends TestCase
 
     protected function setUp(): void
     {
+        $tagAwareAdapter = new TagAwareAdapter(new FilesystemAdapter('', 0, $_ENV['TMP_DIR']));
+        $tagAwareAdapterProvider = new class ($tagAwareAdapter) implements ProviderInterface{
+            public function __construct(private TagAwareAdapter $tagAwareAdapter)
+            {
+            }
+
+            public function get()
+            {
+                return $this->tagAwareAdapter;
+            }
+        };
         $this->repository = new Repository(
             new RepositoryLogger(),
             new HeaderSetter(new EtagSetter(new CacheDependency(new UriTag()))),
@@ -31,7 +45,9 @@ class ResourceRepositoryTest extends TestCase
                 new RepositoryLogger(),
                 new NullPurger(),
                 new UriTag(),
-                new FilesystemAdapter('', 0, $_ENV['TMP_DIR']),
+                new ResourceStorageSaver(),
+                $tagAwareAdapterProvider,
+                $tagAwareAdapterProvider,
             ),
             new AnnotationReader(),
             new Expiry(0, 0, 0),
@@ -100,6 +116,17 @@ class ResourceRepositoryTest extends TestCase
             }
         };
         // phpcs:enable
+        $tagAwareAdapter = new TagAwareAdapter(new NullAdapter());
+        $tagAwareAdapterProvider = new class ($tagAwareAdapter) implements ProviderInterface{
+            public function __construct(private TagAwareAdapter $tagAwareAdapter)
+            {
+            }
+
+            public function get()
+            {
+                return $this->tagAwareAdapter;
+            }
+        };
         $repository = new Repository(
             new RepositoryLogger(),
             new HeaderSetter(new EtagSetter(new CacheDependency(new UriTag()))),
@@ -107,9 +134,9 @@ class ResourceRepositoryTest extends TestCase
                 new RepositoryLogger(),
                 new NullPurger(),
                 new UriTag(),
-                null,
-                null,
-                $doctrineCache,
+                new ResourceStorageSaver(),
+                $tagAwareAdapterProvider,
+                $tagAwareAdapterProvider,
             ),
             new AnnotationReader(),
             new Expiry(0, 0, 0),
