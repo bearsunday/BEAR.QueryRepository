@@ -8,7 +8,10 @@ use Psr\Cache\CacheItemInterface;
 use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 use Symfony\Component\Cache\CacheItem;
 
-/** @SuppressWarnings UnusedFormalParameter */
+/**
+ * @SuppressWarnings UnusedFormalParameter
+ * @codeCoverageIgnore
+ */
 final class NullTagAwareAdapter implements TagAwareAdapterInterface
 {
     public function getItem(mixed $key): CacheItem
