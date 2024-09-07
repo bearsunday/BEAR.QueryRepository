@@ -24,6 +24,16 @@ use function is_string;
 use function sprintf;
 use function strtoupper;
 
+/**
+ * @psalm-type Props = array{
+ *     logger: RepositoryLoggerInterface,
+ *     purger:PurgerInterface,
+ *     uriTag: UriTag,
+ *     saver: ResourceStorageSaver,
+ *     roProvider:ProviderInterface<TagAwareAdapterInterface>,
+ *     etagProvider: ProviderInterface<TagAwareAdapterInterface>
+ * }
+ */
 final class ResourceStorage implements ResourceStorageInterface
 {
     /**
@@ -263,14 +273,7 @@ final class ResourceStorage implements ResourceStorageInterface
     }
 
     /**
-     * @param array{
-     *     logger: RepositoryLoggerInterface,
-     *     purger:PurgerInterface,
-     *     uriTag: UriTag,
-     *      saver: ResourceStorageSaver,
-     *     roProvider:ProviderInterface<TagAwareAdapterInterface>,
-     *     etagProvider: ProviderInterface<TagAwareAdapterInterface>
-     * } $data
+     * @param Props $data
      *
      * @return void
      */
