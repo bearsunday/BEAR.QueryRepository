@@ -8,10 +8,12 @@ use Psr\Cache\CacheItemInterface;
 use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 use Symfony\Component\Cache\CacheItem;
 
+/** @SuppressWarnings UnusedFormalParameter */
 final class NullTagAwareAdapter implements TagAwareAdapterInterface
 {
     public function getItem(mixed $key): CacheItem
     {
+        unset($key);
         $item = new CacheItem();
         $item->set(null);
         $item->tag('');
@@ -27,6 +29,8 @@ final class NullTagAwareAdapter implements TagAwareAdapterInterface
 
     public function clear(string $prefix = ''): bool
     {
+        unset($prefix);
+
         return true;
     }
 
