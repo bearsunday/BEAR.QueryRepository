@@ -21,7 +21,7 @@ final class ProdQueryRepositoryModule extends AbstractModule
     {
         // Bind ResourceObjectPool to local cache (APCu or File)
         $this->bind(AdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->toProvider(LocalCacheProvider::class);
-        // boost the performance of symfony/cache
+        // Boost the performance of symfony/cache
         $this->bind()->annotatedWith(KnownTagTtl::class)->toInstance(0.15);
     }
 }
