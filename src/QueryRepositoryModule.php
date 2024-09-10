@@ -21,7 +21,6 @@ use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
  *
  *  The following bindings are provided:
  *
- *  CacheItemPoolInterface-Shared::class
  *  CacheItemPoolInterface-EtagPool::class
  *  QueryRepositoryInterface
  *  CacheDependencyInterface
