@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\RepositoryModule\Annotation\EtagPool;
 use BEAR\RepositoryModule\Annotation\RedisDsn;
 use BEAR\RepositoryModule\Annotation\RedisDsnOptions;
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
@@ -70,7 +69,6 @@ final class StorageRedisDsnModule extends AbstractModule
         ]);
         $this->bind(ProviderInterface::class)->annotatedWith('redis')->to(RedisDsnProvider::class);
         $this->bind()->annotatedWith('redis')->toProvider(RedisDsnProvider::class);
-        $this->bind(TagAwareAdapterInterface::class)->annotatedWith(EtagPool::class)->to(NullTagAwareAdapter::class);
         $this->bind(TagAwareAdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->toConstructor(
             RedisTagAwareAdapter::class,
             [

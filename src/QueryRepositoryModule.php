@@ -54,7 +54,7 @@ final class QueryRepositoryModule extends AbstractModule
                 'tagsPool' => EtagPool::class,
             ],
         )->in(Scope::SINGLETON);
-        $this->bind(TagAwareAdapterInterface::class)->annotatedWith(EtagPool::class)->to(NullTagAwareAdapter::class);
+        $this->bind(TagAwareAdapterInterface::class)->annotatedWith(EtagPool::class)->toInstance(null);
         // core
         $this->bind(QueryRepositoryInterface::class)->to(QueryRepository::class)->in(Scope::SINGLETON);
         $this->bind(CacheDependencyInterface::class)->to(CacheDependency::class);

@@ -81,7 +81,7 @@ final class ResourceStorage implements ResourceStorageInterface
         $this->etagPoolProvider = $etagPoolProvider;
         $this->roPool = $roPoolProvider->get();
         $etagPool = $this->etagPoolProvider->get();
-        $this->etagPool = $etagPool instanceof NullTagAwareAdapter ?  $this->roPool : $etagPool;
+        $this->etagPool = $etagPool instanceof TagAwareAdapterInterface ? $etagPool : $this->roPool; // @phpstan-ignore-line
     }
 
     /**

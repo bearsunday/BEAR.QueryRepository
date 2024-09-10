@@ -57,7 +57,8 @@ class StorageRedisDsnModuleTest extends TestCase
         $redisAdapter = $injector->getInstance(TagAwareAdapterInterface::class, ResourceObjectPool::class);
         $this->assertInstanceOf(RedisTagAwareAdapter::class, $redisAdapter);
         $etagAdapter = $injector->getInstance(TagAwareAdapterInterface::class, EtagPool::class);
-        $this->assertInstanceOf(NullTagAwareAdapter::class, $etagAdapter);
+        $this->assertNull($etagAdapter);
         $resourceStorage = $injector->getInstance(ResourceStorageInterface::class);
+        $this->assertInstanceOf(ResourceStorageInterface::class, $resourceStorage);
     }
 }
