@@ -39,9 +39,5 @@ final class StorageMemcachedModule extends AbstractModule
                 'namespace' => CacheNamespace::class,
             ],
         );
-        $this->bind(AdapterInterface::class)->to(MemcachedAdapter::class);
-//        $this->bind(CacheItemPoolInterface::class)->annotatedWith(EtagPool::class)->toConstructor(MemcachedAdapter::class, [
-//            'namespace' => CacheNamespace::class,
-//        ]);
     }
 }
