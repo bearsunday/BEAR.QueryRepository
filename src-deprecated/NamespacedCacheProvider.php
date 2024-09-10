@@ -10,14 +10,15 @@ use BEAR\Resource\Annotation\AppName;
 use Doctrine\Common\Cache\CacheProvider;
 use Ray\Di\ProviderInterface;
 
+/**
+ * @deprecated
+ */
 class NamespacedCacheProvider implements ProviderInterface
 {
     /** @var CacheProvider */
     private $cache;
 
     /**
-     * @deprecated
-     *
      * @CacheEngine("cache")
      * @AppName("appName")
      * @CacheVersion("version")
