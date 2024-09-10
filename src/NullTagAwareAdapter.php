@@ -54,7 +54,7 @@ final class NullTagAwareAdapter implements TagAwareAdapterInterface
      *
      * @return bool
      *
-     * @* @inheritDoc
+     * @inheritDoc
      */
     public function deleteItem($key)
     {
