@@ -14,4 +14,11 @@
             <directory name="vendor" />
         </ignoreFiles>
     </projectFiles>
+    <issueHandlers>
+        <UndefinedClass>
+            <errorLevel type="suppress">
+                <file name="src/RedisDsnProvider.php" />
+            </errorLevel>
+        </UndefinedClass>
+    </issueHandlers>
 </psalm>
