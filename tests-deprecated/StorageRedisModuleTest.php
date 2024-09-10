@@ -12,10 +12,12 @@ use Ray\PsrCacheModule\Annotation\Shared;
 use Ray\PsrCacheModule\MemcachedAdapter;
 use Ray\PsrCacheModule\RedisAdapter;
 use Symfony\Component\Process\Process;
-
 use function getenv;
 use function usleep;
 
+/**
+ * @deprecated
+ */
 class StorageRedisModuleTest extends TestCase
 {
     /** @var Process */
