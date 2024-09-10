@@ -61,8 +61,6 @@ final class StorageRedisDsnModule extends AbstractModule
     {
         $this->bind()->annotatedWith(RedisDsn::class)->toInstance($this->dsn);
         $this->bind()->annotatedWith(RedisDsnOptions::class)->toInstance($this->options);
-        $this->bind(CacheItemPoolInterface::class)->toConstructor(ApcuAdapter::class, ['namespace' => CacheNamespace::class])->in(Scope::SINGLETON);
-        $this->bind(CacheItemPoolInterface::class)->annotatedWith(Local::class)->toConstructor(ApcuAdapter::class, ['namespace' => CacheNamespace::class])->in(Scope::SINGLETON);
         $this->bind(CacheItemPoolInterface::class)->annotatedWith(Shared::class)->toConstructor(RedisAdapter::class, [
             'redisProvider' => 'redis',
             'namespace' => CacheNamespace::class,
