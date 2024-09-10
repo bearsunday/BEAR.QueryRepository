@@ -37,14 +37,26 @@ final class NullTagAwareAdapter implements TagAwareAdapterInterface
         return true;
     }
 
-    /** @inheritDoc */
-    public function hasItem(string $key): bool
+    /**
+     * @param string $key
+     *
+     * @return bool
+     *
+     * @inheritDoc
+     */
+    public function hasItem($key)
     {
         return false;
     }
 
-    /** @inheritDoc */
-    public function deleteItem(string $key): bool
+    /**
+     * @param string $key
+     *
+     * @return bool
+     *
+     * @* @inheritDoc
+     */
+    public function deleteItem($key)
     {
         return true;
     }
