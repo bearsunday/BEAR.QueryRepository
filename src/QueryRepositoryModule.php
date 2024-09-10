@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\EtagPool;
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
+use BEAR\RepositoryModule\Annotation\TagsPool;
 use BEAR\Resource\NamedParameter;
 use BEAR\Resource\NamedParameterInterface;
 use Ray\Di\AbstractModule;
@@ -45,15 +46,17 @@ final class QueryRepositoryModule extends AbstractModule
     {
         // Null cache engine default
         $this->bind(AdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->to(NullAdapter::class);
-        $this->bind(AdapterInterface::class)->annotatedWith(EtagPool::class)->to(NullAdapter::class);
-        // Bind TagAwareAdapterInterface
+        // When null is bound, the same adapter as the one assigned to the ResourceObjectPool is used.
+        $this->bind(AdapterInterface::class)->annotatedWith(TagsPool::class)->toInstance(null);
+        // TagAwareAdapterInterface is injected into ResourceStorage
         $this->bind(TagAwareAdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->toConstructor(
             TagAwareAdapter::class,
             [
                 'itemsPool' => ResourceObjectPool::class,
-                'tagsPool' => EtagPool::class,
+                'tagsPool' => TagsPool::class,
             ],
         )->in(Scope::SINGLETON);
+        //  When null is bound, the same adapter as the one assigned to the ResourceObjectPool is used.
         $this->bind(TagAwareAdapterInterface::class)->annotatedWith(EtagPool::class)->toInstance(null);
         // core
         $this->bind(QueryRepositoryInterface::class)->to(QueryRepository::class)->in(Scope::SINGLETON);
