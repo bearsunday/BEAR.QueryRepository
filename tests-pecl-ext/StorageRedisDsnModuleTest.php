@@ -33,7 +33,16 @@ class StorageRedisDsnModuleTest extends TestCase
         self::$process = new Process(['redis-server']);
         self::$process->disableOutput();
         self::$process->start();
-        usleep(1000000); //wait for server to get going
+        $maxAttempts = 10;
+        $attempt = 0;
+        while ($attempt < $maxAttempts) {
+            if (@fsockopen('localhost', 6379)) {
+                return;
+            }
+            usleep(100000); // 100ms
+            $attempt++;
+        }
+        throw new \RuntimeException('Redis server failed to start');
     }
 
     public static function tearDownAfterClass(): void
