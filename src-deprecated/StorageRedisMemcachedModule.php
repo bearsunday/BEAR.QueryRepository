@@ -13,11 +13,12 @@ use Ray\PsrCacheModule\Annotation\MemcacheConfig;
 use Ray\PsrCacheModule\MemcachedAdapter;
 use Ray\PsrCacheModule\MemcachedProvider;
 use Ray\PsrCacheModule\Psr6RedisModule;
-
 use function array_map;
 use function explode;
 
 /**
+ * @deprecated
+ *
  * Bind redis to shared storage, Bind memcache to etag pool
  */
 final class StorageRedisMemcachedModule extends AbstractModule

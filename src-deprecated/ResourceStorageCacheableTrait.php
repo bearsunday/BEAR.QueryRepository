@@ -17,6 +17,9 @@ use Symfony\Component\Cache\Adapter\TagAwareAdapter;
 
 use function assert;
 
+/**
+ * @deprecated
+ */
 trait ResourceStorageCacheableTrait
 {
     /**

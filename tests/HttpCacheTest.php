@@ -8,7 +8,6 @@ use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
-use Symfony\Component\Cache\Adapter\ArrayAdapter;
 
 use function assert;
 
@@ -16,7 +15,8 @@ class HttpCacheTest extends TestCase
 {
     public function testisNotModifiedFale(): CliHttpCache
     {
-        $httpCache = new CliHttpCache(new ResourceStorage(new RepositoryLogger(), new NullPurger(), new UriTag(), new ArrayAdapter()));
+        $storage = ResourceStorageTest::getResourceStorageInstance();
+        $httpCache = new CliHttpCache($storage);
         $server = [];
         $this->assertFalse($httpCache->isNotModified($server));
 
@@ -28,7 +28,7 @@ class HttpCacheTest extends TestCase
         $resource = (new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld')))->getInstance(ResourceInterface::class);
         $user = $resource->get('app://self/user', ['id' => 1]);
         assert($user instanceof ResourceObject);
-        $storage = new ResourceStorage(new RepositoryLogger(), new NullPurger(), new UriTag(), new ArrayAdapter());
+        $storage = ResourceStorageTest::getResourceStorageInstance();
         $storage->saveEtag($user->uri, $user->headers[Header::ETAG], '', 10);
         $httpCache = new CliHttpCache($storage);
         $server = ['HTTP_IF_NONE_MATCH' => $user->headers[Header::ETAG]];
@@ -50,7 +50,7 @@ class HttpCacheTest extends TestCase
         $resource = (new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld')))->getInstance(ResourceInterface::class);
         $user = $resource->get('app://self/user', ['id' => 1]);
         assert($user instanceof ResourceObject);
-        $storage = new ResourceStorage(new RepositoryLogger(), new NullPurger(), new UriTag(), new ArrayAdapter());
+        $storage = ResourceStorageTest::getResourceStorageInstance();
         $storage->saveEtag($user->uri, $user->headers[Header::ETAG], '', 10);
         $httpCache = new CliHttpCache($storage);
         $header = 'IF_NONE_MATCH=' . $user->headers[Header::ETAG];

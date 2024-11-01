@@ -14,6 +14,8 @@ use Ray\Di\AbstractModule;
 use Ray\Di\Scope;
 
 /**
+ * @deprecated
+ *
  * Backward Compatibility module
  *
  * Install this when you need deprecated interface.

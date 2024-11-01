@@ -5,18 +5,13 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\EtagPool;
-use BEAR\RepositoryModule\Annotation\KnownTagTtl;
+use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\RequestInterface;
 use BEAR\Resource\ResourceObject;
-use Doctrine\Common\Cache\CacheProvider;
-use Doctrine\Common\Cache\Psr6\CacheAdapter;
-use Psr\Cache\CacheItemPoolInterface;
-use Ray\PsrCacheModule\Annotation\Shared;
-use Symfony\Component\Cache\Adapter\AdapterInterface;
-use Symfony\Component\Cache\Adapter\Psr16Adapter;
-use Symfony\Component\Cache\Adapter\TagAwareAdapter;
-use Symfony\Component\Cache\Psr16Cache;
+use Ray\Di\Di\Set;
+use Ray\Di\ProviderInterface;
+use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 
 use function array_merge;
@@ -29,10 +24,18 @@ use function is_string;
 use function sprintf;
 use function strtoupper;
 
+/**
+ * @psalm-type Props = array{
+ *     logger: RepositoryLoggerInterface,
+ *     purger:PurgerInterface,
+ *     uriTag: UriTag,
+ *     saver: ResourceStorageSaver,
+ *     roProvider:ProviderInterface<TagAwareAdapterInterface>,
+ *     etagProvider: ProviderInterface<TagAwareAdapterInterface>
+ * }
+ */
 final class ResourceStorage implements ResourceStorageInterface
 {
-    use ResourceStorageCacheableTrait;
-
     /**
      * Resource object cache prefix
      */
@@ -43,46 +46,42 @@ final class ResourceStorage implements ResourceStorageInterface
      */
     private const KEY_DONUT = 'donut-';
 
-    /** @var TagAwareAdapter */
-    private $roPool;
+    /** @var ProviderInterface<TagAwareAdapterInterface> */
+    private ProviderInterface $roPoolProvider;
 
-    /** @var TagAwareAdapter */
-    private $etagPool;
+    /** @var ProviderInterface<TagAwareAdapterInterface> */
+    private ProviderInterface $etagPoolProvider;
+    private TagAwareAdapterInterface $roPool;
+    private TagAwareAdapterInterface $etagPool;
 
-    /** @var ResourceStorageSaver */
-    private $saver;
-
+    /**
+     * @param ProviderInterface<TagAwareAdapterInterface> $roPoolProvider
+     * @param ProviderInterface<TagAwareAdapterInterface> $etagPoolProvider
+     */
     public function __construct(
         private RepositoryLoggerInterface $logger,
         private PurgerInterface $purger,
         private UriTagInterface $uriTag,
-        #[Shared]
-        CacheItemPoolInterface|null $pool = null,
-        #[EtagPool]
-        CacheItemPoolInterface|null $etagPool = null,
-        CacheProvider|null $cache = null,
-        #[KnownTagTtl]
-        private float $knownTagTtl = 0.0,
+        private ResourceStorageSaver $saver,
+        #[Set(TagAwareAdapterInterface::class, ResourceObjectPool::class)]
+        ProviderInterface $roPoolProvider,
+        #[Set(TagAwareAdapterInterface::class, EtagPool::class)]
+        ProviderInterface $etagPoolProvider,
     ) {
-        $this->saver = new ResourceStorageSaver();
-        if ($pool === null && $cache instanceof CacheProvider) {
-            $this->injectDoctrineCache($cache);
-
-            return;
-        }
-
-        assert($pool instanceof AdapterInterface);
-        $etagPool =  $etagPool instanceof AdapterInterface ? $etagPool : $pool;
-        $this->roPool = new TagAwareAdapter($pool, $etagPool, $knownTagTtl);
-        $this->etagPool = new TagAwareAdapter($etagPool, $etagPool, $knownTagTtl);
+        $this->initializePools($roPoolProvider, $etagPoolProvider);
     }
 
-    private function injectDoctrineCache(CacheProvider $cache): void
+    /**
+     * @param ProviderInterface<TagAwareAdapterInterface> $roPoolProvider
+     * @param ProviderInterface<TagAwareAdapterInterface> $etagPoolProvider
+     */
+    private function initializePools(ProviderInterface $roPoolProvider, ProviderInterface $etagPoolProvider): void
     {
-        $psr16Cache = new Psr16Cache(CacheAdapter::wrap($cache));
-
-        $this->roPool = new TagAwareAdapter(new Psr16Adapter($psr16Cache));
-        $this->etagPool = $this->roPool;
+        $this->roPoolProvider = $roPoolProvider;
+        $this->etagPoolProvider = $etagPoolProvider;
+        $this->roPool = $roPoolProvider->get();
+        $etagPool = $this->etagPoolProvider->get();
+        $this->etagPool = $etagPool instanceof TagAwareAdapterInterface ? $etagPool : $this->roPool; // @phpstan-ignore-line
     }
 
     /**
@@ -182,7 +181,8 @@ final class ResourceStorage implements ResourceStorageInterface
     {
         $key = $this->getUriKey($uri, self::KEY_DONUT);
         $this->logger->log('save-donut uri:%s s-maxage:%s', $uri, $sMaxAge);
-        $this->saver->__invoke($key, $donut, $this->roPool, $headerKeys, $sMaxAge);
+        $result = $this->saver->__invoke($key, $donut, $this->roPool, $headerKeys, $sMaxAge);
+        assert($result, 'Donut save failed.');
     }
 
     public function saveDonutView(ResourceObject $ro, int|null $ttl): bool
@@ -258,5 +258,31 @@ final class ResourceStorage implements ResourceStorageInterface
         $uniqueTags = array_unique($tags);
         $this->logger->log('save-etag uri:%s etag:%s surrogate-keys:%s', $uri, $etag, $uniqueTags);
         $this->saver->__invoke($etag, 'etag', $this->etagPool, $uniqueTags, $ttl);
+    }
+
+    public function __serialize(): array
+    {
+        return [
+            'logger' => $this->logger,
+            'purger' => $this->purger,
+            'uriTag' => $this->uriTag,
+            'saver' => $this->saver,
+            'roProvider' => $this->roPoolProvider,
+            'etagProvider' => $this->etagPoolProvider,
+        ];
+    }
+
+    /**
+     * @param Props $data
+     *
+     * @return void
+     */
+    public function __unserialize(array $data): void
+    {
+        $this->logger = $data['logger'];
+        $this->purger = $data['purger'];
+        $this->uriTag = $data['uriTag'];
+        $this->saver = $data['saver'];
+        $this->initializePools($data['roProvider'], $data['etagProvider']);
     }
 }

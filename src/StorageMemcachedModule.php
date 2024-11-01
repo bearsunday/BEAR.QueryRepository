@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\RepositoryModule\Annotation\EtagPool;
-use Psr\Cache\CacheItemPoolInterface;
+use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
+use BEAR\RepositoryModule\Annotation\TagsPool;
 use Ray\Di\AbstractModule;
 use Ray\PsrCacheModule\Annotation\CacheNamespace;
 use Ray\PsrCacheModule\MemcachedAdapter;
 use Ray\PsrCacheModule\Psr6MemcachedModule;
+use Symfony\Component\Cache\Adapter\AdapterInterface;
+use Symfony\Component\Cache\Adapter\TagAwareAdapter;
+use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 
 final class StorageMemcachedModule extends AbstractModule
 {
@@ -26,9 +29,15 @@ final class StorageMemcachedModule extends AbstractModule
      */
     protected function configure(): void
     {
+        $this->bind(AdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->to(MemcachedAdapter::class);
         $this->install(new Psr6MemcachedModule($this->servers));
-        $this->bind(CacheItemPoolInterface::class)->annotatedWith(EtagPool::class)->toConstructor(MemcachedAdapter::class, [
-            'namespace' => CacheNamespace::class,
-        ]);
+        $this->bind(TagAwareAdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->toConstructor(
+            TagAwareAdapter::class,
+            [
+                'itemsPool' => ResourceObjectPool::class,
+                'tagsPool' => TagsPool::class,
+                'namespace' => CacheNamespace::class,
+            ],
+        );
     }
 }

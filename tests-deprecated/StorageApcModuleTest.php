@@ -10,6 +10,9 @@ use Doctrine\Common\Cache\CacheProvider;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 
+/**
+ * @deprecated
+ */
 class StorageApcModuleTest extends TestCase
 {
     public function testNew(): void
