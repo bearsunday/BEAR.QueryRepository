@@ -34,7 +34,7 @@ final class DonutRepository implements DonutRepositoryInterface
     private $renderer;
 
     public function __construct(
-        QueryRepository $queryRepository,
+        QueryRepositoryInterface $queryRepository,
         HeaderSetter $headerSetter,
         ResourceStorageInterface $resourceStorage,
         ResourceInterface $resource,
