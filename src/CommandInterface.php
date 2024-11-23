@@ -14,6 +14,10 @@ use Ray\Aop\MethodInvocation;
  */
 interface CommandInterface
 {
-    /** @return void */
+    /**
+     * @param MethodInvocation<object> $invocation
+     *
+     * @return void
+     */
     public function command(MethodInvocation $invocation, ResourceObject $ro);
 }
