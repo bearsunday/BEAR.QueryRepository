@@ -13,6 +13,7 @@ use function assert;
 use function crc32;
 use function gmdate;
 use function is_array;
+use function is_string;
 use function serialize;
 use function time;
 
@@ -44,8 +45,8 @@ final class EtagSetter implements EtagSetterInterface
         $etag = '';
         assert(is_array($ro->body));
         foreach ($httpCacche->etag as $bodyEtag) {
-            if (isset($ro->body[$bodyEtag])) {
-                $etag .= (string) $ro->body[$bodyEtag];
+            if (isset($ro->body[$bodyEtag]) && is_string($ro->body[$bodyEtag])) {
+                $etag .= $ro->body[$bodyEtag];
             }
         }
 
