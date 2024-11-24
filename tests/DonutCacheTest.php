@@ -22,7 +22,7 @@ class DonutCacheTest extends TestCase
         $module = new FakeEtagPoolModule(ModuleFactory::getInstance($namespace));
         $path = dirname(__DIR__) . '/tests/Fake/fake-app/var/templates';
         $module->override(new TwigModule([$path]));
-        $injector = new Injector($module, $_ENV['TMP_DIR']);
+        $injector = new Injector($module, __DIR__ . '/tmp');
         $this->resource = $injector->getInstance(ResourceInterface::class);
 
         parent::setUp();

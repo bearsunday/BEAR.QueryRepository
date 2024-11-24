@@ -46,7 +46,7 @@ class DonutRepositoryTest extends TestCase
         $module = new FakeEtagPoolModule(ModuleFactory::getInstance($namespace));
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
 
-        return new Injector($module, $_ENV['TMP_DIR']);
+        return new Injector($module, __DIR__ . '/tmp');
     }
 
     public function testCreateDonut(): void

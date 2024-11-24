@@ -17,7 +17,7 @@ class EtagSetterTest extends TestCase
     {
         parent::setUp();
 
-        $this->resource = (new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld'), $_ENV['TMP_DIR']))->getInstance(ResourceInterface::class);
+        $this->resource = (new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld'), __DIR__ . '/tmp'))->getInstance(ResourceInterface::class);
     }
 
     public function testStatusNotOk(): void

@@ -26,7 +26,7 @@ class BehaviorTest extends TestCase
     protected function setUp(): void
     {
         $namespace = 'FakeVendor\HelloWorld';
-        $injector = new Injector(ModuleFactory::getInstance($namespace), $_ENV['TMP_DIR']);
+        $injector = new Injector(ModuleFactory::getInstance($namespace), __DIR__ . '/tmp');
         $this->resource = $injector->getInstance(ResourceInterface::class);
         $this->httpCache = $injector->getInstance(HttpCacheInterface::class);
 

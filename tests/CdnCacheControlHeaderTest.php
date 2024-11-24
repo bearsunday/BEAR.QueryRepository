@@ -22,7 +22,7 @@ class CdnCacheControlHeaderTest extends TestCase
     public function testCdnCacheControl(): void
     {
         $module = $this->getModule();
-        $injector =  new Injector($module, $_ENV['TMP_DIR']);
+        $injector =  new Injector($module, __DIR__ . '/tmp');
         /** @var ResourceInterface $resource */
         $resource = $injector->getInstance(ResourceInterface::class);
         $ro = $resource->get('page://self/html/blog-posting');
@@ -42,7 +42,7 @@ class CdnCacheControlHeaderTest extends TestCase
         $module = $this->getModule();
         $module->override(new FastlyModule('apiKey', 'serviceId'));
         $module->override(new FakeFastlyPurgeModule());
-        $injector =  new Injector($module, $_ENV['TMP_DIR']);
+        $injector =  new Injector($module, __DIR__ . '/tmp');
         $resource = $injector->getInstance(ResourceInterface::class);
         $ro = $resource->get('page://self/html/blog-posting');
         assert($ro instanceof ResourceObject);
@@ -55,7 +55,7 @@ class CdnCacheControlHeaderTest extends TestCase
     {
         $module = $this->getModule();
         $module->override(new AkamaiModule());
-        $injector =  new Injector($module, $_ENV['TMP_DIR']);
+        $injector =  new Injector($module, __DIR__ . '/tmp');
         $resource = $injector->getInstance(ResourceInterface::class);
         $ro = $resource->get('page://self/html/blog-posting');
         assert($ro instanceof ResourceObject);
@@ -68,7 +68,7 @@ class CdnCacheControlHeaderTest extends TestCase
     {
         $module = $this->getModule();
         $module->override(new NullCdnCacheControlModule());
-        $injector =  new Injector($module, $_ENV['TMP_DIR']);
+        $injector =  new Injector($module, __DIR__ . '/tmp');
         $resource = $injector->getInstance(ResourceInterface::class);
         $ro = $resource->get('page://self/html/blog-posting');
         assert($ro instanceof ResourceObject);
