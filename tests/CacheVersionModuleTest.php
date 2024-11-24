@@ -14,7 +14,7 @@ class CacheVersionModuleTest extends TestCase
     {
         $version = '1';
         $module = new CacheVersionModule($version);
-        $injector = new Injector($module, $_ENV['TMP_DIR']);
+        $injector = new Injector($module, __DIR__ . '/tmp');
         $ns = $injector->getInstance('', CacheNamespace::class); // @phpstan-ignore-line
         $this->assertSame($version, $ns);
     }

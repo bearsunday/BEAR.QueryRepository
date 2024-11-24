@@ -14,6 +14,7 @@ use Ray\Di\Injector;
 use function array_map;
 use function assert;
 use function dirname;
+use function is_array;
 use function property_exists;
 
 class DonutCommandInterceptorTest extends TestCase
@@ -27,7 +28,7 @@ class DonutCommandInterceptorTest extends TestCase
         $namespace = 'FakeVendor\HelloWorld';
         $module = new FakeEtagPoolModule(ModuleFactory::getInstance($namespace));
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
-        $injector = new Injector($module, $_ENV['TMP_DIR']);
+        $injector = new Injector($module, __DIR__ . '/tmp');
         $this->resource = $injector->getInstance(ResourceInterface::class);
         $this->logger = $injector->getInstance(RepositoryLoggerInterface::class);
         $this->httpCache = $injector->getInstance(HttpCacheInterfaceAlias::class);
@@ -84,6 +85,9 @@ class DonutCommandInterceptorTest extends TestCase
         $interceptors = array_map(static fn (object $object): string => $object::class, $ro->bindings['onGet']); // @phpstan-ignore-line
         $this->assertContains(DonutCacheInterceptor::class, $interceptors);
         assert(property_exists($ro, 'bindings'));
+        assert(is_array($ro->bindings));
+        assert(is_array($ro->bindings['onGet']));
+        assert(is_array($ro->bindings['onDelete']));
         assert(isset($ro->bindings['onGet'][0]));
         assert(isset($ro->bindings['onDelete'][0]));
         $this->assertInstanceOf(DonutCacheInterceptor::class, $ro->bindings['onDelete'][0]);

@@ -15,7 +15,7 @@ class GetInterceptorTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->resource = (new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld'), $_ENV['TMP_DIR']))->getInstance(ResourceInterface::class);
+        $this->resource = (new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld'), __DIR__ . '/tmp'))->getInstance(ResourceInterface::class);
 
         parent::setUp();
     }

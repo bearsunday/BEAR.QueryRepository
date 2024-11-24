@@ -27,7 +27,7 @@ class ResourceRepositoryTest extends TestCase
 
     protected function setUp(): void
     {
-        $tagAwareAdapter = new TagAwareAdapter(new FilesystemAdapter('', 0, $_ENV['TMP_DIR']));
+        $tagAwareAdapter = new TagAwareAdapter(new FilesystemAdapter('', 0, __DIR__ . '/tmp'));
         $tagAwareAdapterProvider = new class ($tagAwareAdapter) implements ProviderInterface{
             public function __construct(private TagAwareAdapter $tagAwareAdapter)
             {

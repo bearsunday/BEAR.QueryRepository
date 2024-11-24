@@ -18,7 +18,7 @@ class ResourceStorageTest extends TestCase
 
     public static function getResourceStorageInstance(): ResourceStorage
     {
-        $tagAwareAdapter = new TagAwareAdapter(new FilesystemAdapter('', 0, $_ENV['TMP_DIR']));
+        $tagAwareAdapter = new TagAwareAdapter(new FilesystemAdapter('', 0, __DIR__ . '/tmp'));
         $tagAwareAdapterProvider = new class ($tagAwareAdapter) implements ProviderInterface{
             public function __construct(private TagAwareAdapter $tagAwareAdapter)
             {

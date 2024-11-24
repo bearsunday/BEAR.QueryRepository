@@ -5,11 +5,8 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\Resource\ResourceInterface;
-use BEAR\Resource\ResourceObject;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
-
-use function assert;
 
 class HttpCacheTest extends TestCase
 {
@@ -27,7 +24,6 @@ class HttpCacheTest extends TestCase
     {
         $resource = (new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld')))->getInstance(ResourceInterface::class);
         $user = $resource->get('app://self/user', ['id' => 1]);
-        assert($user instanceof ResourceObject);
         $storage = ResourceStorageTest::getResourceStorageInstance();
         $storage->saveEtag($user->uri, $user->headers[Header::ETAG], '', 10);
         $httpCache = new CliHttpCache($storage);
@@ -49,7 +45,6 @@ class HttpCacheTest extends TestCase
     {
         $resource = (new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld')))->getInstance(ResourceInterface::class);
         $user = $resource->get('app://self/user', ['id' => 1]);
-        assert($user instanceof ResourceObject);
         $storage = ResourceStorageTest::getResourceStorageInstance();
         $storage->saveEtag($user->uri, $user->headers[Header::ETAG], '', 10);
         $httpCache = new CliHttpCache($storage);

@@ -17,7 +17,7 @@ class EtagSetterTest extends TestCase
     {
         parent::setUp();
 
-        $this->resource = (new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld'), $_ENV['TMP_DIR']))->getInstance(ResourceInterface::class);
+        $this->resource = (new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld'), __DIR__ . '/tmp'))->getInstance(ResourceInterface::class);
     }
 
     public function testStatusNotOk(): void
@@ -38,6 +38,6 @@ class EtagSetterTest extends TestCase
         $setEtag($ro, $time);
         $expect = 'Thu, 01 Jan 1970 00:00:00 GMT';
         $this->assertSame($expect, $ro->headers['Last-Modified']);
-        $this->assertIsString($ro->headers[Header::ETAG]);
+        $this->assertIsString($ro->headers[Header::ETAG]); // @phpstan-ignore-line
     }
 }

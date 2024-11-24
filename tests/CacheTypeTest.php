@@ -9,13 +9,16 @@ use BEAR\Resource\ResourceObject;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 
+use function assert;
+use function is_string;
+
 class CacheTypeTest extends TestCase
 {
     private ResourceInterface $resource;
 
     protected function setUp(): void
     {
-        $this->resource = (new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld'), $_ENV['TMP_DIR']))->getInstance(ResourceInterface::class);
+        $this->resource = (new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld'), __DIR__ . '/tmp'))->getInstance(ResourceInterface::class);
 
         parent::setUp();
     }
@@ -41,11 +44,14 @@ class CacheTypeTest extends TestCase
         $uri = 'app://self/value';
         // put
         $ro = $this->resource->get($uri);
-        (string) $ro; /* @phpstan-ignore-line */
+        (string) $ro;
         $time = $ro['time'];
+        assert(is_string($time));
         $this->assertSame('1' . $time, $ro->view);
         $ro = $this->resource->get($uri);
-        (string) $ro; /* @phpstan-ignore-line */
+        (string) $ro;
+        $result = (string) $ro;
+        $this->assertNotEmpty($result);
         $this->assertSame('2' . $time, $ro->view);
     }
 
@@ -55,6 +61,7 @@ class CacheTypeTest extends TestCase
         // put
         $ro = $this->resource->get($uri);
         $time = $ro['time'];
+        assert(is_string($time));
         $this->assertSame('1' . $time, $ro->view);
         $ro = $this->resource->get($uri);
         $this->assertTrue((bool) $ro->view);

@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 env:
-  COMPOSER_FLAGS: "--ansi --no-interaction --no-progress --prefer-dist"
+  COMPOSER_FLAGS: "--ansi --no-interaction --no-progress --prefer-dist --no-plugins"
   COMPOSER_UPDATE_FLAGS: ""
   script: demo/run.php
 
@@ -41,6 +41,12 @@ jobs:
             dependencies: highest
             os: ubuntu-latest
           - php-version: 8.3
+            dependencies: lowest
+            os: ubuntu-latest
+          - php-version:  8.4
+            dependencies: highest
+            os: ubuntu-latest
+          - php-version: 8.4
             dependencies: lowest
             os: ubuntu-latest
     steps:

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\Resource\ResourceInterface;
-use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
 use Madapaja\TwigModule\TwigModule;
 use PHPUnit\Framework\TestCase;
@@ -30,6 +29,7 @@ class DonutRepositoryTest extends TestCase
             $injector = $this->getInjector();
         }
 
+        assert($injector instanceof Injector);
         $this->resource = $injector->getInstance(ResourceInterface::class);
         $this->donutRepository = $injector->getInstance(DonutRepositoryInterface::class);
         $this->queryRepository = $injector->getInstance(QueryRepositoryInterface::class);
@@ -46,7 +46,7 @@ class DonutRepositoryTest extends TestCase
         $module = new FakeEtagPoolModule(ModuleFactory::getInstance($namespace));
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
 
-        return new Injector($module, $_ENV['TMP_DIR']);
+        return new Injector($module, __DIR__ . '/tmp');
     }
 
     public function testCreateDonut(): void
@@ -77,7 +77,6 @@ class DonutRepositoryTest extends TestCase
         $this->resourceStorage->invalidateTags([(new UriTag())(new Uri('page://self/html/comment'))]);
         // create by donut
         $donutRo = $this->resource->get('page://self/html/blog-posting');
-        assert($donutRo instanceof ResourceObject);
         $this->assertSame('r', $donutRo->headers[Header::ETAG][-1]);
     }
 
@@ -108,9 +107,7 @@ class DonutRepositoryTest extends TestCase
     {
         $injector = $this->getInjector();
         $resource = $injector->getInstance(ResourceInterface::class);
-        assert($resource instanceof ResourceInterface);
         $queryRepository = $injector->getInstance(QueryRepositoryInterface::class);
-        assert($queryRepository instanceof QueryRepositoryInterface);
 
         $resource->get('page://self/html/blog-posting');
         assert($queryRepository->purge(new Uri('page://self/html/comment')));

@@ -7,7 +7,6 @@ namespace BEAR\QueryRepository;
 use BEAR\QueryRepository\Exception\ReturnValueIsNotResourceObjectException;
 use BEAR\QueryRepository\Exception\UnmatchedQuery;
 use BEAR\Resource\ResourceInterface;
-use BEAR\Resource\ResourceObject;
 use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
 use FakeVendor\HelloWorld\Resource\App\Code;
 use FakeVendor\HelloWorld\Resource\App\RefreshDest;
@@ -26,7 +25,7 @@ class BehaviorTest extends TestCase
     protected function setUp(): void
     {
         $namespace = 'FakeVendor\HelloWorld';
-        $injector = new Injector(ModuleFactory::getInstance($namespace), $_ENV['TMP_DIR']);
+        $injector = new Injector(ModuleFactory::getInstance($namespace), __DIR__ . '/tmp');
         $this->resource = $injector->getInstance(ResourceInterface::class);
         $this->httpCache = $injector->getInstance(HttpCacheInterface::class);
 
@@ -36,7 +35,6 @@ class BehaviorTest extends TestCase
     public function testPurgeSameResourceObjectByPatch(): void
     {
         $user = $this->resource->get('app://self/user', ['id' => 1]);
-        assert($user instanceof ResourceObject);
         $etag = $user->headers[Header::ETAG];
         // reload (purge repository entry and re-generate by onGet)
         $this->resource->patch('app://self/user', ['id' => 1, 'name' => 'kuma']);
@@ -55,7 +53,6 @@ class BehaviorTest extends TestCase
     public function testPurgeSameResourceObjectByDelete(): void
     {
         $user = $this->resource->get('app://self/user', ['id' => 1]);
-        assert($user instanceof ResourceObject);
         $etag = $user->headers[Header::ETAG];
         $server = [
             'REQUEST_METHOD' => 'GET',

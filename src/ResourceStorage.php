@@ -12,7 +12,6 @@ use BEAR\Resource\ResourceObject;
 use Ray\Di\Di\Set;
 use Ray\Di\ProviderInterface;
 use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
-use Symfony\Contracts\Cache\ItemInterface;
 
 use function array_merge;
 use function array_unique;
@@ -90,7 +89,6 @@ final class ResourceStorage implements ResourceStorageInterface
     public function get(AbstractUri $uri): ResourceState|null
     {
         $item = $this->roPool->getItem($this->getUriKey($uri, self::KEY_RO));
-        assert($item instanceof ItemInterface);
         $state = $item->get();
         assert($state instanceof ResourceState || $state === null);
 
@@ -101,7 +99,6 @@ final class ResourceStorage implements ResourceStorageInterface
     {
         $key = $this->getUriKey($uri, self::KEY_DONUT);
         $item = $this->roPool->getItem($key);
-        assert($item instanceof ItemInterface);
         $donut = $item->get();
         assert($donut instanceof ResourceDonut || $donut === null);
 
@@ -238,7 +235,7 @@ final class ResourceStorage implements ResourceStorageInterface
     private function getVary(): string
     {
         $xvary = $_SERVER['X_VARY'];
-        $varys = explode(',', $xvary);
+        $varys = explode(',', $xvary); // @phpstan-ignore-line
         $varyString = '';
         foreach ($varys as $vary) {
             $phpVaryKey = sprintf('X_%s', strtoupper($vary));
