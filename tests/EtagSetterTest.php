@@ -38,6 +38,6 @@ class EtagSetterTest extends TestCase
         $setEtag($ro, $time);
         $expect = 'Thu, 01 Jan 1970 00:00:00 GMT';
         $this->assertSame($expect, $ro->headers['Last-Modified']);
-        $this->assertIsString($ro->headers[Header::ETAG]);
+        $this->assertIsString($ro->headers[Header::ETAG]); // @phpstan-ignore-line
     }
 }

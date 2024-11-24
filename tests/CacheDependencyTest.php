@@ -9,7 +9,6 @@ use BEAR\Resource\Uri;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 
-use function assert;
 use function explode;
 
 class CacheDependencyTest extends TestCase
@@ -34,7 +33,6 @@ class CacheDependencyTest extends TestCase
         $this->resource->get('page://self/dep/level-one');
         $one1 = $this->repository->get(new Uri('page://self/dep/level-one'));
         $this->assertInstanceOf(ResourceState::class, $one1);
-        assert($one1 instanceof ResourceState);
         $etag1 = $one1->headers[Header::ETAG];
         // destroy by child
         $this->repository->purge(new Uri('page://self/dep/level-two'));
@@ -51,7 +49,6 @@ class CacheDependencyTest extends TestCase
         $this->repository->purge(new Uri('page://self/dep/level-three'));
         $one2 = $this->repository->get(new Uri('page://self/dep/level-one'));
         $this->assertNull($one2);
-        assert($one1 instanceof ResourceState);
         $etag1 = $one1->headers[Header::ETAG];
         $surrogateKeys = explode(' ', $one1->headers['Surrogate-Key']);
         $etag2 = $surrogateKeys[0];

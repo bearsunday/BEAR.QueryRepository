@@ -7,7 +7,6 @@ namespace BEAR\QueryRepository;
 use BEAR\QueryRepository\Cdn\AkamaiModule;
 use BEAR\QueryRepository\Cdn\FastlyModule;
 use BEAR\Resource\ResourceInterface;
-use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
 use Madapaja\TwigModule\TwigModule;
 use PHPUnit\Framework\TestCase;

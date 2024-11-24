@@ -10,8 +10,8 @@ use BEAR\Resource\Uri;
 use Madapaja\TwigModule\TwigModule;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
-
 use Ray\Di\InjectorInterface;
+
 use function assert;
 use function dirname;
 
@@ -29,6 +29,7 @@ class SurrogateKeysTest extends TestCase
         if (! $injector) {
             $injector = new Injector($module, __DIR__ . '/tmp');
         }
+
         assert($injector instanceof InjectorInterface);
         $this->resource = $injector->getInstance(ResourceInterface::class);
 

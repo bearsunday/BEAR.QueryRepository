@@ -9,6 +9,9 @@ use BEAR\Resource\ResourceObject;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 
+use function assert;
+use function is_string;
+
 class CacheTypeTest extends TestCase
 {
     private ResourceInterface $resource;
@@ -41,11 +44,12 @@ class CacheTypeTest extends TestCase
         $uri = 'app://self/value';
         // put
         $ro = $this->resource->get($uri);
-        (string) $ro; /* @phpstan-ignore-line */
+        (string) $ro;
         $time = $ro['time'];
+        assert(is_string($time));
         $this->assertSame('1' . $time, $ro->view);
         $ro = $this->resource->get($uri);
-        (string) $ro; /* @phpstan-ignore-line */
+        (string) $ro;
         $this->assertSame('2' . $time, $ro->view);
     }
 
@@ -55,6 +59,7 @@ class CacheTypeTest extends TestCase
         // put
         $ro = $this->resource->get($uri);
         $time = $ro['time'];
+        assert(is_string($time));
         $this->assertSame('1' . $time, $ro->view);
         $ro = $this->resource->get($uri);
         $this->assertTrue((bool) $ro->view);

@@ -29,6 +29,7 @@ class DonutCacheInterceptorTest extends TestCase
             $injector = new Injector($module, __DIR__ . '/tmp');
         }
 
+        assert($injector instanceof Injector);
         $this->resource = $injector->getInstance(ResourceInterface::class);
         $this->logger = $injector->getInstance(RepositoryLoggerInterface::class);
 
