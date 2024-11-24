@@ -50,6 +50,8 @@ class CacheTypeTest extends TestCase
         $this->assertSame('1' . $time, $ro->view);
         $ro = $this->resource->get($uri);
         (string) $ro;
+        $result = (string) $ro;
+        $this->assertNotEmpty($result);
         $this->assertSame('2' . $time, $ro->view);
     }
 
