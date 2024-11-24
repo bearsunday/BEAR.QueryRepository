@@ -77,7 +77,6 @@ class DonutRepositoryTest extends TestCase
         $this->resourceStorage->invalidateTags([(new UriTag())(new Uri('page://self/html/comment'))]);
         // create by donut
         $donutRo = $this->resource->get('page://self/html/blog-posting');
-        assert($donutRo instanceof ResourceObject);
         $this->assertSame('r', $donutRo->headers[Header::ETAG][-1]);
     }
 

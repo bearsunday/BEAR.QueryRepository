@@ -26,7 +26,6 @@ class CdnCacheControlHeaderTest extends TestCase
         /** @var ResourceInterface $resource */
         $resource = $injector->getInstance(ResourceInterface::class);
         $ro = $resource->get('page://self/html/blog-posting');
-        assert($ro instanceof ResourceObject);
         $this->assertArrayHasKey(Header::CDN_CACHE_CONTROL, $ro->headers);
         $this->assertSame($ro->headers[Header::CDN_CACHE_CONTROL], 'max-age=10 stale-while-revalidate=10');
         $repository = $injector->getInstance(QueryRepositoryInterface::class);
@@ -45,7 +44,6 @@ class CdnCacheControlHeaderTest extends TestCase
         $injector =  new Injector($module, __DIR__ . '/tmp');
         $resource = $injector->getInstance(ResourceInterface::class);
         $ro = $resource->get('page://self/html/blog-posting');
-        assert($ro instanceof ResourceObject);
         $this->assertArrayHasKey('Surrogate-Control', $ro->headers);
         $this->assertSame($ro->headers['Surrogate-Control'], 'max-age=31536000');
         $this->assertArrayHasKey('Surrogate-Key', $ro->headers);
@@ -58,7 +56,6 @@ class CdnCacheControlHeaderTest extends TestCase
         $injector =  new Injector($module, __DIR__ . '/tmp');
         $resource = $injector->getInstance(ResourceInterface::class);
         $ro = $resource->get('page://self/html/blog-posting');
-        assert($ro instanceof ResourceObject);
         $this->assertArrayHasKey('Akamai-Cache-Control', $ro->headers);
         $this->assertArrayHasKey('Edge-Cache-Tag', $ro->headers);
         $this->assertSame($ro->headers['Akamai-Cache-Control'], 'max-age=31536000');
@@ -71,7 +68,6 @@ class CdnCacheControlHeaderTest extends TestCase
         $injector =  new Injector($module, __DIR__ . '/tmp');
         $resource = $injector->getInstance(ResourceInterface::class);
         $ro = $resource->get('page://self/html/blog-posting');
-        assert($ro instanceof ResourceObject);
         $this->assertArrayNotHasKey('Surrogate-Control', $ro->headers);
         $this->assertArrayNotHasKey('Header::CDN_CACHE_CONTROL_HEADER', $ro->headers);
     }

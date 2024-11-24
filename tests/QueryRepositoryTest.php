@@ -76,7 +76,6 @@ class QueryRepositoryTest extends TestCase
     public function testPurgeSameResourceObjectByDelete(): void
     {
         $user = $this->resource->get('app://self/user', ['id' => 1]);
-        assert($user instanceof ResourceObject);
         $etag = $user->headers[Header::ETAG];
         $server = [
             'REQUEST_METHOD' => 'GET',
@@ -165,7 +164,6 @@ class QueryRepositoryTest extends TestCase
             }
         });
         $resource = (new Injector($module, __DIR__ . '/tmp'))->getInstance(ResourceInterface::class);
-        assert($resource instanceof ResourceInterface);
         $resource->get('app://self/user', ['id' => 1]);
         $this->assertTrue($errorCaught, 'E_USER_WARNING should have been caught.');
         restore_error_handler();

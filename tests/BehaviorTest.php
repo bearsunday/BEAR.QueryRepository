@@ -36,7 +36,6 @@ class BehaviorTest extends TestCase
     public function testPurgeSameResourceObjectByPatch(): void
     {
         $user = $this->resource->get('app://self/user', ['id' => 1]);
-        assert($user instanceof ResourceObject);
         $etag = $user->headers[Header::ETAG];
         // reload (purge repository entry and re-generate by onGet)
         $this->resource->patch('app://self/user', ['id' => 1, 'name' => 'kuma']);
@@ -55,7 +54,6 @@ class BehaviorTest extends TestCase
     public function testPurgeSameResourceObjectByDelete(): void
     {
         $user = $this->resource->get('app://self/user', ['id' => 1]);
-        assert($user instanceof ResourceObject);
         $etag = $user->headers[Header::ETAG];
         $server = [
             'REQUEST_METHOD' => 'GET',
