@@ -14,6 +14,8 @@ use function sprintf;
 use function str_replace;
 use function uri_template;
 
+use const DIRECTORY_SEPARATOR;
+
 final class UriTag implements UriTagInterface
 {
     /**
@@ -24,7 +26,7 @@ final class UriTag implements UriTagInterface
         $query = $uri->query;
         ksort($query);
 
-        return str_replace(DIRECTORY_SEPARATOR , '_', sprintf('%s_%s', $uri->path, http_build_query($query)));
+        return str_replace(DIRECTORY_SEPARATOR, '_', sprintf('%s_%s', $uri->path, http_build_query($query)));
     }
 
     /**

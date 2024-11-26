@@ -16,6 +16,8 @@ use function implode;
 use function sprintf;
 use function str_replace;
 
+use const DIRECTORY_SEPARATOR;
+
 final class SurrogateKeys
 {
     /** @var list<string> */
@@ -24,7 +26,7 @@ final class SurrogateKeys
 
     public function __construct(AbstractUri $uri)
     {
-        $uriKey = sprintf('%s_%s', str_replace(DIRECTORY_SEPARATOR , '_', $uri->path), http_build_query($uri->query));
+        $uriKey = sprintf('%s_%s', str_replace(DIRECTORY_SEPARATOR, '_', $uri->path), http_build_query($uri->query));
         $this->surrogateKeys = [$uriKey];
         $this->uriTag = new UriTag();
     }
