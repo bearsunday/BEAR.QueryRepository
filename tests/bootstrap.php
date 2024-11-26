@@ -7,7 +7,4 @@ use Ray\ServiceLocator\ServiceLocator;
 
 array_map('unlink', glob(__DIR__ . '/tests/tmp/*.php'));
 
-// no annotation in PHP 8
-if (PHP_MAJOR_VERSION >= 8) { // @phpstan-ignore-line
-    ServiceLocator::setReader(new AttributeReader());
-}
+ServiceLocator::setReader(new AttributeReader());
