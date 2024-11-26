@@ -63,7 +63,8 @@ class DonutRepositoryTest extends TestCase
     /** @depends testCreateDonut */
     public function testCachePurge(): void
     {
-        assert($this->queryRepository->purge($this->uri));
+        $purgeResult = $this->queryRepository->purge($this->uri);
+        $this->assertTrue($purgeResult);
         $maybeNullPurged = $this->queryRepository->get($this->uri);
         $this->assertNull($maybeNullPurged);
     }
@@ -94,7 +95,8 @@ class DonutRepositoryTest extends TestCase
         $blogState1 = $queryRepository->get(new Uri('page://self/html/blog-posting'));
         $this->assertInstanceOf(ResourceState::class, $blogState1);
         // When cache dependency is deleted, cache dependent automatically deleted
-        assert($queryRepository->purge(new Uri('page://self/html/comment')));
+        $commentResult = $queryRepository->purge(new Uri('page://self/html/comment'));
+        assert($commentResult);
         $blogState2 = $queryRepository->get(new Uri('page://self/html/blog-posting'));
         $this->assertNull($blogState2);
         // Cache created again.
@@ -110,7 +112,8 @@ class DonutRepositoryTest extends TestCase
         $queryRepository = $injector->getInstance(QueryRepositoryInterface::class);
 
         $resource->get('page://self/html/blog-posting');
-        assert($queryRepository->purge(new Uri('page://self/html/comment')));
+        $purgeResult = $queryRepository->purge(new Uri('page://self/html/comment'));
+        $this->assertTrue($purgeResult);
         $donutRo = $resource->get('page://self/html/blog-posting');
         $this->assertSame('r', $donutRo->headers[Header::ETAG][-1]);
         $this->assertStringContainsString('blog-posting-page', $donutRo->headers[Header::SURROGATE_KEY]);
