@@ -28,7 +28,7 @@
         "koriym/attributes": "^1.0.1",
         "madapaja/twig-module": "^2.3",
         "mobiledetect/mobiledetectlib": "^3.74 || ^4.8",
-        "phpunit/phpunit": "^9.5.28",
+        "phpunit/phpunit": "^11.5.0",
         "predis/predis": "^2.2",
         "symfony/process": "^4.3 || ^5.4 || ^6.1 || ^7.1",
         "twig/twig": "^2.15.3 || ^3.4.3"
