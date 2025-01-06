@@ -54,7 +54,7 @@ final class QueryRepositoryModule extends AbstractModule
                 'itemsPool' => ResourceObjectPool::class,
                 'tagsPool' => TagsPool::class,
             ],
-        )->in(Scope::SINGLETON);
+        );
         //  When null is bound, the same adapter as the one assigned to the ResourceObjectPool is used.
         $this->bind(TagAwareAdapterInterface::class)->annotatedWith(EtagPool::class)->toInstance(null);
         // core
