@@ -2,9 +2,8 @@
     "require-dev": {
         "doctrine/coding-standard": "^12.0",
         "phpmd/phpmd": "^2.15",
-        "phpmetrics/phpmetrics": "^2.8",
         "phpstan/phpstan": "^2.0",
-        "vimeo/psalm": "^5.26"
+        "vimeo/psalm": "^5.26 || dev-master"
     },
     "config": {
         "allow-plugins": {
