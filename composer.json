@@ -10,7 +10,6 @@
     ],
     "require": {
         "php": "^8.1",
-        "bear/fastly-module": "^1.0",
         "bear/resource": "^1.16.1",
         "bear/sunday": "^1.5",
         "doctrine/annotations": "^1.8 || ^2.0",
@@ -24,6 +23,7 @@
     },
     "require-dev": {
         "ext-redis": "*",
+        "bear/fastly-module": "^1.0",
         "bamarni/composer-bin-plugin": "^1.8",
         "koriym/attributes": "^1.0.1",
         "madapaja/twig-module": "^2.3",

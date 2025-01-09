@@ -5,6 +5,7 @@
     "array", "string", "int", "float", "bool", "iterable", "callable", "void", "object",
     "Attribute", "Memcached", "Redis", "RedisException",
     "Doctrine\\Common\\Cache\\ArrayCache", "Doctrine\\Common\\Cache\\MemcachedCache", "Doctrine\\Common\\Cache\\RedisCache",
+    "BEAR\\FastlyModule\\FastlyCachePurgerInterface", "BEAR\\FastlyModule\\FastlyPurgeModule",
     "Detection\\MobileDetect"
   ]
 }

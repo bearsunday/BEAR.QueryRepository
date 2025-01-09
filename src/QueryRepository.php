@@ -64,7 +64,7 @@ final class QueryRepository implements QueryRepositoryInterface
             return null;
         }
 
-        $state->headers[Header::AGE] = (string) (time() - strtotime($state->headers[Header::LAST_MODIFIED]));
+        $state->headers[Header::AGE] = (string) (time() - (int) strtotime($state->headers[Header::LAST_MODIFIED]));
 
         return $state;
     }
@@ -113,6 +113,6 @@ final class QueryRepository implements QueryRepositoryInterface
         /** @var string $expiryAt */
         $expiryAt = $ro->body[$cacheable->expiryAt];
 
-        return strtotime($expiryAt) - time();
+        return (int) strtotime($expiryAt) - time();
     }
 }
