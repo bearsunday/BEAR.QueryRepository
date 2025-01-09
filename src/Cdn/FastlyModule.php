@@ -7,7 +7,10 @@ namespace BEAR\QueryRepository\Cdn;
 use BEAR\FastlyModule\FastlyPurgeModule;
 use BEAR\QueryRepository\CdnCacheControlHeaderSetterInterface;
 use BEAR\QueryRepository\PurgerInterface;
+use LogicException;
 use Ray\Di\AbstractModule;
+
+use function class_exists;
 
 final class FastlyModule extends AbstractModule
 {
@@ -17,6 +20,10 @@ final class FastlyModule extends AbstractModule
         AbstractModule|null $module = null,
     ) {
         parent::__construct($module);
+
+        if (! class_exists(FastlyPurgeModule::class)) {
+            throw new LogicException('Install bear/fastly-module'); // @codeCoverageIgnore
+        }
     }
 
     /**
