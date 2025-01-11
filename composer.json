@@ -1,6 +1,12 @@
 {
     "name": "bear/query-repository",
-    "description": "Resource query responsibility segregation",
+    "description": "Resource Query Responsibility Segregation (RQRS) is a powerful caching framework for BEAR.Sunday, designed to optimize performance and resource utilization by separating query and command responsibilities. It provides advanced caching features such as event-driven cache invalidation, dependency resolution, donut caching, CDN integration, and conditional requests with ETag support. RQRS seamlessly integrates with server-side caches (e.g., Redis, APC), shared caches (e.g., CDNs), and client-side caches to deliver a comprehensive caching solution for modern web applications.",
+    "keywords": [
+        "caching",
+        "event-driven-content",
+        "donut caching",
+        "ETag"
+    ],
     "license": "MIT",
     "authors": [
         {
