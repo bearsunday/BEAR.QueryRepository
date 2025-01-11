@@ -7,14 +7,17 @@
 [![Static Analysis](https://github.com/bearsunday/BEAR.QueryRepository/actions/workflows/static-analysis.yml/badge.svg)](https://github.com/bearsunday/BEAR.QueryRepository/actions/workflows/static-analysis.yml)
 [![Continuous Integration](https://github.com/bearsunday/BEAR.QueryRepository/actions/workflows/continuous-integration.yml/badge.svg)](https://github.com/bearsunday/BEAR.QueryRepository/actions/workflows/continuous-integration.yml)
 
-BEAR.QueryRepository is a distributed cache famework for BEAR.Resource application.
-[CQRS](http://martinfowler.com/bliki/CQRS.html) inspired **BEAR.QueryRepository** segregates reads and writes into two separate repository.
+**BEAR.QueryRepository** is a distributed caching framework for BEAR.Resource applications, inspired by [CQRS](http://martinfowler.com/bliki/CQRS.html). It segregates reads and writes into separate repositories to optimize performance and resource utilization.
 
-Documentation is available at [BEAR.Sunday cache manual](http://bearsunday.github.io/manuals/1.0/ja/cache.html).
+## Key Features
 
+- **Event-Driven Cache Invalidation**: Automatically invalidates cache when data changes, ensuring consistency.
+- **Dependency Resolution**: Resolves dependencies between resources and updates related caches automatically.
+- **Donut Caching**: Combines dynamic and static content for efficient partial caching.
+- **CDN Integration**: Seamlessly integrates with modern CDNs (e.g., Fastly, Akamai) for shared cache management.
+- **Conditional Requests with ETag Support**: Reduces network overhead by leveraging `ETag` and `304 Not Modified` responses.
+- **Distributed Cache Support**: Works with server-side caches (e.g., Redis, APC), shared caches (e.g., CDNs), and client-side caches.
 
-## Demo
+## Documentation
 
-```
-php demo/run.php
-```
+For more details, check out the [BEAR.Sunday cache manual](http://bearsunday.github.io/manuals/1.0/ja/cache.html).
