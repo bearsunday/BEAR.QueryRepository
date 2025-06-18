@@ -81,7 +81,9 @@ jobs:
       - name: Setup Redis (Ubuntu)
         if: runner.os == 'Linux'
         run: |
-          # Use Redis service container - just verify connection
+          # Install redis-cli for connection verification
+          sudo apt-get update -qq
+          sudo apt-get install -y redis-tools
           redis-cli -h localhost -p 6379 ping
 
       - name: Setup Redis (Windows)
