@@ -110,26 +110,28 @@ jobs:
           Write-Host "Downloading Memcached from the correct URL found by the user: $url"
           curl.exe -L -o $zipFile $url
           
-          $extractDir = "memcached_files"
-          Write-Host "Extracting $zipFile to $extractDir..."
-          Expand-Archive -Path $zipFile -DestinationPath $extractDir
-          
-          # 3. サービスのインストールと起動
-          #    全ての変数を廃し、相対パスを直接指定します。
-          #    これで、スコープや結合の問題は発生しえません。
-          Write-Host "Installing and starting service from a hardcoded relative path..."
-          & ".\memcached_files\memcached-1.6.8-win64-mingw\bin\memcached.exe" -d install
-          & ".\memcached_files\memcached-1.6.8-win64-mingw\bin\memcached.exe" -d start
-          
-          
-          # デバッグのため、使用するパスをログに出力します
-          Write-Host "Using constructed path: $execPath"
+          # 1. ダウンロードと展開
+          curl.exe -L -o memcached.zip "https://github.com/jefyt/memcached-windows/releases/download/1.6.8_mingw/memcached-1.6.8-win64-mingw.zip"
+          Expand-Archive -Path memcached.zip -DestinationPath memcached_files
 
-          # 4. サービスのインストールと起動
-          Write-Host "Installing Memcached as a service..."
-          & $execPath -d install
+          # 2. 仮説検証：展開完了を待つためのスリープ
+          Write-Host "Waiting for extraction to complete..."
+          Start-Sleep -Seconds 10
+
+          # 3. 事実確認：ファイルパスが存在するかどうかをテスト
+          $execPath = ".\memcached_files\memcached-1.6.8-win64-mingw\bin\memcached.exe"
+          Write-Host "Verifying existence of: $execPath"
+          if (-not (Test-Path $execPath)) {
+            Write-Error "FATAL: The file at $execPath does not exist after extraction."
+            # なぜ存在しないのか、手がかりを得るためにディレクトリ構造を再度表示
+            Write-Host "--- Current directory structure ---"
+            ls -R
+            exit 1
+          }
           
-          Write-Host "Starting the Memcached service..."
+          # 4. サービスのインストールと起動
+          Write-Host "File found. Attempting to install and start the service..."
+          & $execPath -d install
           & $execPath -d start
 
           # 5. 確認
