@@ -8,7 +8,7 @@ use Stringable;
 
 use function implode;
 use function is_array;
-use function sprintf;
+use function vsprintf;
 
 use const PHP_EOL;
 
@@ -31,7 +31,7 @@ final class RepositoryLogger implements RepositoryLoggerInterface, Stringable
 
         unset($value);
         /** @var list<string> $values */
-        $msg = sprintf($template, ...$values);
+        $msg = vsprintf($template, $values);
 
         $this->logs[] = $msg;
     }
