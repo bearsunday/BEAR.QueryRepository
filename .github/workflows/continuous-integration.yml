@@ -109,30 +109,45 @@ jobs:
         if: runner.os == 'Windows'
         shell: powershell
         run: |
-          # Stop relying on unstable Chocolatey packages.
-          # We will download and run Memcached manually for maximum reliability.
-          $memcachedUrl = "https://github.com/jefyt/memcached-windows/releases/download/v1.6.22/memcached-1.6.22-win64.zip"
+          # Invoke-WebRequest is unreliable for GitHub redirects.
+          # Use curl with the -L flag to robustly follow redirects, which is the likely cause of the 404 error.
+          $memcachedUrl = "https://github.com/jefyt/memcached-windows/releases/download/v1.6.22/memcached-1.6.22-x64.zip"
           $memcachedZip = "memcached.zip"
           $memcachedDir = "memcached"
           
-          Write-Host "Downloading Memcached from $memcachedUrl"
-          Invoke-WebRequest -Uri $memcachedUrl -OutFile $memcachedZip
+          Write-Host "Downloading Memcached using curl (to handle redirects) from: $memcachedUrl"
+          curl.exe -L -o $memcachedZip $memcachedUrl
           
+          # Check if the download was successful
+          if (-not (Test-Path $memcachedZip)) {
+            Write-Error "FATAL: Download failed. The zip file was not created."
+            exit 1
+          }
+          if ((Get-Item $memcachedZip).Length -lt 1000) {
+            Write-Error "FATAL: Download failed. The zip file is too small."
+            exit 1
+          }
+
           Write-Host "Extracting $memcachedZip to $memcachedDir"
           Expand-Archive -Path $memcachedZip -DestinationPath $memcachedDir
           
           Write-Host "Starting Memcached process in the background"
-          # Start memcached.exe as a background process. It will listen on localhost:11211 by default.
           Start-Process -FilePath "$memcachedDir\memcached.exe" -ArgumentList "-m 64" -WindowStyle Hidden
           
-          # Give it a moment to initialize
           Start-Sleep -Seconds 5
           
           Write-Host "Verifying Memcached process and port..."
-          # Verify that the process is running
-          Get-Process -Name "memcached"
-          # Verify that the port is listening (critical check)
-          netstat -an | findstr "11211"
+          $process = Get-Process -Name "memcached" -ErrorAction SilentlyContinue
+          if ($null -eq $process) {
+            Write-Error "FATAL: Memcached process did not start!"
+            exit 1
+          }
+          $portCheck = netstat -an | findstr "11211"
+          if (-not $portCheck) {
+            Write-Error "FATAL: Port 11211 is not listening! Memcached may have crashed on start."
+            exit 1
+          }
+          Write-Host "Memcached is running successfully on port 11211."
 
       - name: Install Memcached (Ubuntu)
         if: runner.os == 'Linux'
