@@ -26,7 +26,9 @@ final class UriTag implements UriTagInterface
         $query = $uri->query;
         ksort($query);
 
-        return str_replace('/', '_', sprintf('%s_%s', $uri->path, http_build_query($query)));
+        // Ensure all forward slashes are replaced, including the leading slash
+        $path = str_replace('/', '_', $uri->path);
+        return sprintf('%s_%s', $path, http_build_query($query));
     }
 
     /**
