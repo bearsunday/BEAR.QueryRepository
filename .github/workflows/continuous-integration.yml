@@ -114,12 +114,13 @@ jobs:
           Write-Host "Extracting $zipFile to $extractDir..."
           Expand-Archive -Path $zipFile -DestinationPath $extractDir
           
-          # 3. 実行ファイルのパスを、事実に基づいてハードコード
-          #    動的な解決は、私の知識ではこれ以上リスクが高いと判断しました。
-          $execPath = "$extractBaseDir\memcached-1.6.8-win64-mingw\bin\memcached.exe"
+          # 3. 実行ファイルのパスを、専用コマンドレットで確実に構築
+          $versionDir = "memcached-1.6.8-win64-mingw"
+          $relativePath = Join-Path -Path $versionDir -ChildPath "bin\memcached.exe"
+          $execPath = Join-Path -Path $extractBaseDir -ChildPath $relativePath
           
           # デバッグのため、使用するパスをログに出力します
-          Write-Host "Using hardcoded path: $execPath"
+          Write-Host "Using constructed path: $execPath"
 
           # 4. サービスのインストールと起動
           Write-Host "Installing Memcached as a service..."
