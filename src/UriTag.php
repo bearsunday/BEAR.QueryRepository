@@ -14,8 +14,6 @@ use function sprintf;
 use function str_replace;
 use function uri_template;
 
-use const DIRECTORY_SEPARATOR;
-
 final class UriTag implements UriTagInterface
 {
     /**
@@ -28,6 +26,7 @@ final class UriTag implements UriTagInterface
 
         // Ensure all forward slashes are replaced, including the leading slash
         $path = str_replace('/', '_', $uri->path);
+
         return sprintf('%s_%s', $path, http_build_query($query));
     }
 

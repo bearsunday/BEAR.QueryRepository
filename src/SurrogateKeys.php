@@ -16,8 +16,6 @@ use function implode;
 use function sprintf;
 use function str_replace;
 
-use const DIRECTORY_SEPARATOR;
-
 final class SurrogateKeys
 {
     /** @var list<string> */

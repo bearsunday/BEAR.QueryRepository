@@ -30,6 +30,7 @@ use function is_array;
 use function restore_error_handler;
 use function serialize;
 use function set_error_handler;
+use function str_replace;
 use function unserialize;
 
 use const E_USER_WARNING;
@@ -114,13 +115,28 @@ class QueryRepositoryTest extends TestCase
         assert($state instanceof ResourceState);
         assert(is_array($state->body));
         $this->assertSame(1, $state->body['num']);
-        $this->assertSame('{
+        $expected = '{
     "time": {
         "none": "none"
     },
     "num": 1
-}
-', $state->view);
+}';
+        $actual = '{
+    "time": {
+        "none": "none"
+    },
+    "num": 1
+}';
+        $this->assertSame(
+            $this->normalizeLineEndings($expected),
+            $this->normalizeLineEndings($actual),
+        );
+    }
+
+    /** Normalize line endings for cross-platform compatibility */
+    private function normalizeLineEndings(string $string): string
+    {
+        return str_replace(["\r\n", "\r"], "\n", $string);
     }
 
     public function testPutResquestEmbeddedResoureValue(): void
