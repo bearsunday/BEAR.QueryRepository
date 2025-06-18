@@ -105,22 +105,34 @@ jobs:
           brew services start memcached
           sleep 5 # Give the service a moment to start
 
-      - name: Install Memcached (Windows)
-        # THIS IS THE FINAL CORRECTED STEP
+      - name: Install and Run Memcached (Windows)
         if: runner.os == 'Windows'
+        shell: powershell
         run: |
-          # The 'memcached.install' package requires a specific parameter to create the Windows Service.
-          # We use --params "'/install-as-service'" to enable it.
-          choco install memcached.install -y --params "'/install-as-service'"
+          # Stop relying on unstable Chocolatey packages.
+          # We will download and run Memcached manually for maximum reliability.
+          $memcachedUrl = "https://github.com/jefyt/memcached-windows/releases/download/v1.6.22/memcached-1.6.22-win64.zip"
+          $memcachedZip = "memcached.zip"
+          $memcachedDir = "memcached"
           
-          # Now that the service has been created during installation, this command will succeed.
-          Start-Service -Name "memcached"
+          Write-Host "Downloading Memcached from $memcachedUrl"
+          Invoke-WebRequest -Uri $memcachedUrl -OutFile $memcachedZip
           
-          # Add a small delay to ensure the service is fully operational
+          Write-Host "Extracting $memcachedZip to $memcachedDir"
+          Expand-Archive -Path $memcachedZip -DestinationPath $memcachedDir
+          
+          Write-Host "Starting Memcached process in the background"
+          # Start memcached.exe as a background process. It will listen on localhost:11211 by default.
+          Start-Process -FilePath "$memcachedDir\memcached.exe" -ArgumentList "-m 64" -WindowStyle Hidden
+          
+          # Give it a moment to initialize
           Start-Sleep -Seconds 5
-
-          # Verify the service is running
-          Get-Service -Name "memcached" | Select-Object -Property Status
+          
+          Write-Host "Verifying Memcached process and port..."
+          # Verify that the process is running
+          Get-Process -Name "memcached"
+          # Verify that the port is listening (critical check)
+          netstat -an | findstr "11211"
 
       - name: Install Memcached (Ubuntu)
         if: runner.os == 'Linux'
