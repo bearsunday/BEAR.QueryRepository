@@ -97,6 +97,14 @@ jobs:
           sleep 8
           redis-cli ping
 
+      - name: Install Memcached (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install memcached
+          brew services start memcached
+          pecl install -f memcached
+          echo "extension=memcached.so" >> $(php --ini | grep "Loaded Configuration" | awk '{print $4}')
+
       - name: Setup PHP ${{ matrix.php-version }}
         uses: shivammathur/setup-php@v2
         with:
