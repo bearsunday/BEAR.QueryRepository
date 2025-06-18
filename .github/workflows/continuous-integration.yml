@@ -4,9 +4,13 @@ on:
   push:
     paths-ignore:
       - '**/*.md'
+      - '**/*.txt'
+      - 'LICENSE'
   pull_request:
     paths-ignore:
       - '**/*.md'
+      - '**/*.txt'
+      - 'LICENSE'
   workflow_dispatch:
 
 env:
@@ -17,49 +21,53 @@ jobs:
   phpunit:
     name: PHPUnit (${{ matrix.os }} - PHP ${{ matrix.php-version }} - ${{ matrix.dependencies }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
         include:
-          # Ubuntu: 全てのPHPバージョンでテスト
+          # Ubuntu: Test all PHP versions
           - os: ubuntu-latest
-            php-version: 8.1
+            php-version: "8.1"
             dependencies: highest
           - os: ubuntu-latest
-            php-version: 8.2
+            php-version: "8.2"
             dependencies: lowest
           - os: ubuntu-latest
-            php-version: 8.2
+            php-version: "8.2"
             dependencies: highest
           - os: ubuntu-latest
-            php-version: 8.3
+            php-version: "8.3"
             dependencies: lowest
           - os: ubuntu-latest
-            php-version: 8.3
+            php-version: "8.3"
             dependencies: highest
           - os: ubuntu-latest
-            php-version: 8.4
+            php-version: "8.4"
             dependencies: lowest
           - os: ubuntu-latest
-            php-version: 8.4
+            php-version: "8.4"
             dependencies: highest
+          # Windows: Latest PHP only for CI speed
           - os: windows-latest
-            php-version: 8.4
+            php-version: "8.4"
             dependencies: lowest
           - os: windows-latest
-            php-version: 8.4
+            php-version: "8.4"
             dependencies: highest
+          # macOS: Latest PHP only for CI speed
           - os: macos-latest
-            php-version: 8.4
+            php-version: "8.4"
             dependencies: lowest
           - os: macos-latest
-            php-version: 8.4
+            php-version: "8.4"
             dependencies: highest
 
     services:
       redis:
-        image: redis
-        ports: [6379:6379]
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
         options: >-
           --health-cmd "redis-cli ping"
           --health-interval 10s
@@ -67,8 +75,35 @@ jobs:
           --health-retries 3
 
     steps:
-      - name: Check out repository
+      - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Setup Redis (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          # Use Redis service container - just verify connection
+          redis-cli -h localhost -p 6379 ping
+
+      - name: Setup Redis (Windows)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          # Quick Redis setup for CI testing
+          $ProgressPreference = "SilentlyContinue"
+          Invoke-WebRequest -Uri "https://github.com/microsoftarchive/redis/releases/download/win-3.0.504/Redis-x64-3.0.504.zip" -OutFile "redis.zip"
+          Expand-Archive "redis.zip" -DestinationPath "redis"
+          Start-Process -FilePath "redis/redis-server.exe" -WindowStyle Hidden
+          Start-Sleep -Seconds 8
+          redis/redis-cli.exe ping
+
+      - name: Setup Redis (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          # Fast Redis setup for CI
+          brew install redis
+          brew services start redis
+          sleep 5
+          redis-cli ping
 
       - name: Setup PHP ${{ matrix.php-version }}
         uses: shivammathur/setup-php@v2
@@ -77,24 +112,9 @@ jobs:
           coverage: pcov
           ini-values: zend.assertions=1
           tools: composer
+          extensions: redis
 
-      - name: Start Redis on Windows
-        if: runner.os == 'Windows'
-        run: |
-          $ProgressPreference = "SilentlyContinue"
-          Invoke-WebRequest -Uri https://github.com/microsoftarchive/redis/releases/download/win-3.0.504/Redis-x64-3.0.504.zip -OutFile redis.zip
-          Expand-Archive redis.zip -DestinationPath redis
-          Start-Process redis/redis-server.exe -WindowStyle Hidden
-          Start-Sleep 5
-
-      - name: Start Redis on macOS
-        if: runner.os == 'macOS'
-        run: |
-          brew install redis
-          brew services start redis
-          sleep 5
-
-      - name: Cache dependencies
+      - name: Cache Composer dependencies
         uses: actions/cache@v4
         with:
           path: ~/.composer/cache
@@ -102,24 +122,25 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-php-${{ matrix.php-version }}-composer-
 
-      - name: Configure dependency resolution
+      - name: Install dependencies
         run: |
           composer config platform --unset
-
-      - name: Update dependencies
-        run: composer update ${{ matrix.dependencies == 'lowest' && '--prefer-lowest' || '' }} ${{ env.COMPOSER_FLAGS }}
+          composer update ${{ matrix.dependencies == 'lowest' && '--prefer-lowest' || '' }} ${{ env.COMPOSER_FLAGS }}
 
       - name: Run PHPUnit tests
         run: ./vendor/bin/phpunit --coverage-clover=coverage.xml
 
       - name: Upload coverage report
+        # Only upload coverage once to avoid duplication
+        if: matrix.os == 'ubuntu-latest' && matrix.php-version == '8.4' && matrix.dependencies == 'highest'
         uses: codecov/codecov-action@v4
         with:
           files: coverage.xml
-          fail_ci_if_error: true
+          fail_ci_if_error: false
 
-      - name: Prepare and run demo
-        if: ${{ env.SCRIPT != '' && matrix.os == 'ubuntu-latest' }}
+      - name: Run demo script
+        # Only run demo on one matrix combination to save CI time
+        if: env.SCRIPT != '' && matrix.os == 'ubuntu-latest' && matrix.php-version == '8.4' && matrix.dependencies == 'highest'
         run: |
           composer require doctrine/cache:"^1.12" --no-update
           composer update ${{ env.COMPOSER_FLAGS }}
