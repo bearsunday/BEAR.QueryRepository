@@ -110,7 +110,9 @@ final class ResourceStorage implements ResourceStorageInterface
      */
     public function hasEtag(string $etag): bool
     {
-        return $this->etagPool->hasItem($etag);
+        // Sanitize etag to remove reserved characters
+        $sanitizedEtag = str_replace(['/', '\\', ':', '@', '(', ')', '{', '}'], '_', $etag);
+        return $this->etagPool->hasItem($sanitizedEtag);
     }
 
     /**
@@ -254,7 +256,9 @@ final class ResourceStorage implements ResourceStorageInterface
         /** @var list<string> $uniqueTags */
         $uniqueTags = array_unique($tags);
         $this->logger->log('save-etag uri:%s etag:%s surrogate-keys:%s', $uri, $etag, $uniqueTags);
-        $this->saver->__invoke($etag, 'etag', $this->etagPool, $uniqueTags, $ttl);
+        // Sanitize etag to remove reserved characters
+        $sanitizedEtag = str_replace(['/', '\\', ':', '@', '(', ')', '{', '}'], '_', $etag);
+        $this->saver->__invoke($sanitizedEtag, 'etag', $this->etagPool, $uniqueTags, $ttl);
     }
 
     public function __serialize(): array
