@@ -114,10 +114,13 @@ jobs:
           Write-Host "Extracting $zipFile to $extractDir..."
           Expand-Archive -Path $zipFile -DestinationPath $extractDir
           
-          # 3. 実行ファイルのパスを、専用コマンドレットで確実に構築
-          $versionDir = "memcached-1.6.8-win64-mingw"
-          $relativePath = Join-Path -Path $versionDir -ChildPath "bin\memcached.exe"
-          $execPath = Join-Path -Path $extractBaseDir -ChildPath $relativePath
+          # 3. サービスのインストールと起動
+          #    全ての変数を廃し、相対パスを直接指定します。
+          #    これで、スコープや結合の問題は発生しえません。
+          Write-Host "Installing and starting service from a hardcoded relative path..."
+          & ".\memcached_files\memcached-1.6.8-win64-mingw\bin\memcached.exe" -d install
+          & ".\memcached_files\memcached-1.6.8-win64-mingw\bin\memcached.exe" -d start
+          
           
           # デバッグのため、使用するパスをログに出力します
           Write-Host "Using constructed path: $execPath"
