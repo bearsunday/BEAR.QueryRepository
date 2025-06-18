@@ -100,20 +100,27 @@ jobs:
       - name: Install Memcached (macOS)
         if: runner.os == 'macOS'
         run: |
+          # Install and start Memcached service using Homebrew
           brew install memcached
           brew services start memcached
           sleep 5 # Give the service a moment to start
 
       - name: Install Memcached (Windows)
-        # This is the new step you requested
+        # THIS IS THE CORRECTED STEP
         if: runner.os == 'Windows'
         run: |
-          # Install Memcached using Chocolatey (standard Windows package manager)
-          choco install memcached -y
-          # Start the Memcached service
+          # Use the 'memcached-win64' package, which is actively maintained and works correctly.
+          # The original 'memcached' package is outdated and broken.
+          choco install memcached-win64 -y
+          
+          # The service name for this package is also "memcached"
           Start-Service -Name "memcached"
+          
+          # Add a small delay to ensure the service is fully operational before tests run
+          Start-Sleep -Seconds 5
+
           # Verify the service is running
-          Get-Service -Name "memcached"
+          Get-Service -Name "memcached" | Select-Object -Property Status
 
       - name: Install Memcached (Ubuntu)
         # For completeness, add the Ubuntu setup for memcached.
