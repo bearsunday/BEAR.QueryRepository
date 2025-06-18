@@ -105,21 +105,18 @@ jobs:
           brew services start memcached
           sleep 5 # Give the service a moment to start
 
-      - name: Download Memcached Release using a Dedicated Action (Windows)
+      - name: Download Memcached Release (Windows)
         if: runner.os == 'Windows'
         uses: robinraju/release-downloader@v1.10
         with:
-          # This action uses the GitHub API and is the correct, reliable way to do this.
-          repo: "jefyt/memcached-windows"
+          repository: "jefyt/memcached-windows"
           tag: "v1.6.22"
-          file: "memcached-1.6.22-x64.zip"
-          # The action will download the file with its original name into the workspace root.
+          fileName: "memcached-1.6.22-x64.zip"
 
       - name: Extract and Run Memcached (Windows)
         if: runner.os == 'Windows'
         shell: powershell
         run: |
-          # The zip file was reliably downloaded by the previous step.
           $memcachedZip = "memcached-1.6.22-x64.zip"
           $memcachedDir = "memcached"
 
