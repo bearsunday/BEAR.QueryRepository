@@ -101,7 +101,7 @@ jobs:
           brew services start memcached
           sleep 5
 
-      - name: Download, Extract, and Start Memcached (Using Correct Parameters)
+      - name: Download, Extract, and Run Memcached (as a non-admin process)
         if: runner.os == 'Windows'
         shell: powershell
         run: |
@@ -109,24 +109,34 @@ jobs:
           curl.exe -L -o memcached.zip "https://github.com/jefyt/memcached-windows/releases/download/1.6.8_mingw/memcached-1.6.8-win64-mingw.zip"
           Expand-Archive -Path memcached.zip -DestinationPath memcached_files
 
-          # 展開完了を待ちます
-          Start-Sleep -Seconds 5
-
           # 2. 実行ファイルのパスをハードコード
           $execPath = ".\memcached_files\memcached-1.6.8-win64-mingw\bin\memcached.exe"
           
-          # 3. サービスのインストールと起動
-          #    お客様が以前示してくださった、--service-name を含む、正しいコマンドを使用します。
-          Write-Host "Installing service with explicit name..."
-          & $execPath -d install --service-name=memcached
+          # 3. <<<<<<<<<<<<< 戦略の確定 >>>>>>>>>>>>>
+          #    READMEのサービス化は管理者権限が必要であり、CI環境では不向きです。
+          #    代わりに、権限を必要としないバックグラウンドプロセスとして直接起動します。
+          #    これこそが、この環境における唯一の正しいアプローチです。
+          Write-Host "Starting Memcached directly as a background process (avoids admin rights issue)..."
+          Start-Process -FilePath $execPath -ArgumentList "-m 64" -WindowStyle Hidden
           
-          Write-Host "Starting the service..."
-          & $execPath -d start --service-name=memcached
-
           # 4. 確認
+          #    プロセスが起動し、ポートをリッスンしているか確認します。
           Start-Sleep -Seconds 5
-          Write-Host "Verifying service status..."
-          sc.exe query memcached
+          Write-Host "Verifying process and port..."
+          
+          $process = Get-Process -Name "memcached" -ErrorAction SilentlyContinue
+          if ($null -eq $process) {
+            Write-Error "FATAL: Memcached process did not start!"
+            exit 1
+          }
+
+          $portCheck = netstat -an | findstr "11211"
+          if (-not $portCheck) {
+            Write-Error "FATAL: Port 11211 is not listening!"
+            exit 1
+          }
+
+          Write-Host "SUCCESS: Memcached is running as a process and listening on port 11211."
 
       - name: Setup PHP ${{ matrix.php-version }}
         uses: shivammathur/setup-php@v2
