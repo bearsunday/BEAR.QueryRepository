@@ -105,23 +105,25 @@ jobs:
           brew services start memcached
           sleep 5 # Give the service a moment to start
 
-      - name: Download Latest Memcached Release (Windows)
+      - name: Download Pinned Memcached Release (Windows)
         if: runner.os == 'Windows'
+        id: download_memcached
         uses: robinraju/release-downloader@v1.10
         with:
           repository: "jefyt/memcached-windows"
-          latest: true
-          fileName: "memcached-1.6.22-x64.zip"
+          releaseId: 149466540
+          fileName: "memcached-*-x64.zip"
 
-      - name: Install and Start Memcached Service (Following the README)
+      - name: Install and Start Memcached Service (Using Dynamic Path)
         if: runner.os == 'Windows'
+        env:
+          MEMCACHED_ZIP_PATH: ${{ steps.download_memcached.outputs.downloaded_path }}
         shell: powershell
         run: |
-          $memcachedZip = "memcached-1.6.22-x64.zip"
+          Write-Host "File to be extracted: $env:MEMCACHED_ZIP_PATH"
           $memcachedDir = "memcached"
 
-          Write-Host "Extracting $memcachedZip..."
-          Expand-Archive -Path $memcachedZip -DestinationPath $memcachedDir
+          Expand-Archive -Path $env:MEMCACHED_ZIP_PATH -DestinationPath $memcachedDir
           
           Write-Host "Installing Memcached as a service..."
           & "$memcachedDir\memcached.exe" -d install
