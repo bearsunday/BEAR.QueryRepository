@@ -101,28 +101,26 @@ jobs:
           brew services start memcached
           sleep 5
 
-      - name: Download Memcached release (Windows)
-        if: runner.os == 'Windows'
-        uses: robinraju/release-downloader@v1
-        with:
-          repository: jefyt/memcached-windows
-          latest: true
-          # 修正点: 'win64' -> 'x64'
-          fileName: memcached-*-x64.zip
-          out-file-path: memcached
-          extract: true
-
       - name: Install + start Memcached service (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           $extractPath = Get-ChildItem -Directory memcached | Select-Object -First 1
+          if ($null -eq $extractPath) {
+            Write-Error "Memcached extraction failed or directory is missing."
+          }
+          
           Push-Location $extractPath.FullName
           
-          .\memcached.exe -d install  --service-name=memcached --memory-limit=128 --port=11211
-          .\memcached.exe -d start    --service-name=memcached
+          if (-Not (Test-Path ".\memcached.exe")) {
+            Write-Error "Memcached executable not found in the extracted directory."
+          }
+          
+          .\memcached.exe -d install --service-name=memcached --memory-limit=128 --port=11211
+          .\memcached.exe -d start --service-name=memcached
           sc.exe query memcached
           Pop-Location
+
 
       - name: Setup PHP ${{ matrix.php-version }}
         uses: shivammathur/setup-php@v2
