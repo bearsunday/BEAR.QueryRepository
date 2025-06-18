@@ -102,8 +102,27 @@ jobs:
         run: |
           brew install memcached
           brew services start memcached
-          pecl install -f memcached
-          echo "extension=memcached.so" >> $(php --ini | grep "Loaded Configuration" | awk '{print $4}')
+          sleep 5 # Give the service a moment to start
+
+      - name: Install Memcached (Windows)
+        # This is the new step you requested
+        if: runner.os == 'Windows'
+        run: |
+          # Install Memcached using Chocolatey (standard Windows package manager)
+          choco install memcached -y
+          # Start the Memcached service
+          Start-Service -Name "memcached"
+          # Verify the service is running
+          Get-Service -Name "memcached"
+
+      - name: Install Memcached (Ubuntu)
+        # For completeness, add the Ubuntu setup for memcached.
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get install -y memcached
+          sudo systemctl start memcached
+
+      # --- PHP and Dependencies Setup ---
 
       - name: Setup PHP ${{ matrix.php-version }}
         uses: shivammathur/setup-php@v2
@@ -112,7 +131,8 @@ jobs:
           coverage: pcov
           ini-values: zend.assertions=1
           tools: composer
-          extensions: redis
+          # Add 'memcached' extension here. setup-php handles installation for all OSs.
+          extensions: redis, memcached
 
       - name: Cache Composer dependencies
         uses: actions/cache@v4
@@ -126,6 +146,8 @@ jobs:
         run: |
           composer config platform --unset
           composer update ${{ matrix.dependencies == 'lowest' && '--prefer-lowest' || '' }} ${{ env.COMPOSER_FLAGS }}
+
+      # --- Testing and Reporting ---
 
       - name: Run PHPUnit tests
         run: ./vendor/bin/phpunit --coverage-clover=coverage.xml
