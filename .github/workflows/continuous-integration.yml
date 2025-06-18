@@ -105,7 +105,7 @@ jobs:
           brew services start memcached
           sleep 5 # Give the service a moment to start
 
-      - name: Download Memcached Release (Windows)
+      - name: Download Memcached Release (The Right Way)
         if: runner.os == 'Windows'
         uses: robinraju/release-downloader@v1.10
         with:
@@ -113,7 +113,7 @@ jobs:
           tag: "v1.6.22"
           fileName: "memcached-1.6.22-x64.zip"
 
-      - name: Extract and Run Memcached (Windows)
+      - name: Install and Start Memcached Service (Following the README)
         if: runner.os == 'Windows'
         shell: powershell
         run: |
@@ -123,32 +123,21 @@ jobs:
           Write-Host "Extracting $memcachedZip..."
           Expand-Archive -Path $memcachedZip -DestinationPath $memcachedDir
           
-          Write-Host "Starting Memcached process..."
-          Start-Process -FilePath "$memcachedDir\memcached.exe" -ArgumentList "-m 64" -WindowStyle Hidden
+          # This is the developer-intended method, as documented in the README.
+          # 1. Install memcached as a Windows service.
+          Write-Host "Installing Memcached as a service..."
+          & "$memcachedDir\memcached.exe" -d install
           
+          # 2. Start the newly installed service.
+          Write-Host "Starting the Memcached service..."
+          & "$memcachedDir\memcached.exe" -d start
+
+          # Add a small delay for the service to become fully active.
           Start-Sleep -Seconds 5
-          
-          Write-Host "Verifying Memcached is running..."
-          $process = Get-Process -Name "memcached" -ErrorAction SilentlyContinue
-          if ($null -eq $process) {
-            Write-Error "FATAL: Memcached process did not start!"
-            exit 1
-          }
-          $portCheck = netstat -an | findstr "11211"
-          if (-not $portCheck) {
-            Write-Error "FATAL: Port 11211 is not listening!"
-            exit 1
-          }
-          Write-Host "Memcached is running successfully."
 
-      - name: Install Memcached (Ubuntu)
-        if: runner.os == 'Linux'
-        run: |
-          # Install and start Memcached service using apt-get
-          sudo apt-get install -y memcached
-          sudo systemctl start memcached
-
-      # --- PHP and Dependencies Setup ---
+          # Verify the service is running correctly.
+          Write-Host "Verifying service status..."
+          Get-Service -Name "memcached"
 
       - name: Setup PHP ${{ matrix.php-version }}
         uses: shivammathur/setup-php@v2
