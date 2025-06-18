@@ -24,7 +24,7 @@ final class SurrogateKeys
 
     public function __construct(AbstractUri $uri)
     {
-        $path = str_replace('/', '_', $uri->path);
+        $path = str_replace(['/', '\\'], '_', $uri->path);
         $uriKey = sprintf('%s_%s', $path, http_build_query($uri->query));
         $this->surrogateKeys = [$uriKey];
         $this->uriTag = new UriTag();
