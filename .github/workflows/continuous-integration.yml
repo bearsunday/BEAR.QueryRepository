@@ -105,38 +105,33 @@ jobs:
           brew services start memcached
           sleep 5 # Give the service a moment to start
 
-      - name: Install and Run Memcached (Windows)
+      - name: Download Memcached Release using a Dedicated Action (Windows)
+        if: runner.os == 'Windows'
+        uses: robinraju/release-downloader@v1.10
+        with:
+          # This action uses the GitHub API and is the correct, reliable way to do this.
+          repo: "jefyt/memcached-windows"
+          tag: "v1.6.22"
+          file: "memcached-1.6.22-x64.zip"
+          # The action will download the file with its original name into the workspace root.
+
+      - name: Extract and Run Memcached (Windows)
         if: runner.os == 'Windows'
         shell: powershell
         run: |
-          # Invoke-WebRequest is unreliable for GitHub redirects.
-          # Use curl with the -L flag to robustly follow redirects, which is the likely cause of the 404 error.
-          $memcachedUrl = "https://github.com/jefyt/memcached-windows/releases/download/v1.6.22/memcached-1.6.22-x64.zip"
-          $memcachedZip = "memcached.zip"
+          # The zip file was reliably downloaded by the previous step.
+          $memcachedZip = "memcached-1.6.22-x64.zip"
           $memcachedDir = "memcached"
-          
-          Write-Host "Downloading Memcached using curl (to handle redirects) from: $memcachedUrl"
-          curl.exe -L -o $memcachedZip $memcachedUrl
-          
-          # Check if the download was successful
-          if (-not (Test-Path $memcachedZip)) {
-            Write-Error "FATAL: Download failed. The zip file was not created."
-            exit 1
-          }
-          if ((Get-Item $memcachedZip).Length -lt 1000) {
-            Write-Error "FATAL: Download failed. The zip file is too small."
-            exit 1
-          }
 
-          Write-Host "Extracting $memcachedZip to $memcachedDir"
+          Write-Host "Extracting $memcachedZip..."
           Expand-Archive -Path $memcachedZip -DestinationPath $memcachedDir
           
-          Write-Host "Starting Memcached process in the background"
+          Write-Host "Starting Memcached process..."
           Start-Process -FilePath "$memcachedDir\memcached.exe" -ArgumentList "-m 64" -WindowStyle Hidden
           
           Start-Sleep -Seconds 5
           
-          Write-Host "Verifying Memcached process and port..."
+          Write-Host "Verifying Memcached is running..."
           $process = Get-Process -Name "memcached" -ErrorAction SilentlyContinue
           if ($null -eq $process) {
             Write-Error "FATAL: Memcached process did not start!"
@@ -144,10 +139,10 @@ jobs:
           }
           $portCheck = netstat -an | findstr "11211"
           if (-not $portCheck) {
-            Write-Error "FATAL: Port 11211 is not listening! Memcached may have crashed on start."
+            Write-Error "FATAL: Port 11211 is not listening!"
             exit 1
           }
-          Write-Host "Memcached is running successfully on port 11211."
+          Write-Host "Memcached is running successfully."
 
       - name: Install Memcached (Ubuntu)
         if: runner.os == 'Linux'
