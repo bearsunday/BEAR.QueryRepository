@@ -105,36 +105,27 @@ jobs:
           brew services start memcached
           sleep 5 # Give the service a moment to start
 
-      - name: Download Pinned Memcached Release (Windows)
+      - name: Download Memcached release (Windows)
         if: runner.os == 'Windows'
-        id: download_memcached
-        uses: robinraju/release-downloader@v1.10
+        uses: robinraju/release-downloader@v1
         with:
-          repository: "jefyt/memcached-windows"
-          releaseId: 149466540
-          fileName: "memcached-*-x64.zip"
+            repository: jefyt/memcached-windows          # 取得元
+            latest: true                                 # 最新リリース
+            fileName: memcached-*win64*.zip              # アセット名をワイルドカードで指定
+            out-file-path: memcached                     # 展開先ディレクトリ
+            extract: true                                # ZIP を自動展開する:contentReference[oaicite:0]{index=0}
 
-      - name: Install and Start Memcached Service (Using Dynamic Path)
+      - name: Install + start Memcached service (Windows)
         if: runner.os == 'Windows'
-        env:
-          MEMCACHED_ZIP_PATH: ${{ steps.download_memcached.outputs.downloaded_path }}
-        shell: powershell
+        shell: pwsh
         run: |
-          Write-Host "File to be extracted: $env:MEMCACHED_ZIP_PATH"
-          $memcachedDir = "memcached"
-
-          Expand-Archive -Path $env:MEMCACHED_ZIP_PATH -DestinationPath $memcachedDir
+          $extractPath = Get-ChildItem -Directory memcached | Select-Object -First 1
+          Push-Location $extractPath.FullName
           
-          Write-Host "Installing Memcached as a service..."
-          & "$memcachedDir\memcached.exe" -d install
-          
-          Write-Host "Starting the Memcached service..."
-          & "$memcachedDir\memcached.exe" -d start
-
-          Start-Sleep -Seconds 5
-
-          Write-Host "Verifying service status..."
-          Get-Service -Name "memcached"
+          .\memcached.exe -d install  --service-name=memcached --memory-limit=128 --port=11211
+          .\memcached.exe -d start    --service-name=memcached
+          sc.exe query memcached
+          Pop-Location
 
       - name: Setup PHP ${{ matrix.php-version }}
         uses: shivammathur/setup-php@v2
