@@ -114,23 +114,20 @@ jobs:
           Write-Host "Extracting $zipFile to $extractDir..."
           Expand-Archive -Path $zipFile -DestinationPath $extractDir
           
-          # 3. 実行ファイルのパスを動的に特定
-          #    'memcached_files' の中にある、唯一のサブディレクトリを取得します
-          $subDir = Get-ChildItem -Directory -Path $extractBaseDir | Select-Object -First 1
-          # 'bin' ディレクトリまでのフルパスを構築します
-          $execPath = Join-Path -Path $subDir.FullName -ChildPath "bin"
+          # 3. 実行ファイルの絶対パスを動的に、そして確実に特定
+          $versionDir = Get-ChildItem -Path $extractBaseDir -Directory | Select-Object -First 1
+          $exePath = Join-Path -Path $versionDir.FullName -ChildPath "bin\memcached.exe"
           
+          # デバッグのため、特定したパスをログに出力します
+          Write-Host "Attempting to execute: $exePath"
+
           # 4. サービスのインストールと起動
-          #    特定したパスに移動して実行します
-          Push-Location $execPath
-          
-          Write-Host "Installing Memcached service from $execPath"
-          .\memcached.exe -d install
+          #    & (call operator)を使い、絶対パスで指定された実行ファイルを直接呼び出します
+          Write-Host "Installing Memcached as a service..."
+          & $exePath -d install
           
           Write-Host "Starting the Memcached service..."
-          .\memcached.exe -d start
-          
-          Pop-Location
+          & $exePath -d start
 
           # 5. 確認
           Start-Sleep -Seconds 5
