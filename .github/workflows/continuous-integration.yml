@@ -106,16 +106,17 @@ jobs:
           sleep 5 # Give the service a moment to start
 
       - name: Install Memcached (Windows)
+        # THIS IS THE FINAL CORRECTED STEP
         if: runner.os == 'Windows'
         run: |
-          # Use 'memcached.install', which is the correct and maintained package name.
-          # The 'memcached' package is broken, and 'memcached-win64' does not exist.
-          choco install memcached.install -y
+          # The 'memcached.install' package requires a specific parameter to create the Windows Service.
+          # We use --params "'/install-as-service'" to enable it.
+          choco install memcached.install -y --params "'/install-as-service'"
           
-          # The service created by this package is named "memcached"
+          # Now that the service has been created during installation, this command will succeed.
           Start-Service -Name "memcached"
           
-          # Add a small delay to ensure the service is fully operational before tests run
+          # Add a small delay to ensure the service is fully operational
           Start-Sleep -Seconds 5
 
           # Verify the service is running
