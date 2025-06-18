@@ -105,12 +105,12 @@ jobs:
           brew services start memcached
           sleep 5 # Give the service a moment to start
 
-      - name: Download Memcached Release (The Right Way)
+      - name: Download Latest Memcached Release (Windows)
         if: runner.os == 'Windows'
         uses: robinraju/release-downloader@v1.10
         with:
           repository: "jefyt/memcached-windows"
-          tag: "v1.6.22"
+          latest: true
           fileName: "memcached-1.6.22-x64.zip"
 
       - name: Install and Start Memcached Service (Following the README)
@@ -123,19 +123,14 @@ jobs:
           Write-Host "Extracting $memcachedZip..."
           Expand-Archive -Path $memcachedZip -DestinationPath $memcachedDir
           
-          # This is the developer-intended method, as documented in the README.
-          # 1. Install memcached as a Windows service.
           Write-Host "Installing Memcached as a service..."
           & "$memcachedDir\memcached.exe" -d install
           
-          # 2. Start the newly installed service.
           Write-Host "Starting the Memcached service..."
           & "$memcachedDir\memcached.exe" -d start
 
-          # Add a small delay for the service to become fully active.
           Start-Sleep -Seconds 5
 
-          # Verify the service is running correctly.
           Write-Host "Verifying service status..."
           Get-Service -Name "memcached"
 
