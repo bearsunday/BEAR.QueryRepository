@@ -26,43 +26,55 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Ubuntu: Test all PHP versions
+          # Ubuntu: Test all PHP versions with Redis service
           - os: ubuntu-latest
             php-version: "8.1"
             dependencies: highest
+            redis: service
           - os: ubuntu-latest
             php-version: "8.2"
             dependencies: lowest
+            redis: service
           - os: ubuntu-latest
             php-version: "8.2"
             dependencies: highest
+            redis: service
           - os: ubuntu-latest
             php-version: "8.3"
             dependencies: lowest
+            redis: service
           - os: ubuntu-latest
             php-version: "8.3"
             dependencies: highest
+            redis: service
           - os: ubuntu-latest
             php-version: "8.4"
             dependencies: lowest
+            redis: service
           - os: ubuntu-latest
             php-version: "8.4"
             dependencies: highest
+            redis: service
           # Windows: Latest PHP only for CI speed
           - os: windows-latest
             php-version: "8.4"
             dependencies: lowest
+            redis: manual
           - os: windows-latest
             php-version: "8.4"
             dependencies: highest
+            redis: manual
           # macOS: Latest PHP only for CI speed
           - os: macos-latest
             php-version: "8.4"
             dependencies: lowest
+            redis: manual
           - os: macos-latest
             php-version: "8.4"
             dependencies: highest
+            redis: manual
 
+    # Redis service container only works on Linux runners
     services:
       redis:
         image: redis:7-alpine
@@ -81,7 +93,7 @@ jobs:
       - name: Setup Redis (Ubuntu)
         if: runner.os == 'Linux'
         run: |
-          # Install redis-cli for connection verification
+          # Use Redis service container - install client tools
           sudo apt-get update -qq
           sudo apt-get install -y redis-tools
           redis-cli -h localhost -p 6379 ping
@@ -90,21 +102,21 @@ jobs:
         if: runner.os == 'Windows'
         shell: powershell
         run: |
-          # Quick Redis setup for CI testing
+          # Manual Redis setup for Windows CI
           $ProgressPreference = "SilentlyContinue"
           Invoke-WebRequest -Uri "https://github.com/microsoftarchive/redis/releases/download/win-3.0.504/Redis-x64-3.0.504.zip" -OutFile "redis.zip"
           Expand-Archive "redis.zip" -DestinationPath "redis"
           Start-Process -FilePath "redis/redis-server.exe" -WindowStyle Hidden
-          Start-Sleep -Seconds 8
+          Start-Sleep -Seconds 10
           redis/redis-cli.exe ping
 
       - name: Setup Redis (macOS)
         if: runner.os == 'macOS'
         run: |
-          # Fast Redis setup for CI
+          # Manual Redis setup for macOS CI
           brew install redis
           brew services start redis
-          sleep 5
+          sleep 8
           redis-cli ping
 
       - name: Setup PHP ${{ matrix.php-version }}
