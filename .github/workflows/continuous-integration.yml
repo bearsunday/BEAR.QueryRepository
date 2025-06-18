@@ -70,7 +70,6 @@ jobs:
       - name: Setup Redis (Ubuntu)
         if: runner.os == 'Linux'
         run: |
-          # Manual Redis setup for consistent behavior across OS
           sudo apt-get update -qq
           sudo apt-get install -y redis-server redis-tools
           sudo systemctl start redis-server
@@ -80,7 +79,6 @@ jobs:
         if: runner.os == 'Windows'
         shell: powershell
         run: |
-          # Manual Redis setup for Windows CI
           $ProgressPreference = "SilentlyContinue"
           Invoke-WebRequest -Uri "https://github.com/microsoftarchive/redis/releases/download/win-3.0.504/Redis-x64-3.0.504.zip" -OutFile "redis.zip"
           Expand-Archive "redis.zip" -DestinationPath "redis"
@@ -91,7 +89,6 @@ jobs:
       - name: Setup Redis (macOS)
         if: runner.os == 'macOS'
         run: |
-          # Manual Redis setup for macOS CI
           brew install redis
           brew services start redis
           sleep 8
@@ -100,20 +97,20 @@ jobs:
       - name: Install Memcached (macOS)
         if: runner.os == 'macOS'
         run: |
-          # Install and start Memcached service using Homebrew
           brew install memcached
           brew services start memcached
-          sleep 5 # Give the service a moment to start
+          sleep 5
 
       - name: Download Memcached release (Windows)
         if: runner.os == 'Windows'
         uses: robinraju/release-downloader@v1
         with:
-            repository: jefyt/memcached-windows          # 取得元
-            latest: true                                 # 最新リリース
-            fileName: memcached-*win64*.zip              # アセット名をワイルドカードで指定
-            out-file-path: memcached                     # 展開先ディレクトリ
-            extract: true                                # ZIP を自動展開する:contentReference[oaicite:0]{index=0}
+          repository: jefyt/memcached-windows
+          latest: true
+          # 修正点: 'win64' -> 'x64'
+          fileName: memcached-*-x64.zip
+          out-file-path: memcached
+          extract: true
 
       - name: Install + start Memcached service (Windows)
         if: runner.os == 'Windows'
@@ -134,7 +131,6 @@ jobs:
           coverage: pcov
           ini-values: zend.assertions=1
           tools: composer
-          # 'memcached' extension is installed here for all OSs
           extensions: redis, memcached
 
       - name: Cache Composer dependencies
@@ -149,8 +145,6 @@ jobs:
         run: |
           composer config platform --unset
           composer update ${{ matrix.dependencies == 'lowest' && '--prefer-lowest' || '' }} ${{ env.COMPOSER_FLAGS }}
-
-      # --- Testing and Reporting ---
 
       - name: Run PHPUnit tests
         run: ./vendor/bin/phpunit --coverage-clover=coverage.xml
