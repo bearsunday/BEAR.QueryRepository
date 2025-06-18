@@ -114,15 +114,17 @@ jobs:
           Write-Host "Extracting $zipFile to $extractDir..."
           Expand-Archive -Path $zipFile -DestinationPath $extractDir
           
-          # List the contents of the extracted directory (DEBUG)
-          Write-Host "--- Listing contents of $extractDir ---"
-          ls -R $extractDir
-          Write-Host "--- End of listing ---"
-
-          Write-Host "Changing directory to $extractDir"
-          Push-Location $extractDir
+          # 3. 実行ファイルのパスを動的に特定
+          #    'memcached_files' の中にある、唯一のサブディレクトリを取得します
+          $subDir = Get-ChildItem -Directory -Path $extractBaseDir | Select-Object -First 1
+          # 'bin' ディレクトリまでのフルパスを構築します
+          $execPath = Join-Path -Path $subDir.FullName -ChildPath "bin"
           
-          Write-Host "Installing Memcached as a service..."
+          # 4. サービスのインストールと起動
+          #    特定したパスに移動して実行します
+          Push-Location $execPath
+          
+          Write-Host "Installing Memcached service from $execPath"
           .\memcached.exe -d install
           
           Write-Host "Starting the Memcached service..."
@@ -130,6 +132,7 @@ jobs:
           
           Pop-Location
 
+          # 5. 確認
           Start-Sleep -Seconds 5
           Write-Host "Verifying service status..."
           sc.exe query memcached
