@@ -113,6 +113,11 @@ jobs:
           $extractDir = "memcached_files"
           Write-Host "Extracting $zipFile to $extractDir..."
           Expand-Archive -Path $zipFile -DestinationPath $extractDir
+          
+          # List the contents of the extracted directory (DEBUG)
+          Write-Host "--- Listing contents of $extractDir ---"
+          ls -R $extractDir
+          Write-Host "--- End of listing ---"
 
           Write-Host "Changing directory to $extractDir"
           Push-Location $extractDir
