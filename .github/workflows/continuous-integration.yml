@@ -20,14 +20,41 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        php-version: [8.1, 8.2, 8.3, 8.4]
-        dependencies: [lowest, highest]
-        exclude:
-          - php-version: 8.1
-            os: ubuntu-latest
-          - php-version: 8.1
+        include:
+          # Ubuntu: 全てのPHPバージョンでテスト
+          - os: ubuntu-latest
+            php-version: 8.1
+            dependencies: highest
+          - os: ubuntu-latest
+            php-version: 8.2
             dependencies: lowest
+          - os: ubuntu-latest
+            php-version: 8.2
+            dependencies: highest
+          - os: ubuntu-latest
+            php-version: 8.3
+            dependencies: lowest
+          - os: ubuntu-latest
+            php-version: 8.3
+            dependencies: highest
+          - os: ubuntu-latest
+            php-version: 8.4
+            dependencies: lowest
+          - os: ubuntu-latest
+            php-version: 8.4
+            dependencies: highest
+          - os: windows-latest
+            php-version: 8.4
+            dependencies: lowest
+          - os: windows-latest
+            php-version: 8.4
+            dependencies: highest
+          - os: macos-latest
+            php-version: 8.4
+            dependencies: lowest
+          - os: macos-latest
+            php-version: 8.4
+            dependencies: highest
 
     services:
       redis:
@@ -50,6 +77,22 @@ jobs:
           coverage: pcov
           ini-values: zend.assertions=1
           tools: composer
+
+      - name: Start Redis on Windows
+        if: runner.os == 'Windows'
+        run: |
+          $ProgressPreference = "SilentlyContinue"
+          Invoke-WebRequest -Uri https://github.com/microsoftarchive/redis/releases/download/win-3.0.504/Redis-x64-3.0.504.zip -OutFile redis.zip
+          Expand-Archive redis.zip -DestinationPath redis
+          Start-Process redis/redis-server.exe -WindowStyle Hidden
+          Start-Sleep 5
+
+      - name: Start Redis on macOS
+        if: runner.os == 'macOS'
+        run: |
+          brew install redis
+          brew services start redis
+          sleep 5
 
       - name: Cache dependencies
         uses: actions/cache@v4
