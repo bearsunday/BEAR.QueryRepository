@@ -67,6 +67,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # --- Redis Setup (All Platforms) ---
       - name: Setup Redis (Ubuntu)
         if: runner.os == 'Linux'
         run: |
@@ -94,6 +95,13 @@ jobs:
           sleep 8
           redis-cli ping
 
+      # --- Memcached Setup (All Platforms) ---
+      - name: Install Memcached (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get install -y memcached
+          sudo systemctl start memcached
+
       - name: Install Memcached (macOS)
         if: runner.os == 'macOS'
         run: |
@@ -101,43 +109,46 @@ jobs:
           brew services start memcached
           sleep 5
 
-      - name: Download, Extract, and Run Memcached (as a non-admin process)
+      - name: Install Memcached (Windows)
         if: runner.os == 'Windows'
         shell: powershell
         run: |
-          # 1. ダウンロードと展開
-          curl.exe -L -o memcached.zip "https://github.com/jefyt/memcached-windows/releases/download/1.6.8_mingw/memcached-1.6.8-win64-mingw.zip"
-          Expand-Archive -Path memcached.zip -DestinationPath memcached_files
+          # 1. Download the community-provided binary using curl to handle redirects.
+          #    The URL was found and verified by the user.
+          $url = "https://github.com/jefyt/memcached-windows/releases/download/1.6.8_mingw/memcached-1.6.8-win64-mingw.zip"
+          $zipFile = "memcached.zip"
+          Write-Host "Downloading Memcached from $url..."
+          curl.exe -L -o $zipFile $url
 
-          # 2. 実行ファイルのパスをハードコード
-          $execPath = ".\memcached_files\memcached-1.6.8-win64-mingw\bin\memcached.exe"
+          # 2. Extract the archive.
+          $extractDir = "memcached_files"
+          Write-Host "Extracting $zipFile to $extractDir..."
+          Expand-Archive -Path $zipFile -DestinationPath $extractDir
           
-          # 3. <<<<<<<<<<<<< 戦略の確定 >>>>>>>>>>>>>
-          #    READMEのサービス化は管理者権限が必要であり、CI環境では不向きです。
-          #    代わりに、権限を必要としないバックグラウンドプロセスとして直接起動します。
-          #    これこそが、この環境における唯一の正しいアプローチです。
-          Write-Host "Starting Memcached directly as a background process (avoids admin rights issue)..."
+          # 3. Start Memcached as a background process.
+          #    The service installation method (-d install) is not suitable for CI environments
+          #    as it requires administrative privileges, which are not available by default.
+          #    Running it as a simple process is the most robust and correct approach here.
+          $execPath = Join-Path -Path $extractDir -ChildPath "memcached-1.6.8-win64-mingw\bin\memcached.exe"
+          Write-Host "Starting Memcached directly as a background process from $execPath"
           Start-Process -FilePath $execPath -ArgumentList "-m 64" -WindowStyle Hidden
           
-          # 4. 確認
-          #    プロセスが起動し、ポートをリッスンしているか確認します。
+          # 4. Verify that the process started and is listening on the port.
           Start-Sleep -Seconds 5
           Write-Host "Verifying process and port..."
-          
           $process = Get-Process -Name "memcached" -ErrorAction SilentlyContinue
           if ($null -eq $process) {
             Write-Error "FATAL: Memcached process did not start!"
             exit 1
           }
-
           $portCheck = netstat -an | findstr "11211"
           if (-not $portCheck) {
             Write-Error "FATAL: Port 11211 is not listening!"
             exit 1
           }
-
           Write-Host "SUCCESS: Memcached is running as a process and listening on port 11211."
 
+      # --- PHP and Dependencies Setup ---
       - name: Setup PHP ${{ matrix.php-version }}
         uses: shivammathur/setup-php@v2
         with:
@@ -160,6 +171,7 @@ jobs:
           composer config platform --unset
           composer update ${{ matrix.dependencies == 'lowest' && '--prefer-lowest' || '' }} ${{ env.COMPOSER_FLAGS }}
 
+      # --- Testing and Reporting ---
       - name: Run PHPUnit tests
         run: ./vendor/bin/phpunit --coverage-clover=coverage.xml
 
