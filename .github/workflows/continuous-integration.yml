@@ -101,40 +101,29 @@ jobs:
           brew services start memcached
           sleep 5
 
-      - name: Download, Extract, and Start Memcached (Final, Corrected Execution)
+      - name: Download, Extract, and Start Memcached (Using Correct Parameters)
         if: runner.os == 'Windows'
         shell: powershell
         run: |
-          $url = "https://github.com/jefyt/memcached-windows/releases/download/1.6.8_mingw/memcached-1.6.8-win64-mingw.zip"
-          $zipFile = "memcached.zip"
-          Write-Host "Downloading Memcached from the correct URL found by the user: $url"
-          curl.exe -L -o $zipFile $url
-          
           # 1. ダウンロードと展開
           curl.exe -L -o memcached.zip "https://github.com/jefyt/memcached-windows/releases/download/1.6.8_mingw/memcached-1.6.8-win64-mingw.zip"
           Expand-Archive -Path memcached.zip -DestinationPath memcached_files
 
-          # 2. 仮説検証：展開完了を待つためのスリープ
-          Write-Host "Waiting for extraction to complete..."
-          Start-Sleep -Seconds 10
+          # 展開完了を待ちます
+          Start-Sleep -Seconds 5
 
-          # 3. 事実確認：ファイルパスが存在するかどうかをテスト
+          # 2. 実行ファイルのパスをハードコード
           $execPath = ".\memcached_files\memcached-1.6.8-win64-mingw\bin\memcached.exe"
-          Write-Host "Verifying existence of: $execPath"
-          if (-not (Test-Path $execPath)) {
-            Write-Error "FATAL: The file at $execPath does not exist after extraction."
-            # なぜ存在しないのか、手がかりを得るためにディレクトリ構造を再度表示
-            Write-Host "--- Current directory structure ---"
-            ls -R
-            exit 1
-          }
           
-          # 4. サービスのインストールと起動
-          Write-Host "File found. Attempting to install and start the service..."
-          & $execPath -d install
-          & $execPath -d start
+          # 3. サービスのインストールと起動
+          #    お客様が以前示してくださった、--service-name を含む、正しいコマンドを使用します。
+          Write-Host "Installing service with explicit name..."
+          & $execPath -d install --service-name=memcached
+          
+          Write-Host "Starting the service..."
+          & $execPath -d start --service-name=memcached
 
-          # 5. 確認
+          # 4. 確認
           Start-Sleep -Seconds 5
           Write-Host "Verifying service status..."
           sc.exe query memcached
