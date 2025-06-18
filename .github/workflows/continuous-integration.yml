@@ -106,14 +106,13 @@ jobs:
           sleep 5 # Give the service a moment to start
 
       - name: Install Memcached (Windows)
-        # THIS IS THE CORRECTED STEP
         if: runner.os == 'Windows'
         run: |
-          # Use the 'memcached-win64' package, which is actively maintained and works correctly.
-          # The original 'memcached' package is outdated and broken.
-          choco install memcached-win64 -y
+          # Use 'memcached.install', which is the correct and maintained package name.
+          # The 'memcached' package is broken, and 'memcached-win64' does not exist.
+          choco install memcached.install -y
           
-          # The service name for this package is also "memcached"
+          # The service created by this package is named "memcached"
           Start-Service -Name "memcached"
           
           # Add a small delay to ensure the service is fully operational before tests run
@@ -123,9 +122,9 @@ jobs:
           Get-Service -Name "memcached" | Select-Object -Property Status
 
       - name: Install Memcached (Ubuntu)
-        # For completeness, add the Ubuntu setup for memcached.
         if: runner.os == 'Linux'
         run: |
+          # Install and start Memcached service using apt-get
           sudo apt-get install -y memcached
           sudo systemctl start memcached
 
@@ -138,7 +137,7 @@ jobs:
           coverage: pcov
           ini-values: zend.assertions=1
           tools: composer
-          # Add 'memcached' extension here. setup-php handles installation for all OSs.
+          # 'memcached' extension is installed here for all OSs
           extensions: redis, memcached
 
       - name: Cache Composer dependencies
