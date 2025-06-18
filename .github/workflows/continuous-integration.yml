@@ -26,65 +26,42 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Ubuntu: Test all PHP versions with Redis service
+          # Ubuntu: Test all PHP versions
           - os: ubuntu-latest
             php-version: "8.1"
             dependencies: highest
-            redis: service
           - os: ubuntu-latest
             php-version: "8.2"
             dependencies: lowest
-            redis: service
           - os: ubuntu-latest
             php-version: "8.2"
             dependencies: highest
-            redis: service
           - os: ubuntu-latest
             php-version: "8.3"
             dependencies: lowest
-            redis: service
           - os: ubuntu-latest
             php-version: "8.3"
             dependencies: highest
-            redis: service
           - os: ubuntu-latest
             php-version: "8.4"
             dependencies: lowest
-            redis: service
           - os: ubuntu-latest
             php-version: "8.4"
             dependencies: highest
-            redis: service
           # Windows: Latest PHP only for CI speed
           - os: windows-latest
             php-version: "8.4"
             dependencies: lowest
-            redis: manual
           - os: windows-latest
             php-version: "8.4"
             dependencies: highest
-            redis: manual
           # macOS: Latest PHP only for CI speed
           - os: macos-latest
             php-version: "8.4"
             dependencies: lowest
-            redis: manual
           - os: macos-latest
             php-version: "8.4"
             dependencies: highest
-            redis: manual
-
-    # Redis service container only works on Linux runners
-    services:
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 3
 
     steps:
       - name: Checkout repository
@@ -93,10 +70,11 @@ jobs:
       - name: Setup Redis (Ubuntu)
         if: runner.os == 'Linux'
         run: |
-          # Use Redis service container - install client tools
+          # Manual Redis setup for consistent behavior across OS
           sudo apt-get update -qq
-          sudo apt-get install -y redis-tools
-          redis-cli -h localhost -p 6379 ping
+          sudo apt-get install -y redis-server redis-tools
+          sudo systemctl start redis-server
+          redis-cli ping
 
       - name: Setup Redis (Windows)
         if: runner.os == 'Windows'
@@ -145,7 +123,6 @@ jobs:
         run: ./vendor/bin/phpunit --coverage-clover=coverage.xml
 
       - name: Upload coverage report
-        # Only upload coverage once to avoid duplication
         if: matrix.os == 'ubuntu-latest' && matrix.php-version == '8.4' && matrix.dependencies == 'highest'
         uses: codecov/codecov-action@v4
         with:
@@ -153,7 +130,6 @@ jobs:
           fail_ci_if_error: false
 
       - name: Run demo script
-        # Only run demo on one matrix combination to save CI time
         if: env.SCRIPT != '' && matrix.os == 'ubuntu-latest' && matrix.php-version == '8.4' && matrix.dependencies == 'highest'
         run: |
           composer require doctrine/cache:"^1.12" --no-update
