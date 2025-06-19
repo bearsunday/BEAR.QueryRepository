@@ -32,7 +32,7 @@ final class RedisDsnProvider implements ProviderInterface
     }
 
     #[Override]
-    public function get(): Redis|RedisArray|RedisCluster|ClientInterface|Relay|RelayCluster // @phpstan-ignore-override
+    public function get(): Redis|RedisArray|RedisCluster|ClientInterface|Relay|RelayCluster
     {
         /** @var Redis|RedisArray|RedisCluster|ClientInterface|Relay|RelayCluster $connection */
         $connection = RedisAdapter::createConnection($this->dns, $this->options);
