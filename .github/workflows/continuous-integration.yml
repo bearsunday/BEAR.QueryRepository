@@ -187,3 +187,4 @@ jobs:
           composer require doctrine/cache:"^1.12" --no-update
           composer update ${{ env.COMPOSER_FLAGS }}
           php ${{ env.SCRIPT }}
+
