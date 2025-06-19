@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\Uri;
+use Override;
 
 use function http_build_query;
 use function implode;
@@ -19,6 +20,7 @@ final class UriTag implements UriTagInterface
     /**
      * {@inheritDoc}
      */
+    #[Override]
     public function __invoke(AbstractUri $uri): string
     {
         $query = $uri->query;
@@ -33,6 +35,7 @@ final class UriTag implements UriTagInterface
     /**
      * {@inheritDoc}
      */
+    #[Override]
     public function fromAssoc(string $uriTemplate, array $assoc): string
     {
         $surrogateKeys = [];

@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\RepositoryModule\Annotation\TagsPool;
+use Override;
 use Ray\Di\AbstractModule;
 use Ray\PsrCacheModule\Annotation\CacheNamespace;
 use Ray\PsrCacheModule\MemcachedAdapter;
@@ -27,6 +28,7 @@ final class StorageMemcachedModule extends AbstractModule
     /**
      * {@inheritDoc}
      */
+    #[Override]
     protected function configure(): void
     {
         $this->bind(AdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->to(MemcachedAdapter::class);

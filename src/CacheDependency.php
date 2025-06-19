@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\Resource\ResourceObject;
+use Override;
 
 use function assert;
 use function sprintf;
@@ -16,6 +17,7 @@ final class CacheDependency implements CacheDependencyInterface
     ) {
     }
 
+    #[Override]
     public function depends(ResourceObject $from, ResourceObject $to): void
     {
         assert(! isset($from->headers[Header::SURROGATE_KEY]));

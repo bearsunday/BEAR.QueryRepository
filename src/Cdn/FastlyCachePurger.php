@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository\Cdn;
 
 use BEAR\FastlyModule\FastlyCachePurgerInterface;
 use BEAR\QueryRepository\PurgerInterface;
+use Override;
 
 final class FastlyCachePurger implements PurgerInterface
 {
@@ -13,6 +14,7 @@ final class FastlyCachePurger implements PurgerInterface
     {
     }
 
+    #[Override]
     public function __invoke(string $tag): void
     {
         ($this->fastlyCachePurger)($tag);

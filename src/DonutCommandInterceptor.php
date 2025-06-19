@@ -27,6 +27,7 @@ final class DonutCommandInterceptor implements MethodInterceptor
     ){
     }
 
+    #[\Override]
     public function invoke(MethodInvocation $invocation): ResourceObject
     {
         $ro = $invocation->proceed();

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use Override;
 use Stringable;
 
 use function implode;
@@ -20,6 +21,7 @@ final class RepositoryLogger implements RepositoryLoggerInterface, Stringable
     /**
      * {@inheritDoc}
      */
+    #[Override]
     public function log(string $template, ...$values): void
     {
         /** @var bool|float|int|string|list<string>|null $value */
@@ -36,6 +38,7 @@ final class RepositoryLogger implements RepositoryLoggerInterface, Stringable
         $this->logs[] = $msg;
     }
 
+    #[Override]
     public function __toString(): string
     {
         return implode(PHP_EOL, $this->logs);

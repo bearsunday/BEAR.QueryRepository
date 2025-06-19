@@ -10,6 +10,7 @@ use BEAR\RepositoryModule\Annotation\HttpCache;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceObject;
 use Doctrine\Common\Annotations\Reader;
+use Override;
 use ReflectionClass;
 
 use function is_array;
@@ -31,6 +32,7 @@ final class QueryRepository implements QueryRepositoryInterface
     /**
      * {@inheritDoc}
      */
+    #[Override]
     public function put(ResourceObject $ro)
     {
         $this->logger->log('put-query-repository uri:%s', $ro->uri);
@@ -56,6 +58,7 @@ final class QueryRepository implements QueryRepositoryInterface
     /**
      * {@inheritDoc}
      */
+    #[Override]
     public function get(AbstractUri $uri): ResourceState|null
     {
         $state = $this->storage->get($uri);
@@ -72,6 +75,7 @@ final class QueryRepository implements QueryRepositoryInterface
     /**
      * {@inheritDoc}
      */
+    #[Override]
     public function purge(AbstractUri $uri)
     {
         $this->logger->log('purge-query-repository uri:%s', $uri);

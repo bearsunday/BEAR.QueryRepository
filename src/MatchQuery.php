@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\UnmatchedQuery;
 use BEAR\Resource\ResourceObject;
+use Override;
 use ReflectionMethod;
 
 use function sprintf;
@@ -15,6 +16,7 @@ final class MatchQuery implements MatchQueryInterface
     /**
      * {@inheritDoc}
      */
+    #[Override]
     public function __invoke(ResourceObject $ro): array
     {
         $refParameters = (new ReflectionMethod($ro::class, 'onGet'))->getParameters();

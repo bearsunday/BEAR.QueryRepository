@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use Override;
 use Ray\Di\ProviderInterface;
 
 /** @implements ProviderInterface<array<CommandInterface>> */
@@ -18,6 +19,7 @@ final class CommandsProvider implements ProviderInterface
     /**
      * {@inheritDoc}
      */
+    #[Override]
     public function get()
     {
         return [

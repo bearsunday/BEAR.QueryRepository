@@ -9,6 +9,7 @@ use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\RepositoryModule\Annotation\TagsPool;
 use BEAR\Resource\NamedParameter;
 use BEAR\Resource\NamedParameterInterface;
+use Override;
 use Ray\Di\AbstractModule;
 use Ray\Di\Scope;
 use Symfony\Component\Cache\Adapter\AdapterInterface;
@@ -41,6 +42,7 @@ final class QueryRepositoryModule extends AbstractModule
     /**
      * {@inheritDoc}
      */
+    #[Override]
     protected function configure(): void
     {
         // Null cache engine default

@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use Detection\MobileDetect;
 use LogicException;
+use Override;
 use Ray\Di\AbstractModule;
 use Ray\Di\Scope;
 
@@ -23,6 +24,7 @@ final class MobileEtagModule extends AbstractModule
     /**
      * {@inheritDoc}
      */
+    #[Override]
     protected function configure(): void
     {
         if (! class_exists(MobileDetect::class)) {

@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\HttpCacheInterface as DeprecatedHttpCacheInterface;
 use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
+use Override;
 
 use function http_response_code;
 
@@ -20,6 +21,7 @@ final class HttpCache implements HttpCacheInterface, DeprecatedHttpCacheInterfac
     /**
      * {@inheritDoc}
      */
+    #[Override]
     public function isNotModified(array $server): bool
     {
         return isset($server[Header::HTTP_IF_NONE_MATCH]) && $this->storage->hasEtag($server[Header::HTTP_IF_NONE_MATCH]);
@@ -30,6 +32,7 @@ final class HttpCache implements HttpCacheInterface, DeprecatedHttpCacheInterfac
      *
      * @return void
      */
+    #[Override]
     public function transfer()
     {
         // @codeCoverageIgnoreStart

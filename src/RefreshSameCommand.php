@@ -22,6 +22,7 @@ final class RefreshSameCommand implements CommandInterface
     /**
      * @return void
      */
+    #[\Override]
     public function command(MethodInvocation $invocation, ResourceObject $ro)
     {
         unset($invocation);

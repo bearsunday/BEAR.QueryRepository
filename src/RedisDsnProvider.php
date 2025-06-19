@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\RedisDsn;
 use BEAR\RepositoryModule\Annotation\RedisDsnOptions;
+use Override;
 use Predis\ClientInterface;
 use Ray\Di\ProviderInterface;
 use Redis;
@@ -29,6 +30,7 @@ final class RedisDsnProvider implements ProviderInterface
     ) {
     }
 
+    #[Override]
     public function get(): Redis|RedisArray|RedisCluster|ClientInterface|Relay // @phpstan-ignore-override
     {
         return RedisAdapter::createConnection($this->dns, $this->options);

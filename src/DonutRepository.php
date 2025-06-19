@@ -7,6 +7,7 @@ namespace BEAR\QueryRepository;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
+use Override;
 
 use function assert;
 use function explode;
@@ -24,6 +25,7 @@ final class DonutRepository implements DonutRepositoryInterface
     ) {
     }
 
+    #[Override]
     public function get(ResourceObject $ro): ResourceObject|null
     {
         $maybeState = $this->queryRepository->get($ro->uri);
@@ -42,6 +44,7 @@ final class DonutRepository implements DonutRepositoryInterface
     /**
      * {@inheritDoc}
      */
+    #[Override]
     public function putStatic(ResourceObject $ro, int|null $ttl = null, int|null $sMaxAge = null): ResourceObject
     {
         $this->logger->log('put-donut: uri:%s ttl:%s s-maxage:%d', (string) $ro->uri, $sMaxAge, $ttl);
@@ -63,6 +66,7 @@ final class DonutRepository implements DonutRepositoryInterface
     /**
      * {@inheritDoc}
      */
+    #[Override]
     public function putDonut(ResourceObject $ro, int|null $donutTtl): ResourceObject
     {
         $this->logger->log('put-donut: uri:%s ttl:%s', (string) $ro->uri, $donutTtl);
@@ -82,6 +86,7 @@ final class DonutRepository implements DonutRepositoryInterface
     /**
      * {@inheritDoc}
      */
+    #[Override]
     public function purge(AbstractUri $uri): void
     {
         $this->queryRepository->purge($uri);
@@ -90,6 +95,7 @@ final class DonutRepository implements DonutRepositoryInterface
     /**
      * {@inheritDoc}
      */
+    #[Override]
     public function invalidateTags(array $tags): void
     {
         $this->resourceStorage->invalidateTags($tags);

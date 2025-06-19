@@ -8,13 +8,12 @@ use BEAR\RepositoryModule\Annotation\HttpCache;
 use BEAR\Resource\Request;
 use BEAR\Resource\ResourceObject;
 use DateTimeInterface;
+use Override;
 
 use function gmdate;
 use function http_build_query;
 use function sprintf;
 use function str_replace;
-
-use const DIRECTORY_SEPARATOR;
 
 final class DevEtagSetter implements EtagSetterInterface
 {
@@ -26,6 +25,7 @@ final class DevEtagSetter implements EtagSetterInterface
     /**
      * {@inheritDoc}
      */
+    #[Override]
     public function __invoke(ResourceObject $ro, int|null $time = null, HttpCache|null $httpCache = null)
     {
         $ro->headers[Header::ETAG] =  sprintf('%s_%s', str_replace('/', '_', $ro->uri->path), http_build_query($ro->uri->query));
