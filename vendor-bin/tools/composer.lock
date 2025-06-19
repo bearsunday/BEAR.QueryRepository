@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "81256bb137dbb9ea529483882152c0f5",
+    "content-hash": "0f42766d36d7379bb2634d8f8565e169",
     "packages": [],
     "packages-dev": [
         {
@@ -2450,6 +2450,112 @@
                 "source": "https://github.com/php-fig/log/tree/3.0.2"
             },
             "time": "2024-09-11T13:17:53+00:00"
+        },
+        {
+            "name": "rector/rector",
+            "version": "2.0.18",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/rectorphp/rector.git",
+                "reference": "be3a452085b524a04056e3dfe72d861948711062"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/rectorphp/rector/zipball/be3a452085b524a04056e3dfe72d861948711062",
+                "reference": "be3a452085b524a04056e3dfe72d861948711062",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^7.4|^8.0",
+                "phpstan/phpstan": "^2.1.17"
+            },
+            "conflict": {
+                "rector/rector-doctrine": "*",
+                "rector/rector-downgrade-php": "*",
+                "rector/rector-phpunit": "*",
+                "rector/rector-symfony": "*"
+            },
+            "suggest": {
+                "ext-dom": "To manipulate phpunit.xml via the custom-rule command"
+            },
+            "bin": [
+                "bin/rector"
+            ],
+            "type": "library",
+            "autoload": {
+                "files": [
+                    "bootstrap.php"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "description": "Instant Upgrade and Automated Refactoring of any PHP code",
+            "keywords": [
+                "automation",
+                "dev",
+                "migration",
+                "refactoring"
+            ],
+            "support": {
+                "issues": "https://github.com/rectorphp/rector/issues",
+                "source": "https://github.com/rectorphp/rector/tree/2.0.18"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/tomasvotruba",
+                    "type": "github"
+                }
+            ],
+            "time": "2025-06-11T11:19:37+00:00"
+        },
+        {
+            "name": "rector/swiss-knife",
+            "version": "2.3.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/rectorphp/swiss-knife.git",
+                "reference": "d681109ef62d0657cca6610fdf4488837e5e9522"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/rectorphp/swiss-knife/zipball/d681109ef62d0657cca6610fdf4488837e5e9522",
+                "reference": "d681109ef62d0657cca6610fdf4488837e5e9522",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=7.2"
+            },
+            "bin": [
+                "bin/swiss-knife"
+            ],
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Rector\\SwissKnife\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "description": "Swiss knife in pocket of every upgrade architect",
+            "support": {
+                "issues": "https://github.com/rectorphp/swiss-knife/issues",
+                "source": "https://github.com/rectorphp/swiss-knife/tree/2.3.0"
+            },
+            "funding": [
+                {
+                    "url": "https://www.paypal.me/rectorphp",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/tomasvotruba",
+                    "type": "github"
+                }
+            ],
+            "time": "2025-06-16T07:59:07+00:00"
         },
         {
             "name": "revolt/event-loop",
