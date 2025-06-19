@@ -12,10 +12,11 @@ use Ray\Di\ProviderInterface;
 use Redis;
 use RedisArray;
 use RedisCluster;
+use Relay\Cluster as RelayCluster;
 use Relay\Relay;
 use Symfony\Component\Cache\Adapter\RedisAdapter;
 
-/** @implements ProviderInterface<Redis|RedisArray|RedisCluster|ClientInterface|Relay> */
+/** @implements ProviderInterface<Redis|RedisArray|RedisCluster|ClientInterface|Relay|RelayCluster> */
 final class RedisDsnProvider implements ProviderInterface
 {
     /**
@@ -31,8 +32,11 @@ final class RedisDsnProvider implements ProviderInterface
     }
 
     #[Override]
-    public function get(): Redis|RedisArray|RedisCluster|ClientInterface|Relay // @phpstan-ignore-override
+    public function get(): Redis|RedisArray|RedisCluster|ClientInterface|Relay|RelayCluster // @phpstan-ignore-override
     {
-        return RedisAdapter::createConnection($this->dns, $this->options);
+        /** @var Redis|RedisArray|RedisCluster|ClientInterface|Relay|RelayCluster $connection */
+        $connection = RedisAdapter::createConnection($this->dns, $this->options);
+
+        return $connection;
     }
 }
