@@ -32,12 +32,12 @@
         "bear/fastly-module": "^1.0",
         "bamarni/composer-bin-plugin": "^1.8",
         "koriym/attributes": "^1.0.1",
-        "madapaja/twig-module": "^2.3",
+        "madapaja/twig-module": "^2.6",
         "mobiledetect/mobiledetectlib": "^3.74 || ^4.8",
-        "phpunit/phpunit": "^9.5.28",
-        "predis/predis": "^2.2",
-        "symfony/process": "^4.3 || ^5.4 || ^6.1 || ^7.1",
-        "twig/twig": "^2.15.3 || ^3.4.3"
+        "phpunit/phpunit": "^9.6.23",
+        "predis/predis": "^2.4",
+        "symfony/process": "^6.1 || ^7.1",
+        "twig/twig": "^3.4.3"
     },
     "autoload": {
         "psr-4": {
