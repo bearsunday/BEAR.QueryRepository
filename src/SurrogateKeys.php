@@ -11,10 +11,7 @@ use function array_key_exists;
 use function array_merge;
 use function array_unique;
 use function explode;
-use function http_build_query;
 use function implode;
-use function sprintf;
-use function str_replace;
 
 final class SurrogateKeys
 {
@@ -24,10 +21,8 @@ final class SurrogateKeys
 
     public function __construct(AbstractUri $uri)
     {
-        $path = str_replace(['/', '\\'], '_', $uri->path);
-        $uriKey = sprintf('%s_%s', $path, http_build_query($uri->query));
-        $this->surrogateKeys = [$uriKey];
         $this->uriTag = new UriTag();
+        $this->surrogateKeys = [($this->uriTag)($uri)];
     }
 
     /**

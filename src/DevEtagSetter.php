@@ -11,9 +11,6 @@ use DateTimeInterface;
 use Override;
 
 use function gmdate;
-use function http_build_query;
-use function sprintf;
-use function str_replace;
 
 final class DevEtagSetter implements EtagSetterInterface
 {
@@ -28,7 +25,11 @@ final class DevEtagSetter implements EtagSetterInterface
     #[Override]
     public function __invoke(ResourceObject $ro, int|null $time = null, HttpCache|null $httpCache = null)
     {
-        $ro->headers[Header::ETAG] =  sprintf('%s_%s', str_replace('/', '_', $ro->uri->path), http_build_query($ro->uri->query));
+        $uriEtag = (new UriTag())($ro->uri);
+        // Use URI as ETag in dev mode to understand how the cache is created.
+        // This is useful for debugging purposes.
+        // Usually, the ETag is a hash of the resource view or body.
+        $ro->headers[Header::ETAG] = $uriEtag;
         $ro->headers[Header::LAST_MODIFIED] = gmdate(DateTimeInterface::RFC7231, 0);
         $this->setCacheDependency($ro);
     }

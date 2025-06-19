@@ -22,7 +22,6 @@ use function implode;
 use function is_array;
 use function is_string;
 use function sprintf;
-use function str_replace;
 use function strtoupper;
 
 /**
@@ -115,10 +114,7 @@ final class ResourceStorage implements ResourceStorageInterface
     #[Override]
     public function hasEtag(string $etag): bool
     {
-        // Sanitize etag to remove reserved characters
-        $sanitizedEtag = str_replace(['/', '\\', ':', '@', '(', ')', '{', '}'], '_', $etag);
-
-        return $this->etagPool->hasItem($sanitizedEtag);
+        return $this->etagPool->hasItem($etag);
     }
 
     /**
@@ -270,8 +266,7 @@ final class ResourceStorage implements ResourceStorageInterface
         $uniqueTags = array_unique($tags);
         $this->logger->log('save-etag uri:%s etag:%s surrogate-keys:%s', $uri, $etag, $uniqueTags);
         // Sanitize etag to remove reserved characters
-        $sanitizedEtag = str_replace(['/', '\\', ':', '@', '(', ')', '{', '}'], '_', $etag);
-        $this->saver->__invoke($sanitizedEtag, 'etag', $this->etagPool, $uniqueTags, $ttl);
+        $this->saver->__invoke($etag, 'etag', $this->etagPool, $uniqueTags, $ttl);
     }
 
     public function __serialize(): array
