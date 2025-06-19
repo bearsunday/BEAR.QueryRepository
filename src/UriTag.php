@@ -27,6 +27,7 @@ final class UriTag implements UriTagInterface
         ksort($query);
 
         $uriKey = sprintf('%s_%s', $uri->path, http_build_query($query));
+
         // Sanitize the URI key by replacing special characters (/, ?, &) with underscores
         // to ensure it is a valid surrogate key and make it enable with Symfony cache adapter
         return str_replace(['/', '?', '&'], '_', $uriKey);
