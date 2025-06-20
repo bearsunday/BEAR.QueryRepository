@@ -114,7 +114,6 @@ jobs:
         shell: powershell
         run: |
           # 1. Download the community-provided binary using curl to handle redirects.
-          #    The URL was found and verified by the user.
           $url = "https://github.com/jefyt/memcached-windows/releases/download/1.6.8_mingw/memcached-1.6.8-win64-mingw.zip"
           $zipFile = "memcached.zip"
           Write-Host "Downloading Memcached from $url..."
@@ -128,7 +127,6 @@ jobs:
           # 3. Start Memcached as a background process.
           #    The service installation method (-d install) is not suitable for CI environments
           #    as it requires administrative privileges, which are not available by default.
-          #    Running it as a simple process is the most robust and correct approach here.
           $execPath = Join-Path -Path $extractDir -ChildPath "memcached-1.6.8-win64-mingw\bin\memcached.exe"
           Write-Host "Starting Memcached directly as a background process from $execPath"
           Start-Process -FilePath $execPath -ArgumentList "-m 64" -WindowStyle Hidden
