@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\EtagPool;
 use Memcached;
+use Override;
 use Psr\Cache\CacheItemPoolInterface;
 use Ray\Di\AbstractModule;
 use Ray\PsrCacheModule\Annotation\CacheNamespace;
@@ -36,6 +37,7 @@ final class StorageMemcachedEtagModule extends AbstractModule
     /**
      * {@inheritDoc}
      */
+    #[Override]
     protected function configure(): void
     {
         $this->bind(CacheItemPoolInterface::class)->annotatedWith(EtagPool::class)->toConstructor(MemcachedAdapter::class, [

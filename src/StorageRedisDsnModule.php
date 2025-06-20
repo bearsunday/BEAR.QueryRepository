@@ -7,6 +7,7 @@ namespace BEAR\QueryRepository;
 use BEAR\RepositoryModule\Annotation\RedisDsn;
 use BEAR\RepositoryModule\Annotation\RedisDsnOptions;
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
+use Override;
 use Ray\Di\AbstractModule;
 use Ray\Di\ProviderInterface;
 use Ray\PsrCacheModule\Annotation\CacheNamespace;
@@ -51,6 +52,7 @@ final class StorageRedisDsnModule extends AbstractModule
     }
 
     /** @throws ReflectionException */
+    #[Override]
     protected function configure(): void
     {
         $this->bind()->annotatedWith(RedisDsn::class)->toInstance($this->dsn);

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\Resource\AbstractRequest;
+use Override;
 use Stringable;
 
 use function sprintf;
@@ -18,6 +19,7 @@ final class DonutRequest implements Stringable
     ) {
     }
 
+    #[Override]
     public function __toString(): string
     {
         $view = (string) ($this->request)();

@@ -7,6 +7,7 @@ namespace BEAR\QueryRepository;
 use BEAR\QueryRepository\Exception\ReturnValueIsNotResourceObjectException;
 use BEAR\Resource\Code;
 use BEAR\Resource\ResourceObject;
+use Override;
 use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
 
@@ -17,6 +18,7 @@ final class RefreshInterceptor implements MethodInterceptor
     ) {
     }
 
+    #[Override]
     public function invoke(MethodInvocation $invocation): ResourceObject
     {
         /** @psalm-suppress MixedAssignment */

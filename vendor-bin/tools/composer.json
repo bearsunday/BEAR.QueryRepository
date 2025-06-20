@@ -3,7 +3,9 @@
         "doctrine/coding-standard": "^12.0",
         "phpmd/phpmd": "^2.15",
         "phpstan/phpstan": "^2.0",
-        "vimeo/psalm": "^5.26 || dev-master"
+        "rector/rector": "^2.0",
+        "rector/swiss-knife": "^2.3",
+        "vimeo/psalm": "^6.12"
     },
     "config": {
         "allow-plugins": {

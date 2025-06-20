@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
+use Override;
 
 use function assert;
 use function is_string;
@@ -25,6 +26,7 @@ final class CliHttpCache implements HttpCacheInterface
     /**
      * {@inheritDoc}
      */
+    #[Override]
     public function isNotModified(array $server): bool
     {
         $etag = $this->getEtag($server);
@@ -40,6 +42,7 @@ final class CliHttpCache implements HttpCacheInterface
      *
      * @return void
      */
+    #[Override]
     public function transfer()
     {
         echo '304 Not Modified' . PHP_EOL . PHP_EOL;

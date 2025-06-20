@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository\Cdn;
 
 use BEAR\QueryRepository\CdnCacheControlHeaderSetterInterface;
 use BEAR\Resource\ResourceObject;
+use Override;
 
 use function sprintf;
 
@@ -13,6 +14,7 @@ final class FastlyCacheControlHeaderSetter implements CdnCacheControlHeaderSette
 {
     public const CDN_CACHE_CONTROL_HEADER = 'Surrogate-Control';
 
+    #[Override]
     public function __invoke(ResourceObject $ro, int|null $sMaxAge): void
     {
         $sMaxAge ??= 31_536_000;

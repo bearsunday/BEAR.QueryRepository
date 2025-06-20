@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository\Cdn;
 
 use BEAR\QueryRepository\CdnCacheControlHeaderSetterInterface;
+use Override;
 use Ray\Di\AbstractModule;
 
 /**
@@ -17,6 +18,7 @@ final class AkamaiModule extends AbstractModule
     /**
      * {@inheritDoc}
      */
+    #[Override]
     protected function configure(): void
     {
         $this->bind(CdnCacheControlHeaderSetterInterface::class)->to(AkamaiCacheControlHeaderSetter::class);

@@ -7,6 +7,7 @@ namespace BEAR\QueryRepository;
 use BEAR\RepositoryModule\Annotation\HttpCache;
 use BEAR\Resource\ResourceObject;
 use Detection\MobileDetect;
+use Override;
 
 use function crc32;
 use function gmdate;
@@ -15,6 +16,7 @@ use function time;
 
 final class MobileEtagSetter implements EtagSetterInterface
 {
+    #[Override]
     public function __invoke(ResourceObject $ro, int|null $time = null, HttpCache|null $httpCache = null): void
     {
         unset($httpCache);

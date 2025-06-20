@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\LogicException;
 use BEAR\Resource\ResourceObject;
+use Override;
 use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
 use Throwable;
@@ -26,6 +27,7 @@ final class CacheInterceptor implements MethodInterceptor
     /**
      * {@inheritDoc}
      */
+    #[Override]
     public function invoke(MethodInvocation $invocation)
     {
         $ro = $invocation->getThis();

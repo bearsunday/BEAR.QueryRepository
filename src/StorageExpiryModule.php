@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use Override;
 use Ray\Di\AbstractModule;
 
 final class StorageExpiryModule extends AbstractModule
@@ -20,6 +21,7 @@ final class StorageExpiryModule extends AbstractModule
     /**
      * {@inheritDoc}
      */
+    #[Override]
     protected function configure(): void
     {
         $this->bind(Expiry::class)->toInstance(new Expiry($this->short, $this->medium, $this->long));

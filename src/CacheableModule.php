@@ -10,6 +10,7 @@ use BEAR\RepositoryModule\Annotation\Commands;
 use BEAR\RepositoryModule\Annotation\Purge;
 use BEAR\RepositoryModule\Annotation\Refresh;
 use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
+use Override;
 use Ray\Di\AbstractModule;
 
 /**
@@ -27,6 +28,7 @@ final class CacheableModule extends AbstractModule
     /**
      * {@inheritDoc}
      */
+    #[Override]
     protected function configure(): void
     {
         $this->bind(HttpCacheInterface::class)->to(HttpCache::class);

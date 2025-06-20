@@ -7,6 +7,7 @@ namespace BEAR\QueryRepository;
 use BEAR\RepositoryModule\Annotation\CacheableResponse;
 use BEAR\RepositoryModule\Annotation\DonutCache;
 use BEAR\RepositoryModule\Annotation\RefreshCache;
+use Override;
 use Ray\Di\AbstractModule;
 use Ray\Di\Scope;
 
@@ -34,6 +35,7 @@ final class DonutCacheModule extends AbstractModule
     /**
      * {@inheritDoc}
      */
+    #[Override]
     protected function configure(): void
     {
         $this->bind(HeaderSetter::class);

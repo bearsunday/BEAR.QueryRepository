@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\Resource\Code;
 use BEAR\Resource\ResourceObject;
+use Override;
 use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
 use Throwable;
@@ -30,6 +31,7 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
     /**
      * {@inheritDoc}
      */
+    #[Override]
     final public function invoke(MethodInvocation $invocation)
     {
         $ro = $invocation->getThis();

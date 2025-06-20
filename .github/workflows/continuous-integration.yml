@@ -3,105 +3,186 @@ name: Continuous Integration
 on:
   push:
     paths-ignore:
-      - '**.md'
+      - '**/*.md'
+      - '**/*.txt'
+      - 'LICENSE'
   pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - '**/*.txt'
+      - 'LICENSE'
   workflow_dispatch:
 
 env:
-  COMPOSER_FLAGS: "--ansi --no-interaction --no-progress --prefer-dist --no-plugins"
-  COMPOSER_UPDATE_FLAGS: ""
-  script: demo/run.php
+  COMPOSER_FLAGS: "--ansi --no-interaction --no-progress --prefer-dist"
+  SCRIPT: "demo/run.php"
 
 jobs:
   phpunit:
-    name: PHPUnit
-    runs-on: ubuntu-latest
-    services:
-      redis:
-        image: redis
-        ports:
-          - 6379:6379
-        options: --health-cmd="redis-cli ping" --health-interval=10s --health-timeout=5s --health-retries=3
+    name: PHPUnit (${{ matrix.os }} - PHP ${{ matrix.php-version }} - ${{ matrix.dependencies }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     strategy:
+      fail-fast: false
       matrix:
-        php-version: [8.2, 8.3, 8.4]
-        dependencies: [highest, lowest]
-        os: [ubuntu-latest]
         include:
-          - php-version: 8.1
-            os: windows-latest
-          - php-version: 8.1
-            os: macos-latest
-          - php-version: 8.2
-            dependencies: lowest
-            os: ubuntu-latest
-          - php-version:  8.2
+          # Ubuntu: Test all PHP versions
+          - os: ubuntu-latest
+            php-version: "8.1"
             dependencies: highest
-            os: ubuntu-latest
-          - php-version:  8.3
-            dependencies: highest
-            os: ubuntu-latest
-          - php-version: 8.3
+          - os: ubuntu-latest
+            php-version: "8.2"
             dependencies: lowest
-            os: ubuntu-latest
-          - php-version:  8.4
+          - os: ubuntu-latest
+            php-version: "8.2"
             dependencies: highest
-            os: ubuntu-latest
-          - php-version: 8.4
+          - os: ubuntu-latest
+            php-version: "8.3"
             dependencies: lowest
-            os: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+          - os: ubuntu-latest
+            php-version: "8.3"
+            dependencies: highest
+          - os: ubuntu-latest
+            php-version: "8.4"
+            dependencies: lowest
+          - os: ubuntu-latest
+            php-version: "8.4"
+            dependencies: highest
+          # Windows: Latest PHP only for CI speed
+          - os: windows-latest
+            php-version: "8.4"
+            dependencies: lowest
+          - os: windows-latest
+            php-version: "8.4"
+            dependencies: highest
+          # macOS: Latest PHP only for CI speed
+          - os: macos-latest
+            php-version: "8.4"
+            dependencies: lowest
+          - os: macos-latest
+            php-version: "8.4"
+            dependencies: highest
 
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # --- Redis Setup (All Platforms) ---
+      - name: Setup Redis (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y redis-server redis-tools
+          sudo systemctl start redis-server
+          redis-cli ping
+
+      - name: Setup Redis (Windows)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $ProgressPreference = "SilentlyContinue"
+          Invoke-WebRequest -Uri "https://github.com/microsoftarchive/redis/releases/download/win-3.0.504/Redis-x64-3.0.504.zip" -OutFile "redis.zip"
+          Expand-Archive "redis.zip" -DestinationPath "redis"
+          Start-Process -FilePath "redis/redis-server.exe" -WindowStyle Hidden
+          Start-Sleep -Seconds 10
+          redis/redis-cli.exe ping
+
+      - name: Setup Redis (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install redis
+          brew services start redis
+          sleep 8
+          redis-cli ping
+
+      # --- Memcached Setup (All Platforms) ---
+      - name: Install Memcached (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get install -y memcached
+          sudo systemctl start memcached
+
+      - name: Install Memcached (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install memcached
+          brew services start memcached
+          sleep 5
+
+      - name: Install Memcached (Windows)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          # 1. Download the community-provided binary using curl to handle redirects.
+          $url = "https://github.com/jefyt/memcached-windows/releases/download/1.6.8_mingw/memcached-1.6.8-win64-mingw.zip"
+          $zipFile = "memcached.zip"
+          Write-Host "Downloading Memcached from $url..."
+          curl.exe -L -o $zipFile $url
+
+          # 2. Extract the archive.
+          $extractDir = "memcached_files"
+          Write-Host "Extracting $zipFile to $extractDir..."
+          Expand-Archive -Path $zipFile -DestinationPath $extractDir
+          
+          # 3. Start Memcached as a background process.
+          #    The service installation method (-d install) is not suitable for CI environments
+          #    as it requires administrative privileges, which are not available by default.
+          $execPath = Join-Path -Path $extractDir -ChildPath "memcached-1.6.8-win64-mingw\bin\memcached.exe"
+          Write-Host "Starting Memcached directly as a background process from $execPath"
+          Start-Process -FilePath $execPath -ArgumentList "-m 64" -WindowStyle Hidden
+          
+          # 4. Verify that the process started and is listening on the port.
+          Start-Sleep -Seconds 5
+          Write-Host "Verifying process and port..."
+          $process = Get-Process -Name "memcached" -ErrorAction SilentlyContinue
+          if ($null -eq $process) {
+            Write-Error "FATAL: Memcached process did not start!"
+            exit 1
+          }
+          $portCheck = netstat -an | findstr "11211"
+          if (-not $portCheck) {
+            Write-Error "FATAL: Port 11211 is not listening!"
+            exit 1
+          }
+          Write-Host "SUCCESS: Memcached is running as a process and listening on port 11211."
+
+      # --- PHP and Dependencies Setup ---
       - name: Setup PHP ${{ matrix.php-version }}
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php-version }}
           coverage: pcov
           ini-values: zend.assertions=1
+          tools: composer
+          extensions: redis, memcached
 
-      - name: Get composer cache directory
-        id: composer-cache
-        run: echo "::set-output name=dir::$(composer config cache-files-dir)"
-
-      - name: Cache dependencies
-        uses: actions/cache@v2
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
         with:
-          path: ${{ steps.composer-cache.outputs.dir }}
-          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
-          restore-keys: ${{ runner.os }}-composer-
+          path: ~/.composer/cache
+          key: ${{ runner.os }}-php-${{ matrix.php-version }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-php-${{ matrix.php-version }}-composer-
 
-      - name: Handle lowest dependencies update
-        if: contains(matrix.dependencies, 'lowest')
-        run: echo COMPOSER_UPDATE_FLAGS=$COMPOSER_UPDATE_FLAGS --prefer-lowest >> $GITHUB_ENV
+      - name: Install dependencies
+        run: |
+          composer config platform --unset
+          composer update ${{ matrix.dependencies == 'lowest' && '--prefer-lowest' || '' }} ${{ env.COMPOSER_FLAGS }}
 
-      - name: Handle ignore-platform-reqs dependencies update
-        if: contains(matrix.dependencies, 'ignore')
-        run: echo COMPOSER_FLAGS=$COMPOSER_FLAGS --ignore-platform-req=php >> $GITHUB_ENV
-
-      - name: Remove platform config to get latest dependencies for current PHP version
-        if: contains(matrix.dependencies, 'highest') || contains(matrix.dependencies, 'lowest')
-        run: composer config platform --unset
-
-      - name: Allow alpha releases for latest-deps builds to catch problems earlier
-        if: contains(matrix.dependencies, 'ignore')
-        run: composer config minimum-stability alpha
-
-      - name: Update dependencies
-        run: composer update ${{ env.COMPOSER_UPDATE_FLAGS }} ${{ env.COMPOSER_FLAGS }}
-
-      - name: Run test suite
+      - name: Run PHPUnit tests
         run: ./vendor/bin/phpunit --coverage-clover=coverage.xml
 
       - name: Upload coverage report
-        uses: codecov/codecov-action@v3
+        if: matrix.os == 'ubuntu-latest' && matrix.php-version == '8.4' && matrix.dependencies == 'highest'
+        uses: codecov/codecov-action@v4
         with:
-          file: ./coverage.xml
+          files: coverage.xml
+          fail_ci_if_error: false
 
-      - name: Update dependencies for demo
-        run: composer require doctrine/cache ^1 ${{ env.COMPOSER_UPDATE_FLAGS }} ${{ env.COMPOSER_FLAGS }}
+      - name: Run demo script
+        if: env.SCRIPT != '' && matrix.os == 'ubuntu-latest' && matrix.php-version == '8.4' && matrix.dependencies == 'highest'
+        run: |
+          composer require doctrine/cache:"^1.12" --no-update
+          composer update ${{ env.COMPOSER_FLAGS }}
+          php ${{ env.SCRIPT }}
 
-      - name: Run additional script
-        if: ${{ env.script }}
-        run: php ${{ env.script }}

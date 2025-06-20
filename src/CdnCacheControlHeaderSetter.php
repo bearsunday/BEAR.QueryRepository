@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\Resource\ResourceObject;
+use Override;
 
 use function sprintf;
 
@@ -16,6 +17,7 @@ final class CdnCacheControlHeaderSetter implements CdnCacheControlHeaderSetterIn
 {
     private const CDN_CACHE_CONTROL_HEADER = Header::CDN_CACHE_CONTROL;
 
+    #[Override]
     public function __invoke(ResourceObject $ro, int|null $sMaxAge): void
     {
         $sMaxAge ??= 10;

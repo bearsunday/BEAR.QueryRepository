@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\AbstractCacheControl;
 use BEAR\Resource\ResourceObject;
+use Override;
 use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
 
@@ -16,6 +17,7 @@ final class HttpCacheInterceptor implements MethodInterceptor
     /**
      * {@inheritDoc}
      */
+    #[Override]
     public function invoke(MethodInvocation $invocation)
     {
         $cacheControl = $invocation->getMethod()->getDeclaringClass()->getAnnotation(AbstractCacheControl::class);

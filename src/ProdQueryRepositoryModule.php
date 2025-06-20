@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\KnownTagTtl;
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
+use Override;
 use Ray\Di\AbstractModule;
 use Ray\PsrCacheModule\LocalCacheProvider;
 use Symfony\Component\Cache\Adapter\AdapterInterface;
@@ -17,6 +18,7 @@ final class ProdQueryRepositoryModule extends AbstractModule
      *
      * @see https://github.com/symfony/cache/blob/5.3/Adapter/TagAwareAdapter.php
      */
+    #[Override]
     protected function configure(): void
     {
         // Bind ResourceObjectPool to local cache (APCu or File)

@@ -9,6 +9,7 @@ use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\RequestInterface;
 use BEAR\Resource\ResourceObject;
+use Override;
 use Ray\Di\Di\Set;
 use Ray\Di\ProviderInterface;
 use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
@@ -86,6 +87,7 @@ final class ResourceStorage implements ResourceStorageInterface
     /**
      * {@inheritDoc}
      */
+    #[Override]
     public function get(AbstractUri $uri): ResourceState|null
     {
         $item = $this->roPool->getItem($this->getUriKey($uri, self::KEY_RO));
@@ -95,6 +97,7 @@ final class ResourceStorage implements ResourceStorageInterface
         return $state;
     }
 
+    #[Override]
     public function getDonut(AbstractUri $uri): ResourceDonut|null
     {
         $key = $this->getUriKey($uri, self::KEY_DONUT);
@@ -108,6 +111,7 @@ final class ResourceStorage implements ResourceStorageInterface
     /**
      * {@inheritDoc}
      */
+    #[Override]
     public function hasEtag(string $etag): bool
     {
         return $this->etagPool->hasItem($etag);
@@ -116,6 +120,7 @@ final class ResourceStorage implements ResourceStorageInterface
     /**
      * {@inheritDoc}
      */
+    #[Override]
     public function deleteEtag(AbstractUri $uri)
     {
         $uriTag = ($this->uriTag)($uri);
@@ -126,6 +131,7 @@ final class ResourceStorage implements ResourceStorageInterface
     /**
      * {@inheritDoc}
      */
+    #[Override]
     public function invalidateTags(array $tags): bool
     {
         $tag = $tags !== [] ? implode(' ', $tags) : '';
@@ -142,6 +148,7 @@ final class ResourceStorage implements ResourceStorageInterface
      *
      * @return bool
      */
+    #[Override]
     public function saveValue(ResourceObject $ro, int $ttl)
     {
         /** @psalm-suppress MixedAssignment $body */
@@ -159,6 +166,7 @@ final class ResourceStorage implements ResourceStorageInterface
      *
      * @return bool
      */
+    #[Override]
     public function saveView(ResourceObject $ro, int $ttl)
     {
         $this->logger->log('save-view uri:%s ttl:%s', $ro->uri, $ttl);
@@ -174,6 +182,7 @@ final class ResourceStorage implements ResourceStorageInterface
     /**
      * {@inheritDoc}
      */
+    #[Override]
     public function saveDonut(AbstractUri $uri, ResourceDonut $donut, int|null $sMaxAge, array $headerKeys): void
     {
         $key = $this->getUriKey($uri, self::KEY_DONUT);
@@ -182,6 +191,7 @@ final class ResourceStorage implements ResourceStorageInterface
         assert($result, 'Donut save failed.');
     }
 
+    #[Override]
     public function saveDonutView(ResourceObject $ro, int|null $ttl): bool
     {
         $resourceState = ResourceState::create($ro, [], $ro->view);
@@ -247,6 +257,7 @@ final class ResourceStorage implements ResourceStorageInterface
         return $varyString;
     }
 
+    #[Override]
     public function saveEtag(AbstractUri $uri, string $etag, string $surrogateKeys, int|null $ttl): void
     {
         $tags = $surrogateKeys !== '' ? explode(' ', $surrogateKeys) : [];
@@ -254,6 +265,7 @@ final class ResourceStorage implements ResourceStorageInterface
         /** @var list<string> $uniqueTags */
         $uniqueTags = array_unique($tags);
         $this->logger->log('save-etag uri:%s etag:%s surrogate-keys:%s', $uri, $etag, $uniqueTags);
+        // Sanitize etag to remove reserved characters
         $this->saver->__invoke($etag, 'etag', $this->etagPool, $uniqueTags, $ttl);
     }
 

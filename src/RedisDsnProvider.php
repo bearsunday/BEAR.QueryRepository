@@ -6,15 +6,17 @@ namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\RedisDsn;
 use BEAR\RepositoryModule\Annotation\RedisDsnOptions;
+use Override;
 use Predis\ClientInterface;
 use Ray\Di\ProviderInterface;
 use Redis;
 use RedisArray;
 use RedisCluster;
+use Relay\Cluster as RelayCluster;
 use Relay\Relay;
 use Symfony\Component\Cache\Adapter\RedisAdapter;
 
-/** @implements ProviderInterface<Redis|RedisArray|RedisCluster|ClientInterface|Relay> */
+/** @implements ProviderInterface<Redis|RedisArray|RedisCluster|ClientInterface|Relay|RelayCluster> */
 final class RedisDsnProvider implements ProviderInterface
 {
     /**
@@ -29,8 +31,12 @@ final class RedisDsnProvider implements ProviderInterface
     ) {
     }
 
-    public function get(): Redis|RedisArray|RedisCluster|ClientInterface|Relay
+    #[Override]
+    public function get(): Redis|RedisArray|RedisCluster|ClientInterface|Relay|RelayCluster
     {
-        return RedisAdapter::createConnection($this->dns, $this->options);
+        /** @var Redis|RedisArray|RedisCluster|ClientInterface|Relay|RelayCluster $connection */
+        $connection = RedisAdapter::createConnection($this->dns, $this->options);
+
+        return $connection;
     }
 }

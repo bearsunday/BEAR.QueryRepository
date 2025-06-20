@@ -10,6 +10,7 @@ use BEAR\RepositoryModule\Annotation\Refresh;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
+use Override;
 use Ray\Aop\MethodInvocation;
 
 use function is_array;
@@ -23,6 +24,7 @@ final class RefreshAnnotatedCommand implements CommandInterface
     ) {
     }
 
+    #[Override]
     public function command(MethodInvocation $invocation, ResourceObject $ro): void
     {
         $method = $invocation->getMethod();

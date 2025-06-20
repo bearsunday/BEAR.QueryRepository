@@ -8,6 +8,7 @@ use BEAR\RepositoryModule\Annotation\HttpCache;
 use BEAR\Resource\Request;
 use BEAR\Resource\ResourceObject;
 use DateTimeInterface;
+use Override;
 
 use function assert;
 use function crc32;
@@ -27,6 +28,7 @@ final class EtagSetter implements EtagSetterInterface
     /**
      * {@inheritDoc}
      */
+    #[Override]
     public function __invoke(ResourceObject $ro, int|null $time = null, HttpCache|null $httpCache = null)
     {
         $time ??= time();

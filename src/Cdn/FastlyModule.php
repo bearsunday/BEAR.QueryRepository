@@ -8,6 +8,7 @@ use BEAR\FastlyModule\FastlyPurgeModule;
 use BEAR\QueryRepository\CdnCacheControlHeaderSetterInterface;
 use BEAR\QueryRepository\PurgerInterface;
 use LogicException;
+use Override;
 use Ray\Di\AbstractModule;
 
 use function class_exists;
@@ -29,6 +30,7 @@ final class FastlyModule extends AbstractModule
     /**
      * {@inheritDoc}
      */
+    #[Override]
     protected function configure(): void
     {
         $this->install(new FastlyPurgeModule($this->fastlyApiKey, $this->fastlyServiceId));
