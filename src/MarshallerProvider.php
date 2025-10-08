@@ -8,12 +8,10 @@ use BEAR\RepositoryModule\Annotation\MarshallerOptions;
 use InvalidArgumentException;
 use Override;
 use Ray\Di\ProviderInterface;
-use RuntimeException;
 use Symfony\Component\Cache\Marshaller\DefaultMarshaller;
 use Symfony\Component\Cache\Marshaller\DeflateMarshaller;
 use Symfony\Component\Cache\Marshaller\MarshallerInterface;
 
-use function extension_loaded;
 use function is_string;
 use function sprintf;
 
@@ -65,19 +63,11 @@ final class MarshallerProvider implements ProviderInterface
 
     private function createDefaultMarshaller(bool $useIgbinary): DefaultMarshaller
     {
-        if ($useIgbinary && ! extension_loaded('igbinary')) {
-            throw new RuntimeException('igbinary extension is required for igbinary marshaller');
-        }
-
         return new DefaultMarshaller($useIgbinary);
     }
 
     private function createDeflateMarshaller(bool $useIgbinary): DeflateMarshaller
     {
-        if (! extension_loaded('zlib')) {
-            throw new RuntimeException('zlib extension is required for deflate marshaller');
-        }
-
         $defaultMarshaller = $this->createDefaultMarshaller($useIgbinary);
 
         return new DeflateMarshaller($defaultMarshaller);

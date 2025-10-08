@@ -6,7 +6,6 @@ namespace BEAR\QueryRepository;
 
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
-use RuntimeException;
 use Symfony\Component\Cache\Marshaller\DefaultMarshaller;
 use Symfony\Component\Cache\Marshaller\DeflateMarshaller;
 
@@ -91,41 +90,6 @@ final class MarshallerProviderTest extends TestCase
         $this->assertNull($marshaller);
     }
 
-    public function testGetMarshallerWithZlibNotAvailableForDeflate(): void
-    {
-        if (extension_loaded('zlib')) {
-            $this->markTestSkipped('zlib extension is available');
-        }
-
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('zlib extension is required for deflate marshaller');
-
-        $options = [
-            'enabled' => true,
-            'type' => 'deflate',
-        ];
-        $provider = new MarshallerProvider($options);
-        $provider->get();
-    }
-
-    public function testGetMarshallerWithIgbinaryNotAvailableForDefault(): void
-    {
-        if (extension_loaded('igbinary')) {
-            $this->markTestSkipped('igbinary extension is available');
-        }
-
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('igbinary extension is required for igbinary marshaller');
-
-        $options = [
-            'enabled' => true,
-            'type' => 'default',
-            'use_igbinary' => true,
-        ];
-        $provider = new MarshallerProvider($options);
-        $provider->get();
-    }
-
     public function testGetMarshallerWithDeflateTypeAndIgbinary(): void
     {
         if (! extension_loaded('zlib')) {
@@ -145,28 +109,6 @@ final class MarshallerProviderTest extends TestCase
         $marshaller = $provider->get();
 
         $this->assertInstanceOf(DeflateMarshaller::class, $marshaller);
-    }
-
-    public function testGetMarshallerWithDeflateTypeAndIgbinaryNotAvailable(): void
-    {
-        if (! extension_loaded('zlib')) {
-            $this->markTestSkipped('zlib extension is not available');
-        }
-
-        if (extension_loaded('igbinary')) {
-            $this->markTestSkipped('igbinary extension is available');
-        }
-
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('igbinary extension is required for igbinary marshaller');
-
-        $options = [
-            'enabled' => true,
-            'type' => 'deflate',
-            'use_igbinary' => true,
-        ];
-        $provider = new MarshallerProvider($options);
-        $provider->get();
     }
 
     public function testGetMarshallerWithNonStringType(): void
