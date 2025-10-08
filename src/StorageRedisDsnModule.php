@@ -66,14 +66,16 @@ final class StorageRedisDsnModule extends AbstractModule
         $this->bind()->annotatedWith(MarshallerOptions::class)->toInstance($this->marshallingOptions);
         $this->bind(ProviderInterface::class)->annotatedWith('redis')->to(RedisDsnProvider::class);
         $this->bind()->annotatedWith('redis')->toProvider(RedisDsnProvider::class);
-        $this->bind(MarshallerInterface::class)->toProvider(MarshallerProvider::class);
+        $this->bind()->annotatedWith('defaultLifetime')->toInstance($this->defaultLifetime);
+        $this->bind(ProviderInterface::class)->annotatedWith('marshaller')->to(MarshallerProvider::class);
+        $this->bind(MarshallerInterface::class)->annotatedWith('marshaller')->toProvider(MarshallerProvider::class);
         $this->bind(TagAwareAdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->toConstructor(
             RedisTagAwareAdapter::class,
             [
                 'redis' => 'redis',
                 'namespace' => CacheNamespace::class,
-                'defaultLifetime' => (string) $this->defaultLifetime,
-                'marshaller' => MarshallerInterface::class,
+                'defaultLifetime' => 'defaultLifetime',
+                'marshaller' => 'marshaller',
             ],
         );
     }
