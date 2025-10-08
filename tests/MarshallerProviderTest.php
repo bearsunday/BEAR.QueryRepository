@@ -107,4 +107,91 @@ final class MarshallerProviderTest extends TestCase
         $provider = new MarshallerProvider($options);
         $provider->get();
     }
+
+    public function testGetMarshallerWithIgbinaryNotAvailableForDefault(): void
+    {
+        if (extension_loaded('igbinary')) {
+            $this->markTestSkipped('igbinary extension is available');
+        }
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('igbinary extension is required for igbinary marshaller');
+
+        $options = [
+            'enabled' => true,
+            'type' => 'default',
+            'use_igbinary' => true,
+        ];
+        $provider = new MarshallerProvider($options);
+        $provider->get();
+    }
+
+    public function testGetMarshallerWithDeflateTypeAndIgbinary(): void
+    {
+        if (! extension_loaded('zlib')) {
+            $this->markTestSkipped('zlib extension is not available');
+        }
+
+        if (! extension_loaded('igbinary')) {
+            $this->markTestSkipped('igbinary extension is not available');
+        }
+
+        $options = [
+            'enabled' => true,
+            'type' => 'deflate',
+            'use_igbinary' => true,
+        ];
+        $provider = new MarshallerProvider($options);
+        $marshaller = $provider->get();
+
+        $this->assertInstanceOf(DeflateMarshaller::class, $marshaller);
+    }
+
+    public function testGetMarshallerWithDeflateTypeAndIgbinaryNotAvailable(): void
+    {
+        if (! extension_loaded('zlib')) {
+            $this->markTestSkipped('zlib extension is not available');
+        }
+
+        if (extension_loaded('igbinary')) {
+            $this->markTestSkipped('igbinary extension is available');
+        }
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('igbinary extension is required for igbinary marshaller');
+
+        $options = [
+            'enabled' => true,
+            'type' => 'deflate',
+            'use_igbinary' => true,
+        ];
+        $provider = new MarshallerProvider($options);
+        $provider->get();
+    }
+
+    public function testGetMarshallerWithNonStringType(): void
+    {
+        $options = [
+            'enabled' => true,
+            'type' => 123, // Non-string type should default to 'default'
+            'use_igbinary' => false,
+        ];
+        $provider = new MarshallerProvider($options);
+        $marshaller = $provider->get();
+
+        $this->assertInstanceOf(DefaultMarshaller::class, $marshaller);
+    }
+
+    public function testGetMarshallerWithTypeNotSpecified(): void
+    {
+        $options = [
+            'enabled' => true,
+            // type not specified should default to 'default'
+            'use_igbinary' => false,
+        ];
+        $provider = new MarshallerProvider($options);
+        $marshaller = $provider->get();
+
+        $this->assertInstanceOf(DefaultMarshaller::class, $marshaller);
+    }
 }
