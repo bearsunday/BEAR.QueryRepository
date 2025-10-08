@@ -14,6 +14,7 @@ use Symfony\Component\Cache\Marshaller\SodiumMarshaller;
 use function base64_encode;
 use function extension_loaded;
 use function random_bytes;
+use function sodium_crypto_box_keypair;
 
 final class MarshallerProviderTest extends TestCase
 {
@@ -89,6 +90,101 @@ final class MarshallerProviderTest extends TestCase
         $marshaller = $provider->get();
 
         $this->assertInstanceOf(SodiumMarshaller::class, $marshaller);
+    }
+
+    public function testGetMarshallerWithSodiumTypeAndKeypair(): void
+    {
+        if (! extension_loaded('sodium')) {
+            $this->markTestSkipped('sodium extension is not available');
+        }
+
+        $keypair = sodium_crypto_box_keypair();
+        $options = [
+            'enabled' => true,
+            'type' => 'sodium',
+            'keys' => [base64_encode($keypair)],
+            'use_igbinary' => false,
+        ];
+        $provider = new MarshallerProvider($options);
+        $marshaller = $provider->get();
+
+        $this->assertInstanceOf(SodiumMarshaller::class, $marshaller);
+    }
+
+    public function testGetMarshallerWithSodiumTypeAndBinaryKey(): void
+    {
+        if (! extension_loaded('sodium')) {
+            $this->markTestSkipped('sodium extension is not available');
+        }
+
+        $binaryKey = random_bytes(32);
+        $options = [
+            'enabled' => true,
+            'type' => 'sodium',
+            'keys' => [$binaryKey],
+            'use_igbinary' => false,
+        ];
+        $provider = new MarshallerProvider($options);
+        $marshaller = $provider->get();
+
+        $this->assertInstanceOf(SodiumMarshaller::class, $marshaller);
+    }
+
+    public function testGetMarshallerWithSodiumTypeAndInvalidKeyFormat(): void
+    {
+        if (! extension_loaded('sodium')) {
+            $this->markTestSkipped('sodium extension is not available');
+        }
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Invalid sodium key format or length');
+
+        $options = [
+            'enabled' => true,
+            'type' => 'sodium',
+            'keys' => ['invalid_key_format'],
+            'use_igbinary' => false,
+        ];
+        $provider = new MarshallerProvider($options);
+        $provider->get();
+    }
+
+    public function testGetMarshallerWithSodiumTypeAndInvalidKeyLength(): void
+    {
+        if (! extension_loaded('sodium')) {
+            $this->markTestSkipped('sodium extension is not available');
+        }
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Invalid sodium key format or length');
+
+        $options = [
+            'enabled' => true,
+            'type' => 'sodium',
+            'keys' => [base64_encode(random_bytes(16))], // Wrong length
+            'use_igbinary' => false,
+        ];
+        $provider = new MarshallerProvider($options);
+        $provider->get();
+    }
+
+    public function testGetMarshallerWithSodiumTypeAndNonStringKey(): void
+    {
+        if (! extension_loaded('sodium')) {
+            $this->markTestSkipped('sodium extension is not available');
+        }
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('All keys must be strings');
+
+        $options = [
+            'enabled' => true,
+            'type' => 'sodium',
+            'keys' => [123], // Non-string key
+            'use_igbinary' => false,
+        ];
+        $provider = new MarshallerProvider($options);
+        $provider->get();
     }
 
     public function testGetMarshallerWithInvalidType(): void
