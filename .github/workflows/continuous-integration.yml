@@ -123,14 +123,14 @@ jobs:
           $extractDir = "memcached_files"
           Write-Host "Extracting $zipFile to $extractDir..."
           Expand-Archive -Path $zipFile -DestinationPath $extractDir
-          
+
           # 3. Start Memcached as a background process.
           #    The service installation method (-d install) is not suitable for CI environments
           #    as it requires administrative privileges, which are not available by default.
           $execPath = Join-Path -Path $extractDir -ChildPath "memcached-1.6.8-win64-mingw\bin\memcached.exe"
           Write-Host "Starting Memcached directly as a background process from $execPath"
           Start-Process -FilePath $execPath -ArgumentList "-m 64" -WindowStyle Hidden
-          
+
           # 4. Verify that the process started and is listening on the port.
           Start-Sleep -Seconds 5
           Write-Host "Verifying process and port..."
@@ -154,7 +154,7 @@ jobs:
           coverage: pcov
           ini-values: zend.assertions=1
           tools: composer
-          extensions: redis, memcached
+          extensions: redis, memcached, sodium
 
       - name: Cache Composer dependencies
         uses: actions/cache@v4
