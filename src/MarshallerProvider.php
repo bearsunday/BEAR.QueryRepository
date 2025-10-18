@@ -26,7 +26,13 @@ use function sprintf;
  */
 final class MarshallerProvider implements ProviderInterface
 {
-    /** @param array<string, mixed> $options Marshalling options */
+    /**
+     * @param array{
+     *     enabled?: bool,
+     *     type?: 'default'|'deflate',
+     *     use_igbinary?: bool
+     * } $options Marshalling options
+     */
     public function __construct(
         #[MarshallerOptions]
         private readonly array $options = [],
@@ -42,7 +48,11 @@ final class MarshallerProvider implements ProviderInterface
     /**
      * Create marshaller instance based on options
      *
-     * @param array<string, mixed> $options
+     * @param array{
+     *     enabled?: bool,
+     *     type?: 'default'|'deflate',
+     *     use_igbinary?: bool
+     * } $options
      */
     private function createMarshaller(array $options): MarshallerInterface|null
     {
@@ -50,7 +60,7 @@ final class MarshallerProvider implements ProviderInterface
             return null;
         }
 
-        /** @var string $type */
+        /** @var 'default'|'deflate' $type */
         $type = is_string($options['type'] ?? null) ? $options['type'] : 'default';
         $useIgbinary = (bool) ($options['use_igbinary'] ?? false);
 
