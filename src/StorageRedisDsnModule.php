@@ -45,7 +45,23 @@ final class StorageRedisDsnModule extends AbstractModule
      * @param string                                                   $dsn                Redis DSN
      * @param array<string, bool|int|string|array<string, mixed>|null> $options            Redis DSN Options
      * @param int                                                      $defaultLifetime    Default lifetime for cache items in seconds
-     * @param array<string, mixed>                                     $marshallingOptions Marshalling options for compression/encryption
+     * @param array<string, mixed>                                     $marshallingOptions Marshalling options
+     *
+     * Example with compression:
+     * <code>
+     * new StorageRedisDsnModule(
+     *     dsn: 'redis://localhost:6379',
+     *     marshallingOptions: [
+     *         'enabled' => true,
+     *         'type' => 'deflate',      // 'default' or 'deflate'
+     *         'use_igbinary' => true    // requires ext-igbinary
+     *     ]
+     * );
+     * </code>
+     *
+     * Marshaller types:
+     * - 'default': Standard serialization with optional igbinary support
+     * - 'deflate': Compression using zlib (reduces memory usage)
      */
     public function __construct(
         private readonly string $dsn,
