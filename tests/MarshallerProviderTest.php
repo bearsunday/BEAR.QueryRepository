@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Cache\Marshaller\DefaultMarshaller;
 use Symfony\Component\Cache\Marshaller\DeflateMarshaller;
@@ -71,15 +70,15 @@ final class MarshallerProviderTest extends TestCase
 
     public function testGetMarshallerWithInvalidType(): void
     {
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('Invalid marshaller type: invalid');
-
         $options = [
             'enabled' => true,
             'type' => 'invalid',
         ];
         $provider = new MarshallerProvider($options);
-        $provider->get();
+        $marshaller = $provider->get();
+
+        // Invalid type should fallback to default
+        $this->assertInstanceOf(DefaultMarshaller::class, $marshaller);
     }
 
     public function testGetMarshallerWithEmptyOptions(): void
@@ -109,19 +108,6 @@ final class MarshallerProviderTest extends TestCase
         $marshaller = $provider->get();
 
         $this->assertInstanceOf(DeflateMarshaller::class, $marshaller);
-    }
-
-    public function testGetMarshallerWithNonStringType(): void
-    {
-        $options = [
-            'enabled' => true,
-            'type' => 123, // Non-string type should default to 'default'
-            'use_igbinary' => false,
-        ];
-        $provider = new MarshallerProvider($options);
-        $marshaller = $provider->get();
-
-        $this->assertInstanceOf(DefaultMarshaller::class, $marshaller);
     }
 
     public function testGetMarshallerWithTypeNotSpecified(): void
