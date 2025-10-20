@@ -48,19 +48,25 @@ jobs:
           - os: ubuntu-latest
             php-version: "8.4"
             dependencies: highest
+          - os: ubuntu-latest
+            php-version: "8.5"
+            dependencies: lowest
+          - os: ubuntu-latest
+            php-version: "8.5"
+            dependencies: highest
           # Windows: Latest PHP only for CI speed
           - os: windows-latest
-            php-version: "8.4"
+            php-version: "8.5"
             dependencies: lowest
           - os: windows-latest
-            php-version: "8.4"
+            php-version: "8.5"
             dependencies: highest
           # macOS: Latest PHP only for CI speed
           - os: macos-latest
-            php-version: "8.4"
+            php-version: "8.5"
             dependencies: lowest
           - os: macos-latest
-            php-version: "8.4"
+            php-version: "8.5"
             dependencies: highest
 
     steps:
@@ -173,14 +179,14 @@ jobs:
         run: ./vendor/bin/phpunit --coverage-clover=coverage.xml
 
       - name: Upload coverage report
-        if: matrix.os == 'ubuntu-latest' && matrix.php-version == '8.4' && matrix.dependencies == 'highest'
+        if: matrix.os == 'ubuntu-latest' && matrix.php-version == '8.5' && matrix.dependencies == 'highest'
         uses: codecov/codecov-action@v4
         with:
           files: coverage.xml
           fail_ci_if_error: false
 
       - name: Run demo script
-        if: env.SCRIPT != '' && matrix.os == 'ubuntu-latest' && matrix.php-version == '8.4' && matrix.dependencies == 'highest'
+        if: env.SCRIPT != '' && matrix.os == 'ubuntu-latest' && matrix.php-version == '8.5' && matrix.dependencies == 'highest'
         run: |
           composer require doctrine/cache:"^1.12" --no-update
           composer update ${{ env.COMPOSER_FLAGS }}
