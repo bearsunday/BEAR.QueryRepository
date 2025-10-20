@@ -57,6 +57,10 @@
         <exclude name="SlevomatCodingStandard.ControlStructures.EarlyExit.EarlyExitNotUsed"/>
         <exclude name="SlevomatCodingStandard.PHP.RequireExplicitAssertion.RequiredExplicitAssertion"/>
         <!-- /Option -->
+        <!-- Deprecated sniffs -->
+        <exclude name="SlevomatCodingStandard.TypeHints.UnionTypeHintFormat"/>
+        <exclude name="Squiz.WhiteSpace.LanguageConstructSpacing"/>
+        <!-- /Deprecated sniffs -->
         <!-- Exclude Fake files form Doctrine CS -->
         <exclude-pattern>*/tests/Fake/*</exclude-pattern>
     </rule>
@@ -91,6 +95,10 @@
             <property name="searchAnnotations" value="true"/>
         </properties>
     </rule>
+
+    <!-- Use recommended replacements for deprecated sniffs -->
+    <rule ref="SlevomatCodingStandard.TypeHints.DNFTypeHintFormat"/>
+    <rule ref="Generic.WhiteSpace.LanguageConstructSpacing"/>
 
     <exclude-pattern>*/Fake/*</exclude-pattern>
     <exclude-pattern>*/tmp/*</exclude-pattern>
