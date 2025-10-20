@@ -25,8 +25,7 @@ final class ResourceState
     /** @var ?string */
     public $view;
 
-    /** @param array<array-key, mixed> $body */
-    public static function create(ResourceObject $ro, array $body, string|null $view): self
+    public static function create(ResourceObject $ro, mixed $body, string|null $view): self
     {
         $state = new self();
         $state->code = $ro->code;
