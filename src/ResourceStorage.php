@@ -151,8 +151,9 @@ final class ResourceStorage implements ResourceStorageInterface
     #[Override]
     public function saveValue(ResourceObject $ro, int $ttl)
     {
-        /** @psalm-suppress MixedAssignment $body */
+        /** @psalm-suppress MixedAssignment */
         $body = $this->evaluateBody($ro->body);
+        /** @var array<array-key, mixed> $body */
         $value = ResourceState::create($ro, $body, null);
         $key = $this->getUriKey($ro->uri, self::KEY_RO);
         $tags = $this->getTags($ro);
@@ -170,8 +171,9 @@ final class ResourceStorage implements ResourceStorageInterface
     public function saveView(ResourceObject $ro, int $ttl)
     {
         $this->logger->log('save-view uri:%s ttl:%s', $ro->uri, $ttl);
-        /** @psalm-suppress MixedAssignment $body */
+        /** @psalm-suppress MixedAssignment */
         $body = $this->evaluateBody($ro->body);
+        /** @var array<array-key, mixed> $body */
         $value = ResourceState::create($ro, $body, $ro->view);
         $key = $this->getUriKey($ro->uri, self::KEY_RO);
         $tags = $this->getTags($ro);
