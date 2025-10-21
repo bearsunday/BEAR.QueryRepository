@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.13.0] - 2025-01-21
+
 ### Added
 - Add CLAUDE.md with comprehensive codebase architecture and development guide
 - Add marshaller configuration support for Redis with compression options (deflate)
