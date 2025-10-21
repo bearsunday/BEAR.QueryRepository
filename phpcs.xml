@@ -97,6 +97,7 @@
     </rule>
 
     <!-- Use recommended replacements for deprecated sniffs -->
+    <rule ref="SlevomatCodingStandard.TypeHints.DNFTypeHintFormat"/>
     <rule ref="Generic.WhiteSpace.LanguageConstructSpacing"/>
 
     <exclude-pattern>*/Fake/*</exclude-pattern>
