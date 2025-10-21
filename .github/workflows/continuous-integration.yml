@@ -160,7 +160,7 @@ jobs:
           coverage: pcov
           ini-values: zend.assertions=1
           tools: composer
-          extensions: ${{ matrix.php-version == '8.5' && 'redis, memcached, :igbinary' || 'redis, memcached' }}
+          extensions: ${{ matrix.php-version != '8.5' && 'redis, memcached' || '' }}
 
       - name: Cache Composer dependencies
         uses: actions/cache@v4
@@ -179,7 +179,7 @@ jobs:
         run: ./vendor/bin/phpunit --coverage-clover=coverage.xml
 
       - name: Upload coverage report
-        if: matrix.os == 'ubuntu-latest' && matrix.php-version == '8.5' && matrix.dependencies == 'highest'
+        if: matrix.os == 'ubuntu-latest' && matrix.php-version == '8.4' && matrix.dependencies == 'highest'
         uses: codecov/codecov-action@v4
         with:
           files: coverage.xml
