@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add validation to ensure FastlyPurgeModule is installed when used
 - Add Dependabot configuration
 - Add PHP 8.4 support to CI workflow
+- Add PHP 8.5 support to CI workflow
 
 ### Changed
 - Improve marshaller provider error handling with better exception messages
