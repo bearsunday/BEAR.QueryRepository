@@ -160,7 +160,7 @@ jobs:
           coverage: pcov
           ini-values: zend.assertions=1
           tools: composer
-          extensions: redis, memcached, :igbinary
+          extensions: ${{ matrix.php-version == '8.5' && 'redis, memcached, :igbinary' || 'redis, memcached' }}
 
       - name: Cache Composer dependencies
         uses: actions/cache@v4
