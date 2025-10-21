@@ -160,7 +160,7 @@ jobs:
           coverage: pcov
           ini-values: zend.assertions=1
           tools: composer
-          extensions: redis, memcached
+          extensions: redis, memcached, :igbinary
 
       - name: Cache Composer dependencies
         uses: actions/cache@v4
