@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\AbstractCacheControl;
+use BEAR\RepositoryModule\Annotation\HttpCache;
+use BEAR\RepositoryModule\Annotation\NoHttpCache;
 use BEAR\Resource\ResourceObject;
 use Override;
 use Ray\Aop\MethodInterceptor;
@@ -20,7 +22,13 @@ final class HttpCacheInterceptor implements MethodInterceptor
     #[Override]
     public function invoke(MethodInvocation $invocation)
     {
-        $cacheControl = $invocation->getMethod()->getDeclaringClass()->getAnnotation(AbstractCacheControl::class);
+        $class = $invocation->getMethod()->getDeclaringClass();
+        $attributes = $class->getAttributes(HttpCache::class);
+        if (empty($attributes)) {
+            $attributes = $class->getAttributes(NoHttpCache::class);
+        }
+
+        $cacheControl = isset($attributes[0]) ? $attributes[0]->newInstance() : null;
         $ro = $invocation->proceed();
         assert($ro instanceof ResourceObject);
         if ($ro->code === 200 && $cacheControl instanceof AbstractCacheControl) {

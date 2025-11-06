@@ -6,7 +6,6 @@ namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\QueryRepository as Repository;
 use BEAR\Resource\Uri;
-use Doctrine\Common\Annotations\AnnotationReader;
 use Doctrine\Common\Cache\CacheProvider;
 use FakeVendor\HelloWorld\Resource\Page\Index;
 use PHPUnit\Framework\TestCase;
@@ -49,7 +48,6 @@ class ResourceRepositoryTest extends TestCase
                 $tagAwareAdapterProvider,
                 $tagAwareAdapterProvider,
             ),
-            new AnnotationReader(),
             new Expiry(0, 0, 0),
         );
         $this->ro = new Index();
@@ -138,7 +136,6 @@ class ResourceRepositoryTest extends TestCase
                 $tagAwareAdapterProvider,
                 $tagAwareAdapterProvider,
             ),
-            new AnnotationReader(),
             new Expiry(0, 0, 0),
         );
         $this->assertInstanceOf(Repository::class, $repository);
