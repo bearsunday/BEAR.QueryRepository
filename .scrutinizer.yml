@@ -1,20 +1,15 @@
-filter:
-    paths: ["src/*"]
-
-tools:
-    php_sim: true
-    php_pdepend: true
-    php_analyzer: true
 build:
-    image: default-bionic
+    image: default-jammy
+    environment:
+        php:
+            version: 8.4
+            pecl_extensions:
+                - redis
     nodes:
         analysis:
             tests:
                 override:
-                    - php-scrutinizer-run --enable-security-analysis
-    environment:
-        redis: true
-        php:
-            version: 8.2
-            pecl_extensions:
-                - redis
+                    - php-scrutinizer-run
+
+filter:
+    paths: ["src/*"]
