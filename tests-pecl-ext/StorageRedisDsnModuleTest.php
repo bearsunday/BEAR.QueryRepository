@@ -20,6 +20,9 @@ use Symfony\Component\Process\Process;
 use function getenv;
 use function usleep;
 
+/**
+ * @requires extension redis
+ */
 class StorageRedisDsnModuleTest extends TestCase
 {
     /** @var Process */

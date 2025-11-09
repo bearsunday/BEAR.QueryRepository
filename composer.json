@@ -27,7 +27,6 @@
         "symfony/polyfill-php83": "^v1.32.0"
     },
     "require-dev": {
-        "ext-redis": "*",
         "bamarni/composer-bin-plugin": "^1.8",
         "bear/fastly-module": "^1.0",
         "madapaja/twig-module": "^2.6",
@@ -36,6 +35,10 @@
         "predis/predis": "^2.4",
         "symfony/process": "^6.1 || ^7.1",
         "twig/twig": "^3.4.3"
+    },
+    "suggest": {
+        "ext-redis": "Required for Redis cache storage backend",
+        "ext-memcached": "Required for Memcached cache storage backend"
     },
     "autoload": {
         "psr-4": {
@@ -71,8 +74,6 @@
         }
     },
     "scripts" :{
-        "post-install-cmd": ["@composer bin all install --ansi --ignore-platform-req=php"],
-        "post-update-cmd": ["@composer bin all update --ansi --ignore-platform-req=php"],
         "test": ["./vendor/bin/phpunit"],
         "tests": ["@cs", "@sa", "@test"],
         "coverage": ["php -dzend_extension=xdebug.so -dxdebug.mode=coverage ./vendor/bin/phpunit --coverage-text --coverage-html=build/coverage"],

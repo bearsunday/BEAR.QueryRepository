@@ -14,6 +14,7 @@ use function dirname;
 use function serialize;
 use function unserialize;
 
+/** @requires extension redis */
 class DonutCommandRedisCacheTest extends DonutCommandInterceptorTest
 {
     protected function setUp(): void

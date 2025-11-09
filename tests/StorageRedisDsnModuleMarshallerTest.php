@@ -9,6 +9,7 @@ use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 
+/** @requires extension redis */
 final class StorageRedisDsnModuleMarshallerTest extends TestCase
 {
     public function testModuleBindings(): void
