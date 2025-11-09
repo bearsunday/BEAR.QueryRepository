@@ -13,9 +13,6 @@ use BEAR\RepositoryModule\Annotation\Refresh;
 use BEAR\Resource\Code;
 use BEAR\Resource\ResourceObject;
 
-/**
- * @Cacheable
- */
 #[Cacheable]
 class User extends ResourceObject
 {
@@ -50,8 +47,6 @@ class User extends ResourceObject
     }
 
     /**
-     * @Purge(uri="app://self/user/friend?user_id={id}")
-     * @Refresh(uri="app://self/user/profile?user_id={id}")
      *
      * @FakeAnnotation // ignored in RefreshAnnotatedCommand::request. This was put for the test coverage.
      */

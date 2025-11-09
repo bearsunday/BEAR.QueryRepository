@@ -11,9 +11,6 @@ use BEAR\RepositoryModule\Annotation\CacheableResponse;
 use BEAR\Resource\Annotation\Embed;
 use BEAR\Resource\ResourceObject;
 
-/**
- * @CacheableResponse
- */
 #[CacheableResponse]
 class PageSurrogateKey extends ResourceObject
 {

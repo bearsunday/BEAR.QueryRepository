@@ -9,9 +9,6 @@ use BEAR\Resource\ResourceObject;
 use Koriym\HttpConstants\CacheControl;
 use Koriym\HttpConstants\RequestHeader;
 
-/**
- * @CacheableResponse
- */
 #[CacheableResponse]
 class BlogPostingCacheControl extends ResourceObject
 {

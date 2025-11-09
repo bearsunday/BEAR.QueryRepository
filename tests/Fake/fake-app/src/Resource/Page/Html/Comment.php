@@ -8,9 +8,6 @@ use BEAR\Resource\Annotation\Embed;
 use BEAR\Resource\Code;
 use BEAR\Resource\ResourceObject;
 
-/**
- * @Cacheable
- */
 #[Cacheable]
 class Comment extends ResourceObject
 {

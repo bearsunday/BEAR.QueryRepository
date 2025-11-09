@@ -10,9 +10,6 @@ use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\Resource\Annotation\Embed;
 use BEAR\Resource\ResourceObject;
 
-/**
- * @Cacheable(type="view")
- */
 #[Cacheable(type: "view")]
 class EmbView extends ResourceObject
 {

@@ -10,9 +10,6 @@ use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\Purge;
 use BEAR\Resource\ResourceObject;
 
-/**
- * @Cacheable
- */
 #[Cacheable]
 class Invalid extends ResourceObject
 {

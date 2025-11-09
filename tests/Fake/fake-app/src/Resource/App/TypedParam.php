@@ -10,9 +10,6 @@ use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\Refresh;
 use BEAR\Resource\ResourceObject;
 
-/**
- * @Cacheable
- */
 #[Cacheable]
 class TypedParam extends ResourceObject
 {
@@ -26,7 +23,6 @@ class TypedParam extends ResourceObject
     }
 
     /**
-     * @Refresh(uri="app://self/typed-param{?id}")
      */
     public function onPut(int $id) : ResourceObject
     {

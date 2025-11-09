@@ -9,9 +9,6 @@ namespace FakeVendor\HelloWorld\Resource\App\User;
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\Resource\ResourceObject;
 
-/**
- * @Cacheable
- */
 #[Cacheable]
 class Profile extends ResourceObject
 {

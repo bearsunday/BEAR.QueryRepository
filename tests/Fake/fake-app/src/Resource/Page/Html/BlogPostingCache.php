@@ -18,7 +18,6 @@ class BlogPostingCache extends ResourceObject
 
     /**
      * @Embed(rel="comment", src="page://self/html/comment")
-     * @CacheableResponse
      */
     #[CacheableResponse]
     #[Embed(rel: "comment", src: "page://self/html/comment")]
@@ -30,7 +29,6 @@ class BlogPostingCache extends ResourceObject
     }
 
     /**
-     * @RefreshCache()
      */
     #[RefreshCache]
     public function onDelete(int $id = 0)
