@@ -18,9 +18,5 @@ parameters:
     - */tests/tmp/*
     - */tests/Fake/*
     - */src/StorageRedisCacheProvider.php*
-  ignoreErrors:
-    -
-      message: '#but return statement is missing#'
-      path: tests/ResourceRepositoryTest.php
   stubFiles:
   		- tests/stubs/Injector.phpstub
