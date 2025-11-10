@@ -14,6 +14,16 @@ use Ray\Aop\MethodInvocation;
 
 use function assert;
 
+/**
+ * Interceptor for HTTP Cache-Control header with #[HttpCache] or #[NoHttpCache]
+ *
+ * Bound to onGet methods of classes marked with #[HttpCache] or #[NoHttpCache].
+ * Sets the Cache-Control header based on attribute configuration for HTTP caching.
+ *
+ * @see \BEAR\RepositoryModule\Annotation\HttpCache
+ * @see \BEAR\RepositoryModule\Annotation\NoHttpCache
+ * @see https://bearsunday.github.io/manuals/1.0/en/cache.html
+ */
 final class HttpCacheInterceptor implements MethodInterceptor
 {
     /**

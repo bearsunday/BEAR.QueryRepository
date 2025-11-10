@@ -12,6 +12,16 @@ use Override;
 use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
 
+/**
+ * Interceptor for cache invalidation on CQRS commands with #[Purge] or #[Refresh]
+ *
+ * Bound to command methods (onPut/onPatch/onDelete) of #[Cacheable] classes.
+ * Executes cache invalidation after successful write operations.
+ *
+ * @see \BEAR\RepositoryModule\Annotation\Purge
+ * @see \BEAR\RepositoryModule\Annotation\Refresh
+ * @see https://bearsunday.github.io/manuals/1.0/en/cache.html#tag-based-cache-invalidation
+ */
 final readonly class CommandInterceptor implements MethodInterceptor
 {
     /** @param CommandInterface[] $commands */

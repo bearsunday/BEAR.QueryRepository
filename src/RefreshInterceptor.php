@@ -11,6 +11,16 @@ use Override;
 use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
 
+/**
+ * Interceptor for cache refresh commands with #[Purge] or #[Refresh]
+ *
+ * Bound to methods marked with #[Purge] or #[Refresh] on non-Cacheable classes.
+ * Executes cache invalidation commands after successful method execution.
+ *
+ * @see \BEAR\RepositoryModule\Annotation\Purge
+ * @see \BEAR\RepositoryModule\Annotation\Refresh
+ * @see https://bearsunday.github.io/manuals/1.0/en/cache.html#event-driven-content
+ */
 final readonly class RefreshInterceptor implements MethodInterceptor
 {
     public function __construct(
