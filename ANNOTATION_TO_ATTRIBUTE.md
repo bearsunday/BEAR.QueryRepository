@@ -15,15 +15,7 @@ BEAR.QueryRepository 1.13.0 has removed the dependency on `doctrine/annotations`
 
 ## Migration Steps
 
-### Step 1: Update BEAR.QueryRepository
-
-First, ensure you're using BEAR.QueryRepository v1.13.0 or later:
-
-```bash
-composer require bear/query-repository:^1.13
-```
-
-### Step 2: Install Rector (if not already installed)
+### Step 1: Install Rector (if not already installed)
 
 Rector is an automated refactoring tool that can convert annotations to attributes:
 
@@ -31,7 +23,7 @@ Rector is an automated refactoring tool that can convert annotations to attribut
 composer require --dev rector/rector
 ```
 
-### Step 3: Run Automated Migration
+### Step 2: Run Automated Migration
 
 BEAR.QueryRepository provides a Rector configuration file for automated migration:
 
@@ -49,7 +41,7 @@ If you have tests that use annotations:
 vendor/bin/rector process tests --config=vendor/bear/query-repository/rector-migrate.php
 ```
 
-### Step 4: Manual Review
+### Step 3: Manual Review
 
 Review the changes made by Rector and adjust if necessary. Pay special attention to:
 
@@ -57,7 +49,7 @@ Review the changes made by Rector and adjust if necessary. Pay special attention
 - Annotations with custom parameters
 - Import statements (Rector should handle these automatically)
 
-### Step 5: Remove doctrine/annotations
+### Step 4: Remove doctrine/annotations
 
 After migration, you can safely remove the doctrine/annotations dependency:
 
@@ -239,6 +231,10 @@ The following BEAR.QueryRepository annotations are automatically converted:
 - `@Refresh` → `#[Refresh]` - Invalidate dependent caches
 - `@Purge` → `#[Purge]` - Purge specific cache entries
 - `@DonutCache` → `#[DonutCache]` - Donut caching pattern
+- `@RefreshCache` → `#[RefreshCache]` - Refresh cache after command
+- `@Commands` → `#[Commands]` - Cache invalidation commands
+
+**Note**: This migration tool only handles BEAR.QueryRepository annotations. For Ray.Di annotations (such as `@Inject`, `@Named`, etc.), please refer to the [Ray.Di migration guide](https://github.com/ray-di/Ray.Di).
 
 ## Key Differences
 
@@ -291,7 +287,7 @@ For annotations with complex array values, you may need to manually adjust the s
 After migration, ensure all tests pass:
 
 ```bash
-composer test
+vendor/bin/phpunit
 ```
 
 ## Manual Migration

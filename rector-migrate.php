@@ -13,14 +13,14 @@ use Rector\Php80\ValueObject\AnnotationToAttribute;
  * to native PHP 8 attributes for BEAR.QueryRepository annotations.
  *
  * Usage:
+ *   # Process a single directory
  *   vendor/bin/rector process src --config=vendor/bear/query-repository/rector-migrate.php --dry-run
  *   vendor/bin/rector process src --config=vendor/bear/query-repository/rector-migrate.php
+ *
+ *   # Process multiple directories
+ *   vendor/bin/rector process src tests --config=vendor/bear/query-repository/rector-migrate.php
  */
 return RectorConfig::configure()
-    ->withPaths([
-        __DIR__ . '/src',
-        __DIR__ . '/tests',
-    ])
     ->withConfiguredRule(
         AnnotationToAttributeRector::class,
         [
