@@ -6,7 +6,6 @@ namespace BEAR\RepositoryModule\Annotation;
 
 use Attribute;
 use BEAR\QueryRepository\HttpCacheInterceptor;
-use Doctrine\Common\Annotations\Annotation\NamedArgumentConstructor;
 
 use function implode;
 use function sprintf;
@@ -16,11 +15,6 @@ use function sprintf;
  *
  * Builds a complex Cache-Control header
  *
- * @Annotation
- * @Target("CLASS")
- * @NamedArgumentConstructor()
- *
- * {@inheritDoc}
  * @see HttpCacheInterceptor
  */
 #[Attribute(Attribute::TARGET_CLASS)]

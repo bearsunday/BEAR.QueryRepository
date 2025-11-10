@@ -8,14 +8,10 @@ use BEAR\Resource\Annotation\Embed;
 use BEAR\Resource\Code;
 use BEAR\Resource\ResourceObject;
 
-/**
- * @Cacheable
- */
 #[Cacheable]
 class Comment extends ResourceObject
 {
     /**
-     * @Embed(rel="like", src="page://self/html/like")
      */
     #[Embed(rel: "like", src: "page://self/html/like")]
     public function onGet()

@@ -8,45 +8,36 @@ use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\NoHttpCache;
 use BEAR\RepositoryModule\Annotation\Purge;
 use BEAR\RepositoryModule\Annotation\Refresh;
-use Doctrine\Common\Annotations\AnnotationReader;
-use Doctrine\Common\Annotations\Reader;
-use Koriym\Attributes\AttributeReader;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use ReflectionMethod;
 
 class AttributeTest extends TestCase
 {
-    /** @var Reader */
-    protected $reader;
-
-    /**
-     * @return array<Reader>
-     */
-    public function readerProvider() : array
-    {
-        return [
-            [new AttributeReader()],
-            [new AnnotationReader()]
-        ];
-    }
-
-    /**
-     * @dataProvider readerProvider
-     */
-    public function testReadAttributes(Reader $reader) : void
+    public function testReadAttributes() : void
     {
         $class = new ReflectionClass(FakeAttributes::class);
-        $cacheable = $reader->getClassAnnotation($class, Cacheable::class);
+
+        $cacheableAttrs = $class->getAttributes(Cacheable::class);
+        $this->assertNotEmpty($cacheableAttrs);
+        $cacheable = $cacheableAttrs[0]->newInstance();
         $this->assertInstanceOf(Cacheable::class, $cacheable);
-        $noHttpCache = $reader->getClassAnnotation($class, NoHttpCache::class);
+
+        $noHttpCacheAttrs = $class->getAttributes(NoHttpCache::class);
+        $this->assertNotEmpty($noHttpCacheAttrs);
+        $noHttpCache = $noHttpCacheAttrs[0]->newInstance();
         $this->assertInstanceOf(NoHttpCache::class, $noHttpCache);
-        $noHttpCache = $reader->getClassAnnotation($class, NoHttpCache::class);
-        $this->assertInstanceOf(NoHttpCache::class, $noHttpCache);
+
         $method = new ReflectionMethod(FakeAttributes::class, 'onGet');
-        $purge = $reader->getMethodAnnotation($method, Purge::class);
+
+        $purgeAttrs = $method->getAttributes(Purge::class);
+        $this->assertNotEmpty($purgeAttrs);
+        $purge = $purgeAttrs[0]->newInstance();
         $this->assertInstanceOf(Purge::class, $purge);
-        $refresh = $reader->getMethodAnnotation($method, Refresh::class);
+
+        $refreshAttrs = $method->getAttributes(Refresh::class);
+        $this->assertNotEmpty($refreshAttrs);
+        $refresh = $refreshAttrs[0]->newInstance();
         $this->assertInstanceOf(Refresh::class, $refresh);
     }
 }

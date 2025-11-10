@@ -9,7 +9,6 @@ use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\HttpCache;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceObject;
-use Doctrine\Common\Annotations\Reader;
 use Override;
 use ReflectionClass;
 
@@ -24,7 +23,6 @@ final class QueryRepository implements QueryRepositoryInterface
         private readonly RepositoryLoggerInterface $logger,
         private readonly HeaderSetter $headerSetter,
         private readonly ResourceStorageInterface $storage,
-        private readonly Reader $reader,
         private readonly Expiry $expiry,
     ) {
     }
@@ -85,12 +83,16 @@ final class QueryRepository implements QueryRepositoryInterface
 
     private function getHttpCacheAnnotation(ResourceObject $ro): HttpCache|null
     {
-        return $this->reader->getClassAnnotation(new ReflectionClass($ro), HttpCache::class);
+        $attributes = (new ReflectionClass($ro))->getAttributes(HttpCache::class);
+
+        return isset($attributes[0]) ? $attributes[0]->newInstance() : null;
     }
 
     private function getCacheableAnnotation(ResourceObject $ro): Cacheable|null
     {
-        return $this->reader->getClassAnnotation(new ReflectionClass($ro), Cacheable::class);
+        $attributes = (new ReflectionClass($ro))->getAttributes(Cacheable::class);
+
+        return isset($attributes[0]) ? $attributes[0]->newInstance() : null;
     }
 
     private function getExpiryTime(ResourceObject $ro, Cacheable|null $cacheable = null): int

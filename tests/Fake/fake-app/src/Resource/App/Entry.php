@@ -12,9 +12,6 @@ use BEAR\RepositoryModule\Annotation\Refresh;
 use BEAR\Resource\Code;
 use BEAR\Resource\ResourceObject;
 
-/**
- * @Cacheable(expiry="never", update=true)
- */
 #[Cacheable(expiry: "never", update: true)]
 class Entry extends ResourceObject
 {
@@ -42,8 +39,6 @@ class Entry extends ResourceObject
     }
 
     /**
-     * @Purge(uri="app://self/user/friend?user_id={id}")
-     * @Refresh(uri="app://self/user/profile?user_id={id}")
      */
     public function onPut(mixed $id, mixed $name, mixed $age)
     {

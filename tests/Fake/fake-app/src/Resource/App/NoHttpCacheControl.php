@@ -9,9 +9,6 @@ namespace FakeVendor\HelloWorld\Resource\App;
 use BEAR\RepositoryModule\Annotation\NoHttpCache;
 use BEAR\Resource\ResourceObject;
 
-/**
- * @NoHttpCache
- */
 #[NoHttpCache]
 class NoHttpCacheControl extends ResourceObject
 {

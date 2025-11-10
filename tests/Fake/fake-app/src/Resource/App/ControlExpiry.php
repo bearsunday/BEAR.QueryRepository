@@ -9,9 +9,6 @@ namespace FakeVendor\HelloWorld\Resource\App;
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\Resource\ResourceObject;
 
-/**
- * @Cacheable(expiryAt="expiry_at")
- */
 #[Cacheable(expiryAt: "expiry_at")]
 class ControlExpiry extends ResourceObject
 {

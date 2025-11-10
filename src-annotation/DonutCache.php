@@ -9,8 +9,6 @@ use BEAR\QueryRepository\DonutCacheModule;
 use BEAR\QueryRepository\DonutCommandInterceptor;
 
 /**
- * @Annotation
- * @Target({"METHOD","CLASS"})
  * @see DonutCacheModule
  * @see DonutCacheInterceptor
  * @see DonutCommandInterceptor

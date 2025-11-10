@@ -10,10 +10,6 @@ use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\HttpCache;
 use BEAR\Resource\ResourceObject;
 
-/**
- * @Cacheable(expirySecond=10)
- * @HttpCache(isPrivate=true)
- */
 #[Cacheable(expirySecond: 10), HttpCache(isPrivate: true)]
 class HttpCacheControlWithCacheable extends ResourceObject
 {

@@ -5,15 +5,7 @@ declare(strict_types=1);
 namespace BEAR\RepositoryModule\Annotation;
 
 use Attribute;
-use BEAR\QueryRepository\CacheInterceptor;
-use Doctrine\Common\Annotations\Annotation\NamedArgumentConstructor;
 
-/**
- * @Annotation
- * @Target("CLASS")
- * @see CacheInterceptor
- * @NamedArgumentConstructor()
- */
 #[Attribute(Attribute::TARGET_CLASS)]
 final class Cacheable
 {

@@ -9,9 +9,6 @@ namespace FakeVendor\HelloWorld\Resource\App;
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\Resource\ResourceObject;
 
-/**
- * @Cacheable(type="value")
- */
 #[Cacheable(type: "value")]
 class Value extends ResourceObject
 {

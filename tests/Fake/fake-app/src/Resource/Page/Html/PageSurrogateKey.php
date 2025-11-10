@@ -11,14 +11,10 @@ use BEAR\RepositoryModule\Annotation\CacheableResponse;
 use BEAR\Resource\Annotation\Embed;
 use BEAR\Resource\ResourceObject;
 
-/**
- * @CacheableResponse
- */
 #[CacheableResponse]
 class PageSurrogateKey extends ResourceObject
 {
     /**
-     * @Embed(rel="comment", src="page://self/html/comment")
      */
     #[Embed(rel: "comment", src: "page://self/html/comment")]
     public function onGet() : ResourceObject

@@ -10,10 +10,6 @@ use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\HttpCache;
 use BEAR\Resource\ResourceObject;
 
-/**
- * @Cacheable
- * @HttpCache(etag={"updated_at"})
- */
 #[Cacheable, HttpCache(etag: ["updated_at"])]
 class Etag extends ResourceObject
 {

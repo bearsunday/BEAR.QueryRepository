@@ -6,8 +6,6 @@ namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\QueryRepository as Repository;
 use BEAR\Resource\Uri;
-use Doctrine\Common\Annotations\AnnotationReader;
-use Doctrine\Common\Cache\CacheProvider;
 use FakeVendor\HelloWorld\Resource\Page\Index;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\ProviderInterface;
@@ -49,7 +47,6 @@ class ResourceRepositoryTest extends TestCase
                 $tagAwareAdapterProvider,
                 $tagAwareAdapterProvider,
             ),
-            new AnnotationReader(),
             new Expiry(0, 0, 0),
         );
         $this->ro = new Index();
@@ -89,32 +86,6 @@ class ResourceRepositoryTest extends TestCase
 
     public function testCreateFromDoctrineAnnotation(): void
     {
-        // phpcs:disable SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
-        $doctrineCache = new class extends CacheProvider{
-            protected function doFetch($id)
-            {
-            }
-
-            protected function doContains($id)
-            {
-            }
-
-            protected function doSave($id, $data, $lifeTime = 0)
-            {
-            }
-
-            protected function doDelete($id)
-            {
-            }
-
-            protected function doFlush()
-            {
-            }
-
-            protected function doGetStats()
-            {
-            }
-        };
         // phpcs:enable
         $tagAwareAdapter = new TagAwareAdapter(new NullAdapter());
         $tagAwareAdapterProvider = new class ($tagAwareAdapter) implements ProviderInterface{
@@ -138,7 +109,6 @@ class ResourceRepositoryTest extends TestCase
                 $tagAwareAdapterProvider,
                 $tagAwareAdapterProvider,
             ),
-            new AnnotationReader(),
             new Expiry(0, 0, 0),
         );
         $this->assertInstanceOf(Repository::class, $repository);

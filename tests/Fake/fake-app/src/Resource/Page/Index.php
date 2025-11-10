@@ -9,9 +9,6 @@ namespace FakeVendor\HelloWorld\Resource\Page;
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\Resource\ResourceObject;
 
-/**
- * @Cacheable
- */
 #[Cacheable]
 class Index extends ResourceObject
 {

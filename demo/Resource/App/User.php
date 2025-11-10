@@ -8,9 +8,6 @@ use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\Resource\ResourceObject;
 use function error_log;
 
-/**
- * @Cacheable(expirySecond=300)
- */
 #[Cacheable]
 class User extends ResourceObject
 {

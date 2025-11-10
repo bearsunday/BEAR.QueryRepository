@@ -7,9 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.13.0] - 2025-10-21
-
 ### Added
+- **Migration Tools**: Added `rector-migrate.php` for automated annotation-to-attribute migration
+- **Migration Guide**: Added `ANNOTATION_TO_ATTRIBUTE.md` with comprehensive migration instructions
 - Add CLAUDE.md with comprehensive codebase architecture and development guide
 - Add marshaller configuration support for Redis with compression options (deflate)
 - Add `MarshallerType` enum for type-safe marshaller selection
@@ -25,6 +25,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add PHP 8.5 support to CI workflow
 
 ### Changed
+- **PHP 8 Attributes Migration**: Removed `doctrine/annotations` and `doctrine/cache` dependencies, migrated to native PHP 8 attributes
+- **Minimum PHP Version**: Updated requirement from PHP 8.1 to PHP 8.2
+- Improve `rector-migrate.php` to support vendor installation by removing hardcoded paths
+- Update `ANNOTATION_TO_ATTRIBUTE.md` migration guide following Ray.AuraSqlModule pattern
 - Improve marshaller provider error handling with better exception messages
 - Enhance Memcached module with TagAwareAdapter support
 - Update Symfony Cache to support version ^7.3

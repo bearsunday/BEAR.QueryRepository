@@ -9,9 +9,6 @@ namespace FakeVendor\HelloWorld\Resource\App;
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\Resource\ResourceObject;
 
-/**
- * @Cacheable(expirySecond=60)
- */
 #[Cacheable(expirySecond: 60)]
 class ControlNone extends ResourceObject
 {

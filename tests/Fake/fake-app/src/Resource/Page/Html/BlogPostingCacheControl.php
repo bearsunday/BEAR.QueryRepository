@@ -9,9 +9,6 @@ use BEAR\Resource\ResourceObject;
 use Koriym\HttpConstants\CacheControl;
 use Koriym\HttpConstants\RequestHeader;
 
-/**
- * @CacheableResponse
- */
 #[CacheableResponse]
 class BlogPostingCacheControl extends ResourceObject
 {
@@ -25,7 +22,6 @@ class BlogPostingCacheControl extends ResourceObject
     }
 
     /**
-     * @Embed(rel="comment", src="page://self/html/comment")
      */
     #[Embed(rel: "comment", src: "page://self/html/comment")]
     public function onGet()
