@@ -27,7 +27,7 @@ class ResourceRepositoryTest extends TestCase
     {
         $tagAwareAdapter = new TagAwareAdapter(new FilesystemAdapter('', 0, __DIR__ . '/tmp'));
         $tagAwareAdapterProvider = new class ($tagAwareAdapter) implements ProviderInterface{
-            public function __construct(private TagAwareAdapter $tagAwareAdapter)
+            public function __construct(private readonly TagAwareAdapter $tagAwareAdapter)
             {
             }
 
@@ -89,7 +89,7 @@ class ResourceRepositoryTest extends TestCase
         // phpcs:enable
         $tagAwareAdapter = new TagAwareAdapter(new NullAdapter());
         $tagAwareAdapterProvider = new class ($tagAwareAdapter) implements ProviderInterface{
-            public function __construct(private TagAwareAdapter $tagAwareAdapter)
+            public function __construct(private readonly TagAwareAdapter $tagAwareAdapter)
             {
             }
 

@@ -15,7 +15,7 @@ class FakeMobileEtagSetter implements EtagSetterInterface
     public static $device;
 
     public function __construct(
-        private MobileEtagSetter $mobileEtagSetter
+        private readonly MobileEtagSetter $mobileEtagSetter
     ){
     }
 

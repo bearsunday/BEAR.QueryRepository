@@ -11,11 +11,11 @@ use function is_callable;
 
 // phpcs:ignoreFile SlevomatCodingStandard.TypeHints.DeclareStrictTypes.DeclareStrictTypesMissing -- for call_user_func_array
 
-final class RefreshSameCommand implements CommandInterface
+final readonly class RefreshSameCommand implements CommandInterface
 {
     public function __construct(
-        private readonly QueryRepositoryInterface $repository,
-        private readonly MatchQueryInterface $matchQuery
+        private QueryRepositoryInterface $repository,
+        private MatchQueryInterface $matchQuery
     ){
     }
 

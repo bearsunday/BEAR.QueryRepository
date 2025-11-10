@@ -10,10 +10,10 @@ use Override;
 use function assert;
 use function sprintf;
 
-final class CacheDependency implements CacheDependencyInterface
+final readonly class CacheDependency implements CacheDependencyInterface
 {
     public function __construct(
-        private readonly UriTagInterface $uriTag,
+        private UriTagInterface $uriTag,
     ) {
     }
 

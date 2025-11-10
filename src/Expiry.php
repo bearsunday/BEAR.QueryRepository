@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-final class Expiry
+final readonly class Expiry
 {
     /** @var array<string, int> */
-    private readonly array $time;
+    private array $time;
 
     public function __construct(int $short = 60, int $medium = 3600, int $long = 86400, int $never = 31_536_000)
     {

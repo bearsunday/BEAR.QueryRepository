@@ -18,10 +18,10 @@ use function is_string;
 use function serialize;
 use function time;
 
-final class EtagSetter implements EtagSetterInterface
+final readonly class EtagSetter implements EtagSetterInterface
 {
     public function __construct(
-        private readonly CacheDependencyInterface $cacheDeperency,
+        private CacheDependencyInterface $cacheDeperency,
     ) {
     }
 

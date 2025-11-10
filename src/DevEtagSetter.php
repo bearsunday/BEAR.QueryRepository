@@ -12,10 +12,10 @@ use Override;
 
 use function gmdate;
 
-final class DevEtagSetter implements EtagSetterInterface
+final readonly class DevEtagSetter implements EtagSetterInterface
 {
     public function __construct(
-        private readonly CacheDependencyInterface $cacheDeperency,
+        private CacheDependencyInterface $cacheDeperency,
     ) {
     }
 

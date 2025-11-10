@@ -11,10 +11,10 @@ use Override;
 use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
 
-final class RefreshInterceptor implements MethodInterceptor
+final readonly class RefreshInterceptor implements MethodInterceptor
 {
     public function __construct(
-        private readonly RefreshAnnotatedCommand $command,
+        private RefreshAnnotatedCommand $command,
     ) {
     }
 

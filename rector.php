@@ -2,23 +2,20 @@
 
 declare(strict_types=1);
 
-use Rector\CodeQuality\Rector\Class_\InlineConstructorDefaultToPropertyRector;
 use Rector\Config\RectorConfig;
-use Rector\Ray\AnnotationBinding\Rector\ClassMethod\AnnotationBindingRector;
-use Rector\Set\ValueObject\LevelSetList;
 
-return static function (RectorConfig $rectorConfig): void {
-    $rectorConfig->paths([
+return RectorConfig::configure()
+    ->withPaths([
+        __DIR__ . '/demo',
         __DIR__ . '/src',
         __DIR__ . '/src-annotation',
-        __DIR__ . '/tests/*/*Test.php',
-    ]);
-
-    // register a single rule
-    $rectorConfig->rule(InlineConstructorDefaultToPropertyRector::class);
-    $rectorConfig->rule(AnnotationBindingRector::class);
-    // define sets of rules
-        $rectorConfig->sets([
-            LevelSetList::UP_TO_PHP_81,
-    ]);
-};
+        __DIR__ . '/src-annotation-deprecated',
+        __DIR__ . '/tests',
+        __DIR__ . '/tests-pecl-ext',
+        __DIR__ . '/tests-php8',
+    ])
+    // uncomment to reach your current PHP version
+     ->withPhpSets()
+    ->withTypeCoverageLevel(0)
+    ->withDeadCodeLevel(0)
+    ->withCodeQualityLevel(0);

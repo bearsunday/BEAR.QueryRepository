@@ -19,11 +19,11 @@ use function get_class;
 use function is_callable;
 use function sprintf;
 
-final class DonutCommandInterceptor implements MethodInterceptor
+final readonly class DonutCommandInterceptor implements MethodInterceptor
 {
     public function __construct(
-        private readonly DonutRepositoryInterface $repository,
-        private readonly MatchQueryInterface $matchQuery
+        private DonutRepositoryInterface $repository,
+        private MatchQueryInterface $matchQuery
     ){
     }
 

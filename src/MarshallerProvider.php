@@ -20,12 +20,12 @@ use Symfony\Component\Cache\Marshaller\MarshallerInterface;
  *
  * @implements ProviderInterface<MarshallerInterface|null>
  */
-final class MarshallerProvider implements ProviderInterface
+final readonly class MarshallerProvider implements ProviderInterface
 {
     /** @param array{enabled?: bool, type?: string, use_igbinary?: bool} $options Marshalling options */
     public function __construct(
         #[MarshallerOptions]
-        private readonly array $options = [],
+        private array $options = [],
     ) {
     }
 

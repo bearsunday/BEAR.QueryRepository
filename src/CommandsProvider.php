@@ -8,11 +8,11 @@ use Override;
 use Ray\Di\ProviderInterface;
 
 /** @implements ProviderInterface<array<CommandInterface>> */
-final class CommandsProvider implements ProviderInterface
+final readonly class CommandsProvider implements ProviderInterface
 {
     public function __construct(
-        private readonly RefreshSameCommand $refreshSameCommand,
-        private readonly RefreshAnnotatedCommand $refreshAnnotatedCommand,
+        private RefreshSameCommand $refreshSameCommand,
+        private RefreshAnnotatedCommand $refreshAnnotatedCommand,
     ) {
     }
 

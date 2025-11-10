@@ -55,7 +55,7 @@ class StorageRedisDsnModuleTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->dsn = getenv('REDIS_SERVER') ? getenv('REDIS_SERVER') : 'localhost:6379';
+        $this->dsn = getenv('REDIS_SERVER') ?: 'localhost:6379';
     }
 
     public function testNew(): void
