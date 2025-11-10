@@ -23,8 +23,7 @@ use function sprintf;
  * // Private cache with revalidation
  * #[HttpCache(isPrivate: true, mustRevalidate: true, maxAge: 60)]
  *
- * // No caching (use NoHttpCache instead for simplicity)
- * #[HttpCache(noCache: true, noStore: true)]
+ * // For no caching, use #[NoHttpCache] instead
  * ```
  *
  * Interceptors bound:
