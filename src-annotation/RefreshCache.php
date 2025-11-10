@@ -8,8 +8,6 @@ use Attribute;
 use BEAR\QueryRepository\DonutCommandInterceptor;
 
 /**
- * @Annotation
- * @Target("METHOD")
  * @see DonutCommandInterceptor
  */
 #[Attribute(Attribute::TARGET_METHOD)]

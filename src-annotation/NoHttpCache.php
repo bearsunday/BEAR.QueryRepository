@@ -12,8 +12,6 @@ use BEAR\QueryRepository\HttpCacheInterceptor;
  *
  * Simplified notation to say that you don't want anything cached
  *
- * @Annotation
- * @Target("CLASS")
  * @see HttpCacheInterceptor
  */
 #[Attribute(Attribute::TARGET_CLASS)]
