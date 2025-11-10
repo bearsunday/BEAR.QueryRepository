@@ -28,9 +28,6 @@ jobs:
         include:
           # Ubuntu: Test all PHP versions
           - os: ubuntu-latest
-            php-version: "8.1"
-            dependencies: highest
-          - os: ubuntu-latest
             php-version: "8.2"
             dependencies: lowest
           - os: ubuntu-latest
