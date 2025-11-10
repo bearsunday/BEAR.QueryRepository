@@ -17,13 +17,19 @@ use function sprintf;
  *
  * Example:
  * ```php
+ * // Cache for 1 hour
+ * #[HttpCache(maxAge: 3600)]
+ *
+ * // Cache with revalidation when stale
+ * #[HttpCache(maxAge: 3600, mustRevalidate: true)]
+ *
+ * // Private cache (not shared cache like CDN)
+ * #[HttpCache(isPrivate: true, maxAge: 300)]
+ *
  * // CDN cache for 1 hour, browser cache for 5 minutes
  * #[HttpCache(maxAge: 300, sMaxAge: 3600)]
  *
- * // Private cache with revalidation
- * #[HttpCache(isPrivate: true, mustRevalidate: true, maxAge: 60)]
- *
- * // For no caching, use #[NoHttpCache] instead
+ * // For disabling cache, use #[NoHttpCache] instead
  * ```
  *
  * Interceptors bound:
