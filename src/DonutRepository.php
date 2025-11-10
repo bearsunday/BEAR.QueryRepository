@@ -12,16 +12,16 @@ use Override;
 use function assert;
 use function explode;
 
-final class DonutRepository implements DonutRepositoryInterface
+final readonly class DonutRepository implements DonutRepositoryInterface
 {
     public function __construct(
-        private readonly QueryRepositoryInterface $queryRepository,
-        private readonly HeaderSetter $headerSetter,
-        private readonly ResourceStorageInterface $resourceStorage,
-        private readonly ResourceInterface $resource,
-        private readonly CdnCacheControlHeaderSetterInterface $cdnCacheControlHeaderSetter,
-        private readonly RepositoryLoggerInterface $logger,
-        private readonly DonutRendererInterface $renderer,
+        private QueryRepositoryInterface $queryRepository,
+        private HeaderSetter $headerSetter,
+        private ResourceStorageInterface $resourceStorage,
+        private ResourceInterface $resource,
+        private CdnCacheControlHeaderSetterInterface $cdnCacheControlHeaderSetter,
+        private RepositoryLoggerInterface $logger,
+        private DonutRendererInterface $renderer,
     ) {
     }
 

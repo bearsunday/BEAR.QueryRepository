@@ -11,10 +11,10 @@ use function is_int;
 use function sprintf;
 use function str_contains;
 
-final class HeaderSetter
+final readonly class HeaderSetter
 {
     public function __construct(
-        private readonly EtagSetterInterface $etagSetter,
+        private EtagSetterInterface $etagSetter,
     ) {
     }
 

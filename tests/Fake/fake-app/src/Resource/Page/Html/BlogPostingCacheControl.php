@@ -17,7 +17,7 @@ class BlogPostingCacheControl extends ResourceObject
     ];
 
     public function __construct(
-        private DonutRepositoryInterface $repository
+        private readonly DonutRepositoryInterface $repository
     ){
     }
 

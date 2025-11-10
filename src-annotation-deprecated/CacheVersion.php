@@ -15,13 +15,7 @@ use Ray\Di\Di\Qualifier;
 #[Attribute(Attribute::TARGET_METHOD | Attribute::TARGET_PARAMETER), Qualifier]
 final class CacheVersion
 {
-    /**
-     * @var string
-     */
-    public $value;
-
-    public function __construct(string $value)
+    public function __construct(public string $value)
     {
-        $this->value = $value;
     }
 }

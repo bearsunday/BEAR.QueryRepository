@@ -10,12 +10,12 @@ use Stringable;
 
 use function sprintf;
 
-final class DonutRequest implements Stringable
+final readonly class DonutRequest implements Stringable
 {
     public function __construct(
-        private readonly AbstractRequest $request,
-        private readonly DonutRendererInterface $donutStorage,
-        private readonly SurrogateKeys $etags,
+        private AbstractRequest $request,
+        private DonutRendererInterface $donutStorage,
+        private SurrogateKeys $etags,
     ) {
     }
 

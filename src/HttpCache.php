@@ -11,10 +11,10 @@ use Override;
 use function http_response_code;
 
 /** @psalm-suppress DeprecatedInterface for BC */
-final class HttpCache implements HttpCacheInterface, DeprecatedHttpCacheInterface
+final readonly class HttpCache implements HttpCacheInterface, DeprecatedHttpCacheInterface
 {
     public function __construct(
-        private readonly ResourceStorageInterface $storage,
+        private ResourceStorageInterface $storage,
     ) {
     }
 

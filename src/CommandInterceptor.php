@@ -12,12 +12,12 @@ use Override;
 use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
 
-final class CommandInterceptor implements MethodInterceptor
+final readonly class CommandInterceptor implements MethodInterceptor
 {
     /** @param CommandInterface[] $commands */
     public function __construct(
         #[Commands]
-        private readonly array $commands,
+        private array $commands,
     ) {
     }
 

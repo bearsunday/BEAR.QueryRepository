@@ -7,9 +7,7 @@ namespace BEAR\RepositoryModule\Annotation;
 use Attribute;
 use BEAR\QueryRepository\DonutCommandInterceptor;
 
-/**
- * @see DonutCommandInterceptor
- */
+/** @see DonutCommandInterceptor */
 #[Attribute(Attribute::TARGET_METHOD)]
 final class RefreshCache
 {

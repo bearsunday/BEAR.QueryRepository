@@ -17,10 +17,10 @@ use function trigger_error;
 
 use const E_USER_WARNING;
 
-final class CacheInterceptor implements MethodInterceptor
+final readonly class CacheInterceptor implements MethodInterceptor
 {
     public function __construct(
-        private readonly QueryRepositoryInterface $repository,
+        private QueryRepositoryInterface $repository,
     ) {
     }
 

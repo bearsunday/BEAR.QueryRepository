@@ -17,13 +17,13 @@ use function sprintf;
 use function strtotime;
 use function time;
 
-final class QueryRepository implements QueryRepositoryInterface
+final readonly class QueryRepository implements QueryRepositoryInterface
 {
     public function __construct(
-        private readonly RepositoryLoggerInterface $logger,
-        private readonly HeaderSetter $headerSetter,
-        private readonly ResourceStorageInterface $storage,
-        private readonly Expiry $expiry,
+        private RepositoryLoggerInterface $logger,
+        private HeaderSetter $headerSetter,
+        private ResourceStorageInterface $storage,
+        private Expiry $expiry,
     ) {
     }
 

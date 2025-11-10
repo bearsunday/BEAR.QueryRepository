@@ -16,10 +16,10 @@ use function strtoupper;
 
 use const PHP_EOL;
 
-final class CliHttpCache implements HttpCacheInterface
+final readonly class CliHttpCache implements HttpCacheInterface
 {
     public function __construct(
-        private readonly ResourceStorageInterface $storage,
+        private ResourceStorageInterface $storage,
     ) {
     }
 
