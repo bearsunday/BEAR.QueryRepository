@@ -16,5 +16,6 @@ namespace BEAR\QueryRepository;
  */
 final class DonutCacheableResponseInterceptor extends AbstractDonutCacheInterceptor
 {
+    /** @psalm-suppress InvalidClassConstantType */
     protected const IS_ENTIRE_CONTENT_CACHEABLE = true;
 }
