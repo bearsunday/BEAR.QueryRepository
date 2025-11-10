@@ -22,6 +22,9 @@ use BEAR\QueryRepository\DonutCacheModule;
  * {
  *     #[Embed(rel: 'comment', src: 'app://self/comments')]
  *     public function onGet(int $id): static
+ *     {
+ *         // ...
+ *     }
  * }
  * ```
  *

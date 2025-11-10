@@ -19,6 +19,9 @@ use Attribute;
  * ```php
  * #[Refresh(uri: 'app://self/user/profile?user_id={id}')]
  * public function onPut(int $id, string $name): static
+ * {
+ *     // ...
+ * }
  * ```
  *
  * @see https://bearsunday.github.io/manuals/1.0/en/cache.html#event-driven-content

@@ -22,9 +22,15 @@ use BEAR\QueryRepository\DonutCacheModule;
  * class Article extends ResourceObject
  * {
  *     public function onGet(int $id): static
+ *     {
+ *         // ...
+ *     }
  *
  *     #[RefreshCache]
  *     public function onDelete(int $id): static
+ *     {
+ *         // ...
+ *     }
  * }
  * ```
  *

@@ -20,6 +20,9 @@ use Attribute;
  * #[Purge(uri: 'app://self/user/profile?user_id={id}')]
  * #[Purge(uri: 'app://self/user/friend?user_id={id}')]
  * public function onDelete(int $id): static
+ * {
+ *     // ...
+ * }
  * ```
  *
  * @see https://bearsunday.github.io/manuals/1.0/en/cache.html#tag-based-cache-invalidation
