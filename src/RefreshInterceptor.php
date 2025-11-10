@@ -14,7 +14,10 @@ use Ray\Aop\MethodInvocation;
 /**
  * Interceptor for cache refresh commands with #[Purge] or #[Refresh]
  *
- * Bound to methods marked with #[Purge] or #[Refresh] on non-Cacheable classes.
+ * Bound only to methods explicitly marked with #[Purge] or #[Refresh] on non-Cacheable classes.
+ * Unlike CommandInterceptor (which automatically binds to all command methods of #[Cacheable]
+ * classes), this interceptor requires explicit attribute annotation on each method.
+ *
  * Executes cache invalidation commands after successful method execution.
  *
  * @see \BEAR\RepositoryModule\Annotation\Purge
