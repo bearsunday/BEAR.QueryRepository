@@ -46,10 +46,6 @@ class User extends ResourceObject
         return $this;
     }
 
-    /**
-     *
-     * @FakeAnnotation // ignored in RefreshAnnotatedCommand::request. This was put for the test coverage.
-     */
     #[Purge(uri: "app://self/user/friend?user_id={id}")]
     #[Refresh(uri: "app://self/user/profile?user_id={id}")]
     #[FakeAnnotation]
