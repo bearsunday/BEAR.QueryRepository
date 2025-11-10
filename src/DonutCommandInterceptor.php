@@ -19,6 +19,16 @@ use function get_class;
 use function is_callable;
 use function sprintf;
 
+/**
+ * Interceptor for donut cache invalidation on CQRS commands
+ *
+ * Bound to command methods (onPut/onPatch/onDelete) of classes marked with #[CacheableResponse].
+ * Refreshes donut cache and resource state after successful write operations.
+ *
+ * @see \BEAR\RepositoryModule\Annotation\CacheableResponse
+ * @see \BEAR\RepositoryModule\Annotation\DonutCache
+ * @see https://bearsunday.github.io/manuals/1.0/en/cache.html#event-driven-content
+ */
 final readonly class DonutCommandInterceptor implements MethodInterceptor
 {
     public function __construct(
