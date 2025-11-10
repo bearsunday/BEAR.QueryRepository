@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace BEAR\RepositoryModule\Annotation;
 
 use Attribute;
-use BEAR\QueryRepository\RefreshInterceptor;
 
 /**
  * Refreshes cache for specified URI after command execution

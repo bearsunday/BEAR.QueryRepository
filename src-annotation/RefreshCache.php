@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace BEAR\RepositoryModule\Annotation;
 
 use Attribute;
-use BEAR\QueryRepository\DonutCommandInterceptor;
 
 /**
  * Refreshes donut cache after command execution
