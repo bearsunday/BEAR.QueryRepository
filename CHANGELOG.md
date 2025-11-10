@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **PHP 8 Attributes Migration**: Removed `doctrine/annotations` and `doctrine/cache` dependencies, migrated to native PHP 8 attributes
 - **Minimum PHP Version**: Updated requirement from PHP 8.1 to PHP 8.2
+- Optimize readonly class declarations for PHP 8.2 (class-level modifier)
+- Improve cache attribute and interceptor documentation with usage examples
 - Improve `rector-migrate.php` to support vendor installation by removing hardcoded paths
 - Update `ANNOTATION_TO_ATTRIBUTE.md` migration guide following Ray.AuraSqlModule pattern
 - Improve marshaller provider error handling with better exception messages
