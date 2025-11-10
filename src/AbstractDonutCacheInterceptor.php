@@ -19,8 +19,6 @@ use const E_USER_WARNING;
 
 abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
 {
-    // @phpcs:ignore SlevomatCodingStandard.TypeHints.UselessConstantTypeHint.UselessDocComment
-    /** @var bool */
     protected const IS_ENTIRE_CONTENT_CACHEABLE = false;
 
     public function __construct(
