@@ -15,6 +15,18 @@ use function sprintf;
  *
  * Builds a complex Cache-Control header
  *
+ * Example:
+ * ```php
+ * // CDN cache for 1 hour, browser cache for 5 minutes
+ * #[HttpCache(maxAge: 300, sMaxAge: 3600)]
+ *
+ * // Private cache with revalidation
+ * #[HttpCache(isPrivate: true, mustRevalidate: true, maxAge: 60)]
+ *
+ * // No caching (use NoHttpCache instead for simplicity)
+ * #[HttpCache(noCache: true, noStore: true)]
+ * ```
+ *
  * Interceptors bound:
  * - HttpCacheInterceptor (onGet methods)
  *

@@ -15,6 +15,16 @@ use BEAR\QueryRepository\DonutCacheModule;
  * which uses TTL-based expiration, this enables tag-based invalidation. Only
  * cacheable portions are stored; no ETag is generated for the entire response.
  *
+ * Example:
+ * ```php
+ * #[DonutCache]
+ * class BlogPosting extends ResourceObject
+ * {
+ *     #[Embed(rel: 'comment', src: 'app://self/comments')]
+ *     public function onGet(int $id): static
+ * }
+ * ```
+ *
  * Interceptors bound:
  * - DonutCacheInterceptor (onGet methods when applied to class, or any method when applied to method)
  *

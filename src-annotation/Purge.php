@@ -9,6 +9,13 @@ use Attribute;
 /**
  * Purges cache for specified URI after command execution
  *
+ * Example:
+ * ```php
+ * #[Purge(uri: 'app://self/user/profile?user_id={id}')]
+ * #[Purge(uri: 'app://self/user/friend?user_id={id}')]
+ * public function onDelete(int $id): static
+ * ```
+ *
  * Interceptors bound:
  * - RefreshInterceptor (when applied to non-Cacheable classes)
  * - CommandInterceptor (when applied to Cacheable classes)

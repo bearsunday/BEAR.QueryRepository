@@ -16,6 +16,18 @@ use BEAR\QueryRepository\DonutCacheModule;
  * The entire response is cached and receives an ETag for conditional requests,
  * enabling 304 (Not Modified) responses to reduce network transfer costs.
  *
+ * Example:
+ * ```php
+ * #[CacheableResponse]
+ * class Article extends ResourceObject
+ * {
+ *     public function onGet(int $id): static
+ *
+ *     #[RefreshCache]
+ *     public function onDelete(int $id): static
+ * }
+ * ```
+ *
  * Interceptors bound:
  * - DonutCacheableResponseInterceptor (onGet methods when applied to class)
  * - DonutCommandInterceptor (onPut/onPatch/onDelete methods when applied to class)

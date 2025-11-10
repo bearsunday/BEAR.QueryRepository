@@ -9,6 +9,12 @@ use Attribute;
 /**
  * Refreshes cache for specified URI after command execution
  *
+ * Example:
+ * ```php
+ * #[Refresh(uri: 'app://self/user/profile?user_id={id}')]
+ * public function onPut(int $id, string $name): static
+ * ```
+ *
  * Interceptors bound:
  * - RefreshInterceptor (when applied to non-Cacheable classes)
  * - CommandInterceptor (when applied to Cacheable classes)
