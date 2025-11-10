@@ -12,7 +12,6 @@ use BEAR\Resource\ResourceObject;
 class Comment extends ResourceObject
 {
     /**
-     * @Embed(rel="like", src="page://self/html/like")
      */
     #[Embed(rel: "like", src: "page://self/html/like")]
     public function onGet()

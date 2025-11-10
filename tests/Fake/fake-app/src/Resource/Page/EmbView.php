@@ -14,7 +14,6 @@ use BEAR\Resource\ResourceObject;
 class EmbView extends ResourceObject
 {
     /**
-     * @Embed(rel="time", src="page://self/none")
      */
     #[Embed(rel: "time", src: "page://self/none")]
     public function onGet() : ResourceObject

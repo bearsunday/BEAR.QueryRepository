@@ -12,7 +12,6 @@ class LevelOne extends ResourceObject
     public $body = ['level-one' => 1];
 
     /**
-     * @Embed(rel="level-two", src="/dep/level-two")
      */
     #[Embed(src: '/dep/level-two', rel: 'two')]
     public function onGet()

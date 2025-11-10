@@ -17,7 +17,6 @@ class BlogPostingCache extends ResourceObject
     ];
 
     /**
-     * @Embed(rel="comment", src="page://self/html/comment")
      */
     #[CacheableResponse]
     #[Embed(rel: "comment", src: "page://self/html/comment")]
