@@ -15,7 +15,11 @@ use function sprintf;
  *
  * Builds a complex Cache-Control header
  *
+ * Interceptors bound:
+ * - HttpCacheInterceptor (onGet methods)
+ *
  * @see HttpCacheInterceptor
+ * @see https://bearsunday.github.io/manuals/1.0/en/cache.html
  */
 #[Attribute(Attribute::TARGET_CLASS)]
 final class HttpCache extends AbstractCacheControl
