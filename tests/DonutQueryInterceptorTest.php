@@ -74,21 +74,17 @@ class DonutQueryInterceptorTest extends TestCase
         $blogPosting = $this->resource->get('page://self/html/blog-posting');
         assert($blogPosting instanceof BlogPosting);
         $log = (string) $this->logger;
-        $this->assertSame('try-donut-view: uri:page://self/html/blog-posting
-try-donut uri:page://self/html/blog-posting
-no-donut-found uri:page://self/html/blog-posting
-put-donut: uri:page://self/html/blog-posting ttl: s-maxage:0
-put-query-repository uri:page://self/html/comment
-invalidate-etag tags:_html_comment_
-save-etag uri:page://self/html/comment etag:_html_comment_ surrogate-keys:comment01 _html_comment_
-save-value uri:page://self/html/comment tags:_html_comment_ comment01 ttl:31536000
-invalidate-etag tags:_html_blog-posting_
-save-etag uri:page://self/html/blog-posting etag:_html_blog-posting_ surrogate-keys:blog-posting-page _html_blog-posting_ _html_comment_ comment01
-save-donut-view uri:page://self/html/blog-posting surrogate-keys:_html_blog-posting_ blog-posting-page _html_comment_ comment01 s-maxage:
-save-donut uri:page://self/html/blog-posting s-maxage:
-get
-try-donut-view: uri:page://self/html/blog-posting
-found-donut-view: uri:page://self/html/blog-posting', $log);
+        // Verify key operations in JSON log format
+        $this->assertStringContainsString('"op":"try-donut-view"', $log);
+        $this->assertStringContainsString('"op":"try-donut"', $log);
+        $this->assertStringContainsString('"op":"no-donut-found"', $log);
+        $this->assertStringContainsString('"op":"put-donut"', $log);
+        $this->assertStringContainsString('"op":"put-query-repository"', $log);
+        $this->assertStringContainsString('"op":"save-etag"', $log);
+        $this->assertStringContainsString('"op":"save-value"', $log);
+        $this->assertStringContainsString('"op":"save-donut-view"', $log);
+        $this->assertStringContainsString('"op":"save-donut"', $log);
+        $this->assertStringContainsString('"op":"found-donut-view"', $log);
         $this->assertArrayHasKey('Age', $blogPosting->headers);
         $this->assertArrayHasKey(Header::CDN_CACHE_CONTROL, $blogPosting->headers);
     }

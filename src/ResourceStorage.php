@@ -16,6 +16,7 @@ use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 
 use function array_merge;
 use function array_unique;
+use function array_values;
 use function assert;
 use function explode;
 use function implode;
@@ -134,8 +135,7 @@ final class ResourceStorage implements ResourceStorageInterface
     #[Override]
     public function invalidateTags(array $tags): bool
     {
-        $tag = $tags !== [] ? implode(' ', $tags) : '';
-        $this->logger->log('invalidate-etag tags:%s', $tag);
+        $this->logger->log('invalidate-etag', ['tags' => $tags]);
         $valid1 = $this->roPool->invalidateTags($tags);
         $valid2 = $this->etagPool->invalidateTags($tags);
         ($this->purger)(implode(' ', $tags));
@@ -156,7 +156,7 @@ final class ResourceStorage implements ResourceStorageInterface
         $value = ResourceState::create($ro, $body, null);
         $key = $this->getUriKey($ro->uri, self::KEY_RO);
         $tags = $this->getTags($ro);
-        $this->logger->log('save-value uri:%s tags:%s ttl:%s', $ro->uri, $tags, $ttl);
+        $this->logger->log('save-value', ['uri' => (string) $ro->uri, 'tags' => $tags, 'ttl' => $ttl]);
 
         return $this->saver->__invoke($key, $value, $this->roPool, $tags, $ttl);
     }
@@ -169,7 +169,7 @@ final class ResourceStorage implements ResourceStorageInterface
     #[Override]
     public function saveView(ResourceObject $ro, int $ttl)
     {
-        $this->logger->log('save-view uri:%s ttl:%s', $ro->uri, $ttl);
+        $this->logger->log('save-view', ['uri' => (string) $ro->uri, 'ttl' => $ttl]);
         /** @psalm-suppress MixedAssignment $body */
         $body = $this->evaluateBody($ro->body);
         $value = ResourceState::create($ro, $body, $ro->view);
@@ -186,7 +186,7 @@ final class ResourceStorage implements ResourceStorageInterface
     public function saveDonut(AbstractUri $uri, ResourceDonut $donut, int|null $sMaxAge, array $headerKeys): void
     {
         $key = $this->getUriKey($uri, self::KEY_DONUT);
-        $this->logger->log('save-donut uri:%s s-maxage:%s', $uri, $sMaxAge);
+        $this->logger->log('save-donut', ['uri' => (string) $uri, 'sMaxAge' => $sMaxAge]);
         $result = $this->saver->__invoke($key, $donut, $this->roPool, $headerKeys, $sMaxAge);
         assert($result, 'Donut save failed.');
     }
@@ -197,7 +197,7 @@ final class ResourceStorage implements ResourceStorageInterface
         $resourceState = ResourceState::create($ro, [], $ro->view);
         $key = $this->getUriKey($ro->uri, self::KEY_RO);
         $tags = $this->getTags($ro);
-        $this->logger->log('save-donut-view uri:%s surrogate-keys:%s s-maxage:%s', $ro->uri, $tags, $ttl);
+        $this->logger->log('save-donut-view', ['uri' => (string) $ro->uri, 'surrogateKeys' => $tags, 'sMaxAge' => $ttl]);
 
         return $this->saver->__invoke($key, $resourceState, $this->roPool, $tags, $ttl);
     }
@@ -212,7 +212,7 @@ final class ResourceStorage implements ResourceStorageInterface
         }
 
         /** @var list<string> $uniqueTags */
-        $uniqueTags = array_unique($tags);
+        $uniqueTags = array_values(array_unique($tags));
 
         return $uniqueTags;
     }
@@ -264,8 +264,8 @@ final class ResourceStorage implements ResourceStorageInterface
         $tags = $surrogateKeys !== '' ? explode(' ', $surrogateKeys) : [];
         $tags[] = (new UriTag())($uri);
         /** @var list<string> $uniqueTags */
-        $uniqueTags = array_unique($tags);
-        $this->logger->log('save-etag uri:%s etag:%s surrogate-keys:%s', $uri, $etag, $uniqueTags);
+        $uniqueTags = array_values(array_unique($tags));
+        $this->logger->log('save-etag', ['uri' => (string) $uri, 'etag' => $etag, 'surrogateKeys' => $uniqueTags]);
         // Sanitize etag to remove reserved characters
         $this->saver->__invoke($etag, 'etag', $this->etagPool, $uniqueTags, $ttl);
     }

@@ -33,7 +33,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
     #[Override]
     public function put(ResourceObject $ro)
     {
-        $this->logger->log('put-query-repository uri:%s', $ro->uri);
+        $this->logger->log('put-query-repository', ['uri' => (string) $ro->uri]);
         $this->storage->deleteEtag($ro->uri);
         $ro->toString();
         $cacheable = $this->getCacheableAnnotation($ro);
@@ -76,7 +76,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
     #[Override]
     public function purge(AbstractUri $uri)
     {
-        $this->logger->log('purge-query-repository uri:%s', $uri);
+        $this->logger->log('purge-query-repository', ['uri' => (string) $uri]);
 
         return $this->storage->deleteEtag($uri);
     }

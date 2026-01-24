@@ -4,12 +4,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-BEAR.QueryRepository is a distributed caching framework for BEAR.Resource applications inspired by CQRS (Command Query Responsibility Segregation). It separates query (read) and command (write) operations to optimize caching and performance.
+BEAR.QueryRepository is a distributed caching framework for BEAR.Sunday applications using CQRS pattern.
+
+For conceptual documentation, see:
+- BEAR.Sunday: https://bearsunday.github.io/llms-full.txt
+- This package: docs/llms-full.txt
 
 **Key Features:**
 - Event-driven cache invalidation
 - Automatic dependency resolution between cached resources
-- Donut caching (combining dynamic and static content)
+- Donut caching (DO-NOT-CACHE pattern)
 - CDN integration (Fastly, Akamai)
 - ETag support for conditional requests
 - Redis and Memcached support
@@ -20,8 +24,12 @@ BEAR.QueryRepository is a distributed caching framework for BEAR.Resource applic
 ```bash
 # Run all tests
 composer test
-# or
-./vendor/bin/phpunit
+
+# Run a single test file
+./vendor/bin/phpunit tests/QueryRepositoryTest.php
+
+# Run a single test method
+./vendor/bin/phpunit --filter testPut tests/QueryRepositoryTest.php
 
 # Run tests with coverage (using pcov)
 composer pcov
@@ -193,3 +201,9 @@ Test configuration: `phpunit.xml.dist`
 ## Code Style
 
 Follows PSR-12 coding standards with PHP_CodeSniffer.
+
+## Documentation
+
+- BEAR.Sunday LLM docs: https://bearsunday.github.io/llms-full.txt
+- Cache manual: https://bearsunday.github.io/manuals/1.0/en/cache.html
+- Log schema: docs/schemas/repository-log.json

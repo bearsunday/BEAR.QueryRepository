@@ -1,0 +1,37 @@
+# BEAR.QueryRepository
+
+> Distributed caching framework for BEAR.Sunday applications using CQRS pattern
+
+BEAR.QueryRepository separates query (read) and command (write) operations to optimize caching and performance. It provides event-driven cache invalidation, automatic dependency resolution, donut caching, and CDN integration.
+
+## Core Concepts
+
+- **Cacheable**: Mark resources for TTL-based caching with `#[Cacheable]`
+- **HttpCache**: Control HTTP Cache-Control headers with `#[HttpCache]`
+- **Refresh/Purge**: Invalidate dependent caches after commands with `#[Refresh]` or `#[Purge]`
+- **Donut Caching**: Combine static outer shell with dynamic inner content
+
+## Quick Start
+
+```php
+use BEAR\RepositoryModule\Annotation\Cacheable;
+
+#[Cacheable]
+class User extends ResourceObject
+{
+    public function onGet(int $id): static
+    {
+        $this->body = ['id' => $id, 'name' => 'John'];
+        return $this;
+    }
+}
+```
+
+## Documentation
+
+- Manual: https://bearsunday.github.io/manuals/1.0/en/cache.html
+- Repository: https://github.com/bearsunday/BEAR.QueryRepository
+
+## Schemas
+
+- Repository Log Format: https://bearsunday.github.io/BEAR.QueryRepository/schemas/repository-log.json
