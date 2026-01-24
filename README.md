@@ -20,4 +20,5 @@
 
 ## Documentation
 
-For more details, check out the [BEAR.Sunday cache manual](http://bearsunday.github.io/manuals/1.0/ja/cache.html).
+- [BEAR.Sunday cache manual](http://bearsunday.github.io/manuals/1.0/ja/cache.html)
+- [LLM Documentation](https://bearsunday.github.io/BEAR.QueryRepository/llms-full.txt)

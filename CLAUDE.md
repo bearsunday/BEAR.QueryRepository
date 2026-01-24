@@ -8,7 +8,7 @@ BEAR.QueryRepository is a distributed caching framework for BEAR.Sunday applicat
 
 For conceptual documentation, see:
 - BEAR.Sunday: https://bearsunday.github.io/llms-full.txt
-- This package: docs/llms-full.txt
+- This package: https://bearsunday.github.io/BEAR.QueryRepository/llms-full.txt
 
 **Key Features:**
 - Event-driven cache invalidation
@@ -205,5 +205,6 @@ Follows PSR-12 coding standards with PHP_CodeSniffer.
 ## Documentation
 
 - BEAR.Sunday LLM docs: https://bearsunday.github.io/llms-full.txt
+- This package LLM docs: https://bearsunday.github.io/BEAR.QueryRepository/llms-full.txt
 - Cache manual: https://bearsunday.github.io/manuals/1.0/en/cache.html
-- Log schema: docs/schemas/repository-log.json
+- Log schema: https://bearsunday.github.io/BEAR.QueryRepository/schemas/repository-log.json
