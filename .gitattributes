@@ -1,10 +1,16 @@
 # Exclude build/test files from archive.
 /tests                           export-ignore
+/tests-deprecated                export-ignore
+/tests-pecl-ext                  export-ignore
+/tests-php8                      export-ignore
 /demo                            export-ignore
+/docs                            export-ignore
+/vendor-bin                      export-ignore
+/.github                         export-ignore
 /.gitattributes                  export-ignore
 /.gitignore                      export-ignore
 /.scrutinizer.yml                export-ignore
-/php-require-checker.config.json export-ignore
+/composer-require-checker.json   export-ignore
 /php.ini                         export-ignore
 /codecov.yml                     export-ignore
 /phpcs.xml                       export-ignore
@@ -12,6 +18,10 @@
 /phpstan.neon                    export-ignore
 /psalm.xml                       export-ignore
 /phpunit.xml.dist                export-ignore
+/rector.php                      export-ignore
+/rector-migrate.php              export-ignore
+/ANNOTATION_TO_ATTRIBUTE.md      export-ignore
+/CLAUDE.md                       export-ignore
 
 # Configure diff output for .php and .phar files.
 *.php diff=php
