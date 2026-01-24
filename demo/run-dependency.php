@@ -25,6 +25,38 @@ use Ray\Di\Injector;
 
 require dirname(__DIR__) . '/vendor/autoload.php';
 
+// Scenario descriptions (for humans)
+echo <<<'SCENARIOS'
+=== Cache Dependency Demo ===
+
+This demo executes the following scenarios:
+
+1. Initial access to level-one (3-level chain)
+   - LevelOne embeds LevelTwo embeds LevelThree
+   - All three will be cache-miss, dependencies registered
+
+2. Re-access level-one
+   - Should be cache-hit
+
+3. Purge level-three (grandchild)
+   - Should cascade invalidate level-two and level-one
+
+4. Re-access level-one after purge
+   - All three should be cache-miss (regenerated)
+
+5. Access ParentA and ParentB
+   - Both embed ChildC (shared dependency)
+
+6. Purge child-c
+   - Should invalidate both ParentA and ParentB
+
+7. Re-access both parents after purge
+   - Both should be cache-miss (regenerated)
+
+=== Executing... ===
+
+SCENARIOS;
+
 $namespace = 'FakeVendor\HelloWorld';
 $injector = new Injector(
     new FakeEtagPoolModule(ModuleFactory::getInstance($namespace)),
@@ -35,41 +67,34 @@ $resource = $injector->getInstance(ResourceInterface::class);
 $repository = $injector->getInstance(QueryRepositoryInterface::class);
 $logger = $injector->getInstance(RepositoryLoggerInterface::class);
 
-echo "=== Cache Dependency Demo ===" . PHP_EOL . PHP_EOL;
+// Execute scenarios silently
+$logger->log('request-start', ['uri' => 'page://self/dep/level-one']);
+$resource->get('page://self/dep/level-one');                    // 1. Initial access
 
-// Scenario 1: 3-level dependency chain
-echo "--- Scenario 1: Initial access to level-one (3-level chain) ---" . PHP_EOL;
-echo "Accessing page://self/dep/level-one" . PHP_EOL;
-echo "  LevelOne embeds LevelTwo embeds LevelThree" . PHP_EOL . PHP_EOL;
-$resource->get('page://self/dep/level-one');
+$logger->log('request-start', ['uri' => 'page://self/dep/level-one']);
+$resource->get('page://self/dep/level-one');                    // 2. Re-access (cache-hit)
 
-echo "--- Scenario 2: Re-access level-one (should be cache-hit) ---" . PHP_EOL;
-$resource->get('page://self/dep/level-one');
-echo "  Cache hit - resource served from cache" . PHP_EOL . PHP_EOL;
+$logger->log('request-start', ['uri' => 'page://self/dep/level-three', 'method' => 'purge']);
+$repository->purge(new Uri('page://self/dep/level-three'));     // 3. Purge grandchild
 
-echo "--- Scenario 3: Purge level-three (grandchild) ---" . PHP_EOL;
-echo "Purging page://self/dep/level-three" . PHP_EOL;
-echo "  Should cascade invalidate level-two and level-one" . PHP_EOL . PHP_EOL;
-$repository->purge(new Uri('page://self/dep/level-three'));
+$logger->log('request-start', ['uri' => 'page://self/dep/level-one']);
+$resource->get('page://self/dep/level-one');                    // 4. Re-access after purge
 
-echo "--- Scenario 4: Re-access level-one after purge (should be cache-miss) ---" . PHP_EOL;
-$resource->get('page://self/dep/level-one');
-echo "  All three levels regenerated" . PHP_EOL . PHP_EOL;
+$logger->log('request-start', ['uri' => 'page://self/dep/parent-a']);
+$resource->get('page://self/dep/parent-a');                     // 5a. Access ParentA
 
-echo "--- Scenario 5: Multiple parents depend on same child ---" . PHP_EOL;
-echo "Accessing ParentA and ParentB (both embed ChildC)" . PHP_EOL . PHP_EOL;
-$resource->get('page://self/dep/parent-a');
-$resource->get('page://self/dep/parent-b');
+$logger->log('request-start', ['uri' => 'page://self/dep/parent-b']);
+$resource->get('page://self/dep/parent-b');                     // 5b. Access ParentB
 
-echo "--- Scenario 6: Purge child-c (shared dependency) ---" . PHP_EOL;
-echo "Purging page://self/dep/child-c" . PHP_EOL;
-echo "  Should invalidate both ParentA and ParentB" . PHP_EOL . PHP_EOL;
-$repository->purge(new Uri('page://self/dep/child-c'));
+$logger->log('request-start', ['uri' => 'page://self/dep/child-c', 'method' => 'purge']);
+$repository->purge(new Uri('page://self/dep/child-c'));         // 6. Purge shared child
 
-echo "--- Scenario 7: Re-access both parents after purge ---" . PHP_EOL;
-$resource->get('page://self/dep/parent-a');
-$resource->get('page://self/dep/parent-b');
-echo "  Both parents regenerated" . PHP_EOL . PHP_EOL;
+$logger->log('request-start', ['uri' => 'page://self/dep/parent-a']);
+$resource->get('page://self/dep/parent-a');                     // 7a. Re-access ParentA
 
+$logger->log('request-start', ['uri' => 'page://self/dep/parent-b']);
+$resource->get('page://self/dep/parent-b');                     // 7b. Re-access ParentB
+
+// Output logs only
 echo "=== Cache Log ===" . PHP_EOL;
 echo $logger . PHP_EOL;
