@@ -57,4 +57,74 @@ class CacheDependencyTest extends TestCase
         $this->assertFalse($this->storage->hasEtag($etag2));
         $this->assertFalse($this->storage->hasEtag($etag3));
     }
+
+    /**
+     * Test that resources in unrelated dependency chains are independent.
+     *
+     * Structure:
+     * - Chain A: LevelOne -> LevelTwo -> LevelThree
+     * - Chain B: ChildC (completely independent)
+     *
+     * Purging LevelThree should invalidate LevelOne and LevelTwo but NOT ChildC.
+     */
+    public function testUnrelatedResourcesAreIndependent(): void
+    {
+        // Access both chains independently
+        $this->resource->get('page://self/dep/level-one');
+        $this->resource->get('page://self/dep/child-c');
+
+        $levelOne = $this->repository->get(new Uri('page://self/dep/level-one'));
+        $childC = $this->repository->get(new Uri('page://self/dep/child-c'));
+        $this->assertInstanceOf(ResourceState::class, $levelOne);
+        $this->assertInstanceOf(ResourceState::class, $childC);
+
+        // Capture ETags before purge
+        $etagLevelOne = $levelOne->headers[Header::ETAG];
+        $etagChildC = $childC->headers[Header::ETAG];
+
+        // Purge LevelThree (in Chain A)
+        $this->repository->purge(new Uri('page://self/dep/level-three'));
+
+        // LevelOne should be invalidated (it depends on LevelThree via LevelTwo)
+        $this->assertNull($this->repository->get(new Uri('page://self/dep/level-one')));
+        $this->assertFalse($this->storage->hasEtag($etagLevelOne));
+
+        // ChildC should still be cached (completely unrelated chain)
+        $childCAfterPurge = $this->repository->get(new Uri('page://self/dep/child-c'));
+        $this->assertInstanceOf(ResourceState::class, $childCAfterPurge);
+        $this->assertTrue($this->storage->hasEtag($etagChildC));
+    }
+
+    /**
+     * Test that purging a child invalidates all parents that depend on it.
+     *
+     * Structure: ParentA and ParentB both embed ChildC
+     * Purging ChildC should invalidate both ParentA and ParentB.
+     */
+    public function testMultipleParentsDependOnSameChild(): void
+    {
+        // Access both parents (which both embed ChildC)
+        $this->resource->get('page://self/dep/parent-a');
+        $this->resource->get('page://self/dep/parent-b');
+
+        $parentA = $this->repository->get(new Uri('page://self/dep/parent-a'));
+        $parentB = $this->repository->get(new Uri('page://self/dep/parent-b'));
+        $this->assertInstanceOf(ResourceState::class, $parentA);
+        $this->assertInstanceOf(ResourceState::class, $parentB);
+
+        // Capture ETags before purge
+        $etagA = $parentA->headers[Header::ETAG];
+        $etagB = $parentB->headers[Header::ETAG];
+
+        // Purge the shared child
+        $this->repository->purge(new Uri('page://self/dep/child-c'));
+
+        // Both parents should be invalidated
+        $this->assertNull($this->repository->get(new Uri('page://self/dep/parent-a')));
+        $this->assertNull($this->repository->get(new Uri('page://self/dep/parent-b')));
+
+        // ETags should also be invalidated
+        $this->assertFalse($this->storage->hasEtag($etagA));
+        $this->assertFalse($this->storage->hasEtag($etagB));
+    }
 }
