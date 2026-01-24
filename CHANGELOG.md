@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.13.1] - 2025-01-24
+
+### Added
+- Add LLM documentation (`docs/llms.txt`, `docs/llms-full.txt`) for AI-assisted development
+- Add JSON schema for RepositoryLogger output (`docs/schemas/repository-log.json`)
+- Add cache dependency demos for AI log analysis (`demo/run-dependency.php`, `demo/run-donut.php`)
+- Add cache dependency test coverage documentation (`tests/CACHE_DEPENDENCY_TESTS.md`)
+- Add test resources for cache dependency patterns (ParentA, ParentB, ChildC)
+
+### Changed
+- Change RepositoryLogger output to JSON format for structured logging
+- Update `.gitattributes` to exclude development files from release
+- Require `ray/aop` ^2.19.1 and `ray/di` ^2.20 for PHP 8.5 compatibility
+- Update copyright year to 2026
+
+### Fixed
+- Fix UriTagTest typo in documentation
+
 ## [Unreleased]
 
 ### Added
