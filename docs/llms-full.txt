@@ -4,11 +4,16 @@
 
 BEAR.QueryRepository separates query (read) and command (write) operations to optimize caching and performance.
 
+## Reference
+
+For conceptual documentation (Donut Cache, Cache Dependencies, CQRS pattern, etc.),
+see the BEAR.Sunday documentation: https://bearsunday.github.io/llms-full.txt
+
 ## Features
 
 - Event-driven cache invalidation
 - Automatic dependency resolution between cached resources
-- Donut caching (combining dynamic and static content)
+- Donut caching (DO-NOT-CACHE pattern - static outer shell with dynamic inner content)
 - CDN integration (Fastly, Akamai)
 - ETag support for conditional requests
 - Redis and Memcached support
@@ -176,9 +181,44 @@ Cache operations are logged in JSON format for debugging and monitoring.
 {"op":"save-value","uri":"page://self/user","tags":["etag123","_user_"],"ttl":3600}
 {"op":"invalidate-etag","tags":["_user_"]}
 {"op":"put-query-repository","uri":"app://self/posts"}
+{"op":"cache-hit","uri":"page://self/user"}
+{"op":"cache-miss","uri":"page://self/user"}
+{"op":"depends-on","parent":"page://self/blog","child":"app://self/comment","childTags":["_comment_id=1"]}
 ```
 
-Schema: https://bearsunday.github.io/BEAR.QueryRepository/schemas/repository-log.json
+### Log Operations
+
+| Operation | Description |
+|-----------|-------------|
+| `request-start` | Request boundary marker (uri, optional method) |
+| `cache-hit` | Cached resource returned without method execution |
+| `cache-miss` | Cache not found, method executed |
+| `save-value` | Resource body cached |
+| `save-view` | Resource body + rendered view cached |
+| `save-etag` | ETag stored for validation |
+| `depends-on` | Parent resource registered dependency on child via tags |
+| `invalidate-etag` | Cache invalidated by tags |
+| `purge-query-repository` | Cache purge initiated |
+| `put-query-repository` | Cache store initiated |
+
+#### Donut Cache Operations
+
+| Operation | Description |
+|-----------|-------------|
+| `try-donut-view` | Attempt to retrieve complete rendered view |
+| `found-donut-view` | Complete view found in cache |
+| `try-donut` | Attempt to retrieve donut structure |
+| `no-donut-found` | Donut structure not in cache |
+| `put-donut` | Store donut structure |
+| `save-donut` | Save donut structure to cache |
+| `save-donut-view` | Save complete rendered view |
+| `refresh-donut` | Reuse donut structure, regenerate inner content |
+
+The `depends-on` log is useful for understanding cache invalidation chains - when a child is purged, all parents with matching tags are automatically invalidated.
+
+The `refresh-donut` indicates the donut (outer shell) was reused while the hole (inner dynamic content) was regenerated. ETag with 'r' suffix (e.g., "123456r") indicates a refreshed donut.
+
+Schema: docs/schemas/repository-log.json
 
 ## Architecture
 
