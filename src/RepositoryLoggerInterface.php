@@ -6,8 +6,8 @@ namespace BEAR\QueryRepository;
 
 interface RepositoryLoggerInterface
 {
-    /** @param mixed ...$values */
-    public function log(string $template, ...$values): void;
+    /** @param array<string, mixed> $context */
+    public function log(string $operation, array $context = []): void;
 
     public function __toString(): string;
 }
