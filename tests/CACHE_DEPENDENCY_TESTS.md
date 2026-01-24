@@ -76,8 +76,8 @@ invalidateTags([uriTag('page://self/html/blog-posting')]) → BlogPosting invali
 
 | Component | Test File | Coverage |
 |-----------|-----------|----------|
-| `UriTag::__invoke()` | `UtiTagTest::testInvoke` | URI to tag string conversion |
-| `UriTag::fromAssoc()` | `UtiTagTest::testFromAssoc` | Generate tags from array data |
+| `UriTag::__invoke()` | `UriTagTest::testInvoke` | URI to tag string conversion |
+| `UriTag::fromAssoc()` | `UriTagTest::testFromAssoc` | Generate tags from array data |
 | `SurrogateKeys` | `SurrogateKeysTest` | Aggregate tags from multiple resources |
 | `RepositoryLogger` | `RepositoryLoggerTest` | Log formatting with arrays |
 
