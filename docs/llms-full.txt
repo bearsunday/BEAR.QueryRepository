@@ -1,0 +1,209 @@
+# BEAR.QueryRepository
+
+> Distributed caching framework for BEAR.Sunday applications using CQRS pattern
+
+BEAR.QueryRepository separates query (read) and command (write) operations to optimize caching and performance.
+
+## Features
+
+- Event-driven cache invalidation
+- Automatic dependency resolution between cached resources
+- Donut caching (combining dynamic and static content)
+- CDN integration (Fastly, Akamai)
+- ETag support for conditional requests
+- Redis and Memcached support
+
+## Installation
+
+```bash
+composer require bear/query-repository
+```
+
+## Attributes
+
+### #[Cacheable]
+
+Marks a resource as cacheable with TTL-based expiration.
+
+```php
+use BEAR\RepositoryModule\Annotation\Cacheable;
+
+#[Cacheable(expiry: 'short')]  // 60 seconds
+#[Cacheable(expiry: 'medium')] // 1 hour
+#[Cacheable(expiry: 'long')]   // 1 day
+#[Cacheable(expiry: 'never')]  // 1 year
+#[Cacheable(expirySecond: 300)] // Custom TTL
+```
+
+Parameters:
+- `expiry`: 'short' | 'medium' | 'long' | 'never'
+- `expirySecond`: Custom TTL in seconds
+- `expiryAt`: Body field containing expiry timestamp
+- `type`: 'value' (body only) | 'view' (body + rendered view)
+
+### #[HttpCache]
+
+Controls HTTP Cache-Control headers.
+
+```php
+use BEAR\RepositoryModule\Annotation\HttpCache;
+
+#[HttpCache(maxAge: 60, sMaxAge: 600)]
+#[HttpCache(isPrivate: true, maxAge: 300)]
+#[HttpCache(noCache: true, mustRevalidate: true)]
+```
+
+Parameters:
+- `isPrivate`: Private vs public cache
+- `noCache`: Force revalidation
+- `noStore`: Disable storage
+- `mustRevalidate`: Require revalidation when stale
+- `maxAge`: Client cache lifetime (seconds)
+- `sMaxAge`: Shared cache (CDN) lifetime (seconds)
+
+### #[NoHttpCache]
+
+Shorthand for disabling HTTP caching.
+
+```php
+use BEAR\RepositoryModule\Annotation\NoHttpCache;
+
+#[NoHttpCache]  // Outputs: private, no-store, no-cache, must-revalidate
+```
+
+### #[Refresh]
+
+Invalidates dependent cache after command execution.
+
+```php
+use BEAR\RepositoryModule\Annotation\Refresh;
+
+#[Refresh(uri: 'app://self/user')]
+#[Refresh(uri: 'app://self/user/{id}')]  // URI template
+public function onPut(int $id): static { ... }
+```
+
+### #[Purge]
+
+Purges specific cache after command execution.
+
+```php
+use BEAR\RepositoryModule\Annotation\Purge;
+
+#[Purge(uri: 'app://self/user/{id}')]
+public function onDelete(int $id): static { ... }
+```
+
+## Modules
+
+### StorageRedisDsnModule
+
+Configures Redis-backed storage.
+
+```php
+use BEAR\QueryRepository\StorageRedisDsnModule;
+
+new StorageRedisDsnModule('redis://localhost:6379');
+```
+
+### StorageMemcachedModule
+
+Configures Memcached-backed storage.
+
+```php
+use BEAR\QueryRepository\StorageMemcachedModule;
+
+new StorageMemcachedModule('localhost', 11211);
+```
+
+### CDN Modules
+
+```php
+use BEAR\QueryRepository\FastlyModule;
+use BEAR\QueryRepository\AkamaiModule;
+
+new FastlyModule($apiKey, $serviceId);
+new AkamaiModule($host, $clientToken, $clientSecret, $accessToken);
+```
+
+## Cache Dependencies
+
+Resources automatically track dependencies. When resource A embeds resource B, invalidating B also invalidates A.
+
+```php
+#[Cacheable]
+class BlogPost extends ResourceObject
+{
+    public function onGet(int $id): static
+    {
+        $this->body = [
+            'post' => $this->getPost($id),
+            'comments' => $this->resource->get('app://self/comments', ['post_id' => $id]),
+        ];
+        return $this;
+    }
+}
+```
+
+When comments are updated, BlogPost cache is automatically invalidated via surrogate keys.
+
+## Donut Caching
+
+Combines static outer content with dynamic inner content.
+
+```php
+use BEAR\RepositoryModule\Annotation\DonutCache;
+
+#[DonutCache]
+class BlogPage extends ResourceObject
+{
+    public function onGet(): static
+    {
+        $this->body = [
+            'header' => $this->resource->get('app://self/header'),  // static
+            'content' => $this->resource->get('app://self/content'), // dynamic
+        ];
+        return $this;
+    }
+}
+```
+
+## Repository Logger
+
+Cache operations are logged in JSON format for debugging and monitoring.
+
+```json
+{"op":"save-value","uri":"page://self/user","tags":["etag123","_user_"],"ttl":3600}
+{"op":"invalidate-etag","tags":["_user_"]}
+{"op":"put-query-repository","uri":"app://self/posts"}
+```
+
+Schema: https://bearsunday.github.io/BEAR.QueryRepository/schemas/repository-log.json
+
+## Architecture
+
+### Core Components
+
+- **QueryRepository**: Main entry point for cache operations (put, get, purge)
+- **ResourceStorage**: Low-level storage using Symfony Cache TagAwareAdapter
+- **CacheInterceptor**: AOP interceptor for #[Cacheable] resources
+- **CommandInterceptor**: Handles #[Refresh] and #[Purge] after commands
+- **DonutRepository**: Implements donut caching pattern
+- **CacheDependency**: Manages cache dependencies via Surrogate-Key headers
+
+### Cache Invalidation Flow
+
+1. Resource with #[Refresh] or #[Purge] is invoked
+2. CommandInterceptor executes the command
+3. After successful response, annotations are processed
+4. ResourceStorage.invalidateTags() clears both RO and ETag pools
+5. CDN purger (if configured) purges surrogate keys
+
+## Documentation
+
+- Manual: https://bearsunday.github.io/manuals/1.0/en/cache.html
+- Repository: https://github.com/bearsunday/BEAR.QueryRepository
+
+## Schemas
+
+- Repository Log Format: https://bearsunday.github.io/BEAR.QueryRepository/schemas/repository-log.json
