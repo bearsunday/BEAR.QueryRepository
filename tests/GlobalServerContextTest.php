@@ -6,20 +6,39 @@ namespace BEAR\QueryRepository;
 
 use PHPUnit\Framework\TestCase;
 
+use function array_key_exists;
+
 class GlobalServerContextTest extends TestCase
 {
     private GlobalServerContext $context;
 
+    /** @var array<string, mixed> */
+    private array $originalServer = [];
+
     protected function setUp(): void
     {
         parent::setUp();
+
+        // Save original values for keys we'll modify
+        foreach (['TEST_KEY', 'TEST_STRING', 'TEST_INT', 'HTTP_USER_AGENT', 'X_VARY'] as $key) {
+            if (array_key_exists($key, $_SERVER)) {
+                $this->originalServer[$key] = $_SERVER[$key];
+            }
+        }
 
         $this->context = new GlobalServerContext();
     }
 
     protected function tearDown(): void
     {
-        unset($_SERVER['TEST_KEY'], $_SERVER['TEST_STRING'], $_SERVER['TEST_INT']);
+        // Restore original values or unset if they didn't exist
+        foreach (['TEST_KEY', 'TEST_STRING', 'TEST_INT', 'HTTP_USER_AGENT', 'X_VARY'] as $key) {
+            if (array_key_exists($key, $this->originalServer)) {
+                $_SERVER[$key] = $this->originalServer[$key];
+            } else {
+                unset($_SERVER[$key]);
+            }
+        }
 
         parent::tearDown();
     }

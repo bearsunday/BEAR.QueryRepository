@@ -23,6 +23,7 @@ use function implode;
 use function is_array;
 use function sprintf;
 use function strtoupper;
+use function trim;
 
 /**
  * @psalm-type Props = array{
@@ -253,6 +254,11 @@ final class ResourceStorage implements ResourceStorageInterface
         $varys = explode(',', $xvary);
         $varyString = '';
         foreach ($varys as $vary) {
+            $vary = trim($vary);
+            if ($vary === '') {
+                continue;
+            }
+
             $phpVaryKey = sprintf('X_%s', strtoupper($vary));
             $value = $this->serverContext->get($phpVaryKey);
             if ($value !== null) {
