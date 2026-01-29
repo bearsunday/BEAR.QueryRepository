@@ -21,7 +21,6 @@ use function assert;
 use function explode;
 use function implode;
 use function is_array;
-use function is_string;
 use function sprintf;
 use function strtoupper;
 
@@ -32,7 +31,8 @@ use function strtoupper;
  *     uriTag: UriTag,
  *     saver: ResourceStorageSaver,
  *     roProvider:ProviderInterface<TagAwareAdapterInterface>,
- *     etagProvider: ProviderInterface<TagAwareAdapterInterface>
+ *     etagProvider: ProviderInterface<TagAwareAdapterInterface>,
+ *     serverContext: ServerContextInterface
  * }
  */
 final class ResourceStorage implements ResourceStorageInterface
@@ -64,6 +64,7 @@ final class ResourceStorage implements ResourceStorageInterface
         private PurgerInterface $purger,
         private UriTagInterface $uriTag,
         private ResourceStorageSaver $saver,
+        private ServerContextInterface $serverContext,
         #[Set(TagAwareAdapterInterface::class, ResourceObjectPool::class)]
         ProviderInterface $roPoolProvider,
         #[Set(TagAwareAdapterInterface::class, EtagPool::class)]
@@ -239,19 +240,23 @@ final class ResourceStorage implements ResourceStorageInterface
 
     private function getUriKey(AbstractUri $uri, string $type): string
     {
-        return $type . ($this->uriTag)($uri) . (isset($_SERVER['X_VARY']) ? $this->getVary() : '');
+        return $type . ($this->uriTag)($uri) . ($this->serverContext->has('X_VARY') ? $this->getVary() : '');
     }
 
     private function getVary(): string
     {
-        $xvary = $_SERVER['X_VARY'];
-        /** @psalm-suppress RedundantCast */
-        $varys = explode(',', (string) $xvary); // @phpstan-ignore-line
+        $xvary = $this->serverContext->get('X_VARY');
+        if ($xvary === null) {
+            return '';
+        }
+
+        $varys = explode(',', $xvary);
         $varyString = '';
         foreach ($varys as $vary) {
             $phpVaryKey = sprintf('X_%s', strtoupper($vary));
-            if (isset($_SERVER[$phpVaryKey]) && is_string($_SERVER[$phpVaryKey])) {
-                $varyString .= $_SERVER[$phpVaryKey];
+            $value = $this->serverContext->get($phpVaryKey);
+            if ($value !== null) {
+                $varyString .= $value;
             }
         }
 
@@ -279,6 +284,7 @@ final class ResourceStorage implements ResourceStorageInterface
             'saver' => $this->saver,
             'roProvider' => $this->roPoolProvider,
             'etagProvider' => $this->etagPoolProvider,
+            'serverContext' => $this->serverContext,
         ];
     }
 
@@ -293,6 +299,7 @@ final class ResourceStorage implements ResourceStorageInterface
         $this->purger = $data['purger'];
         $this->uriTag = $data['uriTag'];
         $this->saver = $data['saver'];
+        $this->serverContext = $data['serverContext'];
         $this->initializePools($data['roProvider'], $data['etagProvider']);
     }
 }

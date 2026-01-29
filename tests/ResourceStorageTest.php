@@ -35,6 +35,7 @@ class ResourceStorageTest extends TestCase
             new NullPurger(),
             new UriTag(),
             new ResourceStorageSaver(),
+            new GlobalServerContext(),
             $tagAwareAdapterProvider,
             $tagAwareAdapterProvider,
         );

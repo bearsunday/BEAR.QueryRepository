@@ -65,4 +65,25 @@ class RepositoryLoggerTest extends TestCase
         $logger->log('save-donut', ['uri' => 'app://self/page', 'sMaxAge' => null]);
         $this->assertSame('{"op":"save-donut","uri":"app://self/page","sMaxAge":null}', (string) $logger);
     }
+
+    public function testReset(): void
+    {
+        $logger = new RepositoryLogger();
+        $logger->log('operation1', ['id' => 1]);
+        $logger->log('operation2', ['id' => 2]);
+        $this->assertNotEmpty((string) $logger);
+
+        $logger->reset();
+        $this->assertSame('', (string) $logger);
+    }
+
+    public function testResetAllowsNewLogs(): void
+    {
+        $logger = new RepositoryLogger();
+        $logger->log('old-operation');
+        $logger->reset();
+        $logger->log('new-operation');
+
+        $this->assertSame('{"op":"new-operation"}', (string) $logger);
+    }
 }

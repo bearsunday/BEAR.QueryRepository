@@ -28,6 +28,15 @@ final class RepositoryLogger implements RepositoryLoggerInterface, Stringable
         $this->logs[] = ['op' => $operation, ...$context];
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    #[Override]
+    public function reset(): void
+    {
+        $this->logs = [];
+    }
+
     #[Override]
     public function __toString(): string
     {
