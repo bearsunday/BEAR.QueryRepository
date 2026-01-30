@@ -247,9 +247,7 @@ final class ResourceStorage implements ResourceStorageInterface
     private function getVary(): string
     {
         $xvary = $this->serverContext->get('X_VARY');
-        if ($xvary === null) {
-            return '';
-        }
+        assert($xvary !== null, 'getVary() is only called when X_VARY exists');
 
         $varys = explode(',', $xvary);
         $varyString = '';

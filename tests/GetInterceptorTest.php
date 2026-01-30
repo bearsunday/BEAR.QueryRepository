@@ -101,4 +101,15 @@ class GetInterceptorTest extends TestCase
 
         unset($_SERVER['X_VARY'], $_SERVER['X_VAL1'], $_SERVER['X_VAL2']);
     }
+
+    public function testHttpCacheVaryWithEmptySegment(): void
+    {
+        $_SERVER['X_VARY'] = 'val1, , val2';
+        $_SERVER['X_VAL1'] = '1';
+        $_SERVER['X_VAL2'] = '2';
+        $ro = $this->resource->get('app://self/etag');
+        $this->assertArrayNotHasKey('Age', $ro->headers);
+
+        unset($_SERVER['X_VARY'], $_SERVER['X_VAL1'], $_SERVER['X_VAL2']);
+    }
 }
