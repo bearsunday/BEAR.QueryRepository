@@ -37,7 +37,7 @@ final readonly class EtagSetter implements EtagSetterInterface
 
         $etag =  $this->getEtag($ro, $httpCache);
         $ro->headers[Header::ETAG] = $etag;
-        $ro->headers[Header::LAST_MODIFIED] = gmdate('D, d M Y H:i:s \G\M\T', $time);
+        $ro->headers[Header::LAST_MODIFIED] = gmdate(Header::RFC7231, $time);
         $this->setCacheDependency($ro);
     }
 

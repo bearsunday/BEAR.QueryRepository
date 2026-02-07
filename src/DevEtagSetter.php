@@ -29,7 +29,7 @@ final readonly class DevEtagSetter implements EtagSetterInterface
         // This is useful for debugging purposes.
         // Usually, the ETag is a hash of the resource view or body.
         $ro->headers[Header::ETAG] = $uriEtag;
-        $ro->headers[Header::LAST_MODIFIED] = gmdate('D, d M Y H:i:s \G\M\T', 0);
+        $ro->headers[Header::LAST_MODIFIED] = gmdate(Header::RFC7231, 0);
         $this->setCacheDependency($ro);
     }
 
