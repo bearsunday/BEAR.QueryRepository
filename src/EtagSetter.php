@@ -7,7 +7,6 @@ namespace BEAR\QueryRepository;
 use BEAR\RepositoryModule\Annotation\HttpCache;
 use BEAR\Resource\Request;
 use BEAR\Resource\ResourceObject;
-use DateTimeInterface;
 use Override;
 
 use function assert;
@@ -38,7 +37,7 @@ final readonly class EtagSetter implements EtagSetterInterface
 
         $etag =  $this->getEtag($ro, $httpCache);
         $ro->headers[Header::ETAG] = $etag;
-        $ro->headers[Header::LAST_MODIFIED] = gmdate(DateTimeInterface::RFC7231, $time);
+        $ro->headers[Header::LAST_MODIFIED] = gmdate(Header::RFC7231, $time);
         $this->setCacheDependency($ro);
     }
 
