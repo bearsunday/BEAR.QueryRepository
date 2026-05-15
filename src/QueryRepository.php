@@ -8,6 +8,7 @@ use BEAR\QueryRepository\Exception\ExpireAtKeyNotExists;
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\HttpCache;
 use BEAR\Resource\AbstractUri;
+use BEAR\Resource\Request;
 use BEAR\Resource\ResourceObject;
 use Override;
 use ReflectionClass;
@@ -19,12 +20,16 @@ use function time;
 
 final readonly class QueryRepository implements QueryRepositoryInterface
 {
+    private CacheDependencyInterface $cacheDependency;
+
     public function __construct(
         private RepositoryLoggerInterface $logger,
         private HeaderSetter $headerSetter,
         private ResourceStorageInterface $storage,
         private Expiry $expiry,
+        CacheDependencyInterface|null $cacheDependency = null,
     ) {
+        $this->cacheDependency = $cacheDependency ?? new CacheDependency(new UriTag());
     }
 
     /**
@@ -35,6 +40,10 @@ final readonly class QueryRepository implements QueryRepositoryInterface
     {
         $this->logger->log('put-query-repository', ['uri' => (string) $ro->uri]);
         $this->storage->deleteEtag($ro->uri);
+        if ($ro->code === 200) {
+            $this->setCacheDependency($ro);
+        }
+
         $ro->toString();
         $cacheable = $this->getCacheableAnnotation($ro);
         $httpCache = $this->getHttpCacheAnnotation($ro);
@@ -51,6 +60,28 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         }
 
         return $this->storage->saveValue($ro, $ttl);
+    }
+
+    private function setCacheDependency(ResourceObject $ro): void
+    {
+        if (isset($ro->headers[Header::SURROGATE_KEY])) {
+            return;
+        }
+
+        /** @var mixed $body */
+        foreach ((array) $ro->body as $body) {
+            if (! ($body instanceof Request)) {
+                continue;
+            }
+
+            // Evaluate the child while HAL still leaves the Request in body.
+            (string) $body;
+            if (! isset($body->resourceObject->headers[Header::ETAG])) {
+                continue;
+            }
+
+            $this->cacheDependency->depends($ro, $body->resourceObject);
+        }
     }
 
     /**

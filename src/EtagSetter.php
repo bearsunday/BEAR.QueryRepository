@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\HttpCache;
-use BEAR\Resource\Request;
 use BEAR\Resource\ResourceObject;
 use Override;
 
@@ -19,9 +18,15 @@ use function time;
 
 final readonly class EtagSetter implements EtagSetterInterface
 {
+    /**
+     * The CacheDependencyInterface argument is retained for backward
+     * compatibility. Dependency resolution is performed by
+     * QueryRepository::put() before parent rendering.
+     */
     public function __construct(
-        private CacheDependencyInterface $cacheDeperency,
+        CacheDependencyInterface $cacheDeperency,
     ) {
+        unset($cacheDeperency);
     }
 
     /**
@@ -38,7 +43,6 @@ final readonly class EtagSetter implements EtagSetterInterface
         $etag =  $this->getEtag($ro, $httpCache);
         $ro->headers[Header::ETAG] = $etag;
         $ro->headers[Header::LAST_MODIFIED] = gmdate(Header::RFC7231, $time);
-        $this->setCacheDependency($ro);
     }
 
     public function getEtagByPartialBody(HttpCache $httpCacche, ResourceObject $ro): string
@@ -71,15 +75,5 @@ final readonly class EtagSetter implements EtagSetterInterface
         $etag = $httpCache instanceof HttpCache && $httpCache->etag ? $this->getEtagByPartialBody($httpCache, $ro) : $this->getEtagByEitireView($ro);
 
         return (string) crc32($ro::class . $etag . (string) $ro->uri);
-    }
-
-    private function setCacheDependency(ResourceObject $ro): void
-    {
-        /** @var mixed $body */
-        foreach ((array) $ro->body as $body) {
-            if ($body instanceof Request && isset($body->resourceObject->headers[Header::ETAG])) {
-                $this->cacheDeperency->depends($ro, $body->resourceObject);
-            }
-        }
     }
 }
