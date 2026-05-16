@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.16.0] - 2026-05-16
+
+### Fixed
+- Resolve embed cache dependencies before HAL rendering: child resources' ETag headers are now collected before `HalRenderer` strips `Request` instances from the body, so the parent's `Surrogate-Key` reliably includes all embedded children (#174)
+- Include async embed children in dependency resolution: walk by `AbstractRequest` instead of the concrete `Request`, so `AsyncRequest` (and other `AbstractRequest` subclasses) are no longer silently skipped
+
+### Changed
+- Cache dependency resolution moved from `EtagSetter` / `DevEtagSetter` into `QueryRepository::put()` (runs on HTTP 200 only, before persistence)
+- `QueryRepository::__construct()` now requires `CacheDependencyInterface`
+- `EtagSetter::__construct()` and `DevEtagSetter::__construct()` no longer accept `CacheDependencyInterface`
+- DI users via `QueryRepositoryModule` are unaffected; only callers that directly `new` these classes need to update their constructor calls
+
+### Added
+- HAL embed cache dependency test (`tests/CacheDependencyTest.php`)
+- Non-Cacheable embed child test fixtures and `continue` path coverage
+
 ## [1.15.0] - 2026-02-03
 
 ### Added
