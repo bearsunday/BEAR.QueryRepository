@@ -129,6 +129,24 @@ class CacheDependencyTest extends TestCase
         $this->assertFalse($this->storage->hasEtag($etagB));
     }
 
+    /**
+     * Non-Cacheable child has no ETag header, so setCacheDependency must
+     * continue past it without registering a (parent, child) dependency. The
+     * parent's cached state still gets a Surrogate-Key (its own URI tag),
+     * but the child's URI tag must NOT appear in it.
+     */
+    public function testNonCacheableChildDoesNotContributeSurrogateKey(): void
+    {
+        $this->resource->get('page://self/dep/parent-of-non-cacheable');
+
+        $parent = $this->repository->get(new Uri('page://self/dep/parent-of-non-cacheable'));
+        $this->assertInstanceOf(ResourceState::class, $parent);
+
+        $childTag = (new UriTag())(new Uri('page://self/dep/non-cacheable-child'));
+        $surrogateKey = $parent->headers[Header::SURROGATE_KEY] ?? '';
+        $this->assertStringNotContainsString($childTag, $surrogateKey);
+    }
+
     public function testHalEmbeddedChildAddsChildSurrogateKeyToParent(): void
     {
         $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
