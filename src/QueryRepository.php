@@ -20,16 +20,13 @@ use function time;
 
 final readonly class QueryRepository implements QueryRepositoryInterface
 {
-    private CacheDependencyInterface $cacheDependency;
-
     public function __construct(
         private RepositoryLoggerInterface $logger,
         private HeaderSetter $headerSetter,
         private ResourceStorageInterface $storage,
         private Expiry $expiry,
-        CacheDependencyInterface|null $cacheDependency = null,
+        private CacheDependencyInterface $cacheDependency,
     ) {
-        $this->cacheDependency = $cacheDependency ?? new CacheDependency(new UriTag());
     }
 
     /**

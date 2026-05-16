@@ -19,17 +19,6 @@ use function time;
 final readonly class EtagSetter implements EtagSetterInterface
 {
     /**
-     * The CacheDependencyInterface argument is retained for backward
-     * compatibility. Dependency resolution is performed by
-     * QueryRepository::put() before parent rendering.
-     */
-    public function __construct(
-        CacheDependencyInterface $cacheDeperency,
-    ) {
-        unset($cacheDeperency);
-    }
-
-    /**
      * {@inheritDoc}
      */
     #[Override]
