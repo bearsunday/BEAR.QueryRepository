@@ -70,8 +70,12 @@ class ResourceRepositoryTest extends TestCase
         $this->assertSame($headers['content-type'], $roHeaders['content-type']);
         $this->assertSame($headers['etag'], $roHeaders['etag']);
         $this->assertSame($headers['last-modified'], $roHeaders['last-modified']);
-        $this->assertSame('0', $headers['age']);
+        // Age is `time() - strtotime(Last-Modified)`, so put→get crossing a
+        // second boundary on a slow runner can land on '1'. Either value is
+        // a correct freshly-cached response — what matters is that the
+        // header is present and small.
         $this->assertArrayHasKey('age', $headers);
+        $this->assertContains($headers['age'], ['0', '1']);
         $this->assertSame($state->body, $this->ro->body);
     }
 
