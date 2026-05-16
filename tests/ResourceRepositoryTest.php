@@ -38,7 +38,7 @@ class ResourceRepositoryTest extends TestCase
         };
         $this->repository = new Repository(
             new RepositoryLogger(),
-            new HeaderSetter(new EtagSetter(new CacheDependency(new UriTag()))),
+            new HeaderSetter(new EtagSetter()),
             new ResourceStorage(
                 new RepositoryLogger(),
                 new NullPurger(),
@@ -49,6 +49,7 @@ class ResourceRepositoryTest extends TestCase
                 $tagAwareAdapterProvider,
             ),
             new Expiry(0, 0, 0),
+            new CacheDependency(new UriTag()),
         );
         $this->ro = new Index();
         $this->ro->uri = new Uri('page://self/user');
@@ -69,8 +70,12 @@ class ResourceRepositoryTest extends TestCase
         $this->assertSame($headers['content-type'], $roHeaders['content-type']);
         $this->assertSame($headers['etag'], $roHeaders['etag']);
         $this->assertSame($headers['last-modified'], $roHeaders['last-modified']);
-        $this->assertSame('0', $headers['age']);
+        // Age is `time() - strtotime(Last-Modified)`, so put→get crossing a
+        // second boundary on a slow runner can land on '1'. Either value is
+        // a correct freshly-cached response — what matters is that the
+        // header is present and small.
         $this->assertArrayHasKey('age', $headers);
+        $this->assertContains($headers['age'], ['0', '1']);
         $this->assertSame($state->body, $this->ro->body);
     }
 
@@ -101,7 +106,7 @@ class ResourceRepositoryTest extends TestCase
         };
         $repository = new Repository(
             new RepositoryLogger(),
-            new HeaderSetter(new EtagSetter(new CacheDependency(new UriTag()))),
+            new HeaderSetter(new EtagSetter()),
             new ResourceStorage(
                 new RepositoryLogger(),
                 new NullPurger(),
@@ -112,6 +117,7 @@ class ResourceRepositoryTest extends TestCase
                 $tagAwareAdapterProvider,
             ),
             new Expiry(0, 0, 0),
+            new CacheDependency(new UriTag()),
         );
         $this->assertInstanceOf(Repository::class, $repository);
     }

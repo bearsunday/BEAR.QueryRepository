@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\HttpCache;
-use BEAR\Resource\Request;
 use BEAR\Resource\ResourceObject;
 use Override;
 
@@ -13,11 +12,6 @@ use function gmdate;
 
 final readonly class DevEtagSetter implements EtagSetterInterface
 {
-    public function __construct(
-        private CacheDependencyInterface $cacheDeperency,
-    ) {
-    }
-
     /**
      * {@inheritDoc}
      */
@@ -30,17 +24,5 @@ final readonly class DevEtagSetter implements EtagSetterInterface
         // Usually, the ETag is a hash of the resource view or body.
         $ro->headers[Header::ETAG] = $uriEtag;
         $ro->headers[Header::LAST_MODIFIED] = gmdate(Header::RFC7231, 0);
-        $this->setCacheDependency($ro);
-    }
-
-    /** @codeCoverageIgnore */
-    private function setCacheDependency(ResourceObject $ro): void
-    {
-        /** @var mixed $body */
-        foreach ((array) $ro->body as $body) {
-            if ($body instanceof Request && isset($body->resourceObject->headers[Header::ETAG])) {
-                $this->cacheDeperency->depends($ro, $body->resourceObject);
-            }
-        }
     }
 }

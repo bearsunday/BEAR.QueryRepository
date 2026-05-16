@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\Resource\Module\HalModule;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
 use PHPUnit\Framework\TestCase;
@@ -126,5 +127,40 @@ class CacheDependencyTest extends TestCase
         // ETags should also be invalidated
         $this->assertFalse($this->storage->hasEtag($etagA));
         $this->assertFalse($this->storage->hasEtag($etagB));
+    }
+
+    /**
+     * Non-Cacheable child has no ETag header, so setCacheDependency must
+     * continue past it without registering a (parent, child) dependency. The
+     * parent's cached state still gets a Surrogate-Key (its own URI tag),
+     * but the child's URI tag must NOT appear in it.
+     */
+    public function testNonCacheableChildDoesNotContributeSurrogateKey(): void
+    {
+        $this->resource->get('page://self/dep/parent-of-non-cacheable');
+
+        $parent = $this->repository->get(new Uri('page://self/dep/parent-of-non-cacheable'));
+        $this->assertInstanceOf(ResourceState::class, $parent);
+
+        $childTag = (new UriTag())(new Uri('page://self/dep/non-cacheable-child'));
+        $surrogateKey = $parent->headers[Header::SURROGATE_KEY] ?? '';
+        $this->assertStringNotContainsString($childTag, $surrogateKey);
+    }
+
+    public function testHalEmbeddedChildAddsChildSurrogateKeyToParent(): void
+    {
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
+        $module->override(new HalModule());
+        $injector = new Injector(new FakeEtagPoolModule($module), __DIR__ . '/tmp');
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $repository = $injector->getInstance(QueryRepositoryInterface::class);
+
+        $resource->get('page://self/hal/parent-resource');
+
+        $parent = $repository->get(new Uri('page://self/hal/parent-resource'));
+        $this->assertInstanceOf(ResourceState::class, $parent);
+        $childTag = (new UriTag())(new Uri('page://self/hal/child'));
+
+        $this->assertStringContainsString($childTag, $parent->headers[Header::SURROGATE_KEY] ?? '');
     }
 }

@@ -7,6 +7,7 @@ namespace BEAR\QueryRepository;
 use BEAR\QueryRepository\Exception\ExpireAtKeyNotExists;
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\HttpCache;
+use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceObject;
 use Override;
@@ -24,6 +25,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         private HeaderSetter $headerSetter,
         private ResourceStorageInterface $storage,
         private Expiry $expiry,
+        private CacheDependencyInterface $cacheDependency,
     ) {
     }
 
@@ -35,6 +37,10 @@ final readonly class QueryRepository implements QueryRepositoryInterface
     {
         $this->logger->log('put-query-repository', ['uri' => (string) $ro->uri]);
         $this->storage->deleteEtag($ro->uri);
+        if ($ro->code === 200) {
+            $this->setCacheDependency($ro);
+        }
+
         $ro->toString();
         $cacheable = $this->getCacheableAnnotation($ro);
         $httpCache = $this->getHttpCacheAnnotation($ro);
@@ -51,6 +57,32 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         }
 
         return $this->storage->saveValue($ro, $ttl);
+    }
+
+    private function setCacheDependency(ResourceObject $ro): void
+    {
+        if (isset($ro->headers[Header::SURROGATE_KEY])) {
+            return;
+        }
+
+        /** @var mixed $body */
+        foreach ((array) $ro->body as $body) {
+            if (! ($body instanceof AbstractRequest)) {
+                continue;
+            }
+
+            // Materialize the child while HAL still has the Request in body.
+            // AbstractRequest::__toString() memoizes the inner result, so
+            // repeated casts here and in the HAL renderer share one
+            // invocation regardless of the request implementation's
+            // execution strategy.
+            (string) $body;
+            if (! isset($body->resourceObject->headers[Header::ETAG])) {
+                continue;
+            }
+
+            $this->cacheDependency->depends($ro, $body->resourceObject);
+        }
     }
 
     /**
