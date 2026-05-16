@@ -72,10 +72,10 @@ final readonly class QueryRepository implements QueryRepositoryInterface
             }
 
             // Materialize the child while HAL still has the Request in body.
-            // For a plain Request this renders the single child; for an
-            // AsyncRequest the first cast drains BEAR\Async\PendingRequests
-            // and runs every queued embed in parallel, with later iterations
-            // hitting the resolved cache.
+            // AbstractRequest::__toString() memoizes the inner result, so
+            // repeated casts here and in the HAL renderer share one
+            // invocation regardless of the request implementation's
+            // execution strategy.
             (string) $body;
             if (! isset($body->resourceObject->headers[Header::ETAG])) {
                 continue;
