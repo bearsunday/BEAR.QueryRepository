@@ -7,8 +7,8 @@ namespace BEAR\QueryRepository;
 use BEAR\QueryRepository\Exception\ExpireAtKeyNotExists;
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\HttpCache;
+use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\AbstractUri;
-use BEAR\Resource\Request;
 use BEAR\Resource\ResourceObject;
 use Override;
 use ReflectionClass;
@@ -67,7 +67,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
 
         /** @var mixed $body */
         foreach ((array) $ro->body as $body) {
-            if (! ($body instanceof Request)) {
+            if (! ($body instanceof AbstractRequest)) {
                 continue;
             }
 
