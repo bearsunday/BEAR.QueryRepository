@@ -71,7 +71,11 @@ final readonly class QueryRepository implements QueryRepositoryInterface
                 continue;
             }
 
-            // Evaluate the child while HAL still leaves the Request in body.
+            // Materialize the child while HAL still has the Request in body.
+            // For a plain Request this renders the single child; for an
+            // AsyncRequest the first cast drains BEAR\Async\PendingRequests
+            // and runs every queued embed in parallel, with later iterations
+            // hitting the resolved cache.
             (string) $body;
             if (! isset($body->resourceObject->headers[Header::ETAG])) {
                 continue;
