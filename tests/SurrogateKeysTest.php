@@ -73,4 +73,23 @@ class SurrogateKeysTest extends TestCase
         $etags->setSurrogateHeader($foo);
         $this->assertSame('_foo_', $foo->headers[Header::SURROGATE_KEY]);
     }
+
+    public function testSetSurrogateHeaderDeduplicatesWithManualKeys(): void
+    {
+        $uri = new Uri('app://self/foo');
+        $etags = new SurrogateKeys($uri);
+        $child = new class extends ResourceObject{
+            /** @var array<string, string> */
+            public $headers = [Header::SURROGATE_KEY => 'shared-tag']; // phpcs:ignore
+        };
+        $child->uri = new Uri('app://self/foo1');
+        $etags->addTag($child);
+        $ro = new class extends ResourceObject{
+            /** @var array<string, string> */
+            public $headers = [Header::SURROGATE_KEY => 'shared-tag _foo_']; // phpcs:ignore
+        };
+        $ro->uri = $uri;
+        $etags->setSurrogateHeader($ro);
+        $this->assertSame('shared-tag _foo_ _foo1_', $ro->headers[Header::SURROGATE_KEY]);
+    }
 }
