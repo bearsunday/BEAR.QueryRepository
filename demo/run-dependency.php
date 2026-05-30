@@ -19,9 +19,13 @@ use BEAR\QueryRepository\FakeEtagPoolModule;
 use BEAR\QueryRepository\ModuleFactory;
 use BEAR\QueryRepository\QueryRepositoryInterface;
 use BEAR\QueryRepository\RepositoryLoggerInterface;
+use BEAR\QueryRepository\StructuredRepositoryLoggerInterface;
+use BEAR\QueryRepository\TreeRenderer;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
 use Ray\Di\Injector;
+
+use function assert;
 
 require dirname(__DIR__) . '/vendor/autoload.php';
 
@@ -98,3 +102,8 @@ $resource->get('page://self/dep/parent-b');                     // 7b. Re-access
 // Output logs only
 echo "=== Cache Log ===" . PHP_EOL;
 echo $logger . PHP_EOL;
+
+// Dependency tree (the embed structure, reconstructed from depends-on events)
+assert($logger instanceof StructuredRepositoryLoggerInterface);
+echo PHP_EOL . "=== Dependency Tree ===" . PHP_EOL;
+echo (new TreeRenderer())->render($logger->getLogs()) . PHP_EOL;
