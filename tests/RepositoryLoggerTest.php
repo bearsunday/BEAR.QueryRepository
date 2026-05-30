@@ -86,4 +86,45 @@ class RepositoryLoggerTest extends TestCase
 
         $this->assertSame('{"op":"new-operation"}', (string) $logger);
     }
+
+    public function testGetLogsReturnsMergedEntriesInOrder(): void
+    {
+        $logger = new RepositoryLogger();
+        $logger->log('cache-miss', ['uri' => 'page://self/user', 'layer' => 'resource']);
+        $logger->log('depends-on', ['parent' => 'page://self/user', 'child' => 'app://self/profile', 'childTags' => ['_profile_']]);
+
+        $this->assertSame([
+            ['op' => 'cache-miss', 'uri' => 'page://self/user', 'layer' => 'resource'],
+            ['op' => 'depends-on', 'parent' => 'page://self/user', 'child' => 'app://self/profile', 'childTags' => ['_profile_']],
+        ], $logger->getLogs());
+    }
+
+    public function testGetOpsReturnsOperationSequence(): void
+    {
+        $logger = new RepositoryLogger();
+        $logger->log('cache-miss', ['uri' => 'page://self/user', 'layer' => 'resource']);
+        $logger->log('put-query-repository', ['uri' => 'page://self/user']);
+        $logger->log('cache-hit', ['uri' => 'page://self/user', 'layer' => 'resource']);
+
+        $this->assertSame(['cache-miss', 'put-query-repository', 'cache-hit'], $logger->getOps());
+    }
+
+    public function testResetClearsStructuredAccessors(): void
+    {
+        $logger = new RepositoryLogger();
+        $logger->log('cache-hit', ['uri' => 'page://self/user', 'layer' => 'resource']);
+        $logger->reset();
+
+        $this->assertSame([], $logger->getLogs());
+        $this->assertSame([], $logger->getOps());
+    }
+
+    public function testNullRepositoryLoggerIsNoOp(): void
+    {
+        $logger = new NullRepositoryLogger();
+        $logger->log('cache-hit', ['uri' => 'page://self/user', 'layer' => 'resource']);
+        $logger->reset();
+
+        $this->assertSame('', (string) $logger);
+    }
 }

@@ -13,14 +13,17 @@ use Override;
 use Ray\Di\Di\Set;
 use Ray\Di\ProviderInterface;
 use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
+use Throwable;
 
 use function array_merge;
 use function array_unique;
 use function array_values;
 use function assert;
 use function explode;
+use function hrtime;
 use function implode;
 use function is_array;
+use function round;
 use function sprintf;
 use function strtoupper;
 use function trim;
@@ -137,12 +140,30 @@ final class ResourceStorage implements ResourceStorageInterface
     #[Override]
     public function invalidateTags(array $tags): bool
     {
-        $this->logger->log('invalidate-etag', ['tags' => $tags]);
-        $valid1 = $this->roPool->invalidateTags($tags);
-        $valid2 = $this->etagPool->invalidateTags($tags);
-        ($this->purger)(implode(' ', $tags));
+        $start = hrtime(true);
+        // Local pools are the authoritative invalidation; let their failures surface.
+        $roOk = $this->roPool->invalidateTags($tags);
+        $etagOk = $this->etagPool->invalidateTags($tags);
 
-        return $valid1 && $valid2;
+        // The CDN purger is an external, best-effort target: a purge outage must not
+        // fail a write whose local cache has already been invalidated. The outcome is
+        // recorded (purgerOk) so cache destruction stays verifiable from the log.
+        $purgerOk = true;
+        try {
+            ($this->purger)(implode(' ', $tags));
+        } catch (Throwable) {
+            $purgerOk = false;
+        }
+
+        $this->logger->log('invalidate-etag', [
+            'tags' => $tags,
+            'roOk' => $roOk,
+            'etagOk' => $etagOk,
+            'purgerOk' => $purgerOk,
+            'dur' => round((hrtime(true) - $start) / 1_000_000, 3),
+        ]);
+
+        return $roOk && $etagOk;
     }
 
     /**

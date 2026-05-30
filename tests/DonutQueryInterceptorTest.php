@@ -16,8 +16,10 @@ use function dirname;
 
 class DonutQueryInterceptorTest extends TestCase
 {
+    use SchemaValidationTrait;
+
     private ResourceInterface $resource;
-    private RepositoryLoggerInterface $logger;
+    private StructuredRepositoryLoggerInterface $logger;
 
     protected function setUp(): void
     {
@@ -32,16 +34,17 @@ class DonutQueryInterceptorTest extends TestCase
 
         assert($injector instanceof Injector);
         $this->resource = $injector->getInstance(ResourceInterface::class);
-        $this->logger = $injector->getInstance(RepositoryLoggerInterface::class);
+        $logger = $injector->getInstance(RepositoryLoggerInterface::class);
+        assert($logger instanceof StructuredRepositoryLoggerInterface);
+        $this->logger = $logger;
 
         parent::setUp();
     }
 
     protected function tearDown(): void
     {
-        $log = ((string) $this->logger);
-        // error_log((string) $log);  // uncomment to see the debug log
-        unset($log);
+        // Every emitted log entry must conform to the published schema (drift detection)
+        $this->assertLogValidatesSchema($this->logger);
     }
 
     public function testInitialRequest(): string
@@ -70,21 +73,25 @@ class DonutQueryInterceptorTest extends TestCase
     public function testCached(): void
     {
         // test cached
-        $this->logger->log('get');
+        $this->logger->log('request-start', ['uri' => 'page://self/html/blog-posting', 'method' => 'get']);
         $blogPosting = $this->resource->get('page://self/html/blog-posting');
         assert($blogPosting instanceof BlogPosting);
-        $log = (string) $this->logger;
-        // Verify key operations in JSON log format
-        $this->assertStringContainsString('"op":"try-donut-view"', $log);
-        $this->assertStringContainsString('"op":"try-donut"', $log);
-        $this->assertStringContainsString('"op":"no-donut-found"', $log);
-        $this->assertStringContainsString('"op":"put-donut"', $log);
-        $this->assertStringContainsString('"op":"put-query-repository"', $log);
-        $this->assertStringContainsString('"op":"save-etag"', $log);
-        $this->assertStringContainsString('"op":"save-value"', $log);
-        $this->assertStringContainsString('"op":"save-donut-view"', $log);
-        $this->assertStringContainsString('"op":"save-donut"', $log);
-        $this->assertStringContainsString('"op":"found-donut-view"', $log);
+        // Verify key operations structurally via getOps() (order-preserving, not substring matching)
+        $ops = $this->logger->getOps();
+        foreach (['try-donut-view', 'try-donut', 'cache-miss', 'cache-hit', 'put-donut', 'put-query-repository', 'save-etag', 'save-value', 'save-donut-view', 'save-donut'] as $op) {
+            $this->assertContains($op, $ops);
+        }
+
+        // The rendered page is served from cache on the second access (layer: donut-view)
+        $donutViewHit = false;
+        foreach ($this->logger->getLogs() as $log) {
+            if ($log['op'] === 'cache-hit' && ($log['layer'] ?? null) === 'donut-view') {
+                $donutViewHit = true;
+                break;
+            }
+        }
+
+        $this->assertTrue($donutViewHit, 'expected a cache-hit at the donut-view layer');
         $this->assertArrayHasKey('Age', $blogPosting->headers);
         $this->assertArrayHasKey(Header::CDN_CACHE_CONTROL, $blogPosting->headers);
     }

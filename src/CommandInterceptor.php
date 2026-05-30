@@ -28,11 +28,15 @@ use Ray\Aop\MethodInvocation;
  */
 final readonly class CommandInterceptor implements MethodInterceptor
 {
+    private RefreshTriggerLogger $refreshTriggerLogger;
+
     /** @param CommandInterface[] $commands */
     public function __construct(
         #[Commands]
         private array $commands,
+        RepositoryLoggerInterface $logger = new NullRepositoryLogger(),
     ) {
+        $this->refreshTriggerLogger = new RefreshTriggerLogger($logger);
     }
 
     /**
@@ -52,6 +56,8 @@ final readonly class CommandInterceptor implements MethodInterceptor
         if ($ro->code >= Code::BAD_REQUEST) {
             return $ro;
         }
+
+        ($this->refreshTriggerLogger)($invocation, $ro);
 
         foreach ($this->commands as $command) {
             $command->command($invocation, $ro);

@@ -31,6 +31,7 @@
         "bear/fastly-module": "^1.0",
         "madapaja/twig-module": "^2.6",
         "mobiledetect/mobiledetectlib": "^3.74 || ^4.8",
+        "opis/json-schema": "^2.3",
         "phpunit/phpunit": "^11.0",
         "predis/predis": "^2.4",
         "symfony/process": "^6.1 || ^7.1",

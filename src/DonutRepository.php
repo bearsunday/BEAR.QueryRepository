@@ -31,12 +31,14 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $maybeState = $this->queryRepository->get($ro->uri);
         $this->logger->log('try-donut-view', ['uri' => (string) $ro->uri]);
         if ($maybeState instanceof ResourceState) {
-            $this->logger->log('found-donut-view', ['uri' => (string) $ro->uri]);
+            $this->logger->log('cache-hit', ['uri' => (string) $ro->uri, 'layer' => 'donut-view']);
             $ro->headers = $maybeState->headers;
             $ro->view = $maybeState->view;
 
             return $ro;
         }
+
+        $this->logger->log('cache-miss', ['uri' => (string) $ro->uri, 'layer' => 'donut-view']);
 
         return $this->refreshDonut($ro);
     }
@@ -106,11 +108,12 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $donut = $this->resourceStorage->getDonut($ro->uri);
         $this->logger->log('try-donut', ['uri' => (string) $ro->uri]);
         if (! $donut instanceof ResourceDonut) {
-            $this->logger->log('no-donut-found', ['uri' => (string) $ro->uri]);
+            $this->logger->log('cache-miss', ['uri' => (string) $ro->uri, 'layer' => 'donut']);
 
             return null;
         }
 
+        $this->logger->log('cache-hit', ['uri' => (string) $ro->uri, 'layer' => 'donut']);
         $this->logger->log('refresh-donut', ['uri' => (string) $ro->uri]);
         $donut->refresh($this->resource, $ro);
         if (! $donut->isCacheble) {

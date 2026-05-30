@@ -21,14 +21,35 @@
         "purge-query-repository",
         "put-donut",
         "try-donut-view",
-        "found-donut-view",
         "try-donut",
-        "no-donut-found",
         "refresh-donut",
         "cache-hit",
         "cache-miss",
-        "depends-on"
+        "depends-on",
+        "refresh-trigger"
       ]
+    },
+    "layer": {
+      "type": "string",
+      "description": "Cache layer the hit/miss occurred at: 'resource' (plain #[Cacheable] resource), 'donut-view' (rendered donut page), 'donut' (donut structure/template)",
+      "enum": ["resource", "donut", "donut-view"]
+    },
+    "roOk": {
+      "type": "boolean",
+      "description": "Whether the Resource Object pool tag invalidation reported success"
+    },
+    "etagOk": {
+      "type": "boolean",
+      "description": "Whether the ETag pool tag invalidation reported success"
+    },
+    "purgerOk": {
+      "type": "boolean",
+      "description": "Whether the CDN purger completed without throwing"
+    },
+    "dur": {
+      "type": "number",
+      "description": "Operation duration in milliseconds (rounded to 3 decimal places)",
+      "minimum": 0
     },
     "uri": {
       "type": "string",
@@ -82,8 +103,25 @@
     },
     "method": {
       "type": "string",
-      "description": "HTTP method or operation type (used with request-start)",
-      "enum": ["get", "post", "put", "patch", "delete", "purge", "invalidate"]
+      "description": "Method this entry pertains to. For refresh-trigger this is the PHP command method (e.g., onPut, onDelete). For request-start this is an HTTP/operation type (e.g., get, purge)."
+    },
+    "annotations": {
+      "type": "array",
+      "description": "The #[Refresh] / #[Purge] annotations on the command method that triggered invalidation. This records the cause/intent; the concrete, expanded target URIs appear in the subsequent purge-query-repository / invalidate-etag entries.",
+      "items": {
+        "type": "object",
+        "required": ["class", "uri"],
+        "properties": {
+          "class": {
+            "type": "string",
+            "description": "Fully-qualified annotation class (e.g., BEAR\\RepositoryModule\\Annotation\\Refresh)"
+          },
+          "uri": {
+            "type": "string",
+            "description": "Target URI *template* declared on the annotation (e.g., app://self/user/{id}); not yet expanded with the request variables"
+          }
+        }
+      }
     }
   },
   "allOf": [
@@ -148,7 +186,7 @@
         "properties": { "op": { "const": "cache-hit" } }
       },
       "then": {
-        "required": ["uri"]
+        "required": ["uri", "layer"]
       }
     },
     {
@@ -156,7 +194,7 @@
         "properties": { "op": { "const": "cache-miss" } }
       },
       "then": {
-        "required": ["uri"]
+        "required": ["uri", "layer"]
       }
     },
     {
@@ -165,6 +203,14 @@
       },
       "then": {
         "required": ["parent", "child", "childTags"]
+      }
+    },
+    {
+      "if": {
+        "properties": { "op": { "const": "refresh-trigger" } }
+      },
+      "then": {
+        "required": ["uri", "method", "annotations"]
       }
     }
   ],
@@ -192,7 +238,11 @@
     },
     {
       "op": "invalidate-etag",
-      "tags": ["_user_"]
+      "tags": ["_user_"],
+      "roOk": true,
+      "etagOk": true,
+      "purgerOk": true,
+      "dur": 0.842
     },
     {
       "op": "put-query-repository",
@@ -210,17 +260,28 @@
     },
     {
       "op": "cache-hit",
-      "uri": "page://self/user"
+      "uri": "page://self/user",
+      "layer": "resource"
     },
     {
       "op": "cache-miss",
-      "uri": "page://self/user"
+      "uri": "page://self/blog",
+      "layer": "donut-view"
     },
     {
       "op": "depends-on",
       "parent": "page://self/blog",
       "child": "app://self/comment",
       "childTags": ["_comment_id=1"]
+    },
+    {
+      "op": "refresh-trigger",
+      "uri": "app://self/user/1",
+      "method": "onPut",
+      "annotations": [
+        {"class": "BEAR\\RepositoryModule\\Annotation\\Refresh", "uri": "app://self/user"},
+        {"class": "BEAR\\RepositoryModule\\Annotation\\Purge", "uri": "app://self/posts"}
+      ]
     }
   ]
 }

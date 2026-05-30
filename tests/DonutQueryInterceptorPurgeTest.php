@@ -16,9 +16,11 @@ use function dirname;
 
 class DonutQueryInterceptorPurgeTest extends TestCase
 {
+    use SchemaValidationTrait;
+
     private ResourceInterface $resource;
     private QueryRepository $repository;
-    private RepositoryLoggerInterface $logger;
+    private StructuredRepositoryLoggerInterface $logger;
 
     protected function setUp(): void
     {
@@ -34,16 +36,17 @@ class DonutQueryInterceptorPurgeTest extends TestCase
         assert($injector instanceof Injector);
         $this->resource = $injector->getInstance(ResourceInterface::class);
         $this->repository = $injector->getInstance(QueryRepository::class);
-        $this->logger = $injector->getInstance(RepositoryLoggerInterface::class);
+        $logger = $injector->getInstance(RepositoryLoggerInterface::class);
+        assert($logger instanceof StructuredRepositoryLoggerInterface);
+        $this->logger = $logger;
 
         parent::setUp();
     }
 
     protected function tearDown(): void
     {
-        $log = ((string) $this->logger);
-        // error_log((string) $log);  // uncomment to see the debug log
-        unset($log);
+        // Every emitted log entry must conform to the published schema (drift detection)
+        $this->assertLogValidatesSchema($this->logger);
     }
 
     public function testStatePurge(): void

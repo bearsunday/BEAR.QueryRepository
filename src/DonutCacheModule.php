@@ -41,6 +41,10 @@ final class DonutCacheModule extends AbstractModule
         $this->bind(HeaderSetter::class);
         $this->bind(CdnCacheControlHeaderSetterInterface::class)->to(CdnCacheControlHeaderSetter::class);
         $this->bind(DonutRepositoryInterface::class)->to(DonutRepository::class)->in(Scope::SINGLETON);
+        // One singleton bound to RepositoryLoggerInterface. RepositoryLogger also implements
+        // StructuredRepositoryLoggerInterface, so consumers needing structured access narrow
+        // the same instance via instanceof rather than a separate binding (which Ray.Di would
+        // resolve to a different singleton).
         $this->bind(RepositoryLoggerInterface::class)->to(RepositoryLogger::class)->in(Scope::SINGLETON);
         $this->bind(PurgerInterface::class)->to(NullPurger::class);
         $this->bind(UriTagInterface::class)->to(UriTag::class);

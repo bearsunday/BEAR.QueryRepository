@@ -25,7 +25,9 @@ class DonutCommandRedisCacheTest extends DonutCommandInterceptorTest
         $module->override(new StorageRedisModule('127.0.0.1:6379'));
         $injector = new Injector($module, __DIR__ . '/tmp');
         $this->resource = $injector->getInstance(ResourceInterface::class);
-        $this->logger = $injector->getInstance(RepositoryLoggerInterface::class);
+        $logger = $injector->getInstance(RepositoryLoggerInterface::class);
+        assert($logger instanceof StructuredRepositoryLoggerInterface);
+        $this->logger = $logger;
         $httpCache = $injector->getInstance(HttpCacheInterfaceAlias::class);
         $unserializedHttpCache = unserialize(serialize($httpCache));
         assert($unserializedHttpCache instanceof HttpCacheInterfaceAlias);

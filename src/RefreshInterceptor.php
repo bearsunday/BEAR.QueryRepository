@@ -26,9 +26,13 @@ use Ray\Aop\MethodInvocation;
  */
 final readonly class RefreshInterceptor implements MethodInterceptor
 {
+    private RefreshTriggerLogger $refreshTriggerLogger;
+
     public function __construct(
         private RefreshAnnotatedCommand $command,
+        RepositoryLoggerInterface $logger = new NullRepositoryLogger(),
     ) {
+        $this->refreshTriggerLogger = new RefreshTriggerLogger($logger);
     }
 
     #[Override]
@@ -41,6 +45,7 @@ final readonly class RefreshInterceptor implements MethodInterceptor
         }
 
         if ($ro->code < Code::BAD_REQUEST) {
+            ($this->refreshTriggerLogger)($invocation, $ro);
             $this->command->command($invocation, $ro);
         }
 

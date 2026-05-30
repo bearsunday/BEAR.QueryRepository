@@ -8,12 +8,14 @@ use BEAR\Resource\ResourceObject;
 use Override;
 
 use function assert;
+use function explode;
 use function sprintf;
 
 final readonly class CacheDependency implements CacheDependencyInterface
 {
     public function __construct(
         private UriTagInterface $uriTag,
+        private RepositoryLoggerInterface $logger = new NullRepositoryLogger(),
     ) {
     }
 
@@ -29,5 +31,10 @@ final readonly class CacheDependency implements CacheDependencyInterface
         }
 
         $from->headers[Header::SURROGATE_KEY] = $cacheDependencyTags;
+        $this->logger->log('depends-on', [
+            'parent' => (string) $from->uri,
+            'child' => (string) $to->uri,
+            'childTags' => explode(' ', $cacheDependencyTags),
+        ]);
     }
 }
