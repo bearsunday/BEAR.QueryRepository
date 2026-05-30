@@ -7,5 +7,5 @@
 /coverage.xml
 /vendor-bin/**/vendor
 /.php_cs.cache
-/.phpunit-cache/
+/.phpunit.cache/
 /.dump.rdb

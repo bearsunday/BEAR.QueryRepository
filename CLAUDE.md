@@ -18,6 +18,10 @@ For conceptual documentation, see:
 - ETag support for conditional requests
 - Redis and Memcached support
 
+**Requirements:** PHP `^8.2` (CI tests through 8.5).
+
+**Source layout:** Active code lives in `src/` and `src-annotation/`. The autoloader also maps `src-deprecated/`, `src-annotation-deprecated/`, and `tests-deprecated/` — these hold legacy classes/annotations kept for BC. Do **not** add new code under the `*-deprecated` paths.
+
 ## Development Commands
 
 ### Testing
@@ -52,15 +56,20 @@ composer cs-fix
 # Static analysis (PHPStan + Psalm)
 composer sa
 
-# Clean caches
+# Clean caches (PHPStan + Psalm + tests/tmp/*.php)
 composer clean
+
+# Mess detection (separate from `sa`)
+composer phpmd
 ```
 
 ### Full Build
 ```bash
-# Run complete build (cs + sa + coverage + metrics)
+# Run complete build (cs + sa + pcov + metrics)
 composer build
 ```
+
+Note: `composer sa` runs Psalm with `--show-info=true`, so informational notices count as output. `composer tests` is the standard pre-PR gate (`cs` + `sa` + `test`).
 
 ## Architecture
 
@@ -186,8 +195,13 @@ Dependencies are tracked by copying dependent resource's tags to the parent's su
 Tests are organized in `tests/`:
 - Unit tests for individual components
 - Integration tests with fake applications in `tests/Fake/fake-app/`
-- PECL extension tests in `tests-pecl-ext/` (Redis, Memcached)
-- PHP 8-specific tests in `tests-php8/`
+- `tests-pecl-ext/` — PECL-backed tests (real Redis/Memcached extensions). Skipped automatically when the extension is missing.
+- `tests-php8/` — Fake fixtures using PHP 8 attribute syntax referenced by main tests
+- `tests-deprecated/` — regression tests for legacy classes under `src-deprecated/`
+
+`tests/CACHE_DEPENDENCY_TESTS.md` documents the dependency-invalidation test matrix; consult it before changing `CacheDependency` or `Refresh`/`Purge` flows.
+
+Mocking is forbidden per project policy: external services run in Docker, and internal collaborators use Fake classes under `tests/Fake/`.
 
 Test configuration: `phpunit.xml.dist`
 
