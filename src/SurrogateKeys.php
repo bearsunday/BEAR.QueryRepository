@@ -38,14 +38,11 @@ final class SurrogateKeys
 
     public function setSurrogateHeader(ResourceObject $ro): void
     {
-        $key = implode(' ', array_unique($this->surrogateKeys));
-        $wasSetManually = isset($ro->headers[Header::SURROGATE_KEY]);
-        if ($wasSetManually) {
-            $ro->headers[Header::SURROGATE_KEY] .= ' ' . $key;
-
-            return;
+        $keys = $this->surrogateKeys;
+        if (isset($ro->headers[Header::SURROGATE_KEY])) {
+            $keys = array_merge(explode(' ', $ro->headers[Header::SURROGATE_KEY]), $keys);
         }
 
-        $ro->headers[Header::SURROGATE_KEY] = $key;
+        $ro->headers[Header::SURROGATE_KEY] = implode(' ', array_unique($keys));
     }
 }
