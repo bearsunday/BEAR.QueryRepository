@@ -4,9 +4,14 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Log\Context\CacheHitContext;
+use BEAR\QueryRepository\Log\Context\CacheMissContext;
+use BEAR\QueryRepository\Log\Context\PutDonutContext;
+use BEAR\QueryRepository\Log\Context\RefreshDonutContext;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
+use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 
 use function assert;
@@ -20,7 +25,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         private ResourceStorageInterface $resourceStorage,
         private ResourceInterface $resource,
         private CdnCacheControlHeaderSetterInterface $cdnCacheControlHeaderSetter,
-        private RepositoryLoggerInterface $logger,
+        private SemanticLoggerInterface $logger,
         private DonutRendererInterface $renderer,
     ) {
     }
@@ -29,9 +34,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     public function get(ResourceObject $ro): ResourceObject|null
     {
         $maybeState = $this->queryRepository->get($ro->uri);
-        $this->logger->log('try-donut-view', ['uri' => (string) $ro->uri]);
         if ($maybeState instanceof ResourceState) {
-            $this->logger->log('found-donut-view', ['uri' => (string) $ro->uri]);
             $ro->headers = $maybeState->headers;
             $ro->view = $maybeState->view;
 
@@ -47,7 +50,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     #[Override]
     public function putStatic(ResourceObject $ro, int|null $ttl = null, int|null $sMaxAge = null): ResourceObject
     {
-        $this->logger->log('put-donut', ['uri' => (string) $ro->uri, 'ttl' => $ttl, 'sMaxAge' => $sMaxAge]);
+        $this->logger->event(new PutDonutContext((string) $ro->uri, $ttl, $sMaxAge));
         $keys = new SurrogateKeys($ro->uri);
         $keys->addTag($ro);
         $headerKeys = $this->getHeaderKeys($ro);
@@ -69,7 +72,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     #[Override]
     public function putDonut(ResourceObject $ro, int|null $donutTtl): ResourceObject
     {
-        $this->logger->log('put-donut', ['uri' => (string) $ro->uri, 'ttl' => $donutTtl]);
+        $this->logger->event(new PutDonutContext((string) $ro->uri, $donutTtl, null));
         $keys = new SurrogateKeys($ro->uri);
         $keyArrays = $this->getHeaderKeys($ro);
         $donut = ResourceDonut::create($ro, $this->renderer, $keys, $donutTtl, false);
@@ -104,14 +107,14 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     private function refreshDonut(ResourceObject $ro): ResourceObject|null
     {
         $donut = $this->resourceStorage->getDonut($ro->uri);
-        $this->logger->log('try-donut', ['uri' => (string) $ro->uri]);
         if (! $donut instanceof ResourceDonut) {
-            $this->logger->log('no-donut-found', ['uri' => (string) $ro->uri]);
+            $this->logger->event(new CacheMissContext('donut'));
 
             return null;
         }
 
-        $this->logger->log('refresh-donut', ['uri' => (string) $ro->uri]);
+        $this->logger->event(new CacheHitContext('donut'));
+        $this->logger->event(new RefreshDonutContext((string) $ro->uri));
         $donut->refresh($this->resource, $ro);
         if (! $donut->isCacheble) {
             return $ro;

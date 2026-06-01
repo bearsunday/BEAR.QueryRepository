@@ -5,7 +5,12 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\LogicException;
+use BEAR\QueryRepository\Log\Context\CacheHitContext;
+use BEAR\QueryRepository\Log\Context\CacheMissContext;
+use BEAR\QueryRepository\Log\Context\GetContext;
+use BEAR\QueryRepository\Log\NullSemanticLogger;
 use BEAR\Resource\ResourceObject;
+use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
@@ -31,43 +36,59 @@ final readonly class CacheInterceptor implements MethodInterceptor
 {
     public function __construct(
         private QueryRepositoryInterface $repository,
+        private SemanticLoggerInterface $logger = new NullSemanticLogger(),
     ) {
     }
 
     /**
      * {@inheritDoc}
+     *
+     * Opens a GET scope so embedded child resources fetched during put() nest
+     * under this resource, and the scope is closed with the hit/miss outcome.
      */
     #[Override]
     public function invoke(MethodInvocation $invocation)
     {
         $ro = $invocation->getThis();
         assert($ro instanceof ResourceObject);
+        $openId = $this->logger->open(new GetContext((string) $ro->uri));
+        $hit = false;
         try {
-            $state = $this->repository->get($ro->uri);
-        } catch (Throwable $e) {
-            $this->triggerWarning($e);
+            try {
+                $state = $this->repository->get($ro->uri);
+            } catch (Throwable $e) {
+                $this->triggerWarning($e);
 
-            return $invocation->proceed(); // @codeCoverageIgnore
-        }
+                return $invocation->proceed(); // @codeCoverageIgnore
+            }
 
-        if ($state instanceof ResourceState) {
-            $state->visit($ro);
+            if ($state instanceof ResourceState) {
+                $state->visit($ro);
+                $hit = true;
+
+                return $ro;
+            }
+
+            /** @psalm-suppress MixedAssignment */
+            $ro = $invocation->proceed();
+            assert($ro instanceof ResourceObject);
+            try {
+                $ro->code === 200 ? $this->repository->put($ro) : $this->repository->purge($ro->uri);
+            } catch (LogicException $e) {
+                throw $e;
+            } catch (Throwable $e) {  // @codeCoverageIgnore
+                $this->triggerWarning($e); // @codeCoverageIgnore
+            }
 
             return $ro;
+        } finally {
+            // Psalm mis-tracks the $hit flag mutated inside try when read from finally.
+            /** @psalm-suppress RedundantCondition, TypeDoesNotContainType */
+            $this->logger->close(
+                $hit ? new CacheHitContext('resource') : new CacheMissContext('resource'),
+                $openId,
+            );
         }
-
-        /** @psalm-suppress MixedAssignment */
-        $ro = $invocation->proceed();
-        assert($ro instanceof ResourceObject);
-        try {
-            $ro->code === 200 ? $this->repository->put($ro) : $this->repository->purge($ro->uri);
-        } catch (LogicException $e) {
-            throw $e;
-        } catch (Throwable $e) {  // @codeCoverageIgnore
-            $this->triggerWarning($e); // @codeCoverageIgnore
-        }
-
-        return $ro;
     }
 
     /**

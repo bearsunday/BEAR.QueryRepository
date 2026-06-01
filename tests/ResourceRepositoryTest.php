@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Log\NullSemanticLogger;
 use BEAR\QueryRepository\QueryRepository as Repository;
 use BEAR\Resource\Uri;
 use FakeVendor\HelloWorld\Resource\Page\Index;
@@ -37,10 +38,10 @@ class ResourceRepositoryTest extends TestCase
             }
         };
         $this->repository = new Repository(
-            new RepositoryLogger(),
+            new NullSemanticLogger(),
             new HeaderSetter(new EtagSetter()),
             new ResourceStorage(
-                new RepositoryLogger(),
+                new NullSemanticLogger(),
                 new NullPurger(),
                 new UriTag(),
                 new ResourceStorageSaver(),
@@ -105,10 +106,10 @@ class ResourceRepositoryTest extends TestCase
             }
         };
         $repository = new Repository(
-            new RepositoryLogger(),
+            new NullSemanticLogger(),
             new HeaderSetter(new EtagSetter()),
             new ResourceStorage(
-                new RepositoryLogger(),
+                new NullSemanticLogger(),
                 new NullPurger(),
                 new UriTag(),
                 new ResourceStorageSaver(),

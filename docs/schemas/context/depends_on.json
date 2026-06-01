@@ -1,0 +1,27 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/depends_on.json",
+    "title": "depends_on",
+    "description": "Event: a parent now depends on a child (dependency-graph edge).",
+    "type": "object",
+    "required": [
+        "parent",
+        "child",
+        "childTags"
+    ],
+    "properties": {
+        "parent": {
+            "type": "string"
+        },
+        "child": {
+            "type": "string"
+        },
+        "childTags": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        }
+    },
+    "additionalProperties": false
+}

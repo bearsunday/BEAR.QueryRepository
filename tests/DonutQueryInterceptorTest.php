@@ -7,6 +7,7 @@ namespace BEAR\QueryRepository;
 use BEAR\Resource\ResourceInterface;
 use FakeVendor\HelloWorld\Resource\Page\Html\BlogPosting;
 use FakeVendor\HelloWorld\Resource\Page\Html\Comment;
+use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Madapaja\TwigModule\TwigModule;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
@@ -16,8 +17,10 @@ use function dirname;
 
 class DonutQueryInterceptorTest extends TestCase
 {
+    use SemanticLogTreeTrait;
+
     private ResourceInterface $resource;
-    private RepositoryLoggerInterface $logger;
+    private SemanticLoggerInterface $logger;
 
     protected function setUp(): void
     {
@@ -32,16 +35,15 @@ class DonutQueryInterceptorTest extends TestCase
 
         assert($injector instanceof Injector);
         $this->resource = $injector->getInstance(ResourceInterface::class);
-        $this->logger = $injector->getInstance(RepositoryLoggerInterface::class);
+        $this->logger = $injector->getInstance(SemanticLoggerInterface::class);
 
         parent::setUp();
     }
 
     protected function tearDown(): void
     {
-        $log = ((string) $this->logger);
-        // error_log((string) $log);  // uncomment to see the debug log
-        unset($log);
+        // Every emitted entry must conform to its context schema (drift detection)
+        $this->flushAndValidate($this->logger);
     }
 
     public function testInitialRequest(): string
@@ -69,22 +71,18 @@ class DonutQueryInterceptorTest extends TestCase
     /** @depends testInitialRequest */
     public function testCached(): void
     {
-        // test cached
-        $this->logger->log('get');
+        $this->logger->flush(); // drain any prior session
+
         $blogPosting = $this->resource->get('page://self/html/blog-posting');
         assert($blogPosting instanceof BlogPosting);
-        $log = (string) $this->logger;
-        // Verify key operations in JSON log format
-        $this->assertStringContainsString('"op":"try-donut-view"', $log);
-        $this->assertStringContainsString('"op":"try-donut"', $log);
-        $this->assertStringContainsString('"op":"no-donut-found"', $log);
-        $this->assertStringContainsString('"op":"put-donut"', $log);
-        $this->assertStringContainsString('"op":"put-query-repository"', $log);
-        $this->assertStringContainsString('"op":"save-etag"', $log);
-        $this->assertStringContainsString('"op":"save-value"', $log);
-        $this->assertStringContainsString('"op":"save-donut-view"', $log);
-        $this->assertStringContainsString('"op":"save-donut"', $log);
-        $this->assertStringContainsString('"op":"found-donut-view"', $log);
+
+        // The rendered page is served from cache on the second access: the GET scope
+        // closes as a hit and the whole tree validates against the context schemas.
+        $tree = $this->flushAndValidate($this->logger);
+        $types = self::collectTypes($tree);
+        $this->assertContains('get', $types);
+        $this->assertContains('cache_hit', $types);
+
         $this->assertArrayHasKey('Age', $blogPosting->headers);
         $this->assertArrayHasKey(Header::CDN_CACHE_CONTROL, $blogPosting->headers);
     }

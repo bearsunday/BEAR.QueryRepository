@@ -7,6 +7,7 @@ namespace BEAR\QueryRepository;
 use BEAR\Resource\Code;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Sunday\Extension\Transfer\HttpCacheInterface as HttpCacheInterfaceAlias;
+use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Madapaja\TwigModule\TwigModule;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
@@ -19,8 +20,10 @@ use function property_exists;
 
 class DonutCommandInterceptorTest extends TestCase
 {
+    use SemanticLogTreeTrait;
+
     protected ResourceInterface $resource;
-    protected RepositoryLoggerInterface $logger;
+    protected SemanticLoggerInterface $logger;
     protected HttpCacheInterfaceAlias $httpCache;
 
     protected function setUp(): void
@@ -30,7 +33,7 @@ class DonutCommandInterceptorTest extends TestCase
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
         $injector = new Injector($module, __DIR__ . '/tmp');
         $this->resource = $injector->getInstance(ResourceInterface::class);
-        $this->logger = $injector->getInstance(RepositoryLoggerInterface::class);
+        $this->logger = $injector->getInstance(SemanticLoggerInterface::class);
         $this->httpCache = $injector->getInstance(HttpCacheInterfaceAlias::class);
 
         parent::setUp();
@@ -38,9 +41,8 @@ class DonutCommandInterceptorTest extends TestCase
 
     protected function tearDown(): void
     {
-        $log = ((string) $this->logger);
-        // error_log((string) $log);  // uncomment to see the debug log
-        unset($log);
+        // Every emitted log entry must conform to the published schema (drift detection)
+        $this->flushAndValidate($this->logger);
     }
 
     public function testCommandInterceptorRefresh(): void
@@ -55,11 +57,8 @@ class DonutCommandInterceptorTest extends TestCase
         $this->assertTrue($this->httpCache->isNotModified($server));
         $ro1 = $this->resource->get('page://self/html/blog-posting?id=0');
         $this->assertArrayHasKey('Age', $ro1->headers);
-        $this->logger->log('delete');
         $this->resource->delete('page://self/html/blog-posting?id=0');
         $this->assertFalse($this->httpCache->isNotModified($server));
-        $this->logger->log('server:%s', $server);
-        $this->logger->log('get');
         $ro = $this->resource->get('page://self/html/blog-posting?id=0');
         $this->assertArrayHasKey('Age', $ro->headers);
     }

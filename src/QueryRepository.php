@@ -5,11 +5,16 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\ExpireAtKeyNotExists;
+use BEAR\QueryRepository\Log\Context\ManualPurgeContext;
+use BEAR\QueryRepository\Log\Context\ManualPurgeResultContext;
+use BEAR\QueryRepository\Log\Context\PurgeContext;
+use BEAR\QueryRepository\Log\SafeSemanticLogger;
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\HttpCache;
 use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceObject;
+use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 use ReflectionClass;
 
@@ -21,7 +26,7 @@ use function time;
 final readonly class QueryRepository implements QueryRepositoryInterface
 {
     public function __construct(
-        private RepositoryLoggerInterface $logger,
+        private SemanticLoggerInterface $logger,
         private HeaderSetter $headerSetter,
         private ResourceStorageInterface $storage,
         private Expiry $expiry,
@@ -35,7 +40,6 @@ final readonly class QueryRepository implements QueryRepositoryInterface
     #[Override]
     public function put(ResourceObject $ro)
     {
-        $this->logger->log('put-query-repository', ['uri' => (string) $ro->uri]);
         $this->storage->deleteEtag($ro->uri);
         if ($ro->code === 200) {
             $this->setCacheDependency($ro);
@@ -108,7 +112,20 @@ final readonly class QueryRepository implements QueryRepositoryInterface
     #[Override]
     public function purge(AbstractUri $uri)
     {
-        $this->logger->log('purge-query-repository', ['uri' => (string) $uri]);
+        // A top-level purge is an application-initiated (manual) cache bust: wrap it in a
+        // manual_purge scope so it stands out from automatic invalidation. A purge nested
+        // inside a request GET or a write command stays an ordinary purge event there.
+        if ($this->logger instanceof SafeSemanticLogger && $this->logger->isTopLevel()) {
+            $openId = $this->logger->open(new ManualPurgeContext((string) $uri));
+            $purged = false;
+            try {
+                return $purged = $this->storage->deleteEtag($uri);
+            } finally {
+                $this->logger->close(new ManualPurgeResultContext($purged), $openId);
+            }
+        }
+
+        $this->logger->event(new PurgeContext((string) $uri));
 
         return $this->storage->deleteEtag($uri);
     }

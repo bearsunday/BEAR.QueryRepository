@@ -14,6 +14,7 @@ use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
 use FakeVendor\HelloWorld\Resource\App\NullView;
 use FakeVendor\HelloWorld\Resource\App\User\Profile;
 use FakeVendor\HelloWorld\Resource\Page\None;
+use Koriym\SemanticLogger\SemanticLoggerInterface;
 use PHPUnit\Framework\TestCase;
 use Psr\Cache\CacheItemPoolInterface;
 use Ray\Di\AbstractModule;
@@ -35,10 +36,12 @@ use const E_USER_WARNING;
 
 class QueryRepositoryTest extends TestCase
 {
+    use SemanticLogTreeTrait;
+
     private ResourceInterface $resource;
     private QueryRepositoryInterface $repository;
     private HttpCacheInterface $httpCache;
-    private RepositoryLoggerInterface $logger;
+    private SemanticLoggerInterface $logger;
 
     protected function setUp(): void
     {
@@ -47,16 +50,15 @@ class QueryRepositoryTest extends TestCase
         $this->repository = $injector->getInstance(QueryRepositoryInterface::class);
         $this->resource = $injector->getInstance(ResourceInterface::class);
         $this->httpCache = $injector->getInstance(HttpCacheInterface::class);
-        $this->logger = $injector->getInstance(RepositoryLoggerInterface::class);
+        $this->logger = $injector->getInstance(SemanticLoggerInterface::class);
 
         parent::setUp();
     }
 
     protected function tearDown(): void
     {
-        $log = ((string) $this->logger);
-        // error_log((string) $log);  // uncomment to see the debug log
-        unset($log);
+        // Every emitted log entry must conform to the published schema (drift detection)
+        $this->flushAndValidate($this->logger);
     }
 
     public function testPurgeSameResourceObjectByPatch(): void

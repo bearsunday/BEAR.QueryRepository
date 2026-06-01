@@ -1,0 +1,21 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_hit.json",
+    "title": "cache_hit",
+    "description": "Close/event: a cache lookup hit at the given layer.",
+    "type": "object",
+    "required": [
+        "layer"
+    ],
+    "properties": {
+        "layer": {
+            "type": "string",
+            "enum": [
+                "resource",
+                "donut",
+                "donut-view"
+            ]
+        }
+    },
+    "additionalProperties": false
+}

@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\Resource\ResourceInterface;
 use BEAR\Sunday\Extension\Transfer\HttpCacheInterface as HttpCacheInterfaceAlias;
+use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Madapaja\TwigModule\TwigModule;
 use Ray\Di\Injector;
 
@@ -25,7 +26,7 @@ class DonutCommandRedisCacheTest extends DonutCommandInterceptorTest
         $module->override(new StorageRedisModule('127.0.0.1:6379'));
         $injector = new Injector($module, __DIR__ . '/tmp');
         $this->resource = $injector->getInstance(ResourceInterface::class);
-        $this->logger = $injector->getInstance(RepositoryLoggerInterface::class);
+        $this->logger = $injector->getInstance(SemanticLoggerInterface::class);
         $httpCache = $injector->getInstance(HttpCacheInterfaceAlias::class);
         $unserializedHttpCache = unserialize(serialize($httpCache));
         assert($unserializedHttpCache instanceof HttpCacheInterfaceAlias);

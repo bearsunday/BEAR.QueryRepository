@@ -7,6 +7,7 @@ namespace BEAR\QueryRepository;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
+use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Madapaja\TwigModule\TwigModule;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
@@ -16,9 +17,11 @@ use function dirname;
 
 class DonutQueryInterceptorPurgeTest extends TestCase
 {
+    use SemanticLogTreeTrait;
+
     private ResourceInterface $resource;
     private QueryRepository $repository;
-    private RepositoryLoggerInterface $logger;
+    private SemanticLoggerInterface $logger;
 
     protected function setUp(): void
     {
@@ -34,16 +37,15 @@ class DonutQueryInterceptorPurgeTest extends TestCase
         assert($injector instanceof Injector);
         $this->resource = $injector->getInstance(ResourceInterface::class);
         $this->repository = $injector->getInstance(QueryRepository::class);
-        $this->logger = $injector->getInstance(RepositoryLoggerInterface::class);
+        $this->logger = $injector->getInstance(SemanticLoggerInterface::class);
 
         parent::setUp();
     }
 
     protected function tearDown(): void
     {
-        $log = ((string) $this->logger);
-        // error_log((string) $log);  // uncomment to see the debug log
-        unset($log);
+        // Every emitted log entry must conform to the published schema (drift detection)
+        $this->flushAndValidate($this->logger);
     }
 
     public function testStatePurge(): void

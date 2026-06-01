@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\ReturnValueIsNotResourceObjectException;
+use BEAR\QueryRepository\Log\Context\CommandResultContext;
+use BEAR\QueryRepository\Log\NullSemanticLogger;
 use BEAR\RepositoryModule\Annotation\Commands;
 use BEAR\Resource\Code;
 use BEAR\Resource\ResourceObject;
+use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
@@ -28,11 +31,15 @@ use Ray\Aop\MethodInvocation;
  */
 final readonly class CommandInterceptor implements MethodInterceptor
 {
+    private CommandContextFactory $commandContextFactory;
+
     /** @param CommandInterface[] $commands */
     public function __construct(
         #[Commands]
         private array $commands,
+        private SemanticLoggerInterface $logger = new NullSemanticLogger(),
     ) {
+        $this->commandContextFactory = new CommandContextFactory();
     }
 
     /**
@@ -53,8 +60,14 @@ final readonly class CommandInterceptor implements MethodInterceptor
             return $ro;
         }
 
-        foreach ($this->commands as $command) {
-            $command->command($invocation, $ro);
+        // Open a command scope so the triggered purges/refreshes nest under it.
+        $openId = $this->logger->open(($this->commandContextFactory)($invocation));
+        try {
+            foreach ($this->commands as $command) {
+                $command->command($invocation, $ro);
+            }
+        } finally {
+            $this->logger->close(new CommandResultContext($ro->code), $openId);
         }
 
         return $ro;

@@ -20,5 +20,12 @@
                 <file name="src/RedisDsnProvider.php" />
             </errorLevel>
         </UndefinedClass>
+        <!-- Koriym\SemanticLogger\AbstractContext declares TYPE/SCHEMA_URL = '' (untyped), which Psalm
+             infers as the literal '' type; concrete Context subclasses legitimately set string values. -->
+        <InvalidClassConstantType>
+            <errorLevel type="suppress">
+                <directory name="src/Log/Context" />
+            </errorLevel>
+        </InvalidClassConstantType>
     </issueHandlers>
 </psalm>

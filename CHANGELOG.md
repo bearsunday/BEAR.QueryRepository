@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Cache observability is now built on [Koriym.SemanticLogger](https://github.com/koriym/Koriym.SemanticLogger): an open/event/close tree whose nesting **is** the embed/dependency structure (a parent's embedded children nest under it). Typed `AbstractContext` subclasses live in `src/Log/Context/` with per-context JSON Schemas in `docs/schemas/context/`.
+- `SafeSemanticLogger` (best-effort decorator) guarantees logging never breaks cache reads/writes; `NullSemanticLogger` is the zero-cost no-op default. Bound via `SafeSemanticLoggerProvider` in `DonutCacheModule`.
+- `invalidate` context records per-target outcomes as self-describing status words: `roPool`/`etagPool` (`invalidated`|`failed`), `cdn` (`purged`|`failed`), plus `durationMs`. The CDN purge is best-effort and no longer fails local invalidation on outage.
+- Logs validate against their schemas in tests via `SemanticLogValidator` (`SemanticLogTreeTrait`), and `vendor/bin/stree` renders the cache log as a readable tree (`demo/run-dependency.php`, `demo/run-donut.php`).
+
+### Deprecated
+- `RepositoryLogger`, `RepositoryLoggerInterface`, `StructuredRepositoryLoggerInterface`, `NullRepositoryLogger` and `docs/schemas/repository-log.json`. Internal cache code now logs through `Koriym\SemanticLogger\SemanticLoggerInterface`; the legacy flat interface remains bound for BC but receives no internal events.
+
+### Changed
+- Cache logging call sites (`QueryRepository`, `ResourceStorage`, `DonutRepository`, `CacheInterceptor`, `AbstractDonutCacheInterceptor`, `CommandInterceptor`, `RefreshInterceptor`) now emit typed contexts through `SemanticLoggerInterface` instead of `RepositoryLoggerInterface::log()`.
+- Added runtime dependency `koriym/semantic-logger`.
+
 ## [1.16.1] - 2026-06-01
 
 ### Fixed

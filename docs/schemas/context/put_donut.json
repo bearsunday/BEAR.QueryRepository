@@ -1,0 +1,32 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/put_donut.json",
+    "title": "put_donut",
+    "description": "Event: a donut was put with its TTLs.",
+    "type": "object",
+    "required": [
+        "uri",
+        "ttl",
+        "sMaxAge"
+    ],
+    "properties": {
+        "uri": {
+            "type": "string"
+        },
+        "ttl": {
+            "type": [
+                "integer",
+                "null"
+            ],
+            "minimum": 0
+        },
+        "sMaxAge": {
+            "type": [
+                "integer",
+                "null"
+            ],
+            "minimum": 0
+        }
+    },
+    "additionalProperties": false
+}

@@ -1,0 +1,31 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_donut_view.json",
+    "title": "save_donut_view",
+    "description": "Event: a rendered donut view was stored.",
+    "type": "object",
+    "required": [
+        "uri",
+        "surrogateKeys",
+        "sMaxAge"
+    ],
+    "properties": {
+        "uri": {
+            "type": "string"
+        },
+        "surrogateKeys": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "sMaxAge": {
+            "type": [
+                "integer",
+                "null"
+            ],
+            "minimum": 0
+        }
+    },
+    "additionalProperties": false
+}

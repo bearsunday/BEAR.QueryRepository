@@ -1,0 +1,27 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
+    "title": "save_etag",
+    "description": "Event: an ETag entry was stored with its surrogate keys.",
+    "type": "object",
+    "required": [
+        "uri",
+        "etag",
+        "surrogateKeys"
+    ],
+    "properties": {
+        "uri": {
+            "type": "string"
+        },
+        "etag": {
+            "type": "string"
+        },
+        "surrogateKeys": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        }
+    },
+    "additionalProperties": false
+}

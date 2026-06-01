@@ -1,0 +1,24 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_donut.json",
+    "title": "save_donut",
+    "description": "Event: a donut structure (template) was stored.",
+    "type": "object",
+    "required": [
+        "uri",
+        "sMaxAge"
+    ],
+    "properties": {
+        "uri": {
+            "type": "string"
+        },
+        "sMaxAge": {
+            "type": [
+                "integer",
+                "null"
+            ],
+            "minimum": 0
+        }
+    },
+    "additionalProperties": false
+}

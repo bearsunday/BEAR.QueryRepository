@@ -5,9 +5,12 @@
 namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\UnmatchedQuery;
+use BEAR\QueryRepository\Log\Context\CommandResultContext;
+use BEAR\QueryRepository\Log\NullSemanticLogger;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\Code;
 use BEAR\Resource\ResourceObject;
+use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
 use ReflectionMethod;
@@ -31,10 +34,14 @@ use function sprintf;
  */
 final readonly class DonutCommandInterceptor implements MethodInterceptor
 {
+    private CommandContextFactory $commandContextFactory;
+
     public function __construct(
         private DonutRepositoryInterface $repository,
-        private MatchQueryInterface $matchQuery
+        private MatchQueryInterface $matchQuery,
+        private SemanticLoggerInterface $logger = new NullSemanticLogger()
     ){
+        $this->commandContextFactory = new CommandContextFactory();
     }
 
     #[\Override]
@@ -46,7 +53,13 @@ final readonly class DonutCommandInterceptor implements MethodInterceptor
             return $ro;
         }
 
-        $this->refreshDonutAndState($ro);
+        // Open a command scope so the donut purge/refresh nests under it (causality).
+        $openId = $this->logger->open(($this->commandContextFactory)($invocation));
+        try {
+            $this->refreshDonutAndState($ro);
+        } finally {
+            $this->logger->close(new CommandResultContext($ro->code), $openId);
+        }
 
         return $ro;
     }

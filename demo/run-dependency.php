@@ -18,9 +18,11 @@ declare(strict_types=1);
 use BEAR\QueryRepository\FakeEtagPoolModule;
 use BEAR\QueryRepository\ModuleFactory;
 use BEAR\QueryRepository\QueryRepositoryInterface;
-use BEAR\QueryRepository\RepositoryLoggerInterface;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
+use Koriym\SemanticLogger\SemanticLoggerInterface;
+use Koriym\SemanticLogger\Stree\RenderConfig;
+use Koriym\SemanticLogger\Stree\TreeRenderer;
 use Ray\Di\Injector;
 
 require dirname(__DIR__) . '/vendor/autoload.php';
@@ -65,36 +67,26 @@ $injector = new Injector(
 
 $resource = $injector->getInstance(ResourceInterface::class);
 $repository = $injector->getInstance(QueryRepositoryInterface::class);
-$logger = $injector->getInstance(RepositoryLoggerInterface::class);
+$logger = $injector->getInstance(SemanticLoggerInterface::class);
 
-// Execute scenarios silently
-$logger->log('request-start', ['uri' => 'page://self/dep/level-one']);
-$resource->get('page://self/dep/level-one');                    // 1. Initial access
+// Execute scenarios. Embedded child GETs nest under their parent GET, so the
+// log's open/close tree IS the embed/dependency tree (no reconstruction).
+$resource->get('page://self/dep/level-one');                // 1. Initial access (cache-miss chain)
+$resource->get('page://self/dep/level-one');                // 2. Re-access (cache-hit)
+$repository->purge(new Uri('page://self/dep/level-three')); // 3. Purge grandchild (cascade)
+$resource->get('page://self/dep/level-one');                // 4. Re-access after purge (rebuilt)
+$resource->get('page://self/dep/parent-a');                 // 5a. Access ParentA
+$resource->get('page://self/dep/parent-b');                 // 5b. Access ParentB
+$repository->purge(new Uri('page://self/dep/child-c'));     // 6. Purge shared child
+$resource->get('page://self/dep/parent-a');                 // 7a. Re-access ParentA
+$resource->get('page://self/dep/parent-b');                 // 7b. Re-access ParentB
 
-$logger->log('request-start', ['uri' => 'page://self/dep/level-one']);
-$resource->get('page://self/dep/level-one');                    // 2. Re-access (cache-hit)
+$log = $logger->flush();
 
-$logger->log('request-start', ['uri' => 'page://self/dep/level-three', 'method' => 'purge']);
-$repository->purge(new Uri('page://self/dep/level-three'));     // 3. Purge grandchild
+// Human/AI-readable tree (open = embed scope, close = hit/miss, events = saves/invalidations)
+echo "=== Cache Log Tree ===" . PHP_EOL;
+echo (new TreeRenderer())->render($log->toArray(), new RenderConfig(true, 0.0, 1000, true)) . PHP_EOL;
 
-$logger->log('request-start', ['uri' => 'page://self/dep/level-one']);
-$resource->get('page://self/dep/level-one');                    // 4. Re-access after purge
-
-$logger->log('request-start', ['uri' => 'page://self/dep/parent-a']);
-$resource->get('page://self/dep/parent-a');                     // 5a. Access ParentA
-
-$logger->log('request-start', ['uri' => 'page://self/dep/parent-b']);
-$resource->get('page://self/dep/parent-b');                     // 5b. Access ParentB
-
-$logger->log('request-start', ['uri' => 'page://self/dep/child-c', 'method' => 'purge']);
-$repository->purge(new Uri('page://self/dep/child-c'));         // 6. Purge shared child
-
-$logger->log('request-start', ['uri' => 'page://self/dep/parent-a']);
-$resource->get('page://self/dep/parent-a');                     // 7a. Re-access ParentA
-
-$logger->log('request-start', ['uri' => 'page://self/dep/parent-b']);
-$resource->get('page://self/dep/parent-b');                     // 7b. Re-access ParentB
-
-// Output logs only
-echo "=== Cache Log ===" . PHP_EOL;
-echo $logger . PHP_EOL;
+// Machine-readable, schema-validated JSON (also: `vendor/bin/stree <file>`)
+echo PHP_EOL . "=== Cache Log JSON ===" . PHP_EOL;
+echo json_encode($log, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL;
