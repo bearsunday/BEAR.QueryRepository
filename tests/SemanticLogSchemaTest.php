@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\Resource\ResourceInterface;
+use BEAR\Resource\Uri;
+use FakeVendor\HelloWorld\Resource\Page\None;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Koriym\SemanticLogger\SemanticLogValidator;
 use PHPUnit\Framework\TestCase;
@@ -34,12 +36,16 @@ class SemanticLogSchemaTest extends TestCase
 
     private ResourceInterface $resource;
     private SemanticLoggerInterface $logger;
+    private QueryRepositoryInterface $repository;
+    private ResourceStorageInterface $storage;
 
     protected function setUp(): void
     {
         $injector = new Injector(new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld')), __DIR__ . '/tmp');
         $this->resource = $injector->getInstance(ResourceInterface::class);
         $this->logger = $injector->getInstance(SemanticLoggerInterface::class);
+        $this->repository = $injector->getInstance(QueryRepositoryInterface::class);
+        $this->storage = $injector->getInstance(ResourceStorageInterface::class);
 
         parent::setUp();
     }
@@ -69,6 +75,33 @@ class SemanticLogSchemaTest extends TestCase
         $this->assertNotNull($commandContext, 'a command scope is opened');
         $this->assertStringContainsString('"method":"onPut"', $commandContext);
         $this->assertStringContainsString('Refresh', $commandContext);
+    }
+
+    public function testTopLevelPutIsRootedInManualStoreScope(): void
+    {
+        // A direct put() has no enclosing AOP scope, so it must root its save events under a
+        // manual_store scope; otherwise SemanticLogger drops the event-only session at flush.
+        $ro = new None();
+        $ro->uri = new Uri('page://self/none');
+        $this->repository->put($ro);
+        $tree = $this->flushAndValidate($this->logger);
+
+        $types = self::collectTypes($tree);
+        $this->assertContains('manual_store', $types, 'a manual_store scope roots the direct put');
+        $this->assertContains('manual_store_result', $types, 'the scope close records the store outcome');
+        $this->assertContains('save_value', $types, 'the save event nests under the manual_store scope');
+    }
+
+    public function testTopLevelInvalidateIsRootedInManualInvalidateScope(): void
+    {
+        // A direct invalidateTags() has no enclosing AOP scope, so it must root its outcome
+        // under a manual_invalidate scope to stay visible in the flushed log.
+        $this->storage->invalidateTags(['_test_tag_']);
+        $tree = $this->flushAndValidate($this->logger);
+
+        $types = self::collectTypes($tree);
+        $this->assertContains('manual_invalidate', $types, 'a manual_invalidate scope roots the direct invalidation');
+        $this->assertContains('invalidate', $types, 'the scope close records the invalidation outcome');
     }
 
     public function testValidatorRejectsContextViolatingItsSchema(): void

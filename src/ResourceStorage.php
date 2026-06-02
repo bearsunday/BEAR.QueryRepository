@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Log\Context\InvalidateContext;
+use BEAR\QueryRepository\Log\Context\ManualInvalidateContext;
 use BEAR\QueryRepository\Log\Context\SaveDonutContext;
 use BEAR\QueryRepository\Log\Context\SaveDonutViewContext;
 use BEAR\QueryRepository\Log\Context\SaveEtagContext;
 use BEAR\QueryRepository\Log\Context\SaveValueContext;
 use BEAR\QueryRepository\Log\Context\SaveViewContext;
+use BEAR\QueryRepository\Log\SafeSemanticLogger;
 use BEAR\RepositoryModule\Annotation\EtagPool;
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\Resource\AbstractUri;
@@ -162,13 +164,25 @@ final class ResourceStorage implements ResourceStorageInterface
             $purgerOk = false;
         }
 
-        $this->logger->event(new InvalidateContext(
+        $result = new InvalidateContext(
             $tags,
             roPoolInvalidated: $roOk,
             etagPoolInvalidated: $etagOk,
             cdnPurged: $purgerOk,
             durationMs: round((hrtime(true) - $start) / 1_000_000, 3),
-        ));
+        );
+
+        // A top-level invalidation is a direct (non-AOP) call with no enclosing scope, so the
+        // event would be dropped at flush. Root it in a manual_invalidate scope whose close
+        // carries the outcome. Nested invalidations (inside a GET or a command) stay events.
+        if ($this->logger instanceof SafeSemanticLogger && $this->logger->isTopLevel()) {
+            $openId = $this->logger->open(new ManualInvalidateContext($tags));
+            $this->logger->close($result, $openId);
+
+            return $roOk && $etagOk;
+        }
+
+        $this->logger->event($result);
 
         return $roOk && $etagOk;
     }

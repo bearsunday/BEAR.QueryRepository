@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `SafeSemanticLogger` (best-effort decorator) guarantees logging never breaks cache reads/writes; `NullSemanticLogger` is the zero-cost no-op default. Bound via `SafeSemanticLoggerProvider` in `DonutCacheModule`.
 - `invalidate` context records per-target outcomes as self-describing status words: `roPool`/`etagPool` (`invalidated`|`failed`), `cdn` (`purged`|`failed`), plus `durationMs`. The CDN purge is best-effort and no longer fails local invalidation on outage.
 - Logs validate against their schemas in tests via `SemanticLogValidator` (`SemanticLogTreeTrait`), and `vendor/bin/stree` renders the cache log as a readable tree (`demo/run-dependency.php`, `demo/run-donut.php`).
+- Direct (non-AOP) top-level `put()` and `invalidateTags()` calls are rooted in `manual_store` / `manual_invalidate` scopes so their save/invalidate events stay visible; an event with no enclosing scope would otherwise be dropped at flush.
 
 ### Deprecated
 - `RepositoryLogger`, `RepositoryLoggerInterface`, `StructuredRepositoryLoggerInterface`, `NullRepositoryLogger` and `docs/schemas/repository-log.json`. Internal cache code now logs through `Koriym\SemanticLogger\SemanticLoggerInterface`; the legacy flat interface remains bound for BC but receives no internal events.
