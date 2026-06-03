@@ -68,4 +68,66 @@ class SafeSemanticLoggerTest extends TestCase
         $restored->close(new CacheMissContext('resource'), $id);
         $this->assertCount(1, $restored->flush()->toArray()['open']);
     }
+
+    public function testEventFailureIsSwallowed(): void
+    {
+        // Delegate succeeds on open() (so SafeSemanticLogger stays unbroken and enters
+        // event()'s try) but throws on event(): the failure must be swallowed.
+        $flaky = new class implements SemanticLoggerInterface {
+            public function open(AbstractContext $context): string
+            {
+                return 'x';
+            }
+
+            public function event(AbstractContext $context): void
+            {
+                throw new RuntimeException('event failed');
+            }
+
+            public function close(AbstractContext $context, string $openId): void
+            {
+            }
+
+            public function flush(array $links = []): LogJson
+            {
+                return new LogJson('https://koriym.github.io/Koriym.SemanticLogger/schemas/semantic-log.json', [], [], [], $links);
+            }
+        };
+        $safe = new SafeSemanticLogger($flaky);
+
+        $safe->open(new GetContext('page://self/x'));
+        $safe->event(new CacheMissContext('resource')); // throws inside; must not escape
+        // The session is marked broken and flush() returns an empty log without throwing.
+        $this->assertSame([], $safe->flush()->toArray()['open']);
+    }
+
+    public function testCloseFailureIsSwallowed(): void
+    {
+        // Delegate succeeds on open() but throws on close(): the failure must be swallowed.
+        $flaky = new class implements SemanticLoggerInterface {
+            public function open(AbstractContext $context): string
+            {
+                return 'x';
+            }
+
+            public function event(AbstractContext $context): void
+            {
+            }
+
+            public function close(AbstractContext $context, string $openId): void
+            {
+                throw new RuntimeException('close failed');
+            }
+
+            public function flush(array $links = []): LogJson
+            {
+                return new LogJson('https://koriym.github.io/Koriym.SemanticLogger/schemas/semantic-log.json', [], [], [], $links);
+            }
+        };
+        $safe = new SafeSemanticLogger($flaky);
+
+        $id = $safe->open(new GetContext('page://self/x'));
+        $safe->close(new CacheMissContext('resource'), $id); // throws inside; must not escape
+        $this->assertSame([], $safe->flush()->toArray()['open']);
+    }
 }

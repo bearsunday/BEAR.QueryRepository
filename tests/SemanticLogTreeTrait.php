@@ -17,6 +17,7 @@ use function ob_get_clean;
 use function ob_start;
 use function sys_get_temp_dir;
 use function tempnam;
+use function unlink;
 
 use const JSON_UNESCAPED_SLASHES;
 
@@ -52,6 +53,7 @@ trait SemanticLogTreeTrait
             (new SemanticLogValidator())->validate($file, $schemaDir);
         } finally {
             ob_get_clean();
+            unlink($file);
         }
 
         return $tree;

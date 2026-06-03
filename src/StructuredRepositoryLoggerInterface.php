@@ -10,8 +10,7 @@ namespace BEAR\QueryRepository;
  * Separated from RepositoryLoggerInterface so that adding structured accessors
  * does not break third-party RepositoryLoggerInterface implementations (BC).
  * Use this for structural assertions instead of substring-matching __toString().
- */
-/**
+ *
  * @deprecated Since the SemanticLogger migration; structured logs are now the
  *   {@see \Koriym\SemanticLogger\LogJson} tree returned by SemanticLogger::flush().
  */

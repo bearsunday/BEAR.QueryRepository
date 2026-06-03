@@ -130,7 +130,13 @@ final class SafeSemanticLogger implements SemanticLoggerInterface
         return [];
     }
 
-    /** @param array<string, mixed> $data */
+    /**
+     * Session state is never carried across serialization, so the payload is ignored.
+     *
+     * @param array<string, mixed> $data
+     *
+     * @SuppressWarnings("PHPMD.UnusedFormalParameter")
+     */
     public function __unserialize(array $data): void
     {
         $this->logger = new SemanticLogger();
