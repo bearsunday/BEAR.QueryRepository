@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Cache observability is now built on [Koriym.SemanticLogger](https://github.com/koriym/Koriym.SemanticLogger): an open/event/close tree whose nesting **is** the embed/dependency structure (a parent's embedded children nest under it). Typed `AbstractContext` subclasses live in `src/Log/Context/` with per-context JSON Schemas in `docs/schemas/context/`.
 - `SafeSemanticLogger` (best-effort decorator) guarantees logging never breaks cache reads/writes; `NullSemanticLogger` is the zero-cost no-op default. Bound via `SafeSemanticLoggerProvider` in `DonutCacheModule`.
-- `invalidate` context records per-target outcomes as self-describing status words: `roPool`/`etagPool` (`invalidated`|`failed`), `cdn` (`purged`|`failed`), plus `durationMs`. The CDN purge is best-effort and no longer fails local invalidation on outage.
+- `invalidate` context records per-target outcomes as self-describing status words: `roPool`/`etagPool` (`invalidated`|`failed`), `cdn` (`purged`|`failed`), plus `durationMs`. A CDN purge failure is fail-closed: the local pools are invalidated first and the outcome is logged as `cdn: failed`, then the purge exception propagates so a write does not silently leave stale CDN content.
 - Logs validate against their schemas in tests via `SemanticLogValidator` (`SemanticLogTreeTrait`), and `vendor/bin/stree` renders the cache log as a readable tree (`demo/run-dependency.php`, `demo/run-donut.php`).
 - Direct (non-AOP) top-level `put()` and `invalidateTags()` calls are rooted in `manual_store` / `manual_invalidate` scopes so their save/invalidate events stay visible; an event with no enclosing scope would otherwise be dropped at flush.
 

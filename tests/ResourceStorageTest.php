@@ -11,6 +11,7 @@ use FakeVendor\HelloWorld\Resource\Page\Index;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\ProviderInterface;
+use RuntimeException;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapter;
 
@@ -78,17 +79,21 @@ class ResourceStorageTest extends TestCase
         $this->assertSame('purged', $context->jsonSerialize()['cdn']);
     }
 
-    public function testInvalidateTagsTreatsPurgerFailureAsBestEffort(): void
+    public function testInvalidateTagsFailsClosedWhenPurgerFails(): void
     {
         $logger = new RecordingSemanticLogger();
         $storage = self::getResourceStorageInstance($logger, new FakeThrowingPurger());
 
-        // A CDN purger outage must NOT fail local invalidation: the local pools are
-        // already invalidated, so invalidateTags returns true without throwing...
-        $result = $storage->invalidateTags(['_user_']);
-        $this->assertTrue($result);
+        // The CDN purge is fail-closed: a purge failure propagates so the write does not
+        // silently leave stale CDN content. The local pools are invalidated first and the
+        // outcome is logged as cdn=failed before the exception surfaces.
+        try {
+            $storage->invalidateTags(['_user_']);
+            $this->fail('Expected the purger failure to propagate (fail-closed)');
+        } catch (RuntimeException $e) {
+            $this->assertStringContainsString('purge failed', $e->getMessage());
+        }
 
-        // ...and the purge failure is recorded (not masked) as cdn=failed.
         $context = $logger->events[0];
         assert($context instanceof InvalidateContext);
         $this->assertTrue($context->roPoolInvalidated);

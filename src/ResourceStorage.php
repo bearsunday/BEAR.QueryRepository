@@ -150,41 +150,55 @@ final class ResourceStorage implements ResourceStorageInterface
     public function invalidateTags(array $tags): bool
     {
         $start = hrtime(true);
-        // Local pools are the authoritative invalidation; let their failures surface.
         $roOk = $this->roPool->invalidateTags($tags);
         $etagOk = $this->etagPool->invalidateTags($tags);
 
-        // The CDN purger is an external, best-effort target: a purge outage must not
-        // fail a write whose local cache has already been invalidated. The outcome is
-        // recorded (purgerOk) so cache destruction stays verifiable from the log.
-        $purgerOk = true;
+        // The CDN purge is fail-closed: a purge failure must surface so a write does not
+        // silently leave stale CDN content. The local pools are invalidated first, and the
+        // outcome is logged (cdn=failed) before the exception is re-thrown to the caller.
+        $purgerError = null;
         try {
             ($this->purger)(implode(' ', $tags));
-        } catch (Throwable) {
-            $purgerOk = false;
+        } catch (Throwable $e) {
+            $purgerError = $e;
         }
 
         $result = new InvalidateContext(
             $tags,
             roPoolInvalidated: $roOk,
             etagPoolInvalidated: $etagOk,
-            cdnPurged: $purgerOk,
+            cdnPurged: $purgerError === null,
             durationMs: round((hrtime(true) - $start) / 1_000_000, 3),
         );
 
-        // A top-level invalidation is a direct (non-AOP) call with no enclosing scope, so the
-        // event would be dropped at flush. Root it in a manual_invalidate scope whose close
-        // carries the outcome. Nested invalidations (inside a GET or a command) stay events.
+        $this->logInvalidation($result, $tags);
+
+        if ($purgerError !== null) {
+            throw $purgerError;
+        }
+
+        return $roOk && $etagOk;
+    }
+
+    /**
+     * Record an invalidation outcome
+     *
+     * A top-level invalidation is a direct (non-AOP) call with no enclosing scope, so the
+     * event would be dropped at flush. Root it in a manual_invalidate scope whose close
+     * carries the outcome. Nested invalidations (inside a GET or a command) stay events.
+     *
+     * @param list<string> $tags
+     */
+    private function logInvalidation(InvalidateContext $result, array $tags): void
+    {
         if ($this->logger instanceof SafeSemanticLogger && $this->logger->isTopLevel()) {
             $openId = $this->logger->open(new ManualInvalidateContext($tags));
             $this->logger->close($result, $openId);
 
-            return $roOk && $etagOk;
+            return;
         }
 
         $this->logger->event($result);
-
-        return $roOk && $etagOk;
     }
 
     /**

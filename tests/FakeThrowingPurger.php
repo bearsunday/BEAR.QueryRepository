@@ -8,8 +8,8 @@ use Override;
 use RuntimeException;
 
 /**
- * A purger that always throws, to test that invalidate-etag records purgerOk=false
- * (and still logs the outcome) when the CDN purge fails.
+ * A purger that always throws, to test that invalidateTags() is fail-closed: it logs
+ * the outcome as cdn=failed and then propagates the purge failure.
  */
 final class FakeThrowingPurger implements PurgerInterface
 {
