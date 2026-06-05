@@ -164,12 +164,17 @@ All dependency tests verify both resource cache and ETag invalidation:
 
 ## Known Limitations (Deliberate Scope)
 
-- **Request-end flush / long-running runtimes.** The logger is an injector singleton
-  that accumulates until `flush()`. As before this migration, this package does not
-  itself flush/reset per request; under Swoole/RoadRunner a host should flush at the
-  request boundary (and concurrent coroutines sharing one logger would interleave the
-  open/close stack). `SafeSemanticLogger` bounds the damage: a dirty session is
-  recovered on the next `flush()` (see `SafeSemanticLoggerTest`).
+- **Request-end flush / concurrent long-running runtimes.** The logger is an injector
+  singleton with a stack-based session, and (as before this migration) this package does
+  not flush/reset per request; under Swoole/RoadRunner a host should flush at the request
+  boundary. Under *concurrent* coroutines sharing the one singleton, an interleaved
+  open/close violates LIFO and `SafeSemanticLogger` marks the session broken — so the
+  current request's log can be **dropped** (empty flush) rather than merely interleaved.
+  Cache behavior is unaffected (logging is a best-effort side-channel) and the next
+  `flush()` recovers a fresh session (see `SafeSemanticLoggerTest`). Making the logger
+  request/coroutine-scoped (so concurrent sessions cannot cross-nest or drop) is the
+  robust fix and is intentionally deferred to the host flush-lifecycle work; the default
+  PHP-FPM (one request per process) deployment is unaffected.
 - **Donut-view hit vs. rebuild.** The donut GET scope closes as `cache_hit` (layer
   `donut-view`) whenever a ResourceObject is served — including when it was rebuilt
   from a cached donut template. The two are still distinguishable by the presence of a
