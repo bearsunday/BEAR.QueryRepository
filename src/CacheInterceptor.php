@@ -21,6 +21,7 @@ final class CacheInterceptor implements MethodInterceptor
 {
     public function __construct(
         private readonly QueryRepositoryInterface $repository,
+        private readonly RepositoryLoggerInterface $logger,
     ) {
     }
 
@@ -41,11 +42,13 @@ final class CacheInterceptor implements MethodInterceptor
         }
 
         if ($state instanceof ResourceState) {
+            $this->logger->log('cache-hit uri:%s', $ro->uri);
             $state->visit($ro);
 
             return $ro;
         }
 
+        $this->logger->log('cache-miss uri:%s', $ro->uri);
         /** @psalm-suppress MixedAssignment */
         $ro = $invocation->proceed();
         assert($ro instanceof ResourceObject);

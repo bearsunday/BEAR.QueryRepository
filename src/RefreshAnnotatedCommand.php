@@ -21,6 +21,7 @@ final class RefreshAnnotatedCommand implements CommandInterface
     public function __construct(
         private readonly QueryRepositoryInterface $repository,
         private readonly ResourceInterface $resource,
+        private readonly RepositoryLoggerInterface $logger,
     ) {
     }
 
@@ -50,10 +51,12 @@ final class RefreshAnnotatedCommand implements CommandInterface
 
         $uri = new Uri($this->getUri($ro, $annotation));
         if ($annotation instanceof Purge) {
+            $this->logger->log('purge-command uri:%s', $uri);
             $this->repository->purge($uri);
         }
 
         if ($annotation instanceof Refresh) {
+            $this->logger->log('refresh-command uri:%s', $uri);
             $this->repository->purge($uri);
             $ro = $this->resource->get((string) $uri);
             $this->repository->put($ro);

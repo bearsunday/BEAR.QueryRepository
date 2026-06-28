@@ -7,10 +7,11 @@ namespace BEAR\QueryRepository;
 use BEAR\RepositoryModule\Annotation\HttpCache;
 use BEAR\Resource\Request;
 use BEAR\Resource\ResourceObject;
-use DateTimeInterface;
 use Override;
 
 use function gmdate;
+
+use const DATE_RFC1123;
 
 final class DevEtagSetter implements EtagSetterInterface
 {
@@ -30,7 +31,7 @@ final class DevEtagSetter implements EtagSetterInterface
         // This is useful for debugging purposes.
         // Usually, the ETag is a hash of the resource view or body.
         $ro->headers[Header::ETAG] = $uriEtag;
-        $ro->headers[Header::LAST_MODIFIED] = gmdate(DateTimeInterface::RFC7231, 0);
+        $ro->headers[Header::LAST_MODIFIED] = gmdate(DATE_RFC1123, 0);
         $this->setCacheDependency($ro);
     }
 

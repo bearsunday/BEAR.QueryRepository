@@ -78,6 +78,7 @@ class DonutQueryInterceptorTest extends TestCase
 try-donut uri:page://self/html/blog-posting
 no-donut-found uri:page://self/html/blog-posting
 put-donut: uri:page://self/html/blog-posting ttl: s-maxage:0
+cache-miss uri:page://self/html/comment
 put-query-repository uri:page://self/html/comment
 invalidate-etag tags:_html_comment_
 save-etag uri:page://self/html/comment etag:_html_comment_ surrogate-keys:comment01 _html_comment_
@@ -86,6 +87,7 @@ invalidate-etag tags:_html_blog-posting_
 save-etag uri:page://self/html/blog-posting etag:_html_blog-posting_ surrogate-keys:blog-posting-page _html_blog-posting_ _html_comment_ comment01
 save-donut-view uri:page://self/html/blog-posting surrogate-keys:_html_blog-posting_ blog-posting-page _html_comment_ comment01 s-maxage:
 save-donut uri:page://self/html/blog-posting s-maxage:
+cache-hit uri:page://self/html/comment
 get
 try-donut-view: uri:page://self/html/blog-posting
 found-donut-view: uri:page://self/html/blog-posting', $log);

@@ -14,6 +14,7 @@ final class CacheDependency implements CacheDependencyInterface
 {
     public function __construct(
         private readonly UriTagInterface $uriTag,
+        private readonly RepositoryLoggerInterface $logger,
     ) {
     }
 
@@ -29,5 +30,6 @@ final class CacheDependency implements CacheDependencyInterface
         }
 
         $from->headers[Header::SURROGATE_KEY] = $cacheDependencyTags;
+        $this->logger->log('depends from:%s to:%s tags:%s', $from->uri, $to->uri, $cacheDependencyTags);
     }
 }

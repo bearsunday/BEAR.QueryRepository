@@ -23,7 +23,8 @@ final class DonutCommandInterceptor implements MethodInterceptor
 {
     public function __construct(
         private readonly DonutRepositoryInterface $repository,
-        private readonly MatchQueryInterface $matchQuery
+        private readonly MatchQueryInterface $matchQuery,
+        private readonly RepositoryLoggerInterface $logger,
     ){
     }
 
@@ -46,6 +47,8 @@ final class DonutCommandInterceptor implements MethodInterceptor
         $getQuery =($this->matchQuery)($ro);
         $delUri = clone $ro->uri;
         $delUri->query = $getQuery;
+
+        $this->logger->log('donut-command-refresh uri:%s', $ro->uri);
 
         // purge donut, resource state cache and etag
         $this->repository->purge($delUri);

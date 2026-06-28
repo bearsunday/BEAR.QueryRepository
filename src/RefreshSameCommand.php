@@ -15,7 +15,8 @@ final class RefreshSameCommand implements CommandInterface
 {
     public function __construct(
         private readonly QueryRepositoryInterface $repository,
-        private readonly MatchQueryInterface $matchQuery
+        private readonly MatchQueryInterface $matchQuery,
+        private readonly RepositoryLoggerInterface $logger,
     ){
     }
 
@@ -29,6 +30,8 @@ final class RefreshSameCommand implements CommandInterface
         $getQuery = $this->getQuery($ro);
         $delUri = clone $ro->uri;
         $delUri->query = $getQuery;
+
+        $this->logger->log('refresh-same uri:%s', $ro->uri);
 
         // delete data in repository
         $this->repository->purge($delUri);

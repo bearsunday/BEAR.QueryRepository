@@ -12,6 +12,7 @@ use Ray\Di\Injector;
 
 use function assert;
 use function dirname;
+use function file_put_contents;
 
 class DonutCacheInterceptorTest extends TestCase
 {
@@ -39,7 +40,7 @@ class DonutCacheInterceptorTest extends TestCase
     protected function tearDown(): void
     {
         $log = ((string) $this->logger);
-        // error_log((string) $log);  // uncomment to see the debug log
+        file_put_contents('/tmp/donut_cache_log.txt', (string) $log);
         unset($log);
     }
 
@@ -67,6 +68,7 @@ class DonutCacheInterceptorTest extends TestCase
 try-donut uri:page://self/html/blog-posting-donut
 no-donut-found uri:page://self/html/blog-posting-donut
 put-donut: uri:page://self/html/blog-posting-donut ttl:
+cache-miss uri:page://self/html/comment
 put-query-repository uri:page://self/html/comment
 invalidate-etag tags:_html_comment_
 save-etag uri:page://self/html/comment etag:_html_comment_ surrogate-keys:comment01 _html_comment_
@@ -76,7 +78,8 @@ save-donut uri:page://self/html/blog-posting-donut s-maxage:
 get
 try-donut-view: uri:page://self/html/blog-posting-donut
 try-donut uri:page://self/html/blog-posting-donut
-refresh-donut: uri:page://self/html/blog-posting-donut', $log);
+refresh-donut: uri:page://self/html/blog-posting-donut
+cache-hit uri:page://self/html/comment', $log);
         $this->assertArrayNotHasKey('Age', $blogPosting->headers);
         $this->assertArrayNotHasKey(Header::CDN_CACHE_CONTROL, $blogPosting->headers);
     }

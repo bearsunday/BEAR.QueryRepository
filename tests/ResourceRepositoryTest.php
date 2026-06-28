@@ -40,7 +40,7 @@ class ResourceRepositoryTest extends TestCase
         };
         $this->repository = new Repository(
             new RepositoryLogger(),
-            new HeaderSetter(new EtagSetter(new CacheDependency(new UriTag()))),
+            new HeaderSetter(new EtagSetter(new CacheDependency(new UriTag(), new RepositoryLogger()))),
             new ResourceStorage(
                 new RepositoryLogger(),
                 new NullPurger(),
@@ -129,7 +129,7 @@ class ResourceRepositoryTest extends TestCase
         };
         $repository = new Repository(
             new RepositoryLogger(),
-            new HeaderSetter(new EtagSetter(new CacheDependency(new UriTag()))),
+            new HeaderSetter(new EtagSetter(new CacheDependency(new UriTag(), new RepositoryLogger()))),
             new ResourceStorage(
                 new RepositoryLogger(),
                 new NullPurger(),
