@@ -4,31 +4,23 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\QueryRepository\Log\Context\DependsOnContext;
-use BEAR\QueryRepository\Log\NullSemanticLogger;
 use BEAR\Resource\ResourceObject;
-use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 
-use function explode;
 use function sprintf;
 
 final readonly class CacheDependency implements CacheDependencyInterface
 {
     public function __construct(
-        private UriTagInterface $uriTag,
-        private SemanticLoggerInterface $logger = new NullSemanticLogger(),
+        private CacheTags $cacheTags,
     ) {
     }
 
     #[Override]
     public function depends(ResourceObject $from, ResourceObject $to): void
     {
-        $childTags = ($this->uriTag)($to->uri);
-        if (isset($to->headers[Header::SURROGATE_KEY])) {
-            $childTags .= sprintf(' %s', $to->headers[Header::SURROGATE_KEY]);
-            unset($to->headers[Header::SURROGATE_KEY]);
-        }
+        $childTags = $this->cacheTags->childTags($to);
+        unset($to->headers[Header::SURROGATE_KEY]);
 
         // Accumulate across every embedded child: a resource that embeds more than one
         // child must depend on all of them, not only the last. Overwriting here used to
@@ -36,11 +28,5 @@ final readonly class CacheDependency implements CacheDependencyInterface
         $from->headers[Header::SURROGATE_KEY] = isset($from->headers[Header::SURROGATE_KEY])
             ? sprintf('%s %s', $from->headers[Header::SURROGATE_KEY], $childTags)
             : $childTags;
-
-        $this->logger->event(new DependsOnContext(
-            (string) $from->uri,
-            (string) $to->uri,
-            explode(' ', $childTags),
-        ));
     }
 }

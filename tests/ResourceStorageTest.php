@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Log\Context\InvalidateContext;
-use BEAR\QueryRepository\Log\NullSemanticLogger;
 use BEAR\Resource\Uri;
 use FakeVendor\HelloWorld\Resource\Page\Index;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
@@ -22,7 +21,7 @@ class ResourceStorageTest extends TestCase
     private ResourceStorage $storage;
     private Index $ro;
 
-    public static function getResourceStorageInstance(SemanticLoggerInterface|null $logger = null, PurgerInterface|null $purger = null): ResourceStorage
+    public static function getResourceStorageInstance(PurgerInterface|null $purger = null): ResourceStorage
     {
         $tagAwareAdapter = new TagAwareAdapter(new FilesystemAdapter('', 0, __DIR__ . '/tmp'));
         $tagAwareAdapterProvider = new class ($tagAwareAdapter) implements ProviderInterface{
@@ -37,13 +36,27 @@ class ResourceStorageTest extends TestCase
         };
 
         return new ResourceStorage(
-            $logger ?? new NullSemanticLogger(),
             $purger ?? new NullPurger(),
             new UriTag(),
+            new CacheTags(new UriTag()),
             new ResourceStorageSaver(),
             new GlobalServerContext(),
             $tagAwareAdapterProvider,
             $tagAwareAdapterProvider,
+        );
+    }
+
+    /**
+     * The storage wrapped by its logging decorator: invalidation logging and the
+     * fail-closed CDN re-throw live here, not in the storage.
+     */
+    public static function getLoggableStorageInstance(SemanticLoggerInterface $logger, PurgerInterface|null $purger = null): LoggableResourceStorage
+    {
+        return new LoggableResourceStorage(
+            self::getResourceStorageInstance($purger),
+            $logger,
+            new CacheTags(new UriTag()),
+            new UriTag(),
         );
     }
 
@@ -66,7 +79,7 @@ class ResourceStorageTest extends TestCase
     public function testInvalidateTagsRecordsSuccessfulOutcome(): void
     {
         $logger = new RecordingSemanticLogger();
-        $storage = self::getResourceStorageInstance($logger);
+        $storage = self::getLoggableStorageInstance($logger);
 
         $storage->invalidateTags(['_user_']);
 
@@ -82,7 +95,7 @@ class ResourceStorageTest extends TestCase
     public function testInvalidateTagsFailsClosedWhenPurgerFails(): void
     {
         $logger = new RecordingSemanticLogger();
-        $storage = self::getResourceStorageInstance($logger, new FakeThrowingPurger());
+        $storage = self::getLoggableStorageInstance($logger, new FakeThrowingPurger());
 
         // The CDN purge is fail-closed: a purge failure propagates so the write does not
         // silently leave stale CDN content. The local pools are invalidated first and the

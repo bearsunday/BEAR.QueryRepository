@@ -65,7 +65,11 @@ interface ResourceStorageInterface
     /**
      * Invalidate tags
      *
+     * Returns the per-target outcome (resource pool / ETag pool / CDN) rather than a
+     * bare bool, so the logging decorator can report what actually happened. The CDN
+     * purge error is carried on the result, not thrown, so logging can run first.
+     *
      * @param list<string> $tags
      */
-    public function invalidateTags(array $tags): bool;
+    public function invalidateTags(array $tags): InvalidateResult;
 }

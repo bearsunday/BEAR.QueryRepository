@@ -61,14 +61,22 @@ final class QueryRepositoryModule extends AbstractModule
         $this->bind(TagAwareAdapterInterface::class)->annotatedWith(EtagPool::class)->toInstance(null);
         // core
         $this->bind(QueryRepositoryInterface::class)->to(QueryRepository::class)->in(Scope::SINGLETON);
-        $this->bind(CacheDependencyInterface::class)->to(CacheDependency::class);
+        // CacheDependency is likewise wrapped by a logging decorator; the undecorated
+        // dependency resolver is bound under 'origin'.
+        $this->bind(CacheDependencyInterface::class)->annotatedWith('origin')->to(CacheDependency::class);
+        $this->bind(CacheDependencyInterface::class)->to(LoggableCacheDependency::class);
         $this->bind(EtagSetterInterface::class)->to(EtagSetter::class);
         $this->bind(NamedParameterInterface::class)->to(NamedParameter::class);
-        $this->bind(ResourceStorageInterface::class)->to(ResourceStorage::class)->in(Scope::SINGLETON);
+        // The storage is wrapped by a logging decorator: cache writes are emitted as
+        // semantic-log events in LoggableResourceStorage, keeping ResourceStorage itself
+        // free of any logging concern. The undecorated storage is bound under 'origin'.
+        $this->bind(ResourceStorageInterface::class)->annotatedWith('origin')->to(ResourceStorage::class)->in(Scope::SINGLETON);
+        $this->bind(ResourceStorageInterface::class)->to(LoggableResourceStorage::class)->in(Scope::SINGLETON);
         $this->bind(MatchQueryInterface::class)->to(MatchQuery::class);
         $this->bind(RefreshAnnotatedCommand::class);
         $this->bind(RefreshSameCommand::class);
         $this->bind(ResourceStorageSaver::class);
+        $this->bind(CacheTags::class);
         // Server context for thread safety (Swoole, RoadRunner, etc.)
         $this->bind(ServerContextInterface::class)->to(GlobalServerContext::class)->in(Scope::SINGLETON);
         // #[Cacheable]

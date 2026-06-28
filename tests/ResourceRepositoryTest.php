@@ -41,16 +41,16 @@ class ResourceRepositoryTest extends TestCase
             new NullSemanticLogger(),
             new HeaderSetter(new EtagSetter()),
             new ResourceStorage(
-                new NullSemanticLogger(),
                 new NullPurger(),
                 new UriTag(),
+                new CacheTags(new UriTag()),
                 new ResourceStorageSaver(),
                 new GlobalServerContext(),
                 $tagAwareAdapterProvider,
                 $tagAwareAdapterProvider,
             ),
             new Expiry(0, 0, 0),
-            new CacheDependency(new UriTag()),
+            new CacheDependency(new CacheTags(new UriTag())),
         );
         $this->ro = new Index();
         $this->ro->uri = new Uri('page://self/user');
@@ -109,16 +109,16 @@ class ResourceRepositoryTest extends TestCase
             new NullSemanticLogger(),
             new HeaderSetter(new EtagSetter()),
             new ResourceStorage(
-                new NullSemanticLogger(),
                 new NullPurger(),
                 new UriTag(),
+                new CacheTags(new UriTag()),
                 new ResourceStorageSaver(),
                 new GlobalServerContext(),
                 $tagAwareAdapterProvider,
                 $tagAwareAdapterProvider,
             ),
             new Expiry(0, 0, 0),
-            new CacheDependency(new UriTag()),
+            new CacheDependency(new CacheTags(new UriTag())),
         );
         $this->assertInstanceOf(Repository::class, $repository);
     }

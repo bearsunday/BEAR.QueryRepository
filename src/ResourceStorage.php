@@ -4,44 +4,30 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\QueryRepository\Log\Context\InvalidateContext;
-use BEAR\QueryRepository\Log\Context\ManualInvalidateContext;
-use BEAR\QueryRepository\Log\Context\SaveDonutContext;
-use BEAR\QueryRepository\Log\Context\SaveDonutViewContext;
-use BEAR\QueryRepository\Log\Context\SaveEtagContext;
-use BEAR\QueryRepository\Log\Context\SaveValueContext;
-use BEAR\QueryRepository\Log\Context\SaveViewContext;
-use BEAR\QueryRepository\Log\SafeSemanticLogger;
 use BEAR\RepositoryModule\Annotation\EtagPool;
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\RequestInterface;
 use BEAR\Resource\ResourceObject;
-use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 use Ray\Di\Di\Set;
 use Ray\Di\ProviderInterface;
 use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 use Throwable;
 
-use function array_merge;
-use function array_unique;
-use function array_values;
 use function assert;
 use function explode;
-use function hrtime;
 use function implode;
 use function is_array;
-use function round;
 use function sprintf;
 use function strtoupper;
 use function trim;
 
 /**
  * @psalm-type Props = array{
- *     logger: SemanticLoggerInterface,
  *     purger:PurgerInterface,
  *     uriTag: UriTag,
+ *     cacheTags: CacheTags,
  *     saver: ResourceStorageSaver,
  *     roProvider:ProviderInterface<TagAwareAdapterInterface>,
  *     etagProvider: ProviderInterface<TagAwareAdapterInterface>,
@@ -73,9 +59,9 @@ final class ResourceStorage implements ResourceStorageInterface
      * @param ProviderInterface<TagAwareAdapterInterface> $etagPoolProvider
      */
     public function __construct(
-        private SemanticLoggerInterface $logger,
         private PurgerInterface $purger,
         private UriTagInterface $uriTag,
+        private CacheTags $cacheTags,
         private ResourceStorageSaver $saver,
         private ServerContextInterface $serverContext,
         #[Set(TagAwareAdapterInterface::class, ResourceObjectPool::class)]
@@ -140,65 +126,30 @@ final class ResourceStorage implements ResourceStorageInterface
     {
         $uriTag = ($this->uriTag)($uri);
 
-        return $this->invalidateTags([$uriTag]);
+        return $this->invalidateTags([$uriTag])->isInvalidated();
     }
 
     /**
      * {@inheritDoc}
+     *
+     * Performs the invalidation and reports the per-target outcome. Logging, the
+     * top-level scope, and the fail-closed re-throw on CDN failure are the logging
+     * decorator's responsibility (see LoggableResourceStorage).
      */
     #[Override]
-    public function invalidateTags(array $tags): bool
+    public function invalidateTags(array $tags): InvalidateResult
     {
-        $start = hrtime(true);
         $roOk = $this->roPool->invalidateTags($tags);
         $etagOk = $this->etagPool->invalidateTags($tags);
 
-        // The CDN purge is fail-closed: a purge failure must surface so a write does not
-        // silently leave stale CDN content. The local pools are invalidated first, and the
-        // outcome is logged (cdn=failed) before the exception is re-thrown to the caller.
-        $purgerError = null;
+        $cdnError = null;
         try {
             ($this->purger)(implode(' ', $tags));
         } catch (Throwable $e) {
-            $purgerError = $e;
+            $cdnError = $e;
         }
 
-        $result = new InvalidateContext(
-            $tags,
-            roPoolInvalidated: $roOk,
-            etagPoolInvalidated: $etagOk,
-            cdnPurged: $purgerError === null,
-            durationMs: round((hrtime(true) - $start) / 1_000_000, 3),
-        );
-
-        $this->logInvalidation($result, $tags);
-
-        if ($purgerError !== null) {
-            throw $purgerError;
-        }
-
-        return $roOk && $etagOk;
-    }
-
-    /**
-     * Record an invalidation outcome
-     *
-     * A top-level invalidation is a direct (non-AOP) call with no enclosing scope, so the
-     * event would be dropped at flush. Root it in a manual_invalidate scope whose close
-     * carries the outcome. Nested invalidations (inside a GET or a command) stay events.
-     *
-     * @param list<string> $tags
-     */
-    private function logInvalidation(InvalidateContext $result, array $tags): void
-    {
-        if ($this->logger instanceof SafeSemanticLogger && $this->logger->isTopLevel()) {
-            $openId = $this->logger->open(new ManualInvalidateContext($tags));
-            $this->logger->close($result, $openId);
-
-            return;
-        }
-
-        $this->logger->event($result);
+        return new InvalidateResult($tags, $roOk, $etagOk, $cdnError);
     }
 
     /**
@@ -213,11 +164,9 @@ final class ResourceStorage implements ResourceStorageInterface
         $body = $this->evaluateBody($ro->body);
         $value = ResourceState::create($ro, $body, null);
         $key = $this->getUriKey($ro->uri, self::KEY_RO);
-        $tags = $this->getTags($ro);
-        $saved = $this->saver->__invoke($key, $value, $this->roPool, $tags, $ttl);
-        $this->logger->event(new SaveValueContext((string) $ro->uri, $tags, $ttl));
+        $tags = $this->cacheTags->ofResource($ro);
 
-        return $saved;
+        return $this->saver->__invoke($key, $value, $this->roPool, $tags, $ttl);
     }
 
     /**
@@ -232,11 +181,9 @@ final class ResourceStorage implements ResourceStorageInterface
         $body = $this->evaluateBody($ro->body);
         $value = ResourceState::create($ro, $body, $ro->view);
         $key = $this->getUriKey($ro->uri, self::KEY_RO);
-        $tags = $this->getTags($ro);
-        $saved = $this->saver->__invoke($key, $value, $this->roPool, $tags, $ttl);
-        $this->logger->event(new SaveViewContext((string) $ro->uri, $ttl));
+        $tags = $this->cacheTags->ofResource($ro);
 
-        return $saved;
+        return $this->saver->__invoke($key, $value, $this->roPool, $tags, $ttl);
     }
 
     /**
@@ -247,7 +194,6 @@ final class ResourceStorage implements ResourceStorageInterface
     {
         $key = $this->getUriKey($uri, self::KEY_DONUT);
         $result = $this->saver->__invoke($key, $donut, $this->roPool, $headerKeys, $sMaxAge);
-        $this->logger->event(new SaveDonutContext((string) $uri, $sMaxAge));
         assert($result, 'Donut save failed.');
     }
 
@@ -256,26 +202,9 @@ final class ResourceStorage implements ResourceStorageInterface
     {
         $resourceState = ResourceState::create($ro, [], $ro->view);
         $key = $this->getUriKey($ro->uri, self::KEY_RO);
-        $tags = $this->getTags($ro);
-        $saved = $this->saver->__invoke($key, $resourceState, $this->roPool, $tags, $ttl);
-        $this->logger->event(new SaveDonutViewContext((string) $ro->uri, $tags, $ttl));
+        $tags = $this->cacheTags->ofResource($ro);
 
-        return $saved;
-    }
-
-    /** @return list<string> */
-    private function getTags(ResourceObject $ro): array
-    {
-        $etag = $ro->headers['ETag'];
-        $tags = [$etag, ($this->uriTag)($ro->uri)];
-        if (isset($ro->headers[Header::SURROGATE_KEY])) {
-            $tags = array_merge($tags, explode(' ', $ro->headers[Header::SURROGATE_KEY]));
-        }
-
-        /** @var list<string> $uniqueTags */
-        $uniqueTags = array_values(array_unique($tags));
-
-        return $uniqueTags;
+        return $this->saver->__invoke($key, $resourceState, $this->roPool, $tags, $ttl);
     }
 
     private function evaluateBody(mixed $body): mixed
@@ -329,21 +258,16 @@ final class ResourceStorage implements ResourceStorageInterface
     #[Override]
     public function saveEtag(AbstractUri $uri, string $etag, string $surrogateKeys, int|null $ttl): void
     {
-        $tags = $surrogateKeys !== '' ? explode(' ', $surrogateKeys) : [];
-        $tags[] = (new UriTag())($uri);
-        /** @var list<string> $uniqueTags */
-        $uniqueTags = array_values(array_unique($tags));
-        // Sanitize etag to remove reserved characters
-        $this->saver->__invoke($etag, 'etag', $this->etagPool, $uniqueTags, $ttl);
-        $this->logger->event(new SaveEtagContext((string) $uri, $etag, $uniqueTags));
+        $tags = $this->cacheTags->ofEtag($uri, $surrogateKeys);
+        $this->saver->__invoke($etag, 'etag', $this->etagPool, $tags, $ttl);
     }
 
     public function __serialize(): array
     {
         return [
-            'logger' => $this->logger,
             'purger' => $this->purger,
             'uriTag' => $this->uriTag,
+            'cacheTags' => $this->cacheTags,
             'saver' => $this->saver,
             'roProvider' => $this->roPoolProvider,
             'etagProvider' => $this->etagPoolProvider,
@@ -358,9 +282,9 @@ final class ResourceStorage implements ResourceStorageInterface
      */
     public function __unserialize(array $data): void
     {
-        $this->logger = $data['logger'];
         $this->purger = $data['purger'];
         $this->uriTag = $data['uriTag'];
+        $this->cacheTags = $data['cacheTags'];
         $this->saver = $data['saver'];
         $this->serverContext = $data['serverContext'];
         $this->initializePools($data['roProvider'], $data['etagProvider']);
