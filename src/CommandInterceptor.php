@@ -31,15 +31,13 @@ use Ray\Aop\MethodInvocation;
  */
 final readonly class CommandInterceptor implements MethodInterceptor
 {
-    private CommandContextFactory $commandContextFactory;
-
     /** @param CommandInterface[] $commands */
     public function __construct(
         #[Commands]
         private array $commands,
+        private CommandContextFactory $commandContextFactory,
         private SemanticLoggerInterface $logger = new NullSemanticLogger(),
     ) {
-        $this->commandContextFactory = new CommandContextFactory();
     }
 
     /**

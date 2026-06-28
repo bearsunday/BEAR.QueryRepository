@@ -31,21 +31,9 @@ final class SafeSemanticLogger implements SemanticLoggerInterface
     private const EMPTY_SCHEMA_URL = 'https://koriym.github.io/Koriym.SemanticLogger/schemas/semantic-log.json';
 
     private bool $broken = false;
-    private int $depth = 0;
 
     public function __construct(private SemanticLoggerInterface $logger)
     {
-    }
-
-    /**
-     * Whether no operation scope is currently open (the next open would be top-level)
-     *
-     * Lets callers distinguish an application-initiated (manual) operation from one
-     * nested inside a framework scope (a request GET or a write command).
-     */
-    public function isTopLevel(): bool
-    {
-        return $this->depth === 0;
     }
 
     #[Override]
@@ -56,10 +44,7 @@ final class SafeSemanticLogger implements SemanticLoggerInterface
         }
 
         try {
-            $id = $this->logger->open($context);
-            $this->depth++;
-
-            return $id;
+            return $this->logger->open($context);
         } catch (Throwable) {
             $this->broken = true;
 
@@ -90,9 +75,6 @@ final class SafeSemanticLogger implements SemanticLoggerInterface
 
         try {
             $this->logger->close($context, $openId);
-            if ($this->depth > 0) {
-                $this->depth--;
-            }
         } catch (Throwable) {
             $this->broken = true;
         }
@@ -105,7 +87,6 @@ final class SafeSemanticLogger implements SemanticLoggerInterface
         try {
             $log = $this->logger->flush($links);
             $this->broken = false;
-            $this->depth = 0;
 
             return $log;
         } catch (Throwable) {
@@ -114,7 +95,6 @@ final class SafeSemanticLogger implements SemanticLoggerInterface
             // surface the failure to the cache caller.
             $this->logger = new SemanticLogger();
             $this->broken = false;
-            $this->depth = 0;
 
             return new LogJson(self::EMPTY_SCHEMA_URL, [], [], [], $links);
         }

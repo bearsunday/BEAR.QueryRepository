@@ -5,12 +5,7 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\ExpireAtKeyNotExists;
-use BEAR\QueryRepository\Log\Context\ManualPurgeContext;
-use BEAR\QueryRepository\Log\Context\ManualPurgeResultContext;
-use BEAR\QueryRepository\Log\Context\ManualStoreContext;
-use BEAR\QueryRepository\Log\Context\ManualStoreResultContext;
 use BEAR\QueryRepository\Log\Context\PurgeContext;
-use BEAR\QueryRepository\Log\SafeSemanticLogger;
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\HttpCache;
 use BEAR\Resource\AbstractRequest;
@@ -42,20 +37,9 @@ final readonly class QueryRepository implements QueryRepositoryInterface
     #[Override]
     public function put(ResourceObject $ro)
     {
-        // A top-level put is a direct (non-AOP) cache write with no enclosing scope, so its
-        // save events would be dropped at flush. Wrap it in a manual_store scope so the write
-        // stays visible. A put nested inside a request GET or a write command keeps emitting
-        // its save events under that scope, unchanged.
-        if ($this->logger instanceof SafeSemanticLogger && $this->logger->isTopLevel()) {
-            $openId = $this->logger->open(new ManualStoreContext((string) $ro->uri));
-            $stored = false;
-            try {
-                return $stored = $this->doPut($ro);
-            } finally {
-                $this->logger->close(new ManualStoreResultContext($stored), $openId);
-            }
-        }
-
+        // The cache layer is a nested logger: its save events nest under whatever scope is
+        // open above (the resource invocation from BEAR.EventSourcing, or a GET/command
+        // interceptor). It does not root its own session.
         return $this->doPut($ro);
     }
 
@@ -133,19 +117,6 @@ final readonly class QueryRepository implements QueryRepositoryInterface
     #[Override]
     public function purge(AbstractUri $uri)
     {
-        // A top-level purge is an application-initiated (manual) cache bust: wrap it in a
-        // manual_purge scope so it stands out from automatic invalidation. A purge nested
-        // inside a request GET or a write command stays an ordinary purge event there.
-        if ($this->logger instanceof SafeSemanticLogger && $this->logger->isTopLevel()) {
-            $openId = $this->logger->open(new ManualPurgeContext((string) $uri));
-            $purged = false;
-            try {
-                return $purged = $this->storage->deleteEtag($uri);
-            } finally {
-                $this->logger->close(new ManualPurgeResultContext($purged), $openId);
-            }
-        }
-
         $this->logger->event(new PurgeContext((string) $uri));
 
         return $this->storage->deleteEtag($uri);

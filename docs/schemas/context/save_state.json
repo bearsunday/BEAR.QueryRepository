@@ -1,13 +1,14 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_value.json",
-    "title": "save_value",
-    "description": "Event: a resource value (body) was stored.",
+    "$id": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_state.json",
+    "title": "save_state",
+    "description": "Event: a resource state was stored in the cache (value body, rendered view, or donut view).",
     "type": "object",
     "required": [
         "uri",
         "tags",
-        "ttl"
+        "ttl",
+        "kind"
     ],
     "properties": {
         "uri": {
@@ -25,6 +26,14 @@
                 "null"
             ],
             "minimum": 0
+        },
+        "kind": {
+            "type": "string",
+            "enum": [
+                "value",
+                "view",
+                "donut-view"
+            ]
         }
     },
     "additionalProperties": false

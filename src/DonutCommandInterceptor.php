@@ -34,14 +34,12 @@ use function sprintf;
  */
 final readonly class DonutCommandInterceptor implements MethodInterceptor
 {
-    private CommandContextFactory $commandContextFactory;
-
     public function __construct(
         private DonutRepositoryInterface $repository,
         private MatchQueryInterface $matchQuery,
+        private CommandContextFactory $commandContextFactory,
         private SemanticLoggerInterface $logger = new NullSemanticLogger()
     ){
-        $this->commandContextFactory = new CommandContextFactory();
     }
 
     #[\Override]

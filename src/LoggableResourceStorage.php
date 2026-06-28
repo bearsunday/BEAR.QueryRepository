@@ -5,13 +5,9 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Log\Context\InvalidateContext;
-use BEAR\QueryRepository\Log\Context\ManualInvalidateContext;
 use BEAR\QueryRepository\Log\Context\SaveDonutContext;
-use BEAR\QueryRepository\Log\Context\SaveDonutViewContext;
 use BEAR\QueryRepository\Log\Context\SaveEtagContext;
-use BEAR\QueryRepository\Log\Context\SaveValueContext;
-use BEAR\QueryRepository\Log\Context\SaveViewContext;
-use BEAR\QueryRepository\Log\SafeSemanticLogger;
+use BEAR\QueryRepository\Log\Context\SaveStateContext;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceObject;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
@@ -78,10 +74,7 @@ final class LoggableResourceStorage implements ResourceStorageInterface
     /**
      * {@inheritDoc}
      *
-     * A top-level invalidation is a direct (non-AOP) call with no enclosing scope, so the
-     * event would be dropped at flush. Root it in a manual_invalidate scope whose close
-     * carries the outcome. Nested invalidations (inside a GET or a command) stay events.
-     *
+     * Emits the invalidation outcome as an event under whatever scope is open above.
      * The CDN purge is fail-closed: a purge failure is logged (cdn=failed) and then
      * re-thrown so a write does not silently leave stale CDN content.
      */
@@ -90,20 +83,13 @@ final class LoggableResourceStorage implements ResourceStorageInterface
     {
         $start = hrtime(true);
         $result = $this->storage->invalidateTags($tags);
-        $context = new InvalidateContext(
+        $this->logger->event(new InvalidateContext(
             $result->tags,
             roPoolInvalidated: $result->roInvalidated,
             etagPoolInvalidated: $result->etagInvalidated,
             cdnPurged: $result->cdnError === null,
             durationMs: round((hrtime(true) - $start) / 1_000_000, 3),
-        );
-
-        if ($this->logger instanceof SafeSemanticLogger && $this->logger->isTopLevel()) {
-            $openId = $this->logger->open(new ManualInvalidateContext($tags));
-            $this->logger->close($context, $openId);
-        } else {
-            $this->logger->event($context);
-        }
+        ));
 
         if ($result->cdnError !== null) {
             throw $result->cdnError;
@@ -121,7 +107,7 @@ final class LoggableResourceStorage implements ResourceStorageInterface
     public function saveValue(ResourceObject $ro, int $ttl)
     {
         $saved = $this->storage->saveValue($ro, $ttl);
-        $this->logger->event(new SaveValueContext((string) $ro->uri, $this->cacheTags->ofResource($ro), $ttl));
+        $this->logger->event(new SaveStateContext((string) $ro->uri, $this->cacheTags->ofResource($ro), $ttl, 'value'));
 
         return $saved;
     }
@@ -135,7 +121,7 @@ final class LoggableResourceStorage implements ResourceStorageInterface
     public function saveView(ResourceObject $ro, int $ttl)
     {
         $saved = $this->storage->saveView($ro, $ttl);
-        $this->logger->event(new SaveViewContext((string) $ro->uri, $ttl));
+        $this->logger->event(new SaveStateContext((string) $ro->uri, $this->cacheTags->ofResource($ro), $ttl, 'view'));
 
         return $saved;
     }
@@ -151,7 +137,7 @@ final class LoggableResourceStorage implements ResourceStorageInterface
     public function saveDonutView(ResourceObject $ro, int|null $ttl): bool
     {
         $saved = $this->storage->saveDonutView($ro, $ttl);
-        $this->logger->event(new SaveDonutViewContext((string) $ro->uri, $this->cacheTags->ofResource($ro), $ttl));
+        $this->logger->event(new SaveStateContext((string) $ro->uri, $this->cacheTags->ofResource($ro), $ttl, 'donut-view'));
 
         return $saved;
     }

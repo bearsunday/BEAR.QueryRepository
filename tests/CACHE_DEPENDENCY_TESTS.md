@@ -96,9 +96,9 @@ Typed `AbstractContext` subclasses live in `src/Log/Context/` and each carries a
 | `get` | open | `CacheInterceptor`, `AbstractDonutCacheInterceptor` | A resource/donut GET scope (children nest under it) |
 | `cache_hit` / `cache_miss` (`layer`) | close/event | interceptors, `DonutRepository` | The lookup outcome (`layer`: resource / donut / donut-view) |
 | `command` (`method`/`annotations`) | open | `CommandInterceptor`, `RefreshInterceptor` | A write whose `#[Refresh]`/`#[Purge]` annotations cause the nested purges |
-| `depends_on` (`parent`/`child`/`childTags`) | event | `CacheDependency::depends()` | A dependency-graph edge |
-| `save_value` / `save_view` / `save_etag` / `save_donut` / `save_donut_view` | event | `ResourceStorage` | What was stored, with tags/ttl |
-| `invalidate` (`tags`/`roPool`/`etagPool`/`cdn`/`durationMs`) | event | `ResourceStorage::invalidateTags()` | Per-target outcome as status words: `roPool`/`etagPool` are `invalidated`\|`failed`, `cdn` is `purged`\|`failed` (best-effort; `failed` on outage without failing local invalidation) |
+| `depends_on` (`parent`/`child`/`childTags`) | event | `LoggableCacheDependency` | A dependency-graph edge |
+| `save_state` (`kind`: value\|view\|donut-view) / `save_etag` / `save_donut` | event | `LoggableResourceStorage` | What was stored, with tags/ttl; `kind` leads to which storage path ran (the cache type is declared by `#[Cacheable]`) |
+| `invalidate` (`tags`/`roPool`/`etagPool`/`cdn`/`durationMs`) | event | `LoggableResourceStorage::invalidateTags()` | Per-target outcome as status words: `roPool`/`etagPool` are `invalidated`\|`failed`, `cdn` is `purged`\|`failed` (best-effort; `failed` on outage without failing local invalidation) |
 | `purge` | event | `QueryRepository::purge()` | An explicit purge request |
 | `put_donut` / `refresh_donut` | event | `DonutRepository` | Donut store / rebuild |
 
@@ -115,7 +115,7 @@ structure is the log structure, no reconstruction:
 ```text
 get uri=page://self/dep/level-one
 ├── depends_on parent=.../level-one child=.../level-two childTags=[_dep_level-two_, _dep_level-three_] [event]
-├── save_value uri=.../level-one tags=[..., _dep_level-three_] ttl=31536000 [event]
+├── save_state uri=.../level-one tags=[..., _dep_level-three_] ttl=31536000 kind=value [event]
 ├── get uri=page://self/dep/level-two
 │   └── get uri=page://self/dep/level-three
 │       └── (close) cache_miss layer=resource
@@ -138,7 +138,7 @@ fails the suite immediately.
 
 | Test | Verifies |
 |------|----------|
-| `testDependencyChainValidatesAndNestsAsEmbedTree` | A real dependency run validates and nests ≥3 deep, with `cache_miss`/`depends_on`/`invalidate`/`save_value` present |
+| `testDependencyChainValidatesAndNestsAsEmbedTree` | A real dependency run validates and nests ≥3 deep, with `cache_miss`/`depends_on`/`invalidate`/`save_state` present |
 | `testCommandScopeRecordsCausality` | A write opens a `command` scope recording `onPut` and its annotations |
 | `testValidatorRejectsContextViolatingItsSchema` | A `cache_hit` without `layer` is rejected (proves drift is caught) |
 
@@ -179,9 +179,6 @@ All dependency tests verify both resource cache and ETag invalidation:
   `donut-view`) whenever a ResourceObject is served — including when it was rebuilt
   from a cached donut template. The two are still distinguishable by the presence of a
   `refresh_donut` event inside the scope; the close label is intentionally coarse.
-- **Legacy `RepositoryLoggerInterface` receives no events.** Internal cache code logs
-  through `SemanticLoggerInterface`; the deprecated flat interface stays bound for code
-  BC but its instance stays empty. Consumers should migrate to the SemanticLogger tree.
 
 ## Fake Resources for Testing
 

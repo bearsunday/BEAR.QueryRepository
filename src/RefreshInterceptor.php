@@ -29,13 +29,11 @@ use Ray\Aop\MethodInvocation;
  */
 final readonly class RefreshInterceptor implements MethodInterceptor
 {
-    private CommandContextFactory $commandContextFactory;
-
     public function __construct(
         private RefreshAnnotatedCommand $command,
+        private CommandContextFactory $commandContextFactory,
         private SemanticLoggerInterface $logger = new NullSemanticLogger(),
     ) {
-        $this->commandContextFactory = new CommandContextFactory();
     }
 
     #[Override]

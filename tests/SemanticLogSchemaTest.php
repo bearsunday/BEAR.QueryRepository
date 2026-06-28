@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Log\Context\CacheMissContext;
+use BEAR\QueryRepository\Log\Context\GetContext;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
 use FakeVendor\HelloWorld\Resource\Page\None;
@@ -60,7 +62,7 @@ class SemanticLogSchemaTest extends TestCase
 
         // Lifecycle and dependency facts are present and schema-valid.
         $types = self::collectTypes($tree);
-        foreach (['get', 'cache_miss', 'depends_on', 'invalidate', 'save_value', 'save_etag'] as $type) {
+        foreach (['get', 'cache_miss', 'depends_on', 'invalidate', 'save_state', 'save_etag'] as $type) {
             $this->assertContains($type, $types);
         }
     }
@@ -77,31 +79,26 @@ class SemanticLogSchemaTest extends TestCase
         $this->assertStringContainsString('Refresh', $commandContext);
     }
 
-    public function testTopLevelPutIsRootedInManualStoreScope(): void
+    public function testDirectCacheWriteNestsUnderCallerScopeAndDoesNotSelfRoot(): void
     {
-        // A direct put() has no enclosing AOP scope, so it must root its save events under a
-        // manual_store scope; otherwise SemanticLogger drops the event-only session at flush.
+        // The cache layer is a nested logger: a direct put()/invalidateTags() never opens its
+        // own root scope. Their events nest under whatever scope the caller has open — in
+        // production, the resource invocation from BEAR.EventSourcing. Here a GET scope stands
+        // in for that enclosing scope.
         $ro = new None();
         $ro->uri = new Uri('page://self/none');
+
+        $openId = $this->logger->open(new GetContext('page://self/none'));
         $this->repository->put($ro);
-        $tree = $this->flushAndValidate($this->logger);
-
-        $types = self::collectTypes($tree);
-        $this->assertContains('manual_store', $types, 'a manual_store scope roots the direct put');
-        $this->assertContains('manual_store_result', $types, 'the scope close records the store outcome');
-        $this->assertContains('save_value', $types, 'the save event nests under the manual_store scope');
-    }
-
-    public function testTopLevelInvalidateIsRootedInManualInvalidateScope(): void
-    {
-        // A direct invalidateTags() has no enclosing AOP scope, so it must root its outcome
-        // under a manual_invalidate scope to stay visible in the flushed log.
         $this->storage->invalidateTags(['_test_tag_']);
-        $tree = $this->flushAndValidate($this->logger);
+        $this->logger->close(new CacheMissContext('resource'), $openId);
 
+        $tree = $this->flushAndValidate($this->logger);
         $types = self::collectTypes($tree);
-        $this->assertContains('manual_invalidate', $types, 'a manual_invalidate scope roots the direct invalidation');
-        $this->assertContains('invalidate', $types, 'the scope close records the invalidation outcome');
+        $this->assertContains('save_state', $types, 'the direct put save event nests under the caller scope');
+        $this->assertContains('invalidate', $types, 'the direct invalidation nests under the caller scope');
+        $this->assertNotContains('manual_store', $types, 'the cache layer does not self-root');
+        $this->assertNotContains('manual_invalidate', $types, 'the cache layer does not self-root');
     }
 
     public function testValidatorRejectsContextViolatingItsSchema(): void
