@@ -9,3 +9,7 @@
 /.php_cs.cache
 /.phpunit-cache/
 /.dump.rdb
+/dump.rdb
+/.clineignore
+/AGENTS.md
+/CLAUDE.md
