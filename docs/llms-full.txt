@@ -173,52 +173,48 @@ class BlogPage extends ResourceObject
 }
 ```
 
-## Repository Logger
+## Cache Observability (Semantic Log)
 
-Cache operations are logged in JSON format for debugging and monitoring.
+Cache operations are recorded as a [Koriym.SemanticLogger](https://github.com/koriym/Koriym.SemanticLogger)
+open/close/event tree: the nesting mirrors the embed/dependency structure, so a request's cache
+behavior reads as a tree — a `get` scope with its saves and nested child `get`s beneath it. Each
+entry is a typed context validated against a per-context JSON Schema in `docs/schemas/context/`.
+Render a flushed log as a tree with `vendor/bin/stree`.
 
-```json
-{"op":"save-value","uri":"page://self/user","tags":["etag123","_user_"],"ttl":3600}
-{"op":"invalidate-etag","tags":["_user_"]}
-{"op":"put-query-repository","uri":"app://self/posts"}
-{"op":"cache-hit","uri":"page://self/user"}
-{"op":"cache-miss","uri":"page://self/user"}
-{"op":"depends-on","parent":"page://self/blog","child":"app://self/comment","childTags":["_comment_id=1"]}
+The cache layer is a *nested* logger: its events nest under whatever scope is open above (in
+production, the resource invocation from BEAR.EventSourcing). It does not root its own session.
+
+```text
+get uri=page://self/blog
+├── depends_on parent=page://self/blog child=app://self/comment childTags=[_comment_]
+├── save_etag  uri=page://self/blog etag=123456 surrogateKeys=[_comment_, _blog_]
+├── save_state uri=page://self/blog tags=[123456, _blog_, _comment_] ttl=3600 kind=value
+└── (close) cache_miss layer=resource
 ```
 
-### Log Operations
+### Context types
 
-| Operation | Description |
-|-----------|-------------|
-| `request-start` | Request boundary marker (uri, optional method) |
-| `cache-hit` | Cached resource returned without method execution |
-| `cache-miss` | Cache not found, method executed |
-| `save-value` | Resource body cached |
-| `save-view` | Resource body + rendered view cached |
-| `save-etag` | ETag stored for validation |
-| `depends-on` | Parent resource registered dependency on child via tags |
-| `invalidate-etag` | Cache invalidated by tags |
-| `purge-query-repository` | Cache purge initiated |
-| `put-query-repository` | Cache store initiated |
+| Context | Kind | Meaning |
+|---------|------|---------|
+| `get` | open | A resource/donut GET scope (children nest under it); closed by `cache_hit`/`cache_miss` |
+| `cache_hit` / `cache_miss` | close/event | Lookup outcome (`layer`: resource / donut / donut-view) |
+| `command` / `command_result` | open/close | A write whose `#[Refresh]`/`#[Purge]` cause the nested invalidations |
+| `depends_on` | event | A dependency-graph edge (`parent` / `child` / `childTags`) |
+| `save_state` | event | Resource state stored (`kind`: value / view / donut-view), with tags/ttl |
+| `save_etag` | event | ETag stored for conditional (304) requests |
+| `save_donut` | event | Donut template stored |
+| `put_donut` / `refresh_donut` | event | Donut built / reused-and-re-rendered |
+| `invalidate` | event | Tag invalidation outcome (`roPool`/`etagPool`: invalidated\|failed, `cdn`: purged\|failed, `durationMs`) |
+| `purge` | event | An explicit purge request |
 
-#### Donut Cache Operations
+A read-through populate (cache miss → store) emits no `invalidate`: it stores fresh state and
+clears only each resource's own ETag. Invalidating dependents and the CDN is the job of an explicit
+purge / command, where content actually changed.
 
-| Operation | Description |
-|-----------|-------------|
-| `try-donut-view` | Attempt to retrieve complete rendered view |
-| `found-donut-view` | Complete view found in cache |
-| `try-donut` | Attempt to retrieve donut structure |
-| `no-donut-found` | Donut structure not in cache |
-| `put-donut` | Store donut structure |
-| `save-donut` | Save donut structure to cache |
-| `save-donut-view` | Save complete rendered view |
-| `refresh-donut` | Reuse donut structure, regenerate inner content |
+`refresh_donut` means the donut shell was reused while its holes (dynamic inner content) were
+re-fetched and re-rendered; the refreshed ETag carries an 'r' suffix (e.g. "123456r").
 
-The `depends-on` log is useful for understanding cache invalidation chains - when a child is purged, all parents with matching tags are automatically invalidated.
-
-The `refresh-donut` indicates the donut (outer shell) was reused while the hole (inner dynamic content) was regenerated. ETag with 'r' suffix (e.g., "123456r") indicates a refreshed donut.
-
-Schema: docs/schemas/repository-log.json
+Schemas: docs/schemas/context/*.json
 
 ## Architecture
 
@@ -235,9 +231,13 @@ Schema: docs/schemas/repository-log.json
 
 1. Resource with #[Refresh] or #[Purge] is invoked
 2. CommandInterceptor executes the command
-3. After successful response, annotations are processed
-4. ResourceStorage.invalidateTags() clears both RO and ETag pools
-5. CDN purger (if configured) purges surrogate keys
+3. After a successful response, annotations are processed
+4. purge() → invalidateUri() clears the resource, its ETag, and every dependent (by surrogate key)
+5. CDN purger (if configured) purges the surrogate keys
+
+A read-through populate (a #[Cacheable] GET miss → store) does NOT invalidate dependents or the
+CDN: it clears only the resource's own ETag and stores fresh state. Dependent/CDN invalidation is
+driven only by an explicit purge / command.
 
 ## Documentation
 
@@ -246,4 +246,4 @@ Schema: docs/schemas/repository-log.json
 
 ## Schemas
 
-- Repository Log Format: https://bearsunday.github.io/BEAR.QueryRepository/schemas/repository-log.json
+- Semantic-log context schemas: docs/schemas/context/*.json (one per context type, e.g. `save_state.json`, `invalidate.json`)

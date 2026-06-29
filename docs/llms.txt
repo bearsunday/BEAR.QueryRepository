@@ -34,4 +34,4 @@ class User extends ResourceObject
 
 ## Schemas
 
-- Repository Log Format: https://bearsunday.github.io/BEAR.QueryRepository/schemas/repository-log.json
+- Semantic-log context schemas: docs/schemas/context/*.json (one per cache-log context type)
