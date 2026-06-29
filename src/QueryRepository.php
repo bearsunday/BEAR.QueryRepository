@@ -119,7 +119,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
     {
         $this->logger->event(new PurgeContext((string) $uri));
 
-        return $this->storage->deleteEtag($uri);
+        return $this->storage->invalidateUri($uri)->isInvalidated();
     }
 
     private function getHttpCacheAnnotation(ResourceObject $ro): HttpCache|null

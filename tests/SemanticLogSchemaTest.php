@@ -62,9 +62,14 @@ class SemanticLogSchemaTest extends TestCase
 
         // Lifecycle and dependency facts are present and schema-valid.
         $types = self::collectTypes($tree);
-        foreach (['get', 'cache_miss', 'depends_on', 'invalidate', 'save_state', 'save_etag'] as $type) {
+        foreach (['get', 'cache_miss', 'depends_on', 'save_state', 'save_etag'] as $type) {
             $this->assertContains($type, $types);
         }
+
+        // A read-through populate (all cache-miss) invalidates nothing: it stores fresh
+        // state and clears only each resource's own ETag. Dependents and the CDN are the
+        // concern of an explicit purge / command, not a read.
+        $this->assertNotContains('invalidate', $types);
     }
 
     public function testCommandScopeRecordsCausality(): void

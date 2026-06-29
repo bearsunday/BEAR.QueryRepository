@@ -54,9 +54,17 @@ final class LoggableResourceStorage implements ResourceStorageInterface
     }
 
     #[Override]
-    public function deleteEtag(AbstractUri $uri)
+    public function deleteEtag(AbstractUri $uri): bool
     {
-        return $this->invalidateTags([($this->uriTag)($uri)])->isInvalidated();
+        // Pre-store ETag cleanup is plumbing, not a lead: no event. The meaningful "etag
+        // stored" fact is the save_etag event that follows.
+        return $this->storage->deleteEtag($uri);
+    }
+
+    #[Override]
+    public function invalidateUri(AbstractUri $uri): InvalidateResult
+    {
+        return $this->invalidateTags([($this->uriTag)($uri)]);
     }
 
     #[Override]

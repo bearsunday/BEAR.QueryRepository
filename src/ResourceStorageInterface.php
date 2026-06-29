@@ -20,11 +20,21 @@ interface ResourceStorageInterface
     public function saveEtag(AbstractUri $uri, string $etag, string $surrogateKeys, int|null $ttl): void;
 
     /**
-     * Delete Etag
+     * Delete this URI's ETag entries — etag pool only, not the body, CDN, or dependents
      *
-     * @return bool
+     * Used on the write/put path: a re-cached resource must not keep its old ETag (which is
+     * keyed by ETag value, so a new ETag does not overwrite it) or it would serve a stale
+     * 304. The body is overwritten by the following save; the CDN and dependents are the
+     * concern of invalidateUri(), used by an explicit purge where content actually changed.
      */
-    public function deleteEtag(AbstractUri $uri);
+    public function deleteEtag(AbstractUri $uri): bool;
+
+    /**
+     * Fully invalidate everything tagged with this URI: the body, its ETag, and every
+     * dependent (parent) cache, plus the CDN. Used by an explicit purge / command, where
+     * the content actually changed.
+     */
+    public function invalidateUri(AbstractUri $uri): InvalidateResult;
 
     /**
      * Return cached resource state

@@ -122,11 +122,22 @@ final class ResourceStorage implements ResourceStorageInterface
      * {@inheritDoc}
      */
     #[Override]
-    public function deleteEtag(AbstractUri $uri)
+    public function deleteEtag(AbstractUri $uri): bool
     {
-        $uriTag = ($this->uriTag)($uri);
+        // Clears only this URI's ETag entries (etag pool), so a re-cached resource does not
+        // serve a stale 304. It does NOT touch the resource-object pool (the body is
+        // overwritten by the following save) nor the CDN, nor cascade to dependents — that
+        // full invalidation is invalidateUri(), used by an explicit purge.
+        return $this->etagPool->invalidateTags([($this->uriTag)($uri)]);
+    }
 
-        return $this->invalidateTags([$uriTag])->isInvalidated();
+    /**
+     * {@inheritDoc}
+     */
+    #[Override]
+    public function invalidateUri(AbstractUri $uri): InvalidateResult
+    {
+        return $this->invalidateTags([($this->uriTag)($uri)]);
     }
 
     /**
