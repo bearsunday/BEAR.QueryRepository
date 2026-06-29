@@ -173,7 +173,7 @@ jobs:
           composer update ${{ matrix.dependencies == 'lowest' && '--prefer-lowest' || '' }} ${{ env.COMPOSER_FLAGS }} ${{ matrix.php-version == '8.5' && '--ignore-platform-req=ext-redis --ignore-platform-req=ext-memcached' || '' }}
 
       - name: Run PHPUnit tests
-        run: ./vendor/bin/phpunit --coverage-clover=coverage.xml
+        run: ./vendor/bin/phpunit ${{ (matrix.os == 'ubuntu-latest' && matrix.php-version == '8.4' && matrix.dependencies == 'highest') && '--coverage-clover=coverage.xml' || '' }}
 
       - name: Upload coverage report
         if: matrix.os == 'ubuntu-latest' && matrix.php-version == '8.4' && matrix.dependencies == 'highest'
