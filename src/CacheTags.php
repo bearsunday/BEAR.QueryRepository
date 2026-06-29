@@ -27,13 +27,19 @@ final class CacheTags
     }
 
     /**
-     * Tags for storing a resource: its ETag, its URI tag, and any surrogate keys
+     * Tags for storing a resource: its URI tag and any surrogate keys
+     *
+     * The ETag is intentionally NOT an invalidation tag. The entry is purged by its URI tag
+     * (deleteEtag / invalidateUri) and surrogate keys; no code path invalidates by ETag, and
+     * HTTP 304 uses the separate ETag pool. Because the ETag is content-versioned, registering
+     * it as a tag produced one non-volatile tag Set per content version that, under a
+     * volatile-* eviction policy, is never reclaimed and never read — a memory leak (#180).
      *
      * @return list<string>
      */
     public function ofResource(ResourceObject $ro): array
     {
-        $tags = [$ro->headers[Header::ETAG], ($this->uriTag)($ro->uri)];
+        $tags = [($this->uriTag)($ro->uri)];
         if (isset($ro->headers[Header::SURROGATE_KEY])) {
             $tags = array_merge($tags, explode(' ', $ro->headers[Header::SURROGATE_KEY]));
         }

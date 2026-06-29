@@ -76,6 +76,20 @@ class ResourceStorageTest extends TestCase
         $this->assertInstanceOf(ResourceDonut::class, $donut);
     }
 
+    public function testEtagIsNotRegisteredAsInvalidationTag(): void
+    {
+        $this->ro->headers['ETag'] = 'test-etag-value';
+        $this->storage->saveValue($this->ro, 0);
+
+        // The ETag is not an invalidation tag: invalidating by the ETag value must NOT purge the entry.
+        $this->storage->invalidateTags(['test-etag-value']);
+        $this->assertNotNull($this->storage->get($this->ro->uri));
+
+        // The URI tag still invalidates the same entry.
+        $this->storage->invalidateTags([(new UriTag())($this->ro->uri)]);
+        $this->assertNull($this->storage->get($this->ro->uri));
+    }
+
     public function testInvalidateTagsRecordsSuccessfulOutcome(): void
     {
         $logger = new RecordingSemanticLogger();
