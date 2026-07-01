@@ -266,8 +266,12 @@ final class ResourceStorage implements ResourceStorageInterface
     /** @return list<string> */
     private function getTags(ResourceObject $ro): array
     {
-        $etag = $ro->headers['ETag'];
-        $tags = [$etag, ($this->uriTag)($ro->uri)];
+        // ETag is intentionally NOT used as an invalidation tag. The cache entry is
+        // purged by its URI tag (deleteEtag/invalidateTags) and surrogate keys; no code
+        // path ever invalidates by ETag. Because ETag is content-versioned, registering it
+        // as a tag produced one non-volatile tag Set per content version that, under a
+        // volatile-* eviction policy, is never reclaimed - leaking memory without being read.
+        $tags = [($this->uriTag)($ro->uri)];
         if (isset($ro->headers[Header::SURROGATE_KEY])) {
             $tags = array_merge($tags, explode(' ', $ro->headers[Header::SURROGATE_KEY]));
         }
