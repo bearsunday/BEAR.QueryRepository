@@ -29,6 +29,7 @@ use Madapaja\TwigModule\TwigModule;
 use Ray\Di\Injector;
 
 require dirname(__DIR__) . '/vendor/autoload.php';
+require __DIR__ . '/validate.php';
 
 // Scenario descriptions (for humans)
 echo <<<'SCENARIOS'
@@ -72,6 +73,17 @@ $resource->get('page://self/html/blog-posting');     // 2. Re-access (cache-hit)
 $repository->purge(new Uri('page://self/html/comment')); // 3. Manual purge of comment (top-level)
 $resource->get('page://self/html/blog-posting');     // 4. Access after invalidation
 
+$log = $logger->flush();
+
 // Human/AI-readable tree (open = embed scope, close = hit/miss, events = saves/invalidations)
 echo "=== Cache Log Tree ===" . PHP_EOL;
-echo (new TreeRenderer())->render($logger->flush()->toArray(), new RenderConfig(true, 0.0, 1000, true)) . PHP_EOL;
+echo (new TreeRenderer())->render($log->toArray(), new RenderConfig(true, 0.0, 1000, true)) . PHP_EOL;
+
+// Machine-readable JSON conforming to the published schemas (validated below
+// against the local schema files; also: `vendor/bin/stree <file>`)
+echo PHP_EOL . "=== Cache Log JSON ===" . PHP_EOL;
+echo json_encode($log, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL;
+
+// The demo verifies itself: the flushed log must validate offline against
+// docs/schemas/context (exits non-zero on any violation)
+validateLog($log);

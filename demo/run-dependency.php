@@ -8,7 +8,9 @@ declare(strict_types=1);
  * This script demonstrates cache dependency logging to help understand:
  * - Cache hit/miss operations
  * - Dependency registration (depends-on)
+ * - Command-driven invalidation (a #[Purge] write opens a command scope)
  * - Cascade invalidation (invalidate-etag)
+ * - Manual purge (a direct purge() call roots a manual_purge scope)
  *
  * Resources used (from tests/Fake/fake-app):
  * - LevelOne -> LevelTwo -> LevelThree (3-level dependency chain)
@@ -26,6 +28,7 @@ use Koriym\SemanticLogger\Stree\TreeRenderer;
 use Ray\Di\Injector;
 
 require dirname(__DIR__) . '/vendor/autoload.php';
+require __DIR__ . '/validate.php';
 
 // Scenario descriptions (for humans)
 echo <<<'SCENARIOS'
@@ -40,17 +43,22 @@ This demo executes the following scenarios:
 2. Re-access level-one
    - Should be cache-hit
 
-3. Purge level-three (grandchild)
-   - Should cascade invalidate level-two and level-one
+3. Write to level-three (PUT)
+   - #[Purge] on LevelThree::onPut invalidates level-three's cache
+   - The surrogate-key cascade busts level-two and level-one
+   - The log shows a command scope (method/annotations/source)
+     driving the purge — cause and effect in one subtree
 
-4. Re-access level-one after purge
+4. Re-access level-one after the write
    - All three should be cache-miss (regenerated)
 
 5. Access ParentA and ParentB
    - Both embed ChildC (shared dependency)
 
-6. Purge child-c
+6. Purge child-c (manual repository purge)
    - Should invalidate both ParentA and ParentB
+   - A direct purge() roots a top-level manual_purge scope —
+     a different entry kind than the command scope in 3
 
 7. Re-access both parents after purge
    - Both should be cache-miss (regenerated)
@@ -73,11 +81,11 @@ $logger = $injector->getInstance(SemanticLoggerInterface::class);
 // log's open/close tree IS the embed/dependency tree (no reconstruction).
 $resource->get('page://self/dep/level-one');                // 1. Initial access (cache-miss chain)
 $resource->get('page://self/dep/level-one');                // 2. Re-access (cache-hit)
-$repository->purge(new Uri('page://self/dep/level-three')); // 3. Purge grandchild (cascade)
-$resource->get('page://self/dep/level-one');                // 4. Re-access after purge (rebuilt)
+$resource->put('page://self/dep/level-three');              // 3. Write: #[Purge] command (cascade)
+$resource->get('page://self/dep/level-one');                // 4. Re-access after the write (rebuilt)
 $resource->get('page://self/dep/parent-a');                 // 5a. Access ParentA
 $resource->get('page://self/dep/parent-b');                 // 5b. Access ParentB
-$repository->purge(new Uri('page://self/dep/child-c'));     // 6. Purge shared child
+$repository->purge(new Uri('page://self/dep/child-c'));     // 6. Manual purge (manual_purge scope)
 $resource->get('page://self/dep/parent-a');                 // 7a. Re-access ParentA
 $resource->get('page://self/dep/parent-b');                 // 7b. Re-access ParentB
 
@@ -87,7 +95,11 @@ $log = $logger->flush();
 echo "=== Cache Log Tree ===" . PHP_EOL;
 echo (new TreeRenderer())->render($log->toArray(), new RenderConfig(true, 0.0, 1000, true)) . PHP_EOL;
 
-// Machine-readable JSON conforming to the published schemas (validated in the
-// test suite via SemanticLogValidator; also: `vendor/bin/stree <file>`)
+// Machine-readable JSON conforming to the published schemas (validated below
+// against the local schema files; also: `vendor/bin/stree <file>`)
 echo PHP_EOL . "=== Cache Log JSON ===" . PHP_EOL;
 echo json_encode($log, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL;
+
+// The demo verifies itself: the flushed log must validate offline against
+// docs/schemas/context (exits non-zero on any violation)
+validateLog($log);
