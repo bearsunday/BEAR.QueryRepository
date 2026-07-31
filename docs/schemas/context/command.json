@@ -34,9 +34,8 @@
             }
         },
         "source": {
-            "description": "class basename of the producing interceptor",
-            "type": "string",
-            "enum": ["CommandInterceptor", "DonutCommandInterceptor", "RefreshInterceptor"]
+            "description": "class basename of the producing interceptor; built-in producers are CommandInterceptor, DonutCommandInterceptor and RefreshInterceptor, but any custom command interceptor may appear here",
+            "type": "string"
         }
     },
     "additionalProperties": false

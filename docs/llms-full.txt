@@ -199,7 +199,7 @@ An ETag with an 'r' suffix (e.g., "123456r") marks a refreshed donut: the outer 
 
 - Event-driven entries appear with their configured TTL in seconds (`ttl` = seconds until expiry; the `never` convention = 31536000 = 1 year, effectively indefinite). `0`/`null` also mean no expiry is set. Such entries live until an `invalidate` event with a matching tag — correlate `save_*` `tags` with `invalidate` `tags` to confirm a write busted its dependents.
 - A `get` scope with no events and a `cache_hit` close was served from cache; nesting mirrors the embed structure of resources; `manual_*` scopes mark non-AOP entry points (direct put/purge/invalidate calls).
-- A miss scope without `save_*` events means the put was intentionally skipped — look for a `put_skipped` event (or, for commands, a 4xx `command_result` with no invalidation events).
+- A miss scope without `save_*` events means the put was intentionally skipped — look for a `put_skipped` event; a non-200 response is purged instead of stored, so a `purge` event appears in that case (for commands, a 4xx `command_result` with no invalidation events).
 - A leading `invalidate` inside a `get` scope, immediately followed by same-tag `save_*` events, is pre-write cleanup (every put deleteEtags first), not a real invalidation. It uses the resource's own URI tag — which is also its parents' surrogate key — so a child refill visibly purges the parent entry, by design.
 - Check outcome fields: `saved: false` on a save context means the pool rejected the entry — it is NOT cached despite the save event. `cdn: failed` on `invalidate` means the CDN purge threw (fail-closed). A `cache_error` event means the cache layer itself is degraded; a `cache_miss` after it is not a cold cache.
 
