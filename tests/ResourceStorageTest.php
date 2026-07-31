@@ -82,6 +82,16 @@ class ResourceStorageTest extends TestCase
         );
     }
 
+    public function testHasEtagRejectsMalformedFieldValues(): void
+    {
+        $this->storage->saveEtag($this->ro->uri, '"123456"', '', 10);
+
+        $this->assertFalse($this->storage->hasEtag('"123456'), 'unterminated quoted entity-tag');
+        $this->assertFalse($this->storage->hasEtag('"123456" trailing'), 'trailing data after entity-tag');
+        $this->assertFalse($this->storage->hasEtag('x"123456"'), 'leading data before entity-tag');
+        $this->assertFalse($this->storage->hasEtag('"123456" "123456"'), 'missing comma separator');
+    }
+
     public function testEtagIsNotRegisteredAsInvalidationTag(): void
     {
         $this->ro->headers['ETag'] = 'test-etag-value';

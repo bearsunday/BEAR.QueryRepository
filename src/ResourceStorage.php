@@ -21,6 +21,7 @@ use function assert;
 use function explode;
 use function implode;
 use function is_array;
+use function preg_match;
 use function preg_match_all;
 use function sprintf;
 use function str_starts_with;
@@ -50,6 +51,11 @@ final class ResourceStorage implements ResourceStorageInterface
      * Resource static cache prifix
      */
     private const KEY_DONUT = 'donut-';
+
+    /**
+     * entity-tag (quoted, optionally weak) or a bare legacy token
+     */
+    private const ENTITY_TAG_PATTERN = '(?:W\/)?"[^"]*"|[^,"]+';
 
     /** @var ProviderInterface<TagAwareAdapterInterface> */
     private ProviderInterface $roPoolProvider;
@@ -136,14 +142,21 @@ final class ResourceStorage implements ResourceStorageInterface
      * weak validators, and comma-separated lists are reduced to bare tokens.
      * A comma inside a quoted opaque-tag is data, not a list separator, and a
      * bare legacy token (cached before ETags were quoted) passes through unchanged.
+     * The whole field value must parse as a list of entity-tags: a value with an
+     * unterminated quote or trailing garbage is rejected, not salvaged.
      *
      * @return list<string>
      */
     private function extractOpaqueTags(string $fieldValue): array
     {
+        $pattern = '(?:' . self::ENTITY_TAG_PATTERN . ')';
+        if (! preg_match('/^\s*' . $pattern . '(?:\s*,\s*' . $pattern . ')*\s*$/', $fieldValue)) {
+            return [];
+        }
+
         $opaqueTags = [];
         // Tokenize as quoted entity-tags (optionally weak) or bare runs, so a comma inside quotes is not split
-        preg_match_all('/(?:W\/)?"[^"]*"|[^,"]+/', $fieldValue, $entityTags);
+        preg_match_all('/' . $pattern . '/', $fieldValue, $entityTags);
         foreach ($entityTags[0] as $entityTag) {
             $entityTag = trim($entityTag);
             if (str_starts_with($entityTag, 'W/')) {
