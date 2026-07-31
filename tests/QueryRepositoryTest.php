@@ -131,6 +131,13 @@ class QueryRepositoryTest extends TestCase
         assert($state instanceof ResourceState);
         assert(is_array($state->body));
         $this->assertSame(1, $state->body['num']);
+
+        // save_view records its invalidation tags, including the resource's own URI tag
+        $tree = $this->flushAndValidate($this->logger);
+        $saveView = self::eventContextJsonOf($tree, 'save_view');
+        $this->assertNotNull($saveView);
+        $this->assertStringContainsString('"_emb-view_"', $saveView);
+
         $expected = '{
     "time": {
         "none": "none"

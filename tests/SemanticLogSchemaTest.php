@@ -78,10 +78,31 @@ class SemanticLogSchemaTest extends TestCase
         $this->assertStringContainsString('"method":"onPut"', $commandContext);
         $this->assertStringContainsString('Refresh', $commandContext);
         $this->assertStringContainsString('Purge', $commandContext);
+        $this->assertStringContainsString('"source":"CommandInterceptor"', $commandContext);
 
         $types = self::collectTypes($tree);
         $this->assertContains('purge', $types, 'the #[Purge]/#[Refresh] invalidations nest under the command scope');
         $this->assertContains('command_result', $types, 'the scope close records the command outcome');
+    }
+
+    public function testFailedCommandRecordsScopeWithNoInvalidationEvents(): void
+    {
+        // User::onPatch with an empty name returns 400. A failed write must still open a
+        // command scope — closed with the 4xx result and no invalidation events — so the
+        // log shows the purge/refresh was correctly skipped rather than silently absent.
+        $this->resource->patch('app://self/user', ['id' => 1, 'name' => '']);
+        $tree = $this->flushAndValidate($this->logger);
+
+        $commandContext = self::contextJsonOf($tree, 'command');
+        $this->assertNotNull($commandContext, 'a failed write still opens a command scope');
+        $this->assertStringContainsString('"method":"onPatch"', $commandContext);
+        $close = self::closeContextJsonOf($tree, 'command_result');
+        $this->assertNotNull($close);
+        $this->assertStringContainsString('"code":400', $close);
+
+        $types = self::collectTypes($tree);
+        $this->assertNotContains('purge', $types, 'no purge on a failed write');
+        $this->assertNotContains('invalidate', $types, 'no invalidation on a failed write');
     }
 
     public function testSecondGetClosesWithResourceLayerCacheHit(): void

@@ -78,6 +78,38 @@ class DonutCommandInterceptorTest extends TestCase
         $this->assertArrayHasKey('Age', $ro->headers);
     }
 
+    public function testPutSkippedIsLoggedWhenResponseAlreadyHasEtag(): void
+    {
+        // SelfEtag presets its own ETag in onGet: the miss is intentionally NOT followed
+        // by a put, and the log must say so instead of looking like a lost write.
+        $this->logger->flush(); // drain the setUp session
+        $this->resource->get('page://self/html/self-etag');
+        $tree = $this->flushAndValidate($this->logger);
+
+        $skipped = self::eventContextJsonOf($tree, 'put_skipped');
+        $this->assertNotNull($skipped, 'the intentional skip is recorded');
+        $this->assertStringContainsString('"reason":"etag-present"', $skipped);
+        $close = self::closeContextJsonOf($tree, 'cache_miss');
+        $this->assertNotNull($close, 'the scope still closes cache_miss (skip, not hit)');
+    }
+
+    public function testSaveDonutLogsHeaderTags(): void
+    {
+        // putStatic tags the donut entry with the Surrogate-Key header keys captured at
+        // put time; BlogPosting sets 'blog-posting-page' in onGet.
+        $this->resource->get('page://self/html/blog-posting?id=0');
+        $tree = $this->flushAndValidate($this->logger);
+
+        $saveDonut = self::eventContextJsonOf($tree, 'save_donut');
+        $this->assertNotNull($saveDonut);
+        $this->assertStringContainsString('"blog-posting-page"', $saveDonut);
+
+        // save_donut_view records its invalidation tags, including the resource's URI tag.
+        $saveDonutView = self::eventContextJsonOf($tree, 'save_donut_view');
+        $this->assertNotNull($saveDonutView);
+        $this->assertStringContainsString('"_html_blog-posting_id=0"', $saveDonutView);
+    }
+
     public function testCacheableResponse(): void
     {
         $ro = $this->resource->get('page://self/html/blog-posting-cache?id=0');

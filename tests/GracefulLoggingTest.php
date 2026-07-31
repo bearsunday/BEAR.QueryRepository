@@ -47,10 +47,13 @@ class GracefulLoggingTest extends TestCase
         $ro = $resource->get('page://self/dep/level-one');
         $this->assertSame(200, $ro->code);
         $this->assertArrayHasKey(Header::ETAG, $ro->headers);
+        $this->assertArrayNotHasKey(Header::AGE, $ro->headers, 'first access is a miss (no Age header)');
 
-        // A second access is served from cache: same stored ETag, and still no exception leaks out.
+        // A second access is served from cache: same stored ETag, an Age header proves the
+        // stored entry was reused, and still no exception leaks out.
         $cached = $resource->get('page://self/dep/level-one');
         $this->assertSame($ro->headers[Header::ETAG], $cached->headers[Header::ETAG]);
+        $this->assertArrayHasKey(Header::AGE, $cached->headers, 'second access is an observable cache hit');
     }
 
     public function testCacheErrorIsLoggedWhenCacheServerIsDown(): void
@@ -67,8 +70,15 @@ class GracefulLoggingTest extends TestCase
         $logger = $injector->getInstance(SemanticLoggerInterface::class);
 
         // The cache pool is down: the read falls back to a live GET with a warning, not an exception.
-        set_error_handler(static function (int $errno): bool {
-            return $errno === E_USER_WARNING; // swallow the cache-down warning
+        $warningCaught = false;
+        set_error_handler(static function (int $errno) use (&$warningCaught): bool {
+            if ($errno === E_USER_WARNING) {
+                $warningCaught = true;
+
+                return true; // swallow the cache-down warning
+            }
+
+            return false;
         });
         try {
             $ro = $resource->get('app://self/user', ['id' => 1]);
@@ -76,6 +86,7 @@ class GracefulLoggingTest extends TestCase
             restore_error_handler();
         }
 
+        $this->assertTrue($warningCaught, 'the cache-down fallback warns (E_USER_WARNING) instead of throwing');
         $this->assertSame(200, $ro->code);
 
         $tree = $this->flushAndValidate($logger);

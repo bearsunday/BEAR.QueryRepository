@@ -54,6 +54,13 @@ class DonutCacheInterceptorTest extends TestCase
         $view = (string) $blogPosting;
         $this->assertSame('blog-posting:1<comment>comment01</comment>', $view);
 
+        // save_donut records its invalidation tags: the Surrogate-Key header keys at put
+        // time (this resource sets none, so the entry is tagged with an empty list).
+        $tree = $this->flushAndValidate($this->logger);
+        $saveDonut = self::eventContextJsonOf($tree, 'save_donut');
+        $this->assertNotNull($saveDonut);
+        $this->assertStringContainsString('"tags":[]', $saveDonut);
+
         return $blogPosting->headers[Header::SURROGATE_KEY];
     }
 

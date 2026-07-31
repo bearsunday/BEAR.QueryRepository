@@ -10,7 +10,6 @@ use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 
 use function count;
-use function is_string;
 
 /**
  * Test double that records every context passed to open/event/close
@@ -57,21 +56,5 @@ final class RecordingSemanticLogger implements SemanticLoggerInterface
     public function flush(array $links = []): LogJson
     {
         return new LogJson(self::SEMANTIC_LOG_SCHEMA_URL, [], [], [], $links);
-    }
-
-    /**
-     * Types of every recorded entry (opens, events, closes) for sequence assertions
-     *
-     * @return list<string>
-     */
-    public function types(): array
-    {
-        $types = [];
-        foreach ([...$this->opens, ...$this->events, ...$this->closes] as $context) {
-            $type = $context::TYPE;
-            $types[] = is_string($type) ? $type : '';
-        }
-
-        return $types;
     }
 }
