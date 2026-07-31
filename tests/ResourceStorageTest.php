@@ -76,6 +76,10 @@ class ResourceStorageTest extends TestCase
         $this->assertTrue($this->storage->hasEtag('W/"foo,bar"'), 'weak validator with comma in opaque-tag');
         $this->assertTrue($this->storage->hasEtag('"999999", "foo,bar"'), 'list with a comma-bearing entity-tag');
         $this->assertFalse($this->storage->hasEtag('"bar"'), 'naive split fragment must not match');
+        $this->assertFalse(
+            $this->storage->hasEtag('foo,bar'),
+            'unquoted legacy value is indistinguishable from a two-element list (documented limitation)',
+        );
     }
 
     public function testEtagIsNotRegisteredAsInvalidationTag(): void
