@@ -5,13 +5,16 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Log\Context\InvalidateContext;
+use BEAR\QueryRepository\Log\Context\SaveValueContext;
 use BEAR\QueryRepository\Log\NullSemanticLogger;
 use BEAR\Resource\Uri;
 use FakeVendor\HelloWorld\Resource\Page\Index;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
+use Override;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\ProviderInterface;
 use RuntimeException;
+use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapter;
 
@@ -150,5 +153,58 @@ class ResourceStorageTest extends TestCase
         // The URI tag still invalidates the same entry.
         $this->storage->invalidateTags([(new UriTag())($this->ro->uri)]);
         $this->assertNull($this->storage->get($this->ro->uri));
+    }
+
+    public function testSaveValueLogsSavedFalseWhenPoolRejectsEntry(): void
+    {
+        // ResourceStorageSaver is final, so the failure is induced one layer down: an inner
+        // pool whose commit() rejects every entry (e.g. storage full).
+        $failingPool = new TagAwareAdapter(new class extends ArrayAdapter {
+            #[Override]
+            public function commit(): bool
+            {
+                return false;
+            }
+        });
+        $poolProvider = new class ($failingPool) implements ProviderInterface{
+            public function __construct(private readonly TagAwareAdapter $tagAwareAdapter)
+            {
+            }
+
+            public function get()
+            {
+                return $this->tagAwareAdapter;
+            }
+        };
+        $logger = new RecordingSemanticLogger();
+        $storage = new ResourceStorage(
+            $logger,
+            new NullPurger(),
+            new UriTag(),
+            new ResourceStorageSaver(),
+            new GlobalServerContext(),
+            $poolProvider,
+            $poolProvider,
+        );
+
+        $saved = $storage->saveValue($this->ro, 10);
+
+        $this->assertFalse($saved, 'the store result surfaces to the caller');
+        $context = $logger->events[0];
+        assert($context instanceof SaveValueContext);
+        $this->assertFalse($context->saved, 'the log records that the entry is NOT cached despite the save event');
+        $this->assertSame(10, $context->ttl);
+    }
+
+    public function testSaveValueClampsNegativeTtlToZero(): void
+    {
+        $logger = new RecordingSemanticLogger();
+        $storage = self::getResourceStorageInstance($logger);
+
+        $storage->saveValue($this->ro, -10);
+
+        $context = $logger->events[0];
+        assert($context instanceof SaveValueContext);
+        $this->assertSame(0, $context->ttl, 'a negative ttl is clamped to 0 (the schemas declare "minimum": 0)');
     }
 }

@@ -10,6 +10,7 @@ use FakeVendor\HelloWorld\Resource\Page\None;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Koriym\SemanticLogger\SemanticLogValidator;
 use PHPUnit\Framework\TestCase;
+use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
 use RuntimeException;
 
@@ -20,6 +21,7 @@ use function ob_get_clean;
 use function ob_start;
 use function sys_get_temp_dir;
 use function tempnam;
+use function unlink;
 
 use const JSON_UNESCAPED_SLASHES;
 
@@ -75,6 +77,27 @@ class SemanticLogSchemaTest extends TestCase
         $this->assertNotNull($commandContext, 'a command scope is opened');
         $this->assertStringContainsString('"method":"onPut"', $commandContext);
         $this->assertStringContainsString('Refresh', $commandContext);
+        $this->assertStringContainsString('Purge', $commandContext);
+
+        $types = self::collectTypes($tree);
+        $this->assertContains('purge', $types, 'the #[Purge]/#[Refresh] invalidations nest under the command scope');
+        $this->assertContains('command_result', $types, 'the scope close records the command outcome');
+    }
+
+    public function testSecondGetClosesWithResourceLayerCacheHit(): void
+    {
+        // First GET is a cold miss and populates the cache; drain its session.
+        $this->resource->get('app://self/user', ['id' => 1]);
+        $this->logger->flush();
+
+        // Second GET must close the get scope with a resource-layer cache_hit —
+        // the resource layer had no cache_hit pin (only the donut layers did).
+        $this->resource->get('app://self/user', ['id' => 1]);
+        $tree = $this->flushAndValidate($this->logger);
+
+        $close = self::closeContextJsonOf($tree, 'cache_hit');
+        $this->assertNotNull($close, 'the second GET is served from cache');
+        $this->assertStringContainsString('"layer":"resource"', $close);
     }
 
     public function testTopLevelPutIsRootedInManualStoreScope(): void
@@ -104,6 +127,51 @@ class SemanticLogSchemaTest extends TestCase
         $this->assertContains('invalidate', $types, 'the scope close records the invalidation outcome');
     }
 
+    public function testTopLevelPurgeIsRootedInManualPurgeScope(): void
+    {
+        // A direct purge() has no enclosing AOP scope, so it must root its invalidation
+        // under a manual_purge scope to stay visible in the flushed log.
+        $this->repository->purge(new Uri('page://self/user'));
+        $tree = $this->flushAndValidate($this->logger);
+
+        $types = self::collectTypes($tree);
+        $this->assertContains('manual_purge', $types, 'a manual_purge scope roots the direct purge');
+        $this->assertContains('invalidate', $types, 'the invalidation nests under the manual_purge scope');
+        $this->assertContains('manual_purge_result', $types, 'the scope close records the purge outcome');
+    }
+
+    public function testTopLevelPurgeLogsFailClosedOutcomeWhenPurgerFails(): void
+    {
+        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module->override(new class extends AbstractModule {
+            protected function configure(): void
+            {
+                $this->bind(PurgerInterface::class)->toInstance(new FakeThrowingPurger());
+            }
+        });
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        $repository = $injector->getInstance(QueryRepositoryInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class);
+
+        // The CDN purge is fail-closed: the exception propagates through purge()'s try/finally.
+        try {
+            $repository->purge(new Uri('page://self/user'));
+            $this->fail('Expected the purger failure to propagate (fail-closed)');
+        } catch (RuntimeException $e) {
+            $this->assertStringContainsString('purge failed', $e->getMessage());
+        }
+
+        // The flushed tree is still well-formed: the manual_purge scope is closed with the
+        // failed outcome, and the nested invalidate event records cdn=failed.
+        $tree = $this->flushAndValidate($logger);
+        $invalidate = self::eventContextJsonOf($tree, 'invalidate');
+        $this->assertNotNull($invalidate);
+        $this->assertStringContainsString('"cdn":"failed"', $invalidate);
+        $close = self::closeContextJsonOf($tree, 'manual_purge_result');
+        $this->assertNotNull($close);
+        $this->assertStringContainsString('"result":"failed"', $close);
+    }
+
     public function testValidatorRejectsContextViolatingItsSchema(): void
     {
         // cache_hit context without the required "layer" must be rejected.
@@ -119,7 +187,9 @@ class SemanticLogSchemaTest extends TestCase
                         'id' => 'cache_hit_1',
                         'type' => 'cache_hit',
                         'schemaUrl' => 'https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_hit.json',
-                        'context' => [], // missing "layer"
+                        // an empty object (not []) so the rejection comes from the JSON-schema
+                        // layer, not the validator's structural guard
+                        'context' => (object) [], // missing "layer"
                     ],
                 ],
             ],
@@ -127,12 +197,19 @@ class SemanticLogSchemaTest extends TestCase
         $file = (string) tempnam(sys_get_temp_dir(), 'slog');
         file_put_contents($file, (string) json_encode($tree, JSON_UNESCAPED_SLASHES));
 
-        $this->expectException(RuntimeException::class);
+        $exception = null;
         ob_start();
         try {
             (new SemanticLogValidator())->validate($file, dirname(__DIR__) . '/docs/schemas/context');
+        } catch (RuntimeException $e) {
+            $exception = $e;
         } finally {
-            ob_get_clean();
+            $output = (string) ob_get_clean();
+            unlink($file);
         }
+
+        $this->assertInstanceOf(RuntimeException::class, $exception, 'a schema-violating context must be rejected');
+        // The schema layer names the failing type; the structural guard never does.
+        $this->assertStringContainsString('(cache_hit)', $output, 'the rejection must come from schema validation');
     }
 }

@@ -11,6 +11,7 @@ use BEAR\Resource\Module\ResourceModule;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
 use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
+use FakeVendor\HelloWorld\Resource\App\ControlExpiry;
 use FakeVendor\HelloWorld\Resource\App\NullView;
 use FakeVendor\HelloWorld\Resource\App\User\Profile;
 use FakeVendor\HelloWorld\Resource\Page\None;
@@ -104,6 +105,21 @@ class QueryRepositoryTest extends TestCase
         $ro->uri = new Uri('page://self/none');
         $result = $this->repository->put($ro);
         $this->assertTrue($result);
+    }
+
+    public function testPastExpiryAtIsClampedToZeroTtl(): void
+    {
+        // A past expiryAt means "already expired": the TTL clamps to 0 instead of going
+        // negative (the save_* schemas declare "minimum": 0).
+        $ro = new ControlExpiry();
+        $ro->uri = new Uri('app://self/control-expiry');
+        $ro->body = ['expiry_at' => '2000-01-01 00:00:00'];
+        $this->repository->put($ro);
+        $tree = $this->flushAndValidate($this->logger);
+
+        $saveValue = self::eventContextJsonOf($tree, 'save_value');
+        $this->assertNotNull($saveValue);
+        $this->assertStringContainsString('"ttl":0', $saveValue);
     }
 
     public function testPutResquestEmbeddedResoureView(): void

@@ -99,6 +99,44 @@ trait SemanticLogTreeTrait
     }
 
     /**
+     * JSON of the first event context whose type matches, or null if absent
+     *
+     * Searches events nested under `open` scopes and top-level events alike.
+     *
+     * @param array<string, mixed> $tree
+     */
+    private static function eventContextJsonOf(array $tree, string $type): string|null
+    {
+        $found = self::findEventContextJson($tree['open'] ?? [], $type);
+        if ($found !== null) {
+            return $found;
+        }
+
+        $events = $tree['events'] ?? [];
+        if (! is_array($events)) {
+            return null;
+        }
+
+        foreach ($events as $event) {
+            if (is_array($event) && ($event['type'] ?? null) === $type) {
+                return (string) json_encode($event['context'] ?? null, JSON_UNESCAPED_SLASHES);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * JSON of the first close context whose type matches, or null if absent
+     *
+     * @param array<string, mixed> $tree
+     */
+    private static function closeContextJsonOf(array $tree, string $type): string|null
+    {
+        return self::findCloseContextJson($tree['open'] ?? [], $type);
+    }
+
+    /**
      * @param mixed        $nodes
      * @param list<string> $types
      */
@@ -178,6 +216,60 @@ trait SemanticLogTreeTrait
             }
 
             $found = self::findContextJson($node['open'] ?? [], $type);
+            if ($found !== null) {
+                return $found;
+            }
+        }
+
+        return null;
+    }
+
+    private static function findEventContextJson(mixed $nodes, string $type): string|null
+    {
+        if (! is_array($nodes)) {
+            return null;
+        }
+
+        foreach ($nodes as $node) {
+            if (! is_array($node)) {
+                continue;
+            }
+
+            $events = $node['events'] ?? [];
+            if (is_array($events)) {
+                foreach ($events as $event) {
+                    if (is_array($event) && ($event['type'] ?? null) === $type) {
+                        return (string) json_encode($event['context'] ?? null, JSON_UNESCAPED_SLASHES);
+                    }
+                }
+            }
+
+            $found = self::findEventContextJson($node['open'] ?? [], $type);
+            if ($found !== null) {
+                return $found;
+            }
+        }
+
+        return null;
+    }
+
+    private static function findCloseContextJson(mixed $nodes, string $type): string|null
+    {
+        if (! is_array($nodes)) {
+            return null;
+        }
+
+        foreach ($nodes as $node) {
+            if (! is_array($node)) {
+                continue;
+            }
+
+            $close = $node['close'] ?? null;
+            if (is_array($close) && ($close['type'] ?? null) === $type) {
+                return (string) json_encode($close['context'] ?? null, JSON_UNESCAPED_SLASHES);
+            }
+
+            $found = self::findCloseContextJson($node['open'] ?? [], $type);
             if ($found !== null) {
                 return $found;
             }

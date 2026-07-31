@@ -69,6 +69,26 @@ class SafeSemanticLoggerTest extends TestCase
         $this->assertCount(1, $restored->flush()->toArray()['open']);
     }
 
+    public function testLifoViolationBreaksSessionThenFlushRecovers(): void
+    {
+        // Pin the failure chain against a REAL SemanticLogger delegate (no fake):
+        // closing scope A while B is still open violates LIFO order.
+        $safe = new SafeSemanticLogger(new SemanticLogger());
+
+        $idA = $safe->open(new GetContext('page://self/a'));
+        $safe->open(new GetContext('page://self/b'));
+        // The delegate throws InvalidOperationOrderException; SafeSemanticLogger swallows
+        // it and marks the session broken.
+        $safe->close(new CacheMissContext('resource'), $idA);
+        // The broken (still-unclosed) session flushes to an empty log with no open entries.
+        $this->assertSame([], $safe->flush()->toArray()['open']);
+
+        // Recovery: flush() replaced the dirty delegate, so the next session logs normally.
+        $id = $safe->open(new GetContext('page://self/c'));
+        $safe->close(new CacheHitContext('resource'), $id);
+        $this->assertCount(1, $safe->flush()->toArray()['open']);
+    }
+
     public function testEventFailureIsSwallowed(): void
     {
         // Delegate succeeds on open() (so SafeSemanticLogger stays unbroken and enters
