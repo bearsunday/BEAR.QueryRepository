@@ -56,15 +56,15 @@ final readonly class CommandInterceptor implements MethodInterceptor
             throw new ReturnValueIsNotResourceObjectException($invocation->getThis()::class);
         }
 
-        if ($ro->code >= Code::BAD_REQUEST) {
-            return $ro;
-        }
-
-        // Open a command scope so the triggered purges/refreshes nest under it.
-        $openId = $this->logger->open(($this->commandContextFactory)($invocation));
+        // Open the scope even for a failed write: a 4xx command_result with no invalidation
+        // events records that the purge/refresh was correctly skipped (symmetric with the
+        // query side, which logs purge on non-200).
+        $openId = $this->logger->open(($this->commandContextFactory)($invocation, 'CommandInterceptor'));
         try {
-            foreach ($this->commands as $command) {
-                $command->command($invocation, $ro);
+            if ($ro->code < Code::BAD_REQUEST) {
+                foreach ($this->commands as $command) {
+                    $command->command($invocation, $ro);
+                }
             }
         } finally {
             $this->logger->close(new CommandResultContext($ro->code), $openId);

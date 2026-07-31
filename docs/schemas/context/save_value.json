@@ -15,13 +15,14 @@
             "type": "string"
         },
         "tags": {
+            "description": "invalidation tags registered with the entry, including the resource's own URI tag",
             "type": "array",
             "items": {
                 "type": "string"
             }
         },
         "ttl": {
-            "description": "TTL of the cache entry in seconds; null means no expiry (event-driven invalidation only)",
+            "description": "seconds until expiry; 0 or null means no expiry is set (the entry lives until event-driven invalidation)",
             "type": [
                 "integer",
                 "null"

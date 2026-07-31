@@ -47,13 +47,15 @@ final readonly class RefreshInterceptor implements MethodInterceptor
             throw new ReturnValueIsNotResourceObjectException($invocation->getThis()::class); // @codeCoverageIgnore
         }
 
-        if ($ro->code < Code::BAD_REQUEST) {
-            $openId = $this->logger->open(($this->commandContextFactory)($invocation));
-            try {
+        // Open the scope even for a failed write: a 4xx command_result with no invalidation
+        // events records that the purge/refresh was correctly skipped.
+        $openId = $this->logger->open(($this->commandContextFactory)($invocation, 'RefreshInterceptor'));
+        try {
+            if ($ro->code < Code::BAD_REQUEST) {
                 $this->command->command($invocation, $ro);
-            } finally {
-                $this->logger->close(new CommandResultContext($ro->code), $openId);
             }
+        } finally {
+            $this->logger->close(new CommandResultContext($ro->code), $openId);
         }
 
         return $ro;

@@ -8,6 +8,7 @@ use BEAR\QueryRepository\Log\Context\CacheErrorContext;
 use BEAR\QueryRepository\Log\Context\CacheHitContext;
 use BEAR\QueryRepository\Log\Context\CacheMissContext;
 use BEAR\QueryRepository\Log\Context\GetContext;
+use BEAR\QueryRepository\Log\Context\PutSkippedContext;
 use BEAR\QueryRepository\Log\NullSemanticLogger;
 use BEAR\Resource\Code;
 use BEAR\Resource\ResourceObject;
@@ -66,6 +67,10 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
             $ro = $invocation->proceed();
             // donut created in ResourceObject
             if (isset($ro->headers[Header::ETAG]) || $ro->code >= Code::BAD_REQUEST) {
+                // Record why this miss is not followed by a put; without it the log looks like a lost write.
+                $reason = isset($ro->headers[Header::ETAG]) ? 'etag-present' : 'error-code';
+                $this->logger->event(new PutSkippedContext((string) $ro->uri, $reason));
+
                 return $ro;
             }
 

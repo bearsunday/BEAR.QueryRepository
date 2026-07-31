@@ -14,6 +14,7 @@
             "type": "string"
         },
         "ttl": {
+            "description": "seconds until expiry of the donut template entry (putStatic: the $ttl argument; putDonut: $donutTtl). Interceptor-driven puts log null (no explicit TTL).",
             "type": [
                 "integer",
                 "null"
@@ -21,6 +22,7 @@
             "minimum": 0
         },
         "sMaxAge": {
+            "description": "CDN s-maxage in seconds (putStatic only: also used as the rendered view's TTL; putDonut and interceptor-driven puts log null)",
             "type": [
                 "integer",
                 "null"

@@ -1,0 +1,22 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/put_skipped.json",
+    "title": "put_skipped",
+    "description": "Event: the put was intentionally skipped after a miss. A scope closing cache_miss with no save_* events is by design when this event is present, not a lost write.",
+    "type": "object",
+    "required": [
+        "uri",
+        "reason"
+    ],
+    "properties": {
+        "uri": {
+            "type": "string"
+        },
+        "reason": {
+            "description": "why the put was skipped: the response already carries an ETag (etag-present) or is an error response (error-code)",
+            "type": "string",
+            "enum": ["etag-present", "error-code"]
+        }
+    },
+    "additionalProperties": false
+}

@@ -9,7 +9,9 @@
     ],
     "properties": {
         "code": {
-            "type": "integer"
+            "type": "integer",
+            "minimum": 100,
+            "maximum": 599
         }
     },
     "additionalProperties": false

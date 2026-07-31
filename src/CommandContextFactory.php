@@ -21,7 +21,7 @@ use Ray\Aop\MethodInvocation;
 final class CommandContextFactory
 {
     /** @param MethodInvocation<object> $invocation */
-    public function __invoke(MethodInvocation $invocation): CommandContext
+    public function __invoke(MethodInvocation $invocation, string $source): CommandContext
     {
         $method = $invocation->getMethod();
         $annotations = [];
@@ -34,6 +34,6 @@ final class CommandContextFactory
             $annotations[] = ['class' => $annotation::class, 'uri' => $annotation->uri];
         }
 
-        return new CommandContext($method->getName(), $annotations);
+        return new CommandContext($method->getName(), $annotations, $source);
     }
 }

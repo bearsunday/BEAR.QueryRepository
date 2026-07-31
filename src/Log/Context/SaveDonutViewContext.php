@@ -14,10 +14,10 @@ final class SaveDonutViewContext extends AbstractContext
     public const TYPE = 'save_donut_view';
     public const SCHEMA_URL = 'https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_donut_view.json';
 
-    /** @param list<string> $surrogateKeys */
+    /** @param list<string> $tags */
     public function __construct(
         public readonly string $uri,
-        public readonly array $surrogateKeys,
+        public readonly array $tags,
         public readonly int|null $ttl,
         public readonly bool $saved,
     ) {

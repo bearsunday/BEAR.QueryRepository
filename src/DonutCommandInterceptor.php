@@ -49,14 +49,14 @@ final readonly class DonutCommandInterceptor implements MethodInterceptor
     {
         $ro = $invocation->proceed();
         assert($ro instanceof ResourceObject);
-        if ($ro->code >= Code::BAD_REQUEST) {
-            return $ro;
-        }
 
-        // Open a command scope so the donut purge/refresh nests under it (causality).
-        $openId = $this->logger->open(($this->commandContextFactory)($invocation));
+        // Open the scope even for a failed write: a 4xx command_result with no invalidation
+        // events records that the donut purge/refresh was correctly skipped.
+        $openId = $this->logger->open(($this->commandContextFactory)($invocation, 'DonutCommandInterceptor'));
         try {
-            $this->refreshDonutAndState($ro);
+            if ($ro->code < Code::BAD_REQUEST) {
+                $this->refreshDonutAndState($ro);
+            }
         } finally {
             $this->logger->close(new CommandResultContext($ro->code), $openId);
         }

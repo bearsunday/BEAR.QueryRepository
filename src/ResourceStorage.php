@@ -290,7 +290,7 @@ final class ResourceStorage implements ResourceStorageInterface
         $key = $this->getUriKey($ro->uri, self::KEY_RO);
         $tags = $this->getTags($ro);
         $saved = $this->saver->__invoke($key, $value, $this->roPool, $tags, $ttl);
-        $this->logger->event(new SaveViewContext((string) $ro->uri, $ttl, $saved));
+        $this->logger->event(new SaveViewContext((string) $ro->uri, $tags, $ttl, $saved));
 
         return $saved;
     }
@@ -306,8 +306,9 @@ final class ResourceStorage implements ResourceStorageInterface
         $sMaxAge = $sMaxAge === null ? null : max(0, $sMaxAge);
         $key = $this->getUriKey($uri, self::KEY_DONUT);
         $saved = $this->saver->__invoke($key, $donut, $this->roPool, $headerKeys, $sMaxAge);
-        $this->logger->event(new SaveDonutContext((string) $uri, $sMaxAge, $saved));
-        assert($saved, 'Donut save failed.');
+        // saved=false is logged, not asserted: a quiet store failure must stay observable
+        // in the log (an assert here would throw AFTER the event, contradicting it).
+        $this->logger->event(new SaveDonutContext((string) $uri, $headerKeys, $sMaxAge, $saved));
     }
 
     #[Override]

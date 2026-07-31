@@ -6,7 +6,11 @@
     "type": "object",
     "required": ["result"],
     "properties": {
-        "result": { "type": "string", "enum": ["stored", "failed"] }
+        "result": {
+            "description": "reflects the save_value/save_view outcome only; a failed save_etag inside the same scope does not flip it — inspect the nested save_etag event's \"saved\" field for that",
+            "type": "string",
+            "enum": ["stored", "failed"]
+        }
     },
     "additionalProperties": false
 }

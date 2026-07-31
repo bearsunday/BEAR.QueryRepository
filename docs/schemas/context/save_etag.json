@@ -2,12 +2,12 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
     "title": "save_etag",
-    "description": "Event: an ETag entry was stored with its surrogate keys.",
+    "description": "Event: an ETag entry was stored with its invalidation tags.",
     "type": "object",
     "required": [
         "uri",
         "etag",
-        "surrogateKeys",
+        "tags",
         "saved"
     ],
     "properties": {
@@ -17,7 +17,8 @@
         "etag": {
             "type": "string"
         },
-        "surrogateKeys": {
+        "tags": {
+            "description": "invalidation tags registered with the entry, including the resource's own URI tag",
             "type": "array",
             "items": {
                 "type": "string"
