@@ -38,6 +38,7 @@ class EtagSetterTest extends TestCase
         $setEtag($ro, $time);
         $expect = 'Thu, 01 Jan 1970 00:00:00 GMT';
         $this->assertSame($expect, $ro->headers['Last-Modified']);
-        $this->assertIsString($ro->headers[Header::ETAG]); // @phpstan-ignore-line
+        // RFC 9110 §8.8.3: entity-tag is a DQUOTE-delimited opaque-tag
+        $this->assertMatchesRegularExpression('/^"\d+"$/', $ro->headers[Header::ETAG]);
     }
 }

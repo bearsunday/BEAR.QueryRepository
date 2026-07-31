@@ -31,7 +31,7 @@ class CdnCacheControlHeaderTest extends TestCase
         assert($repository->purge(new Uri('page://self/html/comment')));
 
         $donutRo = $resource->get('page://self/html/blog-posting');
-        $this->assertSame('r', $donutRo->headers[Header::ETAG][-1]);
+        $this->assertStringEndsWith('r"', $donutRo->headers[Header::ETAG]);
         $this->assertArrayHasKey(Header::CDN_CACHE_CONTROL, $donutRo->headers, 'Even if it is made from donut, it should have a CDN header.');
     }
 
