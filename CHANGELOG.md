@@ -9,16 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Cache observability is now built on [Koriym.SemanticLogger](https://github.com/koriym/Koriym.SemanticLogger): an open/event/close tree whose nesting **is** the embed/dependency structure (a parent's embedded children nest under it). Typed `AbstractContext` subclasses live in `src/Log/Context/` with per-context JSON Schemas in `docs/schemas/context/`.
-- `SafeSemanticLogger` (best-effort decorator) guarantees logging never breaks cache reads/writes; `NullSemanticLogger` is the zero-cost no-op default. Bound via `SafeSemanticLoggerProvider` in `DonutCacheModule`.
+- `SafeSemanticLogger` (best-effort decorator) guarantees logging never breaks cache reads/writes. The DI default bound via `SafeSemanticLoggerProvider` in `DonutCacheModule` is `SafeSemanticLogger(new SemanticLogger())`; `NullSemanticLogger` is the constructor-parameter fallback when no logger is injected.
 - `invalidate` context records per-target outcomes as self-describing status words: `roPool`/`etagPool` (`invalidated`|`failed`), `cdn` (`purged`|`failed`), plus `durationMs`. A CDN purge failure is fail-closed: the local pools are invalidated first and the outcome is logged as `cdn: failed`, then the purge exception propagates so a write does not silently leave stale CDN content.
 - Logs validate against their schemas in tests via `SemanticLogValidator` (`SemanticLogTreeTrait`), and `vendor/bin/stree` renders the cache log as a readable tree (`demo/run-dependency.php`, `demo/run-donut.php`).
-- Direct (non-AOP) top-level `put()` and `invalidateTags()` calls are rooted in `manual_store` / `manual_invalidate` scopes so their save/invalidate events stay visible; an event with no enclosing scope would otherwise be dropped at flush.
+- Direct (non-AOP) top-level `put()`, `purge()` and `invalidateTags()` calls are rooted in `manual_store` / `manual_purge` / `manual_invalidate` scopes so their save/purge/invalidate events stay visible; an event with no enclosing scope would otherwise be dropped at flush.
+- `cache_error` context: emitted when the cache layer itself throws (e.g. cache server down) in the read/write interceptors, so a cache outage is distinguishable from a genuine cold-cache miss in the log.
+- `saved` outcome field on the save contexts (`save_value` / `save_view` / `save_donut` / `save_donut_view` / `save_etag`): the cache pool's accept/reject result, so a silently failed store no longer looks like a successful save.
+- Negative TTL clamping: a past `expiryAt` or a negative `expirySecond`/ttl argument is clamped to 0 at the `QueryRepository`/`ResourceStorage` boundary, matching the `"minimum": 0` the schemas declare.
 
 ### Deprecated
-- `RepositoryLogger`, `RepositoryLoggerInterface`, `StructuredRepositoryLoggerInterface`, `NullRepositoryLogger` and `docs/schemas/repository-log.json`. Internal cache code now logs through `Koriym\SemanticLogger\SemanticLoggerInterface`; the legacy flat interface remains bound for BC but receives no internal events.
+- `RepositoryLogger`, `RepositoryLoggerInterface`, `StructuredRepositoryLoggerInterface` and `NullRepositoryLogger`. Internal cache code now logs through `Koriym\SemanticLogger\SemanticLoggerInterface`; the legacy flat interface remains bound for BC but receives no internal events.
+
+### Removed
+- `docs/schemas/repository-log.json` (the flat op-string log format it described is gone; per-context schemas in `docs/schemas/context/` replace it).
 
 ### Changed
 - Cache logging call sites (`QueryRepository`, `ResourceStorage`, `DonutRepository`, `CacheInterceptor`, `AbstractDonutCacheInterceptor`, `CommandInterceptor`, `RefreshInterceptor`) now emit typed contexts through `SemanticLoggerInterface` instead of `RepositoryLoggerInterface::log()`.
+- `SaveDonutContext`/`SaveDonutViewContext`: the misleading `sMaxAge` field is renamed to `ttl` — the value is the cache entry TTL, never a CDN s-maxage.
 - Added runtime dependency `koriym/semantic-logger`.
 
 ## [1.16.2] - 2026-06-29

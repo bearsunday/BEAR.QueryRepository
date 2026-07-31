@@ -95,10 +95,10 @@ Typed `AbstractContext` subclasses live in `src/Log/Context/` and each carries a
 |----|----|-----------|---------|
 | `get` | open | `CacheInterceptor`, `AbstractDonutCacheInterceptor` | A resource/donut GET scope (children nest under it) |
 | `cache_hit` / `cache_miss` (`layer`) | close/event | interceptors, `DonutRepository` | The lookup outcome (`layer`: resource / donut / donut-view) |
-| `command` (`method`/`annotations`) | open | `CommandInterceptor`, `RefreshInterceptor` | A write whose `#[Refresh]`/`#[Purge]` annotations cause the nested purges |
+| `command` (`method`/`annotations`) | open | `CommandInterceptor`, `DonutCommandInterceptor`, `RefreshInterceptor` (all via the shared `CommandContextFactory`) | A write whose `#[Refresh]`/`#[Purge]` annotations cause the nested purges |
 | `depends_on` (`parent`/`child`/`childTags`) | event | `CacheDependency::depends()` | A dependency-graph edge |
 | `save_value` / `save_view` / `save_etag` / `save_donut` / `save_donut_view` | event | `ResourceStorage` | What was stored, with tags/ttl |
-| `invalidate` (`tags`/`roPool`/`etagPool`/`cdn`/`durationMs`) | event | `ResourceStorage::invalidateTags()` | Per-target outcome as status words: `roPool`/`etagPool` are `invalidated`\|`failed`, `cdn` is `purged`\|`failed` (best-effort; `failed` on outage without failing local invalidation) |
+| `invalidate` (`tags`/`roPool`/`etagPool`/`cdn`/`durationMs`) | event | `ResourceStorage::invalidateTags()` | Per-target outcome as status words: `roPool`/`etagPool` are `invalidated`\|`failed`, `cdn` is `purged`\|`failed` (fail-closed: a purge failure is logged as `failed` after the local pools are invalidated, then the exception propagates) |
 | `purge` | event | `QueryRepository::purge()` | An explicit purge request |
 | `put_donut` / `refresh_donut` | event | `DonutRepository` | Donut store / rebuild |
 
@@ -148,7 +148,7 @@ pins resilience:
 | Test | Verifies |
 |------|----------|
 | `testInvalidateTagsRecordsSuccessfulOutcome` | `roPool`/`etagPool` are `invalidated`, `cdn` is `purged`, `durationMs` is recorded |
-| `testInvalidateTagsTreatsPurgerFailureAsBestEffort` | A CDN purger outage does not fail local invalidation; recorded as `cdn=failed` |
+| `testInvalidateTagsFailsClosedWhenPurgerFails` | A CDN purger outage is logged as `cdn=failed` after local invalidation, then the purge exception propagates (fail-closed) |
 | `GracefulLoggingTest::testCacheWorksWhenLoggerAlwaysThrows` | A logger that throws on every call never breaks cache reads/writes (SafeSemanticLogger) |
 
 ## ETag Invalidation Verification

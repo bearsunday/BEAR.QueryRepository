@@ -32,6 +32,15 @@ class User extends ResourceObject
 - Manual: https://bearsunday.github.io/manuals/1.0/en/cache.html
 - Repository: https://github.com/bearsunday/BEAR.QueryRepository
 
+## Cache Log (Semantic Log)
+
+Cache operations are logged as an open/event/close tree (Koriym.SemanticLogger) whose nesting **is** the embed/dependency structure. Every entry carries a typed context and a `schemaUrl` pointing at its per-context JSON Schema, so the log is self-describing.
+
+- A resource GET opens a `get` scope; embedded child GETs nest under it; the scope closes with `cache_hit` / `cache_miss` (field `layer`: `resource` / `donut` / `donut-view`).
+- Saves (`save_value`, `save_view`, `save_etag`, `save_donut`, `save_donut_view`), dependencies (`depends_on`) and invalidations (`invalidate`) are events inside the active scope. A write opens a `command` scope recording the method and its `#[Refresh]`/`#[Purge]` annotations.
+
+Verifying the event-driven cache from logs: TTL-less entries (`ttl: null`) live until an `invalidate` event with a matching tag, so correlate `save_*` tags/surrogate keys with `invalidate` tags. Check outcome fields: `saved: false` on a save context means the pool rejected the entry (it is NOT cached), and `cdn: failed` on `invalidate` means the CDN purge threw (fail-closed, after local pools were invalidated). A `cache_error` event means the cache layer itself is degraded — a `cache_miss` after it is not a cold cache.
+
 ## Schemas
 
-- Repository Log Format: https://bearsunday.github.io/BEAR.QueryRepository/schemas/repository-log.json
+- Cache log context schemas: https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/ (one JSON Schema per context)
