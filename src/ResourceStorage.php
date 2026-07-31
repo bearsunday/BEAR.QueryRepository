@@ -32,9 +32,13 @@ use function explode;
 use function hrtime;
 use function implode;
 use function is_array;
+use function preg_match;
+use function preg_match_all;
 use function round;
 use function sprintf;
+use function str_starts_with;
 use function strtoupper;
+use function substr;
 use function trim;
 
 /**
@@ -59,6 +63,11 @@ final class ResourceStorage implements ResourceStorageInterface
      * Resource static cache prifix
      */
     private const KEY_DONUT = 'donut-';
+
+    /**
+     * entity-tag (quoted, optionally weak) or a bare legacy token
+     */
+    private const ENTITY_TAG_PATTERN = '(?:W\/)?"[^"]*"|[^,"]+';
 
     /** @var ProviderInterface<TagAwareAdapterInterface> */
     private ProviderInterface $roPoolProvider;
@@ -129,7 +138,51 @@ final class ResourceStorage implements ResourceStorageInterface
     #[Override]
     public function hasEtag(string $etag): bool
     {
-        return $this->etagPool->hasItem($etag);
+        foreach ($this->extractOpaqueTags($etag) as $opaqueTag) {
+            if ($this->etagPool->hasItem($opaqueTag)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Extract opaque-tags from an If-None-Match field value
+     *
+     * Pool keys are bare opaque-tags, so quoted entity-tags (RFC 9110 §8.8.3),
+     * weak validators, and comma-separated lists are reduced to bare tokens.
+     * A comma inside a quoted opaque-tag is data, not a list separator, and a
+     * bare legacy token (cached before ETags were quoted) passes through unchanged.
+     * The whole field value must parse as a list of entity-tags: a value with an
+     * unterminated quote or trailing garbage is rejected, not salvaged.
+     *
+     * @return list<string>
+     */
+    private function extractOpaqueTags(string $fieldValue): array
+    {
+        $pattern = '(?:' . self::ENTITY_TAG_PATTERN . ')';
+        // \A/\z anchors (not ^/$) and OWS of SP/HTAB per RFC 9110; anything else rejects the whole field value
+        if (! preg_match('/\A[ \t]*' . $pattern . '(?:[ \t]*,[ \t]*' . $pattern . ')*[ \t]*\z/', $fieldValue)) {
+            return [];
+        }
+
+        $opaqueTags = [];
+        // Tokenize as quoted entity-tags (optionally weak) or bare runs, so a comma inside quotes is not split
+        preg_match_all('/' . $pattern . '/', $fieldValue, $entityTags);
+        foreach ($entityTags[0] as $entityTag) {
+            $entityTag = trim($entityTag);
+            if (str_starts_with($entityTag, 'W/')) {
+                $entityTag = substr($entityTag, 2);
+            }
+
+            $opaqueTag = trim($entityTag, '"');
+            if ($opaqueTag !== '') {
+                $opaqueTags[] = $opaqueTag;
+            }
+        }
+
+        return $opaqueTags;
     }
 
     /**
@@ -337,8 +390,8 @@ final class ResourceStorage implements ResourceStorageInterface
         $tags[] = (new UriTag())($uri);
         /** @var list<string> $uniqueTags */
         $uniqueTags = array_values(array_unique($tags));
-        // Sanitize etag to remove reserved characters
-        $this->saver->__invoke($etag, 'etag', $this->etagPool, $uniqueTags, $ttl);
+        // The header value is a quoted entity-tag; the pool key is the bare opaque-tag
+        $this->saver->__invoke(trim($etag, '"'), 'etag', $this->etagPool, $uniqueTags, $ttl);
         $this->logger->event(new SaveEtagContext((string) $uri, $etag, $uniqueTags));
     }
 

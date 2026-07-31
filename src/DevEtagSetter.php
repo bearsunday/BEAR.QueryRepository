@@ -22,7 +22,7 @@ final readonly class DevEtagSetter implements EtagSetterInterface
         // Use URI as ETag in dev mode to understand how the cache is created.
         // This is useful for debugging purposes.
         // Usually, the ETag is a hash of the resource view or body.
-        $ro->headers[Header::ETAG] = $uriEtag;
+        $ro->headers[Header::ETAG] = '"' . $uriEtag . '"';
         $ro->headers[Header::LAST_MODIFIED] = gmdate(Header::RFC7231, 0);
     }
 }
