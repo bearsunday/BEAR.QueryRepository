@@ -30,7 +30,8 @@ final readonly class EtagSetter implements EtagSetterInterface
         }
 
         $etag =  $this->getEtag($ro, $httpCache);
-        $ro->headers[Header::ETAG] = $etag;
+        // RFC 9110 §8.8.3: entity-tag is a DQUOTE-delimited opaque-tag
+        $ro->headers[Header::ETAG] = '"' . $etag . '"';
         $ro->headers[Header::LAST_MODIFIED] = gmdate(Header::RFC7231, $time);
     }
 

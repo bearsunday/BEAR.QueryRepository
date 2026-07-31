@@ -11,6 +11,8 @@ interface ResourceStorageInterface
 {
     /**
      * Is ETag registered ?
+     *
+     * @param string $etag If-None-Match field value: quoted entity-tag(s), weak validator, or bare legacy token
      */
     public function hasEtag(string $etag): bool;
 

@@ -22,7 +22,9 @@ use function explode;
 use function implode;
 use function is_array;
 use function sprintf;
+use function str_starts_with;
 use function strtoupper;
+use function substr;
 use function trim;
 
 /**
@@ -117,7 +119,40 @@ final class ResourceStorage implements ResourceStorageInterface
     #[Override]
     public function hasEtag(string $etag): bool
     {
-        return $this->etagPool->hasItem($etag);
+        foreach ($this->extractOpaqueTags($etag) as $opaqueTag) {
+            if ($this->etagPool->hasItem($opaqueTag)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Extract opaque-tags from an If-None-Match field value
+     *
+     * Pool keys are bare opaque-tags, so quoted entity-tags (RFC 9110 §8.8.3),
+     * weak validators, and comma-separated lists are reduced to bare tokens.
+     * A bare legacy token (cached before ETags were quoted) passes through unchanged.
+     *
+     * @return list<string>
+     */
+    private function extractOpaqueTags(string $fieldValue): array
+    {
+        $opaqueTags = [];
+        foreach (explode(',', $fieldValue) as $entityTag) {
+            $entityTag = trim($entityTag);
+            if (str_starts_with($entityTag, 'W/')) {
+                $entityTag = substr($entityTag, 2);
+            }
+
+            $opaqueTag = trim($entityTag, '"');
+            if ($opaqueTag !== '') {
+                $opaqueTags[] = $opaqueTag;
+            }
+        }
+
+        return $opaqueTags;
     }
 
     /**
@@ -279,8 +314,8 @@ final class ResourceStorage implements ResourceStorageInterface
         /** @var list<string> $uniqueTags */
         $uniqueTags = array_values(array_unique($tags));
         $this->logger->log('save-etag', ['uri' => (string) $uri, 'etag' => $etag, 'surrogateKeys' => $uniqueTags]);
-        // Sanitize etag to remove reserved characters
-        $this->saver->__invoke($etag, 'etag', $this->etagPool, $uniqueTags, $ttl);
+        // The header value is a quoted entity-tag; the pool key is the bare opaque-tag
+        $this->saver->__invoke(trim($etag, '"'), 'etag', $this->etagPool, $uniqueTags, $ttl);
     }
 
     public function __serialize(): array

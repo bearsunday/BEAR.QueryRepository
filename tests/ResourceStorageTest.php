@@ -57,6 +57,17 @@ class ResourceStorageTest extends TestCase
         $this->assertInstanceOf(ResourceDonut::class, $donut);
     }
 
+    public function testHasEtagAcceptsIfNoneMatchVariants(): void
+    {
+        $this->storage->saveEtag($this->ro->uri, '"123456"', '', 10);
+
+        $this->assertTrue($this->storage->hasEtag('"123456"'), 'quoted entity-tag');
+        $this->assertTrue($this->storage->hasEtag('123456'), 'bare legacy token');
+        $this->assertTrue($this->storage->hasEtag('W/"123456"'), 'weak validator');
+        $this->assertTrue($this->storage->hasEtag('"999999", "123456"'), 'entity-tag list');
+        $this->assertFalse($this->storage->hasEtag('"999999"'), 'unknown entity-tag');
+    }
+
     public function testEtagIsNotRegisteredAsInvalidationTag(): void
     {
         $this->ro->headers['ETag'] = 'test-etag-value';

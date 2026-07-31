@@ -13,6 +13,7 @@ use Ray\Di\Injector;
 
 use function assert;
 use function dirname;
+use function str_ends_with;
 
 class DonutQueryInterceptorPurgeTest extends TestCase
 {
@@ -67,6 +68,6 @@ class DonutQueryInterceptorPurgeTest extends TestCase
 
     private function isCreatedByState(ResourceObject $ro): bool
     {
-        return $ro->headers[Header::ETAG][-1] === 'r';
+        return str_ends_with($ro->headers[Header::ETAG], 'r"');
     }
 }
