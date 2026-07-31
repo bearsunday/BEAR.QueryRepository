@@ -90,6 +90,7 @@ class ResourceStorageTest extends TestCase
         $this->assertFalse($this->storage->hasEtag('"123456" trailing'), 'trailing data after entity-tag');
         $this->assertFalse($this->storage->hasEtag('x"123456"'), 'leading data before entity-tag');
         $this->assertFalse($this->storage->hasEtag('"123456" "123456"'), 'missing comma separator');
+        $this->assertFalse($this->storage->hasEtag("\"123456\"\n"), 'trailing newline');
     }
 
     public function testEtagIsNotRegisteredAsInvalidationTag(): void

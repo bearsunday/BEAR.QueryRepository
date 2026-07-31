@@ -150,7 +150,8 @@ final class ResourceStorage implements ResourceStorageInterface
     private function extractOpaqueTags(string $fieldValue): array
     {
         $pattern = '(?:' . self::ENTITY_TAG_PATTERN . ')';
-        if (! preg_match('/^\s*' . $pattern . '(?:\s*,\s*' . $pattern . ')*\s*$/', $fieldValue)) {
+        // \A/\z anchors (not ^/$) and OWS of SP/HTAB per RFC 9110; anything else rejects the whole field value
+        if (! preg_match('/\A[ \t]*' . $pattern . '(?:[ \t]*,[ \t]*' . $pattern . ')*[ \t]*\z/', $fieldValue)) {
             return [];
         }
 
