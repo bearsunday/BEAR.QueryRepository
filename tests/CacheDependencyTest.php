@@ -60,6 +60,25 @@ class CacheDependencyTest extends TestCase
     }
 
     /**
+     * The same grandchild cascade as testDestroyByGrandChild, but driven by a write
+     * command instead of a manual purge: LevelThree::onPut's #[Purge] busts
+     * level-three and, via the surrogate-key tags, its parents. This pins the
+     * command-driven invalidation flow demonstrated in demo/run-dependency.php.
+     */
+    public function testWriteToGrandChildCascadesInvalidation(): void
+    {
+        $this->resource->get('page://self/dep/level-one');
+        $one1 = $this->repository->get(new Uri('page://self/dep/level-one'));
+        $this->assertInstanceOf(ResourceState::class, $one1);
+        $etag1 = $one1->headers[Header::ETAG];
+        $this->resource->put('page://self/dep/level-three');
+        $this->assertNull($this->repository->get(new Uri('page://self/dep/level-one')));
+        $this->assertNull($this->repository->get(new Uri('page://self/dep/level-two')));
+        $this->assertNull($this->repository->get(new Uri('page://self/dep/level-three')));
+        $this->assertFalse($this->storage->hasEtag($etag1));
+    }
+
+    /**
      * Test that resources in unrelated dependency chains are independent.
      *
      * Structure:
