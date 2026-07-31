@@ -21,6 +21,7 @@ use function assert;
 use function explode;
 use function implode;
 use function is_array;
+use function preg_match_all;
 use function sprintf;
 use function str_starts_with;
 use function strtoupper;
@@ -133,14 +134,17 @@ final class ResourceStorage implements ResourceStorageInterface
      *
      * Pool keys are bare opaque-tags, so quoted entity-tags (RFC 9110 §8.8.3),
      * weak validators, and comma-separated lists are reduced to bare tokens.
-     * A bare legacy token (cached before ETags were quoted) passes through unchanged.
+     * A comma inside a quoted opaque-tag is data, not a list separator, and a
+     * bare legacy token (cached before ETags were quoted) passes through unchanged.
      *
      * @return list<string>
      */
     private function extractOpaqueTags(string $fieldValue): array
     {
         $opaqueTags = [];
-        foreach (explode(',', $fieldValue) as $entityTag) {
+        // Tokenize as quoted entity-tags (optionally weak) or bare runs, so a comma inside quotes is not split
+        preg_match_all('/(?:W\/)?"[^"]*"|[^,"]+/', $fieldValue, $entityTags);
+        foreach ($entityTags[0] as $entityTag) {
             $entityTag = trim($entityTag);
             if (str_starts_with($entityTag, 'W/')) {
                 $entityTag = substr($entityTag, 2);

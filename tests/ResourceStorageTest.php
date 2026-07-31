@@ -68,6 +68,16 @@ class ResourceStorageTest extends TestCase
         $this->assertFalse($this->storage->hasEtag('"999999"'), 'unknown entity-tag');
     }
 
+    public function testHasEtagSplitsOnlyOnCommasOutsideQuotes(): void
+    {
+        $this->storage->saveEtag($this->ro->uri, '"foo,bar"', '', 10);
+
+        $this->assertTrue($this->storage->hasEtag('"foo,bar"'), 'comma inside a quoted opaque-tag is data');
+        $this->assertTrue($this->storage->hasEtag('W/"foo,bar"'), 'weak validator with comma in opaque-tag');
+        $this->assertTrue($this->storage->hasEtag('"999999", "foo,bar"'), 'list with a comma-bearing entity-tag');
+        $this->assertFalse($this->storage->hasEtag('"bar"'), 'naive split fragment must not match');
+    }
+
     public function testEtagIsNotRegisteredAsInvalidationTag(): void
     {
         $this->ro->headers['ETag'] = 'test-etag-value';
