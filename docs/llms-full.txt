@@ -183,11 +183,12 @@ Cache operations are logged as an open/event/close tree (Koriym.SemanticLogger) 
 |----------------|------|-------------|
 | `get` | open | A resource/donut GET scope; embedded child GETs nest under it |
 | `cache_hit` / `cache_miss` (`layer`) | close/event | Lookup outcome (`layer`: `resource` / `donut` / `donut-view`) |
-| `command` (`method`/`annotations`) | open | A write whose `#[Refresh]`/`#[Purge]` annotations cause the nested purges |
+| `command` (`method`/`annotations`/`source`) | open | A write scope; `source` names the producing interceptor, `annotations` its `#[Refresh]`/`#[Purge]` attributes (empty on the CacheableResponse path by design) |
 | `depends_on` (`parent`/`child`/`childTags`) | event | Parent registered a dependency on a child's tags |
-| `save_value` / `save_view` / `save_etag` / `save_donut` / `save_donut_view` | event | What was stored, with `tags`/`surrogateKeys`, `ttl`, and the `saved` outcome |
-| `invalidate` (`tags`/`roPool`/`etagPool`/`cdn`/`durationMs`) | event | Tag invalidation outcome; the CDN purge is fail-closed (`cdn: failed` always accompanies a thrown exception, after the local pools were invalidated) |
+| `save_value` / `save_view` / `save_etag` / `save_donut` / `save_donut_view` | event | What was stored, with `tags`, `ttl` (seconds until expiry; 0/null = no expiry set), and the `saved` outcome |
+| `invalidate` (`tags`/`roPool`/`etagPool`/`cdn`/`durationMs`) | event | Tag invalidation outcome; the CDN purge is fail-closed (`cdn: failed` always accompanies a thrown exception, after the local pools were invalidated). Inside a `get` scope a leading one is pre-write cleanup — see below |
 | `purge` | event | An explicit purge request |
+| `put_skipped` (`uri`/`reason`) | event | The put was intentionally skipped after a miss (`reason`: `etag-present` / `error-code`) |
 | `cache_error` (`uri`/`error`) | event | The cache layer itself threw (e.g. cache server down) |
 | `put_donut` / `refresh_donut` | event | Donut store / rebuild |
 | `manual_store` / `manual_purge` / `manual_invalidate` (+ `*_result` closes) | open | Scope rooting a top-level (non-AOP) put/purge/invalidate |
@@ -196,11 +197,13 @@ An ETag with an 'r' suffix (e.g., "123456r") marks a refreshed donut: the outer 
 
 ### Verifying the event-driven cache from logs
 
-- TTL-less entries (`ttl: null`) live until an `invalidate` event with a matching tag — correlate `save_*` tags/surrogate keys with `invalidate` tags to confirm a write busted its dependents.
-- `saved: false` on a save context means the pool rejected the entry — it is NOT cached despite the save event.
-- A `cache_error` event means the cache layer itself is degraded; a `cache_miss` after it is not a cold cache.
+- Event-driven entries appear with their configured TTL in seconds (`ttl` = seconds until expiry; the `never` convention = 31536000 = 1 year, effectively indefinite). `0`/`null` also mean no expiry is set. Such entries live until an `invalidate` event with a matching tag — correlate `save_*` `tags` with `invalidate` `tags` to confirm a write busted its dependents.
+- A `get` scope with no events and a `cache_hit` close was served from cache; nesting mirrors the embed structure of resources; `manual_*` scopes mark non-AOP entry points (direct put/purge/invalidate calls).
+- A miss scope without `save_*` events means the put was intentionally skipped — look for a `put_skipped` event (or, for commands, a 4xx `command_result` with no invalidation events).
+- A leading `invalidate` inside a `get` scope, immediately followed by same-tag `save_*` events, is pre-write cleanup (every put deleteEtags first), not a real invalidation. It uses the resource's own URI tag — which is also its parents' surrogate key — so a child refill visibly purges the parent entry, by design.
+- Check outcome fields: `saved: false` on a save context means the pool rejected the entry — it is NOT cached despite the save event. `cdn: failed` on `invalidate` means the CDN purge threw (fail-closed). A `cache_error` event means the cache layer itself is degraded; a `cache_miss` after it is not a cold cache.
 
-Schemas: docs/schemas/context/ (one JSON Schema per context; each log entry links its own via `schemaUrl`)
+Schemas: docs/schemas/context/ (one JSON Schema per context, e.g. docs/schemas/context/save_value.json; each log entry links its own via `schemaUrl`)
 
 ## Architecture
 
@@ -228,4 +231,4 @@ Schemas: docs/schemas/context/ (one JSON Schema per context; each log entry link
 
 ## Schemas
 
-- Cache log context schemas: https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/ (one JSON Schema per context)
+- Cache log context schemas: https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/ (one JSON Schema per context, e.g. https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_value.json)

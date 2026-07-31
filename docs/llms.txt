@@ -37,10 +37,16 @@ class User extends ResourceObject
 Cache operations are logged as an open/event/close tree (Koriym.SemanticLogger) whose nesting **is** the embed/dependency structure. Every entry carries a typed context and a `schemaUrl` pointing at its per-context JSON Schema, so the log is self-describing.
 
 - A resource GET opens a `get` scope; embedded child GETs nest under it; the scope closes with `cache_hit` / `cache_miss` (field `layer`: `resource` / `donut` / `donut-view`).
-- Saves (`save_value`, `save_view`, `save_etag`, `save_donut`, `save_donut_view`), dependencies (`depends_on`) and invalidations (`invalidate`) are events inside the active scope. A write opens a `command` scope recording the method and its `#[Refresh]`/`#[Purge]` annotations.
+- Saves (`save_value`, `save_view`, `save_etag`, `save_donut`, `save_donut_view`), dependencies (`depends_on`) and invalidations (`invalidate`) are events inside the active scope. A write opens a `command` scope recording the method, its `#[Refresh]`/`#[Purge]` annotations and the producing interceptor (`source`).
 
-Verifying the event-driven cache from logs: TTL-less entries (`ttl: null`) live until an `invalidate` event with a matching tag, so correlate `save_*` tags/surrogate keys with `invalidate` tags. Check outcome fields: `saved: false` on a save context means the pool rejected the entry (it is NOT cached), and `cdn: failed` on `invalidate` means the CDN purge threw (fail-closed, after local pools were invalidated). A `cache_error` event means the cache layer itself is degraded — a `cache_miss` after it is not a cold cache.
+Verifying the event-driven cache from logs:
+
+- Event-driven entries appear with their configured TTL in seconds (`ttl` = seconds until expiry; the `never` convention = 31536000 = 1 year, effectively indefinite). `0`/`null` also mean no expiry is set. Such entries live until an `invalidate` event with a matching tag — correlate `save_*` `tags` with `invalidate` `tags` to confirm a write busted its dependents.
+- A `get` scope with no events and a `cache_hit` close was served from cache; nesting mirrors the embed structure of resources; `manual_*` scopes mark non-AOP entry points (direct put/purge/invalidate calls).
+- A miss scope without `save_*` events means the put was intentionally skipped — look for a `put_skipped` event (or, for commands, a 4xx `command_result` with no invalidation events).
+- A leading `invalidate` inside a `get` scope, immediately followed by same-tag `save_*` events, is pre-write cleanup (every put deleteEtags first), not a real invalidation. It uses the resource's own URI tag — which is also its parents' surrogate key — so a child refill visibly purges the parent entry, by design.
+- Check outcome fields: `saved: false` on a save context means the pool rejected the entry (it is NOT cached), and `cdn: failed` on `invalidate` means the CDN purge threw (fail-closed, after local pools were invalidated). A `cache_error` event means the cache layer itself is degraded — a `cache_miss` after it is not a cold cache.
 
 ## Schemas
 
-- Cache log context schemas: https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/ (one JSON Schema per context)
+- Cache log context schemas: https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/ (one JSON Schema per context, e.g. https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_value.json)

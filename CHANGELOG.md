@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Direct (non-AOP) top-level `put()`, `purge()` and `invalidateTags()` calls are rooted in `manual_store` / `manual_purge` / `manual_invalidate` scopes so their save/purge/invalidate events stay visible; an event with no enclosing scope would otherwise be dropped at flush.
 - `cache_error` context: emitted when the cache layer itself throws (e.g. cache server down) in the read/write interceptors, so a cache outage is distinguishable from a genuine cold-cache miss in the log.
 - `saved` outcome field on the save contexts (`save_value` / `save_view` / `save_donut` / `save_donut_view` / `save_etag`): the cache pool's accept/reject result, so a silently failed store no longer looks like a successful save.
+- `tags` (invalidation tags) on all five save contexts, so a save can be correlated with the `invalidate` events that later bust it.
+- `put_skipped` context: emitted when a donut GET miss is intentionally not followed by a put (`reason`: `etag-present` / `error-code`), so a miss without save events reads as a deliberate skip, not a lost write.
+- `source` field on the `command` context naming the producing interceptor (`CommandInterceptor` / `DonutCommandInterceptor` / `RefreshInterceptor`).
 - Negative TTL clamping: a past `expiryAt` or a negative `expirySecond`/ttl argument is clamped to 0 at the `QueryRepository`/`ResourceStorage` boundary, matching the `"minimum": 0` the schemas declare.
 
 ### Deprecated
@@ -26,6 +29,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Cache logging call sites (`QueryRepository`, `ResourceStorage`, `DonutRepository`, `CacheInterceptor`, `AbstractDonutCacheInterceptor`, `CommandInterceptor`, `RefreshInterceptor`) now emit typed contexts through `SemanticLoggerInterface` instead of `RepositoryLoggerInterface::log()`.
 - `SaveDonutContext`/`SaveDonutViewContext`: the misleading `sMaxAge` field is renamed to `ttl` — the value is the cache entry TTL, never a CDN s-maxage.
+- `SaveEtagContext`/`SaveDonutViewContext`: `surrogateKeys` renamed to `tags`; all save contexts now consistently report invalidation tags under `tags`.
+- Command scopes are opened even for failed writes: a 4xx response closes with `command_result` (code 4xx) and no invalidation events, recording that the purge/refresh was correctly skipped instead of vanishing from the log.
+- Removed the post-save `assert()` in `ResourceStorage::saveDonut()`: with assertions enabled it threw AFTER the `saved: false` event was logged, contradicting quiet-failure recording.
 - Added runtime dependency `koriym/semantic-logger`.
 
 ## [1.16.2] - 2026-06-29

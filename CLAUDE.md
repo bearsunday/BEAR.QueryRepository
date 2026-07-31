@@ -207,4 +207,4 @@ Follows PSR-12 coding standards with PHP_CodeSniffer.
 - BEAR.Sunday LLM docs: https://bearsunday.github.io/llms-full.txt
 - This package LLM docs: https://bearsunday.github.io/BEAR.QueryRepository/llms-full.txt
 - Cache manual: https://bearsunday.github.io/manuals/1.0/en/cache.html
-- Log schemas: https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/ (one JSON Schema per log context)
+- Log schemas: https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/ (one JSON Schema per log context, e.g. https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_value.json)

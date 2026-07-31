@@ -87,6 +87,7 @@ $log = $logger->flush();
 echo "=== Cache Log Tree ===" . PHP_EOL;
 echo (new TreeRenderer())->render($log->toArray(), new RenderConfig(true, 0.0, 1000, true)) . PHP_EOL;
 
-// Machine-readable, schema-validated JSON (also: `vendor/bin/stree <file>`)
+// Machine-readable JSON conforming to the published schemas (validated in the
+// test suite via SemanticLogValidator; also: `vendor/bin/stree <file>`)
 echo PHP_EOL . "=== Cache Log JSON ===" . PHP_EOL;
 echo json_encode($log, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL;
