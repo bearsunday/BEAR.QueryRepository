@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\LogicException;
+use BEAR\QueryRepository\Log\Context\CacheErrorContext;
 use BEAR\QueryRepository\Log\Context\CacheHitContext;
 use BEAR\QueryRepository\Log\Context\CacheMissContext;
 use BEAR\QueryRepository\Log\Context\GetContext;
@@ -57,9 +58,11 @@ final readonly class CacheInterceptor implements MethodInterceptor
             try {
                 $state = $this->repository->get($ro->uri);
             } catch (Throwable $e) {
+                // The cache layer itself is degraded: log it so a miss here is not read as a cold cache
+                $this->logger->event(new CacheErrorContext((string) $ro->uri, $e->getMessage()));
                 $this->triggerWarning($e);
 
-                return $invocation->proceed(); // @codeCoverageIgnore
+                return $invocation->proceed();
             }
 
             if ($state instanceof ResourceState) {
@@ -77,6 +80,7 @@ final readonly class CacheInterceptor implements MethodInterceptor
             } catch (LogicException $e) {
                 throw $e;
             } catch (Throwable $e) {  // @codeCoverageIgnore
+                $this->logger->event(new CacheErrorContext((string) $ro->uri, $e->getMessage())); // @codeCoverageIgnore
                 $this->triggerWarning($e); // @codeCoverageIgnore
             }
 

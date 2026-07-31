@@ -15,7 +15,8 @@ use Ray\Aop\MethodInvocation;
  * #[Purge] annotations, so the cause of the invalidations that follow is
  * recorded as the open node, with the purges nested beneath it.
  *
- * Shared by CommandInterceptor and RefreshInterceptor to avoid duplication.
+ * Shared by CommandInterceptor, DonutCommandInterceptor and RefreshInterceptor
+ * to avoid duplication.
  */
 final class CommandContextFactory
 {

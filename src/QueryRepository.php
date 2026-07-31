@@ -21,6 +21,7 @@ use Override;
 use ReflectionClass;
 
 use function is_array;
+use function max;
 use function sprintf;
 use function strtotime;
 use function time;
@@ -175,7 +176,8 @@ final readonly class QueryRepository implements QueryRepositoryInterface
             return $this->getExpiryAtSec($ro, $cacheable);
         }
 
-        return $cacheable->expirySecond ?: $this->expiry->getTime($cacheable->expiry);
+        // A user-supplied expirySecond may be negative; the schemas declare "minimum": 0
+        return max(0, $cacheable->expirySecond ?: $this->expiry->getTime($cacheable->expiry));
     }
 
     private function getExpiryAtSec(ResourceObject $ro, Cacheable $cacheable): int
@@ -189,6 +191,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         /** @var string $expiryAt */
         $expiryAt = $ro->body[$cacheable->expiryAt];
 
-        return (int) strtotime($expiryAt) - time();
+        // A past expiryAt means "already expired": TTL 0
+        return max(0, (int) strtotime($expiryAt) - time());
     }
 }

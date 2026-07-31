@@ -32,6 +32,7 @@ use function explode;
 use function hrtime;
 use function implode;
 use function is_array;
+use function max;
 use function preg_match;
 use function preg_match_all;
 use function round;
@@ -262,13 +263,14 @@ final class ResourceStorage implements ResourceStorageInterface
     #[Override]
     public function saveValue(ResourceObject $ro, int $ttl)
     {
+        $ttl = max(0, $ttl);
         /** @psalm-suppress MixedAssignment $body */
         $body = $this->evaluateBody($ro->body);
         $value = ResourceState::create($ro, $body, null);
         $key = $this->getUriKey($ro->uri, self::KEY_RO);
         $tags = $this->getTags($ro);
         $saved = $this->saver->__invoke($key, $value, $this->roPool, $tags, $ttl);
-        $this->logger->event(new SaveValueContext((string) $ro->uri, $tags, $ttl));
+        $this->logger->event(new SaveValueContext((string) $ro->uri, $tags, $ttl, $saved));
 
         return $saved;
     }
@@ -281,13 +283,14 @@ final class ResourceStorage implements ResourceStorageInterface
     #[Override]
     public function saveView(ResourceObject $ro, int $ttl)
     {
+        $ttl = max(0, $ttl);
         /** @psalm-suppress MixedAssignment $body */
         $body = $this->evaluateBody($ro->body);
         $value = ResourceState::create($ro, $body, $ro->view);
         $key = $this->getUriKey($ro->uri, self::KEY_RO);
         $tags = $this->getTags($ro);
         $saved = $this->saver->__invoke($key, $value, $this->roPool, $tags, $ttl);
-        $this->logger->event(new SaveViewContext((string) $ro->uri, $ttl));
+        $this->logger->event(new SaveViewContext((string) $ro->uri, $ttl, $saved));
 
         return $saved;
     }
@@ -298,20 +301,24 @@ final class ResourceStorage implements ResourceStorageInterface
     #[Override]
     public function saveDonut(AbstractUri $uri, ResourceDonut $donut, int|null $sMaxAge, array $headerKeys): void
     {
+        // Despite the legacy parameter name (kept for BC), this argument carries the donut
+        // template entry TTL (putStatic passes $ttl, putDonut passes $donutTtl), never a CDN s-maxage.
+        $sMaxAge = $sMaxAge === null ? null : max(0, $sMaxAge);
         $key = $this->getUriKey($uri, self::KEY_DONUT);
-        $result = $this->saver->__invoke($key, $donut, $this->roPool, $headerKeys, $sMaxAge);
-        $this->logger->event(new SaveDonutContext((string) $uri, $sMaxAge));
-        assert($result, 'Donut save failed.');
+        $saved = $this->saver->__invoke($key, $donut, $this->roPool, $headerKeys, $sMaxAge);
+        $this->logger->event(new SaveDonutContext((string) $uri, $sMaxAge, $saved));
+        assert($saved, 'Donut save failed.');
     }
 
     #[Override]
     public function saveDonutView(ResourceObject $ro, int|null $ttl): bool
     {
+        $ttl = $ttl === null ? null : max(0, $ttl);
         $resourceState = ResourceState::create($ro, [], $ro->view);
         $key = $this->getUriKey($ro->uri, self::KEY_RO);
         $tags = $this->getTags($ro);
         $saved = $this->saver->__invoke($key, $resourceState, $this->roPool, $tags, $ttl);
-        $this->logger->event(new SaveDonutViewContext((string) $ro->uri, $tags, $ttl));
+        $this->logger->event(new SaveDonutViewContext((string) $ro->uri, $tags, $ttl, $saved));
 
         return $saved;
     }
@@ -386,13 +393,14 @@ final class ResourceStorage implements ResourceStorageInterface
     #[Override]
     public function saveEtag(AbstractUri $uri, string $etag, string $surrogateKeys, int|null $ttl): void
     {
+        $ttl = $ttl === null ? null : max(0, $ttl);
         $tags = $surrogateKeys !== '' ? explode(' ', $surrogateKeys) : [];
         $tags[] = (new UriTag())($uri);
         /** @var list<string> $uniqueTags */
         $uniqueTags = array_values(array_unique($tags));
         // The header value is a quoted entity-tag; the pool key is the bare opaque-tag
-        $this->saver->__invoke(trim($etag, '"'), 'etag', $this->etagPool, $uniqueTags, $ttl);
-        $this->logger->event(new SaveEtagContext((string) $uri, $etag, $uniqueTags));
+        $saved = $this->saver->__invoke(trim($etag, '"'), 'etag', $this->etagPool, $uniqueTags, $ttl);
+        $this->logger->event(new SaveEtagContext((string) $uri, $etag, $uniqueTags, $saved));
     }
 
     public function __serialize(): array

@@ -16,7 +16,8 @@ final class SaveDonutContext extends AbstractContext
 
     public function __construct(
         public readonly string $uri,
-        public readonly int|null $sMaxAge,
+        public readonly int|null $ttl,
+        public readonly bool $saved,
     ) {
     }
 }

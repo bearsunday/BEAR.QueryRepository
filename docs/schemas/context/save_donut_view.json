@@ -7,7 +7,8 @@
     "required": [
         "uri",
         "surrogateKeys",
-        "sMaxAge"
+        "ttl",
+        "saved"
     ],
     "properties": {
         "uri": {
@@ -19,12 +20,17 @@
                 "type": "string"
             }
         },
-        "sMaxAge": {
+        "ttl": {
+            "description": "TTL of the rendered donut view cache entry in seconds; null means no expiry (event-driven invalidation only)",
             "type": [
                 "integer",
                 "null"
             ],
             "minimum": 0
+        },
+        "saved": {
+            "type": "boolean",
+            "description": "Whether the cache pool accepted the entry. false means the store failed silently (e.g. pool error) — the entry is NOT cached despite this event."
         }
     },
     "additionalProperties": false

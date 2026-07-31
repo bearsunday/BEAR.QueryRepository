@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Log\Context\CacheErrorContext;
 use BEAR\QueryRepository\Log\Context\CacheHitContext;
 use BEAR\QueryRepository\Log\Context\CacheMissContext;
 use BEAR\QueryRepository\Log\Context\GetContext;
@@ -54,7 +55,8 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
                     return $maybeRo;
                 }
             } catch (Throwable $e) { // @codeCoverageIgnoreStart
-                // when cache server is down
+                // when cache server is down: log it so a miss here is not read as a cold cache
+                $this->logger->event(new CacheErrorContext((string) $ro->uri, $e->getMessage()));
                 $this->triggerWarning($e);
 
                 return $invocation->proceed(); // @codeCoverageIgnoreEnd

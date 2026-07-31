@@ -7,7 +7,8 @@
     "required": [
         "uri",
         "etag",
-        "surrogateKeys"
+        "surrogateKeys",
+        "saved"
     ],
     "properties": {
         "uri": {
@@ -21,6 +22,10 @@
             "items": {
                 "type": "string"
             }
+        },
+        "saved": {
+            "type": "boolean",
+            "description": "Whether the cache pool accepted the entry. false means the store failed silently (e.g. pool error) — the entry is NOT cached despite this event."
         }
     },
     "additionalProperties": false

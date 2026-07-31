@@ -17,6 +17,7 @@ final class SaveViewContext extends AbstractContext
     public function __construct(
         public readonly string $uri,
         public readonly int|null $ttl,
+        public readonly bool $saved,
     ) {
     }
 }

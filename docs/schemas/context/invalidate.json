@@ -29,7 +29,7 @@
             "enum": ["invalidated", "failed"]
         },
         "cdn": {
-            "description": "Outcome of the best-effort CDN surrogate-key purge",
+            "description": "Outcome of the CDN surrogate-key purge. The purge is fail-closed: a purge failure surfaces as an exception after the local pools are invalidated, so a \"failed\" outcome always accompanies a thrown exception.",
             "type": "string",
             "enum": ["purged", "failed"]
         },

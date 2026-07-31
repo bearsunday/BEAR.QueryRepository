@@ -19,6 +19,7 @@ final class SaveValueContext extends AbstractContext
         public readonly string $uri,
         public readonly array $tags,
         public readonly int|null $ttl,
+        public readonly bool $saved,
     ) {
     }
 }

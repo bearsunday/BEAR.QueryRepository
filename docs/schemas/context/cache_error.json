@@ -1,0 +1,21 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_error.json",
+    "title": "cache_error",
+    "description": "Event: the cache layer itself errored (e.g. cache server down). A cache_miss after this event means the entry could not be read, not that it was never cached.",
+    "type": "object",
+    "required": [
+        "uri",
+        "error"
+    ],
+    "properties": {
+        "uri": {
+            "type": "string"
+        },
+        "error": {
+            "description": "The throwable message from the failed cache operation",
+            "type": "string"
+        }
+    },
+    "additionalProperties": false
+}
