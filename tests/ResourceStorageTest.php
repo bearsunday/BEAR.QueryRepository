@@ -68,6 +68,31 @@ class ResourceStorageTest extends TestCase
         $this->assertFalse($this->storage->hasEtag('"999999"'), 'unknown entity-tag');
     }
 
+    public function testHasEtagSplitsOnlyOnCommasOutsideQuotes(): void
+    {
+        $this->storage->saveEtag($this->ro->uri, '"foo,bar"', '', 10);
+
+        $this->assertTrue($this->storage->hasEtag('"foo,bar"'), 'comma inside a quoted opaque-tag is data');
+        $this->assertTrue($this->storage->hasEtag('W/"foo,bar"'), 'weak validator with comma in opaque-tag');
+        $this->assertTrue($this->storage->hasEtag('"999999", "foo,bar"'), 'list with a comma-bearing entity-tag');
+        $this->assertFalse($this->storage->hasEtag('"bar"'), 'naive split fragment must not match');
+        $this->assertFalse(
+            $this->storage->hasEtag('foo,bar'),
+            'unquoted legacy value is indistinguishable from a two-element list (documented limitation)',
+        );
+    }
+
+    public function testHasEtagRejectsMalformedFieldValues(): void
+    {
+        $this->storage->saveEtag($this->ro->uri, '"123456"', '', 10);
+
+        $this->assertFalse($this->storage->hasEtag('"123456'), 'unterminated quoted entity-tag');
+        $this->assertFalse($this->storage->hasEtag('"123456" trailing'), 'trailing data after entity-tag');
+        $this->assertFalse($this->storage->hasEtag('x"123456"'), 'leading data before entity-tag');
+        $this->assertFalse($this->storage->hasEtag('"123456" "123456"'), 'missing comma separator');
+        $this->assertFalse($this->storage->hasEtag("\"123456\"\n"), 'trailing newline');
+    }
+
     public function testEtagIsNotRegisteredAsInvalidationTag(): void
     {
         $this->ro->headers['ETag'] = 'test-etag-value';
