@@ -128,10 +128,8 @@ final class SafeSemanticLogger implements SemanticLoggerInterface
                 $this->logger->close($sentinel, $openId);
 
                 return $this->logger->flush($links);
-            // @codeCoverageIgnoreStart - defensive: the never-throw guarantee stands even if the sentinel itself fails
-            } catch (Throwable) {
-                return new LogJson(self::EMPTY_SCHEMA_URL, [], [], [], $links);
-                // @codeCoverageIgnoreEnd
+            } catch (Throwable) { // @codeCoverageIgnoreStart
+                return new LogJson(self::EMPTY_SCHEMA_URL, [], [], [], $links); // @codeCoverageIgnoreEnd
             }
         }
     }
