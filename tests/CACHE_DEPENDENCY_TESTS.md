@@ -156,7 +156,9 @@ invalidate is real, the re-put's own deleteEtag is cleanup. In donut scopes
 match against `save_etag`/`save_donut_view`: `save_donut`'s tags may exclude
 the URI tag (a known ordering limitation); when neither `save_etag` nor
 `save_donut_view` is present in the scope (a donut resource declaring no
-Surrogate-Key), the classification is undecidable from the log alone.
+Surrogate-Key), the classification is undecidable from the log alone — this
+overrides the rule above: do not conclude a real invalidation merely from the
+absence of a matching `save_*`.
 Note the tree JSON does not interleave a scope's events with its nested scopes
 chronologically — within one scope events are time-ordered, but across the
 events/open-children boundary no shared sequence exists; use scope nesting and
