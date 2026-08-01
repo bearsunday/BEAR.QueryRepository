@@ -77,14 +77,16 @@ final readonly class CacheInterceptor implements MethodInterceptor
             $ro = $invocation->proceed();
             assert($ro instanceof ResourceObject);
             try {
-                if ($ro->code === 200) {
-                    $this->repository->put($ro);
-                } else {
+                if ($ro->code !== 200) {
                     // Record the actual non-200 code; without it the purge below reads
                     // as if a 203 and a 404 were the same thing.
                     $this->logger->event(new PutSkippedContext((string) $ro->uri, 'error-code', $ro->code));
                     $this->repository->purge($ro->uri);
+
+                    return $ro;
                 }
+
+                $this->repository->put($ro);
             } catch (LogicException $e) {
                 throw $e;
             } catch (Throwable $e) {  // @codeCoverageIgnore

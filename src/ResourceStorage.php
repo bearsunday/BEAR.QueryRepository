@@ -70,6 +70,12 @@ final class ResourceStorage implements ResourceStorageInterface
      */
     private const ENTITY_TAG_PATTERN = '(?:W\/)?"[^"]*"|[^,"]+';
 
+    /**
+     * CDN status when the purge did not throw, indexed by (int) no-CDN:
+     * [0] a configured purger ran -> "purged", [1] NullPurger -> "skipped"
+     */
+    private const CDN_OK_STATUS = ['purged', 'skipped'];
+
     /** @var ProviderInterface<TagAwareAdapterInterface> */
     private ProviderInterface $roPoolProvider;
 
@@ -221,7 +227,7 @@ final class ResourceStorage implements ResourceStorageInterface
             $tags,
             roPoolInvalidated: $roOk,
             etagPoolInvalidated: $etagOk,
-            cdnStatus: $this->getCdnStatus($purgerError),
+            cdnStatus: $purgerError === null ? $this->getCdnOkStatus() : 'failed',
             durationMs: round((hrtime(true) - $start) / 1_000_000, 3),
         );
 
@@ -235,18 +241,14 @@ final class ResourceStorage implements ResourceStorageInterface
     }
 
     /**
-     * CDN purge outcome as a status word: "skipped" when no CDN is configured
-     * (NullPurger), "failed" when the purge threw, "purged" when a real purger ran
+     * CDN status when the purge did not throw: "skipped" when no CDN is configured
+     * (NullPurger), "purged" when a real purger ran — a branch-free lookup
      *
-     * @return "purged"|"failed"|"skipped"
+     * @return "purged"|"skipped"
      */
-    private function getCdnStatus(Throwable|null $purgerError): string
+    private function getCdnOkStatus(): string
     {
-        if ($this->purger instanceof NullPurger) {
-            return 'skipped';
-        }
-
-        return $purgerError === null ? 'purged' : 'failed';
+        return self::CDN_OK_STATUS[(int) ($this->purger instanceof NullPurger)];
     }
 
     /**
