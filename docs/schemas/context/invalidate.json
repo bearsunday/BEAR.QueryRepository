@@ -2,7 +2,7 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/invalidate.json",
     "title": "invalidate",
-    "description": "Event: tag invalidation outcome across the local pools and the CDN purger (cdn: \"purged\" = a real purger ran without error; \"failed\" = the purge threw; \"skipped\" = the bound purger is NullPurger, no CDN configured). Pre-write cleanup vs real invalidation is decided by tag correlation, not by scope type: an invalidate is pre-write cleanup when, within the SAME scope's event stream, a later save_* event's tags include the invalidate's tags — regardless of the enclosing scope type (get or command). depends_on events for the same resource may appear in between (QueryRepository::doPut runs deleteEtags, then setCacheDependency, then the saves). In donut scopes match against save_etag/save_donut_view — save_donut's tags may exclude the URI tag (known ordering limitation). Note the pre-write invalidate uses the resource's own URI tag, which is also its parents' surrogate key, so a child refill visibly purges the parent entry — visible by design.",
+    "description": "Event: tag invalidation outcome across the local pools and the CDN purger (cdn: \"purged\" = a real purger ran without error; \"failed\" = the purge threw; \"skipped\" = the bound purger is NullPurger, no CDN configured). Pre-write cleanup vs real invalidation is decided by tag correlation, not by scope type: scanning forward from an invalidate within the SAME scope's event stream, it is pre-write cleanup iff the first save_* event whose tags include the invalidate's tags is reached with only depends_on events for the same resource in between — regardless of the enclosing scope type (get or command). If another invalidate or purge intervenes before a matching save_*, it is a real invalidation (a #[Refresh] command shows both shapes: the purge's invalidate is real, the re-put's own deleteEtag is cleanup). In donut scopes match against save_etag/save_donut_view — save_donut's tags may exclude the URI tag (known ordering limitation); when neither save_etag nor save_donut_view is present in the scope (a donut resource declaring no Surrogate-Key), the classification is undecidable from the log alone. Note the pre-write invalidate uses the resource's own URI tag, which is also its parents' surrogate key, so a child refill visibly purges the parent entry — visible by design.",
     "type": "object",
     "required": [
         "tags",
@@ -21,17 +21,27 @@
         "roPool": {
             "description": "Outcome of invalidating the tags in the Resource Object pool",
             "type": "string",
-            "enum": ["invalidated", "failed"]
+            "enum": [
+                "invalidated",
+                "failed"
+            ]
         },
         "etagPool": {
             "description": "Outcome of invalidating the tags in the ETag pool",
             "type": "string",
-            "enum": ["invalidated", "failed"]
+            "enum": [
+                "invalidated",
+                "failed"
+            ]
         },
         "cdn": {
             "description": "Outcome of the CDN surrogate-key purge: \"purged\" = a configured purger ran without error; \"failed\" = the purge threw (fail-closed: the exception surfaces after the local pools were invalidated, so a \"failed\" outcome always accompanies a thrown exception); \"skipped\" = the bound purger is NullPurger, i.e. no CDN is configured and nothing was purged by design",
             "type": "string",
-            "enum": ["purged", "failed", "skipped"]
+            "enum": [
+                "purged",
+                "failed",
+                "skipped"
+            ]
         },
         "durationMs": {
             "description": "Wall-clock duration of the invalidation in milliseconds",

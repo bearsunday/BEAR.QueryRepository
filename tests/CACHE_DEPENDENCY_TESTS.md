@@ -144,14 +144,19 @@ parents' surrogate key — so a child refill visibly purges the parent entry
 before both are rebuilt, by design.
 
 Pre-write cleanup vs real invalidation is decided by tag correlation, not by
-scope type: an `invalidate` is pre-write cleanup when, within the SAME scope's
-event stream, a later `save_*` event's `tags` include the invalidate's tags —
-regardless of the enclosing scope type (`get` or `command`; a `#[Refresh]`
-command's second put() runs inside the command scope, so a cleanup invalidate
-can appear there too). `depends_on` events for the same resource may appear in
-between (`QueryRepository::doPut()` runs deleteEtags, then setCacheDependency,
-then the saves). In donut scopes match against `save_etag`/`save_donut_view`:
-`save_donut`'s tags may exclude the URI tag (a known ordering limitation).
+scope type: scanning forward from an `invalidate` within the SAME scope's
+event stream, it is pre-write cleanup iff the first `save_*` event whose
+`tags` include the invalidate's tags is reached with only `depends_on` events
+for the same resource in between — regardless of the enclosing scope type
+(`get` or `command`; a `#[Refresh]` command's second put() runs inside the
+command scope, so a cleanup invalidate can appear there too). If another
+`invalidate` or `purge` intervenes before a matching `save_*`, it is a real
+invalidation — a `#[Refresh]` command shows both shapes: the purge's
+invalidate is real, the re-put's own deleteEtag is cleanup. In donut scopes
+match against `save_etag`/`save_donut_view`: `save_donut`'s tags may exclude
+the URI tag (a known ordering limitation); when neither `save_etag` nor
+`save_donut_view` is present in the scope (a donut resource declaring no
+Surrogate-Key), the classification is undecidable from the log alone.
 Note the tree JSON does not interleave a scope's events with its nested scopes
 chronologically — within one scope events are time-ordered, but across the
 events/open-children boundary no shared sequence exists; use scope nesting and
