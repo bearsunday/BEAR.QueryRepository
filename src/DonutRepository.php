@@ -7,6 +7,7 @@ namespace BEAR\QueryRepository;
 use BEAR\QueryRepository\Log\Context\CacheHitContext;
 use BEAR\QueryRepository\Log\Context\CacheMissContext;
 use BEAR\QueryRepository\Log\Context\PutDonutContext;
+use BEAR\QueryRepository\Log\Context\PutSkippedContext;
 use BEAR\QueryRepository\Log\Context\RefreshDonutContext;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceInterface;
@@ -118,6 +119,12 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $this->logger->event(new RefreshDonutContext((string) $ro->uri));
         $donut->refresh($this->resource, $ro);
         if (! $donut->isCacheble) {
+            // The donut was created by putDonut (isCacheble=false): only the template is
+            // cached and the page is never stored as a rendered view, so there is no
+            // page-level entry to save after the refresh. Record the skip — without it
+            // the scope shows a refresh with no saves and no reason.
+            $this->logger->event(new PutSkippedContext((string) $ro->uri, 'not-cacheable'));
+
             return $ro;
         }
 

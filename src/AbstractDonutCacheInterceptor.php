@@ -57,7 +57,7 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
                 }
             } catch (Throwable $e) { // @codeCoverageIgnoreStart
                 // when cache server is down: log it so a miss here is not read as a cold cache
-                $this->logger->event(new CacheErrorContext((string) $ro->uri, $e->getMessage()));
+                $this->logger->event(new CacheErrorContext((string) $ro->uri, 'read', $e->getMessage()));
                 $this->triggerWarning($e);
 
                 return $invocation->proceed(); // @codeCoverageIgnoreEnd
@@ -68,8 +68,8 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
             // donut created in ResourceObject
             if (isset($ro->headers[Header::ETAG]) || $ro->code >= Code::BAD_REQUEST) {
                 // Record why this miss is not followed by a put; without it the log looks like a lost write.
-                $reason = isset($ro->headers[Header::ETAG]) ? 'etag-present' : 'error-code';
-                $this->logger->event(new PutSkippedContext((string) $ro->uri, $reason));
+                $hasEtag = isset($ro->headers[Header::ETAG]);
+                $this->logger->event(new PutSkippedContext((string) $ro->uri, $hasEtag ? 'etag-present' : 'error-code', $hasEtag ? null : $ro->code));
 
                 return $ro;
             }

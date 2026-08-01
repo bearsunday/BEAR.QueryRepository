@@ -22,7 +22,7 @@
             }
         },
         "ttl": {
-            "description": "seconds until expiry of the rendered view entry; 0 or null means no expiry is set (the entry lives until event-driven invalidation)",
+            "description": "seconds until expiry of the rendered view entry; 0 or null means no expiry is set (the entry lives until event-driven invalidation); 31536000 is the `never` expiry convention (365 days), an effectively-unbounded placeholder — event-driven invalidation is the intended eviction path",
             "type": [
                 "integer",
                 "null"

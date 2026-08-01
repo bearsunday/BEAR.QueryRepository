@@ -8,6 +8,7 @@
         "uri",
         "etag",
         "tags",
+        "ttl",
         "saved"
     ],
     "properties": {
@@ -23,6 +24,14 @@
             "items": {
                 "type": "string"
             }
+        },
+        "ttl": {
+            "description": "seconds until expiry; 0 or null means no expiry is set; 31536000 is the `never` expiry convention (365 days), an effectively-unbounded placeholder — event-driven invalidation is the intended eviction path",
+            "type": [
+                "integer",
+                "null"
+            ],
+            "minimum": 0
         },
         "saved": {
             "type": "boolean",

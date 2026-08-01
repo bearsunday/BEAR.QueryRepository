@@ -221,7 +221,7 @@ final class ResourceStorage implements ResourceStorageInterface
             $tags,
             roPoolInvalidated: $roOk,
             etagPoolInvalidated: $etagOk,
-            cdnPurged: $purgerError === null,
+            cdnStatus: $this->getCdnStatus($purgerError),
             durationMs: round((hrtime(true) - $start) / 1_000_000, 3),
         );
 
@@ -232,6 +232,21 @@ final class ResourceStorage implements ResourceStorageInterface
         }
 
         return $roOk && $etagOk;
+    }
+
+    /**
+     * CDN purge outcome as a status word: "skipped" when no CDN is configured
+     * (NullPurger), "failed" when the purge threw, "purged" when a real purger ran
+     *
+     * @return "purged"|"failed"|"skipped"
+     */
+    private function getCdnStatus(Throwable|null $purgerError): string
+    {
+        if ($this->purger instanceof NullPurger) {
+            return 'skipped';
+        }
+
+        return $purgerError === null ? 'purged' : 'failed';
     }
 
     /**
@@ -401,7 +416,7 @@ final class ResourceStorage implements ResourceStorageInterface
         $uniqueTags = array_values(array_unique($tags));
         // The header value is a quoted entity-tag; the pool key is the bare opaque-tag
         $saved = $this->saver->__invoke(trim($etag, '"'), 'etag', $this->etagPool, $uniqueTags, $ttl);
-        $this->logger->event(new SaveEtagContext((string) $uri, $etag, $uniqueTags, $saved));
+        $this->logger->event(new SaveEtagContext((string) $uri, $etag, $uniqueTags, $ttl, $saved));
     }
 
     public function __serialize(): array

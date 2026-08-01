@@ -2,7 +2,7 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_hit.json",
     "title": "cache_hit",
-    "description": "Close/event: a cache lookup hit at the given layer.",
+    "description": "Close/event: a cache lookup hit at the given layer. As a scope close it reports only the final layer's outcome; sibling events in the same scope may show the entry was rebuilt (e.g. refresh_donut) or that a content-layer miss occurred, so a hit close does not by itself prove the whole subtree was served unchanged.",
     "type": "object",
     "required": [
         "layer"

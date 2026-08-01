@@ -9,6 +9,7 @@ use BEAR\QueryRepository\Log\Context\CacheErrorContext;
 use BEAR\QueryRepository\Log\Context\CacheHitContext;
 use BEAR\QueryRepository\Log\Context\CacheMissContext;
 use BEAR\QueryRepository\Log\Context\GetContext;
+use BEAR\QueryRepository\Log\Context\PutSkippedContext;
 use BEAR\QueryRepository\Log\NullSemanticLogger;
 use BEAR\Resource\ResourceObject;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
@@ -59,7 +60,7 @@ final readonly class CacheInterceptor implements MethodInterceptor
                 $state = $this->repository->get($ro->uri);
             } catch (Throwable $e) {
                 // The cache layer itself is degraded: log it so a miss here is not read as a cold cache
-                $this->logger->event(new CacheErrorContext((string) $ro->uri, $e->getMessage()));
+                $this->logger->event(new CacheErrorContext((string) $ro->uri, 'read', $e->getMessage()));
                 $this->triggerWarning($e);
 
                 return $invocation->proceed();
@@ -76,11 +77,18 @@ final readonly class CacheInterceptor implements MethodInterceptor
             $ro = $invocation->proceed();
             assert($ro instanceof ResourceObject);
             try {
-                $ro->code === 200 ? $this->repository->put($ro) : $this->repository->purge($ro->uri);
+                if ($ro->code === 200) {
+                    $this->repository->put($ro);
+                } else {
+                    // Record the actual non-200 code; without it the purge below reads
+                    // as if a 203 and a 404 were the same thing.
+                    $this->logger->event(new PutSkippedContext((string) $ro->uri, 'error-code', $ro->code));
+                    $this->repository->purge($ro->uri);
+                }
             } catch (LogicException $e) {
                 throw $e;
             } catch (Throwable $e) {  // @codeCoverageIgnore
-                $this->logger->event(new CacheErrorContext((string) $ro->uri, $e->getMessage())); // @codeCoverageIgnore
+                $this->logger->event(new CacheErrorContext((string) $ro->uri, 'write', $e->getMessage())); // @codeCoverageIgnore
                 $this->triggerWarning($e); // @codeCoverageIgnore
             }
 

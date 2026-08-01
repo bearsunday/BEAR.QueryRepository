@@ -2,7 +2,7 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/invalidate.json",
     "title": "invalidate",
-    "description": "Event: tag invalidation outcome across the local pools and the CDN purger. The meaning depends on the enclosing scope: a leading invalidate inside a get scope, immediately followed by same-tag save_* events, is pre-write cleanup (QueryRepository::doPut always deleteEtags first); under manual_purge/manual_invalidate/command scopes it is a real invalidation. Note the pre-write invalidate uses the resource's own URI tag, which is also its parents' surrogate key, so a child refill visibly purges the parent entry — visible by design.",
+    "description": "Event: tag invalidation outcome across the local pools and the CDN purger (cdn: \"purged\" = a real purger ran without error; \"failed\" = the purge threw; \"skipped\" = the bound purger is NullPurger, no CDN configured). Pre-write cleanup vs real invalidation is decided by tag correlation, not by scope type: an invalidate is pre-write cleanup when, within the SAME scope's event stream, a later save_* event's tags include the invalidate's tags — regardless of the enclosing scope type (get or command). depends_on events for the same resource may appear in between (QueryRepository::doPut runs deleteEtags, then setCacheDependency, then the saves). In donut scopes match against save_etag/save_donut_view — save_donut's tags may exclude the URI tag (known ordering limitation). Note the pre-write invalidate uses the resource's own URI tag, which is also its parents' surrogate key, so a child refill visibly purges the parent entry — visible by design.",
     "type": "object",
     "required": [
         "tags",
@@ -29,9 +29,9 @@
             "enum": ["invalidated", "failed"]
         },
         "cdn": {
-            "description": "Outcome of the CDN surrogate-key purge. The purge is fail-closed: a purge failure surfaces as an exception after the local pools are invalidated, so a \"failed\" outcome always accompanies a thrown exception.",
+            "description": "Outcome of the CDN surrogate-key purge: \"purged\" = a configured purger ran without error; \"failed\" = the purge threw (fail-closed: the exception surfaces after the local pools were invalidated, so a \"failed\" outcome always accompanies a thrown exception); \"skipped\" = the bound purger is NullPurger, i.e. no CDN is configured and nothing was purged by design",
             "type": "string",
-            "enum": ["purged", "failed"]
+            "enum": ["purged", "failed", "skipped"]
         },
         "durationMs": {
             "description": "Wall-clock duration of the invalidation in milliseconds",

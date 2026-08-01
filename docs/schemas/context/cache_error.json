@@ -6,11 +6,17 @@
     "type": "object",
     "required": [
         "uri",
+        "operation",
         "error"
     ],
     "properties": {
         "uri": {
             "type": "string"
+        },
+        "operation": {
+            "description": "which side of the cache failed: read (the repository get/getDonut call) or write (the put/purge call)",
+            "type": "string",
+            "enum": ["read", "write"]
         },
         "error": {
             "description": "The throwable message from the failed cache operation",

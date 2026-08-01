@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository\Log;
 
+use BEAR\QueryRepository\Log\Context\LogSessionBrokenContext;
 use Koriym\SemanticLogger\AbstractContext;
 use Koriym\SemanticLogger\LogJson;
 use Koriym\SemanticLogger\SemanticLogger;
@@ -23,7 +24,10 @@ use Throwable;
  * Recovery: if the delegate ends up in a broken state (e.g. an unclosed session
  * left its internal stack dirty), flush() replaces it with a fresh SemanticLogger
  * so the *next* session logs normally — a single failure never permanently
- * silences logging. The delegate is accepted as an interface so a throwing fake
+ * silences logging. The wiped session does not vanish silently: the recovery
+ * flush returns a `log_session_broken` sentinel scope (carrying the throwable's
+ * message) instead of an empty log, so "no records" is never misread as "no
+ * cache activity". The delegate is accepted as an interface so a throwing fake
  * can be injected in tests to prove graceful degradation.
  */
 final class SafeSemanticLogger implements SemanticLoggerInterface
@@ -108,7 +112,7 @@ final class SafeSemanticLogger implements SemanticLoggerInterface
             $this->depth = 0;
 
             return $log;
-        } catch (Throwable) {
+        } catch (Throwable $e) {
             // The delegate's internal state may be dirty (e.g. an unclosed session).
             // Replace it with a fresh logger so the next session recovers, and never
             // surface the failure to the cache caller.
@@ -116,7 +120,18 @@ final class SafeSemanticLogger implements SemanticLoggerInterface
             $this->broken = false;
             $this->depth = 0;
 
-            return new LogJson(self::EMPTY_SCHEMA_URL, [], [], [], $links);
+            try {
+                // Leave a tombstone for the wiped session: an empty flush would read
+                // as "no cache activity", hiding that records were lost.
+                $sentinel = new LogSessionBrokenContext($e->getMessage() !== '' ? $e->getMessage() : $e::class);
+                $openId = $this->logger->open($sentinel);
+                $this->logger->close($sentinel, $openId);
+
+                return $this->logger->flush($links);
+            } catch (Throwable) {
+                // The never-throw guarantee stands even if the sentinel itself fails.
+                return new LogJson(self::EMPTY_SCHEMA_URL, [], [], [], $links);
+            }
         }
     }
 
