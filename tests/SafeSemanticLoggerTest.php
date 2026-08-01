@@ -46,8 +46,12 @@ class SafeSemanticLoggerTest extends TestCase
 
         $id = $safe->open(new GetContext('page://self/x'));
         $safe->close(new CacheMissContext('resource'), $id);
-        // The delegate throws on flush; the failure is swallowed and an empty log returned.
-        $this->assertSame([], $safe->flush()->toArray()['open']);
+        // The delegate throws on flush; the failure is swallowed and the wiped session
+        // is marked with a log_session_broken sentinel instead of vanishing silently.
+        $opens = $safe->flush()->toArray()['open'];
+        $this->assertCount(1, $opens);
+        $this->assertSame('log_session_broken', $opens[0]['type']);
+        $this->assertSame('flush failed', $opens[0]['context']['reason']);
 
         // Recovery: the next session uses a fresh delegate and logs normally.
         $id2 = $safe->open(new GetContext('page://self/y'));
@@ -80,8 +84,12 @@ class SafeSemanticLoggerTest extends TestCase
         // The delegate throws InvalidOperationOrderException; SafeSemanticLogger swallows
         // it and marks the session broken.
         $safe->close(new CacheMissContext('resource'), $idA);
-        // The broken (still-unclosed) session flushes to an empty log with no open entries.
-        $this->assertSame([], $safe->flush()->toArray()['open']);
+        // The broken (still-unclosed) session cannot flush; the wipe is marked with a
+        // log_session_broken sentinel carrying the cause, not returned as an empty log.
+        $opens = $safe->flush()->toArray()['open'];
+        $this->assertCount(1, $opens);
+        $this->assertSame('log_session_broken', $opens[0]['type']);
+        $this->assertNotSame('', $opens[0]['context']['reason']);
 
         // Recovery: flush() replaced the dirty delegate, so the next session logs normally.
         $id = $safe->open(new GetContext('page://self/c'));

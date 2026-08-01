@@ -80,6 +80,12 @@ class DonutCacheInterceptorTest extends TestCase
         $this->assertContains('cache_hit', $types);
         $this->assertContains('refresh_donut', $types);
 
+        // The page is not entire-content cacheable (putDonut): the refreshed view is
+        // served live and no page-level save follows — recorded as put_skipped.
+        $putSkipped = self::eventContextJsonOf($tree, 'put_skipped');
+        $this->assertNotNull($putSkipped, 'the missing page-level save after refresh is explained');
+        $this->assertStringContainsString('"reason":"not-cacheable"', $putSkipped);
+
         $this->assertArrayNotHasKey('Age', $blogPosting->headers);
         $this->assertArrayNotHasKey(Header::CDN_CACHE_CONTROL, $blogPosting->headers);
     }

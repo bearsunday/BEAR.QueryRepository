@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Log\Context\InvalidateContext;
+use BEAR\QueryRepository\Log\Context\SaveDonutContext;
 use BEAR\QueryRepository\Log\Context\SaveValueContext;
 use BEAR\QueryRepository\Log\NullSemanticLogger;
 use BEAR\Resource\Uri;
@@ -66,7 +67,7 @@ class ResourceStorageTest extends TestCase
         $this->assertInstanceOf(ResourceDonut::class, $donut);
     }
 
-    public function testInvalidateTagsRecordsSuccessfulOutcome(): void
+    public function testInvalidateTagsWithNullPurgerLogsCdnSkipped(): void
     {
         $logger = new RecordingSemanticLogger();
         $storage = self::getResourceStorageInstance($logger);
@@ -77,8 +78,34 @@ class ResourceStorageTest extends TestCase
         assert($context instanceof InvalidateContext);
         $this->assertTrue($context->roPoolInvalidated);
         $this->assertTrue($context->etagPoolInvalidated);
-        $this->assertTrue($context->cdnPurged);
+        // The default NullPurger is a no-op: the CDN side is "skipped", not "purged" —
+        // nothing was purged, but nothing was meant to be.
+        $this->assertSame('skipped', $context->cdnStatus);
+        $this->assertSame('skipped', $context->jsonSerialize()['cdn']);
         $this->assertGreaterThanOrEqual(0, $context->durationMs);
+    }
+
+    public function testInvalidateTagsLogsCdnPurgedWithConfiguredPurger(): void
+    {
+        $logger = new RecordingSemanticLogger();
+        $purger = new class implements PurgerInterface {
+            /** @var list<string> */
+            public array $tags = [];
+
+            #[Override]
+            public function __invoke(string $tag): void
+            {
+                $this->tags[] = $tag;
+            }
+        };
+        $storage = self::getResourceStorageInstance($logger, $purger);
+
+        $storage->invalidateTags(['_user_']);
+
+        $this->assertSame(['_user_'], $purger->tags, 'the configured purger received the surrogate keys');
+        $context = $logger->events[0];
+        assert($context instanceof InvalidateContext);
+        $this->assertSame('purged', $context->cdnStatus, 'a real purger that ran without error logs "purged"');
         $this->assertSame('purged', $context->jsonSerialize()['cdn']);
     }
 
@@ -101,7 +128,7 @@ class ResourceStorageTest extends TestCase
         assert($context instanceof InvalidateContext);
         $this->assertTrue($context->roPoolInvalidated);
         $this->assertTrue($context->etagPoolInvalidated);
-        $this->assertFalse($context->cdnPurged);
+        $this->assertSame('failed', $context->cdnStatus);
         $this->assertSame('failed', $context->jsonSerialize()['cdn']);
     }
 
@@ -194,6 +221,47 @@ class ResourceStorageTest extends TestCase
         assert($context instanceof SaveValueContext);
         $this->assertFalse($context->saved, 'the log records that the entry is NOT cached despite the save event');
         $this->assertSame(10, $context->ttl);
+    }
+
+    public function testSaveDonutLogsSavedFalseWhenPoolRejectsEntry(): void
+    {
+        // Same failure injection as the saveValue case above: an inner pool whose
+        // commit() rejects every entry. The round-2 assert removal made saved:false
+        // observable for donut stores; this pins it.
+        $failingPool = new TagAwareAdapter(new class extends ArrayAdapter {
+            #[Override]
+            public function commit(): bool
+            {
+                return false;
+            }
+        });
+        $poolProvider = new class ($failingPool) implements ProviderInterface{
+            public function __construct(private readonly TagAwareAdapter $tagAwareAdapter)
+            {
+            }
+
+            public function get()
+            {
+                return $this->tagAwareAdapter;
+            }
+        };
+        $logger = new RecordingSemanticLogger();
+        $storage = new ResourceStorage(
+            $logger,
+            new NullPurger(),
+            new UriTag(),
+            new ResourceStorageSaver(),
+            new GlobalServerContext(),
+            $poolProvider,
+            $poolProvider,
+        );
+        $donut = ResourceDonut::create($this->ro, new DonutRenderer(), new SurrogateKeys(new Uri('app://self/')), null, false);
+
+        $storage->saveDonut($this->ro->uri, $donut, null, []);
+
+        $context = $logger->events[0];
+        assert($context instanceof SaveDonutContext);
+        $this->assertFalse($context->saved, 'the log records that the donut entry is NOT cached despite the save event');
     }
 
     public function testSaveValueClampsNegativeTtlToZero(): void

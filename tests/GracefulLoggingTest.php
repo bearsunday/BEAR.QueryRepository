@@ -94,6 +94,7 @@ class GracefulLoggingTest extends TestCase
         $error = self::eventContextJsonOf($tree, 'cache_error');
         $this->assertNotNull($error, 'a cache_error event marks the degraded cache layer');
         $this->assertStringContainsString('app://self/user', $error);
+        $this->assertStringContainsString('"operation":"read"', $error, 'the failing side (the repository get) is recorded');
         $this->assertStringContainsString('cache server down', $error);
         // ...while the get scope still closes cache_miss: the pair (cache_error + cache_miss)
         // is an outage, a lone cache_miss is a cold cache.

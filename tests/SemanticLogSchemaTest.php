@@ -105,6 +105,22 @@ class SemanticLogSchemaTest extends TestCase
         $this->assertNotContains('invalidate', $types, 'no invalidation on a failed write');
     }
 
+    public function testNon200GetLogsPutSkippedWithActualCode(): void
+    {
+        // Code::onGet returns 203. A non-200 GET is purged, not stored; the log must
+        // record the actual code — without it a 203 and a 404 are indistinguishable.
+        $this->resource->get('app://self/code');
+        $tree = $this->flushAndValidate($this->logger);
+
+        $putSkipped = self::eventContextJsonOf($tree, 'put_skipped');
+        $this->assertNotNull($putSkipped, 'the skipped put is recorded');
+        $this->assertStringContainsString('"reason":"error-code"', $putSkipped);
+        $this->assertStringContainsString('"code":203', $putSkipped, 'the actual response code is recorded');
+
+        $types = self::collectTypes($tree);
+        $this->assertContains('purge', $types, 'a non-200 response is purged instead of stored');
+    }
+
     public function testSecondGetClosesWithResourceLayerCacheHit(): void
     {
         // First GET is a cold miss and populates the cache; drain its session.
