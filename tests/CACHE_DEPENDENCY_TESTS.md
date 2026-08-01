@@ -100,11 +100,12 @@ Typed `AbstractContext` subclasses live in `src/Log/Context/` and each carries a
 | `command` (`method`/`annotations`/`source`) | open | `CommandInterceptor`, `DonutCommandInterceptor`, `RefreshInterceptor` (all via the shared `CommandContextFactory`) | A write scope; `source` names the producing interceptor, `annotations` its `#[Refresh]`/`#[Purge]` attributes (empty on the CacheableResponse path by design) |
 | `depends_on` (`parent`/`child`/`childTags`) | event | `CacheDependency::depends()` | A dependency-graph edge |
 | `save_value` / `save_view` / `save_etag` / `save_donut` / `save_donut_view` | event | `ResourceStorage` | What was stored, with `tags`, `ttl` (seconds until expiry; 0/null = no expiry set) and the `saved` outcome |
-| `invalidate` (`tags`/`roPool`/`etagPool`/`cdn`/`durationMs`) | event | `ResourceStorage::invalidateTags()` | Per-target outcome as status words: `roPool`/`etagPool` are `invalidated`\|`failed`, `cdn` is `purged`\|`failed` (fail-closed: a purge failure is logged as `failed` after the local pools are invalidated, then the exception propagates). Inside a `get` scope a leading one is pre-write cleanup — see the flow example below |
+| `invalidate` (`tags`/`roPool`/`etagPool`/`cdn`/`durationMs`) | event | `ResourceStorage::invalidateTags()` | Per-target outcome as status words: `roPool`/`etagPool` are `invalidated`\|`failed`; `cdn` is tri-state: `purged` (a configured purger ran), `failed` (the purge threw — fail-closed: local pools are invalidated first, then the exception propagates), `skipped` (NullPurger, no CDN configured). Pre-write cleanup vs real invalidation is decided by same-scope tag correlation — see the flow example below |
 | `purge` | event | `QueryRepository::purge()` | An explicit purge request |
-| `put_skipped` (`uri`/`reason`) | event | `AbstractDonutCacheInterceptor` | The put was intentionally skipped after a miss (`reason`: `etag-present` / `error-code`) |
-| `cache_error` (`uri`/`error`) | event | `CacheInterceptor`, `AbstractDonutCacheInterceptor` | The cache layer itself threw (e.g. cache server down); a `cache_miss` after it is a degraded cache, not a cold one |
-| `put_donut` / `refresh_donut` | event | `DonutRepository` | Donut store / rebuild |
+| `put_skipped` (`uri`/`reason`[/`code`]) | event | `CacheInterceptor`, `AbstractDonutCacheInterceptor`, `DonutRepository` | A miss was not followed by a put (`reason`: `etag-present` / `error-code` with the actual response `code` / `not-cacheable` for a donut page served from its template) |
+| `cache_error` (`uri`/`operation`/`error`) | event | `CacheInterceptor`, `AbstractDonutCacheInterceptor` | The cache layer itself threw (e.g. cache server down); `operation` is the failing side (`read` / `write`); a `cache_miss` after it is a degraded cache, not a cold one |
+| `put_donut` / `refresh_donut` | event | `DonutRepository` | Donut store / re-render from a template hit |
+| `log_session_broken` (`reason`) | open/close | `SafeSemanticLogger::flush()` | Sentinel: the previous logging session was broken (e.g. LIFO violation) and its records were discarded; the flush containing it holds ONLY this scope — that window's cache activity is unknown, not absent |
 
 (SemanticLogger derives entry ids as `{type}_{n}` and constrains them to
 `^[a-z_]+_[0-9]+$`, so context `type`s use underscores; the donut `layer` value
@@ -142,6 +143,20 @@ The leading `invalidate` uses the resource's own URI tag, which is also its
 parents' surrogate key — so a child refill visibly purges the parent entry
 before both are rebuilt, by design.
 
+Pre-write cleanup vs real invalidation is decided by tag correlation, not by
+scope type: an `invalidate` is pre-write cleanup when, within the SAME scope's
+event stream, a later `save_*` event's `tags` include the invalidate's tags —
+regardless of the enclosing scope type (`get` or `command`; a `#[Refresh]`
+command's second put() runs inside the command scope, so a cleanup invalidate
+can appear there too). `depends_on` events for the same resource may appear in
+between (`QueryRepository::doPut()` runs deleteEtags, then setCacheDependency,
+then the saves). In donut scopes match against `save_etag`/`save_donut_view`:
+`save_donut`'s tags may exclude the URI tag (a known ordering limitation).
+Note the tree JSON does not interleave a scope's events with its nested scopes
+chronologically — within one scope events are time-ordered, but across the
+events/open-children boundary no shared sequence exists; use scope nesting and
+the next GET's hit/miss as ground truth for final state.
+
 A write request opens a `command` scope (`method=onPut`, its `#[Refresh]`/`#[Purge]`
 annotations) with the resulting `purge` / `invalidate` events nested beneath — so
 the cause and the verified effect are both in one subtree. Scenario 3 of
@@ -163,6 +178,7 @@ fails the suite immediately.
 |------|----------|
 | `testDependencyChainValidatesAndNestsAsEmbedTree` | A real dependency run validates and nests ≥3 deep, with `cache_miss`/`depends_on`/`invalidate`/`save_value` present |
 | `testCommandScopeRecordsCausality` | A write opens a `command` scope recording `onPut` and its annotations |
+| `testNon200GetLogsPutSkippedWithActualCode` | A non-200 GET records `put_skipped` with `reason=error-code` and the actual response `code`, plus a `purge` event |
 | `testValidatorRejectsContextViolatingItsSchema` | A `cache_hit` without `layer` is rejected (proves drift is caught) |
 
 `ResourceStorageTest` pins the invalidation outcome and `GracefulLoggingTest`
@@ -170,8 +186,10 @@ pins resilience:
 
 | Test | Verifies |
 |------|----------|
-| `testInvalidateTagsRecordsSuccessfulOutcome` | `roPool`/`etagPool` are `invalidated`, `cdn` is `purged`, `durationMs` is recorded |
+| `testInvalidateTagsWithNullPurgerLogsCdnSkipped` | With the default NullPurger (no CDN) `cdn` is `skipped`; `roPool`/`etagPool` are `invalidated`, `durationMs` is recorded |
+| `testInvalidateTagsLogsCdnPurgedWithConfiguredPurger` | A configured purger that runs without error logs `cdn` = `purged` |
 | `testInvalidateTagsFailsClosedWhenPurgerFails` | A CDN purger outage is logged as `cdn=failed` after local invalidation, then the purge exception propagates (fail-closed) |
+| `SafeSemanticLoggerTest::testRecoversToFreshSessionAfterFlushFailure` / `testLifoViolationBreaksSessionThenFlushRecovers` | A discarded session flushes to a `log_session_broken` sentinel (not silent-empty); the next session logs normally |
 | `GracefulLoggingTest::testCacheWorksWhenLoggerAlwaysThrows` | A logger that throws on every call never breaks cache reads/writes (SafeSemanticLogger) |
 
 ## ETag Invalidation Verification
@@ -193,16 +211,20 @@ All dependency tests verify both resource cache and ETag invalidation:
   injector/logger per request OR flushing at each request boundary; under
   Swoole/RoadRunner a host must flush at the boundary itself. Under *concurrent*
   coroutines sharing the one singleton, an interleaved open/close violates LIFO and
-  `SafeSemanticLogger` marks the session broken — so the current request's log can be
-  **dropped** (empty flush) rather than merely interleaved. Cache behavior is unaffected
+  `SafeSemanticLogger` marks the session broken — so the current request's log is
+  **discarded** and its flush returns only a `log_session_broken` sentinel (the
+  wipe is visible, not silent). Cache behavior is unaffected
   (logging is a best-effort side-channel) and the next `flush()` recovers a fresh
   session (see `SafeSemanticLoggerTest`). Making the logger request/coroutine-scoped
   (so concurrent sessions cannot cross-nest or drop) is the robust fix and is
   intentionally deferred to the host flush-lifecycle work.
 - **Donut-view hit vs. rebuild.** The donut GET scope closes as `cache_hit` (layer
   `donut-view`) whenever a ResourceObject is served — including when it was rebuilt
-  from a cached donut template. The two are still distinguishable by the presence of a
+  from a cached donut template (the close reports only the final layer's outcome,
+  also stated in `cache_hit.json`). The two are still distinguishable by the presence of a
   `refresh_donut` event inside the scope; the close label is intentionally coarse.
+  When the page is not entire-content cacheable, no page-level save follows the
+  rebuild — recorded as `put_skipped` with `reason=not-cacheable`.
 - **Legacy `RepositoryLoggerInterface` receives no events.** Internal cache code logs
   through `SemanticLoggerInterface`; the deprecated flat interface stays bound for code
   BC but its instance stays empty. Consumers should migrate to the SemanticLogger tree.
