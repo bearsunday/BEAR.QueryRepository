@@ -30,7 +30,7 @@ use Throwable;
  * cache activity". The delegate is accepted as an interface so a throwing fake
  * can be injected in tests to prove graceful degradation.
  */
-final class SafeSemanticLogger implements SemanticLoggerInterface
+final class SafeSemanticLogger implements SemanticLoggerInterface, TopLevelAwareInterface
 {
     private const EMPTY_SCHEMA_URL = 'https://koriym.github.io/Koriym.SemanticLogger/schemas/semantic-log.json';
 
@@ -42,11 +42,12 @@ final class SafeSemanticLogger implements SemanticLoggerInterface
     }
 
     /**
-     * Whether no operation scope is currently open (the next open would be top-level)
+     * {@inheritDoc}
      *
      * Lets callers distinguish an application-initiated (manual) operation from one
      * nested inside a framework scope (a request GET or a write command).
      */
+    #[Override]
     public function isTopLevel(): bool
     {
         return $this->depth === 0;

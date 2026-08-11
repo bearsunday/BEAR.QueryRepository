@@ -10,7 +10,7 @@ use BEAR\QueryRepository\Log\Context\ManualPurgeResultContext;
 use BEAR\QueryRepository\Log\Context\ManualStoreContext;
 use BEAR\QueryRepository\Log\Context\ManualStoreResultContext;
 use BEAR\QueryRepository\Log\Context\PurgeContext;
-use BEAR\QueryRepository\Log\SafeSemanticLogger;
+use BEAR\QueryRepository\Log\TopLevelAwareInterface;
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\HttpCache;
 use BEAR\Resource\AbstractRequest;
@@ -47,7 +47,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         // save events would be dropped at flush. Wrap it in a manual_store scope so the write
         // stays visible. A put nested inside a request GET or a write command keeps emitting
         // its save events under that scope, unchanged.
-        if ($this->logger instanceof SafeSemanticLogger && $this->logger->isTopLevel()) {
+        if ($this->logger instanceof TopLevelAwareInterface && $this->logger->isTopLevel()) {
             $openId = $this->logger->open(new ManualStoreContext((string) $ro->uri));
             $stored = false;
             try {
@@ -137,7 +137,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         // A top-level purge is an application-initiated (manual) cache bust: wrap it in a
         // manual_purge scope so it stands out from automatic invalidation. A purge nested
         // inside a request GET or a write command stays an ordinary purge event there.
-        if ($this->logger instanceof SafeSemanticLogger && $this->logger->isTopLevel()) {
+        if ($this->logger instanceof TopLevelAwareInterface && $this->logger->isTopLevel()) {
             $openId = $this->logger->open(new ManualPurgeContext((string) $uri));
             $purged = false;
             try {

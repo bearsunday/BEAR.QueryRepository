@@ -11,7 +11,7 @@ use BEAR\QueryRepository\Log\Context\SaveDonutViewContext;
 use BEAR\QueryRepository\Log\Context\SaveEtagContext;
 use BEAR\QueryRepository\Log\Context\SaveValueContext;
 use BEAR\QueryRepository\Log\Context\SaveViewContext;
-use BEAR\QueryRepository\Log\SafeSemanticLogger;
+use BEAR\QueryRepository\Log\TopLevelAwareInterface;
 use BEAR\RepositoryModule\Annotation\EtagPool;
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\Resource\AbstractUri;
@@ -262,7 +262,7 @@ final class ResourceStorage implements ResourceStorageInterface
      */
     private function logInvalidation(InvalidateContext $result, array $tags): void
     {
-        if ($this->logger instanceof SafeSemanticLogger && $this->logger->isTopLevel()) {
+        if ($this->logger instanceof TopLevelAwareInterface && $this->logger->isTopLevel()) {
             $openId = $this->logger->open(new ManualInvalidateContext($tags));
             $this->logger->close($result, $openId);
 
