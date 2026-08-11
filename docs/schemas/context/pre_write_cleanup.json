@@ -1,0 +1,17 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/pre_write_cleanup.json",
+    "title": "pre_write_cleanup",
+    "description": "Event: marker recorded by a writer immediately before it clears the entry it is about to rewrite. The invalidate event that FOLLOWS this marker in the same scope's event stream is pre-write cleanup, not a real invalidation. The purpose is recorded at the source (QueryRepository::doPut(), DonutRepository::putStatic()/putDonut()), so readers never infer cleanup-vs-invalidation from tag correlation: an invalidate not immediately preceded by this marker is a real invalidation.",
+    "type": "object",
+    "required": [
+        "uri"
+    ],
+    "properties": {
+        "uri": {
+            "description": "URI of the resource whose stale entry is being cleared before the rewrite",
+            "type": "string"
+        }
+    },
+    "additionalProperties": false
+}

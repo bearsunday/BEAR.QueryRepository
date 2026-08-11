@@ -62,9 +62,57 @@ class SemanticLogSchemaTest extends TestCase
 
         // Lifecycle and dependency facts are present and schema-valid.
         $types = self::collectTypes($tree);
-        foreach (['get', 'cache_miss', 'depends_on', 'invalidate', 'save_value', 'save_etag'] as $type) {
+        foreach (['get', 'cache_miss', 'pre_write_cleanup', 'depends_on', 'invalidate', 'save_value', 'save_etag'] as $type) {
             $this->assertContains($type, $types);
         }
+    }
+
+    public function testCleanupInvalidateIsMarkerPrecededAtSource(): void
+    {
+        // A miss-then-store GET chain: every invalidate here is the write path clearing
+        // the entry it is about to rewrite, and the writer records that purpose itself —
+        // each invalidate is immediately preceded by its pre_write_cleanup marker.
+        $this->resource->get('page://self/dep/level-one');
+        $tree = $this->flushAndValidate($this->logger);
+
+        $invalidates = 0;
+        foreach (self::scopeEventTypeSequences($tree) as $sequence) {
+            foreach ($sequence as $i => $type) {
+                if ($type !== 'invalidate') {
+                    continue;
+                }
+
+                $invalidates++;
+                $this->assertGreaterThan(0, $i, 'a cleanup invalidate cannot open the event stream');
+                $this->assertSame('pre_write_cleanup', $sequence[$i - 1], 'the writer records its cleanup at the source');
+            }
+        }
+
+        $this->assertGreaterThanOrEqual(3, $invalidates, 'each level of the chain cleans up before its store');
+    }
+
+    public function testPurgeDrivenInvalidateCarriesNoCleanupMarker(): void
+    {
+        // User::onPut carries #[Purge] and #[Refresh]: the purge-driven invalidate is a
+        // real invalidation (preceded by `purge`, not by the marker), while the refresh
+        // re-put still records its own marker-preceded cleanup — both shapes in one tree.
+        $this->resource->put('app://self/user', ['id' => 1, 'name' => 'bear', 'age' => 10]);
+        $tree = $this->flushAndValidate($this->logger);
+
+        $real = 0;
+        $cleanup = 0;
+        foreach (self::scopeEventTypeSequences($tree) as $sequence) {
+            foreach ($sequence as $i => $type) {
+                if ($type !== 'invalidate') {
+                    continue;
+                }
+
+                $i > 0 && $sequence[$i - 1] === 'pre_write_cleanup' ? $cleanup++ : $real++;
+            }
+        }
+
+        $this->assertGreaterThanOrEqual(1, $real, 'the #[Purge]-driven invalidate has no cleanup marker');
+        $this->assertGreaterThanOrEqual(1, $cleanup, 'the #[Refresh] re-put records its cleanup marker');
     }
 
     public function testCommandScopeRecordsCausality(): void

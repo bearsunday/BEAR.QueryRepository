@@ -137,6 +137,56 @@ trait SemanticLogTreeTrait
     }
 
     /**
+     * Event `type` sequences of every scope in the tree (root events included), depth-first
+     *
+     * Each list is one scope's `events` array in emission order (events within one
+     * scope are time-ordered). Lets tests assert same-scope adjacency rules such as
+     * "a cleanup invalidate is immediately preceded by its pre_write_cleanup marker".
+     *
+     * @param array<string, mixed> $tree
+     *
+     * @return list<list<string>>
+     */
+    private static function scopeEventTypeSequences(array $tree): array
+    {
+        $sequences = [];
+        $rootTypes = [];
+        self::walkEvents($tree['events'] ?? [], $rootTypes);
+        if ($rootTypes !== []) {
+            $sequences[] = $rootTypes;
+        }
+
+        self::collectScopeEventSequences($tree['open'] ?? [], $sequences);
+
+        return $sequences;
+    }
+
+    /**
+     * @param mixed              $nodes
+     * @param list<list<string>> $sequences
+     */
+    private static function collectScopeEventSequences(mixed $nodes, array &$sequences): void
+    {
+        if (! is_array($nodes)) {
+            return;
+        }
+
+        foreach ($nodes as $node) {
+            if (! is_array($node)) {
+                continue;
+            }
+
+            $types = [];
+            self::walkEvents($node['events'] ?? [], $types);
+            if ($types !== []) {
+                $sequences[] = $types;
+            }
+
+            self::collectScopeEventSequences($node['open'] ?? [], $sequences);
+        }
+    }
+
+    /**
      * @param mixed        $nodes
      * @param list<string> $types
      */

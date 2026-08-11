@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Log\Context\CacheHitContext;
 use BEAR\QueryRepository\Log\Context\CacheMissContext;
+use BEAR\QueryRepository\Log\Context\PreWriteCleanupContext;
 use BEAR\QueryRepository\Log\Context\PutDonutContext;
 use BEAR\QueryRepository\Log\Context\PutSkippedContext;
 use BEAR\QueryRepository\Log\Context\RefreshDonutContext;
@@ -59,7 +60,8 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $donut = ResourceDonut::create($ro, $this->renderer, $keys, $sMaxAge, true);
         $donut->render($ro, $this->renderer);
         $this->setHeaders($keys, $ro, $sMaxAge);
-        // delete
+        // delete: cleanup for the rewrite below, recorded as such at the source
+        $this->logger->event(new PreWriteCleanupContext((string) $ro->uri));
         $this->resourceStorage->invalidateTags([(new UriTag())($ro->uri)]);
         // save content cache and donut
         $this->saveView($ro, $sMaxAge);
@@ -80,7 +82,8 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $donut = ResourceDonut::create($ro, $this->renderer, $keys, $donutTtl, false);
         $donut->render($ro, $this->renderer);
         $keys->setSurrogateHeader($ro);
-        // delete
+        // delete: cleanup for the rewrite below, recorded as such at the source
+        $this->logger->event(new PreWriteCleanupContext((string) $ro->uri));
         $this->resourceStorage->invalidateTags([(new UriTag())($ro->uri)]);
         // save donut
         $this->resourceStorage->saveDonut($ro->uri, $donut, $donutTtl, $keyArrays);

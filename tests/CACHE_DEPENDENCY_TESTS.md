@@ -100,7 +100,8 @@ Typed `AbstractContext` subclasses live in `src/Log/Context/` and each carries a
 | `command` (`method`/`annotations`/`source`) | open | `CommandInterceptor`, `DonutCommandInterceptor`, `RefreshInterceptor` (all via the shared `CommandContextFactory`) | A write scope; `source` names the producing interceptor, `annotations` its `#[Refresh]`/`#[Purge]` attributes (empty on the CacheableResponse path by design) |
 | `depends_on` (`parent`/`child`/`childTags`) | event | `CacheDependency::depends()` | A dependency-graph edge |
 | `save_value` / `save_view` / `save_etag` / `save_donut` / `save_donut_view` | event | `ResourceStorage` | What was stored, with `tags`, `ttl` (seconds until expiry; 0/null = no expiry set) and the `saved` outcome |
-| `invalidate` (`tags`/`roPool`/`etagPool`/`cdn`/`durationMs`) | event | `ResourceStorage::invalidateTags()` | Per-target outcome as status words: `roPool`/`etagPool` are `invalidated`\|`failed`; `cdn` is tri-state: `purged` (a configured purger ran), `failed` (the purge threw — fail-closed: local pools are invalidated first, then the exception propagates), `skipped` (NullPurger, no CDN configured). Pre-write cleanup vs real invalidation is decided by same-scope tag correlation — see the flow example below |
+| `pre_write_cleanup` (`uri`) | event | `QueryRepository::doPut()`, `DonutRepository::putStatic()`/`putDonut()` | Marker recorded by a writer right before it clears the entry it is about to rewrite: the `invalidate` immediately following it in the same scope is pre-write cleanup, not a real invalidation |
+| `invalidate` (`tags`/`roPool`/`etagPool`/`cdn`/`durationMs`) | event | `ResourceStorage::invalidateTags()` | Per-target outcome as status words: `roPool`/`etagPool` are `invalidated`\|`failed`; `cdn` is tri-state: `purged` (a configured purger ran), `failed` (the purge threw — fail-closed: local pools are invalidated first, then the exception propagates), `skipped` (NullPurger, no CDN configured). Pre-write cleanup vs real invalidation is recorded at the source via the `pre_write_cleanup` marker — see the flow example below |
 | `purge` | event | `QueryRepository::purge()` | An explicit purge request |
 | `put_skipped` (`uri`/`reason`[/`code`]) | event | `CacheInterceptor`, `AbstractDonutCacheInterceptor`, `DonutRepository` | A miss was not followed by a put (`reason`: `etag-present` / `error-code` with the actual response `code` / `not-cacheable` for a donut page served from its template) |
 | `cache_error` (`uri`/`operation`/`error`) | event | `CacheInterceptor`, `AbstractDonutCacheInterceptor` | The cache layer itself threw (e.g. cache server down); `operation` is the failing side (`read` / `write`); a `cache_miss` after it is a degraded cache, not a cold one |
@@ -117,18 +118,21 @@ Typed `AbstractContext` subclasses live in `src/Log/Context/` and each carries a
 `Stree\TreeRenderer`. The 3-level chain appears as native nesting — the embed
 structure is the log structure, no reconstruction. Within a node the JSON groups
 nested `open`s separately from `events` (they are not interleaved
-chronologically); the emission order is: the leading `invalidate` (pre-write
-cleanup — every `QueryRepository::doPut()` deleteEtags first), then the nested
-child GET scopes run to completion, then the parent's `depends_on` / `save_*`
-(the parent materializes its embeds before it can register and store):
+chronologically); the emission order is: the leading `pre_write_cleanup` marker
+and its `invalidate` (every `QueryRepository::doPut()` records the marker, then
+deleteEtags, before it stores), then the nested child GET scopes run to
+completion, then the parent's `depends_on` / `save_*` (the parent materializes
+its embeds before it can register and store):
 
 ```text
 get uri=page://self/dep/level-one
-├── invalidate tags=[_dep_level-one_] [event]            (pre-write cleanup)
+├── pre_write_cleanup uri=.../level-one [event]
+├── invalidate tags=[_dep_level-one_] [event]            (marker-preceded: cleanup)
 ├── get uri=page://self/dep/level-two
-│   ├── invalidate tags=[_dep_level-two_] [event]        (pre-write cleanup)
+│   ├── pre_write_cleanup uri=.../level-two [event]
+│   ├── invalidate tags=[_dep_level-two_] [event]        (marker-preceded: cleanup)
 │   ├── get uri=page://self/dep/level-three
-│   │   ├── invalidate → save_etag → save_value [events]
+│   │   ├── pre_write_cleanup → invalidate → save_etag → save_value [events]
 │   │   └── (close) cache_miss layer=resource
 │   ├── depends_on parent=.../level-two child=.../level-three [event]
 │   ├── save_etag → save_value [events]
@@ -143,22 +147,16 @@ The leading `invalidate` uses the resource's own URI tag, which is also its
 parents' surrogate key — so a child refill visibly purges the parent entry
 before both are rebuilt, by design.
 
-Pre-write cleanup vs real invalidation is decided by tag correlation, not by
-scope type: scanning forward from an `invalidate` within the SAME scope's
-event stream, it is pre-write cleanup iff the first `save_*` event whose
-`tags` include the invalidate's tags is reached with only `depends_on` events
-for the same resource in between — regardless of the enclosing scope type
-(`get` or `command`; a `#[Refresh]` command's second put() runs inside the
-command scope, so a cleanup invalidate can appear there too). If another
-`invalidate` or `purge` intervenes before a matching `save_*`, it is a real
-invalidation — a `#[Refresh]` command shows both shapes: the purge's
-invalidate is real, the re-put's own deleteEtag is cleanup. In donut scopes
-match against `save_etag`/`save_donut_view`: `save_donut`'s tags may exclude
-the URI tag (a known ordering limitation); when neither `save_etag` nor
-`save_donut_view` is present in the scope (a donut resource declaring no
-Surrogate-Key), the classification is undecidable from the log alone — this
-overrides the rule above: do not conclude a real invalidation merely from the
-absence of a matching `save_*`.
+Pre-write cleanup vs real invalidation is recorded at the source, not
+inferred: an `invalidate` is pre-write cleanup iff the event immediately
+preceding it in the same scope's event stream is a `pre_write_cleanup` marker.
+The writers emit the marker themselves — `QueryRepository::doPut()` and
+`DonutRepository::putStatic()`/`putDonut()` record it right before clearing
+the entry they are about to rewrite — so the classification needs no tag
+correlation and has no undecidable case. Any `invalidate` without the marker
+is a real invalidation; a `#[Refresh]` command shows both shapes: the purge's
+invalidate has no marker (real), the re-put's own deleteEtag is
+marker-preceded (cleanup).
 Note the tree JSON does not interleave a scope's events with its nested scopes
 chronologically — within one scope events are time-ordered, but across the
 events/open-children boundary no shared sequence exists; use scope nesting and

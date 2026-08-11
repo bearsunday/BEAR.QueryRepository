@@ -9,6 +9,7 @@ use BEAR\QueryRepository\Log\Context\ManualPurgeContext;
 use BEAR\QueryRepository\Log\Context\ManualPurgeResultContext;
 use BEAR\QueryRepository\Log\Context\ManualStoreContext;
 use BEAR\QueryRepository\Log\Context\ManualStoreResultContext;
+use BEAR\QueryRepository\Log\Context\PreWriteCleanupContext;
 use BEAR\QueryRepository\Log\Context\PurgeContext;
 use BEAR\QueryRepository\Log\TopLevelAwareInterface;
 use BEAR\RepositoryModule\Annotation\Cacheable;
@@ -62,6 +63,10 @@ final readonly class QueryRepository implements QueryRepositoryInterface
 
     private function doPut(ResourceObject $ro): bool
     {
+        // The writer knows its own purpose: this deleteEtag clears the entry about to be
+        // rewritten below. The marker records that, so readers never have to infer
+        // cleanup-vs-invalidation from tag correlation.
+        $this->logger->event(new PreWriteCleanupContext((string) $ro->uri));
         $this->storage->deleteEtag($ro->uri);
         if ($ro->code === 200) {
             $this->setCacheDependency($ro);
