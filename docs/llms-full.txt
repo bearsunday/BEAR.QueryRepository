@@ -197,6 +197,13 @@ Cache operations are logged as an open/event/close tree (Koriym.SemanticLogger) 
 
 An ETag with an 'r' suffix (e.g., "123456r") marks a refreshed donut: the outer shell was reused while the inner dynamic content was regenerated.
 
+### Binding, disabling and flushing
+
+- Default binding (`DonutCacheModule`): `SemanticLoggerInterface` → `SafeSemanticLogger(new SemanticLogger())` in singleton scope, provided by `SafeSemanticLoggerProvider`. `SafeSemanticLogger` is a best-effort decorator: a logging failure can never break a cache read/write.
+- Turning cache logging off: bind the no-op logger in your application module — `$this->bind(SemanticLoggerInterface::class)->to(NullSemanticLogger::class);` (`BEAR\QueryRepository\Log\NullSemanticLogger`) — every logging call becomes a no-op.
+- Manual-scope rooting (`manual_store` / `manual_purge` / `manual_invalidate`) is granted by the `TopLevelAwareInterface` capability (`isTopLevel()`), which `SafeSemanticLogger` implements; a custom `SemanticLoggerInterface` decorator can implement it to keep top-level direct calls visible in its sessions.
+- Flushing is the host's responsibility: the framework only accumulates. Call `flush()` on the injected `SemanticLoggerInterface` (e.g. at request end) to obtain the `LogJson` session for storage or rendering (`vendor/bin/stree`). Under PHP-FPM an unflushed session is simply discarded with the request — the compiled app object unserializes with a fresh session per request (`SafeSemanticLogger::__unserialize()`). Under long-running runtimes, flush per request or bind `NullSemanticLogger`.
+
 ### Verifying the event-driven cache from logs
 
 - Event-driven entries appear with their configured TTL in seconds (`ttl` = seconds until expiry; the `never` convention = 31536000 = 1 year, effectively indefinite). `0`/`null` also mean no expiry is set. Such entries live until an `invalidate` event with a matching tag — correlate `save_*` `tags` with `invalidate` `tags` to confirm a write busted its dependents.
