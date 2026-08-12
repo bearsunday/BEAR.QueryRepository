@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\QueryRepository\Log\SafeSemanticLogger;
+use BEAR\QueryRepository\Log\Context\CacheMissContext;
+use BEAR\QueryRepository\Log\Context\GetContext;
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\Resource\ResourceInterface;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
@@ -22,28 +23,29 @@ use const E_USER_WARNING;
 /**
  * Logging must never break cache behavior
  *
- * Even when the underlying semantic logger throws on every call, SafeSemanticLogger
- * swallows the failure so cache reads/writes (and the dependency cascade) keep working.
+ * Since koriym/semantic-logger 0.9 the core logger is a total function: protocol
+ * misuse (a LIFO violation, a session left unclosed) never throws — it is recorded
+ * in-band as `semantic_logger_error` diagnostics. A broken logging session can
+ * therefore no longer break cache reads/writes (and the dependency cascade).
  */
 class GracefulLoggingTest extends TestCase
 {
     use SemanticLogTreeTrait;
 
-    public function testCacheWorksWhenLoggerAlwaysThrows(): void
+    public function testCacheWorksWhenLoggingSessionIsMisused(): void
     {
         $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
-        $module->override(new class extends AbstractModule {
-            protected function configure(): void
-            {
-                $this->bind(SemanticLoggerInterface::class)->toInstance(
-                    new SafeSemanticLogger(new ThrowingSemanticLogger()),
-                );
-            }
-        });
         $injector = new Injector($module, __DIR__ . '/tmp');
         $resource = $injector->getInstance(ResourceInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class);
 
-        // Building the 3-level dependency chain must succeed despite the failing logger.
+        // Misuse the shared logger between cache operations: open two scopes and
+        // close the outer one first — a LIFO violation.
+        $outer = $logger->open(new GetContext('page://self/misuse/outer'));
+        $logger->open(new GetContext('page://self/misuse/inner'));
+        $logger->close(new CacheMissContext('resource'), $outer);
+
+        // Building the 3-level dependency chain must succeed despite the broken session.
         $ro = $resource->get('page://self/dep/level-one');
         $this->assertSame(200, $ro->code);
         $this->assertArrayHasKey(Header::ETAG, $ro->headers);
@@ -54,6 +56,14 @@ class GracefulLoggingTest extends TestCase
         $cached = $resource->get('page://self/dep/level-one');
         $this->assertSame($ro->headers[Header::ETAG], $cached->headers[Header::ETAG]);
         $this->assertArrayHasKey(Header::AGE, $cached->headers, 'second access is an observable cache hit');
+
+        // The misuse did not vanish silently: it is recorded in-band as a diagnostic.
+        // (No flushAndValidate here — the core diagnostic schema is not part of
+        // this package's docs/schemas/context directory.)
+        $tree = $logger->flush()->toArray();
+        $diagnostic = self::eventContextJsonOf($tree, 'semantic_logger_error');
+        $this->assertNotNull($diagnostic, 'the LIFO violation is recorded as a diagnostic');
+        $this->assertStringContainsString('close_id_mismatch', $diagnostic);
     }
 
     public function testCacheErrorIsLoggedWhenCacheServerIsDown(): void

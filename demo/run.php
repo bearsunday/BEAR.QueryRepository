@@ -45,7 +45,7 @@ echoRo($resource->uri('app://self/user')(['id' => 1])); // return cache
 $log = $injector->getInstance(SemanticLoggerInterface::class)->flush();
 
 echo PHP_EOL . "=== Cache Log Tree ===" . PHP_EOL;
-echo (new TreeRenderer())->render($log->toArray(), new RenderConfig(true, 0.0, 1000, true)) . PHP_EOL;
+echo (new TreeRenderer(new RenderConfig(true, 0.0, 1000, true)))->render($log) . PHP_EOL;
 
 echo PHP_EOL . "=== Cache Log JSON ===" . PHP_EOL;
 echo json_encode($log, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL;

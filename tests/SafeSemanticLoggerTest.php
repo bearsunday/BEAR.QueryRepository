@@ -8,56 +8,27 @@ use BEAR\QueryRepository\Log\Context\CacheHitContext;
 use BEAR\QueryRepository\Log\Context\CacheMissContext;
 use BEAR\QueryRepository\Log\Context\GetContext;
 use BEAR\QueryRepository\Log\SafeSemanticLogger;
-use Koriym\SemanticLogger\AbstractContext;
-use Koriym\SemanticLogger\LogJson;
 use Koriym\SemanticLogger\SemanticLogger;
-use Koriym\SemanticLogger\SemanticLoggerInterface;
 use PHPUnit\Framework\TestCase;
-use RuntimeException;
 
+use function json_encode;
 use function serialize;
 use function unserialize;
 
+use const JSON_UNESCAPED_SLASHES;
+
+/**
+ * SafeSemanticLogger: depth tracking and the serialization boundary
+ *
+ * Since koriym/semantic-logger 0.9 the core logger is a total function, so the
+ * throwing-delegate fakes that used to pin the old swallow-and-tombstone guard
+ * are gone: a delegate that honors the interface contract never throws, and the
+ * misuse itself is recorded in-band as `semantic_logger_error` diagnostics
+ * (pinned here against a real SemanticLogger).
+ */
 class SafeSemanticLoggerTest extends TestCase
 {
-    public function testRecoversToFreshSessionAfterFlushFailure(): void
-    {
-        // A delegate whose flush() always throws (mimics a dirty/unclosed session).
-        $flaky = new class implements SemanticLoggerInterface {
-            public function open(AbstractContext $context): string
-            {
-                return 'x';
-            }
-
-            public function event(AbstractContext $context): void
-            {
-            }
-
-            public function close(AbstractContext $context, string $openId): void
-            {
-            }
-
-            public function flush(array $links = []): LogJson
-            {
-                throw new RuntimeException('flush failed');
-            }
-        };
-        $safe = new SafeSemanticLogger($flaky);
-
-        $id = $safe->open(new GetContext('page://self/x'));
-        $safe->close(new CacheMissContext('resource'), $id);
-        // The delegate throws on flush; the failure is swallowed and the wiped session
-        // is marked with a log_session_broken sentinel instead of vanishing silently.
-        $opens = $safe->flush()->toArray()['open'];
-        $this->assertCount(1, $opens);
-        $this->assertSame('log_session_broken', $opens[0]['type']);
-        $this->assertSame('flush failed', $opens[0]['context']['reason']);
-
-        // Recovery: the next session uses a fresh delegate and logs normally.
-        $id2 = $safe->open(new GetContext('page://self/y'));
-        $safe->close(new CacheHitContext('resource'), $id2);
-        $this->assertCount(1, $safe->flush()->toArray()['open']);
-    }
+    use SemanticLogTreeTrait;
 
     public function testSerializesWithoutCarryingSessionState(): void
     {
@@ -73,89 +44,34 @@ class SafeSemanticLoggerTest extends TestCase
         $this->assertCount(1, $restored->flush()->toArray()['open']);
     }
 
-    public function testLifoViolationBreaksSessionThenFlushRecovers(): void
+    public function testLifoViolationIsRecordedAsDiagnosticAndFlushRecovers(): void
     {
-        // Pin the failure chain against a REAL SemanticLogger delegate (no fake):
-        // closing scope A while B is still open violates LIFO order.
+        // Pin the 0.9 contract against a REAL SemanticLogger delegate (no fake):
+        // closing scope A while B is still open violates LIFO order. The core
+        // never throws — the violation is recorded in-band as a diagnostic.
         $safe = new SafeSemanticLogger(new SemanticLogger());
 
         $idA = $safe->open(new GetContext('page://self/a'));
         $safe->open(new GetContext('page://self/b'));
-        // The delegate throws InvalidOperationOrderException; SafeSemanticLogger swallows
-        // it and marks the session broken.
-        $safe->close(new CacheMissContext('resource'), $idA);
-        // The broken (still-unclosed) session cannot flush; the wipe is marked with a
-        // log_session_broken sentinel carrying the cause, not returned as an empty log.
-        $opens = $safe->flush()->toArray()['open'];
-        $this->assertCount(1, $opens);
-        $this->assertSame('log_session_broken', $opens[0]['type']);
-        $this->assertNotSame('', $opens[0]['context']['reason']);
+        $safe->close(new CacheMissContext('resource'), $idA); // violation; must not escape
 
-        // Recovery: flush() replaced the dirty delegate, so the next session logs normally.
+        $log = $safe->flush()->toArray();
+        // The tree topology is preserved: scope b stays nested inside scope a.
+        $this->assertCount(1, $log['open']);
+        $this->assertSame(2, self::maxOpenDepth($log));
+        // The violation is marked at the exact failure point, with the culprit id.
+        $diagnostic = self::eventContextJsonOf($log, 'semantic_logger_error');
+        $this->assertNotNull($diagnostic, 'the LIFO violation is recorded as a diagnostic');
+        $this->assertStringContainsString('"kind":"close_id_mismatch"', $diagnostic);
+        $this->assertStringContainsString('"relatedId":"' . $idA . '"', $diagnostic);
+        // Nothing is lost silently: the unclosed scopes are enumerated at flush.
+        $eventsJson = (string) json_encode($log['events'] ?? [], JSON_UNESCAPED_SLASHES);
+        $this->assertStringContainsString('"kind":"unclosed_at_flush"', $eventsJson);
+        $this->assertStringContainsString('"unclosedIds":["get_1","get_2"]', $eventsJson);
+
+        // flush() always resets the session, so the next one logs normally.
         $id = $safe->open(new GetContext('page://self/c'));
         $safe->close(new CacheHitContext('resource'), $id);
         $this->assertCount(1, $safe->flush()->toArray()['open']);
-    }
-
-    public function testEventFailureIsSwallowed(): void
-    {
-        // Delegate succeeds on open() (so SafeSemanticLogger stays unbroken and enters
-        // event()'s try) but throws on event(): the failure must be swallowed.
-        $flaky = new class implements SemanticLoggerInterface {
-            public function open(AbstractContext $context): string
-            {
-                return 'x';
-            }
-
-            public function event(AbstractContext $context): void
-            {
-                throw new RuntimeException('event failed');
-            }
-
-            public function close(AbstractContext $context, string $openId): void
-            {
-            }
-
-            public function flush(array $links = []): LogJson
-            {
-                return new LogJson('https://koriym.github.io/Koriym.SemanticLogger/schemas/semantic-log.json', [], [], [], $links);
-            }
-        };
-        $safe = new SafeSemanticLogger($flaky);
-
-        $safe->open(new GetContext('page://self/x'));
-        $safe->event(new CacheMissContext('resource')); // throws inside; must not escape
-        // The session is marked broken and flush() returns an empty log without throwing.
-        $this->assertSame([], $safe->flush()->toArray()['open']);
-    }
-
-    public function testCloseFailureIsSwallowed(): void
-    {
-        // Delegate succeeds on open() but throws on close(): the failure must be swallowed.
-        $flaky = new class implements SemanticLoggerInterface {
-            public function open(AbstractContext $context): string
-            {
-                return 'x';
-            }
-
-            public function event(AbstractContext $context): void
-            {
-            }
-
-            public function close(AbstractContext $context, string $openId): void
-            {
-                throw new RuntimeException('close failed');
-            }
-
-            public function flush(array $links = []): LogJson
-            {
-                return new LogJson('https://koriym.github.io/Koriym.SemanticLogger/schemas/semantic-log.json', [], [], [], $links);
-            }
-        };
-        $safe = new SafeSemanticLogger($flaky);
-
-        $id = $safe->open(new GetContext('page://self/x'));
-        $safe->close(new CacheMissContext('resource'), $id); // throws inside; must not escape
-        $this->assertSame([], $safe->flush()->toArray()['open']);
     }
 }

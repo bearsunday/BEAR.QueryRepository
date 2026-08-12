@@ -41,8 +41,8 @@ The dependency graph you must trust is the shape you see.
 
 **Every context is one decision point.** The vocabulary — `cache_hit`,
 `cache_miss`, `depends_on`, five `save_*` kinds, `invalidate`, `purge`,
-`put_skipped`, `cache_error`, `pre_write_cleanup`, the `manual_*` scopes,
-`log_session_broken` — is not verbosity. It is an enumeration of everything
+`put_skipped`, `cache_error`, `pre_write_cleanup`, the `manual_*` scopes
+— is not verbosity. It is an enumeration of everything
 the cache subsystem can decide to do. There are five save contexts because
 there are five physically different write paths; merging them would erase
 exactly the distinction a debugging session needs. The size of the vocabulary
@@ -70,10 +70,10 @@ deleted the whole procedure. Inference rules rot; recorded facts don't.
 
 **3. "Unknown" is never dressed as "nothing happened".** A `cache_error`
 event separates a degraded cache from a cold one — a miss after an outage is
-not a missing entry. If the logging session itself breaks, the recovery flush
-returns a `log_session_broken` tombstone carrying the cause, because an empty
-log would read as "no cache activity" when the truth is "that window is
-unknown". A log that can lose data must say so in-band.
+not a missing entry. If the logging protocol itself is misused — a LIFO
+violation, a session left unclosed at flush — the core logger records a
+`semantic_logger_error` diagnostic in-band at the exact failure point, with the
+tree preserved. A log that can lose data must say so in-band.
 
 **4. The log is a contract, not prose.** Every context carries a `TYPE` and a
 `SCHEMA_URL`; every type has a JSON Schema in `docs/schemas/context/`. The

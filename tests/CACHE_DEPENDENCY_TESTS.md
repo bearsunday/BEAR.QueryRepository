@@ -106,7 +106,7 @@ Typed `AbstractContext` subclasses live in `src/Log/Context/` and each carries a
 | `put_skipped` (`uri`/`reason`[/`code`]) | event | `CacheInterceptor`, `AbstractDonutCacheInterceptor`, `DonutRepository` | A miss was not followed by a put (`reason`: `etag-present` / `error-code` with the actual response `code` / `not-cacheable` for a donut page served from its template) |
 | `cache_error` (`uri`/`operation`/`error`) | event | `CacheInterceptor`, `AbstractDonutCacheInterceptor` | The cache layer itself threw (e.g. cache server down); `operation` is the failing side (`read` / `write`); a `cache_miss` after it is a degraded cache, not a cold one |
 | `put_donut` / `refresh_donut` | event | `DonutRepository` | Donut store / re-render from a template hit |
-| `log_session_broken` (`reason`) | open/close | `SafeSemanticLogger::flush()` | Sentinel: the previous logging session was broken (e.g. LIFO violation) and its records were discarded; the flush containing it holds ONLY this scope — that window's cache activity is unknown, not absent |
+| `semantic_logger_error` (`kind` + details) | event | Core SemanticLogger (koriym/semantic-logger ≥ 0.9) | Logging-protocol misuse recorded in-band at the exact failure point — `close_id_mismatch` / `close_without_open` / `unclosed_at_flush` / `context_serialization_failed`; the tree is preserved (a core diagnostic type, not this package's vocabulary) |
 
 (SemanticLogger derives entry ids as `{type}_{n}` and constrains them to
 `^[a-z_]+_[0-9]+$`, so context `type`s use underscores; the donut `layer` value
@@ -194,8 +194,8 @@ pins resilience:
 | `testInvalidateTagsWithNullPurgerLogsCdnSkipped` | With the default NullPurger (no CDN) `cdn` is `skipped`; `roPool`/`etagPool` are `invalidated`, `durationMs` is recorded |
 | `testInvalidateTagsLogsCdnPurgedWithConfiguredPurger` | A configured purger that runs without error logs `cdn` = `purged` |
 | `testInvalidateTagsFailsClosedWhenPurgerFails` | A CDN purger outage is logged as `cdn=failed` after local invalidation, then the purge exception propagates (fail-closed) |
-| `SafeSemanticLoggerTest::testRecoversToFreshSessionAfterFlushFailure` / `testLifoViolationBreaksSessionThenFlushRecovers` | A discarded session flushes to a `log_session_broken` sentinel (not silent-empty); the next session logs normally |
-| `GracefulLoggingTest::testCacheWorksWhenLoggerAlwaysThrows` | A logger that throws on every call never breaks cache reads/writes (SafeSemanticLogger) |
+| `SafeSemanticLoggerTest::testLifoViolationIsRecordedAsDiagnosticAndFlushRecovers` | A LIFO violation is recorded as a `close_id_mismatch` diagnostic with the tree preserved (nothing discarded); flush always resets, so the next session logs normally |
+| `GracefulLoggingTest::testCacheWorksWhenLoggingSessionIsMisused` | A LIFO-violated logging session never breaks cache reads/writes; the misuse is recorded in-band as `semantic_logger_error` diagnostics |
 
 ## ETag Invalidation Verification
 
@@ -215,12 +215,13 @@ All dependency tests verify both resource cache and ETag invalidation:
   not flush/reset per request. Safe operation therefore requires recreating the
   injector/logger per request OR flushing at each request boundary; under
   Swoole/RoadRunner a host must flush at the boundary itself. Under *concurrent*
-  coroutines sharing the one singleton, an interleaved open/close violates LIFO and
-  `SafeSemanticLogger` marks the session broken — so the current request's log is
-  **discarded** and its flush returns only a `log_session_broken` sentinel (the
-  wipe is visible, not silent). Cache behavior is unaffected
-  (logging is a best-effort side-channel) and the next `flush()` recovers a fresh
-  session (see `SafeSemanticLoggerTest`). Making the logger request/coroutine-scoped
+  coroutines sharing the one singleton, an interleaved open/close violates LIFO —
+  the core logger records the violation as `semantic_logger_error` diagnostics
+  (`close_id_mismatch`, `unclosed_at_flush`) in-band and keeps going, so the
+  interleaved requests' trees are preserved but cross-nested (the misuse is
+  visible, not silent). Cache behavior is unaffected (logging is a side-channel
+  and the core never throws) and every `flush()` resets the session (see
+  `SafeSemanticLoggerTest`). Making the logger request/coroutine-scoped
   (so concurrent sessions cannot cross-nest or drop) is the robust fix and is
   intentionally deferred to the host flush-lifecycle work.
 - **Donut-view hit vs. rebuild.** The donut GET scope closes as `cache_hit` (layer

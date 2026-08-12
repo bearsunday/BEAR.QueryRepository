@@ -77,7 +77,7 @@ $log = $logger->flush();
 
 // Human/AI-readable tree (open = embed scope, close = hit/miss, events = saves/invalidations)
 echo "=== Cache Log Tree ===" . PHP_EOL;
-echo (new TreeRenderer())->render($log->toArray(), new RenderConfig(true, 0.0, 1000, true)) . PHP_EOL;
+echo (new TreeRenderer(new RenderConfig(true, 0.0, 1000, true)))->render($log) . PHP_EOL;
 
 // Machine-readable JSON conforming to the published schemas (validated below
 // against the local schema files; also: `vendor/bin/stree <file>`)
