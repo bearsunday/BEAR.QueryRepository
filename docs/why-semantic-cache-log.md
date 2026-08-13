@@ -131,5 +131,5 @@ half-exists and misleads.
 
 - Reading rules and context tables: [docs/llms-full.txt](llms-full.txt) (Cache Log section)
 - Per-context schemas: [docs/schemas/context/](schemas/context/)
-- Self-verifying demos: `demo/run-dependency.php`, `demo/run-donut.php`, `demo/run.php`
+- Self-verifying demos: `demo/run-dependency.php`, `demo/run-donut.php`, `demo/run.php`, and `demo/run-degraded.php` (the failure vocabulary: skipped stores, refused writes, a downed cache, a failed CDN purge)
 - Test-side view: [tests/CACHE_DEPENDENCY_TESTS.md](../tests/CACHE_DEPENDENCY_TESTS.md)

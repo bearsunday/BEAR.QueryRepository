@@ -184,6 +184,14 @@ test instead of passing quietly. A scenario that provokes misuse on purpose call
 `flushAndValidateWithDiagnostics()`, where the diagnostics still have to validate
 against the core schemas bundled with the logger.
 
+`DemoLogCoverageTest` keeps the demos honest as the readable specification of the
+log: it runs all four `demo/*.php` scripts and fails unless the union of their
+sessions still emits every context class in `src/Log/Context/`, every `enum` value
+declared in `docs/schemas/context/`, both `saved` outcomes for all five save
+contexts, and all three built-in `command.source` producers. Adding a context type
+or an enum value therefore forces a demo scenario that provokes it. A clean exit
+from each script is asserted too, which is also its own offline schema validation.
+
 `SemanticLogSchemaTest` pins the contract from both sides:
 
 | Test | Verifies |
