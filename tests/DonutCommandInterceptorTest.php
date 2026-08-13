@@ -57,8 +57,18 @@ class DonutCommandInterceptorTest extends TestCase
         $this->assertTrue($this->httpCache->isNotModified($server));
         $ro1 = $this->resource->get('page://self/html/blog-posting?id=0');
         $this->assertArrayHasKey('Age', $ro1->headers);
+        // Drain the GET sessions first: the assertions below must be satisfied by the
+        // delete's own scope, not by an earlier GET's pre-write cleanup.
+        $this->flushAndValidate($this->logger);
         $this->resource->delete('page://self/html/blog-posting?id=0');
-        $this->assertFalse($this->httpCache->isNotModified($server));
+        $tree = $this->flushAndValidate($this->logger);
+        $this->assertContains('command', self::collectTypes($tree), 'the delete opens a command scope');
+        $this->assertNotNull(self::eventContextJsonOf($tree, 'invalidate'), 'the write busts the cached entry');
+        // onDelete(0) leaves the representation byte-identical, so the entry is rebuilt with the
+        // same entity-tag and the client's pre-write validator still matches: an unchanged
+        // representation must revalidate to 304. An ETag that changed here would report the
+        // write, not the content.
+        $this->assertTrue($this->httpCache->isNotModified($server));
         $ro = $this->resource->get('page://self/html/blog-posting?id=0');
         $this->assertArrayHasKey('Age', $ro->headers);
     }

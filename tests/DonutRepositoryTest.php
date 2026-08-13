@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
+use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Madapaja\TwigModule\TwigModule;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
@@ -15,11 +16,14 @@ use function dirname;
 
 class DonutRepositoryTest extends TestCase
 {
+    use SemanticLogTreeTrait;
+
     private ResourceInterface $resource;
     private QueryRepositoryInterface $queryRepository;
     private DonutRepositoryInterface $donutRepository;
     private Uri $uri;
     private ResourceStorageInterface $resourceStorage;
+    private SemanticLoggerInterface $logger;
 
     public function setUp(): void
     {
@@ -34,6 +38,7 @@ class DonutRepositoryTest extends TestCase
         $this->donutRepository = $injector->getInstance(DonutRepositoryInterface::class);
         $this->queryRepository = $injector->getInstance(QueryRepositoryInterface::class);
         $this->resourceStorage = $injector->getInstance(ResourceStorageInterface::class);
+        $this->logger = $injector->getInstance(SemanticLoggerInterface::class);
         $uri = 'page://self/html/blog-posting';
         $this->uri = new Uri($uri);
 
@@ -78,7 +83,9 @@ class DonutRepositoryTest extends TestCase
         $this->resourceStorage->invalidateTags([(new UriTag())(new Uri('page://self/html/comment'))]);
         // create by donut
         $donutRo = $this->resource->get('page://self/html/blog-posting');
-        $this->assertStringEndsWith('r"', $donutRo->headers[Header::ETAG]);
+        $this->assertSame(200, $donutRo->code);
+        $tree = $this->flushAndValidate($this->logger);
+        $this->assertNotNull(self::eventContextJsonOf($tree, 'refresh_donut'), 'the page is recomposed from the cached donut');
     }
 
     /**
@@ -110,12 +117,14 @@ class DonutRepositoryTest extends TestCase
         $injector = $this->getInjector();
         $resource = $injector->getInstance(ResourceInterface::class);
         $queryRepository = $injector->getInstance(QueryRepositoryInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class);
 
         $resource->get('page://self/html/blog-posting');
         $purgeResult = $queryRepository->purge(new Uri('page://self/html/comment'));
         $this->assertTrue($purgeResult);
         $donutRo = $resource->get('page://self/html/blog-posting');
-        $this->assertStringEndsWith('r"', $donutRo->headers[Header::ETAG]);
+        $tree = $this->flushAndValidate($logger);
+        $this->assertNotNull(self::eventContextJsonOf($tree, 'refresh_donut'), 'the page is recomposed from the cached donut');
         $this->assertStringContainsString('blog-posting-page', $donutRo->headers[Header::SURROGATE_KEY]);
     }
 

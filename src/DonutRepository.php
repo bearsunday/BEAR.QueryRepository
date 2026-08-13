@@ -18,7 +18,6 @@ use Override;
 
 use function assert;
 use function explode;
-use function trim;
 
 final readonly class DonutRepository implements DonutRepositoryInterface
 {
@@ -132,8 +131,6 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         }
 
         ($this->headerSetter)($ro, $donut->ttl, null);
-        // mark refreshed by resource static; the marker stays inside the DQUOTEs to keep the entity-tag valid
-        $ro->headers[Header::ETAG] = '"' . trim($ro->headers[Header::ETAG], '"') . 'r"';
         ($this->cdnCacheControlHeaderSetter)($ro, $donut->ttl);
         $this->saveView($ro, $donut->ttl);
 

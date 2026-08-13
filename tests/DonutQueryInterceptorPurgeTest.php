@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\Resource\ResourceInterface;
-use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Madapaja\TwigModule\TwigModule;
@@ -14,7 +13,6 @@ use Ray\Di\Injector;
 
 use function assert;
 use function dirname;
-use function str_ends_with;
 
 class DonutQueryInterceptorPurgeTest extends TestCase
 {
@@ -22,6 +20,7 @@ class DonutQueryInterceptorPurgeTest extends TestCase
 
     private ResourceInterface $resource;
     private QueryRepository $repository;
+    private ResourceStorageInterface $storage;
     private SemanticLoggerInterface $logger;
 
     protected function setUp(): void
@@ -38,6 +37,7 @@ class DonutQueryInterceptorPurgeTest extends TestCase
         assert($injector instanceof Injector);
         $this->resource = $injector->getInstance(ResourceInterface::class);
         $this->repository = $injector->getInstance(QueryRepository::class);
+        $this->storage = $injector->getInstance(ResourceStorageInterface::class);
         $this->logger = $injector->getInstance(SemanticLoggerInterface::class);
 
         parent::setUp();
@@ -52,15 +52,35 @@ class DonutQueryInterceptorPurgeTest extends TestCase
     public function testStatePurge(): void
     {
         $ro1 = $this->resource->get('page://self/html/blog-posting');
-        $this->assertFalse($this->isCreatedByState($ro1));
+        $this->assertSame(200, $ro1->code);
+        $this->assertFalse($this->wasRecomposedFromDonut(), 'the first access creates the donut, it does not refresh one');
         $this->assertTrue($this->isStateCached());
         $puregeResult = $this->repository->purge(new Uri('page://self/html/comment'));
         assert($puregeResult);
         $this->assertFalse($this->isStateCached());
 
-        $ro2 = $this->resource->get('page://self/html/blog-posting');
-        $this->assertTrue($this->isCreatedByState($ro2));
+        $this->resource->get('page://self/html/blog-posting');
+        $this->assertTrue($this->wasRecomposedFromDonut());
         $this->assertTrue($this->isStateCached(), 'Resource state should be cached');
+    }
+
+    public function testUnchangedRecompositionKeepsTheEntityTag(): void
+    {
+        $ro1 = $this->resource->get('page://self/html/blog-posting');
+        $etag = $ro1->headers[Header::ETAG];
+        $puregeResult = $this->repository->purge(new Uri('page://self/html/comment'));
+        assert($puregeResult);
+
+        $ro2 = $this->resource->get('page://self/html/blog-posting');
+        $this->assertTrue($this->wasRecomposedFromDonut(), 'donut refresh should have run');
+        // The entity-tag validates the representation, so a recomposition that yields
+        // identical content must not change it — otherwise every refresh turns a client's
+        // conditional request into a full 200 for content it already holds.
+        $this->assertSame($etag, $ro2->headers[Header::ETAG]);
+        $this->assertTrue(
+            (new HttpCache($this->storage))->isNotModified([Header::HTTP_IF_NONE_MATCH => $etag]),
+            'the pre-refresh validator still matches the stored ETag (304)',
+        );
     }
 
     private function isStateCached(): bool
@@ -68,8 +88,17 @@ class DonutQueryInterceptorPurgeTest extends TestCase
         return $this->repository->get(new Uri('page://self/html/blog-posting')) instanceof ResourceState;
     }
 
-    private function isCreatedByState(ResourceObject $ro): bool
+    /**
+     * Whether the page just fetched was recomposed from the cached donut
+     *
+     * Reads the fact from the semantic log (`refresh_donut`), which is where the
+     * cache records it; the response itself carries no refresh marker — the ETag
+     * stays a pure validator of the representation.
+     */
+    private function wasRecomposedFromDonut(): bool
     {
-        return str_ends_with($ro->headers[Header::ETAG], 'r"');
+        $tree = $this->flushAndValidate($this->logger);
+
+        return self::eventContextJsonOf($tree, 'refresh_donut') !== null;
     }
 }

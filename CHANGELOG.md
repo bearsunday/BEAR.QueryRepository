@@ -42,6 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Command scopes are opened even for failed writes: a 4xx response closes with `command_result` (code 4xx) and no invalidation events, recording that the purge/refresh was correctly skipped instead of vanishing from the log.
 - Removed the post-save `assert()` in `ResourceStorage::saveDonut()`: with assertions enabled it threw AFTER the `saved: false` event was logged, contradicting quiet-failure recording.
 - Pre-write cleanup is recorded at the source instead of inferred: `QueryRepository::doPut()` and `DonutRepository::putStatic()`/`putDonut()` emit a `pre_write_cleanup` marker right before clearing the entry they are about to rewrite, and an `invalidate` is cleanup iff the event immediately preceding it in the same scope's event stream is that marker. This supersedes the earlier reader-side tag-correlation rule — and removes its undecidable donut case — in the schemas and guides.
+- A donut refresh no longer appends an `r` marker to the ETag: an identical recomposition keeps its entity-tag, so a client's `If-None-Match` still revalidates to 304 instead of getting a full 200. The refresh is recorded as the `refresh_donut` log event.
 - Added runtime dependency `koriym/semantic-logger`.
 
 ## [1.16.2] - 2026-06-29

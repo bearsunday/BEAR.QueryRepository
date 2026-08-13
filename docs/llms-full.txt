@@ -195,7 +195,7 @@ Cache operations are logged as an open/event/close tree (Koriym.SemanticLogger) 
 | `semantic_logger_error` (`kind` + details) | event | Core SemanticLogger diagnostic (koriym/semantic-logger, not this package): logging-protocol misuse recorded in-band at the exact failure point — kinds: `close_id_mismatch` / `close_without_open` / `unclosed_at_flush` / `context_serialization_failed`; the tree is preserved |
 | `manual_store` / `manual_purge` / `manual_invalidate` (+ `*_result` closes) | open | Scope rooting a top-level (non-AOP) put/purge/invalidate |
 
-An ETag with an 'r' suffix (e.g., "123456r") marks a refreshed donut: the outer shell was reused while the inner dynamic content was regenerated.
+A donut refresh is not marked in any response header — only in the log (`refresh_donut`). The ETag stays a pure validator of the representation: it changes when the recomposed content changed, and a recomposition yielding identical content keeps its entity-tag and still answers `If-None-Match` with 304.
 
 ### Binding, disabling and flushing
 

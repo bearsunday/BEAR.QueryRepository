@@ -8,6 +8,7 @@ use BEAR\QueryRepository\Cdn\AkamaiModule;
 use BEAR\QueryRepository\Cdn\FastlyModule;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
+use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Madapaja\TwigModule\TwigModule;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\AbstractModule;
@@ -18,6 +19,8 @@ use function dirname;
 
 class CdnCacheControlHeaderTest extends TestCase
 {
+    use SemanticLogTreeTrait;
+
     public function testCdnCacheControl(): void
     {
         $module = $this->getModule();
@@ -31,7 +34,8 @@ class CdnCacheControlHeaderTest extends TestCase
         assert($repository->purge(new Uri('page://self/html/comment')));
 
         $donutRo = $resource->get('page://self/html/blog-posting');
-        $this->assertStringEndsWith('r"', $donutRo->headers[Header::ETAG]);
+        $tree = $this->flushAndValidate($injector->getInstance(SemanticLoggerInterface::class));
+        $this->assertNotNull(self::eventContextJsonOf($tree, 'refresh_donut'), 'the page is recomposed from the cached donut');
         $this->assertArrayHasKey(Header::CDN_CACHE_CONTROL, $donutRo->headers, 'Even if it is made from donut, it should have a CDN header.');
     }
 
