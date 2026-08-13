@@ -108,15 +108,16 @@ verification. The reading rules an agent needs ship with the package
 ## What it costs — and the off switch
 
 The write path pays a few small object allocations per cache boundary, and
-the session accumulates in memory until flushed. `SafeSemanticLogger`
-guarantees the side-channel stays a side-channel: every logging call is
-guarded, a broken session degrades to no-ops and recovers on the next flush —
-a logging failure can never break a cache read or write.
+the session accumulates in memory until flushed. The side-channel stays a
+side-channel by construction: since koriym/semantic-logger 0.9 the logger is
+total — it never throws, and records protocol misuse as in-band
+`semantic_logger_error` diagnostics — so a logging failure can never break a
+cache read or write, and it cannot hide either.
 
 Flushing is the host's responsibility; the framework only accumulates. Under
 PHP-FPM an unflushed session is simply discarded with the request. Under
-long-running runtimes, flush per request — or turn the whole thing off with
-one binding:
+long-running runtimes, flush per request — `flush()` never throws and always
+resets — or turn the whole thing off with one binding:
 
 ```php
 $this->bind(SemanticLoggerInterface::class)->to(NullSemanticLogger::class);

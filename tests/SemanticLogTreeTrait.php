@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Koriym\SemanticLogger\SemanticLogValidator;
+use RuntimeException;
 
 use function dirname;
 use function file_put_contents;
@@ -33,27 +34,53 @@ trait SemanticLogTreeTrait
     /**
      * Flush the logger and assert every entry validates against docs/schemas/context
      *
+     * Since koriym/semantic-logger 0.9 the logger never throws — protocol misuse is
+     * recorded in-band as core `semantic_logger_error` diagnostics — so the gate lives
+     * on the reading side: a scenario that leaves a scope unclosed or closes out of
+     * order fails here instead of passing silently.
+     *
      * @return array<string, mixed> the flushed log tree, for further assertions
      */
     private function flushAndValidate(SemanticLoggerInterface $logger): array
     {
+        return $this->flushAndValidateLog($logger, true);
+    }
+
+    /**
+     * Same, for a scenario that deliberately misuses the logging protocol
+     *
+     * The expected diagnostics still have to validate — against the core schemas
+     * bundled with koriym/semantic-logger, which the validator resolves itself.
+     *
+     * @return array<string, mixed> the flushed log tree, for further assertions
+     */
+    private function flushAndValidateWithDiagnostics(SemanticLoggerInterface $logger): array
+    {
+        return $this->flushAndValidateLog($logger, false);
+    }
+
+    /** @return array<string, mixed> */
+    private function flushAndValidateLog(SemanticLoggerInterface $logger, bool $failOnDiagnostics): array
+    {
         /** @var array<string, mixed> $tree */
         $tree = $logger->flush()->toArray();
-        $open = $tree['open'] ?? [];
-        if (! is_array($open) || $open === []) {
-            return $tree; // nothing was logged in this scenario; nothing to validate
-        }
-
         $file = (string) tempnam(sys_get_temp_dir(), 'slog');
         file_put_contents($file, (string) json_encode($tree, JSON_UNESCAPED_SLASHES));
         $schemaDir = dirname(__DIR__) . '/docs/schemas/context';
 
+        $failure = null;
         ob_start();
         try {
-            (new SemanticLogValidator())->validate($file, $schemaDir);
+            (new SemanticLogValidator())->validate($file, $schemaDir, $failOnDiagnostics);
+        } catch (RuntimeException $e) {
+            $failure = $e;
         } finally {
-            ob_get_clean();
+            $report = (string) ob_get_clean();
             unlink($file);
+        }
+
+        if ($failure !== null) {
+            self::fail($failure->getMessage() . "\n" . $report); // the validator's own per-entry report
         }
 
         return $tree;

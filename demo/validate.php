@@ -19,7 +19,10 @@ use Koriym\SemanticLogger\SemanticLogValidator;
  *
  * The validator echoes one line per context, so its output is buffered and only
  * shown on failure. A violation exits non-zero: a demo whose log does not
- * conform to the schemas it advertises must fail loudly, not print a lie.
+ * conform to the schemas it advertises must fail loudly, not print a lie. The
+ * same applies to the diagnostics the logger records instead of throwing since
+ * koriym/semantic-logger 0.9 (an unclosed scope, a close out of order): a demo
+ * that misuses the logging protocol is a broken demo, so failOnDiagnostics is on.
  */
 function validateLog(LogJson $log): void
 {
@@ -30,7 +33,7 @@ function validateLog(LogJson $log): void
     $exception = null;
     ob_start();
     try {
-        (new SemanticLogValidator())->validate($file, dirname(__DIR__) . '/docs/schemas/context');
+        (new SemanticLogValidator())->validate($file, dirname(__DIR__) . '/docs/schemas/context', failOnDiagnostics: true);
     } catch (RuntimeException $e) {
         $exception = $e;
     } finally {

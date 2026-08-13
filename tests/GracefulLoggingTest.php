@@ -57,10 +57,9 @@ class GracefulLoggingTest extends TestCase
         $this->assertSame($ro->headers[Header::ETAG], $cached->headers[Header::ETAG]);
         $this->assertArrayHasKey(Header::AGE, $cached->headers, 'second access is an observable cache hit');
 
-        // The misuse did not vanish silently: it is recorded in-band as a diagnostic.
-        // (No flushAndValidate here — the core diagnostic schema is not part of
-        // this package's docs/schemas/context directory.)
-        $tree = $logger->flush()->toArray();
+        // The misuse did not vanish silently: it is recorded in-band as a diagnostic,
+        // which validates against the core schemas bundled with koriym/semantic-logger.
+        $tree = $this->flushAndValidateWithDiagnostics($logger);
         $diagnostic = self::eventContextJsonOf($tree, 'semantic_logger_error');
         $this->assertNotNull($diagnostic, 'the LIFO violation is recorded as a diagnostic');
         $this->assertStringContainsString('close_id_mismatch', $diagnostic);

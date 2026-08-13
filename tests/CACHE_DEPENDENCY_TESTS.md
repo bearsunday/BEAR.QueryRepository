@@ -177,6 +177,13 @@ validating every context against its `SCHEMA_URL`. It runs in the `tearDown()` o
 the major cache tests, so any divergence between an emitted context and its schema
 fails the suite immediately.
 
+Since koriym/semantic-logger 0.9 the logger never throws — protocol misuse becomes
+an in-band `semantic_logger_error` diagnostic — so the helper runs with
+`failOnDiagnostics: true`: a scope left unclosed or closed out of order fails the
+test instead of passing quietly. A scenario that provokes misuse on purpose calls
+`flushAndValidateWithDiagnostics()`, where the diagnostics still have to validate
+against the core schemas bundled with the logger.
+
 `SemanticLogSchemaTest` pins the contract from both sides:
 
 | Test | Verifies |

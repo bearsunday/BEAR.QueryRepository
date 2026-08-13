@@ -10,9 +10,8 @@ use Koriym\SemanticLogger\AbstractContext;
  * Open: an application-initiated (manual) tag invalidation.
  *
  * Emitted only when invalidateTags() is top-level (not nested inside a request
- * GET or a write command). A direct invalidation has no enclosing scope, so its
- * outcome event would be dropped at flush; rooting it here keeps it visible. The
- * outcome is recorded on the close InvalidateContext.
+ * GET or a write command), so a direct invalidation stands out from one the
+ * framework drove. The outcome is recorded on the close InvalidateContext.
  */
 final class ManualInvalidateContext extends AbstractContext
 {

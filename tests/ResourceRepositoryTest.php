@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\QueryRepository\Log\NullSemanticLogger;
 use BEAR\QueryRepository\QueryRepository as Repository;
 use BEAR\Resource\Uri;
 use FakeVendor\HelloWorld\Resource\Page\Index;
+use Koriym\SemanticLogger\NullSemanticLogger;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\ProviderInterface;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;

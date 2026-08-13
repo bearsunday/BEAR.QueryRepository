@@ -23,8 +23,8 @@ use function array_values;
  *
  * A custom logger that implements TopLevelAwareInterface (but is not
  * SafeSemanticLogger) must have its top-level direct put()/purge()/invalidateTags()
- * rooted in manual scopes; without the capability those records would be
- * dropped at flush.
+ * rooted in manual scopes; without the capability those operations would be
+ * recorded as bare root-level events, indistinguishable from framework-driven ones.
  */
 class TopLevelAwareLoggerTest extends TestCase
 {

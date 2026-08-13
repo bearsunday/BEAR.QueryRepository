@@ -12,7 +12,7 @@ use Override;
  * Null-object default for logger-aware classes so that direct instantiation
  * (without DI) keeps working without emitting any log. Mirrors NullPurger.
  *
- * @deprecated Since the SemanticLogger migration; use {@see \BEAR\QueryRepository\Log\NullSemanticLogger}.
+ * @deprecated Since the SemanticLogger migration; use {@see \Koriym\SemanticLogger\NullSemanticLogger}.
  * @psalm-suppress DeprecatedInterface  Deprecated null-object intentionally implements the deprecated interface.
  */
 final class NullRepositoryLogger implements RepositoryLoggerInterface

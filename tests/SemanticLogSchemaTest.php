@@ -187,8 +187,8 @@ class SemanticLogSchemaTest extends TestCase
 
     public function testTopLevelPutIsRootedInManualStoreScope(): void
     {
-        // A direct put() has no enclosing AOP scope, so it must root its save events under a
-        // manual_store scope; otherwise SemanticLogger drops the event-only session at flush.
+        // A direct put() runs outside any AOP scope: it is rooted in a manual_store scope
+        // that marks it application-initiated and closes with the store outcome.
         $ro = new None();
         $ro->uri = new Uri('page://self/none');
         $this->repository->put($ro);
@@ -202,8 +202,8 @@ class SemanticLogSchemaTest extends TestCase
 
     public function testTopLevelInvalidateIsRootedInManualInvalidateScope(): void
     {
-        // A direct invalidateTags() has no enclosing AOP scope, so it must root its outcome
-        // under a manual_invalidate scope to stay visible in the flushed log.
+        // A direct invalidateTags() runs outside any AOP scope: it is rooted in a
+        // manual_invalidate scope whose close carries the invalidation outcome.
         $this->storage->invalidateTags(['_test_tag_']);
         $tree = $this->flushAndValidate($this->logger);
 
@@ -214,8 +214,8 @@ class SemanticLogSchemaTest extends TestCase
 
     public function testTopLevelPurgeIsRootedInManualPurgeScope(): void
     {
-        // A direct purge() has no enclosing AOP scope, so it must root its invalidation
-        // under a manual_purge scope to stay visible in the flushed log.
+        // A direct purge() runs outside any AOP scope: it is rooted in a manual_purge
+        // scope, so a deliberate cache bust reads differently from automatic invalidation.
         $this->repository->purge(new Uri('page://self/user'));
         $tree = $this->flushAndValidate($this->logger);
 

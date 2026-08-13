@@ -44,10 +44,10 @@ final readonly class QueryRepository implements QueryRepositoryInterface
     #[Override]
     public function put(ResourceObject $ro)
     {
-        // A top-level put is a direct (non-AOP) cache write with no enclosing scope, so its
-        // save events would be dropped at flush. Wrap it in a manual_store scope so the write
-        // stays visible. A put nested inside a request GET or a write command keeps emitting
-        // its save events under that scope, unchanged.
+        // A top-level put is a direct (non-AOP) cache write: root it in a manual_store
+        // scope so it stands out from a write the framework drove, and so its outcome has
+        // a close to ride on. A put nested inside a request GET or a write command keeps
+        // emitting its save events under that scope, unchanged.
         if ($this->logger instanceof TopLevelAwareInterface && $this->logger->isTopLevel()) {
             $openId = $this->logger->open(new ManualStoreContext((string) $ro->uri));
             $stored = false;

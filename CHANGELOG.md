@@ -9,10 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Cache observability is now built on [Koriym.SemanticLogger](https://github.com/koriym/Koriym.SemanticLogger): an open/event/close tree whose nesting **is** the embed/dependency structure (a parent's embedded children nest under it). Typed `AbstractContext` subclasses live in `src/Log/Context/` with per-context JSON Schemas in `docs/schemas/context/`.
-- `SafeSemanticLogger` (best-effort decorator) guarantees logging never breaks cache reads/writes. The DI default bound via `SafeSemanticLoggerProvider` in `DonutCacheModule` is `SafeSemanticLogger(new SemanticLogger())`; `NullSemanticLogger` is the constructor-parameter fallback when no logger is injected.
+- `SafeSemanticLogger` tracks open-scope depth and keeps a live session from crossing a serialized injector; never breaking the host is the core logger's own guarantee since koriym/semantic-logger 0.9. `SafeSemanticLoggerProvider` binds `SafeSemanticLogger(new SemanticLogger())` in `DonutCacheModule`; the core `Koriym\SemanticLogger\NullSemanticLogger` is the constructor-parameter fallback when no logger is injected.
 - `invalidate` context records per-target outcomes as self-describing status words: `roPool`/`etagPool` (`invalidated`|`failed`), `cdn` (`purged`|`failed`), plus `durationMs`. A CDN purge failure is fail-closed: the local pools are invalidated first and the outcome is logged as `cdn: failed`, then the purge exception propagates so a write does not silently leave stale CDN content.
-- Logs validate against their schemas in tests via `SemanticLogValidator` (`SemanticLogTreeTrait`), and `vendor/bin/stree` renders the cache log as a readable tree (`demo/run-dependency.php`, `demo/run-donut.php`).
-- Direct (non-AOP) top-level `put()`, `purge()` and `invalidateTags()` calls are rooted in `manual_store` / `manual_purge` / `manual_invalidate` scopes so their save/purge/invalidate events stay visible; an event with no enclosing scope would otherwise be dropped at flush.
+- Logs validate against their schemas in tests via `SemanticLogValidator` (`SemanticLogTreeTrait`) with `failOnDiagnostics` on, so a logging-protocol regression fails the suite even though the logger no longer throws; `vendor/bin/stree` renders the cache log as a readable tree (`demo/run-dependency.php`, `demo/run-donut.php`).
+- Direct (non-AOP) top-level `put()`, `purge()` and `invalidateTags()` calls are rooted in `manual_store` / `manual_purge` / `manual_invalidate` scopes, so an application-initiated write, bust or invalidation reads differently from a framework-driven one and its outcome is recorded on the scope close.
 - `TopLevelAwareInterface` (`BEAR\QueryRepository\Log`): the "would the next open be top-level" capability that grants manual-scope rooting. Call sites check this interface instead of the concrete `SafeSemanticLogger`, so any custom `SemanticLoggerInterface` decorator can opt in to `manual_store` / `manual_purge` / `manual_invalidate` rooting.
 - `pre_write_cleanup` context (`docs/schemas/context/pre_write_cleanup.json`): writer-side marker emitted right before a writer clears the entry it is about to rewrite, so cleanup-vs-invalidation is a recorded fact, not a reader inference.
 - `docs/why-semantic-cache-log.md`: design rationale for the semantic cache log — the silent-failure class it eliminates, the four principles (no silent paths, source-recorded facts, unknown ≠ absent, log-as-contract), its human/test/machine consumers, the cost profile and the `NullSemanticLogger` off switch. Linked from the README.
@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 - `docs/schemas/repository-log.json` (the flat op-string log format it described is gone; per-context schemas in `docs/schemas/context/` replace it).
+- `BEAR\QueryRepository\Log\NullSemanticLogger`: koriym/semantic-logger 0.9 ships its own no-op logger whose `open()` returns a usable id instead of the empty-string sentinel this one returned.
 
 ### Changed
 - Cache logging call sites (`QueryRepository`, `ResourceStorage`, `DonutRepository`, `CacheInterceptor`, `AbstractDonutCacheInterceptor`, `CommandInterceptor`, `RefreshInterceptor`) now emit typed contexts through `SemanticLoggerInterface` instead of `RepositoryLoggerInterface::log()`.

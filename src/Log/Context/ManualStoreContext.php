@@ -10,8 +10,8 @@ use Koriym\SemanticLogger\AbstractContext;
  * Open: an application-initiated (manual) store of a resource.
  *
  * Emitted only when put() is top-level (not nested inside a request GET or a
- * write command). A direct put has no enclosing scope, so its save events would
- * be dropped at flush; wrapping it here keeps the write visible in the log.
+ * write command), so a direct cache write stands out from one the framework
+ * drove; the close records whether the write was stored.
  */
 final class ManualStoreContext extends AbstractContext
 {

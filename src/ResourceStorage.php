@@ -254,9 +254,9 @@ final class ResourceStorage implements ResourceStorageInterface
     /**
      * Record an invalidation outcome
      *
-     * A top-level invalidation is a direct (non-AOP) call with no enclosing scope, so the
-     * event would be dropped at flush. Root it in a manual_invalidate scope whose close
-     * carries the outcome. Nested invalidations (inside a GET or a command) stay events.
+     * A top-level invalidation is a direct (non-AOP) call: root it in a manual_invalidate
+     * scope whose close carries the outcome, so it stands out from an invalidation the
+     * framework drove. Nested invalidations (inside a GET or a command) stay events.
      *
      * @param list<string> $tags
      */
