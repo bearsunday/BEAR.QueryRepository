@@ -8,7 +8,7 @@ declare(strict_types=1);
  * This script demonstrates cache dependency logging to help understand:
  * - Cache hit/miss operations
  * - Dependency registration (depends-on)
- * - Command-driven invalidation (a #[Purge] write opens a command scope)
+ * - Command-driven invalidation (a write opens a command scope)
  * - Cascade invalidation (invalidate-etag)
  * - Manual purge (a direct purge() call roots a manual_purge scope)
  *
@@ -44,13 +44,14 @@ This demo executes the following scenarios:
    - Should be cache-hit
 
 3. Write to level-three (PUT)
-   - #[Purge] on LevelThree::onPut invalidates level-three's cache
+   - The command purges the written resource and refreshes it in place
    - The surrogate-key cascade busts level-two and level-one
    - The log shows a command scope (method/annotations/source)
      driving the purge — cause and effect in one subtree
 
 4. Re-access level-one after the write
-   - All three should be cache-miss (regenerated)
+   - level-one and level-two are cache-miss (rebuilt from the
+     refreshed leaf, which is served from cache)
 
 5. Access ParentA and ParentB
    - Both embed ChildC (shared dependency)
@@ -81,7 +82,7 @@ $logger = $injector->getInstance(SemanticLoggerInterface::class);
 // log's open/close tree IS the embed/dependency tree (no reconstruction).
 $resource->get('page://self/dep/level-one');                // 1. Initial access (cache-miss chain)
 $resource->get('page://self/dep/level-one');                // 2. Re-access (cache-hit)
-$resource->put('page://self/dep/level-three');              // 3. Write: #[Purge] command (cascade)
+$resource->put('page://self/dep/level-three');              // 3. Write: command-driven cascade
 $resource->get('page://self/dep/level-one');                // 4. Re-access after the write (rebuilt)
 $resource->get('page://self/dep/parent-a');                 // 5a. Access ParentA
 $resource->get('page://self/dep/parent-b');                 // 5b. Access ParentB

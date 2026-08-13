@@ -15,7 +15,7 @@ purge(LevelThree) → LevelOne invalidated
 
 **Test:** `CacheDependencyTest::testDestroyByGrandChild` (manual purge) and
 `CacheDependencyTest::testWriteToGrandChildCascadesInvalidation` (the same cascade
-driven by a write command: `LevelThree::onPut` carries `#[Purge]`)
+driven by a write command; the written leaf is refreshed in place, only its parents stay cold)
 
 ### Parent-Child Dependencies
 
@@ -165,8 +165,8 @@ the next GET's hit/miss as ground truth for final state.
 A write request opens a `command` scope (`method=onPut`, its `#[Refresh]`/`#[Purge]`
 annotations) with the resulting `purge` / `invalidate` events nested beneath — so
 the cause and the verified effect are both in one subtree. Scenario 3 of
-`demo/run-dependency.php` demonstrates exactly this: a PUT on level-three (whose
-`onPut` carries `#[Purge]`) drives the cascade, while scenario 6 shows the other
+`demo/run-dependency.php` demonstrates exactly this: a PUT on level-three drives the
+cascade (the command purges and refreshes the written resource), while scenario 6 shows the other
 entry kind — a direct `purge()` call rooted in a top-level `manual_purge` scope.
 
 ## Schema Validation (Drift Detection)
@@ -250,7 +250,7 @@ Located in `tests/Fake/fake-app/src/Resource/Page/Dep/`:
 |----------|--------|---------|
 | `LevelOne` | `LevelTwo` | Top of 3-level chain |
 | `LevelTwo` | `LevelThree` | Middle of chain |
-| `LevelThree` | - | Leaf node; `onPut` carries `#[Purge]` (command-driven cascade, demo scenario 3) |
+| `LevelThree` | - | Leaf node; a PUT on it drives the command cascade (demo scenario 3) |
 | `ParentA` | `ChildC` | Multiple parent test |
 | `ParentB` | `ChildC` | Multiple parent test |
 | `ChildC` | - | Shared child resource |
