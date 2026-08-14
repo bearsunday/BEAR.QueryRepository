@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\Resource\AbstractRequest;
+use BEAR\Resource\RequestInterface;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
@@ -73,6 +75,10 @@ class EmbeddedChildMaterializationTest extends TestCase
 
     /**
      * The stored child is a copy: mutating it must not reach the live response graph
+     *
+     * The live body holds the request, not the child, so the comparison is against the
+     * execution the request memoized - the object the renderer and any later reader of
+     * the live graph see.
      */
     public function testStoredChildIsNotTheLiveChild(): void
     {
@@ -82,8 +88,48 @@ class EmbeddedChildMaterializationTest extends TestCase
         $this->assertInstanceOf(ResourceState::class, $state);
         assert(is_array($state->body));
         assert(is_array($ro->body));
+        $liveChild = $ro->body['child'];
+        assert($liveChild instanceof AbstractRequest);
 
-        $this->assertNotSame($ro->body['child'], $state->body['child']);
+        $this->assertNotSame($liveChild->jsonSerialize(), $state->body['child']);
+    }
+
+    /**
+     * Storing rewrites a copy: the live graph keeps the requests it was built with
+     *
+     * The store replaces embedded requests with their results all the way down. Doing that
+     * in place would leave the renderer and the response transfer walking a graph whose
+     * children were swapped out underneath them, so the rewrite runs on a copy.
+     */
+    public function testStoringDoesNotMaterializeInsideTheLiveGraph(): void
+    {
+        $ro = $this->resource->get('page://self/dep/level-one');
+        assert(is_array($ro->body));
+        $liveChild = $ro->body['level-two'];
+        assert($liveChild instanceof AbstractRequest);
+        $memo = self::asResourceObject($liveChild->jsonSerialize());
+        assert(is_array($memo->body));
+
+        $state = $this->repository->get(new Uri('page://self/dep/level-one'));
+        $this->assertInstanceOf(ResourceState::class, $state);
+        assert(is_array($state->body));
+        $storedChild = $state->body['level-two'];
+        $this->assertInstanceOf(ResourceObject::class, $storedChild);
+        assert(is_array($storedChild->body));
+
+        $this->assertInstanceOf(RequestInterface::class, $memo->body['level-three'], 'the live child still embeds a request');
+        $this->assertInstanceOf(ResourceObject::class, $storedChild->body['level-three'], 'the stored child holds the result');
+    }
+
+    /**
+     * bear/resource declares the memo accessor as ResourceObject in some releases and
+     * mixed in others, so the narrowing lives behind a mixed parameter
+     */
+    private static function asResourceObject(mixed $value): ResourceObject
+    {
+        assert($value instanceof ResourceObject);
+
+        return $value;
     }
 
     /**

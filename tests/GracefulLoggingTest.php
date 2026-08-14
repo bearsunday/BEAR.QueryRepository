@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Log\Context\CacheMissContext;
 use BEAR\QueryRepository\Log\Context\GetContext;
+use BEAR\QueryRepository\Log\TopLevelAwareInterface;
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\Resource\RenderInterface;
 use BEAR\Resource\ResourceInterface;
@@ -16,6 +17,7 @@ use Ray\Di\Injector;
 use Symfony\Component\Cache\Adapter\TagAwareAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 
+use function assert;
 use function restore_error_handler;
 use function set_error_handler;
 
@@ -64,6 +66,13 @@ class GracefulLoggingTest extends TestCase
         $diagnostic = self::eventContextJsonOf($tree, 'semantic_logger_error');
         $this->assertNotNull($diagnostic, 'the LIFO violation is recorded as a diagnostic');
         $this->assertStringContainsString('close_id_mismatch', $diagnostic);
+
+        // Unbalanced closes must not drive the depth counter below zero: manual writes are
+        // rooted by asking the logger whether the next open would be top-level, so a
+        // negative depth would silently stop rooting them for the rest of the session.
+        $logger->close(new CacheMissContext('resource'), 'no-such-open-id');
+        assert($logger instanceof TopLevelAwareInterface);
+        $this->assertTrue($logger->isTopLevel(), 'the session is back at the top level');
     }
 
     public function testCacheErrorIsLoggedWhenCacheServerIsDown(): void
