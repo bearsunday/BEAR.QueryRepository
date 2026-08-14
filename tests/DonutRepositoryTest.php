@@ -13,6 +13,7 @@ use Ray\Di\Injector;
 
 use function assert;
 use function dirname;
+use function time;
 
 class DonutRepositoryTest extends TestCase
 {
@@ -185,5 +186,29 @@ class DonutRepositoryTest extends TestCase
         $this->assertNotContains('manual_store', $types, 'a nested donut write is framework-driven');
         $this->assertNotContains('manual_store_result', $types);
         $this->assertNotContains('manual_invalidate', $types);
+    }
+
+    public function testRefreshRecordsTheSkippedStateWriteWhenTheTemplateLifetimeHasLapsed(): void
+    {
+        $injector = $this->getInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $storage = $injector->getInstance(ResourceStorageInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class);
+
+        // A template entry the pool still answers with, five seconds past the lifetime it
+        // was stored with: re-saving the recomposed content would restart a lifetime the
+        // template no longer has, so the write is recorded as skipped instead.
+        $donut = new ResourceDonut('cmt=[le:page://self/html/comment]', [], 30, true, null, null, time() - 5, ['lapsed-tag']);
+        $storage->saveDonut($this->uri, $donut, 30, ['lapsed-tag']);
+
+        $page = $resource->get((string) $this->uri);
+        $tree = $this->flushAndValidate($logger);
+
+        $this->assertSame(200, $page->code);
+        $this->assertNotNull(self::eventContextJsonOf($tree, 'refresh_donut'));
+        $saveDonut = self::eventContextJsonOf($tree, 'save_donut');
+        $this->assertNotNull($saveDonut);
+        $this->assertStringContainsString('"ttl":0', $saveDonut);
+        $this->assertStringContainsString('"saved":false', $saveDonut);
     }
 }

@@ -85,4 +85,23 @@ class EmbeddedChildMaterializationTest extends TestCase
 
         $this->assertNotSame($ro->body['child'], $state->body['child']);
     }
+
+    /**
+     * A request with no memo to read is materialized by running it
+     *
+     * The memo lives on AbstractRequest, so at the interface level the single
+     * execution the evaluator can hand to the store is its own.
+     */
+    public function testRequestWithoutMemoIsMaterializedByRunningIt(): void
+    {
+        $request = new FakeEmbeddedRequest();
+
+        $body = (new ResourceBodyEvaluator())(['child' => $request]);
+
+        assert(is_array($body));
+        $child = $body['child'];
+        $this->assertInstanceOf(ResourceObject::class, $child);
+        $this->assertSame(['n' => 1], $child->body);
+        $this->assertSame(1, $request->invoked);
+    }
 }
