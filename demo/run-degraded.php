@@ -49,6 +49,7 @@ use BEAR\QueryRepository\ModuleFactory;
 use BEAR\QueryRepository\PurgerInterface;
 use BEAR\QueryRepository\QueryRepositoryInterface;
 use BEAR\QueryRepository\ResourceStorageInterface;
+use BEAR\QueryRepository\FakeRefusingPool;
 use BEAR\RepositoryModule\Annotation\EtagPool;
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\Resource\ResourceInterface;
@@ -58,87 +59,14 @@ use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Koriym\SemanticLogger\Stree\RenderConfig;
 use Koriym\SemanticLogger\Stree\TreeRenderer;
 use Madapaja\TwigModule\TwigModule;
-use Psr\Cache\CacheItemInterface;
 use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
-use Symfony\Component\Cache\CacheItem;
 
 require dirname(__DIR__) . '/vendor/autoload.php';
 require __DIR__ . '/validate.php';
-
-/**
- * A pool that reads normally but refuses one kind of write.
- *
- * Models the stores that quietly do not happen: a read-only replica, a full or
- * memory-pressured server, an eviction storm, a tag index that cannot be updated.
- * (Symfony's NullAdapter is not usable for this — wrapped in TagAwareAdapter its
- * save() reports success, which is the very kind of silent lie this log exposes.)
- */
-final class RefusingPool implements TagAwareAdapterInterface
-{
-    public function __construct(
-        private readonly TagAwareAdapterInterface $pool,
-        private readonly bool $refuseSave = true,
-        private readonly bool $refuseInvalidation = false,
-    ) {
-    }
-
-    public function save(CacheItemInterface $item): bool
-    {
-        return $this->refuseSave ? false : $this->pool->save($item);
-    }
-
-    public function saveDeferred(CacheItemInterface $item): bool
-    {
-        return $this->refuseSave ? false : $this->pool->saveDeferred($item);
-    }
-
-    public function commit(): bool
-    {
-        return $this->refuseSave ? false : $this->pool->commit();
-    }
-
-    /** @param array<string> $tags */
-    public function invalidateTags(array $tags): bool
-    {
-        return $this->refuseInvalidation ? false : $this->pool->invalidateTags($tags);
-    }
-
-    public function getItem(mixed $key): CacheItem
-    {
-        return $this->pool->getItem($key);
-    }
-
-    /** @param array<string> $keys */
-    public function getItems(array $keys = []): iterable
-    {
-        return $this->pool->getItems($keys);
-    }
-
-    public function hasItem(string $key): bool
-    {
-        return $this->pool->hasItem($key);
-    }
-
-    public function clear(string $prefix = ''): bool
-    {
-        return $this->pool->clear($prefix);
-    }
-
-    public function deleteItem(string $key): bool
-    {
-        return $this->pool->deleteItem($key);
-    }
-
-    /** @param array<string> $keys */
-    public function deleteItems(array $keys): bool
-    {
-        return $this->pool->deleteItems($keys);
-    }
-}
 
 /** A CDN purger that succeeds and remembers what it purged. */
 final class RecordingPurger implements PurgerInterface
@@ -240,13 +168,13 @@ $refusingModule = static function (bool $refuseSave, bool $refuseInvalidation, b
 
         protected function configure(): void
         {
-            $pool = new RefusingPool(new TagAwareAdapter(new ArrayAdapter()), $this->refuseSave, $this->refuseInvalidation);
+            $pool = new FakeRefusingPool(new TagAwareAdapter(new ArrayAdapter()), $this->refuseSave, $this->refuseInvalidation);
             $this->bind(TagAwareAdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->toInstance($pool);
             if (! $this->bothPools) {
                 return;
             }
 
-            $etagPool = new RefusingPool(new TagAwareAdapter(new ArrayAdapter()), $this->refuseSave, $this->refuseInvalidation);
+            $etagPool = new FakeRefusingPool(new TagAwareAdapter(new ArrayAdapter()), $this->refuseSave, $this->refuseInvalidation);
             $this->bind(TagAwareAdapterInterface::class)->annotatedWith(EtagPool::class)->toInstance($etagPool);
         }
     };

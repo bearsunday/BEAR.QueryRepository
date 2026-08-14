@@ -6,9 +6,13 @@ namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Log\Context\InvalidateContext;
 use BEAR\QueryRepository\Log\Context\SaveDonutContext;
+use BEAR\QueryRepository\Log\Context\SaveDonutViewContext;
+use BEAR\QueryRepository\Log\Context\SaveEtagContext;
 use BEAR\QueryRepository\Log\Context\SaveValueContext;
+use BEAR\QueryRepository\Log\Context\SaveViewContext;
 use BEAR\Resource\Uri;
 use FakeVendor\HelloWorld\Resource\Page\Index;
+use Koriym\SemanticLogger\AbstractContext;
 use Koriym\SemanticLogger\NullSemanticLogger;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
@@ -18,6 +22,7 @@ use RuntimeException;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapter;
+use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 
 use function assert;
 
@@ -26,18 +31,24 @@ class ResourceStorageTest extends TestCase
     private ResourceStorage $storage;
     private Index $ro;
 
-    public static function getResourceStorageInstance(SemanticLoggerInterface|null $logger = null, PurgerInterface|null $purger = null): ResourceStorage
-    {
+    public static function getResourceStorageInstance(
+        SemanticLoggerInterface|null $logger = null,
+        PurgerInterface|null $purger = null,
+        TagAwareAdapterInterface|null $roPool = null,
+        TagAwareAdapterInterface|null $etagPool = null,
+    ): ResourceStorage {
         $tagAwareAdapter = new TagAwareAdapter(new FilesystemAdapter('', 0, __DIR__ . '/tmp'));
-        $tagAwareAdapterProvider = new class ($tagAwareAdapter) implements ProviderInterface{
-            public function __construct(private readonly TagAwareAdapter $tagAwareAdapter)
-            {
-            }
+        $provider = static function (TagAwareAdapterInterface $pool): ProviderInterface {
+            return new class ($pool) implements ProviderInterface{
+                public function __construct(private readonly TagAwareAdapterInterface $pool)
+                {
+                }
 
-            public function get()
-            {
-                return $this->tagAwareAdapter;
-            }
+                public function get()
+                {
+                    return $this->pool;
+                }
+            };
         };
 
         return new ResourceStorage(
@@ -46,8 +57,8 @@ class ResourceStorageTest extends TestCase
             new UriTag(),
             new ResourceStorageSaver(),
             new GlobalServerContext(),
-            $tagAwareAdapterProvider,
-            $tagAwareAdapterProvider,
+            $provider($roPool ?? $tagAwareAdapter),
+            $provider($etagPool ?? $tagAwareAdapter),
         );
     }
 
@@ -264,15 +275,59 @@ class ResourceStorageTest extends TestCase
         $this->assertFalse($context->saved, 'the log records that the donut entry is NOT cached despite the save event');
     }
 
-    public function testSaveValueClampsNegativeTtlToZero(): void
+    public function testEveryStoreClampsNegativeTtlToZero(): void
     {
         $logger = new RecordingSemanticLogger();
         $storage = self::getResourceStorageInstance($logger);
+        $donut = ResourceDonut::create($this->ro, new DonutRenderer(), new SurrogateKeys(new Uri('app://self/')), null, false);
 
+        // The storage is a public interface: a caller handing it a lifetime that already
+        // passed must not produce a negative ttl, which every save_* schema forbids
+        // ("minimum": 0) and which no cache backend can honour anyway.
         $storage->saveValue($this->ro, -10);
+        $storage->saveView($this->ro, -10);
+        $storage->saveEtag($this->ro->uri, '"123456"', '', -10);
+        $storage->saveDonutView($this->ro, -10);
+        $storage->saveDonut($this->ro->uri, $donut, -10, []);
+
+        $this->assertCount(5, $logger->events);
+        foreach ($logger->events as $event) {
+            $this->assertSame(0, self::ttlOf($event), 'every store clamps a negative ttl to 0');
+        }
+    }
+
+    /** The stored lifetime an event records, whichever store emitted it */
+    private static function ttlOf(AbstractContext $event): int|null
+    {
+        assert(
+            $event instanceof SaveValueContext
+            || $event instanceof SaveViewContext
+            || $event instanceof SaveEtagContext
+            || $event instanceof SaveDonutViewContext
+            || $event instanceof SaveDonutContext,
+        );
+
+        return $event->ttl;
+    }
+
+    public function testInvalidateTagsFailsWhenOnlyOnePoolRefuses(): void
+    {
+        $logger = new RecordingSemanticLogger();
+        $refusing = new FakeRefusingPool(new TagAwareAdapter(new ArrayAdapter()), refuseSave: false, refuseInvalidation: true);
+        $storage = self::getResourceStorageInstance($logger, roPool: $refusing);
+
+        // Fail-closed: one pool still holding the entry means the resource is not
+        // invalidated, however well the other pool did.
+        $this->assertFalse($storage->invalidateTags(['_user_']));
 
         $context = $logger->events[0];
-        assert($context instanceof SaveValueContext);
-        $this->assertSame(0, $context->ttl, 'a negative ttl is clamped to 0 (the schemas declare "minimum": 0)');
+        assert($context instanceof InvalidateContext);
+        $this->assertFalse($context->roPoolInvalidated);
+        $this->assertTrue($context->etagPoolInvalidated);
+        // Both status words in one event: the pool that kept the entry must not read as
+        // invalidated, and the one that dropped it must not read as failed
+        $json = $context->jsonSerialize();
+        $this->assertSame('failed', $json['roPool']);
+        $this->assertSame('invalidated', $json['etagPool']);
     }
 }
