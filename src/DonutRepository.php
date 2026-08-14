@@ -22,6 +22,7 @@ use Override;
 
 use function assert;
 use function explode;
+use function max;
 
 final readonly class DonutRepository implements DonutRepositoryInterface
 {
@@ -56,6 +57,9 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     #[Override]
     public function putStatic(ResourceObject $ro, int|null $ttl = null, int|null $sMaxAge = null): ResourceObject
     {
+        $ttl = self::lifetime($ttl);
+        $sMaxAge = self::lifetime($sMaxAge);
+
         return $this->store($ro, function () use ($ro, $ttl, $sMaxAge): void {
             $this->doPutStatic($ro, $ttl, $sMaxAge);
         });
@@ -67,9 +71,23 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     #[Override]
     public function putDonut(ResourceObject $ro, int|null $donutTtl): ResourceObject
     {
+        $donutTtl = self::lifetime($donutTtl);
+
         return $this->store($ro, function () use ($ro, $donutTtl): void {
             $this->doPutDonut($ro, $donutTtl);
         });
+    }
+
+    /**
+     * Clamp a requested lifetime the way the storage does
+     *
+     * A negative lifetime means "already expired". The storage clamps what it stores, so
+     * clamping here keeps the recorded request equal to its effect - the put_donut and
+     * save_* schemas both declare `minimum: 0`.
+     */
+    private static function lifetime(int|null $seconds): int|null
+    {
+        return $seconds === null ? null : max(0, $seconds);
     }
 
     /**

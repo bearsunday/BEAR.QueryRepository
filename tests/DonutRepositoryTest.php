@@ -213,4 +213,62 @@ class DonutRepositoryTest extends TestCase
         $this->assertStringContainsString('"ttl":0', $saveDonut);
         $this->assertStringContainsString('"saved":false', $saveDonut);
     }
+
+    public function testNegativeLifetimeIsRecordedAsAlreadyExpired(): void
+    {
+        $injector = $this->getInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $donutRepository = $injector->getInstance(DonutRepositoryInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class);
+
+        // A caller asking for a lifetime that already passed: the storage stores 0, so the
+        // recorded request says 0 too. Recording -1 would both contradict the save events
+        // below it and violate the published schema, which flushAndValidate checks.
+        $page = $resource->get((string) $this->uri);
+        $logger->flush();
+        $donutRepository->putStatic($page, -1, -1);
+        $tree = $this->flushAndValidate($logger);
+
+        $putDonut = self::eventContextJsonOf($tree, 'put_donut');
+        $this->assertNotNull($putDonut);
+        $this->assertStringContainsString('"ttl":0', $putDonut);
+        $this->assertStringContainsString('"sMaxAge":0', $putDonut);
+    }
+
+    public function testDonutWriteBustsTheEntriesThatEmbedIt(): void
+    {
+        $injector = $this->getInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $queryRepository = $injector->getInstance(QueryRepositoryInterface::class);
+        $donutRepository = $injector->getInstance(DonutRepositoryInterface::class);
+
+        // The blog posting embeds the comment, so its cached state carries the comment's URI
+        // tag. Rewriting the comment cleans up that tag before saving, which is what keeps
+        // the parent from serving a page built around the previous comment.
+        $resource->get('page://self/html/blog-posting');
+        $this->assertInstanceOf(ResourceState::class, $queryRepository->get($this->uri));
+
+        $comment = $resource->get('page://self/html/comment');
+        $donutRepository->putStatic($comment, null, null);
+
+        $this->assertNull($queryRepository->get($this->uri));
+    }
+
+    public function testUncacheableDonutWriteDropsTheCachedState(): void
+    {
+        $injector = $this->getInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $queryRepository = $injector->getInstance(QueryRepositoryInterface::class);
+        $donutRepository = $injector->getInstance(DonutRepositoryInterface::class);
+
+        // putDonut() stores the template only: the page is never served from a state again,
+        // so the state a previous cacheable write left behind is cleaned up before the
+        // template is saved. Skipping that cleanup would keep serving the stale page.
+        $page = $resource->get((string) $this->uri);
+        $this->assertInstanceOf(ResourceState::class, $queryRepository->get($this->uri));
+
+        $donutRepository->putDonut($page, null);
+
+        $this->assertNull($queryRepository->get($this->uri));
+    }
 }
