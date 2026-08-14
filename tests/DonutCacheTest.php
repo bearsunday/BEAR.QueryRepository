@@ -116,6 +116,18 @@ class DonutCacheTest extends TestCase
         $this->assertSame([], $donut->getStorageTags());
     }
 
+    public function testZeroTtlRecordsNoTemplateExpiry(): void
+    {
+        // 0 does not mean "already lapsed": ResourceStorageSaver only calls expiresAfter()
+        // for a positive value, so the entry is stored with no expiry and there is no
+        // lifetime to carry. Recording time() here would report 0 remaining on the next
+        // refresh and stop the content-state write of an entry that never expires.
+        $donut = (new ResourceDonut('tmpl', [], null, true))->withStorageState(0, ['tag']);
+
+        $this->assertNull($donut->getRemainingStorageTtl());
+        $this->assertSame(['tag'], $donut->getStorageTags());
+    }
+
     /** A donut as it was serialized before the content and storage state existed */
     private function legacyDonut(): ResourceDonut
     {

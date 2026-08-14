@@ -10,10 +10,14 @@ use BEAR\QueryRepository\Log\TopLevelAwareInterface;
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\Resource\RenderInterface;
 use BEAR\Resource\ResourceInterface;
+use BEAR\Resource\Uri;
+use FakeVendor\HelloWorld\Resource\Page\Index;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
+use RuntimeException;
+use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 
@@ -164,5 +168,38 @@ class GracefulLoggingTest extends TestCase
         // same operation, but a rendering bug instead of a pool outage.
         $this->assertStringContainsString('"exceptionClass":"BEAR\\\\QueryRepository\\\\FakeTemplateNotFound"', $error);
         $this->assertStringContainsString('template not found', $error);
+    }
+
+    public function testManualWritesCloseAsFailedWhenTheStoreThrows(): void
+    {
+        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module->override(new class extends AbstractModule {
+            protected function configure(): void
+            {
+                $pool = new FakeRefusingPool(new TagAwareAdapter(new ArrayAdapter()), refuseSave: false, throwOnSave: true);
+                $this->bind(TagAwareAdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->toInstance($pool);
+            }
+        });
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        $repository = $injector->getInstance(QueryRepositoryInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class);
+        $ro = new Index();
+        $ro->uri = new Uri('page://self/index');
+        $ro->body = [];
+
+        // A direct write has no interceptor to degrade it: the pool outage surfaces to the
+        // caller. The scope it opened must then close as failed - a scope that closed
+        // `stored` while the caller caught an exception is the log lying about the outcome.
+        try {
+            $repository->put($ro);
+            $this->fail('expected the pool outage to surface from a direct write');
+        } catch (RuntimeException $e) {
+            $this->assertStringContainsString('cache server down', $e->getMessage());
+        }
+
+        $tree = $this->flushAndValidate($logger);
+        $close = self::closeContextJsonOf($tree, 'manual_store_result');
+        $this->assertNotNull($close, 'the manual write scope closes even though the write threw');
+        $this->assertStringContainsString('"result":"failed"', $close);
     }
 }

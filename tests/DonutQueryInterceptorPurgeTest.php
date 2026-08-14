@@ -32,17 +32,8 @@ class DonutQueryInterceptorPurgeTest extends TestCase
     {
         static $injector;
 
-        $namespace = 'FakeVendor\HelloWorld';
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance($namespace));
-        $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
-        $module->override(new class extends AbstractModule {
-            protected function configure(): void
-            {
-                $this->bind(EtagSetterInterface::class)->to(AdvancingEtagSetter::class)->in(Scope::SINGLETON);
-            }
-        });
         if (! $injector) {
-            $injector = new Injector($module, __DIR__ . '/tmp');
+            $injector = self::newInjector();
         }
 
         assert($injector instanceof Injector);
@@ -52,6 +43,22 @@ class DonutQueryInterceptorPurgeTest extends TestCase
         $this->logger = $injector->getInstance(SemanticLoggerInterface::class);
 
         parent::setUp();
+    }
+
+    /** Own pools, for the tests that must start from a cold cache whatever ran before */
+    private static function newInjector(): Injector
+    {
+        $namespace = 'FakeVendor\HelloWorld';
+        $module = new FakeEtagPoolModule(ModuleFactory::getInstance($namespace));
+        $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
+        $module->override(new class extends AbstractModule {
+            protected function configure(): void
+            {
+                $this->bind(EtagSetterInterface::class)->to(AdvancingEtagSetter::class)->in(Scope::SINGLETON);
+            }
+        });
+
+        return new Injector($module, __DIR__ . '/tmp');
     }
 
     protected function tearDown(): void

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use Psr\Cache\CacheItemInterface;
+use RuntimeException;
 use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 use Symfony\Component\Cache\CacheItem;
 
@@ -15,6 +16,9 @@ use Symfony\Component\Cache\CacheItem;
  * memory-pressured server, an eviction storm, a tag index that cannot be updated.
  * (Symfony's NullAdapter is not usable for this — wrapped in TagAwareAdapter its
  * save() reports success, which is the very kind of silent lie this log exposes.)
+ *
+ * `throwOnSave` models the loud sibling: a server that is gone rather than full, so the
+ * write raises instead of reporting failure.
  */
 final class FakeRefusingPool implements TagAwareAdapterInterface
 {
@@ -22,11 +26,16 @@ final class FakeRefusingPool implements TagAwareAdapterInterface
         private readonly TagAwareAdapterInterface $pool,
         private readonly bool $refuseSave = true,
         private readonly bool $refuseInvalidation = false,
+        private readonly bool $throwOnSave = false,
     ) {
     }
 
     public function save(CacheItemInterface $item): bool
     {
+        if ($this->throwOnSave) {
+            throw new RuntimeException('cache server down');
+        }
+
         return $this->refuseSave ? false : $this->pool->save($item);
     }
 
