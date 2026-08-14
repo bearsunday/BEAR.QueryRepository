@@ -171,6 +171,24 @@ class CacheDependencyTest extends TestCase
         $this->assertStringNotContainsString($childTag, $surrogateKey);
     }
 
+    /**
+     * A child without an ETag must not end the walk over its siblings
+     *
+     * ParentOfMixed embeds the non-cacheable child first. If skipping it stopped the walk,
+     * the cacheable sibling behind it would never register as a dependency and its purge
+     * would leave this page serving content built from the purged child - the lost
+     * dependency this package shipped as a bug once already.
+     */
+    public function testDependencySurvivesANonCacheableSiblingInFront(): void
+    {
+        $this->resource->get('page://self/dep/parent-of-mixed');
+        $this->assertInstanceOf(ResourceState::class, $this->repository->get(new Uri('page://self/dep/parent-of-mixed')));
+
+        $this->repository->purge(new Uri('page://self/dep/child-c'));
+
+        $this->assertNull($this->repository->get(new Uri('page://self/dep/parent-of-mixed')));
+    }
+
     public function testHalEmbeddedChildAddsChildSurrogateKeyToParent(): void
     {
         $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
