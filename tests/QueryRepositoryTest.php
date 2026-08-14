@@ -195,16 +195,19 @@ class QueryRepositoryTest extends TestCase
 
             return true; // Return true to tell PHP to stop normal error handling
         });
-        $module->override(new class extends AbstractModule {
-            protected function configure(): void
-            {
-                $this->bind(TagAwareAdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->toInstance(new TagAwareAdapter(new FakeErrorCache()));
-            }
-        });
-        $resource = (new Injector($module, __DIR__ . '/tmp'))->getInstance(ResourceInterface::class);
-        $resource->get('app://self/user', ['id' => 1]);
-        $this->assertTrue($errorCaught, 'E_USER_WARNING should have been caught.');
-        restore_error_handler();
+        try {
+            $module->override(new class extends AbstractModule {
+                protected function configure(): void
+                {
+                    $this->bind(TagAwareAdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->toInstance(new TagAwareAdapter(new FakeErrorCache()));
+                }
+            });
+            $resource = (new Injector($module, __DIR__ . '/tmp'))->getInstance(ResourceInterface::class);
+            $resource->get('app://self/user', ['id' => 1]);
+            $this->assertTrue($errorCaught, 'E_USER_WARNING should have been caught.');
+        } finally {
+            restore_error_handler();
+        }
     }
 
     public function testSameResponseButDifferentParameter(): void

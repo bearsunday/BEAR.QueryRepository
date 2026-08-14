@@ -67,8 +67,8 @@ class DonutQueryInterceptorPurgeTest extends TestCase
         $this->assertSame(200, $ro1->code);
         $this->assertFalse($this->wasRecomposedFromDonut(), 'the first access creates the donut, it does not refresh one');
         $this->assertTrue($this->isStateCached());
-        $puregeResult = $this->repository->purge(new Uri('page://self/html/comment'));
-        assert($puregeResult);
+        $purgeResult = $this->repository->purge(new Uri('page://self/html/comment'));
+        assert($purgeResult);
         $this->assertFalse($this->isStateCached());
 
         $this->resource->get('page://self/html/blog-posting');
@@ -80,8 +80,8 @@ class DonutQueryInterceptorPurgeTest extends TestCase
     {
         $ro1 = $this->resource->get('page://self/html/blog-posting');
         $lastModified = $ro1->headers[Header::LAST_MODIFIED];
-        $puregeResult = $this->repository->purge(new Uri('page://self/html/comment'));
-        assert($puregeResult);
+        $purgeResult = $this->repository->purge(new Uri('page://self/html/comment'));
+        assert($purgeResult);
 
         $ro2 = $this->resource->get('page://self/html/blog-posting');
         $this->assertTrue($this->wasRecomposedFromDonut(), 'donut refresh should have run');
@@ -92,8 +92,8 @@ class DonutQueryInterceptorPurgeTest extends TestCase
     {
         $ro1 = $this->resource->get('page://self/html/blog-posting');
         $etag = $ro1->headers[Header::ETAG];
-        $puregeResult = $this->repository->purge(new Uri('page://self/html/comment'));
-        assert($puregeResult);
+        $purgeResult = $this->repository->purge(new Uri('page://self/html/comment'));
+        assert($purgeResult);
 
         $ro2 = $this->resource->get('page://self/html/blog-posting');
         $this->assertTrue($this->wasRecomposedFromDonut(), 'donut refresh should have run');
@@ -111,8 +111,8 @@ class DonutQueryInterceptorPurgeTest extends TestCase
     {
         $ro1 = $this->resource->get('page://self/html/blog-posting');
         $lastModified = strtotime($ro1->headers[Header::LAST_MODIFIED]);
-        $puregeResult = $this->repository->purge(new Uri('page://self/html/comment'));
-        assert($puregeResult);
+        $purgeResult = $this->repository->purge(new Uri('page://self/html/comment'));
+        assert($purgeResult);
         $this->resource->get('page://self/html/blog-posting'); // refresh carries over the old Last-Modified
 
         $state = $this->repository->get(new Uri('page://self/html/blog-posting'));
