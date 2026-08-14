@@ -8,6 +8,7 @@ use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\RequestInterface;
 use BEAR\Resource\ResourceObject;
 
+use function assert;
 use function is_array;
 
 /**
@@ -56,9 +57,22 @@ final class ResourceBodyEvaluator
     private function materialize(RequestInterface $request): ResourceObject
     {
         if ($request instanceof AbstractRequest) {
-            return clone $request->jsonSerialize();
+            return clone $this->asResourceObject($request->jsonSerialize());
         }
 
-        return $request();
+        return $this->asResourceObject($request());
+    }
+
+    /**
+     * Narrow a materialized request result
+     *
+     * Both accessors are declared ResourceObject in some bear/resource releases and
+     * mixed in others, so the type is asserted here instead of assumed at the call site.
+     */
+    private function asResourceObject(mixed $value): ResourceObject
+    {
+        assert($value instanceof ResourceObject);
+
+        return $value;
     }
 }
