@@ -199,7 +199,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         /** @var string $expiryAt */
         $expiryAt = $ro->body[$cacheable->expiryAt];
 
-        // A past expiryAt means "already expired": TTL 0
+        // A past expiryAt yields no lifetime to set, which the storage stores as "no expiry"
         return max(0, (int) strtotime($expiryAt) - time());
     }
 }

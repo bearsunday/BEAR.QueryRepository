@@ -109,8 +109,8 @@ class QueryRepositoryTest extends TestCase
 
     public function testPastExpiryAtIsClampedToZeroTtl(): void
     {
-        // A past expiryAt means "already expired": the TTL clamps to 0 instead of going
-        // negative (the save_* schemas declare "minimum": 0).
+        // A past expiryAt leaves no lifetime to set: the TTL is 0, which the storage stores
+        // as "no expiry" rather than going negative (the save_* schemas declare "minimum": 0).
         $ro = new ControlExpiry();
         $ro->uri = new Uri('app://self/control-expiry');
         $ro->body = ['expiry_at' => '2000-01-01 00:00:00'];

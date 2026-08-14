@@ -4,12 +4,18 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Madapaja\TwigModule\TwigModule;
 use PHPUnit\Framework\TestCase;
+use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
+use RuntimeException;
+use Symfony\Component\Cache\Adapter\ArrayAdapter;
+use Symfony\Component\Cache\Adapter\TagAwareAdapter;
+use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 
 use function assert;
 use function dirname;
@@ -244,16 +250,17 @@ class DonutRepositoryTest extends TestCase
         $this->assertStringContainsString('"saved":false', $saveDonut);
     }
 
-    public function testNegativeLifetimeIsRecordedAsAlreadyExpired(): void
+    public function testNegativeLifetimeIsRecordedAsTheZeroItIsStoredWith(): void
     {
         $injector = $this->getInjector();
         $resource = $injector->getInstance(ResourceInterface::class);
         $donutRepository = $injector->getInstance(DonutRepositoryInterface::class);
         $logger = $injector->getInstance(SemanticLoggerInterface::class);
 
-        // A caller asking for a lifetime that already passed: the storage stores 0, so the
-        // recorded request says 0 too. Recording -1 would both contradict the save events
-        // below it and violate the published schema, which flushAndValidate checks.
+        // A lifetime at or below zero is not a lifetime the storage can set, so the entry is
+        // stored with no expiry and the request is recorded as the 0 that means exactly that.
+        // Recording -1 would contradict the save events below it and violate the published
+        // schema, which flushAndValidate checks.
         $page = $resource->get((string) $this->uri);
         $logger->flush();
         $donutRepository->putStatic($page, -1, -1);
@@ -300,5 +307,40 @@ class DonutRepositoryTest extends TestCase
         $donutRepository->putDonut($page, null);
 
         $this->assertNull($queryRepository->get($this->uri));
+    }
+
+    public function testManualDonutWriteClosesAsFailedWhenTheStoreThrows(): void
+    {
+        // The page comes from healthy pools, so only the write below meets the outage.
+        $page = $this->getInjector()->getInstance(ResourceInterface::class)->get((string) $this->uri);
+
+        $namespace = 'FakeVendor\HelloWorld';
+        $module = new FakeEtagPoolModule(ModuleFactory::getInstance($namespace));
+        $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
+        $module->override(new class extends AbstractModule {
+            protected function configure(): void
+            {
+                $pool = new FakeRefusingPool(new TagAwareAdapter(new ArrayAdapter()), refuseSave: false, throwOnSave: true);
+                $this->bind(TagAwareAdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->toInstance($pool);
+            }
+        });
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        $donutRepository = $injector->getInstance(DonutRepositoryInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class);
+
+        // A direct donut write has no interceptor to degrade it, so the outage surfaces here.
+        // Its scope must close as failed: closing `stored` while the caller catches an
+        // exception is the log claiming a write that did not happen.
+        try {
+            $donutRepository->putStatic($page, null, null);
+            $this->fail('expected the pool outage to surface from a direct donut write');
+        } catch (RuntimeException $e) {
+            $this->assertStringContainsString('cache server down', $e->getMessage());
+        }
+
+        $tree = $this->flushAndValidate($logger);
+        $close = self::closeContextJsonOf($tree, 'manual_store_result');
+        $this->assertNotNull($close, 'the scope closes even though the write threw');
+        $this->assertStringContainsString('"result":"failed"', $close);
     }
 }

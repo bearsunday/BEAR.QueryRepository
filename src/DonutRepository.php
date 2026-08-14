@@ -81,9 +81,11 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     /**
      * Clamp a requested lifetime the way the storage does
      *
-     * A negative lifetime means "already expired". The storage clamps what it stores, so
-     * clamping here keeps the recorded request equal to its effect - the put_donut and
-     * save_* schemas both declare `minimum: 0`.
+     * `ResourceStorageSaver` calls expiresAfter() only for a positive value, so anything at
+     * or below zero is stored with no expiry at all - which is what the schemas mean by
+     * `0`: "no expiry is set, the entry lives until event-driven invalidation". Clamping
+     * here keeps the recorded request equal to that effect instead of reporting a negative
+     * lifetime the entry never had (`minimum: 0` in put_donut and every save_* schema).
      */
     private static function lifetime(int|null $seconds): int|null
     {
