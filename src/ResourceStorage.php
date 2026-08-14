@@ -15,7 +15,6 @@ use BEAR\QueryRepository\Log\TopLevelAwareInterface;
 use BEAR\RepositoryModule\Annotation\EtagPool;
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\Resource\AbstractUri;
-use BEAR\Resource\RequestInterface;
 use BEAR\Resource\ResourceObject;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
@@ -31,7 +30,6 @@ use function assert;
 use function explode;
 use function hrtime;
 use function implode;
-use function is_array;
 use function max;
 use function preg_match;
 use function preg_match_all;
@@ -98,6 +96,7 @@ final class ResourceStorage implements ResourceStorageInterface
         ProviderInterface $roPoolProvider,
         #[Set(TagAwareAdapterInterface::class, EtagPool::class)]
         ProviderInterface $etagPoolProvider,
+        private ResourceBodyEvaluator $evaluateBody = new ResourceBodyEvaluator(),
     ) {
         $this->initializePools($roPoolProvider, $etagPoolProvider);
     }
@@ -282,7 +281,7 @@ final class ResourceStorage implements ResourceStorageInterface
     {
         $ttl = max(0, $ttl);
         /** @psalm-suppress MixedAssignment $body */
-        $body = $this->evaluateBody($ro->body);
+        $body = ($this->evaluateBody)($ro->body);
         $value = ResourceState::create($ro, $body, null);
         $key = $this->getUriKey($ro->uri, self::KEY_RO);
         $tags = $this->getTags($ro);
@@ -302,7 +301,7 @@ final class ResourceStorage implements ResourceStorageInterface
     {
         $ttl = max(0, $ttl);
         /** @psalm-suppress MixedAssignment $body */
-        $body = $this->evaluateBody($ro->body);
+        $body = ($this->evaluateBody)($ro->body);
         $value = ResourceState::create($ro, $body, $ro->view);
         $key = $this->getUriKey($ro->uri, self::KEY_RO);
         $tags = $this->getTags($ro);
@@ -358,26 +357,6 @@ final class ResourceStorage implements ResourceStorageInterface
         $uniqueTags = array_values(array_unique($tags));
 
         return $uniqueTags;
-    }
-
-    private function evaluateBody(mixed $body): mixed
-    {
-        if (! is_array($body)) {
-            return $body;
-        }
-
-        /** @psalm-suppress MixedAssignment $item */
-        foreach ($body as &$item) {
-            if ($item instanceof RequestInterface) {
-                $item = ($item)();
-            }
-
-            if ($item instanceof ResourceObject) {
-                $item->body = $this->evaluateBody($item->body);
-            }
-        }
-
-        return $body;
     }
 
     private function getUriKey(AbstractUri $uri, string $type): string

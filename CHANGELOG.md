@@ -47,6 +47,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A donut refresh no longer appends an `r` marker to the ETag: an identical recomposition keeps its entity-tag, so a client's `If-None-Match` still revalidates to 304 instead of getting a full 200. The refresh is recorded as the `refresh_donut` log event.
 - Added runtime dependency `koriym/semantic-logger`.
 
+### Fixed
+- An embedded child was materialized twice per parent store: the storage re-invoked the request instead of reusing the execution `setCacheDependency()` and the renderer already paid for, so a `type: "view"` entry could hold a body and a view from two different runs of a non-idempotent child.
+
 ## [1.16.2] - 2026-06-29
 
 ### Fixed
