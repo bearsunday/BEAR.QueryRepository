@@ -89,6 +89,15 @@ class DonutRepositoryTest extends TestCase
         $this->assertSame(200, $donutRo->code);
         $tree = $this->flushAndValidate($logger);
         $this->assertNotNull(self::eventContextJsonOf($tree, 'refresh_donut'), 'the page is recomposed from the cached donut');
+        // Both donut-layer outcomes in one session: the cold GET missed the template, the
+        // second one hit it after the page state was invalidated. Only the layer tells a
+        // donut outcome apart from the resource one in the log.
+        $miss = self::eventContextJsonOf($tree, 'cache_miss');
+        $this->assertNotNull($miss);
+        $this->assertStringContainsString('"layer":"donut"', $miss);
+        $hit = self::eventContextJsonOf($tree, 'cache_hit');
+        $this->assertNotNull($hit);
+        $this->assertStringContainsString('"layer":"donut"', $hit);
     }
 
     /**

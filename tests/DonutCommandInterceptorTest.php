@@ -99,8 +99,26 @@ class DonutCommandInterceptorTest extends TestCase
         $skipped = self::eventContextJsonOf($tree, 'put_skipped');
         $this->assertNotNull($skipped, 'the intentional skip is recorded');
         $this->assertStringContainsString('"reason":"etag-present"', $skipped);
+        // The code field belongs to the error-code reason: a deliberate skip has no code to
+        // report, and reporting 200 there would read as a failure that did not happen.
+        $this->assertStringContainsString('"code":null', $skipped);
         $close = self::closeContextJsonOf($tree, 'cache_miss');
         $this->assertNotNull($close, 'the scope still closes cache_miss (skip, not hit)');
+    }
+
+    public function testPutSkippedIsLoggedWithTheCodeWhenTheResponseFails(): void
+    {
+        // The other half of the skip: ErrorPage answers 400, the first code that must not be
+        // cached, and the log carries it so a 400 and a 500 are distinguishable.
+        $this->logger->flush(); // drain the setUp session
+        $ro = $this->resource->get('page://self/html/error-page');
+        $tree = $this->flushAndValidate($this->logger);
+
+        $this->assertSame(400, $ro->code);
+        $skipped = self::eventContextJsonOf($tree, 'put_skipped');
+        $this->assertNotNull($skipped, 'the failed response explains the missing put');
+        $this->assertStringContainsString('"reason":"error-code"', $skipped);
+        $this->assertStringContainsString('"code":400', $skipped);
     }
 
     public function testSaveDonutLogsHeaderTags(): void
