@@ -28,6 +28,20 @@ purge(LevelTwo) → LevelOne invalidated
 
 **Test:** `CacheDependencyTest::testDestroyByChild`
 
+### Annotation-Driven Purge from a Non-Cacheable Writer
+
+A class without `#[Cacheable]` gets no implicit self-purge (no `RefreshSameCommand`),
+so a write only invalidates what its `#[Purge]` attributes name — including its own URI.
+`RefreshInterceptor` is the sole interceptor on this path.
+
+```
+PUT PurgeSrc #[Purge(self)] #[Purge(LevelTwo)]
+  → PurgeSrc's own entry invalidated (nothing else would)
+  → purge(LevelTwo) → LevelOne invalidated
+```
+
+**Test:** `RefreshInterceptorPurgeTest::testPurgeOnNonCacheableClassInvalidatesItselfAndCascadesToParent`
+
 ### Multiple Parents Depending on Same Child
 
 When multiple parents embed the same child, purging the child invalidates all parents.
@@ -263,3 +277,4 @@ Located in `tests/Fake/fake-app/src/Resource/Page/Dep/`:
 | `ParentA` | `ChildC` | Multiple parent test |
 | `ParentB` | `ChildC` | Multiple parent test |
 | `ChildC` | - | Shared child resource |
+| `PurgeSrc` | - | Non-Cacheable writer whose `#[Purge]` attributes drive `RefreshInterceptor` |
