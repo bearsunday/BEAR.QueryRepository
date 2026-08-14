@@ -6,13 +6,18 @@ namespace BEAR\QueryRepository;
 
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
+use FakeVendor\HelloWorld\Resource\Page\Html\MutableComment;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Madapaja\TwigModule\TwigModule;
 use PHPUnit\Framework\TestCase;
+use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
+use Ray\Di\Scope;
 
 use function assert;
 use function dirname;
+use function strtotime;
+use function time;
 
 class DonutQueryInterceptorPurgeTest extends TestCase
 {
@@ -30,6 +35,12 @@ class DonutQueryInterceptorPurgeTest extends TestCase
         $namespace = 'FakeVendor\HelloWorld';
         $module = new FakeEtagPoolModule(ModuleFactory::getInstance($namespace));
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
+        $module->override(new class extends AbstractModule {
+            protected function configure(): void
+            {
+                $this->bind(EtagSetterInterface::class)->to(AdvancingEtagSetter::class)->in(Scope::SINGLETON);
+            }
+        });
         if (! $injector) {
             $injector = new Injector($module, __DIR__ . '/tmp');
         }
@@ -45,6 +56,7 @@ class DonutQueryInterceptorPurgeTest extends TestCase
 
     protected function tearDown(): void
     {
+        MutableComment::$comment = 'comment-a';
         // Every emitted log entry must conform to the published schema (drift detection)
         $this->flushAndValidate($this->logger);
     }
@@ -64,6 +76,18 @@ class DonutQueryInterceptorPurgeTest extends TestCase
         $this->assertTrue($this->isStateCached(), 'Resource state should be cached');
     }
 
+    public function testRefreshKeepsLastModifiedWhenContentUnchanged(): void
+    {
+        $ro1 = $this->resource->get('page://self/html/blog-posting');
+        $lastModified = $ro1->headers[Header::LAST_MODIFIED];
+        $puregeResult = $this->repository->purge(new Uri('page://self/html/comment'));
+        assert($puregeResult);
+
+        $ro2 = $this->resource->get('page://self/html/blog-posting');
+        $this->assertTrue($this->wasRecomposedFromDonut(), 'donut refresh should have run');
+        $this->assertSame($lastModified, $ro2->headers[Header::LAST_MODIFIED], 'Last-Modified should be carried over when the recomposed content is identical');
+    }
+
     public function testUnchangedRecompositionKeepsTheEntityTag(): void
     {
         $ro1 = $this->resource->get('page://self/html/blog-posting');
@@ -81,6 +105,57 @@ class DonutQueryInterceptorPurgeTest extends TestCase
             (new HttpCache($this->storage))->isNotModified([Header::HTTP_IF_NONE_MATCH => $etag]),
             'the pre-refresh validator still matches the stored ETag (304)',
         );
+    }
+
+    public function testAgeIsResidenceTimeSinceStored(): void
+    {
+        $ro1 = $this->resource->get('page://self/html/blog-posting');
+        $lastModified = strtotime($ro1->headers[Header::LAST_MODIFIED]);
+        $puregeResult = $this->repository->purge(new Uri('page://self/html/comment'));
+        assert($puregeResult);
+        $this->resource->get('page://self/html/blog-posting'); // refresh carries over the old Last-Modified
+
+        $state = $this->repository->get(new Uri('page://self/html/blog-posting'));
+        assert($state instanceof ResourceState);
+        $this->assertLessThanOrEqual(1, (int) $state->headers[Header::AGE], 'Age is the time since the state was stored, not since Last-Modified');
+        $this->assertGreaterThanOrEqual(1, time() - $lastModified);
+    }
+
+    public function testRefreshPersistsChangedContentState(): void
+    {
+        $pageUri = 'page://self/html/mutable-blog-posting';
+        $commentUri = new Uri('page://self/html/mutable-comment');
+        MutableComment::$comment = 'comment-a';
+        $a1 = $this->resource->get($pageUri);
+        $aLastModified = $a1->headers[Header::LAST_MODIFIED];
+        $this->assertStringContainsString('comment-a', (string) $a1->view);
+        $this->flushAndValidate($this->logger); // drain the initial put
+
+        MutableComment::$comment = 'comment-b';
+        $this->repository->purge($commentUri);
+        $b1 = $this->resource->get($pageUri);
+        $bLastModified = $b1->headers[Header::LAST_MODIFIED];
+        $this->assertNotSame($aLastModified, $bLastModified, 'A→B advances Last-Modified');
+        $this->assertStringContainsString('comment-b', (string) $b1->view);
+        $this->assertNotSame($a1->headers[Header::ETAG], $b1->headers[Header::ETAG], 'changed content changes the validator');
+        $this->assertFalse($this->storage->hasEtag($a1->headers[Header::ETAG]), 'the superseded validator leaves the pool, so a client holding it gets 200');
+        $changedTree = $this->flushAndValidate($this->logger);
+        $saveDonut = self::eventContextJsonOf($changedTree, 'save_donut');
+        $this->assertNotNull($saveDonut, 'changed content persists the new donut comparison state');
+        $this->assertStringContainsString('"mutable-blog-posting-page"', $saveDonut, 'the original storage tags are reused');
+
+        $this->repository->purge($commentUri);
+        $b2 = $this->resource->get($pageUri);
+        $this->assertSame($bLastModified, $b2->headers[Header::LAST_MODIFIED], 'B→B keeps the B change time');
+        $this->assertSame($b1->headers[Header::ETAG], $b2->headers[Header::ETAG], 'B→B keeps the validator, so the client still revalidates to 304');
+        $unchangedTree = $this->flushAndValidate($this->logger);
+        $this->assertNull(self::eventContextJsonOf($unchangedTree, 'save_donut'), 'unchanged content does not rewrite the donut');
+
+        MutableComment::$comment = 'comment-a';
+        $this->repository->purge($commentUri);
+        $a2 = $this->resource->get($pageUri);
+        $this->assertNotSame($aLastModified, $a2->headers[Header::LAST_MODIFIED], 'A→B→A does not revive the old A time');
+        $this->assertNotSame($bLastModified, $a2->headers[Header::LAST_MODIFIED], 'B→A advances Last-Modified');
     }
 
     private function isStateCached(): bool

@@ -18,9 +18,9 @@ final readonly class HeaderSetter
     ) {
     }
 
-    public function __invoke(ResourceObject $ro, int|null $concheControlMaxAge, HttpCache|null $httpCache): void
+    public function __invoke(ResourceObject $ro, int|null $concheControlMaxAge, HttpCache|null $httpCache, int|null $time = null): void
     {
-        ($this->etagSetter)($ro, null, $httpCache);
+        ($this->etagSetter)($ro, $time, $httpCache);
 
         if (is_int($concheControlMaxAge) && $concheControlMaxAge > 0) {
             $this->setCacheControlMaxAge($ro, $concheControlMaxAge);

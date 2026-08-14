@@ -49,6 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - An embedded child was materialized twice per parent store: the storage re-invoked the request instead of reusing the execution `setCacheDependency()` and the renderer already paid for, so a `type: "view"` entry could hold a body and a view from two different runs of a non-idempotent child.
+- A donut refresh advanced `Last-Modified` even when the recomposed content was byte-identical, so an unchanged representation looked changed; the recorded content is compared and the original time carried over. `Age` is now the time since the state was stored (`storedAt`) instead of being derived from `Last-Modified`, which is the content's change time — entries stored before `storedAt` existed fall back to the old derivation.
 
 ## [1.16.2] - 2026-06-29
 

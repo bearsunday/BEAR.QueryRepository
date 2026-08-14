@@ -10,8 +10,13 @@ use BEAR\Resource\ResourceObject;
 
 use function array_key_exists;
 use function assert;
+use function explode;
+use function hash;
 use function is_iterable;
+use function max;
 use function preg_replace_callback;
+use function strtotime;
+use function time;
 
 /**
  * Donut cache resource state
@@ -22,7 +27,11 @@ final class ResourceDonut
 
     private const URI_REGEX = '/\[le:(.+)]/';
 
-    /** @param array<string, string> $headers */
+    /**
+     * @param array<string, string> $headers
+     * @param int|null              $lastModified Time when the composed content last actually changed
+     * @param list<string>|null     $storageTags  Original invalidation tags for the donut template entry
+     */
     public function __construct(
         private readonly string $template,
         private readonly array $headers,
@@ -30,6 +39,11 @@ final class ResourceDonut
         public int|null $ttl,
         /** @readonly */
         public bool $isCacheble,
+        /** @readonly */
+        public int|null $lastModified = null,
+        private readonly string|null $contentHash = null,
+        private readonly int|null $templateExpiresAt = null,
+        private readonly array|null $storageTags = null,
     ) {
     }
 
@@ -60,6 +74,100 @@ final class ResourceDonut
         $ro->view = $view;
 
         return $ro;
+    }
+
+    /**
+     * Return the Last-Modified time to carry over when the refreshed content is
+     * byte-identical to the content recorded with this donut, null otherwise.
+     *
+     * RFC 9110 §8.8.2 defines Last-Modified as the time the representation was
+     * last changed, so a recomposition that yields identical content must keep
+     * the original value instead of advancing it to the recomposition time.
+     */
+    public function getUnchangedLastModified(string $view): int|null
+    {
+        // isset() also guards entries serialized before these properties existed
+        if (! isset($this->contentHash, $this->lastModified)) {
+            return null;
+        }
+
+        return $this->contentHash === $this->hashContent($view) ? $this->lastModified : null;
+    }
+
+    /**
+     * Return a copy that records the content hash and the Last-Modified time of the given RO
+     */
+    public function withContentState(ResourceObject $ro): self
+    {
+        $lastModified = null;
+        if (isset($ro->headers[Header::LAST_MODIFIED])) {
+            $time = strtotime($ro->headers[Header::LAST_MODIFIED]);
+            $lastModified = $time === false ? null : $time;
+        }
+
+        $templateExpiresAt = $this->templateExpiresAt ?? null;
+        $storageTags = $this->storageTags ?? null;
+
+        return new self(
+            $this->template,
+            $this->headers,
+            $this->ttl,
+            $this->isCacheble,
+            $lastModified,
+            $this->hashContent((string) $ro->view),
+            $templateExpiresAt,
+            $storageTags,
+        );
+    }
+
+    /**
+     * Return a copy that records the original storage lifetime and invalidation tags
+     *
+     * @param list<string> $tags
+     */
+    public function withStorageState(int|null $ttl, array $tags): self
+    {
+        $lastModified = $this->lastModified ?? null;
+        $contentHash = $this->contentHash ?? null;
+        $templateExpiresAt = $ttl !== null && $ttl > 0 ? time() + $ttl : null;
+
+        return new self(
+            $this->template,
+            $this->headers,
+            $this->ttl,
+            $this->isCacheble,
+            $lastModified,
+            $contentHash,
+            $templateExpiresAt,
+            $tags,
+        );
+    }
+
+    /**
+     * Return the remaining explicit template TTL, null when no explicit TTL was set
+     */
+    public function getRemainingStorageTtl(): int|null
+    {
+        if (! isset($this->templateExpiresAt)) {
+            return null;
+        }
+
+        return max(0, $this->templateExpiresAt - time());
+    }
+
+    /** @return list<string> */
+    public function getStorageTags(): array
+    {
+        if (isset($this->storageTags)) {
+            return $this->storageTags;
+        }
+
+        return isset($this->headers[Header::SURROGATE_KEY]) ? explode(' ', $this->headers[Header::SURROGATE_KEY]) : [];
+    }
+
+    private function hashContent(string $view): string
+    {
+        return hash('sha256', $view);
     }
 
     public static function create(ResourceObject $ro, DonutRendererInterface $storage, SurrogateKeys $etags, int|null $ttl, bool $isCacheble): self

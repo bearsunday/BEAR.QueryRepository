@@ -128,7 +128,10 @@ final readonly class QueryRepository implements QueryRepositoryInterface
             return null;
         }
 
-        $state->headers[Header::AGE] = (string) (time() - (int) strtotime($state->headers[Header::LAST_MODIFIED]));
+        // Age is residence time since the state was stored, not derived from Last-Modified
+        // (the content's last change time). Entries predating storedAt fall back to Last-Modified.
+        $storedAt = $state->storedAt ?? (int) strtotime($state->headers[Header::LAST_MODIFIED]);
+        $state->headers[Header::AGE] = (string) (time() - $storedAt);
 
         return $state;
     }

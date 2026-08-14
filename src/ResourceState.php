@@ -7,6 +7,8 @@ namespace BEAR\QueryRepository;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceObject;
 
+use function time;
+
 /** @psalm-suppress MissingConstructor */
 final class ResourceState
 {
@@ -25,6 +27,9 @@ final class ResourceState
     /** @var ?string */
     public $view;
 
+    /** @var int|null Unix time when this state was stored; null in entries saved before this field existed */
+    public $storedAt;
+
     public static function create(ResourceObject $ro, mixed $body, string|null $view): self
     {
         $state = new self();
@@ -33,6 +38,7 @@ final class ResourceState
         $state->headers = $ro->headers;
         $state->view = $view;
         $state->body = $body;
+        $state->storedAt = time();
 
         return $state;
     }

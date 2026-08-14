@@ -12,6 +12,7 @@ use BEAR\QueryRepository\Log\Context\PreWriteCleanupContext;
 use BEAR\QueryRepository\Log\Context\PutDonutContext;
 use BEAR\QueryRepository\Log\Context\PutSkippedContext;
 use BEAR\QueryRepository\Log\Context\RefreshDonutContext;
+use BEAR\QueryRepository\Log\Context\SaveDonutContext;
 use BEAR\QueryRepository\Log\TopLevelAwareInterface;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceInterface;
@@ -113,15 +114,16 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $keys = new SurrogateKeys($ro->uri);
         $keys->addTag($ro);
         $headerKeys = $this->getHeaderKeys($ro);
-        $donut = ResourceDonut::create($ro, $this->renderer, $keys, $sMaxAge, true);
+        $donut = ResourceDonut::create($ro, $this->renderer, $keys, $sMaxAge, true)->withStorageState($ttl, $headerKeys);
         $donut->render($ro, $this->renderer);
         $this->setHeaders($keys, $ro, $sMaxAge);
         // delete: cleanup for the rewrite below, recorded as such at the source
         $this->logger->event(new PreWriteCleanupContext((string) $ro->uri));
         $this->resourceStorage->invalidateTags([(new UriTag())($ro->uri)]);
-        // save content cache and donut
+        // save content cache and donut; the donut records the content state so that a
+        // later refresh can keep Last-Modified when the recomposed content is identical
         $this->saveView($ro, $sMaxAge);
-        $this->resourceStorage->saveDonut($ro->uri, $donut, $ttl, $headerKeys);
+        $this->resourceStorage->saveDonut($ro->uri, $donut->withContentState($ro), $ttl, $headerKeys);
     }
 
     private function doPutDonut(ResourceObject $ro, int|null $donutTtl): void
@@ -129,7 +131,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $this->logger->event(new PutDonutContext((string) $ro->uri, $donutTtl, null));
         $keys = new SurrogateKeys($ro->uri);
         $keyArrays = $this->getHeaderKeys($ro);
-        $donut = ResourceDonut::create($ro, $this->renderer, $keys, $donutTtl, false);
+        $donut = ResourceDonut::create($ro, $this->renderer, $keys, $donutTtl, false)->withStorageState($donutTtl, $keyArrays);
         $donut->render($ro, $this->renderer);
         $keys->setSurrogateHeader($ro);
         // delete: cleanup for the rewrite below, recorded as such at the source
@@ -179,11 +181,40 @@ final readonly class DonutRepository implements DonutRepositoryInterface
             return $ro;
         }
 
-        ($this->headerSetter)($ro, $donut->ttl, null);
+        // When the recomposed content is byte-identical to the recorded one, carry over
+        // the original Last-Modified instead of advancing it to the recomposition time
+        $lastModified = $donut->getUnchangedLastModified((string) $ro->view);
+        ($this->headerSetter)($ro, $donut->ttl, null, $lastModified);
         ($this->cdnCacheControlHeaderSetter)($ro, $donut->ttl);
+        if ($lastModified === null) {
+            $this->recordContentState($ro, $donut);
+        }
+
         $this->saveView($ro, $donut->ttl);
 
         return $ro;
+    }
+
+    /**
+     * Record the recomposed content as the state the next refresh compares against
+     *
+     * The donut keeps the lifetime its template entry was stored with, so the state
+     * rides along on the template's remaining time instead of restarting it. A
+     * remaining time of 0 means that entry is expiring right now (the pool answered
+     * within the second it lapses), and re-saving would hand it a fresh lifetime it
+     * no longer has — so the skipped write is recorded rather than performed.
+     */
+    private function recordContentState(ResourceObject $ro, ResourceDonut $donut): void
+    {
+        $remainingTtl = $donut->getRemainingStorageTtl();
+        $storageTags = $donut->getStorageTags();
+        if ($remainingTtl === 0) {
+            $this->logger->event(new SaveDonutContext((string) $ro->uri, $storageTags, 0, false));
+
+            return;
+        }
+
+        $this->resourceStorage->saveDonut($ro->uri, $donut->withContentState($ro), $remainingTtl, $storageTags);
     }
 
     private function saveView(ResourceObject $ro, int|null $ttl): bool
