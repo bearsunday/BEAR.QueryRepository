@@ -7,12 +7,17 @@ namespace BEAR\QueryRepository\Log\Context;
 use Koriym\SemanticLogger\AbstractContext;
 
 /**
- * Event: the cache layer itself errored (e.g. cache server down).
+ * Event: a failure raised on the cache read or write path.
  *
- * Distinguishes a degraded cache from a cold one: a cache_miss after this
- * event means the entry could not be read, not that it was never cached.
- * The operation says which side failed: "read" (the repository get/getDonut
- * call) or "write" (the put/purge call).
+ * Not only the cache pool itself: the write side wraps everything the store
+ * performs, so a template that fails to render or a CDN purger that throws is
+ * recorded here too. `exceptionClass` says what actually failed — otherwise a
+ * cache outage and a rendering bug are the same `operation: "write"` record.
+ *
+ * A cache_miss after this event means the entry could not be read, not that it
+ * was never cached: it separates a degraded cache from a cold one. The operation
+ * says which side failed: "read" (the repository get/getDonut call) or "write"
+ * (the put/purge call).
  */
 final class CacheErrorContext extends AbstractContext
 {
@@ -24,6 +29,7 @@ final class CacheErrorContext extends AbstractContext
         public readonly string $uri,
         public readonly string $operation,
         public readonly string $error,
+        public readonly string|null $exceptionClass = null,
     ) {
     }
 }

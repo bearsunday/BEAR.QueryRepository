@@ -57,7 +57,7 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
                 }
             } catch (Throwable $e) { // @codeCoverageIgnoreStart
                 // when cache server is down: log it so a miss here is not read as a cold cache
-                $this->logger->event(new CacheErrorContext((string) $ro->uri, 'read', $e->getMessage()));
+                $this->logger->event(new CacheErrorContext((string) $ro->uri, 'read', $e->getMessage(), $e::class));
                 $this->triggerWarning($e);
 
                 return $invocation->proceed(); // @codeCoverageIgnoreEnd

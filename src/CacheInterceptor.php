@@ -59,8 +59,8 @@ final readonly class CacheInterceptor implements MethodInterceptor
             try {
                 $state = $this->repository->get($ro->uri);
             } catch (Throwable $e) {
-                // The cache layer itself is degraded: log it so a miss here is not read as a cold cache
-                $this->logger->event(new CacheErrorContext((string) $ro->uri, 'read', $e->getMessage()));
+                // The cache read path is degraded: log it so a miss here is not read as a cold cache
+                $this->logger->event(new CacheErrorContext((string) $ro->uri, 'read', $e->getMessage(), $e::class));
                 $this->triggerWarning($e);
 
                 return $invocation->proceed();
@@ -89,9 +89,11 @@ final readonly class CacheInterceptor implements MethodInterceptor
                 $this->repository->put($ro);
             } catch (LogicException $e) {
                 throw $e;
-            } catch (Throwable $e) {  // @codeCoverageIgnore
-                $this->logger->event(new CacheErrorContext((string) $ro->uri, 'write', $e->getMessage())); // @codeCoverageIgnore
-                $this->triggerWarning($e); // @codeCoverageIgnore
+            } catch (Throwable $e) {
+                // Anything the store path raised, pool outage or not (a view that fails to
+                // render, a CDN purge): the class says which, so the reader is not guessing.
+                $this->logger->event(new CacheErrorContext((string) $ro->uri, 'write', $e->getMessage(), $e::class));
+                $this->triggerWarning($e);
             }
 
             return $ro;
@@ -106,11 +108,8 @@ final readonly class CacheInterceptor implements MethodInterceptor
     }
 
     /**
-     * Trigger warning
-     *
-     * When the cache server is down, it will issue a warning rather than an exception to continue service.
-     *
-     * @codeCoverageIgnore
+     * A failure on the cache path degrades to a warning rather than an exception, so the
+     * request is still served: the cache is an optimization, not a dependency.
      */
     private function triggerWarning(Throwable $e): void
     {

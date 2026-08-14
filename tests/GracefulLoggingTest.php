@@ -7,6 +7,7 @@ namespace BEAR\QueryRepository;
 use BEAR\QueryRepository\Log\Context\CacheMissContext;
 use BEAR\QueryRepository\Log\Context\GetContext;
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
+use BEAR\Resource\RenderInterface;
 use BEAR\Resource\ResourceInterface;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use PHPUnit\Framework\TestCase;
@@ -105,10 +106,54 @@ class GracefulLoggingTest extends TestCase
         $this->assertStringContainsString('app://self/user', $error);
         $this->assertStringContainsString('"operation":"read"', $error, 'the failing side (the repository get) is recorded');
         $this->assertStringContainsString('cache server down', $error);
+        $this->assertStringContainsString('"exceptionClass":"RuntimeException"', $error, 'the throwable class names the pool outage');
         // ...while the get scope still closes cache_miss: the pair (cache_error + cache_miss)
         // is an outage, a lone cache_miss is a cold cache.
         $close = self::closeContextJsonOf($tree, 'cache_miss');
         $this->assertNotNull($close, 'the get scope still closes cache_miss');
         $this->assertStringContainsString('"layer":"resource"', $close);
+    }
+
+    public function testCacheErrorRecordsTheClassOfAStoreSideFailureThatIsNotAnOutage(): void
+    {
+        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module->override(new class extends AbstractModule {
+            protected function configure(): void
+            {
+                // The pools are healthy; rendering the view the store is about to save is what fails.
+                $this->bind(RenderInterface::class)->to(FakeThrowingRenderer::class);
+            }
+        });
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class);
+
+        $warningCaught = false;
+        set_error_handler(static function (int $errno) use (&$warningCaught): bool {
+            if ($errno === E_USER_WARNING) {
+                $warningCaught = true;
+
+                return true; // swallow the failed-store warning
+            }
+
+            return false;
+        });
+        try {
+            $ro = $resource->get('app://self/user', ['id' => 1]);
+        } finally {
+            restore_error_handler();
+        }
+
+        $this->assertTrue($warningCaught, 'a failed store degrades to a warning, as a cache-down read does');
+        $this->assertSame(200, $ro->code, 'the response is served even though it was never stored');
+
+        $tree = $this->flushAndValidate($logger);
+        $error = self::eventContextJsonOf($tree, 'cache_error');
+        $this->assertNotNull($error, 'the failed store is recorded, not swallowed');
+        $this->assertStringContainsString('"operation":"write"', $error);
+        // The class is what separates this from the cache-down case above: same context,
+        // same operation, but a rendering bug instead of a pool outage.
+        $this->assertStringContainsString('"exceptionClass":"BEAR\\\\QueryRepository\\\\FakeTemplateNotFound"', $error);
+        $this->assertStringContainsString('template not found', $error);
     }
 }

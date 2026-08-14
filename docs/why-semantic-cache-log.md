@@ -69,8 +69,10 @@ with an undecidable donut case. Recording one marker at the write site
 deleted the whole procedure. Inference rules rot; recorded facts don't.
 
 **3. "Unknown" is never dressed as "nothing happened".** A `cache_error`
-event separates a degraded cache from a cold one — a miss after an outage is
-not a missing entry. If the logging protocol itself is misused — a LIFO
+event records that the cache path failed and, in `exceptionClass`, what failed
+it — separating a degraded cache from a cold one (a miss after a pool outage is
+not a missing entry) and both from a bug in the work the store performs, such
+as a view that fails to render. If the logging protocol itself is misused — a LIFO
 violation, a session left unclosed at flush — the core logger records a
 `semantic_logger_error` diagnostic in-band at the exact failure point, with the
 tree preserved. A log that can lose data must say so in-band.
@@ -98,7 +100,8 @@ its children is one assertion away.
 **Machines.** This is the part built for the AI era. An agent diagnosing your
 cache does not grep strings and guess: it flushes a session, gets a tree
 whose every node links its own schema, and reasons mechanically —
-`cache_error` before a miss means outage, not cold cache;
+a pool `cache_error` before a miss means outage, not cold cache, while its
+`exceptionClass` tells whether the pool was the thing that failed at all;
 `put_skipped{error-code, 404}` means the non-store was deliberate; an
 `invalidate` without a `pre_write_cleanup` marker is a real cache bust.
 Ground truth plus published schemas turn cache debugging from folklore into
