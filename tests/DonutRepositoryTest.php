@@ -143,4 +143,47 @@ class DonutRepositoryTest extends TestCase
         $ro2 = $queryRepository->get(new Uri('page://self/html/blog-posting'));
         $this->assertNull($ro2);
     }
+
+    public function testTopLevelPutStaticIsRootedInManualStoreScope(): void
+    {
+        $injector = $this->getInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $donutRepository = $injector->getInstance(DonutRepositoryInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class);
+
+        $page = $resource->get('page://self/html/blog-posting');
+        $logger->flush(); // drain the GET session: this is about the direct write that follows
+        $donutRepository->putStatic($page, null, null);
+        $tree = $this->flushAndValidate($logger);
+
+        $this->assertNotNull(self::contextJsonOf($tree, 'manual_store'), 'a direct donut write is rooted as application-initiated');
+        $close = self::closeContextJsonOf($tree, 'manual_store_result');
+        $this->assertNotNull($close);
+        $this->assertStringContainsString('"result":"stored"', $close);
+        // Every event the write emits — the cleanup invalidation included, which therefore
+        // no longer roots a manual_invalidate of its own — belongs to that one scope.
+        $this->assertSame([], $tree['events'] ?? [], 'nothing is left bare at the session root');
+        $this->assertSame(
+            [['put_donut', 'pre_write_cleanup', 'invalidate', 'save_etag', 'save_donut_view', 'save_donut']],
+            self::scopeEventTypeSequences($tree),
+        );
+    }
+
+    public function testPutStaticInsideResourceGetOpensNoManualScope(): void
+    {
+        $injector = $this->getInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class);
+
+        // BlogPostingCacheControl::onGet() calls putStatic() itself: nested in the GET scope
+        // the interceptor opened, the write stays an ordinary sequence of events there.
+        $resource->get('page://self/html/blog-posting-cache-control');
+        $tree = $this->flushAndValidate($logger);
+
+        $types = self::collectTypes($tree);
+        $this->assertContains('put_donut', $types);
+        $this->assertNotContains('manual_store', $types, 'a nested donut write is framework-driven');
+        $this->assertNotContains('manual_store_result', $types);
+        $this->assertNotContains('manual_invalidate', $types);
+    }
 }

@@ -27,6 +27,8 @@ declare(strict_types=1);
  *                                  command{source: RefreshInterceptor}
  *   H. Finite TTL ................ save_* with a real ttl instead of the `never`
  *                                  placeholder, under #[HttpCache]
+ *   I. Direct donut write ........ a donut entry with real TTLs, rooted in
+ *                                  manual_store{,_result}
  *
  * Together with the other three demos this reaches every context type, every
  * schema enum value and every command producer the package can emit.
@@ -174,6 +176,8 @@ F. Pool refuses invalidation                 -> invalidate{roPool: failed, etagP
 G. The other command producers               -> command{source: DonutCommandInterceptor},
                                                 command{source: RefreshInterceptor}
 H. A finite TTL under #[HttpCache]           -> save_* with ttl=10, private Cache-Control
+I. Direct putStatic(ttl, sMaxAge)            -> manual_store{,_result} rooting a donut
+                                                write with real ttl/sMaxAge
 
 === Executing... ===
 
@@ -423,11 +427,10 @@ $report($logger->flush(), 'H. finite TTL');
 // The AOP path always calls putStatic($ro, null, null), so a donut entry with a real
 // ttl/sMaxAge only ever comes from an application calling DonutRepositoryInterface
 // itself. Two things the log shows here that no other session does: the two TTLs of a
-// donut entry (template vs rendered view, the latter taking the sMaxAge), and the
-// asymmetry of manual-scope rooting — a direct put()/purge()/invalidateTags() is
-// rooted as manual_*, but a direct donut write is not: only the invalidateTags() of
-// its own pre-write cleanup gets a manual_invalidate scope, while put_donut and the
-// save_* events sit bare at the root of the session.
+// donut entry (template vs rendered view, the latter taking the sMaxAge), and a donut
+// write rooted as manual_store — a direct putStatic()/putDonut() is marked
+// application-initiated like a direct put()/purge()/invalidateTags(), so the whole
+// write, its own pre-write cleanup invalidation included, sits in one scope.
 $injector = $newInjector(null, twig: true);
 $resource = $injector->getInstance(ResourceInterface::class);
 $donutRepository = $injector->getInstance(DonutRepositoryInterface::class);
@@ -438,6 +441,6 @@ $logger->flush(); // drain the GET session: this scenario is about the direct wr
 $donutRepository->putStatic($page, ttl: 60, sMaxAge: 30);
 echo 'I  direct putStatic(ttl: 60, sMaxAge: 30) -> put_donut{ttl: 60, sMaxAge: 30}:' . PHP_EOL;
 echo '   the template entry keeps ttl=60 while the rendered view and its ETag take ttl=30,' . PHP_EOL;
-echo '   and only the write cleanup is rooted (manual_invalidate) — the saves stay root events' . PHP_EOL;
+echo '   and the whole write is rooted in manual_store{,_result} — cleanup invalidate included' . PHP_EOL;
 
 $report($logger->flush(), 'I. donut write through the repository API');
