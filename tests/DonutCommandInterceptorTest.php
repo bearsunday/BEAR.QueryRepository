@@ -73,19 +73,46 @@ class DonutCommandInterceptorTest extends TestCase
         $this->assertArrayHasKey('Age', $ro->headers);
     }
 
-    public function testCommandInterceptorRefreshOnErrorCode(): void
+    public function testCommandInterceptorSkipsRefreshOnErrorCode(): void
     {
+        // A failed write must leave the cache exactly as it was. "Still a cache hit
+        // afterwards" cannot show that on its own - a refreshed entry is a hit too, with
+        // Age: 0 - so the scope itself is read: no invalidation, no refresh, code recorded.
         $this->resource->get('page://self/html/comment');
-        $ro = $this->resource->delete('page://self/html/comment');
-        $this->assertSame(Code::BAD_REQUEST, $ro->code);
-        $ro = $this->resource->get('page://self/html/comment');
-        $this->assertArrayHasKey('Age', $ro->headers);
+        $this->flushAndValidate($this->logger); // drain the GET session
 
-        $this->resource->get('page://self/html/blog-posting?id=0');
-        $ro = $this->resource->delete('page://self/html/blog-posting', ['id' => 9999]);
+        $ro = $this->resource->delete('page://self/html/comment');
+        $tree = $this->flushAndValidate($this->logger);
+
         $this->assertSame(Code::BAD_REQUEST, $ro->code);
-        $ro = $this->resource->get('page://self/html/blog-posting?id=0');
-        $this->assertArrayHasKey('Age', $ro->headers);
+        $close = self::closeContextJsonOf($tree, 'command_result');
+        $this->assertNotNull($close, 'the command scope closes with its outcome');
+        $this->assertStringContainsString('"code":400', $close);
+        $types = self::collectTypes($tree);
+        $this->assertNotContains('invalidate', $types, 'a failed command busts nothing');
+        $this->assertNotContains('refresh_same', $types);
+        $cached = $this->resource->get('page://self/html/comment');
+        $this->assertArrayHasKey('Age', $cached->headers);
+    }
+
+    public function testDonutCommandInterceptorSkipsRefreshOnErrorCode(): void
+    {
+        // The donut sibling of the case above: BlogPosting answers 400 for any id but 0.
+        $this->resource->get('page://self/html/blog-posting?id=0');
+        $this->flushAndValidate($this->logger); // drain the GET session
+
+        $ro = $this->resource->delete('page://self/html/blog-posting', ['id' => 9999]);
+        $tree = $this->flushAndValidate($this->logger);
+
+        $this->assertSame(Code::BAD_REQUEST, $ro->code);
+        $close = self::closeContextJsonOf($tree, 'command_result');
+        $this->assertNotNull($close);
+        $this->assertStringContainsString('"code":400', $close);
+        $types = self::collectTypes($tree);
+        $this->assertNotContains('invalidate', $types, 'a failed command busts nothing');
+        $this->assertNotContains('refresh_donut', $types);
+        $cached = $this->resource->get('page://self/html/blog-posting?id=0');
+        $this->assertArrayHasKey('Age', $cached->headers);
     }
 
     public function testPutSkippedIsLoggedWhenResponseAlreadyHasEtag(): void
