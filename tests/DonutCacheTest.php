@@ -82,6 +82,43 @@ class DonutCacheTest extends TestCase
     {
         // A payload serialized before lastModified/contentHash existed: the properties
         // are uninitialized, so no Last-Modified carry-over happens.
+        $donut = $this->legacyDonut();
+
+        $this->assertNull($donut->getUnchangedLastModified('tmpl'));
+        $this->assertNull($donut->getRemainingStorageTtl());
+        $this->assertSame([], $donut->getStorageTags());
+    }
+
+    public function testLegacyDonutPayloadCanRecordStorageState(): void
+    {
+        // A warm cache surviving a deploy: a re-saved legacy entry records the lifetime and
+        // tags it is stored with, while the content state it never had stays absent.
+        $donut = $this->legacyDonut()->withStorageState(100, ['fresh-tag']);
+
+        $this->assertSame(['fresh-tag'], $donut->getStorageTags());
+        $this->assertLessThanOrEqual(100, $donut->getRemainingStorageTtl());
+        $this->assertNull($donut->getUnchangedLastModified('tmpl'));
+    }
+
+    public function testLegacyDonutPayloadCanRecordContentState(): void
+    {
+        // The same entry refreshed: the recomposed content becomes the state the next
+        // refresh compares against, and the lifetime it was stored with stays absent.
+        $ro = new class extends ResourceObject{
+        };
+        $ro->view = 'recomposed';
+        $ro->headers[Header::LAST_MODIFIED] = gmdate(Header::RFC7231, 1000);
+
+        $donut = $this->legacyDonut()->withContentState($ro);
+
+        $this->assertSame(1000, $donut->getUnchangedLastModified('recomposed'));
+        $this->assertNull($donut->getRemainingStorageTtl());
+        $this->assertSame([], $donut->getStorageTags());
+    }
+
+    /** A donut as it was serialized before the content and storage state existed */
+    private function legacyDonut(): ResourceDonut
+    {
         $class = ResourceDonut::class;
         $prop = static fn (string $name): string => "\0{$class}\0{$name}";
         $payload = sprintf(
@@ -94,11 +131,9 @@ class DonutCacheTest extends TestCase
             $prop('headers'),
         );
         $donut = unserialize($payload);
-
         $this->assertInstanceOf(ResourceDonut::class, $donut);
-        $this->assertNull($donut->getUnchangedLastModified('tmpl'));
-        $this->assertNull($donut->getRemainingStorageTtl());
-        $this->assertSame([], $donut->getStorageTags());
+
+        return $donut;
     }
 
     public function testStorageStatePreservesExplicitTtlAndTags(): void

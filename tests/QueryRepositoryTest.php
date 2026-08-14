@@ -257,4 +257,26 @@ class QueryRepositoryTest extends TestCase
         $unserilizedRepository = unserialize(serialize(unserialize(serialize($repository))));
         $this->assertInstanceOf(Repository::class, $unserilizedRepository);
     }
+
+    public function testStateWithoutStoredAtDerivesAgeFromLastModified(): void
+    {
+        // A warm cache surviving a deploy holds entries saved before storedAt existed.
+        // Their residence time is unknown, so Age falls back to the content's change time,
+        // which over-states residence rather than presenting a cache hit as fresh.
+        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module->override(new class extends AbstractModule{
+            protected function configure(): void
+            {
+                $this->bind(ResourceStorageInterface::class)->toInstance(new FakeLegacyStateStorage());
+            }
+        });
+        $repository = (new Injector($module, __DIR__ . '/tmp'))->getInstance(QueryRepositoryInterface::class);
+
+        $state = $repository->get(new Uri('app://self/user?id=1'));
+
+        $this->assertInstanceOf(ResourceState::class, $state);
+        $age = (int) $state->headers[Header::AGE];
+        $this->assertGreaterThanOrEqual(FakeLegacyStateStorage::RESIDENCE, $age);
+        $this->assertLessThanOrEqual(FakeLegacyStateStorage::RESIDENCE + 1, $age);
+    }
 }
