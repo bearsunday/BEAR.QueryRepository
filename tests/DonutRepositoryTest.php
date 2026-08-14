@@ -172,6 +172,27 @@ class DonutRepositoryTest extends TestCase
         );
     }
 
+    public function testTopLevelPutDonutRecordsTheTemplateOnlyWrite(): void
+    {
+        $injector = $this->getInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $donutRepository = $injector->getInstance(DonutRepositoryInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class);
+
+        $page = $resource->get('page://self/html/blog-posting');
+        $logger->flush(); // drain the GET session: this is about the direct write that follows
+        $donutRepository->putDonut($page, 30);
+        $tree = $this->flushAndValidate($logger);
+
+        // The un-cacheable sibling of the write above: the page is never stored as a
+        // rendered view, so the shape is the same minus the two page-level saves.
+        $this->assertSame([], $tree['events'] ?? [], 'nothing is left bare at the session root');
+        $this->assertSame(
+            [['put_donut', 'pre_write_cleanup', 'invalidate', 'save_donut']],
+            self::scopeEventTypeSequences($tree),
+        );
+    }
+
     public function testPutStaticInsideResourceGetOpensNoManualScope(): void
     {
         $injector = $this->getInjector();
