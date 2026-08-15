@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Log\Context\InvalidateContext;
 use BEAR\QueryRepository\Log\Context\ManualInvalidateContext;
+use BEAR\QueryRepository\Log\Context\ManualInvalidateResultContext;
 use BEAR\QueryRepository\Log\Context\SaveDonutContext;
 use BEAR\QueryRepository\Log\Context\SaveDonutViewContext;
 use BEAR\QueryRepository\Log\Context\SaveEtagContext;
@@ -262,8 +263,13 @@ final class ResourceStorage implements ResourceStorageInterface
     private function logInvalidation(InvalidateContext $result, array $tags): void
     {
         if ($this->logger instanceof TopLevelAwareInterface && $this->logger->isTopLevel()) {
+            // The detail stays on the event so every invalidation - manual or framework-
+            // driven - is findable among the events (the save_*/invalidate tag correlation
+            // the reading rules teach); the close is the one-word verdict.
             $openId = $this->logger->open(new ManualInvalidateContext($tags));
-            $this->logger->close($result, $openId);
+            $this->logger->event($result);
+            $invalidated = $result->roPoolInvalidated && $result->etagPoolInvalidated && $result->cdnStatus !== 'failed';
+            $this->logger->close(new ManualInvalidateResultContext($invalidated), $openId);
 
             return;
         }

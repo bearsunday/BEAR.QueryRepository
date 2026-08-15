@@ -203,13 +203,20 @@ class SemanticLogSchemaTest extends TestCase
     public function testTopLevelInvalidateIsRootedInManualInvalidateScope(): void
     {
         // A direct invalidateTags() runs outside any AOP scope: it is rooted in a
-        // manual_invalidate scope whose close carries the invalidation outcome.
+        // manual_invalidate scope. The detail stays on the invalidate EVENT - so the
+        // save_*/invalidate tag correlation the reading rules teach also finds manual
+        // invalidations - and the close is the one-word verdict, like its siblings.
         $this->storage->invalidateTags(['_test_tag_']);
         $tree = $this->flushAndValidate($this->logger);
 
         $types = self::collectTypes($tree);
         $this->assertContains('manual_invalidate', $types, 'a manual_invalidate scope roots the direct invalidation');
-        $this->assertContains('invalidate', $types, 'the scope close records the invalidation outcome');
+        $invalidate = self::eventContextJsonOf($tree, 'invalidate');
+        $this->assertNotNull($invalidate, 'the invalidation detail is an event, findable by tag correlation');
+        $this->assertStringContainsString('"_test_tag_"', $invalidate);
+        $close = self::closeContextJsonOf($tree, 'manual_invalidate_result');
+        $this->assertNotNull($close, 'the scope closes with the verdict');
+        $this->assertStringContainsString('"result":"invalidated"', $close);
     }
 
     public function testTopLevelPurgeIsRootedInManualPurgeScope(): void
@@ -253,6 +260,38 @@ class SemanticLogSchemaTest extends TestCase
         $this->assertNotNull($invalidate);
         $this->assertStringContainsString('"cdn":"failed"', $invalidate);
         $close = self::closeContextJsonOf($tree, 'manual_purge_result');
+        $this->assertNotNull($close);
+        $this->assertStringContainsString('"result":"failed"', $close);
+    }
+
+    public function testTopLevelInvalidateVerdictFailsWhenThePurgerFails(): void
+    {
+        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module->override(new class extends AbstractModule {
+            protected function configure(): void
+            {
+                $this->bind(PurgerInterface::class)->toInstance(new FakeThrowingPurger());
+            }
+        });
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        $storage = $injector->getInstance(ResourceStorageInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class);
+
+        // Local pools dropped the tags but the CDN purge failed: fail-closed, and the
+        // verdict must say failed - "invalidated" while the CDN still serves the content
+        // would be the close contradicting its own nested event.
+        try {
+            $storage->invalidateTags(['_test_tag_']);
+            $this->fail('Expected the purger failure to propagate (fail-closed)');
+        } catch (RuntimeException $e) {
+            $this->assertStringContainsString('purge failed', $e->getMessage());
+        }
+
+        $tree = $this->flushAndValidate($logger);
+        $invalidate = self::eventContextJsonOf($tree, 'invalidate');
+        $this->assertNotNull($invalidate);
+        $this->assertStringContainsString('"cdn":"failed"', $invalidate);
+        $close = self::closeContextJsonOf($tree, 'manual_invalidate_result');
         $this->assertNotNull($close);
         $this->assertStringContainsString('"result":"failed"', $close);
     }
