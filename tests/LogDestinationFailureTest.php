@@ -35,6 +35,8 @@ use function rmdir;
 use function sys_get_temp_dir;
 use function unlink;
 
+use const DIRECTORY_SEPARATOR;
+
 /**
  * A destination that cannot be written must not change how the request ended
  *
@@ -116,6 +118,10 @@ class LogDestinationFailureTest extends TestCase
 
     public function testASessionThatCannotBeWrittenIsReported(): void
     {
+        if (DIRECTORY_SEPARATOR === '\\') {
+            $this->markTestSkipped('chmod cannot revoke write access on Windows, so the failure cannot be staged there');
+        }
+
         mkdir($this->dir, 0700, true);
         chmod($this->dir, 0500); // readable, not writable: the directory exists, the write cannot
         $writer = new LogFileWriter($this->dir);
@@ -149,13 +155,23 @@ class LogDestinationFailureTest extends TestCase
         $this->assertStringContainsString('cannot open', $diagnostic);
     }
 
-    public function testAStreamTargetGetsItsParentDirectoryAndRestrictedMode(): void
+    public function testAStreamTargetGetsItsParentDirectory(): void
     {
         $writer = new LogStreamWriter($this->dir . '/nested/log.jsonl');
 
         $writer->write($this->logger->flush());
 
         $this->assertFileExists($this->dir . '/nested/log.jsonl');
+    }
+
+    public function testAStreamTargetIsRestrictedToItsOwner(): void
+    {
+        if (DIRECTORY_SEPARATOR === '\\') {
+            $this->markTestSkipped('POSIX file modes: Windows expresses this through ACLs, which this writer does not claim to set');
+        }
+
+        (new LogStreamWriter($this->dir . '/nested/log.jsonl'))->write($this->logger->flush());
+
         $this->assertSame(0700, fileperms($this->dir . '/nested') & 0777);
         $this->assertSame(0600, fileperms($this->dir . '/nested/log.jsonl') & 0777);
     }

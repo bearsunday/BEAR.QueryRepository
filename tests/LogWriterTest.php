@@ -39,6 +39,7 @@ use function sys_get_temp_dir;
 use function trim;
 use function unlink;
 
+use const DIRECTORY_SEPARATOR;
 use const PHP_EOL;
 
 /** Where a kept session ends up, and what never reaches the destination */
@@ -114,6 +115,10 @@ class LogWriterTest extends TestCase
 
     public function testTheFileWriterRestrictsWhatItCreates(): void
     {
+        if (DIRECTORY_SEPARATOR === '\\') {
+            $this->markTestSkipped('POSIX file modes: Windows expresses this through ACLs, which this writer does not claim to set');
+        }
+
         // A session carries request URIs with their query strings, client validators and
         // exception text; on a shared host 0644 hands that to every local user
         (new LogFileWriter($this->dir))->write($this->commandSession());
