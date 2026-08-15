@@ -27,22 +27,37 @@ final class ResourceBodyEvaluator
 
         /** @psalm-suppress MixedAssignment $item */
         foreach ($body as &$item) {
-            if ($item instanceof RequestInterface) {
-                $item = $this->materialize($item); // already a private copy
-            } elseif ($item instanceof ResourceObject) {
-                // A ResourceObject sitting in the body directly is part of the live response
-                // graph (clone is shallow, so a materialized parent shares it too). The
-                // rewrite below replaces its embedded requests, so it needs its own copy -
-                // otherwise the store mutates a graph the renderer and the transfer still read.
-                $item = clone $item;
+            $item = $this->copyForStore($item);
+            if (! $item instanceof ResourceObject) {
+                continue;
             }
 
-            if ($item instanceof ResourceObject) {
-                $item->body = $this($item->body);
-            }
+            // Rewrite the copy, never the live object: its own body may embed more requests
+            $item->body = $this($item->body);
         }
 
         return $body;
+    }
+
+    /**
+     * Return the item as a copy the store may rewrite
+     *
+     * The rewrite below replaces embedded requests with their results, so whatever it
+     * writes into must not be shared with the live response graph the renderer and the
+     * transfer still read. `clone` is shallow, so every level needs its own copy: a
+     * materialized parent shares the objects sitting inside its body with the memo.
+     */
+    private function copyForStore(mixed $item): mixed
+    {
+        if ($item instanceof RequestInterface) {
+            return $this->materialize($item); // the memoized run, copied
+        }
+
+        if ($item instanceof ResourceObject) {
+            return clone $item; // a live object placed in the body directly
+        }
+
+        return $item; // scalars, arrays and anything else pass through untouched
     }
 
     /**
