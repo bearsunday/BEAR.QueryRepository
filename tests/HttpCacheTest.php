@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Log\Context\CacheErrorContext;
 use BEAR\QueryRepository\Log\Context\CacheHitContext;
 use BEAR\QueryRepository\Log\Context\CacheMissContext;
 use BEAR\QueryRepository\Log\Context\ConditionalRequestContext;
 use BEAR\Resource\ResourceInterface;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
+use RuntimeException;
+use Symfony\Component\Cache\Adapter\TagAwareAdapter;
 
 use function assert;
 
@@ -89,6 +92,37 @@ class HttpCacheTest extends TestCase
             assert($hit instanceof CacheHitContext);
             $this->assertSame('etag', $hit->layer, $class);
             $miss = $logger->closes[1];
+            assert($miss instanceof CacheMissContext);
+            $this->assertSame('etag', $miss->layer, $class);
+        }
+    }
+
+    public function testConditionalRequestScopeClosesWhenTheLookupThrows(): void
+    {
+        // The ETag pool is down: the exception keeps its pre-existing path, but the scope
+        // must not leak - it records the outage and closes as the established idiom reads
+        // it (cache_error + cache_miss = degraded, lone miss = cold). An unclosed scope
+        // would surface as an unclosed_at_flush diagnostic instead of a record.
+        $storage = ResourceStorageTest::getResourceStorageInstance(etagPool: new TagAwareAdapter(new FakeErrorCache()));
+
+        foreach ([HttpCache::class, CliHttpCache::class] as $class) {
+            $logger = new RecordingSemanticLogger();
+            $httpCache = new $class($storage, $logger);
+
+            try {
+                $httpCache->isNotModified(['HTTP_IF_NONE_MATCH' => '"any"', 'REQUEST_URI' => '/user?id=1']);
+                $this->fail($class . ': expected the pool outage to surface');
+            } catch (RuntimeException $e) {
+                $this->assertStringContainsString('cache server down', $e->getMessage(), $class);
+            }
+
+            $this->assertCount(1, $logger->opens, $class);
+            $this->assertCount(1, $logger->closes, $class . ': the scope is closed despite the throw');
+            $error = $logger->events[0];
+            assert($error instanceof CacheErrorContext);
+            $this->assertSame('read', $error->operation, $class);
+            $this->assertSame('/user?id=1', $error->uri, $class);
+            $miss = $logger->closes[0];
             assert($miss instanceof CacheMissContext);
             $this->assertSame('etag', $miss->layer, $class);
         }
