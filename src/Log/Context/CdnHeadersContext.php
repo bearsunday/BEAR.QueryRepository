@@ -18,7 +18,7 @@ use Koriym\SemanticLogger\AbstractContext;
  * package's setters manage that is present on the response (CDN-Cache-Control,
  * Surrogate-Control, Akamai-Cache-Control, Surrogate-Key, Edge-Cache-Tag), so the
  * flavor differences stay visible - Akamai, for one, renames Surrogate-Key to
- * Edge-Cache-Tag. `surrogateKeys` is the split key list from whichever key header is
+ * Edge-Cache-Tag. `surrogateKeys` is the split, merged key list from every key header
  * present, the list a purge's tags must reach to drop this response at the edge.
  * A state-served hit replays the stored headers unchanged and emits no new event.
  */
