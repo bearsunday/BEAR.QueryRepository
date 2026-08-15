@@ -13,11 +13,13 @@ use BEAR\QueryRepository\Log\LogFileWriter;
 use BEAR\QueryRepository\Log\LogStreamWriter;
 use BEAR\QueryRepository\Log\LogWriterInterface;
 use BEAR\QueryRepository\Log\PolicyLogWriter;
+use BEAR\QueryRepository\Log\PsrLogWriter;
 use BEAR\QueryRepository\Log\SafeSemanticLogger;
 use Koriym\SemanticLogger\LogJson;
 use Koriym\SemanticLogger\SemanticLogger;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\LogLevel;
 use Ray\Di\Injector;
 
 use function explode;
@@ -99,6 +101,38 @@ class LogWriterTest extends TestCase
         $this->assertIsArray($sessions);
         $this->assertCount(1, $sessions, 'the oldest session is dropped');
         $this->assertFileExists($this->dir . '/' . LogFileWriter::LATEST, 'latest.json is not a session file and survives');
+    }
+
+    public function testThePsrAdapterPassesTheTreeAsContextNotAsAMessage(): void
+    {
+        // A tree flattened into the message would depend on the host's formatter to stay readable
+        $psr = new FakePsrLogger();
+        (new PsrLogWriter($psr))->write($this->commandSession());
+
+        $this->assertCount(1, $psr->records);
+        $this->assertSame(LogLevel::INFO, $psr->records[0]['level']);
+        $this->assertSame('query_repository_log', $psr->records[0]['message'], 'the message is a stable key, not the payload');
+        $tree = $psr->records[0]['context']['log'] ?? null;
+        $this->assertIsArray($tree);
+        $this->assertArrayHasKey('open', $tree, 'the whole tree survives as structured context');
+    }
+
+    public function testThePsrAdapterIgnoresAnEmptySession(): void
+    {
+        $psr = new FakePsrLogger();
+        (new PsrLogWriter($psr))->write(new LogJson('', [], []));
+
+        $this->assertSame([], $psr->records);
+    }
+
+    public function testThePsrAdapterLogsAtTheLevelTheHostChose(): void
+    {
+        // Severity is the host's call: the decision to keep this session was already taken on content
+        $psr = new FakePsrLogger();
+        (new PsrLogWriter($psr, LogLevel::WARNING))->write($this->commandSession());
+
+        $this->assertCount(1, $psr->records);
+        $this->assertSame(LogLevel::WARNING, $psr->records[0]['level']);
     }
 
     public function testTheProductionModuleWritesThroughItsPolicy(): void
