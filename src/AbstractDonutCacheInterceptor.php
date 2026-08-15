@@ -74,9 +74,7 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
                 return $ro;
             }
 
-            return static::IS_ENTIRE_CONTENT_CACHEABLE ? // phpcs:ignore - not "self"
-                $this->donutRepository->putStatic($ro, null, null) :
-                $this->donutRepository->putDonut($ro, null);
+            return $this->putRecorded($ro);
         } finally {
             // Psalm mis-tracks the $hit flag mutated inside try when read from finally.
             /** @psalm-suppress RedundantCondition, TypeDoesNotContainType */
@@ -84,6 +82,28 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
                 $hit ? new CacheHitContext('donut-view') : new CacheMissContext('donut-view'),
                 $openId,
             );
+        }
+    }
+
+    /**
+     * Run the donut write, recording a failure in-band before it propagates
+     *
+     * Without the event the scope shows a put_donut with no saves and no reason,
+     * indistinguishable from an abort - the read side and CacheInterceptor's write side
+     * already record theirs. The exception still propagates: whether a donut write should
+     * degrade to a warning like a plain #[Cacheable] write is a behavior change this
+     * observability rebuild does not make.
+     */
+    private function putRecorded(ResourceObject $ro): ResourceObject
+    {
+        try {
+            return static::IS_ENTIRE_CONTENT_CACHEABLE ? // phpcs:ignore - not "self"
+                $this->donutRepository->putStatic($ro, null, null) :
+                $this->donutRepository->putDonut($ro, null);
+        } catch (Throwable $e) {
+            $this->logger->event(new CacheErrorContext((string) $ro->uri, 'write', $e->getMessage(), $e::class));
+
+            throw $e;
         }
     }
 

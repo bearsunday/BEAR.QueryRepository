@@ -13,6 +13,7 @@ use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
 use FakeVendor\HelloWorld\Resource\Page\Index;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
+use Madapaja\TwigModule\TwigModule;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
@@ -22,6 +23,7 @@ use Symfony\Component\Cache\Adapter\TagAwareAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 
 use function assert;
+use function dirname;
 use function restore_error_handler;
 use function set_error_handler;
 
@@ -201,5 +203,49 @@ class GracefulLoggingTest extends TestCase
         $close = self::closeContextJsonOf($tree, 'manual_store_result');
         $this->assertNotNull($close, 'the manual write scope closes even though the write threw');
         $this->assertStringContainsString('"result":"failed"', $close);
+    }
+
+    public function testDonutWriteFailureIsRecordedBeforeItPropagates(): void
+    {
+        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
+        $module->override(new class extends AbstractModule {
+            protected function configure(): void
+            {
+                // Reads work (the GET must reach the write), only stores throw.
+                $pool = new FakeRefusingPool(new TagAwareAdapter(new ArrayAdapter()), refuseSave: false, throwOnSave: true);
+                $this->bind(TagAwareAdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->toInstance($pool);
+            }
+        });
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class);
+
+        // A donut write meeting a pool outage propagates (whether it should degrade like a
+        // plain #[Cacheable] write is a behavior change this rebuild does not make) - but it
+        // must be recorded in-band first. Without the event the scope shows a put_donut with
+        // no saves and no reason: indistinguishable from an abort.
+        set_error_handler(static fn (): bool => true); // the embedded #[Cacheable] comment degrades with a warning
+        try {
+            $resource->get('page://self/html/blog-posting');
+            $this->fail('expected the pool outage to surface from the donut write');
+        } catch (RuntimeException $e) {
+            $this->assertStringContainsString('cache server down', $e->getMessage());
+        } finally {
+            restore_error_handler();
+        }
+
+        $tree = $this->flushAndValidate($logger);
+        // The embedded #[Cacheable] comment records its own degraded write failure, so the
+        // assertion must name the page URI: the donut write's record, not the first match.
+        $json = json_encode($tree, JSON_UNESCAPED_SLASHES);
+        $this->assertIsString($json);
+        $this->assertStringContainsString(
+            '"uri":"page://self/html/blog-posting","operation":"write","error":"cache server down","exceptionClass":"RuntimeException"',
+            $json,
+            'the failed donut write is recorded in-band, on its own URI',
+        );
+        $close = self::closeContextJsonOf($tree, 'cache_miss');
+        $this->assertNotNull($close, 'the get scope still closes');
     }
 }
