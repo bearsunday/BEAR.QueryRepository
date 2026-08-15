@@ -37,6 +37,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         private CdnCacheControlHeaderSetterInterface $cdnCacheControlHeaderSetter,
         private SemanticLoggerInterface $logger,
         private DonutRendererInterface $renderer,
+        private UriTagInterface $uriTag = new UriTag(),
     ) {
     }
 
@@ -143,7 +144,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $this->logCdnHeaders($ro);
         // delete: cleanup for the rewrite below, recorded as such at the source
         $this->logger->event(new PreWriteCleanupContext((string) $ro->uri));
-        $this->resourceStorage->invalidateTags([(new UriTag())($ro->uri)]);
+        $this->resourceStorage->invalidateTags([($this->uriTag)($ro->uri)]);
         // save content cache and donut; the donut records the content state so that a
         // later refresh can keep Last-Modified when the recomposed content is identical
         $this->saveView($ro, $sMaxAge);
@@ -161,7 +162,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $this->logCdnHeaders($ro);
         // delete: cleanup for the rewrite below, recorded as such at the source
         $this->logger->event(new PreWriteCleanupContext((string) $ro->uri));
-        $this->resourceStorage->invalidateTags([(new UriTag())($ro->uri)]);
+        $this->resourceStorage->invalidateTags([($this->uriTag)($ro->uri)]);
         // save donut
         $this->resourceStorage->saveDonut($ro->uri, $donut, $donutTtl, $keyArrays);
     }

@@ -251,7 +251,9 @@ All dependency tests verify both resource cache and ETag invalidation:
   the core logger records the violation as `semantic_logger_error` diagnostics
   (`close_id_mismatch`, `unclosed_at_flush`) in-band and keeps going, so the
   interleaved requests' trees are preserved but cross-nested (the misuse is
-  visible, not silent). Cache behavior is unaffected (logging is a side-channel
+  visible, not silent), and a rejected out-of-order close leaves that request's
+  scope unclosed at flush — concurrent requests need logger isolation to keep
+  their records complete. Cache behavior is unaffected (logging is a side-channel
   and the core never throws) and every `flush()` resets the session (see
   `SafeSemanticLoggerTest`). Making the logger request/coroutine-scoped
   (so concurrent sessions cannot cross-nest or drop) is the robust fix and is

@@ -39,7 +39,7 @@ class ResourceStorageTest extends TestCase
     ): ResourceStorage {
         $tagAwareAdapter = new TagAwareAdapter(new FilesystemAdapter('', 0, __DIR__ . '/tmp'));
         $provider = static function (TagAwareAdapterInterface $pool): ProviderInterface {
-            return new class ($pool) implements ProviderInterface{
+            return new class ($pool) implements ProviderInterface {
                 public function __construct(private readonly TagAwareAdapterInterface $pool)
                 {
                 }
@@ -204,7 +204,7 @@ class ResourceStorageTest extends TestCase
                 return false;
             }
         });
-        $poolProvider = new class ($failingPool) implements ProviderInterface{
+        $poolProvider = new class ($failingPool) implements ProviderInterface {
             public function __construct(private readonly TagAwareAdapter $tagAwareAdapter)
             {
             }
@@ -246,7 +246,7 @@ class ResourceStorageTest extends TestCase
                 return false;
             }
         });
-        $poolProvider = new class ($failingPool) implements ProviderInterface{
+        $poolProvider = new class ($failingPool) implements ProviderInterface {
             public function __construct(private readonly TagAwareAdapter $tagAwareAdapter)
             {
             }

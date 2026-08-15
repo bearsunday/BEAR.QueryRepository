@@ -53,7 +53,7 @@ function validateLog(LogJson $log): void
 /**
  * Count every entry in the log tree: open scopes, their closes and events, recursively
  *
- * @param array<string, mixed> $node
+ * @param array<array-key, mixed> $node
  */
 function countLogEntries(array $node): int
 {
