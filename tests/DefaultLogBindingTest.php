@@ -34,6 +34,16 @@ class DefaultLogBindingTest extends TestCase
         $this->assertInstanceOf(NullSemanticLogger::class, $this->injector->getInstance(SemanticLoggerInterface::class));
     }
 
+    public function testTheDefaultLoggerIsShared(): void
+    {
+        // Without singleton scope every injection point gets its own instance, and the assertion
+        // below would inspect a logger the resource never used - passing for the wrong reason
+        $this->assertSame(
+            $this->injector->getInstance(SemanticLoggerInterface::class),
+            $this->injector->getInstance(SemanticLoggerInterface::class),
+        );
+    }
+
     public function testACachedRequestStillWorksAndLeavesNoSession(): void
     {
         $resource = $this->injector->getInstance(ResourceInterface::class);

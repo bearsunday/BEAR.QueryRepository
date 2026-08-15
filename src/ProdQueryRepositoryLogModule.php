@@ -25,8 +25,10 @@ use Ray\Di\Scope;
  * more accurate at it. What metrics cannot answer is which tags a purge reached, because a
  * cache write that never happened leaves nothing behind but this log.
  *
- * Requires a request-per-process host (PHP-FPM, CLI). On Swoole or RoadRunner the shutdown
- * flush is the wrong boundary and warns instead of recording; see issue #179.
+ * Requires a host where one process serves one request (PHP-FPM, a CLI script). Where the sink
+ * can prove otherwise - a RoadRunner worker, or inside a Swoole coroutine - it refuses to arm,
+ * says so through `error_log()` and recording stays off, because nothing would drain the session;
+ * see issue #179. A long-lived CLI consumer is the same hazard and is not detectable.
  *
  * An app that wants to force full recording for one request implements
  * RetentionPolicyInterface and overrides the binding.

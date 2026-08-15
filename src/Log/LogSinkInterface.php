@@ -20,8 +20,15 @@ use Koriym\SemanticLogger\SemanticLoggerInterface;
  */
 interface LogSinkInterface
 {
-    /** Register the flush for the end of this request; calling it twice in a process is a no-op */
-    public function arm(SemanticLoggerInterface $logger): void;
+    /**
+     * Register the flush for the end of this request
+     *
+     * Returns false when the sink refuses this host, which means nothing will ever drain the
+     * session: the caller must then stop recording rather than accumulate a log no one reads.
+     * Returns true when a flush is registered, including when an earlier call in the same
+     * process already registered it - arming twice registers once.
+     */
+    public function arm(SemanticLoggerInterface $logger): bool;
 
     /** Flush the session and hand it to the writer - what the armed callback does */
     public function flush(SemanticLoggerInterface $logger): void;

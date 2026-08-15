@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository\Log;
 
 use Koriym\SemanticLogger\AbstractContext;
 use Koriym\SemanticLogger\LogJson;
+use Koriym\SemanticLogger\NullSemanticLogger;
 use Koriym\SemanticLogger\SemanticLogger;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
@@ -42,7 +43,26 @@ final class SafeSemanticLogger implements SemanticLoggerInterface, TopLevelAware
         private SemanticLoggerInterface $logger,
         private LogSinkInterface|null $sink = null,
     ) {
-        $this->sink?->arm($this);
+        $this->armOrFallSilent();
+    }
+
+    /**
+     * Record only while something will drain the session
+     *
+     * A sink that refuses this host (a concurrent runtime, where shutdown arrives once per
+     * worker) leaves no drain at all, and an undrained session grows for the life of the
+     * process. Recording into it would trade a log nobody reads for memory, so the delegate
+     * becomes the no-op logger instead. No sink at all is a different case: the caller flushes
+     * it (tests, demos, a host with its own lifecycle), so recording stays on.
+     */
+    private function armOrFallSilent(): void
+    {
+        if ($this->sink === null || $this->sink->arm($this)) {
+            return;
+        }
+
+        $this->logger = new NullSemanticLogger();
+        $this->sink = null;
     }
 
     /**
@@ -112,6 +132,6 @@ final class SafeSemanticLogger implements SemanticLoggerInterface, TopLevelAware
         $this->logger = new SemanticLogger();
         $this->depth = 0;
         $this->sink = $sink;
-        $this->sink?->arm($this);
+        $this->armOrFallSilent();
     }
 }

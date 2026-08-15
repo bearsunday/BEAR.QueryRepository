@@ -19,6 +19,7 @@ use BEAR\QueryRepository\Log\Context\SaveEtagContext;
 use BEAR\QueryRepository\Log\Context\SaveValueContext;
 use BEAR\QueryRepository\Log\KeepMutationsAndFailures;
 use BEAR\QueryRepository\Log\SafeSemanticLogger;
+use Koriym\SemanticLogger\EventEntry;
 use Koriym\SemanticLogger\LogJson;
 use Koriym\SemanticLogger\SemanticLogger;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
@@ -140,6 +141,15 @@ class RetentionPolicyTest extends TestCase
         $this->logger->event(new PutSkippedContext('page://self/html/blog-posting', 'not-cacheable'));
         $this->logger->close(new CacheMissContext('view'), $open);
         $this->assertFalse($this->policy->keeps($this->logger->flush()), 'a resource that is simply not cacheable is not an incident');
+    }
+
+    public function testAFailedOutcomeIsFoundWhereTheRootKeepsItAsAList(): void
+    {
+        // `close` is one entry on a scope but a list at the root (LogJson::toArray() collects
+        // orphan closes there), so a policy that assumes the scope shape reads nothing
+        $close = new EventEntry('manual_store_result_1', 'manual_store_result', 'https://example.com/s.json', ['result' => 'failed']);
+
+        $this->assertTrue($this->policy->keeps(new LogJson('', [], [$close])));
     }
 
     public function testSamplingKeepsAnOtherwiseDroppedSession(): void

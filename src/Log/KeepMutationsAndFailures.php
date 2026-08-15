@@ -98,9 +98,24 @@ final class KeepMutationsAndFailures implements RetentionPolicyInterface
             }
         }
 
-        $close = $node['close'] ?? null;
+        return $this->closeIsNotable($node['close'] ?? null);
+    }
 
-        return is_array($close) && $this->isNotable($close);
+    /** @psalm-suppress MixedAssignment reading a decoded tree: see the class note */
+    private function closeIsNotable(mixed $close): bool
+    {
+        if (! is_array($close)) {
+            return false;
+        }
+
+        // `close` is one entry on a scope, but a list of orphan closes at the root
+        foreach (isset($close['type']) ? [$close] : $close as $entry) {
+            if (is_array($entry) && $this->isNotable($entry)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

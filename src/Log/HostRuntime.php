@@ -18,9 +18,12 @@ use function getenv;
  * into one shared logger.
  *
  * Only mode is consulted, never capability: ext-swoole is loaded on plenty of machines that
- * serve over FPM, so a loaded extension proves nothing. That leaves one blind spot - a Swoole
- * host whose logger is built at worker boot, outside any coroutine. Such a host binds its own
- * implementation of this interface (or leaves the log module out) rather than being guessed at.
+ * serve over FPM, so a loaded extension proves nothing. The two checks below are the ones that
+ * can be made without guessing - they are not an exhaustive account of concurrent hosts. A
+ * Swoole worker whose logger is built at boot (outside any coroutine), FrankenPHP worker mode,
+ * ReactPHP, Amp and a long-lived CLI consumer all keep one process across many requests and are
+ * not detected. Such a host binds its own implementation of this interface, or leaves the log
+ * module out, rather than being guessed at.
  */
 final class HostRuntime implements ConcurrentRuntimeInterface
 {
@@ -38,7 +41,7 @@ final class HostRuntime implements ConcurrentRuntimeInterface
     #[Override]
     public function isConcurrent(): bool
     {
-        if (getenv('RR_MODE') !== false) {
+        if (getenv('RR_MODE', true) !== false) {
             return true; // a RoadRunner worker
         }
 

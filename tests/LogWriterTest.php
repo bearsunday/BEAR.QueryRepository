@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Exception\UnsupportedLogStream;
 use BEAR\QueryRepository\Log\Context\CacheHitContext;
 use BEAR\QueryRepository\Log\Context\CommandContext;
 use BEAR\QueryRepository\Log\Context\CommandResultContext;
@@ -22,14 +23,17 @@ use PHPUnit\Framework\TestCase;
 use Psr\Log\LogLevel;
 use Ray\Di\Injector;
 
+use function bin2hex;
 use function explode;
 use function file_get_contents;
-use function getmypid;
+use function fileperms;
 use function glob;
 use function is_dir;
 use function json_decode;
 use function mkdir;
+use function random_bytes;
 use function rmdir;
+use function rsort;
 use function substr_count;
 use function sys_get_temp_dir;
 use function trim;
@@ -46,7 +50,7 @@ class LogWriterTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->dir = sys_get_temp_dir() . '/qr-writer-test-' . getmypid();
+        $this->dir = sys_get_temp_dir() . '/qr-writer-test-' . bin2hex(random_bytes(6));
         $this->file = $this->dir . '/log.jsonl';
         $this->logger = new SafeSemanticLogger(new SemanticLogger());
         $this->clean();
@@ -90,7 +94,7 @@ class LogWriterTest extends TestCase
         $this->assertFileExists($this->dir . '/' . LogFileWriter::LATEST, 'a mutation does');
     }
 
-    public function testTheFileWriterKeepsOnlyTheRequestedNumberOfSessions(): void
+    public function testTheFileWriterKeepsTheNewestSessionsAndDropsTheRest(): void
     {
         $writer = new LogFileWriter($this->dir, 1);
 
@@ -100,7 +104,31 @@ class LogWriterTest extends TestCase
         $sessions = glob($this->dir . '/20*.json');
         $this->assertIsArray($sessions);
         $this->assertCount(1, $sessions, 'the oldest session is dropped');
+        // Names must order chronologically inside a second, or pruning keeps the wrong one
+        $all = glob($this->dir . '/*.json');
+        $this->assertIsArray($all);
+        rsort($all);
+        $this->assertSame($sessions[0], $all[1], 'the survivor is the newest session, not the oldest');
         $this->assertFileExists($this->dir . '/' . LogFileWriter::LATEST, 'latest.json is not a session file and survives');
+    }
+
+    public function testTheFileWriterRestrictsWhatItCreates(): void
+    {
+        // A session carries request URIs with their query strings, client validators and
+        // exception text; on a shared host 0644 hands that to every local user
+        (new LogFileWriter($this->dir))->write($this->commandSession());
+
+        $this->assertSame(0700, fileperms($this->dir) & 0777);
+        $this->assertSame(0600, fileperms($this->dir . '/' . LogFileWriter::LATEST) & 0777);
+    }
+
+    public function testAStreamTargetThatIsNeitherAPathNorAStandardStreamIsRejected(): void
+    {
+        // `php://filter/write=…/resource=…` would truncate an unrelated file, and `ftp://user:pass@host`
+        // would send every session over the network with credentials in a module argument
+        $this->expectException(UnsupportedLogStream::class);
+
+        new LogStreamWriter('php://filter/write=convert.base64-encode/resource=' . $this->file);
     }
 
     public function testThePsrAdapterPassesTheTreeAsContextNotAsAMessage(): void

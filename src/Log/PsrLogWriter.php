@@ -21,6 +21,13 @@ use Psr\Log\LogLevel;
  * Severity is configuration, not derivation. Whether this session was worth keeping was already
  * decided by the retention policy, on content; re-deciding it here as a level would give the
  * handler a second, invisible filter that can drop what the policy chose to keep.
+ *
+ * This is the one writer that breaks LogWriterInterface's serializable rule: it holds the host's
+ * logger, and a Monolog instance carrying closures (processors, a formatter, an exception
+ * handler) cannot be serialized - which would make the whole compiled app graph unserializable,
+ * since SafeSemanticLogger carries the sink and the sink carries the writer. Use it where the
+ * injector is not serialized, or where the bound logger is itself serializable; a compiled app
+ * that serializes its graph should write with LogFileWriter or LogStreamWriter and ship the file.
  */
 final class PsrLogWriter implements LogWriterInterface
 {
