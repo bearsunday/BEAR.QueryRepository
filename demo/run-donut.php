@@ -19,7 +19,6 @@ use BEAR\QueryRepository\FakeEtagPoolModule;
 use BEAR\QueryRepository\ModuleFactory;
 use BEAR\QueryRepository\QueryRepositoryInterface;
 use BEAR\QueryRepository\ResourceStorageInterface;
-use BEAR\QueryRepository\UriTag;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
@@ -53,6 +52,11 @@ This demo executes the following scenarios:
    - Donut is found, but needs refresh
    - Only Comment is regenerated, donut structure reused
 
+Every donut write and refresh also records what it told the CDN (cdn_headers):
+the literal CDN-Cache-Control the response carries - including the setter's
+default of 10 that no put_donut field reveals - and the Surrogate-Key list a
+purge's tags must reach to drop the page at the edge.
+
 === Executing... ===
 
 SCENARIOS;
@@ -76,12 +80,12 @@ $resource->get('page://self/html/blog-posting');     // 4. Access after invalida
 $log = $logger->flush();
 
 // Human/AI-readable tree (open = embed scope, close = hit/miss, events = saves/invalidations)
-echo "=== Cache Log Tree ===" . PHP_EOL;
+echo '=== Cache Log Tree ===' . PHP_EOL;
 echo (new TreeRenderer(new RenderConfig(true, 0.0, 1000, true)))->render($log) . PHP_EOL;
 
 // Machine-readable JSON conforming to the published schemas (validated below
 // against the local schema files; also: `vendor/bin/stree <file>`)
-echo PHP_EOL . "=== Cache Log JSON ===" . PHP_EOL;
+echo PHP_EOL . '=== Cache Log JSON ===' . PHP_EOL;
 echo json_encode($log, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL;
 
 // The demo verifies itself: the flushed log must validate offline against

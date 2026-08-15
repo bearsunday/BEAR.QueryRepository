@@ -1,0 +1,30 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cdn_headers.json",
+    "title": "cdn_headers",
+    "description": "Event: the CDN-facing headers a donut write or refresh put on the response, read back after they are final so the log carries the effect, not the request. `headers` holds the literal name => value pairs of every CDN-facing header this package's setters manage that is present on the response (CDN-Cache-Control, Surrogate-Control, Akamai-Cache-Control, Surrogate-Key, Edge-Cache-Tag) — including the bound setter's default when no sMaxAge was requested. No lifetime header present means the response gives the CDN no lifetime, which is how an un-cacheable donut page (putDonut) stays off the CDN. `surrogateKeys` is the split key list from whichever key header is present (Surrogate-Key, or Edge-Cache-Tag under Akamai): the list an invalidation's tags must reach to drop this response at the edge. A state-served hit replays the stored headers unchanged and emits no new event.",
+    "type": "object",
+    "required": [
+        "uri",
+        "headers",
+        "surrogateKeys"
+    ],
+    "properties": {
+        "uri": {
+            "type": "string"
+        },
+        "headers": {
+            "type": "object",
+            "additionalProperties": {
+                "type": "string"
+            }
+        },
+        "surrogateKeys": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        }
+    },
+    "additionalProperties": false
+}

@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Cdn\AkamaiCacheControlHeaderSetter;
+use BEAR\QueryRepository\Cdn\FastlyCacheControlHeaderSetter;
 use BEAR\QueryRepository\Log\Context\CacheHitContext;
 use BEAR\QueryRepository\Log\Context\CacheMissContext;
+use BEAR\QueryRepository\Log\Context\CdnHeadersContext;
 use BEAR\QueryRepository\Log\Context\ManualStoreContext;
 use BEAR\QueryRepository\Log\Context\ManualStoreResultContext;
 use BEAR\QueryRepository\Log\Context\PreWriteCleanupContext;
@@ -137,6 +140,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $donut = ResourceDonut::create($ro, $this->renderer, $keys, $sMaxAge, true)->withStorageState($ttl, $headerKeys);
         $donut->render($ro, $this->renderer);
         $this->setHeaders($keys, $ro, $sMaxAge);
+        $this->logCdnHeaders($ro);
         // delete: cleanup for the rewrite below, recorded as such at the source
         $this->logger->event(new PreWriteCleanupContext((string) $ro->uri));
         $this->resourceStorage->invalidateTags([(new UriTag())($ro->uri)]);
@@ -154,6 +158,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $donut = ResourceDonut::create($ro, $this->renderer, $keys, $donutTtl, false)->withStorageState($donutTtl, $keyArrays);
         $donut->render($ro, $this->renderer);
         $keys->setSurrogateHeader($ro);
+        $this->logCdnHeaders($ro);
         // delete: cleanup for the rewrite below, recorded as such at the source
         $this->logger->event(new PreWriteCleanupContext((string) $ro->uri));
         $this->resourceStorage->invalidateTags([(new UriTag())($ro->uri)]);
@@ -196,6 +201,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
             // cached and the page is never stored as a rendered view, so there is no
             // page-level entry to save after the refresh. Record the skip — without it
             // the scope shows a refresh with no saves and no reason.
+            $this->logCdnHeaders($ro);
             $this->logger->event(new PutSkippedContext((string) $ro->uri, 'not-cacheable'));
 
             return $ro;
@@ -206,6 +212,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $lastModified = $donut->getUnchangedLastModified((string) $ro->view);
         ($this->headerSetter)($ro, $donut->ttl, null, $lastModified);
         ($this->cdnCacheControlHeaderSetter)($ro, $donut->ttl);
+        $this->logCdnHeaders($ro);
         if ($lastModified === null) {
             $this->recordContentState($ro, $donut);
         }
@@ -213,6 +220,53 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $this->saveView($ro, $donut->ttl);
 
         return $ro;
+    }
+
+    /**
+     * The CDN-facing headers this package's setters manage, lifetime and purge keys
+     *
+     * A custom CdnCacheControlHeaderSetterInterface using its own header name is outside
+     * this list and therefore outside the log's knowledge.
+     */
+    private const CDN_FACING_HEADERS = [
+        Header::CDN_CACHE_CONTROL,
+        FastlyCacheControlHeaderSetter::CDN_CACHE_CONTROL_HEADER,
+        AkamaiCacheControlHeaderSetter::CDN_CACHE_CONTROL_HEADER,
+        ...self::CDN_KEY_HEADERS,
+    ];
+
+    /** The headers a CDN indexes responses under for key-based purging */
+    private const CDN_KEY_HEADERS = [
+        Header::SURROGATE_KEY,
+        AkamaiCacheControlHeaderSetter::PURGE_KEYS,
+    ];
+
+    /**
+     * Record the CDN-facing headers the response ended up with
+     *
+     * Read back from the response after the setters ran, so the log carries the effect:
+     * the bound setter's default when no sMaxAge was requested, the resource's own value
+     * when it set one, and no lifetime header when nothing gives the CDN one (the
+     * un-cacheable donut page, or the Null setter). A state-served hit replays these
+     * stored headers, so only writes and refreshes emit the event.
+     */
+    private function logCdnHeaders(ResourceObject $ro): void
+    {
+        $headers = [];
+        foreach (self::CDN_FACING_HEADERS as $name) {
+            if (isset($ro->headers[$name])) {
+                $headers[$name] = $ro->headers[$name];
+            }
+        }
+
+        $surrogateKeys = [];
+        foreach (self::CDN_KEY_HEADERS as $name) {
+            if (isset($ro->headers[$name])) {
+                $surrogateKeys = [...$surrogateKeys, ...explode(' ', $ro->headers[$name])];
+            }
+        }
+
+        $this->logger->event(new CdnHeadersContext((string) $ro->uri, $headers, $surrogateKeys));
     }
 
     /**

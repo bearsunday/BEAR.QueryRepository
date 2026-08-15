@@ -182,7 +182,7 @@ class DonutRepositoryTest extends TestCase
         // no longer roots a manual_invalidate of its own — belongs to that one scope.
         $this->assertSame([], $tree['events'] ?? [], 'nothing is left bare at the session root');
         $this->assertSame(
-            [['put_donut', 'pre_write_cleanup', 'invalidate', 'save_etag', 'save_donut_view', 'save_donut']],
+            [['put_donut', 'cdn_headers', 'pre_write_cleanup', 'invalidate', 'save_etag', 'save_donut_view', 'save_donut']],
             self::scopeEventTypeSequences($tree),
         );
     }
@@ -203,7 +203,7 @@ class DonutRepositoryTest extends TestCase
         // rendered view, so the shape is the same minus the two page-level saves.
         $this->assertSame([], $tree['events'] ?? [], 'nothing is left bare at the session root');
         $this->assertSame(
-            [['put_donut', 'pre_write_cleanup', 'invalidate', 'save_donut']],
+            [['put_donut', 'cdn_headers', 'pre_write_cleanup', 'invalidate', 'save_donut']],
             self::scopeEventTypeSequences($tree),
         );
     }

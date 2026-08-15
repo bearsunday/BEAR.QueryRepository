@@ -86,6 +86,14 @@ class DonutCacheInterceptorTest extends TestCase
         $this->assertNotNull($putSkipped, 'the missing page-level save after refresh is explained');
         $this->assertStringContainsString('"reason":"not-cacheable"', $putSkipped);
 
+        // The same fact CDN-side: the response carries purge keys but no lifetime header,
+        // so the CDN serves this page live. Before cdn_headers the log could not tell
+        // this apart from a page the CDN caches for the setter's default.
+        $cdnHeaders = self::eventContextJsonOf($tree, 'cdn_headers');
+        $this->assertNotNull($cdnHeaders, 'the refresh records what the CDN was told');
+        $this->assertStringNotContainsString('Cache-Control', $cdnHeaders, 'no lifetime header: the CDN must not cache the page');
+        $this->assertStringContainsString('"Surrogate-Key"', $cdnHeaders);
+
         $this->assertArrayNotHasKey('Age', $blogPosting->headers);
         $this->assertArrayNotHasKey(Header::CDN_CACHE_CONTROL, $blogPosting->headers);
     }

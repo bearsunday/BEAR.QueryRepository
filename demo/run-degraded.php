@@ -41,15 +41,15 @@ declare(strict_types=1);
  * logger diagnostics.
  */
 
+use BEAR\QueryRepository\DonutRepositoryInterface;
 use BEAR\QueryRepository\FakeErrorCache;
 use BEAR\QueryRepository\FakeEtagPoolModule;
-use BEAR\QueryRepository\DonutRepositoryInterface;
+use BEAR\QueryRepository\FakeRefusingPool;
 use BEAR\QueryRepository\FakeThrowingPurger;
 use BEAR\QueryRepository\ModuleFactory;
 use BEAR\QueryRepository\PurgerInterface;
 use BEAR\QueryRepository\QueryRepositoryInterface;
 use BEAR\QueryRepository\ResourceStorageInterface;
-use BEAR\QueryRepository\FakeRefusingPool;
 use BEAR\RepositoryModule\Annotation\EtagPool;
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\Resource\ResourceInterface;
