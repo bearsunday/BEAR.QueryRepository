@@ -24,10 +24,12 @@ use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 
 use function assert;
 use function dirname;
+use function json_encode;
 use function restore_error_handler;
 use function set_error_handler;
 
 use const E_USER_WARNING;
+use const JSON_UNESCAPED_SLASHES;
 
 /**
  * Logging must never break cache behavior
