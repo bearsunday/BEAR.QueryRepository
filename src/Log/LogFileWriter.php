@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository\Log;
 
 use Koriym\SemanticLogger\LogJson;
-
 use Override;
 
 use function array_slice;

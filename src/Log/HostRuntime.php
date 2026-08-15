@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository\Log;
 
-use Swoole\Coroutine;
-
 use Override;
 
 use function class_exists;
@@ -26,6 +24,17 @@ use function getenv;
  */
 final class HostRuntime implements ConcurrentRuntimeInterface
 {
+    /**
+     * Named as a string, not imported: ext-swoole is optional, and a resolved class reference
+     * would make it a dependency of static analysis on machines that will never run it.
+     */
+    private const SWOOLE_COROUTINE = 'Swoole\Coroutine';
+
+    /**
+     * @psalm-suppress TypeDoesNotContainType ext-swoole is optional: psalm resolves neither the
+     *                 class nor its method on a machine that will never load it
+     * @psalm-suppress MixedMethodCall
+     */
     #[Override]
     public function isConcurrent(): bool
     {
@@ -33,6 +42,8 @@ final class HostRuntime implements ConcurrentRuntimeInterface
             return true; // a RoadRunner worker
         }
 
-        return class_exists(Coroutine::class) && Coroutine::getCid() > 0; // inside a Swoole coroutine
+        $coroutine = self::SWOOLE_COROUTINE;
+
+        return class_exists($coroutine) && $coroutine::getCid() > 0; // inside a Swoole coroutine
     }
 }
