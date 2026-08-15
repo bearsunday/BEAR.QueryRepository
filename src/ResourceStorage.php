@@ -392,7 +392,7 @@ final class ResourceStorage implements ResourceStorageInterface
     {
         $ttl = $ttl === null ? null : max(0, $ttl);
         $tags = $surrogateKeys !== '' ? explode(' ', $surrogateKeys) : [];
-        $tags[] = (new UriTag())($uri);
+        $tags[] = ($this->uriTag)($uri);
         /** @var list<string> $uniqueTags */
         $uniqueTags = array_values(array_unique($tags));
         // The header value is a quoted entity-tag; the pool key is the bare opaque-tag
