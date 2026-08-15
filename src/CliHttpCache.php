@@ -4,7 +4,12 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Log\Context\CacheHitContext;
+use BEAR\QueryRepository\Log\Context\CacheMissContext;
+use BEAR\QueryRepository\Log\Context\ConditionalRequestContext;
 use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
+use Koriym\SemanticLogger\NullSemanticLogger;
+use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 
 use function assert;
@@ -20,11 +25,16 @@ final readonly class CliHttpCache implements HttpCacheInterface
 {
     public function __construct(
         private ResourceStorageInterface $storage,
+        private SemanticLoggerInterface $logger = new NullSemanticLogger(),
     ) {
     }
 
     /**
      * {@inheritDoc}
+     *
+     * The answer is recorded as its own conditional_request scope, exactly as the
+     * HTTP-facing HttpCache records it: a hit is the 304 decision. No validator
+     * presents nothing, so nothing is recorded.
      */
     #[Override]
     public function isNotModified(array $server): bool
@@ -34,7 +44,11 @@ final readonly class CliHttpCache implements HttpCacheInterface
             return false;
         }
 
-        return $this->storage->hasEtag($etag);
+        $openId = $this->logger->open(new ConditionalRequestContext($etag));
+        $hit = $this->storage->hasEtag($etag);
+        $this->logger->close($hit ? new CacheHitContext('etag') : new CacheMissContext('etag'), $openId);
+
+        return $hit;
     }
 
     /**

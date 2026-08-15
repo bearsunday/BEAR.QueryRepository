@@ -38,6 +38,16 @@ echoRo($resource->uri('app://self/user')(['id' => 1])); // return cache
 
 echoRo($resource->uri('app://self/user')(['id' => 1])); // return cache
 
+// A CDN (or any client) revalidating with the validator it holds: the answer is the
+// 304 decision, served from the ETag pool without running the resource - and the log
+// records it as its own conditional_request scope closing cache_hit{layer: etag}.
+// A validator the pool does not hold reads as a miss: the full response is built.
+$httpCache = $injector->getInstance(BEAR\Sunday\Extension\Transfer\HttpCacheInterface::class);
+$user = $resource->uri('app://self/user')(['id' => 1]);
+$etag = $user->headers['ETag'];
+echo 'conditional GET with the held validator   -> ' . ($httpCache->isNotModified(['HTTP_IF_NONE_MATCH' => $etag]) ? '304 (etag hit)' : '200') . PHP_EOL;
+echo 'conditional GET with a stale validator    -> ' . ($httpCache->isNotModified(['HTTP_IF_NONE_MATCH' => '"stale"']) ? '304' : '200 (etag miss)') . PHP_EOL;
+
 // The semantic cache log of the session above: an open/event/close tree
 // (GET scopes, the onPatch command scope, saves and hits) plus the
 // schema-conforming JSON. This is the machine-verifiable view of the
