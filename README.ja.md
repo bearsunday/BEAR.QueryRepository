@@ -22,5 +22,5 @@
 
 詳細は [BEAR.Sunday キャッシュマニュアル](http://bearsunday.github.io/manuals/1.0/ja/cache.html) をご覧ください。
 
-- [キャッシュログはなぜ全てを記録するのか](docs/why-semantic-cache-log.md)（英語） — セマンティックキャッシュログの設計根拠
+- [QueryRepository ログはなぜ全てを記録するのか](docs/why-the-log-records-everything.md)（英語） — 設計根拠、コスト実測、既定オフの判断
 - [このログは何を証明し、何を証明しないか](docs/what-the-log-proves.md)（英語） — ログが答える問い、その答えを正直に保つ機構、そして宣言された境界

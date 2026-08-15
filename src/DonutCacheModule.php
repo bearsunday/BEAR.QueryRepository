@@ -4,11 +4,9 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\QueryRepository\Log\SafeSemanticLoggerProvider;
 use BEAR\RepositoryModule\Annotation\CacheableResponse;
 use BEAR\RepositoryModule\Annotation\DonutCache;
 use BEAR\RepositoryModule\Annotation\RefreshCache;
-use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 use Ray\Di\AbstractModule;
 use Ray\Di\Scope;
@@ -43,9 +41,6 @@ final class DonutCacheModule extends AbstractModule
         $this->bind(HeaderSetter::class);
         $this->bind(CdnCacheControlHeaderSetterInterface::class)->to(CdnCacheControlHeaderSetter::class);
         $this->bind(DonutRepositoryInterface::class)->to(DonutRepository::class)->in(Scope::SINGLETON);
-        // Shared semantic logging session: open() at an interceptor and event() at storage
-        // resolve to the same SafeSemanticLogger singleton (see SafeSemanticLoggerProvider).
-        $this->bind(SemanticLoggerInterface::class)->toProvider(SafeSemanticLoggerProvider::class)->in(Scope::SINGLETON);
         // BC: the legacy flat logger interface is kept bound (deprecated). Internal cache code
         // now logs through SemanticLoggerInterface, so this instance receives no internal events.
         /** @psalm-suppress DeprecatedClass, DeprecatedInterface */

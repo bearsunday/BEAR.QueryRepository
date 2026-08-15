@@ -10,6 +10,8 @@ use Koriym\SemanticLogger\SemanticLogger;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 
+use function assert;
+
 /**
  * Depth-tracking decorator over the total (never-throwing) SemanticLogger
  *
@@ -29,14 +31,18 @@ use Override;
  *    core itself (semantic-logger 1.0).
  *  - Serialization boundary: a compiled app serializes the injector between
  *    requests; session state never crosses that boundary — unserialize()
- *    restarts with a fresh session.
+ *    restarts with a fresh session. It is also the only hook that runs on every
+ *    request, so the flush sink (when one is bound) is armed from there.
  */
 final class SafeSemanticLogger implements SemanticLoggerInterface, TopLevelAwareInterface
 {
     private int $depth = 0;
 
-    public function __construct(private SemanticLoggerInterface $logger)
-    {
+    public function __construct(
+        private SemanticLoggerInterface $logger,
+        private LogSinkInterface|null $sink = null,
+    ) {
+        $this->sink?->arm($this);
     }
 
     /**
@@ -86,24 +92,26 @@ final class SafeSemanticLogger implements SemanticLoggerInterface, TopLevelAware
     }
 
     /**
-     * Serialize without session state (no live log carried across serialization)
+     * Carry the sink, never the session
      *
-     * @return array<string, mixed>
+     * The live log stops at this boundary; the flush destination does not, because the
+     * unserialized logger has to arm the next request without reaching the injector.
+     *
+     * @return array{sink: LogSinkInterface|null}
      */
     public function __serialize(): array
     {
-        return [];
+        return ['sink' => $this->sink];
     }
 
-    /**
-     * Session state is never carried across serialization, so the payload is ignored.
-     *
-     * @param array<string, mixed> $data
-     *
-     * @SuppressWarnings("PHPMD.UnusedFormalParameter")
-     */
+    /** @param array{sink?: mixed} $data */
     public function __unserialize(array $data): void
     {
+        $sink = $data['sink'] ?? null;
+        assert($sink === null || $sink instanceof LogSinkInterface);
         $this->logger = new SemanticLogger();
+        $this->depth = 0;
+        $this->sink = $sink;
+        $this->sink?->arm($this);
     }
 }

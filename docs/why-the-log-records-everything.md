@@ -1,4 +1,4 @@
-# Why the Cache Log Records Everything
+# Why the QueryRepository Log Records Everything
 
 BEAR.QueryRepository ships with cache logging that is unusually thorough: an
 open/event/close tree, two dozen typed context classes, one JSON Schema per
@@ -108,27 +108,50 @@ Ground truth plus published schemas turn cache debugging from folklore into
 verification. The reading rules an agent needs ship with the package
 (`docs/llms.txt`, `docs/llms-full.txt`).
 
-## What it costs — and the off switch
+## What it costs — and why it is off by default
 
-The write path pays a few small object allocations per cache boundary, and
-the session accumulates in memory until flushed. The side-channel stays a
-side-channel by construction: since koriym/semantic-logger 0.9 the logger is
-total — it never throws, and records protocol misuse as in-band
-`semantic_logger_error` diagnostics — so a logging failure can never break a
-cache read or write, and it cannot hide either.
+Measured on a three-level embedded page, 2000 cache hits per run:
 
-Flushing is the host's responsibility; the framework only accumulates. Under
-PHP-FPM an unflushed session is simply discarded with the request. Under
-long-running runtimes, flush per request — `flush()` never throws and always
-resets — or turn the whole thing off with one binding:
+| | per request | accumulated per request, unflushed |
+|---|---|---|
+| `NullSemanticLogger` | 0.018 ms | 4 B |
+| `SafeSemanticLogger` | 0.023 ms | 1409 B |
+
+CPU is not the question — 5 µs is a fraction of one cache round-trip. The
+accumulation is: 1.4 KB per request is free under PHP-FPM, where the session
+dies with the process, and unbounded in a worker that never flushes.
+
+The other measurement decides the rest. Counting the four demos' own output,
+a healthy session contains **zero** failure entries out of 28 to 95 — and even
+`run-degraded.php`, built entirely out of failures, is 10% failure and 90%
+scaffolding. Recording everything, always, would trade the whole benefit for
+volume.
+
+So the default is silence, exactly as it is for the cache engine
+(`NullAdapter`): nothing recorded, nothing accumulated, no flush owed. An app
+turns the log on for development, where it is read:
 
 ```php
-$this->bind(SemanticLoggerInterface::class)->to(NullSemanticLogger::class);
+$this->install(new DevQueryRepositoryLogModule($appDir . '/var/log/query-repository', module: new QueryRepositoryModule()));
 ```
 
-That line is the honest summary of the trade: complete transparency by
-default, zero-cost silence by choice — and never a third state where the log
-half-exists and misleads.
+and, in production, keeps only the sessions that can explain an incident —
+mutations, failures and a sample:
+
+```php
+$this->install(new ProdQueryRepositoryLogModule('php://stdout', sampleRate: 1000, module: new QueryRepositoryModule()));
+```
+
+Flushing comes with the module, not with a line in the bootstrap: it registers
+a shutdown-time flush, which is the only boundary that survives every way a
+request ends — after output, after a 304's early `exit()`, after an uncaught
+error.
+
+The side-channel stays a side-channel by construction: since
+koriym/semantic-logger 0.9 the logger is total — it never throws, and records
+protocol misuse as in-band `semantic_logger_error` diagnostics — so a logging
+failure can never break a cache read or write, and it cannot hide either.
+There is no third state where the log half-exists and misleads.
 
 ## Pointers
 

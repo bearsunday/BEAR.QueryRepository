@@ -76,6 +76,6 @@ is removed or its meaning inverted (verified by mutation testing).
 ## Reading pointers
 
 - Vocabulary, one row per context: [llms-full.txt](https://bearsunday.github.io/BEAR.QueryRepository/llms-full.txt) / [tests/CACHE_DEPENDENCY_TESTS.md](../tests/CACHE_DEPENDENCY_TESTS.md)
-- Design rationale: [why-semantic-cache-log.md](why-semantic-cache-log.md)
+- Design rationale: [why-the-log-records-everything.md](why-the-log-records-everything.md)
 - Schemas: [docs/schemas/context/](schemas/context/)
 - Rendering: `vendor/bin/stree` (the demos show the tree form)

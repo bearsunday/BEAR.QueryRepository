@@ -17,13 +17,20 @@ use Ray\Di\ProviderInterface;
  * concrete SemanticLogger as its delegate). Bind this in Singleton scope so open() from
  * an interceptor and event() from storage share one session.
  *
+ * The sink is required rather than optional: this provider is bound only by a log module,
+ * and a module that turns recording on also decides where the session goes.
+ *
  * @implements ProviderInterface<SemanticLoggerInterface>
  */
 final class SafeSemanticLoggerProvider implements ProviderInterface
 {
+    public function __construct(private LogSinkInterface $sink)
+    {
+    }
+
     #[Override]
     public function get(): SemanticLoggerInterface
     {
-        return new SafeSemanticLogger(new SemanticLogger());
+        return new SafeSemanticLogger(new SemanticLogger(), $this->sink);
     }
 }

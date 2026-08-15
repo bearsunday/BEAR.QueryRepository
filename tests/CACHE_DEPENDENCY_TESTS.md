@@ -242,22 +242,23 @@ All dependency tests verify both resource cache and ETag invalidation:
 
 ## Known Limitations (Deliberate Scope)
 
-- **Request-end flush / concurrent long-running runtimes.** The logger is an injector
-  singleton with a stack-based session, and (as before this migration) this package does
-  not flush/reset per request. Safe operation therefore requires recreating the
-  injector/logger per request OR flushing at each request boundary; under
-  Swoole/RoadRunner a host must flush at the boundary itself. Under *concurrent*
-  coroutines sharing the one singleton, an interleaved open/close violates LIFO —
-  the core logger records the violation as `semantic_logger_error` diagnostics
-  (`close_id_mismatch`, `unclosed_at_flush`) in-band and keeps going, so the
-  interleaved requests' trees are preserved but cross-nested (the misuse is
-  visible, not silent), and a rejected out-of-order close leaves that request's
-  scope unclosed at flush — concurrent requests need logger isolation to keep
-  their records complete. Cache behavior is unaffected (logging is a side-channel
-  and the core never throws) and every `flush()` resets the session (see
-  `SafeSemanticLoggerTest`). Making the logger request/coroutine-scoped
-  (so concurrent sessions cannot cross-nest or drop) is the robust fix and is
-  intentionally deferred to the host flush-lifecycle work.
+- **Concurrent long-running runtimes.** Flushing itself is no longer the app's problem: a log
+  module binds `LogSinkInterface` → `ShutdownFlush`, which arms once per process and fires at
+  shutdown — after output, after a 304's early `exit()`, after an uncaught error
+  (`LogSinkTest` drives both endings through a real process). That is the request's end under
+  PHP-FPM and the CLI only. The logger remains an injector singleton with a stack-based
+  session, so under *concurrent* coroutines sharing it an interleaved open/close violates
+  LIFO — the core logger records the violation as `semantic_logger_error` diagnostics
+  (`close_id_mismatch`, `unclosed_at_flush`) in-band and keeps going, so the interleaved
+  requests' trees are preserved but cross-nested (the misuse is visible, not silent), and a
+  rejected out-of-order close leaves that request's scope unclosed at flush. `ShutdownFlush`
+  therefore refuses to arm and warns on a runtime it can prove is concurrent (`RR_MODE` set,
+  or inside a Swoole coroutine); such a host binds a request-scoped sink or leaves the log
+  module out. Cache behavior is unaffected either way (logging is a side-channel and the core
+  never throws) and every `flush()` resets the session (see `SafeSemanticLoggerTest`). Making
+  the logger request/coroutine-scoped is the robust fix and is deferred to #179 — note that
+  isolation and flush timing are two separate seams: the sink decides *when*, a coroutine-local
+  logger would decide *which session* an event joins.
 - **Donut-view hit vs. rebuild.** The donut GET scope closes as `cache_hit` (layer
   `donut-view`) whenever a ResourceObject is served — including when it was rebuilt
   from a cached donut template (the close reports only the final layer's outcome,
