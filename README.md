@@ -23,3 +23,4 @@
 - [BEAR.Sunday cache manual](http://bearsunday.github.io/manuals/1.0/ja/cache.html)
 - [LLM Documentation](https://bearsunday.github.io/BEAR.QueryRepository/llms-full.txt)
 - [Why the Cache Log Records Everything](docs/why-semantic-cache-log.md) — design rationale for the semantic cache log
+- [What the Cache Log Proves — and What It Does Not](docs/what-the-log-proves.md) — the questions the log answers, the mechanisms that keep the answers honest, and the declared boundaries

@@ -136,3 +136,4 @@ half-exists and misleads.
 - Per-context schemas: [docs/schemas/context/](schemas/context/)
 - Self-verifying demos: `demo/run-dependency.php`, `demo/run-donut.php`, `demo/run.php`, and `demo/run-degraded.php` (the failure vocabulary: skipped stores, refused writes, a downed cache, a failed CDN purge)
 - Test-side view: [tests/CACHE_DEPENDENCY_TESTS.md](../tests/CACHE_DEPENDENCY_TESTS.md)
+- What the log proves and what it does not: [docs/what-the-log-proves.md](what-the-log-proves.md)
