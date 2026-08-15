@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\RepositoryModule\Annotation\Purge;
+use BEAR\RepositoryModule\Annotation\Refresh;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use Symfony\Component\Process\Process;
@@ -152,6 +154,17 @@ class DemoLogCoverageTest extends TestCase
         }
     }
 
+    public function testEveryBuiltInCommandAnnotationIsDemonstrated(): void
+    {
+        // command.annotations[].class is a free string (no enum), so the enum guard cannot
+        // see it: a producer can satisfy the source guard without ever demonstrating
+        // #[Purge], whose log shape (purge-only, no re-population) differs from #[Refresh].
+        $classes = self::$observed['command']['annotations.class'] ?? [];
+        foreach ([Refresh::class, Purge::class] as $annotation) {
+            $this->assertContains($annotation, $classes, sprintf('no demo runs a command carrying #[%s]', $annotation));
+        }
+    }
+
     /**
      * The flushed sessions a demo printed, parsed from its `Cache Log JSON` blocks
      *
@@ -224,6 +237,19 @@ class DemoLogCoverageTest extends TestCase
             }
 
             self::$observed[$type][(string) $field][] = $value;
+        }
+
+        // annotations is a list of objects, invisible to the scalar walk above: record the
+        // classes so the free-string field has a closure guard of its own
+        $annotations = $context['annotations'] ?? null;
+        if (! is_array($annotations)) {
+            return;
+        }
+
+        foreach ($annotations as $annotation) {
+            if (is_array($annotation) && is_string($annotation['class'] ?? null)) {
+                self::$observed[$type]['annotations.class'][] = $annotation['class'];
+            }
         }
     }
 

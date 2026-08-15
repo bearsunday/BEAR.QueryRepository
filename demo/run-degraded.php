@@ -42,6 +42,7 @@ declare(strict_types=1);
  */
 
 use BEAR\QueryRepository\DonutRepositoryInterface;
+use BEAR\QueryRepository\Cdn\AkamaiModule;
 use BEAR\QueryRepository\FakeErrorCache;
 use BEAR\QueryRepository\FakeEtagPoolModule;
 use BEAR\QueryRepository\FakeRefusingPool;
@@ -279,6 +280,24 @@ try {
 
 $report($logger->flush(), 'C2. CDN purge failed (fail-closed)');
 
+// The third CDN answer the log can record: a flavor module renames the headers. Akamai's
+// setter answers max-age=31536000 when no sMaxAge was requested and moves the purge keys
+// from Surrogate-Key to Edge-Cache-Tag — cdn_headers records both verbatim, so the log
+// shows what THIS CDN was told, not what the generic default would have been.
+$injector = $newInjector(new class extends AbstractModule {
+    protected function configure(): void
+    {
+        $this->install(new AkamaiModule());
+    }
+}, twig: true);
+$resource = $injector->getInstance(ResourceInterface::class);
+$logger = $injector->getInstance(SemanticLoggerInterface::class);
+
+$page = $resource->get('page://self/html/blog-posting');
+echo sprintf('C3 Akamai flavor -> cdn_headers: Akamai-Cache-Control=%s, keys in Edge-Cache-Tag', $page->headers['Akamai-Cache-Control'] ?? '(none)') . PHP_EOL;
+
+$report($logger->flush(), 'C3. Akamai CDN headers');
+
 // ------------------------------------------------------- D. pool refuses writes
 $injector = $newInjector($refusingModule(refuseSave: true, refuseInvalidation: false));
 $resource = $injector->getInstance(ResourceInterface::class);
@@ -336,6 +355,23 @@ $resource->put('app://self/refresh-src', ['id' => 1]);
 echo 'G2 PUT a non-cacheable #[Refresh] resource -> command{source: RefreshInterceptor}' . PHP_EOL;
 
 $report($logger->flush(), 'G2. refresh command');
+
+$injector = $newInjector();
+$resource = $injector->getInstance(ResourceInterface::class);
+$repository = $injector->getInstance(QueryRepositoryInterface::class);
+$logger = $injector->getInstance(SemanticLoggerInterface::class);
+
+// PurgeSrc is NOT #[Cacheable] and carries two #[Purge] attributes: purge-only commands,
+// no re-population. The command scope records the annotations verbatim - the only
+// producer path where Annotation\Purge appears - and level-two's purge cascades to the
+// level-one page that embeds it.
+$resource->get('page://self/dep/level-one'); // caches level-one -> level-two -> level-three
+$logger->flush(); // drain the GET session: this scenario is about the purging write
+$resource->put('page://self/dep/purge-src', ['id' => '1']);
+$levelTwoGone = $repository->get(new Uri('page://self/dep/level-two')) === null;
+echo sprintf('G3 PUT a #[Purge]-only resource -> command.annotations lists Annotation\Purge x2, level-two purged: %s', $levelTwoGone ? 'true' : 'false') . PHP_EOL;
+
+$report($logger->flush(), 'G3. purge-only command');
 
 // ---------------------------------------------------------------- H. finite TTL
 $injector = $newInjector();
