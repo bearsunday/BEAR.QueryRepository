@@ -14,7 +14,6 @@ use PHPUnit\Framework\TestCase;
 use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
 
-use function assert;
 use function dirname;
 
 class CdnCacheControlHeaderTest extends TestCase
@@ -32,7 +31,10 @@ class CdnCacheControlHeaderTest extends TestCase
         $this->assertSame($ro->headers[Header::CDN_CACHE_CONTROL], 'max-age=10 stale-while-revalidate=10');
         $repository = $injector->getInstance(QueryRepositoryInterface::class);
         $logger = $injector->getInstance(SemanticLoggerInterface::class);
-        assert($repository->purge(new Uri('page://self/html/comment')));
+        // Not inside assert(): with zend.assertions=-1 the call would never run and the
+        // GET below would be served from the page state, silently skipping the refresh path.
+        $purged = $repository->purge(new Uri('page://self/html/comment'));
+        $this->assertTrue($purged);
         $logger->flush(); // drain the put and the purge: the tree below is the refresh alone
 
         $donutRo = $resource->get('page://self/html/blog-posting');

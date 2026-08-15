@@ -150,4 +150,31 @@ class EmbeddedChildMaterializationTest extends TestCase
         $this->assertSame(['n' => 1], $child->body);
         $this->assertSame(1, $request->invoked);
     }
+
+    /**
+     * A ResourceObject sitting in the body is copied before its own body is rewritten
+     *
+     * `clone` is shallow, so a materialized parent shares the objects inside its body with
+     * the memoized original. Rewriting those in place would mutate the live graph one level
+     * below the copy boundary - the failure the boundary exists to prevent.
+     */
+    public function testResourceObjectInTheBodyIsCopiedBeforeItIsRewritten(): void
+    {
+        $nested = new FakeEmbeddedRequest();
+        $live = new class extends ResourceObject{
+        };
+        $live->uri = new Uri('page://self/live'); // ResourceObject::__clone() clones the uri
+        $live->body = ['nested' => $nested];
+
+        $body = (new ResourceBodyEvaluator())(['child' => $live]);
+
+        assert(is_array($body));
+        $stored = $body['child'];
+        $this->assertInstanceOf(ResourceObject::class, $stored);
+        $this->assertNotSame($live, $stored, 'the store works on its own copy');
+        assert(is_array($stored->body));
+        $this->assertInstanceOf(ResourceObject::class, $stored->body['nested'], 'the copy holds the materialized result');
+        assert(is_array($live->body));
+        $this->assertSame($nested, $live->body['nested'], 'the live object still holds its request');
+    }
 }

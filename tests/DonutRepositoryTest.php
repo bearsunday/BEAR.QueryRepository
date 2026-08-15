@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Cdn\AkamaiCacheControlHeaderSetter;
+use BEAR\QueryRepository\Cdn\FastlyCacheControlHeaderSetter;
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
@@ -25,10 +27,7 @@ use function dirname;
 use function glob;
 use function is_string;
 use function is_subclass_of;
-use function str_contains;
 use function time;
-
-use const GLOB_BRACE;
 
 class DonutRepositoryTest extends TestCase
 {
@@ -363,14 +362,22 @@ class DonutRepositoryTest extends TestCase
         $this->assertIsArray($known);
 
         $setters = [];
-        foreach ((array) glob(dirname(__DIR__) . '/src/{,Cdn/}*.php', GLOB_BRACE) as $file) {
-            $class = 'BEAR\QueryRepository\\' . (str_contains((string) $file, '/Cdn/') ? 'Cdn\\' : '') . basename((string) $file, '.php');
-            if (class_exists($class) && is_subclass_of($class, CdnCacheControlHeaderSetterInterface::class)) {
-                $setters[] = $class;
+        // Two explicit globs, not GLOB_BRACE: a brace pattern that does not expand returns
+        // fewer files without an error, which would silently skip the Cdn/ half.
+        foreach (['' => '/src/*.php', 'Cdn\\' => '/src/Cdn/*.php'] as $prefix => $pattern) {
+            foreach ((array) glob(dirname(__DIR__) . $pattern) as $file) {
+                $class = 'BEAR\QueryRepository\\' . $prefix . basename((string) $file, '.php');
+                if (class_exists($class) && is_subclass_of($class, CdnCacheControlHeaderSetterInterface::class)) {
+                    $setters[] = $class;
+                }
             }
         }
 
+        // Both halves must be proven scanned: the default setter lives in src/, the flavors
+        // in src/Cdn/ - asserting only the former would let the Cdn/ half find nothing.
         $this->assertContains(CdnCacheControlHeaderSetter::class, $setters, 'discovery sees the default setter');
+        $this->assertContains(FastlyCacheControlHeaderSetter::class, $setters, 'discovery sees the Cdn/ directory');
+        $this->assertContains(AkamaiCacheControlHeaderSetter::class, $setters, 'discovery sees the Cdn/ directory');
         foreach ($setters as $setter) {
             foreach ((new ReflectionClass($setter))->getConstants() as $name => $value) {
                 if (! is_string($value)) {

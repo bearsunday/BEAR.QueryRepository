@@ -243,7 +243,7 @@ class QueryRepositoryTest extends TestCase
     {
         $namespace = 'FakeVendor\HelloWorld';
         $module = new QueryRepositoryModule(new ResourceModule($namespace));
-        $module->override(new class extends AbstractModule{
+        $module->override(new class extends AbstractModule {
             protected function configure(): void
             {
                 $this->bind(CacheItemPoolInterface::class)->annotatedWith(Shared::class)->to(FilesystemAdapter::class);
@@ -264,7 +264,7 @@ class QueryRepositoryTest extends TestCase
         // Their residence time is unknown, so Age falls back to the content's change time,
         // which over-states residence rather than presenting a cache hit as fresh.
         $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
-        $module->override(new class extends AbstractModule{
+        $module->override(new class extends AbstractModule {
             protected function configure(): void
             {
                 $this->bind(ResourceStorageInterface::class)->toInstance(new FakeLegacyStateStorage());

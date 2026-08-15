@@ -28,7 +28,13 @@ final class ResourceBodyEvaluator
         /** @psalm-suppress MixedAssignment $item */
         foreach ($body as &$item) {
             if ($item instanceof RequestInterface) {
-                $item = $this->materialize($item);
+                $item = $this->materialize($item); // already a private copy
+            } elseif ($item instanceof ResourceObject) {
+                // A ResourceObject sitting in the body directly is part of the live response
+                // graph (clone is shallow, so a materialized parent shares it too). The
+                // rewrite below replaces its embedded requests, so it needs its own copy -
+                // otherwise the store mutates a graph the renderer and the transfer still read.
+                $item = clone $item;
             }
 
             if ($item instanceof ResourceObject) {

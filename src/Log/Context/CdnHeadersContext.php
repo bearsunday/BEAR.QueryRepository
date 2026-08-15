@@ -12,7 +12,8 @@ use Koriym\SemanticLogger\AbstractContext;
  * Read back from the response after the headers are final, so the log carries the
  * effect, not the request: the bound setter's default when the caller asked for no
  * sMaxAge, the resource's own value when it set one, and nothing when nothing gives
- * the CDN a lifetime - which is how an un-cacheable donut page stays off the CDN.
+ * the CDN a lifetime - which is how an un-cacheable donut page is meant to stay off
+ * the CDN; what the CDN then does is outside this record.
  *
  * `headers` holds the literal name => value pairs of every CDN-facing header this
  * package's setters manage that is present on the response (CDN-Cache-Control,

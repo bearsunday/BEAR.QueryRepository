@@ -96,7 +96,12 @@ class DonutCacheTest extends TestCase
         $donut = $this->legacyDonut()->withStorageState(100, ['fresh-tag']);
 
         $this->assertSame(['fresh-tag'], $donut->getStorageTags());
-        $this->assertLessThanOrEqual(100, $donut->getRemainingStorageTtl());
+        $remaining = $donut->getRemainingStorageTtl();
+        // Not just <= 100: null passes that comparison, so a regression that stopped
+        // recording templateExpiresAt for a legacy payload would slip through.
+        $this->assertIsInt($remaining);
+        $this->assertGreaterThan(0, $remaining);
+        $this->assertLessThanOrEqual(100, $remaining);
         $this->assertNull($donut->getUnchangedLastModified('tmpl'));
     }
 
