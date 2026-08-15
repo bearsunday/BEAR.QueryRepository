@@ -12,14 +12,23 @@ use Madapaja\TwigModule\TwigModule;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
+use ReflectionClass;
 use RuntimeException;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 
 use function assert;
+use function basename;
+use function class_exists;
 use function dirname;
+use function glob;
+use function is_string;
+use function is_subclass_of;
+use function str_contains;
 use function time;
+
+use const GLOB_BRACE;
 
 class DonutRepositoryTest extends TestCase
 {
@@ -342,5 +351,34 @@ class DonutRepositoryTest extends TestCase
         $close = self::closeContextJsonOf($tree, 'manual_store_result');
         $this->assertNotNull($close, 'the scope closes even though the write threw');
         $this->assertStringContainsString('"result":"failed"', $close);
+    }
+
+    public function testEveryBuiltInCdnHeaderIsInTheRecordedSet(): void
+    {
+        // cdn_headers records the headers named in DonutRepository::CDN_FACING_HEADERS.
+        // That list is a convention, and a built-in setter added without extending it
+        // would silently vanish from the log - this closes the set by reflection: every
+        // string constant a bound-able setter declares is a header the log must know.
+        $known = (new ReflectionClass(DonutRepository::class))->getConstant('CDN_FACING_HEADERS');
+        $this->assertIsArray($known);
+
+        $setters = [];
+        foreach ((array) glob(dirname(__DIR__) . '/src/{,Cdn/}*.php', GLOB_BRACE) as $file) {
+            $class = 'BEAR\QueryRepository\\' . (str_contains((string) $file, '/Cdn/') ? 'Cdn\\' : '') . basename((string) $file, '.php');
+            if (class_exists($class) && is_subclass_of($class, CdnCacheControlHeaderSetterInterface::class)) {
+                $setters[] = $class;
+            }
+        }
+
+        $this->assertContains(CdnCacheControlHeaderSetter::class, $setters, 'discovery sees the default setter');
+        foreach ($setters as $setter) {
+            foreach ((new ReflectionClass($setter))->getConstants() as $name => $value) {
+                if (! is_string($value)) {
+                    continue;
+                }
+
+                $this->assertContains($value, $known, "$setter::$name names a CDN-facing header the log does not record");
+            }
+        }
     }
 }

@@ -257,6 +257,26 @@ class SemanticLogSchemaTest extends TestCase
         $this->assertStringContainsString('"result":"failed"', $close);
     }
 
+    public function testRefreshInterceptorSkipsRefreshOnErrorCode(): void
+    {
+        // The third command producer's 4xx branch: a failed write must refresh nothing,
+        // and the scope itself proves it - code recorded, no invalidation, no re-fetch.
+        $this->logger->flush(); // drain the setUp session
+        $ro = $this->resource->put('app://self/refresh-error', ['id' => '9']);
+        $tree = $this->flushAndValidate($this->logger);
+
+        $this->assertSame(400, $ro->code);
+        $command = self::contextJsonOf($tree, 'command');
+        $this->assertNotNull($command);
+        $this->assertStringContainsString('"source":"RefreshInterceptor"', $command);
+        $close = self::closeContextJsonOf($tree, 'command_result');
+        $this->assertNotNull($close, 'the command scope closes with its outcome');
+        $this->assertStringContainsString('"code":400', $close);
+        $types = self::collectTypes($tree);
+        $this->assertNotContains('invalidate', $types, 'a failed command refreshes nothing');
+        $this->assertNotContains('get', $types, 'no re-fetch of the refresh target');
+    }
+
     public function testValidatorRejectsContextViolatingItsSchema(): void
     {
         // cache_hit context without the required "layer" must be rejected.

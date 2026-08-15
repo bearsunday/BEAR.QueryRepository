@@ -267,6 +267,26 @@ All dependency tests verify both resource cache and ETag invalidation:
   through `SemanticLoggerInterface`; the deprecated flat interface stays bound for code
   BC but its instance stays empty. Consumers should migrate to the SemanticLogger tree.
 
+## Mutation Residue (Reviewed and Left)
+
+The pins in this suite were selected by running mutation testing (Infection — not a
+dev dependency; run in a scratch copy against the changed sources; covered MSI 88%
+at the time of PR #178) and killing the survivors that broke a contract. The
+survivors below were reviewed and deliberately left, with the judgment on record so
+the next reviewer can attack the judgment instead of rediscovering it:
+
+| Surviving mutant (construct) | Why it stays |
+|---|---|
+| `HeaderSetter` max-age guard `> 0` → `>= 0` | Pre-existing; emitting `max-age: 0` for "no expiry" would itself be a lie. Current behavior is correct, the boundary is merely unpinned |
+| DI binding removals (`DonutCacheModule`: deprecated `RepositoryLoggerInterface` BC binding, `DonutRepository` singleton scope) | BC surface / stateless `readonly` service: no in-process observable difference |
+| `continue` → `break` in `CommandContextFactory`'s attribute walk | Truncates the `annotations` list only when one method stacks 2+ cache attributes; list completeness, not cache behavior |
+| `clone` removal on the command's delete URI (`DonutCommandInterceptor`) | Aliasing with no downstream writer in any current flow |
+| `return` removals on typed early-return paths | Equivalent result or a loud type failure on any real call path |
+| `QueryRepository` expiryAt guard `\|\|` → `&&` | Differs only for a non-array body carrying an `expiryAt` attribute, which fails in both variants |
+| `ResourceStorage` vary-string `.=` → `=` | Multi-value `X_VARY` request building; niche, unfixtured |
+| `SurrogateKeys::addTag()` removal | The URI tag also reaches the entry through the Surrogate-Key header merge in every current fixture flow; a fixture without the header would pin it |
+| Numeric/cast noise on `durationMs` and counters | Timing fields, not contracts |
+
 ## Fake Resources for Testing
 
 Located in `tests/Fake/fake-app/src/Resource/Page/Dep/`:
