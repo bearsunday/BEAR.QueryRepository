@@ -1,7 +1,7 @@
 # Why the QueryRepository Log Records Everything
 
 BEAR.QueryRepository ships with cache logging that is unusually thorough: an
-open/event/close tree, two dozen typed context classes, one JSON Schema per
+open/event/close tree, 26 typed context classes, one JSON Schema per
 context, schema validation inside the test suite, and demos that refuse to
 exit 0 unless their own log validates. This document explains why that scale
 is deliberate — the failure class it exists to eliminate, the principles that

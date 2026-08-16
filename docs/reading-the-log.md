@@ -91,7 +91,9 @@ Every outcome is a self-describing word, never a bare boolean — except `saved`
 | `operation` | `read` \| `write` | which side of the cache threw |
 | `reason` (`put_skipped`) | `etag-present` \| `error-code` \| `not-cacheable` | why no write happened. `etag-present` = the resource already carried an ETag, so the donut layer left it alone; `not-cacheable` = a donut page re-rendered from its template, which is never stored as a page; `error-code` carries the response `code`, and the threshold differs by path: `#[Cacheable]` skips any non-200 (a `203` appears here), a donut skips 4xx and above |
 | `result` (`manual_*`) | `stored`/`purged`/`invalidated` \| `failed` | the direct call's outcome |
-| `ttl` | seconds | `31536000` is the `never` convention; `0`/`null` = no expiry set |
+| `ttl` | seconds | the cache entry's own lifetime. `31536000` is the `never` convention; `0`/`null` = no expiry set |
+| `sMaxAge` (`put_donut`) | seconds | the shared-cache (CDN) lifetime the write asked for, which is not the entry's `ttl`. `null` = none requested, and `putDonut` always records `null` |
+| `code` (`put_skipped`) | HTTP status | present only when `reason` is `error-code`; `null` for the other two reasons |
 
 ## Reading rules
 
@@ -145,7 +147,10 @@ command {"method": "onPut", "annotations": [], "source": "CommandInterceptor"}
 Read it in order:
 
 1. A write ran: `onPut`, driven by `CommandInterceptor`. `annotations` is empty, so no
-   `#[Refresh]`/`#[Purge]` attribute chose the target — the command refreshed its own URI.
+   `#[Refresh]`/`#[Purge]` attribute chose the target — the command refreshed its own URI. When an
+   attribute does choose one, each entry is `{"class": "…\\Annotation\\Refresh", "uri": "app://self/refresh-dest{?id}"}`:
+   the class says which attribute, the uri says its target, and `{?id}` is the URI template whose
+   parameters come from the command's own arguments.
 2. The nested `get` is that refresh, and it is a scope of its own: the resource really ran
    (`cache_miss{layer: resource}`) and was stored (`saved: true` twice - body and validator).
 3. The **inner** `invalidate` follows a `pre_write_cleanup` for the same URI: that is the writer

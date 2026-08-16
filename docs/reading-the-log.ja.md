@@ -90,7 +90,9 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 | `operation` | `read` \| `write` | キャッシュのどちら側が throw したか |
 | `reason` (`put_skipped`) | `etag-present` \| `error-code` \| `not-cacheable` | 書き込みが起きなかった理由。`etag-present` = リソースが既に ETag を持っていたので donut 層は手を出さなかった、`not-cacheable` = テンプレートから再描画された donut ページ(ページとしては保存しない)、`error-code` は応答の `code` を伴い閾値は経路で違う: `#[Cacheable]` は 200 以外すべて(`203` もここに出る)、donut は 4xx 以上 |
 | `result` (`manual_*`) | `stored`/`purged`/`invalidated` \| `failed` | 直接呼び出しの結果 |
-| `ttl` | 秒 | `31536000` は `never` の慣習値。`0`/`null` は期限未設定 |
+| `ttl` | 秒 | キャッシュエントリ自身の寿命。`31536000` は `never` の慣習値、`0`/`null` は期限未設定 |
+| `sMaxAge` (`put_donut`) | 秒 | その書き込みが要求した共有キャッシュ(CDN)の寿命。エントリの `ttl` とは別物。`null` は未要求で、`putDonut` は常に `null` を記録する |
+| `code` (`put_skipped`) | HTTP ステータス | `reason` が `error-code` のときだけ入る。他の 2 理由では `null` |
 
 ## 読解規則
 
@@ -144,6 +146,9 @@ command {"method": "onPut", "annotations": [], "source": "CommandInterceptor"}
 
 1. 書き込みが走った: `onPut`、駆動は `CommandInterceptor`。`annotations` が空なので
    `#[Refresh]`/`#[Purge]` 属性が対象を選んだのではなく、コマンドが自分の URI を refresh した。
+   属性が対象を選んでいる場合、各要素は
+   `{"class": "…\\Annotation\\Refresh", "uri": "app://self/refresh-dest{?id}"}` の形になる —
+   class がどの属性か、uri がその対象で、`{?id}` はコマンド自身の引数から埋まる URI テンプレート。
 2. 入れ子の `get` がその refresh で、それ自体が 1 つのスコープ。リソースは実際に走り
    (`cache_miss{layer: resource}`)、保存された(`saved: true` が 2 つ — body と検証子)。
 3. **内側**の `invalidate` は同じ URI の `pre_write_cleanup` の直後にある。これは書き手が
