@@ -121,26 +121,47 @@ class RetentionPolicyTest extends TestCase
         $this->assertTrue($this->policy->keeps($this->logger->flush()));
     }
 
-    public function testACacheOutageIsKept(): void
+    public function testAReadOutageIsDroppedAndAnAbortedWriteIsKept(): void
     {
+        // A pool that is down is an availability event: its own monitoring saw it first, and this
+        // evidence repeats on every request, so keeping it would flood the collector during the
+        // very incident it would explain. The write side is not the same thing - a store or an
+        // invalidation was abandoned, and nothing else records that.
         $open = $this->logger->open(new GetContext('page://self/html/blog-posting'));
         $this->logger->event(new CacheErrorContext('page://self/html/blog-posting', 'read', 'cache server down', 'RuntimeException'));
         $this->logger->close(new CacheMissContext('view'), $open);
+        $this->assertFalse($this->policy->keeps($this->logger->flush()));
 
+        $open = $this->logger->open(new GetContext('page://self/html/blog-posting'));
+        $this->logger->event(new CacheErrorContext('page://self/html/blog-posting', 'write', 'cache server down', 'RuntimeException'));
+        $this->logger->close(new CacheMissContext('view'), $open);
         $this->assertTrue($this->policy->keeps($this->logger->flush()));
     }
 
-    public function testAWriteSkippedByAnErrorCodeIsKeptAndOtherSkipReasonsAreNot(): void
+    public function testNoSkipReasonIsAnIncidentOfItsOwn(): void
     {
-        $open = $this->logger->open(new GetContext('page://self/html/blog-posting'));
-        $this->logger->event(new PutSkippedContext('page://self/html/blog-posting', 'error-code', 400));
-        $this->logger->close(new CacheMissContext('view'), $open);
-        $this->assertTrue($this->policy->keeps($this->logger->flush()));
+        // `error-code` says the app returned 4xx and nothing was cached - correct behaviour, and
+        // the access log already counts it. `not-cacheable` and `etag-present` are decisions.
+        foreach (['error-code', 'not-cacheable', 'etag-present'] as $reason) {
+            $open = $this->logger->open(new GetContext('page://self/html/blog-posting'));
+            $this->logger->event(new PutSkippedContext('page://self/html/blog-posting', $reason, $reason === 'error-code' ? 400 : null));
+            $this->logger->close(new CacheMissContext('view'), $open);
 
-        $open = $this->logger->open(new GetContext('page://self/html/blog-posting'));
-        $this->logger->event(new PutSkippedContext('page://self/html/blog-posting', 'not-cacheable'));
-        $this->logger->close(new CacheMissContext('view'), $open);
-        $this->assertFalse($this->policy->keeps($this->logger->flush()), 'a resource that is simply not cacheable is not an incident');
+            $this->assertFalse($this->policy->keeps($this->logger->flush()), $reason . ' is not an incident');
+        }
+    }
+
+    public function testASessionWhoseOwnRecordsMayBeIncompleteIsKept(): void
+    {
+        // An out-of-order close is a LIFO violation: the core logger records it in-band and
+        // discards the close it could not match, so this session is missing a fact it should have.
+        // Dropping it as a healthy read would hide that the log itself is unreliable here.
+        $first = $this->logger->open(new GetContext('page://self/html/blog-posting'));
+        $second = $this->logger->open(new GetContext('page://self/html/comment'));
+        $this->logger->close(new CacheHitContext('view'), $first);
+        $this->logger->close(new CacheHitContext('view'), $second);
+
+        $this->assertTrue($this->policy->keeps($this->logger->flush()));
     }
 
     public function testAFailedOutcomeIsFoundWhereTheRootKeepsItAsAList(): void

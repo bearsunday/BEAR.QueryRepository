@@ -135,8 +135,8 @@ turns the log on for development, where it is read:
 $this->install(new DevQueryRepositoryLogModule($appDir . '/var/log/query-repository', module: new QueryRepositoryModule()));
 ```
 
-and, in production, keeps only the sessions that can explain an incident —
-mutations, failures and a sample:
+and, in production, keeps only the sessions nothing else can account for —
+mutations, effects that did not happen, and a sample:
 
 ```php
 $this->install(new ProdQueryRepositoryLogModule('php://stdout', sampleRate: 1000, module: new QueryRepositoryModule()));

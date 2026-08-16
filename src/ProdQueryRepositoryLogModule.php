@@ -20,7 +20,9 @@ use Ray\Di\Scope;
  * Records every session, writes the ones that can explain an incident
  *
  * A healthy read is measurably empty of information, so the session is buffered and judged at
- * flush: mutations, failures and a sample survive as one JSON line each. What this buys is
+ * flush: mutations, effects that were intended and did not happen, and a sample survive as one
+ * JSON line each. The line is who else knows: a pool that is down is an availability event its own
+ * monitoring sees first, while a write the pool silently refused has no other witness. What this buys is
  * forensics, not monitoring - hit rates and capacity belong to metrics, which are cheaper and
  * more accurate at it. What metrics cannot answer is which tags a purge reached, because a
  * cache write that never happened leaves nothing behind but this log.

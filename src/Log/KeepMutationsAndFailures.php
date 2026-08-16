@@ -13,14 +13,31 @@ use function is_string;
 use function random_int;
 
 /**
- * Keeps the sessions that can explain an incident, drops the rest
+ * Keeps the sessions nothing else can account for, drops the rest
  *
- * Three kinds of session are kept:
+ * The line is not failure-vs-success, it is who else knows. A pool that is down is an
+ * availability event: its own monitoring sees it first, and the app-side evidence
+ * (`cache_error{read}`) repeats on every request, so keeping those sessions would flood the
+ * collector during the incident it is supposed to explain, with facts already held elsewhere. A
+ * cache that silently did nothing has no other witness at all - `$pool->save()` returning false
+ * is discarded by the interceptor, and an invalidation that failed to land shows up later as
+ * stale content with no error attached to it.
  *
- *  - mutations: a `command` scope, a direct `manual_*` call, or a real tag invalidation.
- *  - failures: `saved: false`, `cache_error`, `cdn`/`roPool`/`etagPool` `failed`,
- *    `put_skipped{error-code}` - none of which the cache path throws for.
+ * So three kinds of session are kept:
+ *
+ *  - mutations: a `command` scope, a direct `manual_*` call, or a real tag invalidation. Writes
+ *    decide the tags, TTLs and CDN keys every later read repeats.
+ *  - effects that did not happen: `saved: false`, `invalidate` with `roPool`/`etagPool`/`cdn`
+ *    `failed`, a `manual_*` result of `failed`, and `cache_error{operation: write}` - a store or
+ *    an invalidation that was aborted. `semantic_logger_error` joins them because it means the
+ *    records themselves may be incomplete.
  *  - a sample, when a rate is configured.
+ *
+ * Deliberately not kept: `cache_error{operation: read}` (availability, monitored elsewhere - the
+ * "degraded, not cold" reading is a development-time one) and `put_skipped{error-code}`, which
+ * only says the app returned 4xx and nothing was cached, which is both correct and already in
+ * the access log. `saved: false` can still repeat per write under a capacity problem; that is
+ * the signal, not noise, and a host that needs a ceiling decorates `LogWriterInterface`.
  *
  * A real invalidation is told from pre-write cleanup by the marker the writer records at the
  * source: an `invalidate` is cleanup iff the event immediately before it in the same scope
@@ -33,7 +50,6 @@ use function random_int;
 final class KeepMutationsAndFailures implements RetentionPolicyInterface
 {
     private const MUTATION_SCOPES = ['command', 'manual_store', 'manual_purge', 'manual_invalidate'];
-    private const FAILURE_TYPES = ['cache_error', 'semantic_logger_error'];
     private const CLEANUP_MARKER = 'pre_write_cleanup';
 
     /** @param int $sampleRate keep 1 session in N regardless of content; 0 disables sampling */
@@ -63,7 +79,7 @@ final class KeepMutationsAndFailures implements RetentionPolicyInterface
             return true;
         }
 
-        if ($this->isFailure($node, $type)) {
+        if ($this->isMissingEffect($node, $type)) {
             return true;
         }
 
@@ -142,11 +158,15 @@ final class KeepMutationsAndFailures implements RetentionPolicyInterface
         return false;
     }
 
-    /** @param array<mixed, mixed> $node */
-    private function isFailure(array $node, mixed $type): bool
+    /**
+     * An effect that was intended and did not happen
+     *
+     * @param array<mixed, mixed> $node
+     */
+    private function isMissingEffect(array $node, mixed $type): bool
     {
-        if (is_string($type) && in_array($type, self::FAILURE_TYPES, true)) {
-            return true;
+        if ($type === 'semantic_logger_error') {
+            return true; // the records themselves may be incomplete
         }
 
         $context = $node['context'] ?? null;
@@ -166,6 +186,8 @@ final class KeepMutationsAndFailures implements RetentionPolicyInterface
             }
         }
 
-        return $type === 'put_skipped' && ($context['reason'] ?? null) === 'error-code';
+        // A read that threw is availability, and its monitoring saw it first; a write that threw
+        // aborted a store or an invalidation, which nothing else records.
+        return $type === 'cache_error' && ($context['operation'] ?? null) === 'write';
     }
 }

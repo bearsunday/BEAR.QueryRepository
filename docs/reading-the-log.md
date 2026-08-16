@@ -154,7 +154,7 @@ Read it in order:
 | | Destination | Policy |
 |---|---|---|
 | `DevQueryRepositoryLogModule` | one file per session + `latest.json` | everything |
-| `ProdQueryRepositoryLogModule` | one JSON line per session to `php://stdout` or a file | mutations, failures, an optional sample |
+| `ProdQueryRepositoryLogModule` | one JSON line per session to `php://stdout` or a file | mutations, effects that did not happen, an optional sample |
 | `PsrLogWriter` | the app's PSR-3 logger, tree in `context['log']` | whatever writer it wraps |
 
 A session carries request URIs **with their query strings**, the client's `If-None-Match`, cache
