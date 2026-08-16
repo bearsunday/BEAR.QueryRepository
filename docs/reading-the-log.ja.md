@@ -95,7 +95,7 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 | `reason` (`put_skipped`) | `etag-present` \| `error-code` \| `not-cacheable` | 書き込みが起きなかった理由。`etag-present` = リソースが既に ETag を持っていたので donut 層は手を出さなかった、`not-cacheable` = テンプレートから再描画された donut ページ(ページとしては保存しない)、`error-code` は応答の `code` を伴い閾値は経路で違う: `#[Cacheable]` は 200 以外すべて(`203` もここに出る)、donut は 4xx 以上 |
 | `result` (`manual_*`) | `stored`/`purged`/`invalidated` \| `failed` | 直接呼び出しの結果 |
 | `ttl` | 秒 | キャッシュエントリ自身の寿命。`31536000` は `never` の慣習値、`0`/`null` は期限未設定 |
-| `sMaxAge` (`put_donut`) | 秒 | その書き込みが要求した共有キャッシュ(CDN)の寿命。エントリの `ttl` とは別物。`null` は未要求で、`putDonut` は常に `null` を記録する |
+| `sMaxAge` (`put_donut`) | 秒 | その書き込みが要求した共有キャッシュ(CDN)の寿命 — `DonutRepositoryInterface::put($ro, ttl: …, sMaxAge: …)` に渡すのと同じ引数で、エントリ自身の `ttl` とは別物。`null` は未要求で、`putDonut` は常に `null` を記録する |
 | `code` (`put_skipped`) | HTTP ステータス | `reason` が `error-code` のときだけ入る。他の 2 理由では `null` |
 
 ## 読解規則
