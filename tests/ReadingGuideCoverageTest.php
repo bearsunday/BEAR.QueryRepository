@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 use function assert;
@@ -28,15 +29,23 @@ use function substr;
  */
 class ReadingGuideCoverageTest extends TestCase
 {
-    private string $guide = '';
-
-    protected function setUp(): void
+    /**
+     * Both translations are held to the vocabulary: a word explained in one language only is half-published
+     *
+     * @return array<string, array{string}>
+     */
+    public static function guideProvider(): array
     {
-        $this->guide = (string) file_get_contents(__DIR__ . '/../docs/reading-the-log.md');
+        return [
+            'en' => ['docs/reading-the-log.md'],
+            'ja' => ['docs/reading-the-log.ja.md'],
+        ];
     }
 
-    public function testEveryContextTypeIsExplained(): void
+    #[DataProvider('guideProvider')]
+    public function testEveryContextTypeIsExplained(string $guidePath): void
     {
+        $guide = (string) file_get_contents(__DIR__ . '/../' . $guidePath);
         $missing = [];
         foreach (glob(__DIR__ . '/../src/Log/Context/*.php') ?: [] as $file) {
             $source = (string) file_get_contents($file);
@@ -44,7 +53,7 @@ class ReadingGuideCoverageTest extends TestCase
                 continue;
             }
 
-            if (str_contains($this->guide, '`' . $matches[1] . '`')) {
+            if (str_contains($guide, '`' . $matches[1] . '`')) {
                 continue;
             }
 
@@ -52,11 +61,13 @@ class ReadingGuideCoverageTest extends TestCase
         }
 
         sort($missing);
-        $this->assertSame([], $missing, 'context types absent from docs/reading-the-log.md');
+        $this->assertSame([], $missing, 'context types absent from ' . $guidePath);
     }
 
-    public function testEveryOutcomeWordIsExplained(): void
+    #[DataProvider('guideProvider')]
+    public function testEveryOutcomeWordIsExplained(string $guidePath): void
     {
+        $guide = (string) file_get_contents(__DIR__ . '/../' . $guidePath);
         $missing = [];
         foreach (glob(__DIR__ . '/../docs/schemas/context/*.json') ?: [] as $file) {
             $schema = json_decode((string) file_get_contents($file), true);
@@ -73,7 +84,7 @@ class ReadingGuideCoverageTest extends TestCase
                 }
 
                 foreach ($definition['enum'] as $word) {
-                    if (! is_string($word) || str_contains($this->guide, '`' . $word . '`')) {
+                    if (! is_string($word) || str_contains($guide, '`' . $word . '`')) {
                         continue;
                     }
 
@@ -83,6 +94,6 @@ class ReadingGuideCoverageTest extends TestCase
         }
 
         sort($missing);
-        $this->assertSame([], $missing, 'schema enum values absent from docs/reading-the-log.md');
+        $this->assertSame([], $missing, 'schema enum values absent from ' . $guidePath);
     }
 }

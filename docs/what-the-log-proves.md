@@ -63,15 +63,19 @@ is removed or its meaning inverted (verified by mutation testing).
 - **Wall-clock expiry.** TTL arithmetic (clamping, remaining lifetime, `Age`) is
   verified by construction, not by elapsed-time tests; actual eviction at the
   recorded moment is the cache backend's contract.
-- **Concurrent sessions.** The logger is one session per injector; concurrent
-  runtimes need per-request instances or the no-op logger (see the README note).
+- **Concurrent sessions.** The logger holds one session per injector. Where the sink can prove
+  the host is concurrent — a RoadRunner worker, or inside a Swoole coroutine — it refuses to arm
+  and recording stops with it, because nothing would drain the session. Such a host binds a
+  request-scoped `LogSinkInterface`, or leaves the log module out (#179). Hosts it cannot detect
+  (a Swoole worker whose logger is built at boot, FrankenPHP worker mode, ReactPHP, Amp, a
+  long-lived CLI consumer) are the operator's call.
 - **A `ResourceStorage::hasEtag()` call outside a conditional request.** The
   semantic event is "a conditional request was answered", owned by the transfer
   boundary (`HttpCache` / `CliHttpCache`); the storage query itself is silent.
-- **Anything after the host discards the session.** Flushing is the host's
-  responsibility. An early-exit path — such as answering 304 and terminating —
-  discards an unflushed session, so flush before the transfer if the 304 decision
-  must be retained.
+- **Sessions a retention policy dropped.** `DevQueryRepositoryLogModule` writes every session;
+  `ProdQueryRepositoryLogModule` keeps only what nothing else can account for, so in production
+  a healthy read — and a read-side pool outage, which the pool's own monitoring sees first — is
+  deliberately absent. The "degraded, not cold" reading is therefore a development-time one.
 
 ## Reading pointers
 
