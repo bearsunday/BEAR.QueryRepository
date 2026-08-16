@@ -175,6 +175,8 @@ class BlogPage extends ResourceObject
 
 ## Cache Log (Semantic Log)
 
+The reader's guide to this vocabulary is `docs/reading-the-log.md`; the tables below are the lookup form of the same facts.
+
 Cache operations are logged as an open/event/close tree (Koriym.SemanticLogger) whose nesting **is** the embed/dependency structure: a parent's embedded child GETs appear as nested scopes, no reconstruction needed. Every entry carries a typed context object and a `schemaUrl` pointing at its per-context JSON Schema, so the log is self-describing.
 
 ### Log Contexts

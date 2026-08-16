@@ -1,0 +1,171 @@
+# Reading the Log
+
+Every word the cache log can contain, and how to read a session. The per-context JSON Schemas
+under [docs/schemas/context/](schemas/context/) are the contract; this page is the reader's
+guide to them. `docs/llms.txt` and `docs/llms-full.txt` carry the same vocabulary as a lookup
+table for an agent — update both when a context changes.
+
+Recording is off by default. To produce a session, install a log module
+([why](why-the-log-records-everything.md)):
+
+```php
+$this->install(new DevQueryRepositoryLogModule($appDir . '/var/log/query-repository', module: new QueryRepositoryModule()));
+```
+
+```bash
+vendor/bin/stree var/log/query-repository/latest.json   # the request that just ran, as a tree
+```
+
+## The shape
+
+A session is one tree per request. Nesting is not chronology — it is the structure of the work:
+
+```text
+get page://self/html/blog-posting          ← a scope: opened, then closed
+  get page://self/html/comment             ← an embedded child, nested inside its parent
+    save_value {tags, ttl, saved}          ← an event: something that happened in this scope
+    cache_miss {layer: resource}           ← the close: how the scope ended
+  put_donut {ttl, sMaxAge}
+  cache_hit {layer: donut-view}
+```
+
+Three node kinds, and the distinction is the whole grammar:
+
+| Kind | Meaning | Read it as |
+|---|---|---|
+| **open** | a scope that was entered | "this work started" — its children are what happened inside |
+| **event** | a fact recorded inside the active scope | "this happened, with this outcome" |
+| **close** | how a scope ended | the scope's verdict — one word |
+
+## Scopes (open/close)
+
+| Type | Opened by | Closes with |
+|---|---|---|
+| `get` (`uri`) | a resource GET through the cache | `cache_hit` / `cache_miss` |
+| `command` (`method`, `annotations`, `source`) | a write (`onPut`/`onPatch`/`onDelete`) | `command_result` (`code`) |
+| `conditional_request` (`ifNoneMatch`) | the transfer boundary checking `If-None-Match` | `cache_hit` / `cache_miss` at `layer: etag` |
+| `manual_store` (`uri`) | a direct `put()` / `putStatic()` / `putDonut()` | `manual_store_result` (`stored` \| `failed`) |
+| `manual_purge` (`uri`) | a direct `purge()` | `manual_purge_result` (`purged` \| `failed`) |
+| `manual_invalidate` (`tags`) | a direct `invalidateTags()` | `manual_invalidate_result` (`invalidated` \| `failed`) |
+
+`manual_*` means **application-initiated**: the call had no framework scope around it. The same
+operation inside a GET or a command is an ordinary event there instead.
+
+## Events
+
+| Type | Fields | What it tells you |
+|---|---|---|
+| `save_value` | `uri`, `tags`, `ttl`, `saved` | the body was offered to the pool |
+| `save_view` | `uri`, `tags`, `ttl`, `saved` | body + rendered view were offered |
+| `save_etag` | `uri`, `etag`, `tags`, `ttl`, `saved` | the validator was offered to the ETag pool |
+| `save_donut` | `uri`, `tags`, `ttl`, `saved` | the donut template was offered |
+| `save_donut_view` | `uri`, `tags`, `ttl`, `saved` | the recomposed donut view was offered |
+| `put_donut` | `uri`, `ttl`, `sMaxAge` | a donut write was requested, with the lifetime asked for |
+| `refresh_donut` | `uri` | a cached donut was recomposed rather than served as-is |
+| `cdn_headers` | `uri`, `headers`, `surrogateKeys` | the CDN-facing headers the response actually carried |
+| `depends_on` | `parent`, `child`, `childTags` | one dependency edge: the child's tags were added to the parent |
+| `pre_write_cleanup` | `uri` | the writer is about to clear the entry it will rewrite |
+| `invalidate` | `tags`, `roPool`, `etagPool`, `cdn`, `durationMs` | tags were invalidated, with a result per target |
+| `purge` | `uri` | a URI-targeted bust was requested |
+| `put_skipped` | `uri`, `reason`, `code` | a miss was **not** followed by a write, and why |
+| `cache_error` | `uri`, `operation`, `error`, `exceptionClass` | the cache path threw |
+| `semantic_logger_error` | `kind`, `message`, … | the logger itself was misused (core diagnostic, not this package's vocabulary) |
+
+## The words that carry outcomes
+
+Every outcome is a self-describing word, never a bare boolean — except `saved`, which is one:
+
+| Field | Values | Reading |
+|---|---|---|
+| `layer` | `resource` \| `donut` \| `donut-view` \| `etag` | which store answered |
+| `saved` | `true` \| `false` | **`false` = the pool refused the write.** Nothing else in the system records this |
+| `roPool` / `etagPool` | `invalidated` \| `failed` | per-pool invalidation result |
+| `cdn` | `purged` \| `failed` \| `skipped` | `skipped` = no purger configured (`NullPurger`), not "nothing to do" |
+| `operation` | `read` \| `write` | which side of the cache threw |
+| `reason` (`put_skipped`) | `etag-present` \| `error-code` \| `not-cacheable` | why no write happened |
+| `result` (`manual_*`) | `stored`/`purged`/`invalidated` \| `failed` | the direct call's outcome |
+| `ttl` | seconds | `31536000` is the `never` convention; `0`/`null` = no expiry set |
+
+## Reading rules
+
+These are the ones you cannot guess from a field name.
+
+**A miss with no `save_*` is not a lost write.** Look for `put_skipped` — it records that the
+non-write was deliberate, with the reason.
+
+**`cache_error` + `cache_miss` = degraded, not cold.** A lone `cache_miss` means the entry was
+absent. The pair means the pool failed and the resource ran anyway.
+
+**An `invalidate` is pre-write cleanup iff a `pre_write_cleanup` marker sits immediately before
+it in the same scope.** A writer clears the entry it is about to rewrite, which looks identical
+to a real bust. The marker is recorded at the source, so nothing is inferred from tag
+correlation. Any `invalidate` without the marker is a real invalidation.
+
+**Dependency correctness is a set intersection.** Correlate the `tags` of a `save_*` with the
+`tags` of a later `invalidate`. If they do not intersect, the write did not bust that entry —
+which is what serving stale looks like from the inside.
+
+**`cdn_headers` shows what the response really carried**, including a CDN module's silent
+default. No lifetime header in the map means the response gave the CDN no lifetime directive.
+Correlate its `surrogateKeys` with an `invalidate`'s `tags` to see whether a purge could reach
+what the edge holds.
+
+**A `conditional_request` closing `cache_hit{layer: etag}` is a 304** — the whole request
+answered from the ETag pool without running the resource. No `get` scope can show this.
+
+**A donut `cache_hit` does not distinguish served-from-cache from recomposed.** The close reports
+the final layer only; look for `refresh_donut` inside the scope.
+
+## Worked example
+
+Verbatim from `demo/run-dependency.php` — a PUT on a resource two other resources embed:
+
+```text
+command {"method": "onPut", "annotations": [], "source": "CommandInterceptor"}
+  get {"uri": "page://self/dep/level-three"}
+    pre_write_cleanup {"uri": "page://self/dep/level-three"}
+    invalidate {"tags": ["_dep_level-three_"], "roPool": "invalidated", "etagPool": "invalidated", "cdn": "skipped"}
+    save_etag {"uri": "page://self/dep/level-three", "tags": ["_dep_level-three_"], "ttl": 31536000, "saved": true}
+    save_value {"uri": "page://self/dep/level-three", "tags": ["_dep_level-three_"], "ttl": 31536000, "saved": true}
+    cache_miss {"layer": "resource"}
+  purge {"uri": "page://self/dep/level-three"}
+  invalidate {"tags": ["_dep_level-three_"], "roPool": "invalidated", "etagPool": "invalidated", "cdn": "skipped"}
+  command_result {"code": 200}
+```
+
+Read it in order:
+
+1. A write ran: `onPut`, driven by `CommandInterceptor`. `annotations` is empty, so no
+   `#[Refresh]`/`#[Purge]` attribute chose the target — the command refreshed its own URI.
+2. The nested `get` is that refresh, and it is a scope of its own: the resource really ran
+   (`cache_miss{layer: resource}`) and was stored (`saved: true` twice - body and validator).
+3. The **inner** `invalidate` follows a `pre_write_cleanup` for the same URI: that is the writer
+   clearing the entry it is about to rewrite, not a bust.
+4. The **outer** `invalidate` has no marker before it, so it is a real invalidation. Its tag is
+   the child's URI tag, which is also the surrogate key its two parents were stored under - this
+   single event is what makes the embedding resources stale.
+5. `cdn: skipped` twice: no purger is configured here. On a CDN-backed app these would read
+   `purged`, and a `failed` would mean the local pools were cleared while the edge was not.
+6. `command_result{code: 200}` closes it. A 4xx here with no `invalidate` above would be the
+   record of a failed write correctly busting nothing.
+
+## Where it goes
+
+| | Destination | Policy |
+|---|---|---|
+| `DevQueryRepositoryLogModule` | one file per session + `latest.json` | everything |
+| `ProdQueryRepositoryLogModule` | one JSON line per session to `php://stdout` or a file | mutations, failures, an optional sample |
+| `PsrLogWriter` | the app's PSR-3 logger, tree in `context['log']` | whatever writer it wraps |
+
+A session carries request URIs **with their query strings**, the client's `If-None-Match`, cache
+tags, CDN header values and raw exception text. Treat a written session as an application log:
+`LogFileWriter` creates 0700 directories and 0600 files. To scrub or rate-limit, decorate
+`LogWriterInterface` — that is the seam, and it is also the answer to a pool outage, during which
+every request emits `cache_error` and retention rises to 100%.
+
+## Pointers
+
+- Guarantees and boundaries: [what-the-log-proves.md](what-the-log-proves.md)
+- Why it records everything, and what it costs: [why-the-log-records-everything.md](why-the-log-records-everything.md)
+- Per-context schemas: [schemas/context/](schemas/context/)
+- Self-verifying demos: `demo/run.php`, `demo/run-donut.php`, `demo/run-dependency.php`, `demo/run-degraded.php`

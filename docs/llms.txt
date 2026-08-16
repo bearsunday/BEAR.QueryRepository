@@ -34,6 +34,8 @@ class User extends ResourceObject
 
 ## Cache Log (Semantic Log)
 
+The reader's guide to this vocabulary is `docs/reading-the-log.md`; the tables below are the lookup form of the same facts.
+
 Cache operations are logged as an open/event/close tree (Koriym.SemanticLogger) whose nesting **is** the embed/dependency structure. Every entry carries a typed context and a `schemaUrl` pointing at its per-context JSON Schema, so the log is self-describing.
 
 - A resource GET opens a `get` scope; embedded child GETs nest under it; the scope closes with `cache_hit` / `cache_miss` (field `layer`: `resource` / `donut` / `donut-view`).
