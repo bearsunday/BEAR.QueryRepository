@@ -20,6 +20,29 @@ $this->install(new DevQueryRepositoryLogModule($appDir . '/var/log/query-reposit
 vendor/bin/stree var/log/query-repository/latest.json   # 直前に走ったリクエストをツリーで表示
 ```
 
+## 用語
+
+概念そのもの(条件付きリクエスト、ETag、donut caching、サロゲートキー)は
+[キャッシュマニュアルの Terminology](https://bearsunday.github.io/manuals/1.0/ja/cache.html) の担当です。
+この表はもっと狭い範囲を扱います — **このログが自分の部品に付けている名前**を展開し、エントリで
+出会った識別子を、あなたのアプリの中の何を指しているかまで辿れるようにするためのものです。
+
+| ログ上の名前 | 何か | アプリのどこで出会うか |
+|---|---|---|
+| `roPool` | **R**esource **O**bject プール: キャッシュされた body・view・donut テンプレートを保持するストア | `#[ResourceObjectPool]` で束縛するアダプタ |
+| `etagPool` | 検証子を ETag をキーに保持するストア | `#[EtagPool]` で束縛するアダプタ |
+| `tags` | エントリが保存される無効化の名前空間 — サロゲートキー | `Header::SURROGATE_KEY`、URI をタグ化するなら `UriTagInterface` |
+| URI タグ | あるリソースの URI をタグにしたもの。同時にその親が持つサロゲートキーでもある | `($this->uriTag)(new Uri('app://self/foo'))` |
+| `etag` | 表現の entity-tag。**キーではなく検証子** | `ETag` レスポンスヘッダ |
+| `layer` | どのストアが照会に答えたか。どのプールに書いたかではない | —(ログ固有の軸) |
+| donut / donut-view | 穴のあるキャッシュ可能な外殻 / 再合成されたページ | `#[CacheableResponse]`、`#[DonutCache]` |
+| `sMaxAge` | その書き込みが CDN に要求した共有キャッシュの寿命 | `DonutRepositoryInterface::put($ro, ttl: …, sMaxAge: …)` |
+| スコープ / イベント / close | ツリーの 3 種類のノード。次節で説明 | —(ログ固有の区別) |
+
+`roPool` と `etagPool` は**プール**の名前、`layer` は**どのストアが答えたか**です。重なって見えますが
+別物です — `cache_hit{layer: resource}` で閉じる `get` は「リソースストアが答えた」、
+`roPool: invalidated` を報告する `invalidate` は「そのストアがタグを落とした」を意味します。
+
 ## 形
 
 セッションは 1 リクエスト = 1 ツリーです。入れ子は時系列ではなく、**仕事の構造**です:

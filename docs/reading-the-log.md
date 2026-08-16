@@ -19,6 +19,29 @@ $this->install(new DevQueryRepositoryLogModule($appDir . '/var/log/query-reposit
 vendor/bin/stree var/log/query-repository/latest.json   # the request that just ran, as a tree
 ```
 
+## Terminology
+
+The concepts — conditional requests, ETag, donut caching, surrogate keys — are the
+[cache manual's Terminology](https://bearsunday.github.io/manuals/1.0/en/cache.html). This table
+is narrower: it expands the names this log uses for its own moving parts, so an identifier you
+meet in an entry can be traced to the thing it names in your application.
+
+| In the log | Is | Where you meet it in your app |
+|---|---|---|
+| `roPool` | the **R**esource **O**bject pool: the store holding cached bodies, views and donut templates | the adapter you bind with `#[ResourceObjectPool]` |
+| `etagPool` | the store holding validators, keyed by ETag | the adapter you bind with `#[EtagPool]` |
+| `tags` | the invalidation namespace an entry is stored under — surrogate keys | `Header::SURROGATE_KEY`, and `UriTagInterface` for a URI turned into a tag |
+| a URI tag | one resource's URI as a tag, which is also the surrogate key its parents carry | `($this->uriTag)(new Uri('app://self/foo'))` |
+| `etag` | the entity-tag of a representation: a validator, not a key | the `ETag` response header |
+| `layer` | which store answered a lookup, not which pool was written | — (a log-only axis) |
+| donut / donut-view | the cacheable shell with holes / the recomposed page | `#[CacheableResponse]`, `#[DonutCache]` |
+| `sMaxAge` | the shared-cache lifetime a write asked the CDN for | `DonutRepositoryInterface::put($ro, ttl: …, sMaxAge: …)` |
+| a scope, an event, a close | the three node kinds of the tree, described next | — (a log-only distinction) |
+
+`roPool` and `etagPool` name **pools**; `layer` names **which store answered**. They read as if
+they overlap and do not: a `get` closing `cache_hit{layer: resource}` says the resource store
+answered, while an `invalidate` reporting `roPool: invalidated` says that store dropped the tags.
+
 ## The shape
 
 A session is one tree per request. Nesting is not chronology — it is the structure of the work:
