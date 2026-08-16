@@ -9,10 +9,9 @@ use Koriym\SemanticLogger\LogJson;
 /**
  * Decides whether a flushed session is worth writing
  *
- * A healthy read carries no information: every entry says the cache did what it was told.
- * The decision is therefore taken after the session is complete - the whole tree is kept or
- * the whole tree is dropped, because a session's value lies in the correlation between its
- * entries (which tags were stored against which tags were purged), not in single events.
+ * The decision is taken on the complete session, and keeps or drops it whole: a session's value
+ * lies in the correlation between its entries - which tags were stored against which tags were
+ * purged - so a filter that kept single events would destroy what makes it readable.
  *
  * An app that wants "record this one request in full" (a debug header, an internal IP)
  * implements this interface and delegates to the shipped policy for everything else: the

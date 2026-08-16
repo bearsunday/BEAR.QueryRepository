@@ -39,10 +39,9 @@ use const JSON_UNESCAPED_UNICODE;
  * half-written file. Under concurrency `latest.json` holds whichever session finished last,
  * which is not necessarily the newest timestamped sibling.
  *
- * A destination that cannot be written is reported to `error_log()` and otherwise ignored: the
- * log is a side channel, and a full disk or a read-only mount must not change how the request
- * ended. Sessions carry request URIs with their query strings, client validators and exception
- * text, so the directory is created 0700 and the files 0600 - treat them as application logs.
+ * A destination that cannot be written is reported to `error_log()` and never thrown: this runs
+ * at shutdown, where an exception is an uncaught fatal. Modes are 0700/0600 because a session
+ * carries request URIs with their query strings, client validators and exception text.
  */
 final class LogFileWriter implements LogWriterInterface
 {

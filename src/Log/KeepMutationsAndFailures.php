@@ -17,22 +17,18 @@ use function random_int;
  *
  * Three kinds of session are kept:
  *
- *  - mutations: a command scope or a direct `manual_*` call, plus any real tag invalidation.
- *    Writes decide the tags, the TTL and the CDN keys that every later read merely repeats,
- *    and a stale-serving incident is diagnosed from the tags a purge reached.
- *  - failures: the cache path fails without throwing - `put()`'s return value is discarded
- *    by the interceptor and `saveEtag()` does not even return it - so `saved: false`,
- *    `cache_error`, `cdn: failed` and `put_skipped{error-code}` exist in the log alone.
- *  - a sample, when a rate is configured: a baseline for what the tags and TTLs really are.
+ *  - mutations: a `command` scope, a direct `manual_*` call, or a real tag invalidation.
+ *  - failures: `saved: false`, `cache_error`, `cdn`/`roPool`/`etagPool` `failed`,
+ *    `put_skipped{error-code}` - none of which the cache path throws for.
+ *  - a sample, when a rate is configured.
  *
  * A real invalidation is told from pre-write cleanup by the marker the writer records at the
  * source: an `invalidate` is cleanup iff the event immediately before it in the same scope
  * is a `pre_write_cleanup`. Nothing is inferred from tag correlation.
  *
- * The session is read as the decoded public tree rather than the logger's own entry objects,
- * because that is the shape the published schemas describe. Its type degrades to a bare map at
- * nested opens (`PublicOpenEntry.open` is `list<JsonMap>`), so the walk narrows each value it
- * reads and the mixed reads are suppressed per method.
+ * The session is read as the decoded public tree - the shape the published schemas describe.
+ * That type degrades to a bare map at nested opens (`PublicOpenEntry.open` is `list<JsonMap>`),
+ * so the walk narrows every value it reads and suppresses the mixed reads per method.
  */
 final class KeepMutationsAndFailures implements RetentionPolicyInterface
 {

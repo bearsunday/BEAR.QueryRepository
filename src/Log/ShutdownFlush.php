@@ -15,9 +15,8 @@ use function register_shutdown_function;
 /**
  * Flushes at process shutdown: the request's end where a process serves one request
  *
- * Shutdown functions run after the response is written and after `exit()`, so the two paths a
- * transfer-time hook misses are covered: a 304 answer that stops in the bootstrap, and an
- * uncaught error - the case whose log is worth the most.
+ * Shutdown runs after the response is written and after `exit()`, which is what makes it the
+ * boundary LogSinkInterface describes.
  *
  * Diagnostics go to `error_log()`, never `trigger_error()`. Arming happens while the injector
  * builds the logger, and a host with a strict error handler turns a warning raised there into

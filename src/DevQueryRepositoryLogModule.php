@@ -21,9 +21,6 @@ use Ray\Di\Scope;
  * cache just did is a single command away:
  *
  *   vendor/bin/stree var/log/query-repository/latest.json
- *
- * Nothing else changes: the log is a side channel, and cache behaviour is identical with it
- * on or off.
  */
 final class DevQueryRepositoryLogModule extends AbstractModule
 {

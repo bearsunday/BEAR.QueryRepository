@@ -33,16 +33,15 @@ use const PHP_EOL;
  * One line of JSON per session, appended to a stream or a file
  *
  * The shape a log collector expects: `php://stdout` in a container, a path when the host ships
- * files. Writes take an exclusive lock so concurrent workers cannot interleave half-lines - a
- * kept session runs to thousands of bytes, well past the size a pipe write is atomic for. A
- * wrapper that refuses locking is written anyway rather than dropped.
+ * files. Writes take an exclusive lock: a session line is longer than an atomic pipe write, so
+ * concurrent workers would interleave halves of it. A wrapper that refuses the lock is written
+ * anyway rather than dropped.
  *
  * The target is restricted to the two shapes documented above. Anything else - `php://filter/…`,
  * `ftp://`, `ssh2.sftp://` - would let a module argument truncate an unrelated file or send every
  * session over the network, so it is rejected rather than honoured.
  *
- * Sessions carry request URIs with their query strings, client validators and exception text. A
- * file target is created 0600 and its directory 0700; a stream target inherits whatever the host
+ * A file target is created 0600 in a 0700 directory; a stream target inherits whatever the host
  * points it at.
  */
 final class LogStreamWriter implements LogWriterInterface
