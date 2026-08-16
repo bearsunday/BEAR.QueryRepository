@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\UnsupportedLogStream;
+use BEAR\QueryRepository\Fake\KeepEverything;
 use BEAR\QueryRepository\Log\Context\CacheHitContext;
 use BEAR\QueryRepository\Log\Context\CommandContext;
 use BEAR\QueryRepository\Log\Context\CommandResultContext;
@@ -15,12 +16,14 @@ use BEAR\QueryRepository\Log\LogStreamWriter;
 use BEAR\QueryRepository\Log\LogWriterInterface;
 use BEAR\QueryRepository\Log\PolicyLogWriter;
 use BEAR\QueryRepository\Log\PsrLogWriter;
+use BEAR\QueryRepository\Log\RetentionPolicyInterface;
 use BEAR\QueryRepository\Log\SafeSemanticLogger;
 use Koriym\SemanticLogger\LogJson;
 use Koriym\SemanticLogger\SemanticLogger;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LogLevel;
+use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
 
 use function bin2hex;
@@ -175,6 +178,22 @@ class LogWriterTest extends TestCase
 
         $this->assertInstanceOf(PolicyLogWriter::class, $injector->getInstance(LogWriterInterface::class));
         $this->assertInstanceOf(SafeSemanticLogger::class, $injector->getInstance(SemanticLoggerInterface::class));
+    }
+
+    public function testAnAppPolicyBoundAfterTheModuleDecidesInstead(): void
+    {
+        // The seam the module documents: bind the interface after installing it and the writer takes it
+        $module = new class (new ProdQueryRepositoryLogModule($this->file, module: new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld')))) extends AbstractModule {
+            protected function configure(): void
+            {
+                $this->bind(RetentionPolicyInterface::class)->to(KeepEverything::class);
+            }
+        };
+        $writer = (new Injector($module, __DIR__ . '/tmp'))->getInstance(LogWriterInterface::class);
+
+        $writer->write($this->readSession());
+
+        $this->assertFileExists($this->file, 'a healthy read the default drops reaches the destination');
     }
 
     private function readSession(): LogJson
