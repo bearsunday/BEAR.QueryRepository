@@ -82,7 +82,7 @@ Every outcome is a self-describing word, never a bare boolean — except `saved`
 | `roPool` / `etagPool` | `invalidated` \| `failed` | per-pool invalidation result |
 | `cdn` | `purged` \| `failed` \| `skipped` | `skipped` = no purger configured (`NullPurger`), not "nothing to do" |
 | `operation` | `read` \| `write` | which side of the cache threw |
-| `reason` (`put_skipped`) | `etag-present` \| `error-code` \| `not-cacheable` | why no write happened |
+| `reason` (`put_skipped`) | `etag-present` \| `error-code` \| `not-cacheable` | why no write happened. `error-code` carries the response `code`, and the threshold differs by path: `#[Cacheable]` skips any non-200 (a `203` appears here), a donut skips 4xx and above |
 | `result` (`manual_*`) | `stored`/`purged`/`invalidated` \| `failed` | the direct call's outcome |
 | `ttl` | seconds | `31536000` is the `never` convention; `0`/`null` = no expiry set |
 

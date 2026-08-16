@@ -34,10 +34,14 @@ use function random_int;
  *  - a sample, when a rate is configured.
  *
  * Deliberately not kept: `cache_error{operation: read}` (availability, monitored elsewhere - the
- * "degraded, not cold" reading is a development-time one) and `put_skipped{error-code}`, which
- * only says the app returned 4xx and nothing was cached, which is both correct and already in
- * the access log. `saved: false` can still repeat per write under a capacity problem; that is
- * the signal, not noise, and a host that needs a ceiling decorates `LogWriterInterface`.
+ * "degraded, not cold" reading is a development-time one) and every `put_skipped`, which records a
+ * store that was never attempted because a rule forbade it - a response code the path will not
+ * cache (`#[Cacheable]` skips any non-200, a donut skips 4xx and above), a validator already set,
+ * or a page served from its template. Those are decisions, stable for as long as the code and the
+ * configuration are, and found once in development rather than per request in production.
+ * `saved: false` is the opposite: the store was attempted and the pool refused it. It can repeat
+ * per write under a capacity problem, and that is the signal, not noise - a host that needs a
+ * ceiling decorates `LogWriterInterface`.
  *
  * A real invalidation is told from pre-write cleanup by the marker the writer records at the
  * source: an `invalidate` is cleanup iff the event immediately before it in the same scope

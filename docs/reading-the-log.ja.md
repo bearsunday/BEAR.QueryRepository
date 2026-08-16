@@ -82,7 +82,7 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 | `roPool` / `etagPool` | `invalidated` \| `failed` | プールごとの無効化結果 |
 | `cdn` | `purged` \| `failed` \| `skipped` | `skipped` は purger 未設定 (`NullPurger`)。「やることが無かった」ではない |
 | `operation` | `read` \| `write` | キャッシュのどちら側が throw したか |
-| `reason` (`put_skipped`) | `etag-present` \| `error-code` \| `not-cacheable` | 書き込みが起きなかった理由 |
+| `reason` (`put_skipped`) | `etag-present` \| `error-code` \| `not-cacheable` | 書き込みが起きなかった理由。`error-code` は応答の `code` を伴い、閾値は経路で違う: `#[Cacheable]` は 200 以外すべて(`203` もここに出る)、donut は 4xx 以上 |
 | `result` (`manual_*`) | `stored`/`purged`/`invalidated` \| `failed` | 直接呼び出しの結果 |
 | `ttl` | 秒 | `31536000` は `never` の慣習値。`0`/`null` は期限未設定 |
 

@@ -140,8 +140,9 @@ class RetentionPolicyTest extends TestCase
 
     public function testNoSkipReasonIsAnIncidentOfItsOwn(): void
     {
-        // `error-code` says the app returned 4xx and nothing was cached - correct behaviour, and
-        // the access log already counts it. `not-cacheable` and `etag-present` are decisions.
+        // Every skip reason records a store that was never attempted because a rule forbade it:
+        // a response code the path will not cache (`#[Cacheable]` skips any non-200, donut 4xx up),
+        // a validator already set, a page served from its template. Decisions, not runtime failures.
         foreach (['error-code', 'not-cacheable', 'etag-present'] as $reason) {
             $open = $this->logger->open(new GetContext('page://self/html/blog-posting'));
             $this->logger->event(new PutSkippedContext('page://self/html/blog-posting', $reason, $reason === 'error-code' ? 400 : null));
