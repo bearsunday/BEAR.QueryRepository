@@ -1,6 +1,10 @@
 # ログの読み方
 
-ログに現れうる語の全部と、セッション 1 本の読み方です。契約は
+ログに現れうる語の全部と、セッション 1 本の読み方です。読者は BEAR.Sunday アプリを運用しており、
+本パッケージを導入済みであることを前提にします — キャッシュのモデル自体(`#[Cacheable]`、donut
+caching、イベント駆動の無効化)は
+[キャッシュマニュアル](https://bearsunday.github.io/manuals/1.0/ja/cache.html)の担当で、
+このページの担当ではありません。契約は
 [docs/schemas/context/](schemas/context/) の per-context JSON Schema であり、この文書はその読み手向けの
 案内です。`docs/llms.txt` と `docs/llms-full.txt` は同じ語彙をエージェント向けの参照表として持ちます
 — context を変えたときは両方を更新してください。

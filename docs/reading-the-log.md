@@ -1,6 +1,9 @@
 # Reading the Log
 
-Every word the cache log can contain, and how to read a session. The per-context JSON Schemas
+Every word the cache log can contain, and how to read a session. It assumes you run a
+BEAR.Sunday application with this package installed: the cache model itself — `#[Cacheable]`,
+donut caching, event-driven invalidation — is the
+[cache manual](https://bearsunday.github.io/manuals/1.0/en/cache.html), not this page. The per-context JSON Schemas
 under [docs/schemas/context/](schemas/context/) are the contract; this page is the reader's
 guide to them. `docs/llms.txt` and `docs/llms-full.txt` carry the same vocabulary as a lookup
 table for an agent — update both when a context changes.
