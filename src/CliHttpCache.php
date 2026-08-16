@@ -4,8 +4,15 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Log\Context\CacheErrorContext;
+use BEAR\QueryRepository\Log\Context\CacheHitContext;
+use BEAR\QueryRepository\Log\Context\CacheMissContext;
+use BEAR\QueryRepository\Log\Context\ConditionalRequestContext;
 use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
+use Koriym\SemanticLogger\NullSemanticLogger;
+use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
+use Throwable;
 
 use function assert;
 use function is_string;
@@ -20,11 +27,16 @@ final readonly class CliHttpCache implements HttpCacheInterface
 {
     public function __construct(
         private ResourceStorageInterface $storage,
+        private SemanticLoggerInterface $logger = new NullSemanticLogger(),
     ) {
     }
 
     /**
      * {@inheritDoc}
+     *
+     * The answer is recorded as its own conditional_request scope, exactly as the
+     * HTTP-facing HttpCache records it: a hit is the 304 decision. No validator
+     * presents nothing, so nothing is recorded.
      */
     #[Override]
     public function isNotModified(array $server): bool
@@ -34,7 +46,21 @@ final readonly class CliHttpCache implements HttpCacheInterface
             return false;
         }
 
-        return $this->storage->hasEtag($etag);
+        $openId = $this->logger->open(new ConditionalRequestContext($etag));
+        try {
+            $hit = $this->storage->hasEtag($etag);
+        } catch (Throwable $e) {
+            // Same shape as the HTTP-facing HttpCache: record the outage, close the scope
+            // as the established idiom reads it, keep the exception's pre-existing path.
+            $this->logger->event(new CacheErrorContext($this->requestUri($server), 'read', $e->getMessage(), $e::class));
+            $this->logger->close(new CacheMissContext('etag'), $openId);
+
+            throw $e;
+        }
+
+        $this->logger->close($hit ? new CacheHitContext('etag') : new CacheMissContext('etag'), $openId);
+
+        return $hit;
     }
 
     /**
@@ -84,5 +110,21 @@ final readonly class CliHttpCache implements HttpCacheInterface
         }
 
         return null;
+    }
+
+    /**
+     * The request URI when the SAPI array carries one
+     *
+     * The interface shape names only the validator key, but the real $_SERVER carries the
+     * whole request; empty means no URI was resolvable at the transfer boundary.
+     *
+     * @param array<array-key, mixed> $server
+     */
+    private function requestUri(array $server): string
+    {
+        /** @var mixed $uri */
+        $uri = $server['REQUEST_URI'] ?? '';
+
+        return is_string($uri) ? $uri : '';
     }
 }

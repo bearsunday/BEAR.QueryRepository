@@ -1,0 +1,42 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
+    "title": "save_etag",
+    "description": "Event: an ETag entry was stored with its invalidation tags.",
+    "type": "object",
+    "required": [
+        "uri",
+        "etag",
+        "tags",
+        "ttl",
+        "saved"
+    ],
+    "properties": {
+        "uri": {
+            "type": "string"
+        },
+        "etag": {
+            "type": "string"
+        },
+        "tags": {
+            "description": "invalidation tags registered with the entry, including the resource's own URI tag",
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "ttl": {
+            "description": "seconds until expiry; 0 or null means no expiry is set; 31536000 is the `never` expiry convention (365 days), an effectively-unbounded placeholder — event-driven invalidation is the intended eviction path",
+            "type": [
+                "integer",
+                "null"
+            ],
+            "minimum": 0
+        },
+        "saved": {
+            "type": "boolean",
+            "description": "Whether the cache pool accepted the entry. false means the store failed silently (e.g. pool error) — the entry is NOT cached despite this event."
+        }
+    },
+    "additionalProperties": false
+}

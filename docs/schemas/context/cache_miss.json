@@ -1,0 +1,22 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
+    "title": "cache_miss",
+    "description": "Close/event: a cache lookup miss at the given layer. Layer `etag` is the conditional-request answer at the transfer boundary: a hit there is the 304 decision, made before any resource runs.",
+    "type": "object",
+    "required": [
+        "layer"
+    ],
+    "properties": {
+        "layer": {
+            "type": "string",
+            "enum": [
+                "resource",
+                "donut",
+                "donut-view",
+                "etag"
+            ]
+        }
+    },
+    "additionalProperties": false
+}

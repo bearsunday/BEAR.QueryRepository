@@ -1,0 +1,42 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/command.json",
+    "title": "command",
+    "description": "Open: a write/command scope (#[Refresh]/#[Purge]); purges nest under it.",
+    "type": "object",
+    "required": [
+        "method",
+        "annotations",
+        "source"
+    ],
+    "properties": {
+        "method": {
+            "type": "string"
+        },
+        "annotations": {
+            "description": "the #[Refresh]/#[Purge] annotations on the command method; empty on the CacheableResponse (donut-command) path by design — that path refreshes by resource identity, not by annotation",
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": [
+                    "class",
+                    "uri"
+                ],
+                "properties": {
+                    "class": {
+                        "type": "string"
+                    },
+                    "uri": {
+                        "type": "string"
+                    }
+                },
+                "additionalProperties": false
+            }
+        },
+        "source": {
+            "description": "class basename of the producing interceptor; built-in producers are CommandInterceptor, DonutCommandInterceptor and RefreshInterceptor, but any custom command interceptor may appear here",
+            "type": "string"
+        }
+    },
+    "additionalProperties": false
+}

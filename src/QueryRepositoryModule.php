@@ -9,6 +9,8 @@ use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\RepositoryModule\Annotation\TagsPool;
 use BEAR\Resource\NamedParameter;
 use BEAR\Resource\NamedParameterInterface;
+use Koriym\SemanticLogger\NullSemanticLogger;
+use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 use Ray\Di\AbstractModule;
 use Ray\Di\Scope;
@@ -28,6 +30,7 @@ use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
  *  EtagSetterInterface
  *  NamedParameterInterface
  *  ResourceStorageInterface
+ *  SemanticLoggerInterface (null by default - install Dev/ProdQueryRepositoryLogModule to record)
  *  MatchQueryInterface
  *  UriTag
  *  MatchQueryInterface
@@ -47,6 +50,9 @@ final class QueryRepositoryModule extends AbstractModule
     {
         // Null cache engine default
         $this->bind(AdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->to(NullAdapter::class);
+        // Null cache log default: the log costs nothing and imposes no flush duty until an
+        // app installs DevQueryRepositoryLogModule or ProdQueryRepositoryLogModule.
+        $this->bind(SemanticLoggerInterface::class)->to(NullSemanticLogger::class)->in(Scope::SINGLETON);
         // When null is bound, the same adapter as the one assigned to the ResourceObjectPool is used.
         $this->bind(AdapterInterface::class)->annotatedWith(TagsPool::class)->toInstance(null);
         // TagAwareAdapterInterface is injected into ResourceStorage

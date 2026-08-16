@@ -11,9 +11,11 @@ use BEAR\Resource\Module\ResourceModule;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
 use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
+use FakeVendor\HelloWorld\Resource\App\ControlExpiry;
 use FakeVendor\HelloWorld\Resource\App\NullView;
 use FakeVendor\HelloWorld\Resource\App\User\Profile;
 use FakeVendor\HelloWorld\Resource\Page\None;
+use Koriym\SemanticLogger\SemanticLoggerInterface;
 use PHPUnit\Framework\TestCase;
 use Psr\Cache\CacheItemPoolInterface;
 use Ray\Di\AbstractModule;
@@ -35,10 +37,12 @@ use const E_USER_WARNING;
 
 class QueryRepositoryTest extends TestCase
 {
+    use SemanticLogTreeTrait;
+
     private ResourceInterface $resource;
     private QueryRepositoryInterface $repository;
     private HttpCacheInterface $httpCache;
-    private RepositoryLoggerInterface $logger;
+    private SemanticLoggerInterface $logger;
 
     protected function setUp(): void
     {
@@ -47,16 +51,15 @@ class QueryRepositoryTest extends TestCase
         $this->repository = $injector->getInstance(QueryRepositoryInterface::class);
         $this->resource = $injector->getInstance(ResourceInterface::class);
         $this->httpCache = $injector->getInstance(HttpCacheInterface::class);
-        $this->logger = $injector->getInstance(RepositoryLoggerInterface::class);
+        $this->logger = $injector->getInstance(SemanticLoggerInterface::class);
 
         parent::setUp();
     }
 
     protected function tearDown(): void
     {
-        $log = ((string) $this->logger);
-        // error_log((string) $log);  // uncomment to see the debug log
-        unset($log);
+        // Every emitted log entry must conform to the published schema (drift detection)
+        $this->flushAndValidate($this->logger);
     }
 
     public function testPurgeSameResourceObjectByPatch(): void
@@ -104,6 +107,21 @@ class QueryRepositoryTest extends TestCase
         $this->assertTrue($result);
     }
 
+    public function testPastExpiryAtIsClampedToZeroTtl(): void
+    {
+        // A past expiryAt leaves no lifetime to set: the TTL is 0, which the storage stores
+        // as "no expiry" rather than going negative (the save_* schemas declare "minimum": 0).
+        $ro = new ControlExpiry();
+        $ro->uri = new Uri('app://self/control-expiry');
+        $ro->body = ['expiry_at' => '2000-01-01 00:00:00'];
+        $this->repository->put($ro);
+        $tree = $this->flushAndValidate($this->logger);
+
+        $saveValue = self::eventContextJsonOf($tree, 'save_value');
+        $this->assertNotNull($saveValue);
+        $this->assertStringContainsString('"ttl":0', $saveValue);
+    }
+
     public function testPutResquestEmbeddedResoureView(): void
     {
         $uri = 'page://self/emb-view';
@@ -113,6 +131,13 @@ class QueryRepositoryTest extends TestCase
         assert($state instanceof ResourceState);
         assert(is_array($state->body));
         $this->assertSame(1, $state->body['num']);
+
+        // save_view records its invalidation tags, including the resource's own URI tag
+        $tree = $this->flushAndValidate($this->logger);
+        $saveView = self::eventContextJsonOf($tree, 'save_view');
+        $this->assertNotNull($saveView);
+        $this->assertStringContainsString('"_emb-view_"', $saveView);
+
         $expected = '{
     "time": {
         "none": "none"
@@ -218,7 +243,7 @@ class QueryRepositoryTest extends TestCase
     {
         $namespace = 'FakeVendor\HelloWorld';
         $module = new QueryRepositoryModule(new ResourceModule($namespace));
-        $module->override(new class extends AbstractModule{
+        $module->override(new class extends AbstractModule {
             protected function configure(): void
             {
                 $this->bind(CacheItemPoolInterface::class)->annotatedWith(Shared::class)->to(FilesystemAdapter::class);
@@ -231,5 +256,27 @@ class QueryRepositoryTest extends TestCase
         $repository = (new Injector($module))->getInstance(QueryRepositoryInterface::class);
         $unserilizedRepository = unserialize(serialize(unserialize(serialize($repository))));
         $this->assertInstanceOf(Repository::class, $unserilizedRepository);
+    }
+
+    public function testStateWithoutStoredAtDerivesAgeFromLastModified(): void
+    {
+        // A warm cache surviving a deploy holds entries saved before storedAt existed.
+        // Their residence time is unknown, so Age falls back to the content's change time,
+        // which over-states residence rather than presenting a cache hit as fresh.
+        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module->override(new class extends AbstractModule {
+            protected function configure(): void
+            {
+                $this->bind(ResourceStorageInterface::class)->toInstance(new FakeLegacyStateStorage());
+            }
+        });
+        $repository = (new Injector($module, __DIR__ . '/tmp'))->getInstance(QueryRepositoryInterface::class);
+
+        $state = $repository->get(new Uri('app://self/user?id=1'));
+
+        $this->assertInstanceOf(ResourceState::class, $state);
+        $age = (int) $state->headers[Header::AGE];
+        $this->assertGreaterThanOrEqual(FakeLegacyStateStorage::RESIDENCE, $age);
+        $this->assertLessThanOrEqual(FakeLegacyStateStorage::RESIDENCE + 1, $age);
     }
 }

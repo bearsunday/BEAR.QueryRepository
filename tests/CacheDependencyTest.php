@@ -60,6 +60,30 @@ class CacheDependencyTest extends TestCase
     }
 
     /**
+     * The same grandchild cascade as testDestroyByGrandChild, but driven by a write
+     * command instead of a manual purge: writing level-three busts it and, via the
+     * surrogate-key tags, its parents. The written resource is refreshed in place by
+     * the command, so only the parents are left cold. This pins the command-driven
+     * invalidation flow demonstrated in demo/run-dependency.php.
+     */
+    public function testWriteToGrandChildCascadesInvalidation(): void
+    {
+        $this->resource->get('page://self/dep/level-one');
+        $one1 = $this->repository->get(new Uri('page://self/dep/level-one'));
+        $this->assertInstanceOf(ResourceState::class, $one1);
+        $etag1 = $one1->headers[Header::ETAG];
+        $this->resource->put('page://self/dep/level-three');
+        $this->assertNull($this->repository->get(new Uri('page://self/dep/level-one')));
+        $this->assertNull($this->repository->get(new Uri('page://self/dep/level-two')));
+        // The written resource is purged and refreshed in place by the command, so unlike
+        // its parents it is cached again right after the write — in both pools.
+        $three = $this->repository->get(new Uri('page://self/dep/level-three'));
+        $this->assertInstanceOf(ResourceState::class, $three);
+        $this->assertTrue($this->storage->hasEtag($three->headers[Header::ETAG]));
+        $this->assertFalse($this->storage->hasEtag($etag1));
+    }
+
+    /**
      * Test that resources in unrelated dependency chains are independent.
      *
      * Structure:
@@ -145,6 +169,24 @@ class CacheDependencyTest extends TestCase
         $childTag = (new UriTag())(new Uri('page://self/dep/non-cacheable-child'));
         $surrogateKey = $parent->headers[Header::SURROGATE_KEY] ?? '';
         $this->assertStringNotContainsString($childTag, $surrogateKey);
+    }
+
+    /**
+     * A child without an ETag must not end the walk over its siblings
+     *
+     * ParentOfMixed embeds the non-cacheable child first. If skipping it stopped the walk,
+     * the cacheable sibling behind it would never register as a dependency and its purge
+     * would leave this page serving content built from the purged child - the lost
+     * dependency this package shipped as a bug once already.
+     */
+    public function testDependencySurvivesANonCacheableSiblingInFront(): void
+    {
+        $this->resource->get('page://self/dep/parent-of-mixed');
+        $this->assertInstanceOf(ResourceState::class, $this->repository->get(new Uri('page://self/dep/parent-of-mixed')));
+
+        $this->repository->purge(new Uri('page://self/dep/child-c'));
+
+        $this->assertNull($this->repository->get(new Uri('page://self/dep/parent-of-mixed')));
     }
 
     public function testHalEmbeddedChildAddsChildSurrogateKeyToParent(): void

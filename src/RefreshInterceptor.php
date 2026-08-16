@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\ReturnValueIsNotResourceObjectException;
+use BEAR\QueryRepository\Log\Context\CommandResultContext;
 use BEAR\Resource\Code;
 use BEAR\Resource\ResourceObject;
+use Koriym\SemanticLogger\NullSemanticLogger;
+use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
@@ -26,9 +29,13 @@ use Ray\Aop\MethodInvocation;
  */
 final readonly class RefreshInterceptor implements MethodInterceptor
 {
+    private CommandContextFactory $commandContextFactory;
+
     public function __construct(
         private RefreshAnnotatedCommand $command,
+        private SemanticLoggerInterface $logger = new NullSemanticLogger(),
     ) {
+        $this->commandContextFactory = new CommandContextFactory();
     }
 
     #[Override]
@@ -40,8 +47,15 @@ final readonly class RefreshInterceptor implements MethodInterceptor
             throw new ReturnValueIsNotResourceObjectException($invocation->getThis()::class); // @codeCoverageIgnore
         }
 
-        if ($ro->code < Code::BAD_REQUEST) {
-            $this->command->command($invocation, $ro);
+        // Open the scope even for a failed write: a 4xx command_result with no invalidation
+        // events records that the purge/refresh was correctly skipped.
+        $openId = $this->logger->open(($this->commandContextFactory)($invocation, 'RefreshInterceptor'));
+        try {
+            if ($ro->code < Code::BAD_REQUEST) {
+                $this->command->command($invocation, $ro);
+            }
+        } finally {
+            $this->logger->close(new CommandResultContext($ro->code), $openId);
         }
 
         return $ro;

@@ -41,6 +41,9 @@ final class DonutCacheModule extends AbstractModule
         $this->bind(HeaderSetter::class);
         $this->bind(CdnCacheControlHeaderSetterInterface::class)->to(CdnCacheControlHeaderSetter::class);
         $this->bind(DonutRepositoryInterface::class)->to(DonutRepository::class)->in(Scope::SINGLETON);
+        // BC: the legacy flat logger interface is kept bound (deprecated). Internal cache code
+        // now logs through SemanticLoggerInterface, so this instance receives no internal events.
+        /** @psalm-suppress DeprecatedClass, DeprecatedInterface */
         $this->bind(RepositoryLoggerInterface::class)->to(RepositoryLogger::class)->in(Scope::SINGLETON);
         $this->bind(PurgerInterface::class)->to(NullPurger::class);
         $this->bind(UriTagInterface::class)->to(UriTag::class);

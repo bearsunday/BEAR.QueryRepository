@@ -14,12 +14,12 @@ class FakeErrorCache implements AdapterInterface
 {
     public function getItem($key): CacheItem
     {
-        throw new RuntimeException();
+        throw new RuntimeException('cache server down');
     }
 
     public function getItems(array $keys = []): iterable
     {
-        return [];
+        throw new RuntimeException('cache server down');
     }
 
     public function hasItem($key): bool

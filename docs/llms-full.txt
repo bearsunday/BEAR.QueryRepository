@@ -173,52 +173,55 @@ class BlogPage extends ResourceObject
 }
 ```
 
-## Repository Logger
+## Cache Log (Semantic Log)
 
-Cache operations are logged in JSON format for debugging and monitoring.
+The reader's guide to this vocabulary is `docs/reading-the-log.md`; the tables below are the lookup form of the same facts.
 
-```json
-{"op":"save-value","uri":"page://self/user","tags":["etag123","_user_"],"ttl":3600}
-{"op":"invalidate-etag","tags":["_user_"]}
-{"op":"put-query-repository","uri":"app://self/posts"}
-{"op":"cache-hit","uri":"page://self/user"}
-{"op":"cache-miss","uri":"page://self/user"}
-{"op":"depends-on","parent":"page://self/blog","child":"app://self/comment","childTags":["_comment_id=1"]}
-```
+Cache operations are logged as an open/event/close tree (Koriym.SemanticLogger) whose nesting **is** the embed/dependency structure: a parent's embedded child GETs appear as nested scopes, no reconstruction needed. Every entry carries a typed context object and a `schemaUrl` pointing at its per-context JSON Schema, so the log is self-describing.
 
-### Log Operations
+### Log Contexts
 
-| Operation | Description |
-|-----------|-------------|
-| `request-start` | Request boundary marker (uri, optional method) |
-| `cache-hit` | Cached resource returned without method execution |
-| `cache-miss` | Cache not found, method executed |
-| `save-value` | Resource body cached |
-| `save-view` | Resource body + rendered view cached |
-| `save-etag` | ETag stored for validation |
-| `depends-on` | Parent resource registered dependency on child via tags |
-| `invalidate-etag` | Cache invalidated by tags |
-| `purge-query-repository` | Cache purge initiated |
-| `put-query-repository` | Cache store initiated |
+| Context (type) | Kind | Description |
+|----------------|------|-------------|
+| `get` | open | A resource/donut GET scope; embedded child GETs nest under it |
+| `cache_hit` / `cache_miss` (`layer`) | close/event | Lookup outcome (`layer`: `resource` / `donut` / `donut-view` / `etag`) |
+| `command` (`method`/`annotations`/`source`) | open | A write scope; `source` names the producing interceptor, `annotations` its `#[Refresh]`/`#[Purge]` attributes (empty on the CacheableResponse path by design) |
+| `depends_on` (`parent`/`child`/`childTags`) | event | Parent registered a dependency on a child's tags |
+| `save_value` / `save_view` / `save_etag` / `save_donut` / `save_donut_view` | event | What was stored, with `tags`, `ttl` (seconds until expiry; 0/null = no expiry set), and the `saved` outcome |
+| `pre_write_cleanup` (`uri`) | event | Marker recorded by a writer right before it clears the entry it is about to rewrite; the `invalidate` immediately following it in the same scope is pre-write cleanup, not a real invalidation |
+| `invalidate` (`tags`/`roPool`/`etagPool`/`cdn`/`durationMs`) | event | Tag invalidation outcome; `cdn` is tri-state: `purged` (a configured purger ran), `failed` (the purge threw — fail-closed, after the local pools were invalidated), `skipped` (NullPurger, no CDN configured). Pre-write cleanup vs real invalidation is recorded at the source via the `pre_write_cleanup` marker — see below |
+| `cdn_headers` (`uri`/`headers`/`surrogateKeys`) | event | The CDN-facing headers a donut write or refresh put on the response, read back after they are final: the literal name => value pairs (`CDN-Cache-Control`, `Surrogate-Control`, `Akamai-Cache-Control`, `Surrogate-Key`, `Edge-Cache-Tag`) — including the bound setter's default when no `sMaxAge` was requested. No lifetime header means the response gave the CDN no lifetime directive (the `putDonut` kind); what the CDN then does is outside this log. `surrogateKeys` is the split key list a purge's tags must reach to drop the response at the edge. A state-served hit replays the stored headers and emits no new event |
+| `conditional_request` (`ifNoneMatch`) | open | A conditional request presented a validator at the transfer boundary; closes with the ETag pool's answer as `cache_hit`/`cache_miss` at layer `etag`. A hit is the 304 decision — the entire request answered without running the resource, which no `get` scope can show. No `If-None-Match` presents nothing and records nothing. Flushing stays the host's responsibility: flush before an early-exit 304 transfer to retain it |
+| `purge` | event | An explicit purge request |
+| `put_skipped` (`uri`/`reason`[/`code`]) | event | A miss was not followed by a put (`reason`: `etag-present` / `error-code` with the actual response `code` / `not-cacheable`) |
+| `cache_error` (`uri`/`operation`/`error`/`exceptionClass`) | event | A failure raised on the cache read/write path: the pool itself (e.g. cache server down) or any work the store performs (rendering a view, purging a CDN); `operation`: `read` / `write`, `exceptionClass` names the throwable that failed |
+| `put_donut` / `refresh_donut` | event | Donut store / re-render from a template hit |
+| `semantic_logger_error` (`kind` + details) | event | Core SemanticLogger diagnostic (koriym/semantic-logger, not this package): logging-protocol misuse recorded in-band at the exact failure point — kinds: `close_id_mismatch` / `close_without_open` / `unclosed_at_flush` / `context_serialization_failed`; the tree is preserved |
+| `manual_store` / `manual_purge` / `manual_invalidate` (+ `*_result` closes) | open | Scope rooting a top-level (non-AOP) call: `put()` / `putStatic()` / `putDonut()` (`manual_store`), `purge()` (`manual_purge`), `invalidateTags()` (`manual_invalidate`). A donut write's own pre-write cleanup invalidation nests inside its `manual_store` instead of rooting a `manual_invalidate` of its own. In a `manual_invalidate` scope the `invalidate` detail stays a nested event — so tag correlation finds manual invalidations too — and the close is the one-word verdict (`manual_invalidate_result`) |
 
-#### Donut Cache Operations
+A donut refresh is not marked in any response header — only in the log (`refresh_donut`). The ETag stays a pure validator of the representation: it changes when the recomposed content changed, and a recomposition yielding identical content keeps its entity-tag and still answers `If-None-Match` with 304.
 
-| Operation | Description |
-|-----------|-------------|
-| `try-donut-view` | Attempt to retrieve complete rendered view |
-| `found-donut-view` | Complete view found in cache |
-| `try-donut` | Attempt to retrieve donut structure |
-| `no-donut-found` | Donut structure not in cache |
-| `put-donut` | Store donut structure |
-| `save-donut` | Save donut structure to cache |
-| `save-donut-view` | Save complete rendered view |
-| `refresh-donut` | Reuse donut structure, regenerate inner content |
+### Turning the log on, and where a session goes
 
-The `depends-on` log is useful for understanding cache invalidation chains - when a child is purged, all parents with matching tags are automatically invalidated.
+- Off by default (`QueryRepositoryModule`): `SemanticLoggerInterface` → `Koriym\SemanticLogger\NullSemanticLogger`. Nothing is recorded, nothing accumulates, no flush is owed — the same rule the package already applies to its cache engine (`NullAdapter`). A measured healthy read carries no information (0 failure entries out of 28-95 per session in the four demos), while a recorded session costs ~1.4 KB per request until something flushes it, so recording is something an app asks for.
+- Development: `new DevQueryRepositoryLogModule($appDir . '/var/log/query-repository', module: new QueryRepositoryModule())`. Every session is written whole, one file per request, plus a fixed `latest.json` — `vendor/bin/stree var/log/query-repository/latest.json` renders the request that just ran. Note the wrapping: a module's `install()` cannot replace a binding the installer already holds (`Container::merge()` keeps existing keys), which is why the log module takes the module it turns recording on for, exactly as `DevEtagModule` does.
+- Production: `new ProdQueryRepositoryLogModule('php://stdout', sampleRate: 1000, module: new QueryRepositoryModule())`. The session is buffered and judged at flush (`RetentionPolicyInterface`), and the line is who else knows rather than success-vs-failure: mutations (a `command` scope, a `manual_*` call, or an `invalidate` that is not marker-preceded pre-write cleanup), effects that were intended and did not happen (`saved: false`, `invalidate` with `roPool`/`etagPool`/`cdn` `failed`, a `manual_*` result of `failed`, `cache_error{operation: write}` - a store or an invalidation abandoned - plus `semantic_logger_error`, which means the records themselves may be incomplete), and an optional sample. Healthy reads are dropped, and so are two things that look like incidents but are accounted for elsewhere: `cache_error{operation: read}` is already reported by the application's own warning channel - both interceptors `trigger_error()` before degrading, for every cause and not only the outage a pool's monitoring would see - and it repeats on every request while the incident lasts (so the separation of a degraded miss from a cold one is a development-time reading), and every `put_skipped` records a store that was never attempted because a rule forbade it - a response code the path will not cache (`#[Cacheable]` skips any non-200, a donut skips 4xx and above), a validator already set, or a page served from its template - which is a decision, stable while the code and the configuration are, rather than a runtime failure. `saved: false` can still repeat per write under a capacity problem: that is the signal, and a host that needs a ceiling decorates `LogWriterInterface`. This buys forensics, not monitoring — hit rates belong to metrics. An app that wants full recording for one request implements `RetentionPolicyInterface` and overrides the binding, since only the app knows what authorizes it.
+- A written session is application-log material, not an artefact: it records resource URIs **with their query strings** (`AbstractUri::__toString()` appends them, so `page://self/reset?token=…` is written in full), the client's raw `If-None-Match`, `$_SERVER['REQUEST_URI']` on the `HttpCache` path, cache/surrogate tags, CDN header values, and `cache_error.error` - the verbatim `getMessage()` of whatever the read/write path threw, which for an HTTP CDN purger can carry the purge endpoint and its credentials. No response body is recorded by any context. `LogFileWriter` therefore creates its directory 0700 and its files 0600, and a host that must scrub decorates `LogWriterInterface` rather than waiting for a redaction option: the seam is one class (`final class Scrubbed implements LogWriterInterface { public function __construct(private LogWriterInterface $inner) {} }`). The same seam rate-limits: during a cache-pool outage every request emits `cache_error`, so retention rises from `1/sampleRate` to 100% - a decorator that caps kept sessions per interval keeps an incident from flooding the collector it exists to inform.
+- Destinations are `LogWriterInterface` implementations, so a session's payload stays a tree rather than a string: `LogFileWriter` (one whole session per file — what `stree` reads), `LogStreamWriter` (one JSON line per session to a stream or file), `PolicyLogWriter` (the retention decorator) and `PsrLogWriter`, which hands the tree to the app's PSR-3 logger under the `log` context key. PSR-3 is an adapter and not the interface for two reasons: it carries strings, so a `LineFormatter` would flatten the tree the schemas describe, and its severity would act as a second filter able to drop what the content-based retention policy chose to keep (the level is configuration on the adapter, never derived).
+- Both log modules bind `SemanticLoggerInterface` → `SafeSemanticLogger(new SemanticLogger())` in singleton scope via `SafeSemanticLoggerProvider`. The core logger never throws (koriym/semantic-logger 0.9), so a logging failure cannot break a cache read/write; `SafeSemanticLogger` adds open-scope depth tracking and the serialization boundary.
+- Manual-scope rooting (`manual_store` / `manual_purge` / `manual_invalidate`) is granted by the `TopLevelAwareInterface` capability (`isTopLevel()`), which `SafeSemanticLogger` implements; a custom `SemanticLoggerInterface` decorator can implement it to mark top-level direct calls as application-initiated in its sessions. Without it those calls are recorded as bare root-level events.
+- Flushing is owned by the log module, not the app: it binds `LogSinkInterface` → `ShutdownFlush`, which registers the flush once per process at construction and again at `SafeSemanticLogger::__unserialize()` — the only hook that runs on every request, since a module's `configure()` runs once at compile time. A shutdown-time flush is deliberate: rendering happens inside `ResourceObject::transfer()`, so cache reads are still recorded while the response is written, and a 304 answer never reaches that method at all (`HttpCacheInterface::transfer()` sets the status and the caller stops, typically with `exit`). Shutdown functions run after output, after `exit()` and after an uncaught error. `flush()` never throws and always resets, so it needs no guard, and an empty session is never written. `ShutdownFlush` refuses to arm and warns on a runtime it can prove is concurrent (`RR_MODE` set, or inside a Swoole coroutine): there shutdown arrives once per worker and concurrent requests share one session — bind a request-scoped `LogSinkInterface`, or leave the log module out, until coroutine-local scoping lands (#179). Interleaved sessions surface as `semantic_logger_error` diagnostics rather than silently.
 
-The `refresh-donut` indicates the donut (outer shell) was reused while the hole (inner dynamic content) was regenerated. ETag with 'r' suffix (e.g., "123456r") indicates a refreshed donut.
+### Verifying the event-driven cache from logs
 
-Schema: docs/schemas/repository-log.json
+- Event-driven entries appear with their configured TTL in seconds (`ttl` = seconds until expiry; the `never` convention = 31536000 = 1 year, effectively indefinite). `0`/`null` also mean no expiry is set. Such entries live until an `invalidate` event with a matching tag — correlate `save_*` `tags` with `invalidate` `tags` to confirm a write busted its dependents.
+- A `get` scope with no events and a `cache_hit` close was served from cache; nesting mirrors the embed structure of resources; `manual_*` scopes mark non-AOP entry points — a direct `put()`, `purge()`, `invalidateTags()` or donut write (`putStatic()`/`putDonut()`), the whole write rooted in one `manual_store` scope.
+- A miss scope without `save_*` events means no put happened — look for a `put_skipped` event recording why (`reason`: `etag-present`, `error-code` with the actual response `code`, or `not-cacheable` for donut pages served from their template plus inner caches). A non-200 GET yields `put_skipped{error-code, code}` + `purge` + `invalidate` (for commands, a 4xx `command_result` with no invalidation events).
+- An `invalidate` is pre-write cleanup iff the event immediately preceding it in the same scope's event stream is a `pre_write_cleanup` marker — the writer records the purpose at the source (`QueryRepository::doPut()` and `DonutRepository::putStatic()`/`putDonut()` emit the marker right before clearing the entry they are about to rewrite), so nothing is inferred from tag correlation and no case is undecidable. Any `invalidate` without the marker is a real invalidation (a `#[Refresh]` command shows both shapes: the purge's invalidate has no marker, the re-put's deleteEtag is marker-preceded). The cleanup uses the resource's own URI tag — which is also its parents' surrogate key — so a child refill visibly purges the parent entry, by design.
+- Check outcome fields: `saved: false` on a save context means the pool rejected the entry — it is NOT cached despite the save event. `cdn` on `invalidate` is tri-state: `purged` (a configured purger ran), `failed` (the purge threw; fail-closed, after local pools were invalidated), `skipped` (NullPurger, no CDN configured). A `cache_error` event records a failure on the cache path, not necessarily a cache outage: read `exceptionClass` before concluding one, because `operation: write` also covers the work the store performs (a view that fails to render, a CDN purge that throws). A pool exception on `operation: read` means the store could not be read, so the `cache_miss` after it reports a failed lookup rather than an absent entry. `semantic_logger_error` events are core SemanticLogger diagnostics (kinds: `close_id_mismatch`, `close_without_open`, `unclosed_at_flush`, `context_serialization_failed`) recording logging-protocol misuse in-band at the exact failure point — the log tree itself is preserved.
+- Events within one scope are time-ordered; the relative ordering BETWEEN a scope's events and a nested scope's contents is not represented in the tree JSON (open children and events are separate arrays, no shared sequence). To determine final state after competing save/invalidate, use scope nesting plus the next GET's hit/miss as ground truth. (A per-entry sequence is being proposed upstream to Koriym.SemanticLogger.)
+
+Schemas: docs/schemas/context/ (one JSON Schema per context, e.g. docs/schemas/context/save_value.json; each log entry links its own via `schemaUrl`)
 
 ## Architecture
 
@@ -246,4 +249,4 @@ Schema: docs/schemas/repository-log.json
 
 ## Schemas
 
-- Repository Log Format: https://bearsunday.github.io/BEAR.QueryRepository/schemas/repository-log.json
+- Cache log context schemas: https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/ (one JSON Schema per context, e.g. https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_value.json)

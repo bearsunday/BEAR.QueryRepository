@@ -5,15 +5,24 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\ExpireAtKeyNotExists;
+use BEAR\QueryRepository\Log\Context\ManualPurgeContext;
+use BEAR\QueryRepository\Log\Context\ManualPurgeResultContext;
+use BEAR\QueryRepository\Log\Context\ManualStoreContext;
+use BEAR\QueryRepository\Log\Context\ManualStoreResultContext;
+use BEAR\QueryRepository\Log\Context\PreWriteCleanupContext;
+use BEAR\QueryRepository\Log\Context\PurgeContext;
+use BEAR\QueryRepository\Log\TopLevelAwareInterface;
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\HttpCache;
 use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceObject;
+use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 use ReflectionClass;
 
 use function is_array;
+use function max;
 use function sprintf;
 use function strtotime;
 use function time;
@@ -21,7 +30,7 @@ use function time;
 final readonly class QueryRepository implements QueryRepositoryInterface
 {
     public function __construct(
-        private RepositoryLoggerInterface $logger,
+        private SemanticLoggerInterface $logger,
         private HeaderSetter $headerSetter,
         private ResourceStorageInterface $storage,
         private Expiry $expiry,
@@ -35,7 +44,29 @@ final readonly class QueryRepository implements QueryRepositoryInterface
     #[Override]
     public function put(ResourceObject $ro)
     {
-        $this->logger->log('put-query-repository', ['uri' => (string) $ro->uri]);
+        // A top-level put is a direct (non-AOP) cache write: root it in a manual_store
+        // scope so it stands out from a write the framework drove, and so its outcome has
+        // a close to ride on. A put nested inside a request GET or a write command keeps
+        // emitting its save events under that scope, unchanged.
+        if ($this->logger instanceof TopLevelAwareInterface && $this->logger->isTopLevel()) {
+            $openId = $this->logger->open(new ManualStoreContext((string) $ro->uri));
+            $stored = false;
+            try {
+                return $stored = $this->doPut($ro);
+            } finally {
+                $this->logger->close(new ManualStoreResultContext($stored), $openId);
+            }
+        }
+
+        return $this->doPut($ro);
+    }
+
+    private function doPut(ResourceObject $ro): bool
+    {
+        // The writer knows its own purpose: this deleteEtag clears the entry about to be
+        // rewritten below. The marker records that, so readers never have to infer
+        // cleanup-vs-invalidation from tag correlation.
+        $this->logger->event(new PreWriteCleanupContext((string) $ro->uri));
         $this->storage->deleteEtag($ro->uri);
         if ($ro->code === 200) {
             $this->setCacheDependency($ro);
@@ -71,11 +102,11 @@ final readonly class QueryRepository implements QueryRepositoryInterface
                 continue;
             }
 
-            // Materialize the child while HAL still has the Request in body.
-            // AbstractRequest::__toString() memoizes the inner result, so
-            // repeated casts here and in the HAL renderer share one
-            // invocation regardless of the request implementation's
-            // execution strategy.
+            // Materialize the child while HAL still has the Request in body: the ETag read
+            // below is set on the child resource by its own interceptor, so it only exists
+            // once the child has run. AbstractRequest::__toString() memoizes the result,
+            // so the renderer reads this same run - but only readers that consult the memo
+            // do (see ResourceStorage::materialize(); __invoke() re-executes).
             (string) $body;
             if (! isset($body->resourceObject->headers[Header::ETAG])) {
                 continue;
@@ -97,7 +128,10 @@ final readonly class QueryRepository implements QueryRepositoryInterface
             return null;
         }
 
-        $state->headers[Header::AGE] = (string) (time() - (int) strtotime($state->headers[Header::LAST_MODIFIED]));
+        // Age is residence time since the state was stored, not derived from Last-Modified
+        // (the content's last change time). Entries predating storedAt fall back to Last-Modified.
+        $storedAt = $state->storedAt ?? (int) strtotime($state->headers[Header::LAST_MODIFIED]);
+        $state->headers[Header::AGE] = (string) (time() - $storedAt);
 
         return $state;
     }
@@ -108,7 +142,20 @@ final readonly class QueryRepository implements QueryRepositoryInterface
     #[Override]
     public function purge(AbstractUri $uri)
     {
-        $this->logger->log('purge-query-repository', ['uri' => (string) $uri]);
+        // A top-level purge is an application-initiated (manual) cache bust: wrap it in a
+        // manual_purge scope so it stands out from automatic invalidation. A purge nested
+        // inside a request GET or a write command stays an ordinary purge event there.
+        if ($this->logger instanceof TopLevelAwareInterface && $this->logger->isTopLevel()) {
+            $openId = $this->logger->open(new ManualPurgeContext((string) $uri));
+            $purged = false;
+            try {
+                return $purged = $this->storage->deleteEtag($uri);
+            } finally {
+                $this->logger->close(new ManualPurgeResultContext($purged), $openId);
+            }
+        }
+
+        $this->logger->event(new PurgeContext((string) $uri));
 
         return $this->storage->deleteEtag($uri);
     }
@@ -137,7 +184,8 @@ final readonly class QueryRepository implements QueryRepositoryInterface
             return $this->getExpiryAtSec($ro, $cacheable);
         }
 
-        return $cacheable->expirySecond ?: $this->expiry->getTime($cacheable->expiry);
+        // A user-supplied expirySecond may be negative; the schemas declare "minimum": 0
+        return max(0, $cacheable->expirySecond ?: $this->expiry->getTime($cacheable->expiry));
     }
 
     private function getExpiryAtSec(ResourceObject $ro, Cacheable $cacheable): int
@@ -151,6 +199,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         /** @var string $expiryAt */
         $expiryAt = $ro->body[$cacheable->expiryAt];
 
-        return (int) strtotime($expiryAt) - time();
+        // A past expiryAt yields no lifetime to set, which the storage stores as "no expiry"
+        return max(0, (int) strtotime($expiryAt) - time());
     }
 }

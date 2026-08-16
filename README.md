@@ -22,3 +22,6 @@
 
 - [BEAR.Sunday cache manual](http://bearsunday.github.io/manuals/1.0/ja/cache.html)
 - [LLM Documentation](https://bearsunday.github.io/BEAR.QueryRepository/llms-full.txt)
+- [Why the QueryRepository Log Records Everything](docs/why-the-log-records-everything.md) — design rationale, the cost measurements, and why recording is off by default
+- [Reading the Log](docs/reading-the-log.md) — every word the log can contain, and how to read a session
+- [What the Cache Log Proves — and What It Does Not](docs/what-the-log-proves.md) — the questions the log answers, the mechanisms that keep the answers honest, and the declared boundaries

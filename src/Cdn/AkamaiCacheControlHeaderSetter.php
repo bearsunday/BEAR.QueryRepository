@@ -14,7 +14,7 @@ use function sprintf;
 final class AkamaiCacheControlHeaderSetter implements CdnCacheControlHeaderSetterInterface
 {
     public const CDN_CACHE_CONTROL_HEADER = 'Akamai-Cache-Control';
-    private const PURGE_KEYS = 'Edge-Cache-Tag';
+    public const PURGE_KEYS = 'Edge-Cache-Tag';
 
     #[Override]
     public function __invoke(ResourceObject $ro, int|null $sMaxAge): void

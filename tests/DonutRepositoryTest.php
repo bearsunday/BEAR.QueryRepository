@@ -4,22 +4,39 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Cdn\AkamaiCacheControlHeaderSetter;
+use BEAR\QueryRepository\Cdn\FastlyCacheControlHeaderSetter;
+use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
+use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Madapaja\TwigModule\TwigModule;
 use PHPUnit\Framework\TestCase;
+use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
+use ReflectionClass;
+use RuntimeException;
+use Symfony\Component\Cache\Adapter\ArrayAdapter;
+use Symfony\Component\Cache\Adapter\TagAwareAdapter;
+use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 
 use function assert;
+use function basename;
+use function class_exists;
 use function dirname;
+use function glob;
+use function is_string;
+use function is_subclass_of;
+use function time;
 
 class DonutRepositoryTest extends TestCase
 {
+    use SemanticLogTreeTrait;
+
     private ResourceInterface $resource;
     private QueryRepositoryInterface $queryRepository;
     private DonutRepositoryInterface $donutRepository;
     private Uri $uri;
-    private ResourceStorageInterface $resourceStorage;
 
     public function setUp(): void
     {
@@ -33,7 +50,6 @@ class DonutRepositoryTest extends TestCase
         $this->resource = $injector->getInstance(ResourceInterface::class);
         $this->donutRepository = $injector->getInstance(DonutRepositoryInterface::class);
         $this->queryRepository = $injector->getInstance(QueryRepositoryInterface::class);
-        $this->resourceStorage = $injector->getInstance(ResourceStorageInterface::class);
         $uri = 'page://self/html/blog-posting';
         $this->uri = new Uri($uri);
 
@@ -69,16 +85,33 @@ class DonutRepositoryTest extends TestCase
         $this->assertNull($maybeNullPurged);
     }
 
-    /** @depends testCreateDonut */
     public function testCreatedByDonut(): void
     {
+        // Own pools: the assertion is about a page recomposed from its donut, which a page
+        // state left behind by another test method would serve instead
+        $injector = $this->getInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $storage = $injector->getInstance(ResourceStorageInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class);
+
         // create donut
-        $this->resource->get('page://self/html/blog-posting');
+        $resource->get('page://self/html/blog-posting');
         // delete comment and blog-posting view
-        $this->resourceStorage->invalidateTags([(new UriTag())(new Uri('page://self/html/comment'))]);
+        $storage->invalidateTags([(new UriTag())(new Uri('page://self/html/comment'))]);
         // create by donut
-        $donutRo = $this->resource->get('page://self/html/blog-posting');
-        $this->assertStringEndsWith('r"', $donutRo->headers[Header::ETAG]);
+        $donutRo = $resource->get('page://self/html/blog-posting');
+        $this->assertSame(200, $donutRo->code);
+        $tree = $this->flushAndValidate($logger);
+        $this->assertNotNull(self::eventContextJsonOf($tree, 'refresh_donut'), 'the page is recomposed from the cached donut');
+        // Both donut-layer outcomes in one session: the cold GET missed the template, the
+        // second one hit it after the page state was invalidated. Only the layer tells a
+        // donut outcome apart from the resource one in the log.
+        $miss = self::eventContextJsonOf($tree, 'cache_miss');
+        $this->assertNotNull($miss);
+        $this->assertStringContainsString('"layer":"donut"', $miss);
+        $hit = self::eventContextJsonOf($tree, 'cache_hit');
+        $this->assertNotNull($hit);
+        $this->assertStringContainsString('"layer":"donut"', $hit);
     }
 
     /**
@@ -110,12 +143,14 @@ class DonutRepositoryTest extends TestCase
         $injector = $this->getInjector();
         $resource = $injector->getInstance(ResourceInterface::class);
         $queryRepository = $injector->getInstance(QueryRepositoryInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class);
 
         $resource->get('page://self/html/blog-posting');
         $purgeResult = $queryRepository->purge(new Uri('page://self/html/comment'));
         $this->assertTrue($purgeResult);
         $donutRo = $resource->get('page://self/html/blog-posting');
-        $this->assertStringEndsWith('r"', $donutRo->headers[Header::ETAG]);
+        $tree = $this->flushAndValidate($logger);
+        $this->assertNotNull(self::eventContextJsonOf($tree, 'refresh_donut'), 'the page is recomposed from the cached donut');
         $this->assertStringContainsString('blog-posting-page', $donutRo->headers[Header::SURROGATE_KEY]);
     }
 
@@ -133,5 +168,224 @@ class DonutRepositoryTest extends TestCase
         $donutRepository->invalidateTags([(new UriTag())(new Uri('page://self/html/blog-posting'))]);
         $ro2 = $queryRepository->get(new Uri('page://self/html/blog-posting'));
         $this->assertNull($ro2);
+    }
+
+    public function testTopLevelPutStaticIsRootedInManualStoreScope(): void
+    {
+        $injector = $this->getInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $donutRepository = $injector->getInstance(DonutRepositoryInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class);
+
+        $page = $resource->get('page://self/html/blog-posting');
+        $logger->flush(); // drain the GET session: this is about the direct write that follows
+        $donutRepository->putStatic($page, null, null);
+        $tree = $this->flushAndValidate($logger);
+
+        $this->assertNotNull(self::contextJsonOf($tree, 'manual_store'), 'a direct donut write is rooted as application-initiated');
+        $close = self::closeContextJsonOf($tree, 'manual_store_result');
+        $this->assertNotNull($close);
+        $this->assertStringContainsString('"result":"stored"', $close);
+        // Every event the write emits — the cleanup invalidation included, which therefore
+        // no longer roots a manual_invalidate of its own — belongs to that one scope.
+        $this->assertSame([], $tree['events'] ?? [], 'nothing is left bare at the session root');
+        $this->assertSame(
+            [['put_donut', 'cdn_headers', 'pre_write_cleanup', 'invalidate', 'save_etag', 'save_donut_view', 'save_donut']],
+            self::scopeEventTypeSequences($tree),
+        );
+    }
+
+    public function testTopLevelPutDonutRecordsTheTemplateOnlyWrite(): void
+    {
+        $injector = $this->getInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $donutRepository = $injector->getInstance(DonutRepositoryInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class);
+
+        $page = $resource->get('page://self/html/blog-posting');
+        $logger->flush(); // drain the GET session: this is about the direct write that follows
+        $donutRepository->putDonut($page, 30);
+        $tree = $this->flushAndValidate($logger);
+
+        // The un-cacheable sibling of the write above: the page is never stored as a
+        // rendered view, so the shape is the same minus the two page-level saves.
+        $this->assertSame([], $tree['events'] ?? [], 'nothing is left bare at the session root');
+        $this->assertSame(
+            [['put_donut', 'cdn_headers', 'pre_write_cleanup', 'invalidate', 'save_donut']],
+            self::scopeEventTypeSequences($tree),
+        );
+    }
+
+    public function testPutStaticInsideResourceGetOpensNoManualScope(): void
+    {
+        $injector = $this->getInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class);
+
+        // BlogPostingCacheControl::onGet() calls putStatic() itself: nested in the GET scope
+        // the interceptor opened, the write stays an ordinary sequence of events there.
+        $resource->get('page://self/html/blog-posting-cache-control');
+        $tree = $this->flushAndValidate($logger);
+
+        $types = self::collectTypes($tree);
+        $this->assertContains('put_donut', $types);
+        $this->assertNotContains('manual_store', $types, 'a nested donut write is framework-driven');
+        $this->assertNotContains('manual_store_result', $types);
+        $this->assertNotContains('manual_invalidate', $types);
+    }
+
+    public function testRefreshRecordsTheSkippedStateWriteWhenTheTemplateLifetimeHasLapsed(): void
+    {
+        $injector = $this->getInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $storage = $injector->getInstance(ResourceStorageInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class);
+
+        // A template entry the pool still answers with, five seconds past the lifetime it
+        // was stored with: re-saving the recomposed content would restart a lifetime the
+        // template no longer has, so the write is recorded as skipped instead.
+        $donut = new ResourceDonut('cmt=[le:page://self/html/comment]', [], 30, true, null, null, time() - 5, ['lapsed-tag']);
+        $storage->saveDonut($this->uri, $donut, 30, ['lapsed-tag']);
+
+        $page = $resource->get((string) $this->uri);
+        $tree = $this->flushAndValidate($logger);
+
+        $this->assertSame(200, $page->code);
+        $this->assertNotNull(self::eventContextJsonOf($tree, 'refresh_donut'));
+        $saveDonut = self::eventContextJsonOf($tree, 'save_donut');
+        $this->assertNotNull($saveDonut);
+        $this->assertStringContainsString('"ttl":0', $saveDonut);
+        $this->assertStringContainsString('"saved":false', $saveDonut);
+    }
+
+    public function testNegativeLifetimeIsRecordedAsTheZeroItIsStoredWith(): void
+    {
+        $injector = $this->getInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $donutRepository = $injector->getInstance(DonutRepositoryInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class);
+
+        // A lifetime at or below zero is not a lifetime the storage can set, so the entry is
+        // stored with no expiry and the request is recorded as the 0 that means exactly that.
+        // Recording -1 would contradict the save events below it and violate the published
+        // schema, which flushAndValidate checks.
+        $page = $resource->get((string) $this->uri);
+        $logger->flush();
+        $donutRepository->putStatic($page, -1, -1);
+        $tree = $this->flushAndValidate($logger);
+
+        $putDonut = self::eventContextJsonOf($tree, 'put_donut');
+        $this->assertNotNull($putDonut);
+        $this->assertStringContainsString('"ttl":0', $putDonut);
+        $this->assertStringContainsString('"sMaxAge":0', $putDonut);
+    }
+
+    public function testDonutWriteBustsTheEntriesThatEmbedIt(): void
+    {
+        $injector = $this->getInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $queryRepository = $injector->getInstance(QueryRepositoryInterface::class);
+        $donutRepository = $injector->getInstance(DonutRepositoryInterface::class);
+
+        // The blog posting embeds the comment, so its cached state carries the comment's URI
+        // tag. Rewriting the comment cleans up that tag before saving, which is what keeps
+        // the parent from serving a page built around the previous comment.
+        $resource->get('page://self/html/blog-posting');
+        $this->assertInstanceOf(ResourceState::class, $queryRepository->get($this->uri));
+
+        $comment = $resource->get('page://self/html/comment');
+        $donutRepository->putStatic($comment, null, null);
+
+        $this->assertNull($queryRepository->get($this->uri));
+    }
+
+    public function testUncacheableDonutWriteDropsTheCachedState(): void
+    {
+        $injector = $this->getInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $queryRepository = $injector->getInstance(QueryRepositoryInterface::class);
+        $donutRepository = $injector->getInstance(DonutRepositoryInterface::class);
+
+        // putDonut() stores the template only: the page is never served from a state again,
+        // so the state a previous cacheable write left behind is cleaned up before the
+        // template is saved. Skipping that cleanup would keep serving the stale page.
+        $page = $resource->get((string) $this->uri);
+        $this->assertInstanceOf(ResourceState::class, $queryRepository->get($this->uri));
+
+        $donutRepository->putDonut($page, null);
+
+        $this->assertNull($queryRepository->get($this->uri));
+    }
+
+    public function testManualDonutWriteClosesAsFailedWhenTheStoreThrows(): void
+    {
+        // The page comes from healthy pools, so only the write below meets the outage.
+        $page = $this->getInjector()->getInstance(ResourceInterface::class)->get((string) $this->uri);
+
+        $namespace = 'FakeVendor\HelloWorld';
+        $module = new FakeEtagPoolModule(ModuleFactory::getInstance($namespace));
+        $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
+        $module->override(new class extends AbstractModule {
+            protected function configure(): void
+            {
+                $pool = new FakeRefusingPool(new TagAwareAdapter(new ArrayAdapter()), refuseSave: false, throwOnSave: true);
+                $this->bind(TagAwareAdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->toInstance($pool);
+            }
+        });
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        $donutRepository = $injector->getInstance(DonutRepositoryInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class);
+
+        // A direct donut write has no interceptor to degrade it, so the outage surfaces here.
+        // Its scope must close as failed: closing `stored` while the caller catches an
+        // exception is the log claiming a write that did not happen.
+        try {
+            $donutRepository->putStatic($page, null, null);
+            $this->fail('expected the pool outage to surface from a direct donut write');
+        } catch (RuntimeException $e) {
+            $this->assertStringContainsString('cache server down', $e->getMessage());
+        }
+
+        $tree = $this->flushAndValidate($logger);
+        $close = self::closeContextJsonOf($tree, 'manual_store_result');
+        $this->assertNotNull($close, 'the scope closes even though the write threw');
+        $this->assertStringContainsString('"result":"failed"', $close);
+    }
+
+    public function testEveryBuiltInCdnHeaderIsInTheRecordedSet(): void
+    {
+        // cdn_headers records the headers named in DonutRepository::CDN_FACING_HEADERS.
+        // That list is a convention, and a built-in setter added without extending it
+        // would silently vanish from the log - this closes the set by reflection: every
+        // string constant a bound-able setter declares is a header the log must know.
+        $known = (new ReflectionClass(DonutRepository::class))->getConstant('CDN_FACING_HEADERS');
+        $this->assertIsArray($known);
+
+        $setters = [];
+        // Two explicit globs, not GLOB_BRACE: a brace pattern that does not expand returns
+        // fewer files without an error, which would silently skip the Cdn/ half.
+        foreach (['' => '/src/*.php', 'Cdn\\' => '/src/Cdn/*.php'] as $prefix => $pattern) {
+            foreach ((array) glob(dirname(__DIR__) . $pattern) as $file) {
+                $class = 'BEAR\QueryRepository\\' . $prefix . basename((string) $file, '.php');
+                if (class_exists($class) && is_subclass_of($class, CdnCacheControlHeaderSetterInterface::class)) {
+                    $setters[] = $class;
+                }
+            }
+        }
+
+        // Both halves must be proven scanned: the default setter lives in src/, the flavors
+        // in src/Cdn/ - asserting only the former would let the Cdn/ half find nothing.
+        $this->assertContains(CdnCacheControlHeaderSetter::class, $setters, 'discovery sees the default setter');
+        $this->assertContains(FastlyCacheControlHeaderSetter::class, $setters, 'discovery sees the Cdn/ directory');
+        $this->assertContains(AkamaiCacheControlHeaderSetter::class, $setters, 'discovery sees the Cdn/ directory');
+        foreach ($setters as $setter) {
+            foreach ((new ReflectionClass($setter))->getConstants() as $name => $value) {
+                if (! is_string($value)) {
+                    continue;
+                }
+
+                $this->assertContains($value, $known, "$setter::$name names a CDN-facing header the log does not record");
+            }
+        }
     }
 }

@@ -1,0 +1,53 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/invalidate.json",
+    "title": "invalidate",
+    "description": "Event: tag invalidation outcome across the local pools and the CDN purger (cdn: \"purged\" = a real purger ran without error; \"failed\" = the purge threw; \"skipped\" = the bound purger is NullPurger, no CDN configured). Pre-write cleanup vs real invalidation is recorded at the source, not inferred: an invalidate is pre-write cleanup iff the event immediately preceding it in the same scope's event stream is a pre_write_cleanup marker, emitted by the writer (QueryRepository::doPut(), DonutRepository::putStatic()/putDonut()) right before it clears the entry it is about to rewrite. Any invalidate without the marker is a real invalidation (a #[Refresh] command shows both shapes: the purge's invalidate has no marker, the re-put's own deleteEtag is marker-preceded). Note the pre-write cleanup uses the resource's own URI tag, which is also its parents' surrogate key, so a child refill visibly purges the parent entry — visible by design.",
+    "type": "object",
+    "required": [
+        "tags",
+        "roPool",
+        "etagPool",
+        "cdn",
+        "durationMs"
+    ],
+    "properties": {
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "roPool": {
+            "description": "Outcome of invalidating the tags in the Resource Object pool",
+            "type": "string",
+            "enum": [
+                "invalidated",
+                "failed"
+            ]
+        },
+        "etagPool": {
+            "description": "Outcome of invalidating the tags in the ETag pool",
+            "type": "string",
+            "enum": [
+                "invalidated",
+                "failed"
+            ]
+        },
+        "cdn": {
+            "description": "Outcome of the CDN surrogate-key purge: \"purged\" = a configured purger ran without error; \"failed\" = the purge threw (fail-closed: the exception surfaces after the local pools were invalidated, so a \"failed\" outcome always accompanies a thrown exception); \"skipped\" = the bound purger is NullPurger, i.e. no CDN is configured and nothing was purged by design",
+            "type": "string",
+            "enum": [
+                "purged",
+                "failed",
+                "skipped"
+            ]
+        },
+        "durationMs": {
+            "description": "Wall-clock duration of the invalidation in milliseconds",
+            "type": "number",
+            "minimum": 0
+        }
+    },
+    "additionalProperties": false
+}

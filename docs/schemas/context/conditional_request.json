@@ -1,0 +1,16 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/conditional_request.json",
+    "title": "conditional_request",
+    "description": "Open: a conditional request presented a validator (the literal If-None-Match value, which may hold several entity-tags). The scope closes with the ETag pool's answer as cache_hit/cache_miss at layer `etag`: a hit is the 304 decision — the entire request is answered without running the resource, which no other scope can show. A request without the header presents nothing and records nothing.",
+    "type": "object",
+    "required": [
+        "ifNoneMatch"
+    ],
+    "properties": {
+        "ifNoneMatch": {
+            "type": "string"
+        }
+    },
+    "additionalProperties": false
+}

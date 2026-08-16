@@ -1,0 +1,38 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_donut_view.json",
+    "title": "save_donut_view",
+    "description": "Event: a rendered donut view was stored.",
+    "type": "object",
+    "required": [
+        "uri",
+        "tags",
+        "ttl",
+        "saved"
+    ],
+    "properties": {
+        "uri": {
+            "type": "string"
+        },
+        "tags": {
+            "description": "invalidation tags registered with the entry, including the resource's own URI tag",
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "ttl": {
+            "description": "seconds until expiry of the rendered view entry; 0 or null means no expiry is set (the entry lives until event-driven invalidation); 31536000 is the `never` expiry convention (365 days), an effectively-unbounded placeholder — event-driven invalidation is the intended eviction path",
+            "type": [
+                "integer",
+                "null"
+            ],
+            "minimum": 0
+        },
+        "saved": {
+            "type": "boolean",
+            "description": "Whether the cache pool accepted the entry. false means the store failed silently (e.g. pool error) — the entry is NOT cached despite this event."
+        }
+    },
+    "additionalProperties": false
+}

@@ -5,9 +5,12 @@
 namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\UnmatchedQuery;
+use BEAR\QueryRepository\Log\Context\CommandResultContext;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\Code;
 use BEAR\Resource\ResourceObject;
+use Koriym\SemanticLogger\NullSemanticLogger;
+use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
 use ReflectionMethod;
@@ -31,10 +34,14 @@ use function sprintf;
  */
 final readonly class DonutCommandInterceptor implements MethodInterceptor
 {
+    private CommandContextFactory $commandContextFactory;
+
     public function __construct(
         private DonutRepositoryInterface $repository,
-        private MatchQueryInterface $matchQuery
+        private MatchQueryInterface $matchQuery,
+        private SemanticLoggerInterface $logger = new NullSemanticLogger()
     ){
+        $this->commandContextFactory = new CommandContextFactory();
     }
 
     #[\Override]
@@ -42,11 +49,17 @@ final readonly class DonutCommandInterceptor implements MethodInterceptor
     {
         $ro = $invocation->proceed();
         assert($ro instanceof ResourceObject);
-        if ($ro->code >= Code::BAD_REQUEST) {
-            return $ro;
-        }
 
-        $this->refreshDonutAndState($ro);
+        // Open the scope even for a failed write: a 4xx command_result with no invalidation
+        // events records that the donut purge/refresh was correctly skipped.
+        $openId = $this->logger->open(($this->commandContextFactory)($invocation, 'DonutCommandInterceptor'));
+        try {
+            if ($ro->code < Code::BAD_REQUEST) {
+                $this->refreshDonutAndState($ro);
+            }
+        } finally {
+            $this->logger->close(new CommandResultContext($ro->code), $openId);
+        }
 
         return $ro;
     }

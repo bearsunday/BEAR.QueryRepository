@@ -1,0 +1,12 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/manual_store.json",
+    "title": "manual_store",
+    "description": "Open: an application-initiated (manual) store of a resource.",
+    "type": "object",
+    "required": ["uri"],
+    "properties": {
+        "uri": { "type": "string" }
+    },
+    "additionalProperties": false
+}

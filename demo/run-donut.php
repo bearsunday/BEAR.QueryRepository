@@ -18,15 +18,17 @@ declare(strict_types=1);
 use BEAR\QueryRepository\FakeEtagPoolModule;
 use BEAR\QueryRepository\ModuleFactory;
 use BEAR\QueryRepository\QueryRepositoryInterface;
-use BEAR\QueryRepository\RepositoryLoggerInterface;
 use BEAR\QueryRepository\ResourceStorageInterface;
-use BEAR\QueryRepository\UriTag;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
+use Koriym\SemanticLogger\SemanticLoggerInterface;
+use Koriym\SemanticLogger\Stree\RenderConfig;
+use Koriym\SemanticLogger\Stree\TreeRenderer;
 use Madapaja\TwigModule\TwigModule;
 use Ray\Di\Injector;
 
 require dirname(__DIR__) . '/vendor/autoload.php';
+require __DIR__ . '/validate.php';
 
 // Scenario descriptions (for humans)
 echo <<<'SCENARIOS'
@@ -50,6 +52,11 @@ This demo executes the following scenarios:
    - Donut is found, but needs refresh
    - Only Comment is regenerated, donut structure reused
 
+Every donut write and refresh also records what it told the CDN (cdn_headers):
+the literal CDN-Cache-Control the response carries - including the setter's
+default of 10 that no put_donut field reveals - and the Surrogate-Key list a
+purge's tags must reach to drop the page at the edge.
+
 === Executing... ===
 
 SCENARIOS;
@@ -62,21 +69,25 @@ $injector = new Injector($module, __DIR__ . '/tmp');
 $resource = $injector->getInstance(ResourceInterface::class);
 $repository = $injector->getInstance(QueryRepositoryInterface::class);
 $storage = $injector->getInstance(ResourceStorageInterface::class);
-$logger = $injector->getInstance(RepositoryLoggerInterface::class);
+$logger = $injector->getInstance(SemanticLoggerInterface::class);
 
-// Execute scenarios silently
-$logger->log('request-start', ['uri' => 'page://self/html/blog-posting']);
-$resource->get('page://self/html/blog-posting');                           // 1. Initial access
+// Execute scenarios. The donut GET scope wraps the embedded comment fetch.
+$resource->get('page://self/html/blog-posting');     // 1. Initial access
+$resource->get('page://self/html/blog-posting');     // 2. Re-access (cache-hit)
+$repository->purge(new Uri('page://self/html/comment')); // 3. Manual purge of comment (top-level)
+$resource->get('page://self/html/blog-posting');     // 4. Access after invalidation
 
-$logger->log('request-start', ['uri' => 'page://self/html/blog-posting']);
-$resource->get('page://self/html/blog-posting');                           // 2. Re-access (cache-hit)
+$log = $logger->flush();
 
-$logger->log('request-start', ['uri' => 'page://self/html/comment', 'method' => 'invalidate']);
-$storage->invalidateTags([(new UriTag())(new Uri('page://self/html/comment'))]);  // 3. Invalidate comment
+// Human/AI-readable tree (open = embed scope, close = hit/miss, events = saves/invalidations)
+echo '=== Cache Log Tree ===' . PHP_EOL;
+echo (new TreeRenderer(new RenderConfig(true, 0.0, 1000, true)))->render($log) . PHP_EOL;
 
-$logger->log('request-start', ['uri' => 'page://self/html/blog-posting']);
-$resource->get('page://self/html/blog-posting');                           // 4. Access after invalidation
+// Machine-readable JSON conforming to the published schemas (validated below
+// against the local schema files; also: `vendor/bin/stree <file>`)
+echo PHP_EOL . '=== Cache Log JSON ===' . PHP_EOL;
+echo json_encode($log, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL;
 
-// Output logs only
-echo "=== Cache Log ===" . PHP_EOL;
-echo $logger . PHP_EOL;
+// The demo verifies itself: the flushed log must validate offline against
+// docs/schemas/context (exits non-zero on any violation)
+validateLog($log);

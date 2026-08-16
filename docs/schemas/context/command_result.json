@@ -1,0 +1,18 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/command_result.json",
+    "title": "command_result",
+    "description": "Close of a command scope: the resulting HTTP status code.",
+    "type": "object",
+    "required": [
+        "code"
+    ],
+    "properties": {
+        "code": {
+            "type": "integer",
+            "minimum": 100,
+            "maximum": 599
+        }
+    },
+    "additionalProperties": false
+}

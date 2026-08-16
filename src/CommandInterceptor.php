@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\ReturnValueIsNotResourceObjectException;
+use BEAR\QueryRepository\Log\Context\CommandResultContext;
 use BEAR\RepositoryModule\Annotation\Commands;
 use BEAR\Resource\Code;
 use BEAR\Resource\ResourceObject;
+use Koriym\SemanticLogger\NullSemanticLogger;
+use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
@@ -28,11 +31,15 @@ use Ray\Aop\MethodInvocation;
  */
 final readonly class CommandInterceptor implements MethodInterceptor
 {
+    private CommandContextFactory $commandContextFactory;
+
     /** @param CommandInterface[] $commands */
     public function __construct(
         #[Commands]
         private array $commands,
+        private SemanticLoggerInterface $logger = new NullSemanticLogger(),
     ) {
+        $this->commandContextFactory = new CommandContextFactory();
     }
 
     /**
@@ -49,12 +56,18 @@ final readonly class CommandInterceptor implements MethodInterceptor
             throw new ReturnValueIsNotResourceObjectException($invocation->getThis()::class);
         }
 
-        if ($ro->code >= Code::BAD_REQUEST) {
-            return $ro;
-        }
-
-        foreach ($this->commands as $command) {
-            $command->command($invocation, $ro);
+        // Open the scope even for a failed write: a 4xx command_result with no invalidation
+        // events records that the purge/refresh was correctly skipped (symmetric with the
+        // query side, which logs purge on non-200).
+        $openId = $this->logger->open(($this->commandContextFactory)($invocation, 'CommandInterceptor'));
+        try {
+            if ($ro->code < Code::BAD_REQUEST) {
+                foreach ($this->commands as $command) {
+                    $command->command($invocation, $ro);
+                }
+            }
+        } finally {
+            $this->logger->close(new CommandResultContext($ro->code), $openId);
         }
 
         return $ro;

@@ -4,15 +4,20 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Log\Context\DependsOnContext;
 use BEAR\Resource\ResourceObject;
+use Koriym\SemanticLogger\NullSemanticLogger;
+use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 
+use function explode;
 use function sprintf;
 
 final readonly class CacheDependency implements CacheDependencyInterface
 {
     public function __construct(
         private UriTagInterface $uriTag,
+        private SemanticLoggerInterface $logger = new NullSemanticLogger(),
     ) {
     }
 
@@ -31,5 +36,11 @@ final readonly class CacheDependency implements CacheDependencyInterface
         $from->headers[Header::SURROGATE_KEY] = isset($from->headers[Header::SURROGATE_KEY])
             ? sprintf('%s %s', $from->headers[Header::SURROGATE_KEY], $childTags)
             : $childTags;
+
+        $this->logger->event(new DependsOnContext(
+            (string) $from->uri,
+            (string) $to->uri,
+            explode(' ', $childTags),
+        ));
     }
 }

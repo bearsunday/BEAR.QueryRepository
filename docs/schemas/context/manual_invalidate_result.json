@@ -1,0 +1,15 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/manual_invalidate_result.json",
+    "title": "manual_invalidate_result",
+    "description": "Close of a manual_invalidate scope: the one-word verdict of a direct invalidateTags() call. The nested invalidate event carries the per-target detail (roPool/etagPool/cdn) — `invalidated` requires every local pool to have dropped the tags and the CDN purge not to have failed.",
+    "type": "object",
+    "required": ["result"],
+    "properties": {
+        "result": {
+            "type": "string",
+            "enum": ["invalidated", "failed"]
+        }
+    },
+    "additionalProperties": false
+}

@@ -1,0 +1,16 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/manual_store_result.json",
+    "title": "manual_store_result",
+    "description": "Close of a manual_store scope: outcome of the resource store.",
+    "type": "object",
+    "required": ["result"],
+    "properties": {
+        "result": {
+            "description": "reflects the save_value/save_view outcome only; a failed save_etag inside the same scope does not flip it — inspect the nested save_etag event's \"saved\" field for that",
+            "type": "string",
+            "enum": ["stored", "failed"]
+        }
+    },
+    "additionalProperties": false
+}
