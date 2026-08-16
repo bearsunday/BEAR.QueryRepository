@@ -37,6 +37,11 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 | **event** | 有効なスコープの中で記録された事実 | 「これが起き、結果はこうだった」 |
 | **close** | スコープの終わり方 | そのスコープの判定。一語で出る |
 
+同じ型が位置を変えて出ることがあり、どちらかは `layer` で分かります。`cache_hit`/`cache_miss` が
+**イベント**なら内側の照会(`donut` — donut テンプレートを `DonutRepository` が引いた)、**close** なら
+そのスコープ自身の答え(`#[Cacheable]` 経路なら `resource`、donut ページなら `donut-view`、条件付き
+リクエストなら `etag`)です。つまり 1 つのスコープが miss を含みつつ、別の層の miss で閉じることがあります。
+
 ## スコープ (open/close)
 
 | 型 | 何が open するか | close する語 |
@@ -68,6 +73,7 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 | `invalidate` | `tags`, `roPool`, `etagPool`, `cdn`, `durationMs` | タグを無効化した。対象ごとの結果つき |
 | `purge` | `uri` | URI 指定の破棄を要求した |
 | `put_skipped` | `uri`, `reason`, `code` | miss の後に書き込みを**しなかった**、とその理由 |
+| `cache_hit` / `cache_miss` | `layer` | 内側の照会。必ず `layer: donut` — donut テンプレートがあったか |
 | `cache_error` | `uri`, `operation`, `error`, `exceptionClass` | キャッシュ経路が throw した |
 | `semantic_logger_error` | `kind`, `message`, … | ロガー自体の誤用(コア側の診断で、このパッケージの語彙ではない) |
 
@@ -77,12 +83,12 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 
 | フィールド | 値 | 読み方 |
 |---|---|---|
-| `layer` | `resource` \| `donut` \| `donut-view` \| `etag` | どのストアが答えたか |
+| `layer` | `resource` \| `donut` \| `donut-view` \| `etag` | どのストアに尋ねたか。`resource` = `#[Cacheable]` の値/ビューストア、`donut` = donut テンプレート(イベントとしてのみ出る)、`donut-view` = 再合成された donut ページ、`etag` = 条件付きリクエストが引く ETag プール |
 | `saved` | `true` \| `false` | **`false` = プールが書き込みを拒否した。** これを記録するものは他に無い |
 | `roPool` / `etagPool` | `invalidated` \| `failed` | プールごとの無効化結果 |
 | `cdn` | `purged` \| `failed` \| `skipped` | `skipped` は purger 未設定 (`NullPurger`)。「やることが無かった」ではない |
 | `operation` | `read` \| `write` | キャッシュのどちら側が throw したか |
-| `reason` (`put_skipped`) | `etag-present` \| `error-code` \| `not-cacheable` | 書き込みが起きなかった理由。`error-code` は応答の `code` を伴い、閾値は経路で違う: `#[Cacheable]` は 200 以外すべて(`203` もここに出る)、donut は 4xx 以上 |
+| `reason` (`put_skipped`) | `etag-present` \| `error-code` \| `not-cacheable` | 書き込みが起きなかった理由。`etag-present` = リソースが既に ETag を持っていたので donut 層は手を出さなかった、`not-cacheable` = テンプレートから再描画された donut ページ(ページとしては保存しない)、`error-code` は応答の `code` を伴い閾値は経路で違う: `#[Cacheable]` は 200 以外すべて(`203` もここに出る)、donut は 4xx 以上 |
 | `result` (`manual_*`) | `stored`/`purged`/`invalidated` \| `failed` | 直接呼び出しの結果 |
 | `ttl` | 秒 | `31536000` は `never` の慣習値。`0`/`null` は期限未設定 |
 
@@ -148,12 +154,32 @@ command {"method": "onPut", "annotations": [], "source": "CommandInterceptor"}
 6. `command_result{code: 200}` で閉じる。ここが 4xx で上に `invalidate` が無ければ、
    失敗した書き込みが正しく何も破棄していない記録になる。
 
+## セッションを特定する
+
+セッションは**時刻も request id も持ちません**。`LogJson` は `$schema` / `open` / `close` / `events` /
+`links` だけです。したがって 1 人の顧客のリクエストとセッションを突き合わせるのはホストの仕事で、
+ログの仕事ではありません:
+
+| | セッションを特定するもの |
+|---|---|
+| `DevQueryRepositoryLogModule` | ファイル名(UTC、マイクロ秒まで: `20260816-120000-123456.json`)と、直前のリクエストを指す `latest.json` |
+| `ProdQueryRepositoryLogModule` | 行の中には何も無い。収集基盤が行に付ける時刻が唯一の時計で、join できる request id は無い |
+| request id が必要なら | `LogWriterInterface` を decorate して行に足す — マスキングや流量制限と同じ seam |
+
+**本番では「無い」ことは証拠になりません。** 保持ポリシーは正常な読み取りと read 側の障害を落とすので、
+存在しないセッションは「落とされた」のか「起きなかった」のか区別できません。推論できるのは残っている
+カテゴリだけで、しかも肯定形だけです — 「このタグを無効化した」は主張できますが、「無効化は走らなかった」
+は主張できません。開発時は全セッションが書かれるので、そこでは「無い」は「コードが動かないと決めた」を
+意味します — 「沈黙する経路を作らない」が成立するのはそちらです。
+
 ## どこへ書かれるか
 
 | | 出力先 | ポリシー |
 |---|---|---|
 | `DevQueryRepositoryLogModule` | 1 セッション = 1 ファイル + `latest.json` | 全部 |
 | `ProdQueryRepositoryLogModule` | 1 セッション = 1 行の JSON を `php://stdout` またはファイルへ | mutation、起きなかった効果、任意のサンプル |
+| | `sampleRate: N` は正常セッションを N 本に 1 本残す(`0` で無効)。保持されるセッションの実測は中央値 3.9 KB、最大 21 KB(デモ全体)。純ヒットは 698 B | |
+| | PHP-FPM では `php://stdout` はプールの出力に届くのに `catch_workers_output = yes` が必要。コンテナならそのまま収集基盤へ。転送・ローテーション・保管期間はホストの責務 | |
 | `PsrLogWriter` | アプリの PSR-3 ロガー。ツリーは `context['log']` に入る | 包んだ writer のポリシー |
 
 セッションは URI(**クエリ文字列込み**)、クライアントの `If-None-Match`、キャッシュタグ、CDN ヘッダの値、

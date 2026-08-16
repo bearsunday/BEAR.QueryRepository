@@ -37,6 +37,12 @@ Three node kinds, and the distinction is the whole grammar:
 | **event** | a fact recorded inside the active scope | "this happened, with this outcome" |
 | **close** | how a scope ended | the scope's verdict — one word |
 
+One type can appear at either position, and the `layer` tells you which: a `cache_hit`/`cache_miss`
+**event** is an inner lookup (`donut` — the donut template, probed by `DonutRepository`), while a
+`cache_hit`/`cache_miss` **close** is the scope's own answer (`resource` from the `#[Cacheable]`
+path, `donut-view` for a donut page, `etag` for a conditional request). So a scope can hold a miss
+and still close with one, at a different layer.
+
 ## Scopes (open/close)
 
 | Type | Opened by | Closes with |
@@ -68,6 +74,7 @@ operation inside a GET or a command is an ordinary event there instead.
 | `invalidate` | `tags`, `roPool`, `etagPool`, `cdn`, `durationMs` | tags were invalidated, with a result per target |
 | `purge` | `uri` | a URI-targeted bust was requested |
 | `put_skipped` | `uri`, `reason`, `code` | a miss was **not** followed by a write, and why |
+| `cache_hit` / `cache_miss` | `layer` | an inner lookup, always `layer: donut` — whether the donut template was there |
 | `cache_error` | `uri`, `operation`, `error`, `exceptionClass` | the cache path threw |
 | `semantic_logger_error` | `kind`, `message`, … | the logger itself was misused (core diagnostic, not this package's vocabulary) |
 
@@ -77,12 +84,12 @@ Every outcome is a self-describing word, never a bare boolean — except `saved`
 
 | Field | Values | Reading |
 |---|---|---|
-| `layer` | `resource` \| `donut` \| `donut-view` \| `etag` | which store answered |
+| `layer` | `resource` \| `donut` \| `donut-view` \| `etag` | which store was asked. `resource` = the `#[Cacheable]` value/view store; `donut` = the donut template (only ever an event); `donut-view` = the recomposed donut page; `etag` = the ETag pool behind a conditional request |
 | `saved` | `true` \| `false` | **`false` = the pool refused the write.** Nothing else in the system records this |
 | `roPool` / `etagPool` | `invalidated` \| `failed` | per-pool invalidation result |
 | `cdn` | `purged` \| `failed` \| `skipped` | `skipped` = no purger configured (`NullPurger`), not "nothing to do" |
 | `operation` | `read` \| `write` | which side of the cache threw |
-| `reason` (`put_skipped`) | `etag-present` \| `error-code` \| `not-cacheable` | why no write happened. `error-code` carries the response `code`, and the threshold differs by path: `#[Cacheable]` skips any non-200 (a `203` appears here), a donut skips 4xx and above |
+| `reason` (`put_skipped`) | `etag-present` \| `error-code` \| `not-cacheable` | why no write happened. `etag-present` = the resource already carried an ETag, so the donut layer left it alone; `not-cacheable` = a donut page re-rendered from its template, which is never stored as a page; `error-code` carries the response `code`, and the threshold differs by path: `#[Cacheable]` skips any non-200 (a `203` appears here), a donut skips 4xx and above |
 | `result` (`manual_*`) | `stored`/`purged`/`invalidated` \| `failed` | the direct call's outcome |
 | `ttl` | seconds | `31536000` is the `never` convention; `0`/`null` = no expiry set |
 
@@ -149,12 +156,32 @@ Read it in order:
 6. `command_result{code: 200}` closes it. A 4xx here with no `invalidate` above would be the
    record of a failed write correctly busting nothing.
 
+## Finding the session
+
+A session carries **no clock and no request id**. `LogJson` is `$schema`, `open`, `close`, `events`
+and `links` — nothing else. So correlating a session with one customer request is the host's job,
+not the log's:
+
+| | What identifies a session |
+|---|---|
+| `DevQueryRepositoryLogModule` | the file name, UTC to the microsecond (`20260816-120000-123456.json`), and `latest.json` for the request that just ran |
+| `ProdQueryRepositoryLogModule` | nothing inside the line. The collector's own line timestamp is the only clock, and there is no request id to join on |
+| Need a request id? | decorate `LogWriterInterface` and add it to the line — the same seam used for scrubbing and rate-limiting |
+
+**In production, absence is not evidence.** The retention policy drops healthy reads and read-side
+outages, so a session that is not there may have been dropped rather than never have happened. Only
+the categories the policy keeps can be reasoned about, and only positively: "we invalidated these
+tags" is supportable, "no invalidation ran" is not. In development, where every session is written,
+absence does mean the code decided not to act — that is where the "no silent paths" property holds.
+
 ## Where it goes
 
 | | Destination | Policy |
 |---|---|---|
 | `DevQueryRepositoryLogModule` | one file per session + `latest.json` | everything |
 | `ProdQueryRepositoryLogModule` | one JSON line per session to `php://stdout` or a file | mutations, effects that did not happen, an optional sample |
+| | `sampleRate: N` keeps 1 healthy session in N (`0` = none). A retained session measured 3.9 KB median, 21 KB worst case across the demos, against 698 B for a pure hit | |
+| | Under PHP-FPM `php://stdout` reaches the pool's output only with `catch_workers_output = yes`; in a container it goes to the collector. Transport, rotation and retention are the host's | |
 | `PsrLogWriter` | the app's PSR-3 logger, tree in `context['log']` | whatever writer it wraps |
 
 A session carries request URIs **with their query strings**, the client's `If-None-Match`, cache

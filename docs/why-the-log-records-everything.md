@@ -42,8 +42,9 @@ The dependency graph you must trust is the shape you see.
 **Every context is one decision point.** The vocabulary — `cache_hit`,
 `cache_miss`, `depends_on`, five `save_*` kinds, `invalidate`, `purge`,
 `put_skipped`, `cache_error`, `pre_write_cleanup`, the `manual_*` scopes
-— is not verbosity. It is an enumeration of everything
-the cache subsystem can decide to do. There are five save contexts because
+— is not verbosity. It enumerates the decisions the cache
+subsystem makes at the boundaries this package owns; the decisions it leaves
+silent are listed in [what-the-log-proves.md](what-the-log-proves.md). There are five save contexts because
 there are five physically different write paths; merging them would erase
 exactly the distinction a debugging session needs. The size of the vocabulary
 is a fact about the domain, not a fault of the design.
@@ -83,8 +84,10 @@ test suite validates every emitted tree against those schemas
 (`SemanticLogTreeTrait`), and the demos validate their own output offline and
 exit non-zero on violation. Code and schema cannot drift without failing the
 build. That inverts the usual decay: ordinary logs rot into lies the moment
-behavior changes; this log is an executable specification of cache behavior
-that CI keeps true.
+behavior changes; this log is an executable specification of the cache's
+recorded shape, which CI keeps true. Two behaviours it does not execute are the
+CDN's HTTP API (exercised with fakes) and wall-clock expiry (verified by
+construction) — both declared in [what-the-log-proves.md](what-the-log-proves.md).
 
 ## Who reads it
 
@@ -110,7 +113,8 @@ verification. The reading rules an agent needs ship with the package
 
 ## What it costs — and why it is off by default
 
-Measured on a three-level embedded page, 2000 cache hits per run:
+Measured on a three-level embedded page, one request per cache hit, 2000 requests per run
+(PHP 8.4, no JIT, in-memory pools — the ratio transfers, the absolute figures do not):
 
 | | per request | accumulated per request, unflushed |
 |---|---|---|
@@ -121,11 +125,20 @@ CPU is not the question — 5 µs is a fraction of one cache round-trip. The
 accumulation is: 1.4 KB per request is free under PHP-FPM, where the session
 dies with the process, and unbounded in a worker that never flushes.
 
-The other measurement decides the rest. Counting the four demos' own output,
-a healthy session contains **zero** failure entries out of 28 to 95 — and even
-`run-degraded.php`, built entirely out of failures, is 10% failure and 90%
-scaffolding. Recording everything, always, would trade the whole benefit for
-volume.
+Two other measurements decide the rest, and they are different arguments.
+
+**Density.** Counting the four demos' own output, a healthy session contains
+**zero** failure entries out of 28 to 95 — and even `run-degraded.php`, built
+entirely out of failures, is 10% failure and 90% scaffolding. There is nothing in
+a healthy session to read.
+
+**Volume.** A pure-hit session is 698 B as one JSON line; the sessions production
+deliberately keeps — commands, cleanup-invalidate-save chains, manual calls —
+measure 3.9 KB median and 21 KB worst case across the demos. At 1000 requests per
+minute, writing every session is about 1 GB per day; keeping only mutations and
+missing effects turns that into the write rate times 3.9 KB, which for an app
+writing 1% of its requests is about 56 MB per day. The retention policy is that
+factor, not a preference.
 
 So the default is silence, exactly as it is for the cache engine
 (`NullAdapter`): nothing recorded, nothing accumulated, no flush owed. An app
@@ -149,9 +162,18 @@ error.
 
 The side-channel stays a side-channel by construction: since
 koriym/semantic-logger 0.9 the logger is total — it never throws, and records
-protocol misuse as in-band `semantic_logger_error` diagnostics — so a logging
-failure can never break a cache read or write, and it cannot hide either.
-There is no third state where the log half-exists and misleads.
+protocol misuse as in-band `semantic_logger_error` diagnostics — and the sink
+reports a destination that fails instead of raising, so neither a logging failure
+nor a full disk changes how the request ended, and neither can hide.
+
+Two states remain where the log is partial, and both are declared rather than
+denied: on a host the sink can prove is concurrent it refuses to record at all,
+and on one it cannot detect (a Swoole worker built at boot, FrankenPHP worker
+mode, ReactPHP, Amp, a long-lived CLI consumer) sessions accumulate and interleave
+until the operator binds a request-scoped sink. In production, a third: the
+retention policy drops healthy reads, so absence stops meaning "the code decided
+not to" and starts meaning "not kept" — the reading rules that depend on absence
+are development-time ones. See [what-the-log-proves.md](what-the-log-proves.md).
 
 ## Pointers
 
