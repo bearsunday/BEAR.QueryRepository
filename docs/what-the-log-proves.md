@@ -73,9 +73,10 @@ is removed or its meaning inverted (verified by mutation testing).
   semantic event is "a conditional request was answered", owned by the transfer
   boundary (`HttpCache` / `CliHttpCache`); the storage query itself is silent.
 - **Sessions a retention policy dropped.** `DevQueryRepositoryLogModule` writes every session;
-  `ProdQueryRepositoryLogModule` keeps only what nothing else can account for, so in production
-  a healthy read — and a read-side pool outage, which the pool's own monitoring sees first — is
-  deliberately absent. The "degraded, not cold" reading is therefore a development-time one.
+  `ProdQueryRepositoryLogModule` keeps only what nothing else can account for, so in production a
+  healthy read is deliberately absent, and so is a failed read — every one of those already reaches
+  the application's warning channel, since both interceptors `trigger_error()` before degrading.
+  The "degraded, not cold" reading is therefore a development-time one.
 
 ## Reading pointers
 

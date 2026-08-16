@@ -101,7 +101,9 @@ These are the ones you cannot guess from a field name.
 non-write was deliberate, with the reason.
 
 **`cache_error` + `cache_miss` = degraded, not cold.** A lone `cache_miss` means the entry was
-absent. The pair means the pool failed and the resource ran anyway.
+absent. The pair means the pool failed and the resource ran anyway. This is a development-time
+reading: production keeps neither, so there the pair's absence proves nothing (see *Finding the
+session*).
 
 **An `invalidate` is pre-write cleanup iff a `pre_write_cleanup` marker sits immediately before
 it in the same scope.** A writer clears the entry it is about to rewrite, which looks identical

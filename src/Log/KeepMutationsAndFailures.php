@@ -15,10 +15,11 @@ use function random_int;
 /**
  * Keeps the sessions nothing else can account for, drops the rest
  *
- * The line is not failure-vs-success, it is who else knows. A pool that is down is an
- * availability event: its own monitoring sees it first, and the app-side evidence
- * (`cache_error{read}`) repeats on every request, so keeping those sessions would flood the
- * collector during the incident it is supposed to explain, with facts already held elsewhere. A
+ * The line is not failure-vs-success, it is who else knows. A read that fails already reaches the
+ * application's own warning channel - both interceptors call `trigger_error()` before degrading -
+ * and that channel covers every cause, not just the outage a pool's monitoring would see. The
+ * semantic record of it adds a URI and repeats on every request, so keeping those sessions floods
+ * the collector during the incident it is supposed to explain, with a fact already reported. A
  * cache that silently did nothing has no other witness at all - `$pool->save()` returning false
  * is discarded by the interceptor, and an invalidation that failed to land shows up later as
  * stale content with no error attached to it.
