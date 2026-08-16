@@ -126,9 +126,9 @@ Every outcome is a self-describing word, never a bare boolean — except `saved`
 
 These are the ones you cannot guess from a field name.
 
-**`put_skipped` carries the reason a miss was not followed by a write.** The framework had a rule
-that forbade storing — a response code it will not cache, a validator already present, a donut page
-served from its template — and the event names which.
+**When a miss is not followed by a write, `put_skipped` says why.** A rule forbade storing: a
+response code that path will not cache, a validator already present, a donut page served from its
+template — the event names which one.
 
 **`cache_miss` reports that the lookup produced no entry, and two different things produce it.**
 The miss itself does not say which:

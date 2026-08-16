@@ -34,12 +34,13 @@ use function random_int;
  *    records themselves may be incomplete.
  *  - a sample, when a rate is configured.
  *
- * Deliberately not kept: `cache_error{operation: read}` (availability, monitored elsewhere - the
- * "degraded, not cold" reading is a development-time one) and every `put_skipped`, which records a
- * store that was never attempted because a rule forbade it - a response code the path will not
- * cache (`#[Cacheable]` skips any non-200, a donut skips 4xx and above), a validator already set,
- * or a page served from its template. Those are decisions, stable for as long as the code and the
- * configuration are, and found once in development rather than per request in production.
+ * Deliberately not kept: `cache_error{operation: read}` (availability, monitored elsewhere -
+ * separating a degraded miss from a cold one is a development-time reading) and every
+ * `put_skipped`, which records a store that was never attempted because a rule forbade it - a
+ * response code the path will not cache (`#[Cacheable]` skips any non-200, a donut skips 4xx and
+ * above), a validator already set, or a page served from its template. Those are decisions, stable
+ * for as long as the code and the configuration are, and found once in development rather than per
+ * request in production.
  * `saved: false` is the opposite: the store was attempted and the pool refused it. It can repeat
  * per write under a capacity problem, and that is the signal, not noise - a host that needs a
  * ceiling decorates `LogWriterInterface`.

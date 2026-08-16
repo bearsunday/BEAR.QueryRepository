@@ -76,7 +76,7 @@ is removed or its meaning inverted (verified by mutation testing).
   `ProdQueryRepositoryLogModule` keeps only what nothing else can account for, so in production a
   healthy read is deliberately absent, and so is a failed read — every one of those already reaches
   the application's warning channel, since both interceptors `trigger_error()` before degrading.
-  The "degraded, not cold" reading is therefore a development-time one.
+  Separating a degraded miss from a cold one is therefore a development-time reading.
 
 ## Reading pointers
 
