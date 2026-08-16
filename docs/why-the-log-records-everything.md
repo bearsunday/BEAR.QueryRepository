@@ -71,7 +71,7 @@ deleted the whole procedure. Inference rules rot; recorded facts don't.
 
 **3. "Unknown" is never dressed as "nothing happened".** A `cache_error`
 event records that the cache path failed and, in `exceptionClass`, what failed
-it — separating a degraded cache from a cold one (a miss after a pool outage is
+it — separating a store that could not be read from one that was simply empty (a miss after a pool outage is
 not a missing entry) and both from a bug in the work the store performs, such
 as a view that fails to render. If the logging protocol itself is misused — a LIFO
 violation, a session left unclosed at flush — the core logger records a

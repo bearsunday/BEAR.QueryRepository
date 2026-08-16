@@ -3,8 +3,7 @@
 ログに現れうる語の全部と、セッション 1 本の読み方です。読者は BEAR.Sunday アプリを運用しており、
 本パッケージを導入済みであることを前提にします — キャッシュのモデル自体(`#[Cacheable]`、donut
 caching、イベント駆動の無効化)は
-[キャッシュマニュアル](https://bearsunday.github.io/manuals/1.0/ja/cache.html)の担当で、
-このページの担当ではありません。契約は
+[キャッシュマニュアル](https://bearsunday.github.io/manuals/1.0/ja/cache.html)が扱います。契約は
 [docs/schemas/context/](schemas/context/) の per-context JSON Schema であり、この文書はその読み手向けの
 案内です。`docs/llms.txt` と `docs/llms-full.txt` は同じ語彙をエージェント向けの参照表として持ちます
 — context を変えたときは両方を更新してください。
@@ -23,9 +22,9 @@ vendor/bin/stree var/log/query-repository/latest.json   # 直前に走ったリ�
 ## 用語
 
 概念そのもの(条件付きリクエスト、ETag、donut caching、サロゲートキー)は
-[キャッシュマニュアルの Terminology](https://bearsunday.github.io/manuals/1.0/ja/cache.html) の担当です。
-この表はもっと狭い範囲を扱います — **このログが自分の部品に付けている名前**を展開し、エントリで
-出会った識別子を、あなたのアプリの中の何を指しているかまで辿れるようにするためのものです。
+[キャッシュマニュアルの Terminology](https://bearsunday.github.io/manuals/1.0/ja/cache.html) にあります。
+この表が扱うのはもっと狭い範囲です — **このログが自分の部品を呼ぶときの名前**です。エントリで見かけた
+識別子が、あなたのアプリのどこに対応するかが分かります。
 
 | ログ上の名前 | 何か | アプリのどこで出会うか |
 |---|---|---|
@@ -39,9 +38,9 @@ vendor/bin/stree var/log/query-repository/latest.json   # 直前に走ったリ�
 | `sMaxAge` | その書き込みが CDN に要求した共有キャッシュの寿命 | `DonutRepositoryInterface::put($ro, ttl: …, sMaxAge: …)` |
 | スコープ / イベント / close | ツリーの 3 種類のノード。次節で説明 | —(ログ固有の区別) |
 
-`roPool` と `etagPool` は**プール**の名前、`layer` は**どのストアが答えたか**です。重なって見えますが
-別物です — `cache_hit{layer: resource}` で閉じる `get` は「リソースストアが答えた」、
-`roPool: invalidated` を報告する `invalidate` は「そのストアがタグを落とした」を意味します。
+`roPool` と `etagPool` は**プールの名前**、`layer` は**照会に答えたストア**です —
+`cache_hit{layer: resource}` で閉じる `get` は「リソースストアが答えた」を意味します。`roPool: invalidated`
+を含む `invalidate` は「そのストアがタグを落とした」です。前者は無効化の対象、後者は照会の結果です。
 
 ## 形
 
@@ -64,7 +63,7 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 | **event** | 有効なスコープの中で記録された事実 | 「これが起き、結果はこうだった」 |
 | **close** | スコープの終わり方 | そのスコープの判定。一語で出る |
 
-同じ型が位置を変えて出ることがあり、どちらかは `layer` で分かります。`cache_hit`/`cache_miss` が
+同じ型が位置を変えて出ることがあり、どちらかは `layer` を見れば分かります。`cache_hit`/`cache_miss` が
 **イベント**なら内側の照会(`donut` — donut テンプレートを `DonutRepository` が引いた)、**close** なら
 そのスコープ自身の答え(`#[Cacheable]` 経路なら `resource`、donut ページなら `donut-view`、条件付き
 リクエストなら `etag`)です。つまり 1 つのスコープが miss を含みつつ、別の層の miss で閉じることがあります。
@@ -80,8 +79,8 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 | `manual_purge` (`uri`) | 直接の `purge()` | `manual_purge_result` (`purged` \| `failed`) |
 | `manual_invalidate` (`tags`) | 直接の `invalidateTags()` | `manual_invalidate_result` (`invalidated` \| `failed`) |
 
-`manual_*` は「**アプリが起点**」を意味します — その呼び出しの外側にフレームワークのスコープが無かった、
-ということです。同じ操作が GET やコマンドの中で起きた場合は、そこの通常のイベントになります。
+`manual_*` は「**アプリが起点**」を意味します。その呼び出しの外側に、フレームワークのスコープが
+ありませんでした。同じ操作が GET やコマンドの中で起きた場合は、そこの通常のイベントになります。
 
 ## イベント
 
@@ -92,21 +91,21 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 | `save_etag` | `uri`, `etag`, `tags`, `ttl`, `saved` | 検証子を ETag プールに渡した |
 | `save_donut` | `uri`, `tags`, `ttl`, `saved` | donut テンプレートを渡した |
 | `save_donut_view` | `uri`, `tags`, `ttl`, `saved` | 再合成した donut view を渡した |
-| `put_donut` | `uri`, `ttl`, `sMaxAge` | donut 書き込みを要求した。要求した lifetime つき |
+| `put_donut` | `uri`, `ttl`, `sMaxAge` | donut の書き込みを要求した。要求時の lifetime つき |
 | `refresh_donut` | `uri` | キャッシュ済み donut をそのまま返さず再合成した |
-| `cdn_headers` | `uri`, `headers`, `surrogateKeys` | 応答が実際に持っていた CDN 向けヘッダ |
+| `cdn_headers` | `uri`, `headers`, `surrogateKeys` | 応答に実際に付いた CDN 向けヘッダ |
 | `depends_on` | `parent`, `child`, `childTags` | 依存の辺 1 本。子のタグが親に加わった |
-| `pre_write_cleanup` | `uri` | 書き手がこれから書き換えるエントリを消す直前 |
+| `pre_write_cleanup` | `uri` | 書き込み側が、上書きするエントリを消す直前 |
 | `invalidate` | `tags`, `roPool`, `etagPool`, `cdn`, `durationMs` | タグを無効化した。対象ごとの結果つき |
 | `purge` | `uri` | URI 指定の破棄を要求した |
-| `put_skipped` | `uri`, `reason`, `code` | miss の後に書き込みを**しなかった**、とその理由 |
+| `put_skipped` | `uri`, `reason`, `code` | miss の後に書き込みを**しなかった**ことと、その理由 |
 | `cache_hit` / `cache_miss` | `layer` | 内側の照会。必ず `layer: donut` — donut テンプレートがあったか |
 | `cache_error` | `uri`, `operation`, `error`, `exceptionClass` | キャッシュ経路が throw した |
 | `semantic_logger_error` | `kind`, `message`, … | ロガー自体の誤用(コア側の診断で、このパッケージの語彙ではない) |
 
-## 結果を運ぶ語
+## 結果が入るフィールド
 
-結果は必ず自己記述的な語です。bool は `saved` だけ:
+結果はいずれも、語だけで意味が分かります。bool は `saved` だけ:
 
 | フィールド | 値 | 読み方 |
 |---|---|---|
@@ -125,32 +124,45 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 
 フィールド名からは推測できないものだけを挙げます。
 
-**`save_*` が無い miss は、失われた書き込みではありません。** `put_skipped` を見てください —
-書かなかったことが意図的だったと、理由つきで記録されています。
+**miss の後に書き込みが無いときは、`put_skipped` にその理由が書かれています。** 保存を禁じる
+規則が働いたからです。その経路がキャッシュしない応答コード、既に立っている検証子、テンプレートから
+返した donut ページ — どれだったかがイベントに入っています。
 
-**`cache_error` + `cache_miss` は縮退であって、コールドではありません。** `cache_miss` 単独は
-エントリが無かったこと。組で出ていればプールが失敗し、それでもリソースが走ったことを意味します。
-これは開発時の読みです — 本番はどちらも残さないので、そこでは組が無いことは何も証明しません
-(「セッションを特定する」節)。
+**`cache_miss` は「照会がエントリを得られなかった」を示し、原因は 2 通りあります。** miss 自身は
+どちらの原因かを示しません:
+
+- **何も保存されていなかった** — コールド。正常な状態で、自然に治ります(次のリクエストは hit)
+- **ストアが読めなかった** — 同じスコープに `cache_error{operation: read}` が出ます。
+  読み取りが throw し、フレームワークはリソースを走らせて応答を作りました。これが本ページでの
+  **縮退**の意味です — キャッシュが無いものとして振る舞った
+
+この 2 つは挙動が正反対なので、分ける価値があります。コールドは自然に治りますが、読めない状態は
+プールが壊れている間ずっと**全リクエスト**が origin の費用を払い、しかも応答は常に正しいので、
+遅くなること以外に症状が出ません。
+
+**この切り分けは開発時に使えます。** 本番では保持ポリシーが読み取りだけのセッションを —
+コールドでも失敗でも — 落とします。縮退した miss を数えるなら、アプリの警告チャンネル
+(`trigger_error`)を見てください — 読み取りの失敗はそこに届いています。別の理由で残ったセッション
+(コマンド、起きなかった効果)の中に入れ子になった miss は、本番でも見えます。
 
 **`invalidate` が pre-write cleanup であるのは、同じスコープの直前のイベントが `pre_write_cleanup`
-マーカーであるとき、かつそのときだけです。** 書き手はこれから書き換えるエントリを消すので、本物の破棄と
+マーカーであるとき、かつそのときだけです。** 書き込み側は上書きするエントリを先に消すので、本物の破棄と
 見た目が同じになります。マーカーは発生源で記録されるため、タグの相関からの推測は一切ありません。
 マーカーの無い `invalidate` は本物の無効化です。
 
 **依存が正しいかは集合の交差で決まります。** `save_*` の `tags` と、後の `invalidate` の `tags` を
-突き合わせます。交差していなければ、その書き込みはそのエントリを破棄していません — これが内側から見た
-「stale を配信している」状態です。
+突き合わせます。交差しないタグは、その書き込みがそのエントリを残したことを意味します — これが
+内側から見た「stale を配信している」状態です。
 
-**`cdn_headers` は応答が実際に持っていたものを示します。** CDN モジュールの暗黙の既定値も含みます。
-lifetime ヘッダがマップに無い = その応答は CDN に lifetime 指示を与えなかった、という意味です。
-`surrogateKeys` と `invalidate` の `tags` を突き合わせると、パージがエッジの保持物に届き得たかが分かります。
+**`cdn_headers` に出るのは、応答に実際に付いたヘッダです。** CDN モジュールの暗黙の既定値も含みます。
+lifetime ヘッダの無いマップは、CDN に lifetime 指示を与えなかった応答です。`surrogateKeys` と
+`invalidate` の `tags` を突き合わせると、パージがエッジの保持物に届き得たかが分かります。
 
 **`cache_hit{layer: etag}` で閉じる `conditional_request` が 304 です** — リソースを走らせずに
-ETag プールだけでリクエスト全体に答えた、ということ。`get` スコープではこれを示せません。
+ETag プールだけでリクエスト全体に答えています。304 が現れるのはここだけです。
 
-**donut の `cache_hit` は、キャッシュから返したのか再合成したのかを区別しません。** close は最終層の
-結果だけを報告します。スコープ内の `refresh_donut` を見てください。
+**donut の `cache_hit` に出るのは最終層です。** ページがキャッシュから来たのか、出力の途中で
+再合成されたのかはスコープの中にあります — `refresh_donut` イベントがあれば再合成です。
 
 ## 実例
 
@@ -191,8 +203,7 @@ command {"method": "onPut", "annotations": [], "source": "CommandInterceptor"}
 ## セッションを特定する
 
 セッションは**時刻も request id も持ちません**。`LogJson` は `$schema` / `open` / `close` / `events` /
-`links` だけです。したがって 1 人の顧客のリクエストとセッションを突き合わせるのはホストの仕事で、
-ログの仕事ではありません:
+`links` だけです。1 人の顧客のリクエストとセッションを突き合わせるのは、ホストの仕事です:
 
 | | セッションを特定するもの |
 |---|---|
@@ -200,9 +211,9 @@ command {"method": "onPut", "annotations": [], "source": "CommandInterceptor"}
 | `ProdQueryRepositoryLogModule` | 行の中には何も無い。収集基盤が行に付ける時刻が唯一の時計で、join できる request id は無い |
 | request id が必要なら | `LogWriterInterface` を decorate して行に足す — マスキングや流量制限と同じ seam |
 
-**本番では「無い」ことは証拠になりません。** 保持ポリシーは正常な読み取りと read 側の障害を落とすので、
-存在しないセッションは「落とされた」のか「起きなかった」のか区別できません。推論できるのは残っている
-カテゴリだけで、しかも肯定形だけです — 「このタグを無効化した」は主張できますが、「無効化は走らなかった」
+**本番のログに入っているのは、保持ポリシーが残したものだけです。** 正常な読み取りと read 側の障害は
+落とされるので、存在しないセッションは「落とされた」のか「起きなかった」のか区別できません。言えるのは
+残ったカテゴリについての肯定形だけです — 「このタグを無効化した」は主張できますが、「無効化は走らなかった」
 は主張できません。開発時は全セッションが書かれるので、そこでは「無い」は「コードが動かないと決めた」を
 意味します — 「沈黙する経路を作らない」が成立するのはそちらです。
 

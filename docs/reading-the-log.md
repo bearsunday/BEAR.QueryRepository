@@ -38,9 +38,10 @@ meet in an entry can be traced to the thing it names in your application.
 | `sMaxAge` | the shared-cache lifetime a write asked the CDN for | `DonutRepositoryInterface::put($ro, ttl: …, sMaxAge: …)` |
 | a scope, an event, a close | the three node kinds of the tree, described next | — (a log-only distinction) |
 
-`roPool` and `etagPool` name **pools**; `layer` names **which store answered**. They read as if
-they overlap and do not: a `get` closing `cache_hit{layer: resource}` says the resource store
-answered, while an `invalidate` reporting `roPool: invalidated` says that store dropped the tags.
+`roPool` and `etagPool` name **pools**; `layer` names **the store that answered a lookup**. A
+`get` closing `cache_hit{layer: resource}` says the resource store answered; an `invalidate`
+reporting `roPool: invalidated` says that store dropped the tags. One is a target of invalidation,
+the other an outcome of a lookup.
 
 ## The shape
 
@@ -104,7 +105,7 @@ operation inside a GET or a command is an ordinary event there instead.
 | `cache_error` | `uri`, `operation`, `error`, `exceptionClass` | the cache path threw |
 | `semantic_logger_error` | `kind`, `message`, … | the logger itself was misused (core diagnostic, not this package's vocabulary) |
 
-## The words that carry outcomes
+## Outcome fields
 
 Every outcome is a self-describing word, never a bare boolean — except `saved`, which is one:
 
@@ -125,13 +126,27 @@ Every outcome is a self-describing word, never a bare boolean — except `saved`
 
 These are the ones you cannot guess from a field name.
 
-**A miss with no `save_*` is not a lost write.** Look for `put_skipped` — it records that the
-non-write was deliberate, with the reason.
+**`put_skipped` carries the reason a miss was not followed by a write.** The framework had a rule
+that forbade storing — a response code it will not cache, a validator already present, a donut page
+served from its template — and the event names which.
 
-**`cache_error` + `cache_miss` = degraded, not cold.** A lone `cache_miss` means the entry was
-absent. The pair means the pool failed and the resource ran anyway. This is a development-time
-reading: production keeps neither, so there the pair's absence proves nothing (see *Finding the
-session*).
+**`cache_miss` reports that the lookup produced no entry, and two different things produce it.**
+The miss itself does not say which:
+
+- **nothing had been stored** — cold, which is normal and self-healing: the next request hits.
+- **the store could not be read** — a `cache_error{operation: read}` in the same scope says so.
+  The read threw and the framework ran the resource to build the response instead, which is what
+  *degraded* means here: it behaved as if there were no cache.
+
+The two behave in opposite ways, which is why they are worth separating. A cold miss fixes itself;
+an unreadable store makes **every** request pay origin cost for as long as the pool is broken, and
+the response is correct throughout, so nothing shows but latency.
+
+**The separation is available in development.** In production the retention policy drops read-only
+sessions, cold and failed alike, so a production log is not where you count degraded misses — read
+failures reach the application's warning channel (`trigger_error`), and that is where to count
+them. A miss nested inside a session kept for another reason — a command, a failed effect — stays
+visible in production.
 
 **An `invalidate` is pre-write cleanup iff a `pre_write_cleanup` marker sits immediately before
 it in the same scope.** A writer clears the entry it is about to rewrite, which looks identical
@@ -139,19 +154,19 @@ to a real bust. The marker is recorded at the source, so nothing is inferred fro
 correlation. Any `invalidate` without the marker is a real invalidation.
 
 **Dependency correctness is a set intersection.** Correlate the `tags` of a `save_*` with the
-`tags` of a later `invalidate`. If they do not intersect, the write did not bust that entry —
+`tags` of a later `invalidate`. Tags that do not meet mean the write left that entry standing —
 which is what serving stale looks like from the inside.
 
 **`cdn_headers` shows what the response really carried**, including a CDN module's silent
-default. No lifetime header in the map means the response gave the CDN no lifetime directive.
+default. A map with no lifetime header is a response that gave the CDN no lifetime directive.
 Correlate its `surrogateKeys` with an `invalidate`'s `tags` to see whether a purge could reach
 what the edge holds.
 
 **A `conditional_request` closing `cache_hit{layer: etag}` is a 304** — the whole request
-answered from the ETag pool without running the resource. No `get` scope can show this.
+answered from the ETag pool without running the resource. It is the only place a 304 appears.
 
-**A donut `cache_hit` does not distinguish served-from-cache from recomposed.** The close reports
-the final layer only; look for `refresh_donut` inside the scope.
+**A donut `cache_hit` reports the final layer.** Whether the page came from the cache or was
+recomposed on the way out is inside the scope: a `refresh_donut` event means recomposed.
 
 ## Worked example
 
@@ -201,10 +216,10 @@ not the log's:
 | `ProdQueryRepositoryLogModule` | nothing inside the line. The collector's own line timestamp is the only clock, and there is no request id to join on |
 | Need a request id? | decorate `LogWriterInterface` and add it to the line — the same seam used for scrubbing and rate-limiting |
 
-**In production, absence is not evidence.** The retention policy drops healthy reads and read-side
-outages, so a session that is not there may have been dropped rather than never have happened. Only
-the categories the policy keeps can be reasoned about, and only positively: "we invalidated these
-tags" is supportable, "no invalidation ran" is not. In development, where every session is written,
+**A production log holds only what the retention policy kept.** Healthy reads and read-side outages
+are dropped, so a session that is not there may have been dropped rather than never have happened.
+What it supports are positive statements about the categories it keeps: "we invalidated these tags"
+is supportable, "no invalidation ran" is not. In development, where every session is written,
 absence does mean the code decided not to act — that is where the "no silent paths" property holds.
 
 ## Where it goes
