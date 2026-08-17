@@ -88,6 +88,7 @@ operation inside a GET or a command is an ordinary event there instead.
 
 | Type | Fields | What it tells you |
 |---|---|---|
+| `cache_policy` | `uri`, `expiry`, `expirySecond`, `expiryAt`, `resolvedTtl` | what the resource declared about its lifetime, and what that resolved to |
 | `save_value` | `uri`, `tags`, `ttl`, `saved` | the body was offered to the pool |
 | `save_view` | `uri`, `tags`, `ttl`, `saved` | body + rendered view were offered |
 | `save_etag` | `uri`, `etag`, `tags`, `ttl`, `saved` | the validator was offered to the ETag pool |
@@ -156,6 +157,12 @@ correlation. Any `invalidate` without the marker is a real invalidation.
 **Dependency correctness is a set intersection.** Correlate the `tags` of a `save_*` with the
 `tags` of a later `invalidate`. Tags that do not meet mean the write left that entry standing —
 which is what serving stale looks like from the inside.
+
+**Read `cache_policy.expiry`, not a TTL, to learn whether an entry is meant to expire.**
+`expiry: "never"` means until invalidation; the number it resolves to is a backstop and depends on
+how the application bound `Expiry` — a default install turns `never` into 31536000 seconds, which
+reads exactly like a deliberate 1-year TTL. `expirySecond` or `expiryAt` being the non-null one
+means the entry expires, and says who decided.
 
 **`cdn_headers` shows what the response really carried**, including a CDN module's silent
 default. A map with no lifetime header is a response that gave the CDN no lifetime directive.

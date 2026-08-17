@@ -86,6 +86,7 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 
 | 型 | フィールド | 何が分かるか |
 |---|---|---|
+| `cache_policy` | `uri`, `expiry`, `expirySecond`, `expiryAt`, `resolvedTtl` | リソースが宣言した寿命と、それが解決した値 |
 | `save_value` | `uri`, `tags`, `ttl`, `saved` | body をプールに渡した |
 | `save_view` | `uri`, `tags`, `ttl`, `saved` | body + レンダリング済み view を渡した |
 | `save_etag` | `uri`, `etag`, `tags`, `ttl`, `saved` | 検証子を ETag プールに渡した |
@@ -153,6 +154,12 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 **依存が正しいかは集合の交差で決まります。** `save_*` の `tags` と、後の `invalidate` の `tags` を
 突き合わせます。交差しないタグは、その書き込みがそのエントリを残したことを意味します — これが
 内側から見た「stale を配信している」状態です。
+
+**エントリが期限切れになる設計かどうかは、TTL ではなく `cache_policy.expiry` を読みます。**
+`expiry: "never"` は「無効化が届くまで」という意図です。解決した数値は保険であり、アプリが `Expiry` を
+どう束縛したかで変わります — 既定のインストールでは `never` が 31536000 秒になり、意図的な 1 年 TTL と
+まったく同じに見えます。`expirySecond` か `expiryAt` が non-null 側なら、そのエントリは期限切れになり、
+どの宣言が決めたかも分かります。
 
 **`cdn_headers` に出るのは、応答に実際に付いたヘッダです。** CDN モジュールの暗黙の既定値も含みます。
 lifetime ヘッダの無いマップは、CDN に lifetime 指示を与えなかった応答です。`surrogateKeys` と
