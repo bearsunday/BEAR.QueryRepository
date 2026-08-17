@@ -92,10 +92,6 @@ final readonly class QueryRepository implements QueryRepositoryInterface
 
     private function setCacheDependency(ResourceObject $ro): void
     {
-        if (isset($ro->headers[Header::SURROGATE_KEY])) {
-            return;
-        }
-
         /** @var mixed $body */
         foreach ((array) $ro->body as $body) {
             if (! ($body instanceof AbstractRequest)) {

@@ -112,4 +112,27 @@ class ComplexCacheDependencyTest extends TestCase
 
         $this->assertTrue($this->isCached('child-c'), 'an unrelated resource must not be touched');
     }
+
+    public function testAParentThatDeclaresItsOwnKeyStillDependsOnItsChild(): void
+    {
+        // A resource may declare a Surrogate-Key to share an invalidation handle with its
+        // siblings (a corpus tag). That declaration used to switch its embed dependencies
+        // off entirely, so the page kept serving a child that had already been purged.
+        $this->resource->get('page://self/dep/tagged-parent');
+        $this->assertTrue($this->isCached('tagged-parent'));
+
+        $this->repository->purge(new Uri('page://self/dep/diamond-bottom'));
+
+        $this->assertFalse($this->isCached('tagged-parent'), 'the declared key must not cost the child dependency');
+    }
+
+    public function testTheDeclaredKeyStillInvalidatesTheParent(): void
+    {
+        // The other half of the contract: the key the resource declared keeps working.
+        $this->resource->get('page://self/dep/tagged-parent');
+
+        $this->repository->purge(new Uri('page://self/dep/tagged-parent'));
+
+        $this->assertFalse($this->isCached('tagged-parent'));
+    }
 }
