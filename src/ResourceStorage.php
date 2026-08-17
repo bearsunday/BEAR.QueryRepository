@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Exception\CacheStoreFailure;
 use BEAR\QueryRepository\Log\Context\InvalidateContext;
 use BEAR\QueryRepository\Log\Context\ManualInvalidateContext;
 use BEAR\QueryRepository\Log\Context\ManualInvalidateResultContext;
@@ -114,7 +115,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
     #[Override]
     public function get(AbstractUri $uri): ResourceState|null
     {
-        $item = $this->roPool->getItem($this->getUriKey($uri, self::KEY_RO));
+        $item = $this->guard(fn () => $this->roPool->getItem($this->getUriKey($uri, self::KEY_RO)));
         $state = $item->get();
         assert($state instanceof ResourceState || $state === null);
 
@@ -125,7 +126,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
     public function getDonut(AbstractUri $uri): ResourceDonut|null
     {
         $key = $this->getUriKey($uri, self::KEY_DONUT);
-        $item = $this->roPool->getItem($key);
+        $item = $this->guard(fn () => $this->roPool->getItem($key));
         $donut = $item->get();
         assert($donut instanceof ResourceDonut || $donut === null);
 
@@ -158,7 +159,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
     private function findEtag(string $etag, string|null $uriTag): bool
     {
         foreach (EntityTags::of($etag) as $opaqueTag) {
-            $item = $this->etagPool->getItem($opaqueTag);
+            $item = $this->guard(fn () => $this->etagPool->getItem($opaqueTag));
             if ($item->isHit() && ($uriTag === null || $item->get() === $uriTag)) {
                 return true;
             }
@@ -185,12 +186,11 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
     public function invalidateTags(array $tags): bool
     {
         $start = hrtime(true);
-        $roOk = $this->roPool->invalidateTags($tags);
-        $etagOk = $this->etagPool->invalidateTags($tags);
+        $roOk = $this->guard(fn (): bool => $this->roPool->invalidateTags($tags));
+        $etagOk = $this->guard(fn (): bool => $this->etagPool->invalidateTags($tags));
 
-        // The CDN purge is fail-closed: a purge failure must surface so a write does not
-        // silently leave stale CDN content. The local pools are invalidated first, and the
-        // outcome is logged (cdn=failed) before the exception is re-thrown to the caller.
+        // The outcome is logged before the failure is raised, and the local pools are invalidated
+        // first, so a caller that retries does not double-invalidate.
         $purgerError = null;
         try {
             ($this->purger)(implode(' ', $tags));
@@ -209,7 +209,11 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         $this->logInvalidation($result, $tags);
 
         if ($purgerError !== null) {
-            throw $purgerError;
+            // Fail-closed, and typed like the rest of the cache path: a command or a direct call
+            // has no catch, so this reaches the caller and the write is not reported as done. The
+            // automatic write inside a GET does catch it, and degrades - that request changed
+            // nothing, so nothing at the edge became stale by it (issue #190).
+            throw CacheStoreFailure::from($purgerError);
         }
 
         return $roOk && $etagOk;
@@ -266,7 +270,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         $value = ResourceState::create($ro, $body, null);
         $key = $this->getUriKey($ro->uri, self::KEY_RO);
         $tags = $this->getTags($ro);
-        $saved = $this->saver->__invoke($key, $value, $this->roPool, $tags, $ttl);
+        $saved = $this->guard(fn (): bool => ($this->saver)($key, $value, $this->roPool, $tags, $ttl));
         $this->logger->event(new SaveValueContext((string) $ro->uri, $tags, $ttl, $saved));
 
         return $saved;
@@ -286,7 +290,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         $value = ResourceState::create($ro, $body, $ro->view);
         $key = $this->getUriKey($ro->uri, self::KEY_RO);
         $tags = $this->getTags($ro);
-        $saved = $this->saver->__invoke($key, $value, $this->roPool, $tags, $ttl);
+        $saved = $this->guard(fn (): bool => ($this->saver)($key, $value, $this->roPool, $tags, $ttl));
         $this->logger->event(new SaveViewContext((string) $ro->uri, $tags, $ttl, $saved));
 
         return $saved;
@@ -302,7 +306,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         // template entry TTL (putStatic passes $ttl, putDonut passes $donutTtl), never a CDN s-maxage.
         $sMaxAge = $sMaxAge === null ? null : max(0, $sMaxAge);
         $key = $this->getUriKey($uri, self::KEY_DONUT);
-        $saved = $this->saver->__invoke($key, $donut, $this->roPool, $headerKeys, $sMaxAge);
+        $saved = $this->guard(fn (): bool => ($this->saver)($key, $donut, $this->roPool, $headerKeys, $sMaxAge));
         // saved=false is logged, not asserted: a quiet store failure must stay observable
         // in the log (an assert here would throw AFTER the event, contradicting it).
         $this->logger->event(new SaveDonutContext((string) $uri, $headerKeys, $sMaxAge, $saved));
@@ -315,7 +319,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         $resourceState = ResourceState::create($ro, [], $ro->view);
         $key = $this->getUriKey($ro->uri, self::KEY_RO);
         $tags = $this->getTags($ro);
-        $saved = $this->saver->__invoke($key, $resourceState, $this->roPool, $tags, $ttl);
+        $saved = $this->guard(fn (): bool => ($this->saver)($key, $resourceState, $this->roPool, $tags, $ttl));
         $this->logger->event(new SaveDonutViewContext((string) $ro->uri, $tags, $ttl, $saved));
 
         return $saved;
@@ -379,8 +383,36 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         // The header value is a quoted entity-tag; the pool key is the bare opaque-tag. The entry's
         // value is the URI tag it was issued for - the field used to be the constant 'etag', which
         // is why a validator from any resource satisfied any request.
-        $saved = $this->saver->__invoke(trim($etag, '"'), ($this->uriTag)($uri), $this->etagPool, $uniqueTags, $ttl);
+        $saved = $this->guard(fn (): bool => ($this->saver)(trim($etag, '"'), ($this->uriTag)($uri), $this->etagPool, $uniqueTags, $ttl));
         $this->logger->event(new SaveEtagContext((string) $uri, $etag, $uniqueTags, $ttl, $saved));
+    }
+
+    /**
+     * Run a store interaction, and let only its failure be the kind a cache path may swallow
+     *
+     * An interceptor degrades rather than failing a request whose response is already correct, but
+     * `catch (Throwable)` there swallowed everything a write touches - a renderer with a bug, a
+     * logic error introduced later. Wrapping here is what lets the catch be narrow: what the pool
+     * raises arrives as CacheStoreFailure, and everything else keeps travelling.
+     *
+     * The CDN purge in invalidateTags() is raised by hand instead: its outcome is logged and the
+     * local pools invalidated before it leaves, which a wrapper around the call cannot order.
+     *
+     * @param callable(): T $io
+     *
+     * @return T
+     *
+     * @template T
+     */
+    private function guard(callable $io): mixed
+    {
+        try {
+            return $io();
+        } catch (CacheStoreFailure $e) {
+            throw $e;
+        } catch (Throwable $e) {
+            throw CacheStoreFailure::from($e);
+        }
     }
 
     public function __serialize(): array

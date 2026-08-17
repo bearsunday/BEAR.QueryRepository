@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Exception\CacheStoreFailure;
 use BEAR\QueryRepository\Log\Context\CacheErrorContext;
 use BEAR\QueryRepository\Log\Context\CacheHitContext;
 use BEAR\QueryRepository\Log\Context\CacheMissContext;
@@ -14,7 +15,6 @@ use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
 use Koriym\SemanticLogger\NullSemanticLogger;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
-use Throwable;
 
 use function assert;
 use function hrtime;
@@ -24,7 +24,9 @@ use function round;
 use function sprintf;
 use function str_replace;
 use function strtoupper;
+use function trigger_error;
 
+use const E_USER_WARNING;
 use const PHP_EOL;
 
 final readonly class CliHttpCache implements HttpCacheInterface, UriScopedHttpCacheInterface
@@ -56,13 +58,16 @@ final readonly class CliHttpCache implements HttpCacheInterface, UriScopedHttpCa
         $start = hrtime(true);
         try {
             $hit = $this->storage->hasEtag($etag);
-        } catch (Throwable $e) {
-            // Same shape as the HTTP-facing HttpCache: record the outage, close the scope
-            // as the established idiom reads it, keep the exception's pre-existing path.
-            $this->logger->event(new CacheErrorContext($this->requestUri($server), 'read', $e->getMessage(), $e::class));
+        } catch (CacheStoreFailure $e) {
+            // Same shape as the HTTP-facing HttpCache: a validator that cannot be read does not
+            // match, so the request is answered in full rather than failed. Recorded as the
+            // established idiom reads it, and the scope is closed either way.
+            $cause = $e->getPrevious() ?? $e;
+            $this->logger->event(new CacheErrorContext($this->requestUri($server), 'read', $cause->getMessage(), $cause::class));
             $this->logger->close(new CacheMissContext('etag', round((hrtime(true) - $start) / 1_000_000, 3)), $openId);
+            $this->triggerWarning($cause);
 
-            throw $e;
+            return false;
         }
 
         $durationMs = round((hrtime(true) - $start) / 1_000_000, 3);
@@ -96,13 +101,15 @@ final readonly class CliHttpCache implements HttpCacheInterface, UriScopedHttpCa
         $start = hrtime(true);
         try {
             $hit = $this->storage->hasEtagFor($ifNoneMatch, $uri);
-        } catch (Throwable $e) {
-            // Same shape as the unscoped answer: record the outage, close as the established idiom
-            // reads it (cache_error + cache_miss = degraded), and let the exception keep its path.
-            $this->logger->event(new CacheErrorContext((string) $uri, 'read', $e->getMessage(), $e::class));
+        } catch (CacheStoreFailure $e) {
+            // The same decision as the unscoped answer: a validator that cannot be read is one
+            // that does not match.
+            $cause = $e->getPrevious() ?? $e;
+            $this->logger->event(new CacheErrorContext((string) $uri, 'read', $cause->getMessage(), $cause::class));
             $this->logger->close(new CacheMissContext('etag', round((hrtime(true) - $start) / 1_000_000, 3)), $openId);
+            $this->triggerWarning($cause);
 
-            throw $e;
+            return false;
         }
 
         $durationMs = round((hrtime(true) - $start) / 1_000_000, 3);
@@ -174,5 +181,16 @@ final readonly class CliHttpCache implements HttpCacheInterface, UriScopedHttpCa
         $uri = $server['REQUEST_URI'] ?? '';
 
         return is_string($uri) ? $uri : '';
+    }
+
+    /**
+     * A failure on the cache path degrades to a warning rather than an exception
+     *
+     * The same channel the read side of `#[Cacheable]` uses: the host's own monitoring is what
+     * notices a pool outage, and the log records it at the point it happened.
+     */
+    private function triggerWarning(Throwable $e): void
+    {
+        trigger_error(sprintf('%s: %s in %s:%s', $e::class, $e->getMessage(), $e->getFile(), $e->getLine()), E_USER_WARNING);
     }
 }

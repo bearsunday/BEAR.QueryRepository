@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Exception\CacheStoreFailure;
 use BEAR\QueryRepository\HttpCacheInterface as DeprecatedHttpCacheInterface;
 use BEAR\QueryRepository\Log\Context\CacheErrorContext;
 use BEAR\QueryRepository\Log\Context\CacheHitContext;
@@ -21,6 +22,10 @@ use function hrtime;
 use function http_response_code;
 use function is_string;
 use function round;
+use function sprintf;
+use function trigger_error;
+
+use const E_USER_WARNING;
 
 /** @psalm-suppress DeprecatedInterface for BC */
 final readonly class HttpCache implements HttpCacheInterface, DeprecatedHttpCacheInterface, UriScopedHttpCacheInterface
@@ -53,16 +58,17 @@ final readonly class HttpCache implements HttpCacheInterface, DeprecatedHttpCach
         $start = hrtime(true);
         try {
             $hit = $this->storage->hasEtag($ifNoneMatch);
-        } catch (Throwable $e) {
-            // The pool read failed: record the outage and close as the established idiom
-            // reads it (cache_error + cache_miss = degraded, lone miss = cold), then let
-            // the exception keep its pre-existing path - whether the 304 check should
-            // degrade to a full response instead is the same behavior decision as the
-            // donut write and goes to the same issue.
-            $this->logger->event(new CacheErrorContext($this->requestUri($server), 'read', $e->getMessage(), $e::class));
+        } catch (CacheStoreFailure $e) {
+            // A validator this pool cannot read is a validator that does not match: answering the
+            // request in full is the correct response, and the alternative - a 500 because the ETag
+            // store is down - fails a request the application could have served. Recorded as the
+            // established idiom reads it: cache_error + cache_miss = degraded, a lone miss = cold.
+            $cause = $e->getPrevious() ?? $e;
+            $this->logger->event(new CacheErrorContext($this->requestUri($server), 'read', $cause->getMessage(), $cause::class));
             $this->logger->close(new CacheMissContext('etag', round((hrtime(true) - $start) / 1_000_000, 3)), $openId);
+            $this->triggerWarning($cause);
 
-            throw $e;
+            return false;
         }
 
         $durationMs = round((hrtime(true) - $start) / 1_000_000, 3);
@@ -96,13 +102,15 @@ final readonly class HttpCache implements HttpCacheInterface, DeprecatedHttpCach
         $start = hrtime(true);
         try {
             $hit = $this->storage->hasEtagFor($ifNoneMatch, $uri);
-        } catch (Throwable $e) {
-            // Same shape as the unscoped answer: record the outage, close as the established idiom
-            // reads it (cache_error + cache_miss = degraded), and let the exception keep its path.
-            $this->logger->event(new CacheErrorContext((string) $uri, 'read', $e->getMessage(), $e::class));
+        } catch (CacheStoreFailure $e) {
+            // The same decision as the unscoped answer: a validator that cannot be read is one
+            // that does not match.
+            $cause = $e->getPrevious() ?? $e;
+            $this->logger->event(new CacheErrorContext((string) $uri, 'read', $cause->getMessage(), $cause::class));
             $this->logger->close(new CacheMissContext('etag', round((hrtime(true) - $start) / 1_000_000, 3)), $openId);
+            $this->triggerWarning($cause);
 
-            throw $e;
+            return false;
         }
 
         $durationMs = round((hrtime(true) - $start) / 1_000_000, 3);
@@ -141,5 +149,16 @@ final readonly class HttpCache implements HttpCacheInterface, DeprecatedHttpCach
         $uri = $server['REQUEST_URI'] ?? '';
 
         return is_string($uri) ? $uri : '';
+    }
+
+    /**
+     * A failure on the cache path degrades to a warning rather than an exception
+     *
+     * The same channel the read side of `#[Cacheable]` uses: the host's own monitoring is what
+     * notices a pool outage, and the log records it at the point it happened.
+     */
+    private function triggerWarning(Throwable $e): void
+    {
+        trigger_error(sprintf('%s: %s in %s:%s', $e::class, $e->getMessage(), $e->getFile(), $e->getLine()), E_USER_WARNING);
     }
 }
