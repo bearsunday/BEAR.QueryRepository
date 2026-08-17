@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Log\PoolErrorLogger;
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\RepositoryModule\Annotation\TagsPool;
 use Override;
+use Psr\Log\LoggerInterface;
 use Ray\Di\AbstractModule;
+use Ray\Di\InjectionPoints;
 use Ray\PsrCacheModule\Annotation\CacheNamespace;
 use Ray\PsrCacheModule\MemcachedAdapter;
 use Ray\PsrCacheModule\Psr6MemcachedModule;
@@ -31,7 +34,14 @@ final class StorageMemcachedModule extends AbstractModule
     #[Override]
     protected function configure(): void
     {
-        $this->bind(AdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->to(MemcachedAdapter::class);
+        $this->bind(LoggerInterface::class)->annotatedWith('poolError')->to(PoolErrorLogger::class);
+        $this->bind(AdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->toConstructor(
+            MemcachedAdapter::class,
+            [],
+            // Memcached swallows backend failures the same way Redis does: without the cache log
+            // in the adapter's hands, a store that is down is a run of ordinary misses.
+            (new InjectionPoints())->addMethod('setLogger', 'poolError'),
+        );
         $this->install(new Psr6MemcachedModule($this->servers));
         $this->bind(TagAwareAdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->toConstructor(
             TagAwareAdapter::class,
@@ -40,6 +50,7 @@ final class StorageMemcachedModule extends AbstractModule
                 'tagsPool' => TagsPool::class,
                 'namespace' => CacheNamespace::class,
             ],
+            (new InjectionPoints())->addMethod('setLogger', 'poolError'),
         );
     }
 }

@@ -102,6 +102,7 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 | `put_skipped` | `uri`, `reason`, `code` | miss の後に書き込みを**しなかった**ことと、その理由 |
 | `cache_hit` / `cache_miss` | `layer` | 内側の照会。必ず `layer: donut` — donut テンプレートがあったか |
 | `cache_error` | `uri`, `operation`, `error`, `exceptionClass` | キャッシュ経路が throw した |
+| `pool_error` | `key`, `operation`, `error`, `exceptionClass` | バックエンドが操作を拒み、アダプタが握り潰した |
 | `semantic_logger_error` | `kind`, `message`, … | ロガー自体の誤用(コア側の診断で、このパッケージの語彙ではない) |
 
 ## 結果が入るフィールド
@@ -160,6 +161,12 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 どう束縛したかで変わります — 既定のインストールでは `never` が 31536000 秒になり、意図的な 1 年 TTL と
 まったく同じに見えます。`expirySecond` か `expiryAt` が non-null 側なら、そのエントリは期限切れになり、
 どの宣言が決めたかも分かります。
+**`pool_error` はストアそのもの、`cache_error` はこのパッケージが捕まえた例外です。**
+`symfony/cache` のアダプタはアプリに向けて throw しません。到達できないストアは read には miss、
+write には `false` を返すので、`cache_error` を生む `catch` には何も届きません。アダプタは代わりに
+失敗を PSR-3 ロガーへ報告し、プールにはキャッシュログが渡されています — だからストアが落ちているとき、
+miss の隣に `pool_error` が並びます(沈黙にはなりません)。そこで分かるのはプールのキーだけで、
+リソース URI ではありません。
 
 **`cdn_headers` に出るのは、応答に実際に付いたヘッダです。** CDN モジュールの暗黙の既定値も含みます。
 lifetime ヘッダの無いマップは、CDN に lifetime 指示を与えなかった応答です。`surrogateKeys` と

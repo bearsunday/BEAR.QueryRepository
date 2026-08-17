@@ -104,6 +104,7 @@ operation inside a GET or a command is an ordinary event there instead.
 | `put_skipped` | `uri`, `reason`, `code` | a miss was **not** followed by a write, and why |
 | `cache_hit` / `cache_miss` | `layer` | an inner lookup, always `layer: donut` — whether the donut template was there |
 | `cache_error` | `uri`, `operation`, `error`, `exceptionClass` | the cache path threw |
+| `pool_error` | `key`, `operation`, `error`, `exceptionClass` | the backend refused an operation and the adapter swallowed it |
 | `semantic_logger_error` | `kind`, `message`, … | the logger itself was misused (core diagnostic, not this package's vocabulary) |
 
 ## Outcome fields
@@ -163,6 +164,12 @@ which is what serving stale looks like from the inside.
 how the application bound `Expiry` — a default install turns `never` into 31536000 seconds, which
 reads exactly like a deliberate 1-year TTL. `expirySecond` or `expiryAt` being the non-null one
 means the entry expires, and says who decided.
+**A `pool_error` is the store itself; a `cache_error` is an exception this package caught.**
+`symfony/cache` adapters never throw at the application: an unreachable store answers a read as a
+miss and a write as `false`, so nothing reaches the `catch` that produces a `cache_error`. The
+adapter reports the failure to a PSR-3 logger instead, and the pools are given the cache log - so
+a store that is down is a run of `pool_error` beside the misses, not silence. Only the pool key is
+known there, not the resource URI.
 
 **`cdn_headers` shows what the response really carried**, including a CDN module's silent
 default. A map with no lifetime header is a response that gave the CDN no lifetime directive.

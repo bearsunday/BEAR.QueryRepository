@@ -15,6 +15,7 @@
 | 5 | なぜエントリがないのか — 何も保存されていなかったのか(コールド)、それともストアが読めなかったのか(縮退: フレームワークがキャッシュ無しとして振る舞い、リソースを走らせた)？ | `put_skipped` `{reason, code}`、`cache_error` `{operation, exceptionClass}` — `operation: read` が、それでも閉じる `cache_miss` と対になっているものが縮退した読み取り | スキップ理由、失敗した側（`read`/`write`）、throwable のクラスがピン留めされている。`cache_error{read}` + `cache_miss` = 縮退した読み取り、`cache_miss` 単独 = cold |
 | 6 | この書き込みまたは無効化を始めたのは誰か — フレームワークか、アプリケーションか？ | `command` スコープは生成元のインターセプター（`source`）を名指す。直接呼び出しは `manual_store` / `manual_purge` / `manual_invalidate` を根とし、結果は close 側に載る。`pre_write_cleanup` は writer 自身のクリーンアップを示す | 例外を投げる書き込みは `manual_store_result{failed}` で閉じる。呼び出し側が例外を捕まえているのにスコープが `stored` で閉じるのはログが嘘をついている状態であり、テストがそれを禁じる |
 | 7 | このエントリは期限切れになる設計か、それとも何かが無効化するまで生きる設計か? | `cache_policy` `{expiry, expirySecond, expiryAt, resolvedTtl}` — `#[Cacheable]` の宣言を読む場所で記録 | 3 つの宣言のうち non-null は 1 つだけ、それが決めたもの。TTL ではこれに答えられない — `never` プリセットはアプリが再束縛できる有限の数値に解決するので、イベント駆動のエントリと意図的な 1 年 TTL が同じ寿命として記録される |
+| 8 | ストアは応答しているのか、それとも miss はすべて障害なのか? | `pool_error` `{key, operation, error, exceptionClass}` — 拒んだバックエンドについてのアダプタ自身の報告 | `symfony/cache` はアプリに throw しないので、プールにキャッシュログを渡している。死んだストアからの read は他と同じ miss であり、隣の `pool_error` が「落ちている」と「冷たい」を分ける。実際の Redis アダプタを閉じたポートに向けて実演 |
 
 ## 強制の層
 
