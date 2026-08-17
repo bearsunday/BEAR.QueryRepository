@@ -70,7 +70,8 @@ final class ShutdownFlush implements LogSinkInterface
             if ($logger !== $this->armedLogger) {
                 error_log(
                     'QueryRepository log: a second logger armed an already-armed sink, so its session '
-                    . 'will never be flushed. Bind SemanticLoggerInterface in Scope::SINGLETON.',
+                    . 'will never be flushed. Bind SemanticLoggerInterface annotated with #[CacheLog] '
+                    . 'in Scope::SINGLETON.',
                 );
             }
 

@@ -62,21 +62,24 @@ class DefaultLogBindingTest extends TestCase
     public function testTheAppsOwnSemanticLoggerBindingIsLeftAlone(): void
     {
         // The interface belongs to koriym/semantic-logger, not to this package: Be Framework binds
-        // it for its becoming tree. Ray.Di keeps the binding that lands first, so an unqualified
-        // default here would decide by install order - silently, since a null logger still works.
+        // it for its becoming tree. Ray.Di's merge keeps the binding that landed first, so the
+        // package module is installed first here - the order an application actually gets when
+        // PackageModule brings this one in ahead of the app's own bindings. An unqualified default
+        // would win that race and the app's logger would silently become the null one.
         $appLogger = new SemanticLogger();
-        $module = new class ($appLogger, new FakeEtagPoolModule(new QueryRepositoryModule(new ResourceModule('FakeVendor\HelloWorld')))) extends AbstractModule {
-            public function __construct(private SemanticLogger $appLogger, AbstractModule $module)
+        $package = new FakeEtagPoolModule(new QueryRepositoryModule(new ResourceModule('FakeVendor\HelloWorld')));
+        $package->install(new class ($appLogger) extends AbstractModule {
+            public function __construct(private SemanticLogger $appLogger)
             {
-                parent::__construct($module);
+                parent::__construct();
             }
 
             protected function configure(): void
             {
                 $this->bind(SemanticLoggerInterface::class)->toInstance($this->appLogger);
             }
-        };
-        $injector = new Injector($module, __DIR__ . '/tmp');
+        });
+        $injector = new Injector($package, __DIR__ . '/tmp');
 
         $this->assertSame($appLogger, $injector->getInstance(SemanticLoggerInterface::class), 'the app keeps its logger');
         $this->assertInstanceOf(NullSemanticLogger::class, $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class));
