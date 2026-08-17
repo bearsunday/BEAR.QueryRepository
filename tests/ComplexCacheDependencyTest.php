@@ -9,6 +9,9 @@ use BEAR\Resource\Uri;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 
+use function array_unique;
+use function explode;
+
 /**
  * Stress test for the cache dependency resolution with a DIAMOND graph.
  *
@@ -134,5 +137,19 @@ class ComplexCacheDependencyTest extends TestCase
         $this->repository->purge(new Uri('page://self/dep/tagged-parent'));
 
         $this->assertFalse($this->isCached('tagged-parent'));
+    }
+
+    public function testASecondWriteInTheSameRequestDoesNotRepeatAChildTag(): void
+    {
+        // `#[Refresh]` puts the instance the rebuilding GET already stored, so the same child is
+        // resolved twice. The header goes to the CDN, so a repeat would ship on the wire.
+        $ro = $this->resource->get('page://self/dep/tagged-parent');
+        $this->repository->put($ro);
+
+        $keys = explode(' ', $ro->headers[Header::SURROGATE_KEY]);
+
+        $this->assertSame(array_unique($keys), $keys, (string) $ro->headers[Header::SURROGATE_KEY]);
+        $this->assertContains('shared-corpus', $keys, 'the declared key survives');
+        $this->assertContains('_dep_diamond-bottom_', $keys, 'so does the child tag');
     }
 }
