@@ -50,9 +50,9 @@ A session is one tree per request. Nesting is not chronology — it is the struc
 ```text
 get page://self/html/blog-posting          ← a scope: opened, then closed
   get page://self/html/comment             ← an embedded child, nested inside its parent
-    save_value {tags, ttl, saved}          ← an event: something that happened in this scope
+    save_value {tags, requestedTtl, saved} ← an event: something that happened in this scope
     cache_miss {layer: resource}           ← the close: how the scope ended
-  put_donut {ttl, sMaxAge}
+  put_donut {requestedTtl, sMaxAge}
   cache_hit {layer: donut-view}
 ```
 

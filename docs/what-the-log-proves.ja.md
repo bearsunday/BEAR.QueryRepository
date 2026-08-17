@@ -8,7 +8,7 @@
 
 | # | 運用上の問い | 答えとなるもの | 正直に保つ機構 |
 |---|---|---|---|
-| 1 | このレスポンスは保存されたか — どの有効期間で、どのキーの下に、そして書き込みは成功したか？ | `save_value` / `save_view` / `save_etag` / `save_donut` / `save_donut_view` `{tags, ttl, saved}` | スキーマが `requestedTtl` ≥ 0 を宣言。各ストアは負の有効期間をクランプし、テストが 5 つすべてを走査。`saved` の両方の結果がデモに現れなければならない |
+| 1 | このレスポンスは保存されたか — どの有効期間で、どのキーの下に、そして書き込みは成功したか？ | `save_value` / `save_view` / `save_etag` / `save_donut` / `save_donut_view` `{tags, requestedTtl, saved}` | スキーマが `requestedTtl` ≥ 0 を宣言。各ストアは負の有効期間をクランプし、テストが 5 つすべてを走査。`saved` の両方の結果がデモに現れなければならない |
 | 2 | CDN は何を、どれだけの期間キャッシュせよと告げられたか？ | すべての donut 書き込みとリフレッシュ時の `cdn_headers` `{headers, surrogateKeys}` — 確定後に読み戻された、実際のレスポンスヘッダそのもの | 各フレーバーの暗黙のデフォルト（generic は `max-age=10`、Fastly/Akamai は `max-age=31536000`）がピン留めされている。これはフレームワークの規則で誤記ではない — タグで無効化できる CDN には 1 年、できない CDN には 10 秒（[キャッシュマニュアル](https://bearsunday.github.io/manuals/1.0/ja/cache.html)）。Akamai の `Surrogate-Key` → `Edge-Cache-Tag` へのリネームも同様にピン留めされている。有効期間ヘッダが記録されていない = そのレスポンスは CDN に有効期間の指示を与えなかった（`putDonut` の種類） |
 | 3 | CDN に purge を指示したか — 正確に何を、そしてそれは効いたか？ | `invalidate` `{tags, roPool, etagPool, cdn, durationMs}`。purger は記録されたタグをそのまま受け取る | `cdn` は三状態（`purged` / `failed` / `skipped`）で fail-closed。まずローカルプール、結果を記録、その後に purge の例外が伝播する。プールが 1 つ拒否すれば失敗として報告される |
 | 4 | 条件付きリクエストはエッジで再検証されたか？ | layer `etag` で `cache_hit`/`cache_miss` を閉じる `conditional_request` `{ifNoneMatch}` — リソースが 1 つも走る前に下される 304 の判定 | `HttpCacheInterface` の両実装が記録する。どちらかの記録を落とすか結果を入れ替えるとスイートが失敗する |

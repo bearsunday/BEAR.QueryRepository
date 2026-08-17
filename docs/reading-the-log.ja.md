@@ -49,9 +49,9 @@ vendor/bin/stree var/log/query-repository/latest.json   # 直前に走ったリ�
 ```text
 get page://self/html/blog-posting          ← スコープ: open されて close される
   get page://self/html/comment             ← 埋め込みの子。親の中に入れ子になる
-    save_value {tags, ttl, saved}          ← イベント: このスコープの中で起きたこと
+    save_value {tags, requestedTtl, saved} ← イベント: このスコープの中で起きたこと
     cache_miss {layer: resource}           ← close: スコープがどう終わったか
-  put_donut {ttl, sMaxAge}
+  put_donut {requestedTtl, sMaxAge}
   cache_hit {layer: donut-view}
 ```
 
