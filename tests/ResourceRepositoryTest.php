@@ -93,6 +93,21 @@ class ResourceRepositoryTest extends TestCase
         $this->assertFalse($instance);
     }
 
+    public function testTheValidatorFollowsTheBodyWhenNothingRendered(): void
+    {
+        // A value entry is stored without rendering, so the validator stands for the body. If that
+        // fallback were dropped, every such resource would serialize a null view into one constant
+        // string - a validator that never changes is a 304 for content that did.
+        $this->ro->body = ['name' => 'bear'];
+        $this->repository->put($this->ro);
+        $first = $this->ro->headers[Header::ETAG];
+
+        $this->ro->body = ['name' => 'panda'];
+        $this->repository->put($this->ro);
+
+        $this->assertNotSame($first, $this->ro->headers[Header::ETAG], 'a changed body must move the validator');
+    }
+
     public function testCreateFromDoctrineAnnotation(): void
     {
         // phpcs:enable
