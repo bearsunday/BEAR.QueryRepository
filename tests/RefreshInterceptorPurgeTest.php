@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
@@ -34,7 +35,7 @@ class RefreshInterceptorPurgeTest extends TestCase
         $this->resource = $injector->getInstance(ResourceInterface::class);
         $this->repository = $injector->getInstance(QueryRepositoryInterface::class);
         $this->storage = $injector->getInstance(ResourceStorageInterface::class);
-        $this->logger = $injector->getInstance(SemanticLoggerInterface::class);
+        $this->logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
         parent::setUp();
     }

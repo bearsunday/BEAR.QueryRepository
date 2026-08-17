@@ -41,8 +41,8 @@ declare(strict_types=1);
  * logger diagnostics.
  */
 
-use BEAR\QueryRepository\DonutRepositoryInterface;
 use BEAR\QueryRepository\Cdn\AkamaiModule;
+use BEAR\QueryRepository\DonutRepositoryInterface;
 use BEAR\QueryRepository\FakeErrorCache;
 use BEAR\QueryRepository\FakeEtagPoolModule;
 use BEAR\QueryRepository\FakeRefusingPool;
@@ -51,6 +51,7 @@ use BEAR\QueryRepository\ModuleFactory;
 use BEAR\QueryRepository\PurgerInterface;
 use BEAR\QueryRepository\QueryRepositoryInterface;
 use BEAR\QueryRepository\ResourceStorageInterface;
+use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\RepositoryModule\Annotation\EtagPool;
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\Resource\ResourceInterface;
@@ -186,7 +187,7 @@ $injector = $newInjector(null, twig: true);
 $resource = $injector->getInstance(ResourceInterface::class);
 $repository = $injector->getInstance(QueryRepositoryInterface::class);
 $storage = $injector->getInstance(ResourceStorageInterface::class);
-$logger = $injector->getInstance(SemanticLoggerInterface::class);
+$logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
 $code = $resource->get('app://self/code');                  // A1: 203 — purged, not stored
 echo sprintf('A1 GET app://self/code -> %d (not stored)', $code->code) . PHP_EOL;
@@ -225,7 +226,7 @@ $injector = $newInjector(new class extends AbstractModule {
     }
 });
 $resource = $injector->getInstance(ResourceInterface::class);
-$logger = $injector->getInstance(SemanticLoggerInterface::class);
+$logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
 $ro = $resource->get('app://self/value');
 echo sprintf('B  GET app://self/value -> %d served live; the outage is logged, not swallowed', $ro->code) . PHP_EOL;
@@ -247,7 +248,7 @@ $injector = $newInjector(new class ($purger) extends AbstractModule {
 });
 $resource = $injector->getInstance(ResourceInterface::class);
 $repository = $injector->getInstance(QueryRepositoryInterface::class);
-$logger = $injector->getInstance(SemanticLoggerInterface::class);
+$logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
 $resource->get('app://self/value');
 $repository->purge(new Uri('app://self/value'));
@@ -263,7 +264,7 @@ $injector = $newInjector(new class extends AbstractModule {
 });
 $resource = $injector->getInstance(ResourceInterface::class);
 $repository = $injector->getInstance(QueryRepositoryInterface::class);
-$logger = $injector->getInstance(SemanticLoggerInterface::class);
+$logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
 // The populating GET already trips the CDN on its pre-write cleanup: the local pools
 // are invalidated, the outcome is logged as cdn=failed, and because the write path
@@ -291,7 +292,7 @@ $injector = $newInjector(new class extends AbstractModule {
     }
 }, twig: true);
 $resource = $injector->getInstance(ResourceInterface::class);
-$logger = $injector->getInstance(SemanticLoggerInterface::class);
+$logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
 $page = $resource->get('page://self/html/blog-posting');
 echo sprintf('C3 Akamai flavor -> cdn_headers: Akamai-Cache-Control=%s, keys in Edge-Cache-Tag', $page->headers['Akamai-Cache-Control'] ?? '(none)') . PHP_EOL;
@@ -302,7 +303,7 @@ $report($logger->flush(), 'C3. Akamai CDN headers');
 $injector = $newInjector($refusingModule(refuseSave: true, refuseInvalidation: false));
 $resource = $injector->getInstance(ResourceInterface::class);
 $repository = $injector->getInstance(QueryRepositoryInterface::class);
-$logger = $injector->getInstance(SemanticLoggerInterface::class);
+$logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
 $value = $resource->get('app://self/value');
 $resource->get('app://self/view');
@@ -315,7 +316,7 @@ $report($logger->flush(), 'D. write-refusing pool');
 // -------------------------------------------- E. pool refuses writes, donut page
 $injector = $newInjector($refusingModule(refuseSave: true, refuseInvalidation: false), twig: true);
 $resource = $injector->getInstance(ResourceInterface::class);
-$logger = $injector->getInstance(SemanticLoggerInterface::class);
+$logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
 $resource->get('page://self/html/blog-posting');
 echo 'E  GET donut page -> save_donut / save_donut_view saved=false' . PHP_EOL;
@@ -325,7 +326,7 @@ $report($logger->flush(), 'E. donut writes refused');
 // -------------------------------------------------- F. pool refuses invalidation
 $injector = $newInjector($refusingModule(refuseSave: false, refuseInvalidation: true, bothPools: true));
 $storage = $injector->getInstance(ResourceStorageInterface::class);
-$logger = $injector->getInstance(SemanticLoggerInterface::class);
+$logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
 $storage->invalidateTags(['_demo_stuck_tag_']);
 echo 'F  invalidateTags() on pools that refuse it -> roPool=failed etagPool=failed' . PHP_EOL;
@@ -335,7 +336,7 @@ $report($logger->flush(), 'F. invalidation refused');
 // ------------------------------------------------------ G. other command producers
 $injector = $newInjector(null, twig: true);
 $resource = $injector->getInstance(ResourceInterface::class);
-$logger = $injector->getInstance(SemanticLoggerInterface::class);
+$logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
 // DonutCommandInterceptor is bound to #[CacheableResponse] writes (the whole-page
 // donut kind), so the write below — not the #[DonutCache] page — is what it drives.
@@ -347,7 +348,7 @@ $report($logger->flush(), 'G1. donut command');
 
 $injector = $newInjector();
 $resource = $injector->getInstance(ResourceInterface::class);
-$logger = $injector->getInstance(SemanticLoggerInterface::class);
+$logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
 // RefreshSrc is NOT #[Cacheable]: its #[Refresh] is driven by RefreshInterceptor,
 // the third command producer, which purges and re-populates the annotated target.
@@ -359,7 +360,7 @@ $report($logger->flush(), 'G2. refresh command');
 $injector = $newInjector();
 $resource = $injector->getInstance(ResourceInterface::class);
 $repository = $injector->getInstance(QueryRepositoryInterface::class);
-$logger = $injector->getInstance(SemanticLoggerInterface::class);
+$logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
 // PurgeSrc is NOT #[Cacheable] and carries two #[Purge] attributes: purge-only commands,
 // no re-population. The command scope records the annotations verbatim - the only
@@ -376,7 +377,7 @@ $report($logger->flush(), 'G3. purge-only command');
 // ---------------------------------------------------------------- H. finite TTL
 $injector = $newInjector();
 $resource = $injector->getInstance(ResourceInterface::class);
-$logger = $injector->getInstance(SemanticLoggerInterface::class);
+$logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
 $ro = $resource->get('app://self/http-cache-control-with-cacheable');
 echo sprintf(
@@ -398,7 +399,7 @@ $report($logger->flush(), 'H. finite TTL');
 $injector = $newInjector(null, twig: true);
 $resource = $injector->getInstance(ResourceInterface::class);
 $donutRepository = $injector->getInstance(DonutRepositoryInterface::class);
-$logger = $injector->getInstance(SemanticLoggerInterface::class);
+$logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
 $page = $resource->get('page://self/html/blog-posting?id=0');
 $logger->flush(); // drain the GET session: this scenario is about the direct write

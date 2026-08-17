@@ -7,6 +7,7 @@ namespace BEAR\QueryRepository;
 use BEAR\QueryRepository\Log\Context\CacheMissContext;
 use BEAR\QueryRepository\Log\Context\GetContext;
 use BEAR\QueryRepository\Log\TopLevelAwareInterface;
+use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\Resource\RenderInterface;
 use BEAR\Resource\ResourceInterface;
@@ -48,7 +49,7 @@ class GracefulLoggingTest extends TestCase
         $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
         $injector = new Injector($module, __DIR__ . '/tmp');
         $resource = $injector->getInstance(ResourceInterface::class);
-        $logger = $injector->getInstance(SemanticLoggerInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
         // Misuse the shared logger between cache operations: open two scopes and
         // close the outer one first — a LIFO violation.
@@ -94,7 +95,7 @@ class GracefulLoggingTest extends TestCase
         });
         $injector = new Injector($module, __DIR__ . '/tmp');
         $resource = $injector->getInstance(ResourceInterface::class);
-        $logger = $injector->getInstance(SemanticLoggerInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
         // The cache pool is down: the read falls back to a live GET with a warning, not an exception.
         $warningCaught = false;
@@ -143,7 +144,7 @@ class GracefulLoggingTest extends TestCase
         });
         $injector = new Injector($module, __DIR__ . '/tmp');
         $resource = $injector->getInstance(ResourceInterface::class);
-        $logger = $injector->getInstance(SemanticLoggerInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
         $warningCaught = false;
         set_error_handler(static function (int $errno) use (&$warningCaught): bool {
@@ -186,7 +187,7 @@ class GracefulLoggingTest extends TestCase
         });
         $injector = new Injector($module, __DIR__ . '/tmp');
         $repository = $injector->getInstance(QueryRepositoryInterface::class);
-        $logger = $injector->getInstance(SemanticLoggerInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
         $ro = new Index();
         $ro->uri = new Uri('page://self/index');
         $ro->body = [];
@@ -221,7 +222,7 @@ class GracefulLoggingTest extends TestCase
         });
         $injector = new Injector($module, __DIR__ . '/tmp');
         $resource = $injector->getInstance(ResourceInterface::class);
-        $logger = $injector->getInstance(SemanticLoggerInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
         // A donut write meeting a pool outage propagates (whether it should degrade like a
         // plain #[Cacheable] write is a behavior change this rebuild does not make) - but it

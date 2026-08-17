@@ -9,6 +9,7 @@ use BEAR\QueryRepository\Log\Context\ManualPurgeContext;
 use BEAR\QueryRepository\Log\Context\ManualPurgeResultContext;
 use BEAR\QueryRepository\Log\Context\ManualStoreContext;
 use BEAR\QueryRepository\Log\Context\ManualStoreResultContext;
+use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\ResourceInterface;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use PHPUnit\Framework\TestCase;
@@ -47,7 +48,7 @@ class TopLevelAwareLoggerTest extends TestCase
 
             protected function configure(): void
             {
-                $this->bind(SemanticLoggerInterface::class)->toInstance($this->logger);
+                $this->bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)->toInstance($this->logger);
             }
         });
         $injector = new Injector($module, __DIR__ . '/tmp');

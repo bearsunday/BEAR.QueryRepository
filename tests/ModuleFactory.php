@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Log\SafeSemanticLogger;
+use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\RepositoryModule\Annotation\EtagPool;
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\Resource\Module\ResourceModule;
@@ -31,7 +32,7 @@ final class ModuleFactory
             {
                 $this->bind(AdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->to(ArrayAdapter::class);
                 $this->bind(AdapterInterface::class)->annotatedWith(EtagPool::class)->to(ArrayAdapter::class);
-                $this->bind(SemanticLoggerInterface::class)->toInstance(new SafeSemanticLogger(new SemanticLogger()));
+                $this->bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)->toInstance(new SafeSemanticLogger(new SemanticLogger()));
             }
         });
 

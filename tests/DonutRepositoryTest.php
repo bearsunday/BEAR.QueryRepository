@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Cdn\AkamaiCacheControlHeaderSetter;
 use BEAR\QueryRepository\Cdn\FastlyCacheControlHeaderSetter;
+use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
@@ -92,7 +93,7 @@ class DonutRepositoryTest extends TestCase
         $injector = $this->getInjector();
         $resource = $injector->getInstance(ResourceInterface::class);
         $storage = $injector->getInstance(ResourceStorageInterface::class);
-        $logger = $injector->getInstance(SemanticLoggerInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
         // create donut
         $resource->get('page://self/html/blog-posting');
@@ -143,7 +144,7 @@ class DonutRepositoryTest extends TestCase
         $injector = $this->getInjector();
         $resource = $injector->getInstance(ResourceInterface::class);
         $queryRepository = $injector->getInstance(QueryRepositoryInterface::class);
-        $logger = $injector->getInstance(SemanticLoggerInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
         $resource->get('page://self/html/blog-posting');
         $purgeResult = $queryRepository->purge(new Uri('page://self/html/comment'));
@@ -175,7 +176,7 @@ class DonutRepositoryTest extends TestCase
         $injector = $this->getInjector();
         $resource = $injector->getInstance(ResourceInterface::class);
         $donutRepository = $injector->getInstance(DonutRepositoryInterface::class);
-        $logger = $injector->getInstance(SemanticLoggerInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
         $page = $resource->get('page://self/html/blog-posting');
         $logger->flush(); // drain the GET session: this is about the direct write that follows
@@ -200,7 +201,7 @@ class DonutRepositoryTest extends TestCase
         $injector = $this->getInjector();
         $resource = $injector->getInstance(ResourceInterface::class);
         $donutRepository = $injector->getInstance(DonutRepositoryInterface::class);
-        $logger = $injector->getInstance(SemanticLoggerInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
         $page = $resource->get('page://self/html/blog-posting');
         $logger->flush(); // drain the GET session: this is about the direct write that follows
@@ -220,7 +221,7 @@ class DonutRepositoryTest extends TestCase
     {
         $injector = $this->getInjector();
         $resource = $injector->getInstance(ResourceInterface::class);
-        $logger = $injector->getInstance(SemanticLoggerInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
         // BlogPostingCacheControl::onGet() calls putStatic() itself: nested in the GET scope
         // the interceptor opened, the write stays an ordinary sequence of events there.
@@ -239,7 +240,7 @@ class DonutRepositoryTest extends TestCase
         $injector = $this->getInjector();
         $resource = $injector->getInstance(ResourceInterface::class);
         $storage = $injector->getInstance(ResourceStorageInterface::class);
-        $logger = $injector->getInstance(SemanticLoggerInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
         // A template entry the pool still answers with, five seconds past the lifetime it
         // was stored with: re-saving the recomposed content would restart a lifetime the
@@ -263,7 +264,7 @@ class DonutRepositoryTest extends TestCase
         $injector = $this->getInjector();
         $resource = $injector->getInstance(ResourceInterface::class);
         $donutRepository = $injector->getInstance(DonutRepositoryInterface::class);
-        $logger = $injector->getInstance(SemanticLoggerInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
         // A lifetime at or below zero is not a lifetime the storage can set, so the entry is
         // stored with no expiry and the request is recorded as the 0 that means exactly that.
@@ -334,7 +335,7 @@ class DonutRepositoryTest extends TestCase
         });
         $injector = new Injector($module, __DIR__ . '/tmp');
         $donutRepository = $injector->getInstance(DonutRepositoryInterface::class);
-        $logger = $injector->getInstance(SemanticLoggerInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
         // A direct donut write has no interceptor to degrade it, so the outage surfaces here.
         // Its scope must close as failed: closing `stored` while the caller catches an

@@ -17,6 +17,7 @@ use BEAR\QueryRepository\Log\Context\PutSkippedContext;
 use BEAR\QueryRepository\Log\Context\RefreshDonutContext;
 use BEAR\QueryRepository\Log\Context\SaveDonutContext;
 use BEAR\QueryRepository\Log\TopLevelAwareInterface;
+use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
@@ -35,6 +36,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         private ResourceStorageInterface $resourceStorage,
         private ResourceInterface $resource,
         private CdnCacheControlHeaderSetterInterface $cdnCacheControlHeaderSetter,
+        #[CacheLog]
         private SemanticLoggerInterface $logger,
         private DonutRendererInterface $renderer,
         private UriTagInterface $uriTag = new UriTag(),

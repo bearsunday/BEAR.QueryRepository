@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\Code;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Sunday\Extension\Transfer\HttpCacheInterface as HttpCacheInterfaceAlias;
@@ -33,7 +34,7 @@ class DonutCommandInterceptorTest extends TestCase
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
         $injector = new Injector($module, __DIR__ . '/tmp');
         $this->resource = $injector->getInstance(ResourceInterface::class);
-        $this->logger = $injector->getInstance(SemanticLoggerInterface::class);
+        $this->logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
         $this->httpCache = $injector->getInstance(HttpCacheInterfaceAlias::class);
 
         parent::setUp();

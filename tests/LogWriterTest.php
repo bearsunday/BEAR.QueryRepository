@@ -18,6 +18,7 @@ use BEAR\QueryRepository\Log\PolicyLogWriter;
 use BEAR\QueryRepository\Log\PsrLogWriter;
 use BEAR\QueryRepository\Log\RetentionPolicyInterface;
 use BEAR\QueryRepository\Log\SafeSemanticLogger;
+use BEAR\RepositoryModule\Annotation\CacheLog;
 use Koriym\SemanticLogger\LogJson;
 use Koriym\SemanticLogger\SemanticLogger;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
@@ -177,7 +178,7 @@ class LogWriterTest extends TestCase
         $injector = new Injector($module, __DIR__ . '/tmp');
 
         $this->assertInstanceOf(PolicyLogWriter::class, $injector->getInstance(LogWriterInterface::class));
-        $this->assertInstanceOf(SafeSemanticLogger::class, $injector->getInstance(SemanticLoggerInterface::class));
+        $this->assertInstanceOf(SafeSemanticLogger::class, $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class));
     }
 
     public function testAnAppPolicyBoundAfterTheModuleDecidesInstead(): void

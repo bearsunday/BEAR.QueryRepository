@@ -25,6 +25,8 @@ use Symfony\Component\Cache\Adapter\TagAwareAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 
 use function assert;
+use function serialize;
+use function unserialize;
 
 class ResourceStorageTest extends TestCase
 {
@@ -76,6 +78,27 @@ class ResourceStorageTest extends TestCase
         $this->storage->saveDonut($this->ro->uri, $donut, null, []);
         $donut = $this->storage->getDonut($this->ro->uri);
         $this->assertInstanceOf(ResourceDonut::class, $donut);
+    }
+
+    public function testARestoredStorageStillWrites(): void
+    {
+        // A compiled injector is serialized to disk and restored per request, so every promoted
+        // property has to survive the round trip. One left out stays uninitialized and the first
+        // write throws - which the interceptor turns into a warning, so the cache silently never
+        // fills while the responses stay correct.
+        $serializable = new ResourceStorage(
+            new NullSemanticLogger(),
+            new NullPurger(),
+            new UriTag(),
+            new ResourceStorageSaver(),
+            new GlobalServerContext(),
+            new FakeArrayPoolProvider(),
+            new FakeArrayPoolProvider(),
+        );
+        $storage = unserialize(serialize($serializable));
+        assert($storage instanceof ResourceStorage);
+
+        $this->assertTrue($storage->saveValue($this->ro, 60));
     }
 
     public function testInvalidateTagsWithNullPurgerLogsCdnSkipped(): void

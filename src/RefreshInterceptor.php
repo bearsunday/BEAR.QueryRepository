@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\ReturnValueIsNotResourceObjectException;
 use BEAR\QueryRepository\Log\Context\CommandResultContext;
+use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\Code;
 use BEAR\Resource\ResourceObject;
 use Koriym\SemanticLogger\NullSemanticLogger;
@@ -33,6 +34,7 @@ final readonly class RefreshInterceptor implements MethodInterceptor
 
     public function __construct(
         private RefreshAnnotatedCommand $command,
+        #[CacheLog]
         private SemanticLoggerInterface $logger = new NullSemanticLogger(),
     ) {
         $this->commandContextFactory = new CommandContextFactory();

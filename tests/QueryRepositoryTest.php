@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\QueryRepository as Repository;
+use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\RepositoryModule\Annotation\EtagPool;
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\Resource\Module\ResourceModule;
@@ -51,7 +52,7 @@ class QueryRepositoryTest extends TestCase
         $this->repository = $injector->getInstance(QueryRepositoryInterface::class);
         $this->resource = $injector->getInstance(ResourceInterface::class);
         $this->httpCache = $injector->getInstance(HttpCacheInterface::class);
-        $this->logger = $injector->getInstance(SemanticLoggerInterface::class);
+        $this->logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
         parent::setUp();
     }

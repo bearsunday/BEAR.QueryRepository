@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
 use FakeVendor\HelloWorld\Resource\Page\None;
@@ -45,7 +46,7 @@ class SemanticLogSchemaTest extends TestCase
     {
         $injector = new Injector(new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld')), __DIR__ . '/tmp');
         $this->resource = $injector->getInstance(ResourceInterface::class);
-        $this->logger = $injector->getInstance(SemanticLoggerInterface::class);
+        $this->logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
         $this->repository = $injector->getInstance(QueryRepositoryInterface::class);
         $this->storage = $injector->getInstance(ResourceStorageInterface::class);
 
@@ -243,7 +244,7 @@ class SemanticLogSchemaTest extends TestCase
         });
         $injector = new Injector($module, __DIR__ . '/tmp');
         $repository = $injector->getInstance(QueryRepositoryInterface::class);
-        $logger = $injector->getInstance(SemanticLoggerInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
         // The CDN purge is fail-closed: the exception propagates through purge()'s try/finally.
         try {
@@ -275,7 +276,7 @@ class SemanticLogSchemaTest extends TestCase
         });
         $injector = new Injector($module, __DIR__ . '/tmp');
         $storage = $injector->getInstance(ResourceStorageInterface::class);
-        $logger = $injector->getInstance(SemanticLoggerInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
         // Local pools dropped the tags but the CDN purge failed: fail-closed, and the
         // verdict must say failed - "invalidated" while the CDN still serves the content

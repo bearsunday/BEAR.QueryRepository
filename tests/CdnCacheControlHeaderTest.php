@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Cdn\AkamaiModule;
 use BEAR\QueryRepository\Cdn\FastlyModule;
+use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
@@ -30,7 +31,7 @@ class CdnCacheControlHeaderTest extends TestCase
         $this->assertArrayHasKey(Header::CDN_CACHE_CONTROL, $ro->headers);
         $this->assertSame($ro->headers[Header::CDN_CACHE_CONTROL], 'max-age=10 stale-while-revalidate=10');
         $repository = $injector->getInstance(QueryRepositoryInterface::class);
-        $logger = $injector->getInstance(SemanticLoggerInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
         // Not inside assert(): with zend.assertions=-1 the call would never run and the
         // GET below would be served from the page state, silently skipping the refresh path.
         $purged = $repository->purge(new Uri('page://self/html/comment'));
@@ -62,7 +63,7 @@ class CdnCacheControlHeaderTest extends TestCase
         $this->assertSame($ro->headers['Surrogate-Control'], 'max-age=31536000');
         $this->assertArrayHasKey('Surrogate-Key', $ro->headers);
         // Fastly's lifetime header and default are its own: the log records both verbatim.
-        $cdnHeaders = self::eventContextJsonOf($this->flushAndValidate($injector->getInstance(SemanticLoggerInterface::class)), 'cdn_headers');
+        $cdnHeaders = self::eventContextJsonOf($this->flushAndValidate($injector->getInstance(SemanticLoggerInterface::class, CacheLog::class)), 'cdn_headers');
         $this->assertNotNull($cdnHeaders);
         $this->assertStringContainsString('"Surrogate-Control":"max-age=31536000"', $cdnHeaders);
     }
@@ -79,7 +80,7 @@ class CdnCacheControlHeaderTest extends TestCase
         $this->assertSame($ro->headers['Akamai-Cache-Control'], 'max-age=31536000');
         // Akamai renames the key header: the log must index this response under
         // Edge-Cache-Tag, not claim a Surrogate-Key the response no longer carries.
-        $cdnHeaders = self::eventContextJsonOf($this->flushAndValidate($injector->getInstance(SemanticLoggerInterface::class)), 'cdn_headers');
+        $cdnHeaders = self::eventContextJsonOf($this->flushAndValidate($injector->getInstance(SemanticLoggerInterface::class, CacheLog::class)), 'cdn_headers');
         $this->assertNotNull($cdnHeaders);
         $this->assertStringContainsString('"Akamai-Cache-Control":"max-age=31536000"', $cdnHeaders);
         $this->assertStringContainsString('"Edge-Cache-Tag"', $cdnHeaders);
@@ -98,7 +99,7 @@ class CdnCacheControlHeaderTest extends TestCase
         $this->assertArrayNotHasKey('Header::CDN_CACHE_CONTROL_HEADER', $ro->headers);
         // No lifetime header anywhere in the record: the reader sees that the CDN was
         // given nothing to cache by, not merely that one flavor's header is absent.
-        $cdnHeaders = self::eventContextJsonOf($this->flushAndValidate($injector->getInstance(SemanticLoggerInterface::class)), 'cdn_headers');
+        $cdnHeaders = self::eventContextJsonOf($this->flushAndValidate($injector->getInstance(SemanticLoggerInterface::class, CacheLog::class)), 'cdn_headers');
         $this->assertNotNull($cdnHeaders);
         $this->assertStringNotContainsString('Cache-Control', $cdnHeaders);
         $this->assertStringNotContainsString('Surrogate-Control', $cdnHeaders);

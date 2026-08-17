@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\ResourceInterface;
 use FakeVendor\HelloWorld\Resource\Page\Html\BlogPostingDonut;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
@@ -34,7 +35,7 @@ class DonutCacheInterceptorTest extends TestCase
 
         assert($injector instanceof Injector);
         $this->resource = $injector->getInstance(ResourceInterface::class);
-        $this->logger = $injector->getInstance(SemanticLoggerInterface::class);
+        $this->logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
         parent::setUp();
     }

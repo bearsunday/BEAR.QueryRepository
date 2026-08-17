@@ -19,6 +19,7 @@ use BEAR\QueryRepository\FakeEtagPoolModule;
 use BEAR\QueryRepository\ModuleFactory;
 use BEAR\QueryRepository\QueryRepositoryInterface;
 use BEAR\QueryRepository\ResourceStorageInterface;
+use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
@@ -69,7 +70,7 @@ $injector = new Injector($module, __DIR__ . '/tmp');
 $resource = $injector->getInstance(ResourceInterface::class);
 $repository = $injector->getInstance(QueryRepositoryInterface::class);
 $storage = $injector->getInstance(ResourceStorageInterface::class);
-$logger = $injector->getInstance(SemanticLoggerInterface::class);
+$logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
 // Execute scenarios. The donut GET scope wraps the embedded comment fetch.
 $resource->get('page://self/html/blog-posting');     // 1. Initial access

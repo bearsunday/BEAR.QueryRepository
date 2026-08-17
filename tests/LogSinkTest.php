@@ -12,6 +12,7 @@ use BEAR\QueryRepository\Log\LogFileWriter;
 use BEAR\QueryRepository\Log\LogSinkInterface;
 use BEAR\QueryRepository\Log\SafeSemanticLogger;
 use BEAR\QueryRepository\Log\ShutdownFlush;
+use BEAR\RepositoryModule\Annotation\CacheLog;
 use Koriym\SemanticLogger\SemanticLogger;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use PHPUnit\Framework\TestCase;
@@ -262,12 +263,12 @@ class LogSinkTest extends TestCase
         $module = new DevQueryRepositoryLogModule($this->logDir, module: new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld')));
         $injector = new Injector($module, __DIR__ . '/tmp');
 
-        $this->assertInstanceOf(SafeSemanticLogger::class, $injector->getInstance(SemanticLoggerInterface::class));
+        $this->assertInstanceOf(SafeSemanticLogger::class, $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class));
         $this->assertInstanceOf(ShutdownFlush::class, $injector->getInstance(LogSinkInterface::class));
         // Arming is process-global state: two sinks would register two flushes, and the second
         // logger's session would be the one nothing drains
         $this->assertSame($injector->getInstance(LogSinkInterface::class), $injector->getInstance(LogSinkInterface::class));
-        $this->assertSame($injector->getInstance(SemanticLoggerInterface::class), $injector->getInstance(SemanticLoggerInterface::class));
+        $this->assertSame($injector->getInstance(SemanticLoggerInterface::class, CacheLog::class), $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class));
     }
 
     private function runRequest(string ...$args): void
