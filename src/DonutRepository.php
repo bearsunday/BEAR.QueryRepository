@@ -306,7 +306,10 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     private function recordContentState(ResourceObject $ro, ResourceDonut $donut): void
     {
         $remainingTtl = $donut->getRemainingStorageTtl();
-        $storageTags = $donut->getStorageTags();
+        // A donut serialized before the template carried its own URI tag falls back to the header
+        // keys, which is the empty list this fix exists to stop. Re-tagging on the way through is
+        // what lets an entry written by an older version become reachable without a cache flush.
+        $storageTags = $this->templateKeys($ro, $donut->getStorageTags());
         if ($remainingTtl === 0) {
             $this->logger->event(new SaveDonutContext((string) $ro->uri, $storageTags, 0, false));
 
