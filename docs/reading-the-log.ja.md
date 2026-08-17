@@ -86,12 +86,12 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 
 | 型 | フィールド | 何が分かるか |
 |---|---|---|
-| `save_value` | `uri`, `tags`, `ttl`, `saved` | body をプールに渡した |
-| `save_view` | `uri`, `tags`, `ttl`, `saved` | body + レンダリング済み view を渡した |
-| `save_etag` | `uri`, `etag`, `tags`, `ttl`, `saved` | 検証子を ETag プールに渡した |
-| `save_donut` | `uri`, `tags`, `ttl`, `saved` | donut テンプレートを渡した |
-| `save_donut_view` | `uri`, `tags`, `ttl`, `saved` | 再合成した donut view を渡した |
-| `put_donut` | `uri`, `ttl`, `sMaxAge` | donut の書き込みを要求した。要求時の lifetime つき |
+| `save_value` | `uri`, `tags`, `requestedTtl`, `saved` | body をプールに渡した |
+| `save_view` | `uri`, `tags`, `requestedTtl`, `saved` | body + レンダリング済み view を渡した |
+| `save_etag` | `uri`, `etag`, `tags`, `requestedTtl`, `saved` | 検証子を ETag プールに渡した |
+| `save_donut` | `uri`, `tags`, `requestedTtl`, `saved` | donut テンプレートを渡した |
+| `save_donut_view` | `uri`, `tags`, `requestedTtl`, `saved` | 再合成した donut view を渡した |
+| `put_donut` | `uri`, `requestedTtl`, `sMaxAge` | donut の書き込みを要求した。要求時の lifetime つき |
 | `refresh_donut` | `uri` | キャッシュ済み donut をそのまま返さず再合成した |
 | `cdn_headers` | `uri`, `headers`, `surrogateKeys` | 応答に実際に付いた CDN 向けヘッダ |
 | `depends_on` | `parent`, `child`, `childTags` | 依存の辺 1 本。子のタグが親に加わった |
@@ -116,8 +116,8 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 | `operation` | `read` \| `write` | キャッシュのどちら側が throw したか |
 | `reason` (`put_skipped`) | `etag-present` \| `error-code` \| `not-cacheable` | 書き込みが起きなかった理由。`etag-present` = リソースが既に ETag を持っていたので donut 層は手を出さなかった、`not-cacheable` = テンプレートから再描画された donut ページ(ページとしては保存しない)、`error-code` は応答の `code` を伴い閾値は経路で違う: `#[Cacheable]` は 200 以外すべて(`203` もここに出る)、donut は 4xx 以上 |
 | `result` (`manual_*`) | `stored`/`purged`/`invalidated` \| `failed` | 直接呼び出しの結果 |
-| `ttl` | 秒 | キャッシュエントリ自身の寿命。`31536000` は `never` の慣習値、`0`/`null` は期限未設定 |
-| `sMaxAge` (`put_donut`) | 秒 | その書き込みが要求した共有キャッシュ(CDN)の寿命 — `DonutRepositoryInterface::put($ro, ttl: …, sMaxAge: …)` に渡すのと同じ引数で、エントリ自身の `ttl` とは別物。`null` は未要求で、`putDonut` は常に `null` を記録する |
+| `requestedTtl` | 秒 | このパッケージがストアに要求した保持時間。`31536000` は `never` の慣習値、`0`/`null` は「期限を要求しなかった」— バックエンドが上書きし得る(下の規則) |
+| `sMaxAge` (`put_donut`) | 秒 | その書き込みが要求した共有キャッシュ(CDN)の寿命 — `DonutRepositoryInterface::put($ro, ttl: …, sMaxAge: …)` に渡すのと同じ引数で、エントリ自身の `requestedTtl` とは別物。`null` は未要求で、`putDonut` は常に `null` を記録する |
 | `code` (`put_skipped`) | HTTP ステータス | `reason` が `error-code` のときだけ入る。他の 2 理由では `null` |
 
 ## 読解規則
@@ -154,6 +154,12 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 突き合わせます。交差しないタグは、その書き込みがそのエントリを残したことを意味します — これが
 内側から見た「stale を配信している」状態です。
 
+**`requestedTtl` は要求した値で、ストアがどうしたかではありません。** `0`/`null` は「このパッケージは
+期限を設定しなかった」— つまり無効化が届くまで生きるはず、という意図です。それが可能かはバックエンドが
+決めます。`symfony/cache` の `RedisTagAwareAdapter` は期限なしのタグ付きエントリに 8640000 秒(100 日)を
+与えます — Redis はタグ集合を期限切れにできないからです。実効寿命はデプロイ側の事実なので、ストアで
+読んでください(Redis なら `TTL <key>`)。
+
 **`cdn_headers` に出るのは、応答に実際に付いたヘッダです。** CDN モジュールの暗黙の既定値も含みます。
 lifetime ヘッダの無いマップは、CDN に lifetime 指示を与えなかった応答です。`surrogateKeys` と
 `invalidate` の `tags` を突き合わせると、パージがエッジの保持物に届き得たかが分かります。
@@ -173,8 +179,8 @@ command {"method": "onPut", "annotations": [], "source": "CommandInterceptor"}
   get {"uri": "page://self/dep/level-three"}
     pre_write_cleanup {"uri": "page://self/dep/level-three"}
     invalidate {"tags": ["_dep_level-three_"], "roPool": "invalidated", "etagPool": "invalidated", "cdn": "skipped"}
-    save_etag {"uri": "page://self/dep/level-three", "tags": ["_dep_level-three_"], "ttl": 31536000, "saved": true}
-    save_value {"uri": "page://self/dep/level-three", "tags": ["_dep_level-three_"], "ttl": 31536000, "saved": true}
+    save_etag {"uri": "page://self/dep/level-three", "tags": ["_dep_level-three_"], "requestedTtl": 31536000, "saved": true}
+    save_value {"uri": "page://self/dep/level-three", "tags": ["_dep_level-three_"], "requestedTtl": 31536000, "saved": true}
     cache_miss {"layer": "resource"}
   purge {"uri": "page://self/dep/level-three"}
   invalidate {"tags": ["_dep_level-three_"], "roPool": "invalidated", "etagPool": "invalidated", "cdn": "skipped"}
