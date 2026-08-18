@@ -161,6 +161,12 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 どう束縛したかで変わります — 既定のインストールでは `never` が 31536000 秒になり、意図的な 1 年 TTL と
 まったく同じに見えます。`expirySecond` か `expiryAt` が non-null 側なら、そのエントリは期限切れになり、
 どの宣言が決めたかも分かります。
+**コマンド注釈が届くのは URI で、タグではありません。** `#[Refresh]` と `#[Purge]` が持つのは URI です。
+エントリ群が 1 つの無効化ハンドル(エントリを生んだクエリ文字列すべてに渡る corpus タグ)を共有している
+リソースは `invalidateTags()` を呼んで無効化し、それは `command` スコープの中ではなく `manual_invalidate`
+として現れます。リソースメソッドの外で起きる書き込みにはインターセプタが一切かかりません。その形では
+直接呼び出しが唯一の道であり、manual スコープがそのイベントを見える場所に留めています。
+
 **`pool_error` はストアそのもの、`cache_error` はこのパッケージが捕まえた例外です。**
 `symfony/cache` のアダプタはアプリに向けて throw しません。到達できないストアは read には miss、
 write には `false` を返すので、`cache_error` を生む `catch` には何も届きません。アダプタは代わりに

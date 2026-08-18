@@ -164,6 +164,13 @@ which is what serving stale looks like from the inside.
 how the application bound `Expiry` — a default install turns `never` into 31536000 seconds, which
 reads exactly like a deliberate 1-year TTL. `expirySecond` or `expiryAt` being the non-null one
 means the entry expires, and says who decided.
+**A command annotation reaches a URI, not a tag.** `#[Refresh]` and `#[Purge]` carry a URI, so a
+resource whose entries share one invalidation handle - a corpus tag across every query string that
+produced an entry - is invalidated by calling `invalidateTags()`, which appears as
+`manual_invalidate` rather than inside a `command` scope. A write outside a resource method has no
+interceptor at all: in that shape the direct call is the only path, and the manual scope is what
+keeps its events visible.
+
 **A `pool_error` is the store itself; a `cache_error` is an exception this package caught.**
 `symfony/cache` adapters never throw at the application: an unreachable store answers a read as a
 miss and a write as `false`, so nothing reaches the `catch` that produces a `cache_error`. The
