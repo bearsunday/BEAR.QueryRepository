@@ -32,12 +32,8 @@ final readonly class CacheDependency implements CacheDependencyInterface
             unset($to->headers[Header::SURROGATE_KEY]);
         }
 
-        // Accumulate across every embedded child: a resource that embeds more than one
-        // child must depend on all of them, not only the last. Overwriting here used to
-        // silently drop earlier children's dependencies (stale-cache bug).
-        //
-        // Dedup because a resource can be written twice in one request - `#[Refresh]` puts the
-        // instance the rebuilding GET already stored - and the header is what the CDN receives.
+        // Accumulate across embedded children, deduped: #[Refresh] re-puts the instance
+        // the rebuilding GET already stored, and this header ships to the CDN.
         $existing = isset($from->headers[Header::SURROGATE_KEY])
             ? explode(' ', $from->headers[Header::SURROGATE_KEY])
             : [];

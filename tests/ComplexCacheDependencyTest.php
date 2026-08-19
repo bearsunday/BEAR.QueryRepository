@@ -32,12 +32,14 @@ class ComplexCacheDependencyTest extends TestCase
 {
     private ResourceInterface $resource;
     private QueryRepositoryInterface $repository;
+    private ResourceStorageInterface $storage;
 
     protected function setUp(): void
     {
         $injector = new Injector(new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld')), __DIR__ . '/tmp');
         $this->resource = $injector->getInstance(ResourceInterface::class);
         $this->repository = $injector->getInstance(QueryRepositoryInterface::class);
+        $this->storage = $injector->getInstance(ResourceStorageInterface::class);
 
         parent::setUp();
     }
@@ -118,9 +120,6 @@ class ComplexCacheDependencyTest extends TestCase
 
     public function testAParentThatDeclaresItsOwnKeyStillDependsOnItsChild(): void
     {
-        // A resource may declare a Surrogate-Key to share an invalidation handle with its
-        // siblings (a corpus tag). That declaration used to switch its embed dependencies
-        // off entirely, so the page kept serving a child that had already been purged.
         $this->resource->get('page://self/dep/tagged-parent');
         $this->assertTrue($this->isCached('tagged-parent'));
 
@@ -131,18 +130,16 @@ class ComplexCacheDependencyTest extends TestCase
 
     public function testTheDeclaredKeyStillInvalidatesTheParent(): void
     {
-        // The other half of the contract: the key the resource declared keeps working.
         $this->resource->get('page://self/dep/tagged-parent');
+        $this->assertTrue($this->isCached('tagged-parent'));
 
-        $this->repository->purge(new Uri('page://self/dep/tagged-parent'));
+        $this->storage->invalidateTags(['shared-corpus']);
 
-        $this->assertFalse($this->isCached('tagged-parent'));
+        $this->assertFalse($this->isCached('tagged-parent'), 'the declared key must keep invalidating the resource');
     }
 
     public function testASecondWriteInTheSameRequestDoesNotRepeatAChildTag(): void
     {
-        // `#[Refresh]` puts the instance the rebuilding GET already stored, so the same child is
-        // resolved twice. The header goes to the CDN, so a repeat would ship on the wire.
         $ro = $this->resource->get('page://self/dep/tagged-parent');
         $this->repository->put($ro);
 
