@@ -12,7 +12,7 @@ The previous log was a flat op-string format (`RepositoryLoggerInterface`). The 
 | 2 | Pool refusing a write (save returning `false`) | Identical to a successful save |
 | 3 | No CDN purger configured (NullPurger) | Identical to a real purge (`purged`) |
 | 4 | CDN purge failure | Local invalidation happened, CDN stayed stale, nothing recorded |
-| 5 | Value-entry stores depending on rendering; without a renderer every store degraded to a warning (#193) | Cache stayed empty, no reason recorded |
+| 5 | Value-entry stores depending on rendering; a renderer that throws degraded every store to a warning (#193) | Cache stayed empty, no reason recorded |
 | 6 | Donut templates of pages declaring no `Surrogate-Key` stored untagged, unreachable by any `invalidateTags()` (#194) | Purge dropped content and validator, leaving an immortal shell, unrecorded |
 | 7 | 1.16.0 regression: declaring a custom `Surrogate-Key` lost embed dependency tracking (#195) | Purged children kept being served, unrecorded |
 | 8 | Logged TTL contradicting the stored TTL (negative lifetimes recorded verbatim), the misleading `sMaxAge` label | The log contradicted the store's facts |
