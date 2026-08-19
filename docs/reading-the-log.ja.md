@@ -102,6 +102,7 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 | `put_skipped` | `uri`, `reason`, `code` | miss の後に書き込みを**しなかった**ことと、その理由 |
 | `cache_hit` / `cache_miss` | `layer` | 内側の照会。必ず `layer: donut` — donut テンプレートがあったか |
 | `cache_error` | `uri`, `operation`, `error`, `exceptionClass` | キャッシュ経路が throw した |
+| `pool_error` | `key`, `operation`, `error`, `exceptionClass` | バックエンドが操作を拒み、アダプタが握り潰した |
 | `semantic_logger_error` | `kind`, `message`, … | ロガー自体の誤用(コア側の診断で、このパッケージの語彙ではない) |
 
 ## 結果が入るフィールド
@@ -156,11 +157,29 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 内側から見た「stale を配信している」状態です。
 
 **エントリが期限切れになる設計かどうかは、TTL ではなく `cache_policy.expiry` を読みます。**
+`expiry: "never"` は「無効化が届くまで」という意図です。解決した数値は保険であり、アプリが `Expiry` を
+どう束縛したかで変わります — 既定のインストールでは `never` が 31536000 秒になり、意図的な 1 年 TTL と
+まったく同じに見えます。`expirySecond` か `expiryAt` が non-null 側なら、そのエントリは期限切れになり、
+どの宣言が決めたかも分かります。
+
 **`requestedTtl` は要求した値で、ストアがどうしたかではありません。** `0`/`null` は「このパッケージは
 期限を設定しなかった」— つまり無効化が届くまで生きるはず、という意図です。それが可能かはバックエンドが
 決めます。`symfony/cache` の `RedisTagAwareAdapter` は期限なしのタグ付きエントリに 8640000 秒(100 日)を
 与えます — Redis はタグ集合を期限切れにできないからです。実効寿命はデプロイ側の事実なので、ストアで
 読んでください(Redis なら `TTL <key>`)。
+
+**コマンド注釈が届くのは URI で、タグではありません。** `#[Refresh]` と `#[Purge]` が持つのは URI です。
+エントリ群が 1 つの無効化ハンドル(エントリを生んだクエリ文字列すべてに渡る corpus タグ)を共有している
+リソースは `invalidateTags()` を呼んで無効化し、それは `command` スコープの中ではなく `manual_invalidate`
+として現れます。リソースメソッドの外で起きる書き込みにはインターセプタが一切かかりません。その形では
+直接呼び出しが唯一の道であり、manual スコープがそのイベントを見える場所に留めています。
+
+**`pool_error` はストアそのもの、`cache_error` はこのパッケージが捕まえた例外です。**
+`symfony/cache` のアダプタはアプリに向けて throw しません。到達できないストアは read には miss、
+write には `false` を返すので、`cache_error` を生む `catch` には何も届きません。アダプタは代わりに
+失敗を PSR-3 ロガーへ報告し、プールにはキャッシュログが渡されています — だからストアが落ちているとき、
+miss の隣に `pool_error` が並びます(沈黙にはなりません)。そこで分かるのはプールのキーだけで、
+リソース URI ではありません。
 
 **`cdn_headers` に出るのは、応答に実際に付いたヘッダです。** CDN モジュールの暗黙の既定値も含みます。
 lifetime ヘッダの無いマップは、CDN に lifetime 指示を与えなかった応答です。`surrogateKeys` と

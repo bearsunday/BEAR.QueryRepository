@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Log\PoolErrorLogger;
 use BEAR\RepositoryModule\Annotation\MarshallerOptions;
 use BEAR\RepositoryModule\Annotation\RedisDsn;
 use BEAR\RepositoryModule\Annotation\RedisDsnOptions;
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use Override;
+use Psr\Log\LoggerInterface;
 use Ray\Di\AbstractModule;
+use Ray\Di\InjectionPoints;
 use Ray\Di\ProviderInterface;
 use Ray\PsrCacheModule\Annotation\CacheNamespace;
 use ReflectionException;
@@ -85,6 +88,7 @@ final class StorageRedisDsnModule extends AbstractModule
         $this->bind()->annotatedWith('defaultLifetime')->toInstance($this->defaultLifetime);
         $this->bind(ProviderInterface::class)->annotatedWith('marshaller')->to(MarshallerProvider::class);
         $this->bind(MarshallerInterface::class)->annotatedWith('marshaller')->toProvider(MarshallerProvider::class);
+        $this->bind(LoggerInterface::class)->annotatedWith('poolError')->to(PoolErrorLogger::class);
         $this->bind(TagAwareAdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->toConstructor(
             RedisTagAwareAdapter::class,
             [
@@ -93,6 +97,9 @@ final class StorageRedisDsnModule extends AbstractModule
                 'defaultLifetime' => 'defaultLifetime',
                 'marshaller' => 'marshaller',
             ],
+            // The adapter reports backend failures to a PSR-3 logger instead of throwing, so the
+            // cache log is given to it: without this a store that is down looks like a cold one.
+            (new InjectionPoints())->addMethod('setLogger', 'poolError'),
         );
     }
 }

@@ -43,6 +43,7 @@ declare(strict_types=1);
 
 use BEAR\QueryRepository\Cdn\AkamaiModule;
 use BEAR\QueryRepository\DonutRepositoryInterface;
+use BEAR\QueryRepository\Log\PoolErrorLogger;
 use BEAR\QueryRepository\FakeErrorCache;
 use BEAR\QueryRepository\FakeEtagPoolModule;
 use BEAR\QueryRepository\FakeRefusingPool;
@@ -61,9 +62,13 @@ use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Koriym\SemanticLogger\Stree\RenderConfig;
 use Koriym\SemanticLogger\Stree\TreeRenderer;
 use Madapaja\TwigModule\TwigModule;
+use Psr\Log\LoggerInterface;
+use Ray\Di\InjectionPoints;
 use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
+use Symfony\Component\Cache\Adapter\RedisAdapter;
+use Symfony\Component\Cache\Adapter\RedisTagAwareAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 
@@ -409,3 +414,34 @@ echo '   the template entry keeps ttl=60 while the rendered view and its ETag ta
 echo '   and the whole write is rooted in manual_store{,_result} — cleanup invalidate included' . PHP_EOL;
 
 $report($logger->flush(), 'I. donut write through the repository API');
+
+// ------------------------------------------- J. the store is down, and says so
+// symfony/cache adapters do not throw: a store that cannot be reached answers a read as a miss
+// and a write as false, so session B's outage - an adapter that throws - is not what production
+// looks like. A real RedisAdapter pointed at a closed port is, and what makes it visible is the
+// PSR-3 logger the pool reports to.
+$injector = $newInjector(new class extends AbstractModule {
+    protected function configure(): void
+    {
+        $this->bind(LoggerInterface::class)->annotatedWith('poolError')->to(PoolErrorLogger::class);
+        $this->bind(TagAwareAdapterInterface::class)
+            ->annotatedWith(ResourceObjectPool::class)
+            ->toConstructor(
+                RedisTagAwareAdapter::class,
+                ['redis' => 'deadRedis'],
+                (new InjectionPoints())->addMethod('setLogger', 'poolError'),
+            );
+        // lazy=1: with ext-redis the default is an eager connect, and a boot-time throw is not
+        // the runtime outage this session demonstrates (Predis is lazy by default).
+        $this->bind()->annotatedWith('deadRedis')->toInstance(RedisAdapter::createConnection('redis://127.0.0.1:1?lazy=1'));
+    }
+});
+$resource = $injector->getInstance(ResourceInterface::class);
+$logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
+
+$ro = $resource->get('app://self/value');
+echo sprintf('J  GET app://self/value -> %d served live while the store is unreachable:', $ro->code) . PHP_EOL;
+echo '   pool_error{read} for the lookup and pool_error{write} for the store, with the' . PHP_EOL;
+echo '   backend\'s own message - without them the miss reads exactly like a cold one' . PHP_EOL;
+
+$report($logger->flush(), 'J. the store is down and says so');

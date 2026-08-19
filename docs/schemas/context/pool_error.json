@@ -1,0 +1,32 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/pool_error.json",
+    "title": "pool_error",
+    "description": "Event: the cache backend refused an operation and the adapter swallowed it. `symfony/cache` never throws at the application - a store that cannot be reached answers a read as a miss and a write as `false` - so a dead store reads exactly like a cold one unless the adapter's own report is recorded. Distinct from `cache_error`, which is an exception this package caught with the resource URI in hand; here only the pool key is known.",
+    "type": "object",
+    "required": [
+        "key",
+        "operation",
+        "error",
+        "exceptionClass"
+    ],
+    "properties": {
+        "key": {
+            "description": "the pool key the adapter was working on, empty when it did not name one",
+            "type": "string"
+        },
+        "operation": {
+            "description": "which side refused, as the adapter worded it: `read`, `write`, or `unknown` when the wording is not one this package recognises - a mislabelled side is worse than an unlabelled one",
+            "type": "string"
+        },
+        "error": {
+            "description": "the backend's message",
+            "type": "string"
+        },
+        "exceptionClass": {
+            "description": "the throwable the adapter caught, or `unknown` when it reported no exception",
+            "type": "string"
+        }
+    },
+    "additionalProperties": false
+}
