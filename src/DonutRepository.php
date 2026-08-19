@@ -172,15 +172,10 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     }
 
     /**
-     * The tags a donut template is stored under: its own URI, plus whatever the resource declared
-     *
-     * Its own URI tag is what `purge($uri)` invalidates, and without it a page that declares no
-     * Surrogate-Key of its own left the template untagged - Symfony's freshness check walks an
-     * item's tags, so no `invalidateTags()` call could ever reach it and the only eviction path was
-     * a same-key overwrite (issue #185).
-     *
-     * The children's tags are deliberately absent: a child's write must drop the content and leave
-     * the shell to be recomposed, which is the whole point of caching the two separately.
+     * The tags a donut template is stored under: its own URI tag (what `purge($uri)` invalidates -
+     * an untagged template is reachable by no `invalidateTags()` call, issue #185), plus whatever
+     * the resource declared. The children's tags are deliberately absent: a child's write must drop
+     * the content and leave the shell to be recomposed.
      *
      * @param list<string> $declaredKeys
      *
@@ -306,9 +301,8 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     private function recordContentState(ResourceObject $ro, ResourceDonut $donut): void
     {
         $remainingTtl = $donut->getRemainingStorageTtl();
-        // A donut serialized before the template carried its own URI tag falls back to the header
-        // keys, which is the empty list this fix exists to stop. Re-tagging on the way through is
-        // what lets an entry written by an older version become reachable without a cache flush.
+        // Templates stored before the template carried its own URI tag have an empty tag list;
+        // re-tagging here makes an old entry reachable without a cache flush.
         $storageTags = $this->templateKeys($ro, $donut->getStorageTags());
         if ($remainingTtl === 0) {
             $this->logger->event(new SaveDonutContext((string) $ro->uri, $storageTags, 0, false));

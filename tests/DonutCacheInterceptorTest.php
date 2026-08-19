@@ -57,9 +57,8 @@ class DonutCacheInterceptorTest extends TestCase
         $view = (string) $blogPosting;
         $this->assertSame('blog-posting:1<comment>comment01</comment>', $view);
 
-        // save_donut records the tags the template entry is stored under: its own URI tag, plus
-        // any Surrogate-Key this resource declared. Its own is what purge($uri) invalidates - an
-        // untagged entry is one no invalidateTags() call can reach (issue #185).
+        // save_donut records the tags the template entry is stored under: its own URI tag (what
+        // purge($uri) invalidates), plus any declared Surrogate-Key.
         $tree = $this->flushAndValidate($this->logger);
         $saveDonut = self::eventContextJsonOf($tree, 'save_donut');
         $this->assertNotNull($saveDonut);
@@ -109,9 +108,8 @@ class DonutCacheInterceptorTest extends TestCase
         $uri = new Uri('page://self/html/blog-posting-donut');
         $repository = $this->injector->getInstance(QueryRepositoryInterface::class);
 
-        // The page declares no Surrogate-Key of its own, so before #185 the template entry carried
-        // no tags at all: this purge invalidated the content and left an immortal shell, which the
-        // next request recomposed and served. The only eviction path was a same-key overwrite.
+        // This page declares no Surrogate-Key of its own: before the fix its template entry
+        // carried no tags, so this purge left an immortal shell (issue #185).
         $this->assertTrue($repository->purge($uri));
         $this->logger->flush();
 
