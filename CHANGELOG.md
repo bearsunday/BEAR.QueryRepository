@@ -67,6 +67,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed a 1.16.0 regression: a resource declaring its own `Surrogate-Key` lost embed dependency tracking and kept serving purged children. Behaviour change for 1.16.x installations: such pages are now invalidated when an embedded child is, and child URI tags are sent to the CDN via `Surrogate-Key`.
 - Deduplicated the `Surrogate-Key` header: a resource written twice in one request (`#[Refresh]` after the rebuilding GET) repeated child tags sent to the CDN.
 - `ResourceStorage::saveEtag()` tagged entries with a hard-coded `new UriTag()` instead of the injected `UriTagInterface`, mistagging under a custom binding.
+- A `#[Cacheable]` value entry is stored without rendering: a resource with no renderer in that context (an app resource under an html renderer) previously degraded every store to a warning and the cache stayed empty. ETag values change once for value entries (the validator falls back from the view to the body), and a stored value entry no longer carries the renderer's `Content-Type`. Custom `EtagSetterInterface` implementations now receive `$ro->view === null` on the value path and must read the body instead.
 
 ## [1.16.2] - 2026-06-29
 
