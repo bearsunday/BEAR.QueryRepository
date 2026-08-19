@@ -86,6 +86,7 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 
 | 型 | フィールド | 何が分かるか |
 |---|---|---|
+| `cache_policy` | `uri`, `expiry`, `expirySecond`, `expiryAt`, `resolvedTtl` | リソースが宣言した寿命と、それが解決した値 |
 | `save_value` | `uri`, `tags`, `requestedTtl`, `saved` | body をプールに渡した |
 | `save_view` | `uri`, `tags`, `requestedTtl`, `saved` | body + レンダリング済み view を渡した |
 | `save_etag` | `uri`, `etag`, `tags`, `requestedTtl`, `saved` | 検証子を ETag プールに渡した |
@@ -154,6 +155,7 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 突き合わせます。交差しないタグは、その書き込みがそのエントリを残したことを意味します — これが
 内側から見た「stale を配信している」状態です。
 
+**エントリが期限切れになる設計かどうかは、TTL ではなく `cache_policy.expiry` を読みます。**
 **`requestedTtl` は要求した値で、ストアがどうしたかではありません。** `0`/`null` は「このパッケージは
 期限を設定しなかった」— つまり無効化が届くまで生きるはず、という意図です。それが可能かはバックエンドが
 決めます。`symfony/cache` の `RedisTagAwareAdapter` は期限なしのタグ付きエントリに 8640000 秒(100 日)を

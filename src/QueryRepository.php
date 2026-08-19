@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\ExpireAtKeyNotExists;
+use BEAR\QueryRepository\Log\Context\CachePolicyContext;
 use BEAR\QueryRepository\Log\Context\ManualPurgeContext;
 use BEAR\QueryRepository\Log\Context\ManualPurgeResultContext;
 use BEAR\QueryRepository\Log\Context\ManualStoreContext;
@@ -85,6 +86,10 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         }
 
         $ttl = $this->getExpiryTime($ro, $cacheable);
+        if ($cacheable instanceof Cacheable) {
+            $this->logger->event($this->cachePolicy($ro, $cacheable, $ttl));
+        }
+
         ($this->headerSetter)($ro, $ttl, $httpCache);
         if (isset($ro->headers[Header::ETAG])) {
             $etag = $ro->headers[Header::ETAG];
@@ -97,6 +102,27 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         }
 
         return $this->storage->saveValue($ro, $ttl);
+    }
+
+    /**
+     * The declaration that decided the lifetime, as declared.
+     *
+     * The precedence is the one {@see self::getExpiryTime()} applies: an expiry field in the body
+     * wins, then an explicit second count, then the preset. Only the winner is recorded, so a
+     * reader never has to re-derive which of the three was in force.
+     */
+    private function cachePolicy(ResourceObject $ro, Cacheable $cacheable, int $ttl): CachePolicyContext
+    {
+        $uri = (string) $ro->uri;
+        if ($cacheable->expiryAt !== '') {
+            return new CachePolicyContext($uri, null, null, $cacheable->expiryAt, $ttl);
+        }
+
+        if ($cacheable->expirySecond !== 0) {
+            return new CachePolicyContext($uri, null, $cacheable->expirySecond, null, $ttl);
+        }
+
+        return new CachePolicyContext($uri, $cacheable->expiry, null, null, $ttl);
     }
 
     private function setCacheDependency(ResourceObject $ro): void

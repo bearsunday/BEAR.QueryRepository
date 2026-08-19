@@ -88,6 +88,7 @@ operation inside a GET or a command is an ordinary event there instead.
 
 | Type | Fields | What it tells you |
 |---|---|---|
+| `cache_policy` | `uri`, `expiry`, `expirySecond`, `expiryAt`, `resolvedTtl` | what the resource declared about its lifetime, and what that resolved to |
 | `save_value` | `uri`, `tags`, `requestedTtl`, `saved` | the body was offered to the pool |
 | `save_view` | `uri`, `tags`, `requestedTtl`, `saved` | body + rendered view were offered |
 | `save_etag` | `uri`, `etag`, `tags`, `requestedTtl`, `saved` | the validator was offered to the ETag pool |
@@ -157,6 +158,7 @@ correlation. Any `invalidate` without the marker is a real invalidation.
 `tags` of a later `invalidate`. Tags that do not meet mean the write left that entry standing —
 which is what serving stale looks like from the inside.
 
+**Read `cache_policy.expiry`, not a TTL, to learn whether an entry is meant to expire.**
 **`requestedTtl` is what was asked for, not what the store did.** `0`/`null` means this package set no
 expiry, so the entry is meant to live until an invalidation reaches it — but the backend decides
 whether that is possible. `symfony/cache`'s `RedisTagAwareAdapter` gives an unexpiring tagged entry

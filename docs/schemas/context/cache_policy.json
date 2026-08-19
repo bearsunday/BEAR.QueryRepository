@@ -1,0 +1,46 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_policy.json",
+    "title": "cache_policy",
+    "description": "Event: what the resource declared about its lifetime. `expiry: \"never\"` means the entry is meant to live until an invalidation reaches it; every other declaration means it expires. Read this rather than `resolvedTtl` to learn the intent: the `never` preset resolves to a finite number whose value depends on how the application bound `Expiry`.",
+    "type": "object",
+    "required": [
+        "uri",
+        "expiry",
+        "expirySecond",
+        "expiryAt",
+        "resolvedTtl"
+    ],
+    "properties": {
+        "uri": {
+            "type": "string"
+        },
+        "expiry": {
+            "description": "the `#[Cacheable]` preset that decided this entry (`short` | `medium` | `long` | `never`), or null when a more specific declaration did",
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "expirySecond": {
+            "description": "the declared lifetime in seconds, or null when it did not decide this entry",
+            "type": [
+                "integer",
+                "null"
+            ]
+        },
+        "expiryAt": {
+            "description": "the body field carrying an expiry timestamp, or null when it did not decide this entry",
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "resolvedTtl": {
+            "description": "seconds the declaration resolved to - what the pools are asked for in the save events that follow",
+            "type": "integer",
+            "minimum": 0
+        }
+    },
+    "additionalProperties": false
+}
