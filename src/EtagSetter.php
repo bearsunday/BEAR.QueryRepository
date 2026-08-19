@@ -18,6 +18,11 @@ use function time;
 
 final readonly class EtagSetter implements EtagSetterInterface
 {
+    public function __construct(
+        private ResourceBodyEvaluator $evaluateBody = new ResourceBodyEvaluator(),
+    ) {
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -48,9 +53,15 @@ final readonly class EtagSetter implements EtagSetterInterface
         return $etag;
     }
 
+    /**
+     * The state the validator stands for: the rendered view, or the body when nothing rendered.
+     * A view-derived tag over a null view would be one constant string for every state.
+     */
     public function getEtagByEitireView(ResourceObject $ro): string
     {
-        return $ro::class . serialize($ro->view);
+        // A body may still hold embedded requests, which refuse to serialize; the evaluator
+        // materializes the runs that already happened, as copies, without touching this response.
+        return $ro::class . serialize($ro->view ?? ($this->evaluateBody)($ro->body));
     }
 
     /**
