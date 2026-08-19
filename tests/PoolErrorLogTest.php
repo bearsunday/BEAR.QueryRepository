@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Log\Context\GetContext;
 use BEAR\QueryRepository\Log\PoolErrorLogger;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\Resource\ResourceInterface;
+use Koriym\SemanticLogger\SemanticLogger;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
@@ -17,8 +19,6 @@ use Ray\Di\Injector;
 use Symfony\Component\Cache\Adapter\RedisAdapter;
 use Symfony\Component\Cache\Adapter\RedisTagAwareAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
-
-use function str_contains;
 
 /**
  * A store that cannot be reached, and what the log says about it
@@ -81,7 +81,9 @@ class PoolErrorLogTest extends TestCase
 
         $context = (string) self::eventContextJsonOf($this->flushAndValidate($this->logger), 'pool_error');
 
-        $this->assertTrue(str_contains($context, 'Connection refused'), $context);
+        // The wording is the backend's own and differs by OS and client ("Connection refused"
+        // on POSIX, "actively refused" on Windows): what the log owes is a non-empty message.
+        $this->assertStringNotContainsString('"error":""', $context);
         $this->assertStringNotContainsString('"exceptionClass":"unknown"', $context, 'the throwable the adapter caught');
     }
 
@@ -95,5 +97,20 @@ class PoolErrorLogTest extends TestCase
 
         $this->assertContains('cache_miss', $types);
         $this->assertContains('pool_error', $types);
+    }
+
+    public function testOnlyFailuresAreRecordedAndUnrecognizedWordingIsUnknown(): void
+    {
+        $logger = new SemanticLogger();
+        $poolLogger = new PoolErrorLogger($logger);
+        $openId = $logger->open(new GetContext('app://self/value'));
+        $poolLogger->info('everything is fine');           // not a failure level: must not be recorded
+        $poolLogger->error('something happened');          // a failure with no operation word in it
+        $logger->close(new GetContext('app://self/value'), $openId);
+
+        $tree = $this->flushAndValidate($logger);
+
+        $this->assertSame(['get', 'pool_error', 'get'], self::collectTypes($tree));
+        $this->assertStringContainsString('"operation":"unknown"', (string) self::eventContextJsonOf($tree, 'pool_error'));
     }
 }
