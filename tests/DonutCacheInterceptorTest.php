@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\ResourceInterface;
+use BEAR\Resource\Uri;
 use FakeVendor\HelloWorld\Resource\Page\Html\BlogPostingDonut;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Madapaja\TwigModule\TwigModule;
@@ -21,6 +22,7 @@ class DonutCacheInterceptorTest extends TestCase
 
     private ResourceInterface $resource;
     private SemanticLoggerInterface $logger;
+    private Injector $injector;
 
     protected function setUp(): void
     {
@@ -34,6 +36,7 @@ class DonutCacheInterceptorTest extends TestCase
         }
 
         assert($injector instanceof Injector);
+        $this->injector = $injector;
         $this->resource = $injector->getInstance(ResourceInterface::class);
         $this->logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
@@ -55,12 +58,12 @@ class DonutCacheInterceptorTest extends TestCase
         $view = (string) $blogPosting;
         $this->assertSame('blog-posting:1<comment>comment01</comment>', $view);
 
-        // save_donut records its invalidation tags: the Surrogate-Key header keys at put
-        // time (this resource sets none, so the entry is tagged with an empty list).
+        // save_donut records the tags the template entry is stored under: its own URI tag (what
+        // purge($uri) invalidates), plus any declared Surrogate-Key.
         $tree = $this->flushAndValidate($this->logger);
         $saveDonut = self::eventContextJsonOf($tree, 'save_donut');
         $this->assertNotNull($saveDonut);
-        $this->assertStringContainsString('"tags":[]', $saveDonut);
+        $this->assertStringContainsString('"tags":["_html_blog-posting-donut_"]', $saveDonut);
 
         return $blogPosting->headers[Header::SURROGATE_KEY];
     }
@@ -97,5 +100,25 @@ class DonutCacheInterceptorTest extends TestCase
 
         $this->assertArrayNotHasKey('Age', $blogPosting->headers);
         $this->assertArrayNotHasKey(Header::CDN_CACHE_CONTROL, $blogPosting->headers);
+    }
+
+    /** @depends testCached */
+    public function testPurgingThePageEvictsItsDonutTemplate(): void
+    {
+        $this->logger->flush();
+        $uri = new Uri('page://self/html/blog-posting-donut');
+        $repository = $this->injector->getInstance(QueryRepositoryInterface::class);
+
+        // This page declares no Surrogate-Key of its own: before the fix its template entry
+        // carried no tags, so this purge left an immortal shell (issue #185).
+        $this->assertTrue($repository->purge($uri));
+        $this->logger->flush();
+
+        $this->resource->get('page://self/html/blog-posting-donut');
+        $tree = $this->flushAndValidate($this->logger);
+        $types = self::collectTypes($tree);
+
+        $this->assertNotContains('refresh_donut', $types, 'the purged template is gone, so nothing is recomposed from it');
+        $this->assertContains('put_donut', $types, 'the page is built again and stored again');
     }
 }

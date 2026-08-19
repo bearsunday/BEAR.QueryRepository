@@ -75,9 +75,16 @@ final readonly class QueryRepository implements QueryRepositoryInterface
             $this->setCacheDependency($ro);
         }
 
-        $ro->toString();
         $cacheable = $this->getCacheableAnnotation($ro);
         $httpCache = $this->getHttpCacheAnnotation($ro);
+        $storesView = $cacheable instanceof Cacheable && $cacheable->type === 'view';
+        if ($storesView) {
+            // Rendering is the write itself here. For a value entry it is not: a resource with no
+            // renderer in this context - an app resource under an html renderer - would throw, the
+            // interceptor would degrade it to a warning, and the entry would never be stored.
+            $ro->toString();
+        }
+
         $ttl = $this->getExpiryTime($ro, $cacheable);
         if ($cacheable instanceof Cacheable) {
             $this->logger->event($this->cachePolicy($ro, $cacheable, $ttl));
@@ -90,7 +97,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
             $this->storage->saveEtag($ro->uri, $etag, $surrogateKeys, $ttl);
         }
 
-        if ($cacheable instanceof Cacheable && $cacheable->type === 'view') {
+        if ($storesView) {
             return $this->storage->saveView($ro, $ttl);
         }
 
@@ -120,10 +127,6 @@ final readonly class QueryRepository implements QueryRepositoryInterface
 
     private function setCacheDependency(ResourceObject $ro): void
     {
-        if (isset($ro->headers[Header::SURROGATE_KEY])) {
-            return;
-        }
-
         /** @var mixed $body */
         foreach ((array) $ro->body as $body) {
             if (! ($body instanceof AbstractRequest)) {

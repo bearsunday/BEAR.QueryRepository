@@ -19,7 +19,7 @@ final class SaveEtagContext extends AbstractContext
         public readonly string $uri,
         public readonly string $etag,
         public readonly array $tags,
-        public readonly int|null $ttl,
+        public readonly int|null $requestedTtl,
         public readonly bool $saved,
     ) {
     }

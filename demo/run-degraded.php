@@ -110,7 +110,7 @@ E. Pool refuses writes, donut page           -> save_donut/save_donut_view saved
 F. Pool refuses invalidation                 -> invalidate{roPool: failed, etagPool: failed}
 G. The other command producers               -> command{source: DonutCommandInterceptor},
                                                 command{source: RefreshInterceptor}
-H. A finite TTL under #[HttpCache]           -> save_* with ttl=10, private Cache-Control
+H. A finite TTL under #[HttpCache]           -> save_* with requestedTtl=10, private Cache-Control
 I. Direct putStatic(ttl, sMaxAge)            -> manual_store{,_result} rooting a donut
                                                 write with real ttl/sMaxAge
 
@@ -389,7 +389,7 @@ echo sprintf(
     'H  GET a #[Cacheable(expirySecond: 10), HttpCache(isPrivate: true)] resource -> Cache-Control: %s',
     $ro->headers['Cache-Control'] ?? '(none)',
 ) . PHP_EOL;
-echo '   the save events carry ttl=10, not the 31536000 `never` placeholder' . PHP_EOL;
+echo '   the save events carry requestedTtl=10, not the 31536000 `never` placeholder' . PHP_EOL;
 
 $report($logger->flush(), 'H. finite TTL');
 

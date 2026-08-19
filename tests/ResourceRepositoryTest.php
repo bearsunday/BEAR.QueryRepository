@@ -68,7 +68,9 @@ class ResourceRepositoryTest extends TestCase
         $this->assertSame($state->code, $this->ro->code);
         $headers = array_change_key_case($state->headers, CASE_LOWER);
         $roHeaders = array_change_key_case($this->ro->headers, CASE_LOWER);
-        $this->assertSame($headers['content-type'], $roHeaders['content-type']);
+        // A value entry stores the body, so no rendering happened and no Content-Type was set:
+        // the header belongs to the render, which runs per response on both paths.
+        $this->assertArrayNotHasKey('content-type', $headers);
         $this->assertSame($headers['etag'], $roHeaders['etag']);
         $this->assertSame($headers['last-modified'], $roHeaders['last-modified']);
         // Age is `time() - strtotime(Last-Modified)`, so put→get crossing a
@@ -89,6 +91,18 @@ class ResourceRepositoryTest extends TestCase
         $this->repository->purge($uri);
         $instance = (bool) $this->repository->get($uri);
         $this->assertFalse($instance);
+    }
+
+    public function testTheValidatorFollowsTheBodyWhenNothingRendered(): void
+    {
+        $this->ro->body = ['name' => 'bear'];
+        $this->repository->put($this->ro);
+        $first = $this->ro->headers[Header::ETAG];
+
+        $this->ro->body = ['name' => 'panda'];
+        $this->repository->put($this->ro);
+
+        $this->assertNotSame($first, $this->ro->headers[Header::ETAG], 'a changed body must move the validator');
     }
 
     public function testCreateFromDoctrineAnnotation(): void

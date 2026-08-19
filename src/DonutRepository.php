@@ -24,6 +24,8 @@ use BEAR\Resource\ResourceObject;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 
+use function array_unique;
+use function array_values;
 use function assert;
 use function explode;
 use function max;
@@ -139,8 +141,9 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $this->logger->event(new PutDonutContext((string) $ro->uri, $ttl, $sMaxAge));
         $keys = new SurrogateKeys($ro->uri);
         $keys->addTag($ro);
-        $headerKeys = $this->getHeaderKeys($ro);
-        $donut = ResourceDonut::create($ro, $this->renderer, $keys, $sMaxAge, true)->withStorageState($ttl, $headerKeys);
+        $declaredKeys = $this->getHeaderKeys($ro);
+        $templateKeys = $this->templateKeys($ro, $declaredKeys);
+        $donut = ResourceDonut::create($ro, $this->renderer, $keys, $sMaxAge, true)->withStorageState($ttl, $templateKeys);
         $donut->render($ro, $this->renderer);
         $this->setHeaders($keys, $ro, $sMaxAge);
         $this->logCdnHeaders($ro);
@@ -150,15 +153,16 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         // save content cache and donut; the donut records the content state so that a
         // later refresh can keep Last-Modified when the recomposed content is identical
         $this->saveView($ro, $sMaxAge);
-        $this->resourceStorage->saveDonut($ro->uri, $donut->withContentState($ro), $ttl, $headerKeys);
+        $this->resourceStorage->saveDonut($ro->uri, $donut->withContentState($ro), $ttl, $templateKeys);
     }
 
     private function doPutDonut(ResourceObject $ro, int|null $donutTtl): void
     {
         $this->logger->event(new PutDonutContext((string) $ro->uri, $donutTtl, null));
         $keys = new SurrogateKeys($ro->uri);
-        $keyArrays = $this->getHeaderKeys($ro);
-        $donut = ResourceDonut::create($ro, $this->renderer, $keys, $donutTtl, false)->withStorageState($donutTtl, $keyArrays);
+        $declaredKeys = $this->getHeaderKeys($ro);
+        $templateKeys = $this->templateKeys($ro, $declaredKeys);
+        $donut = ResourceDonut::create($ro, $this->renderer, $keys, $donutTtl, false)->withStorageState($donutTtl, $templateKeys);
         $donut->render($ro, $this->renderer);
         $keys->setSurrogateHeader($ro);
         $this->logCdnHeaders($ro);
@@ -166,7 +170,22 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $this->logger->event(new PreWriteCleanupContext((string) $ro->uri));
         $this->resourceStorage->invalidateTags([($this->uriTag)($ro->uri)]);
         // save donut
-        $this->resourceStorage->saveDonut($ro->uri, $donut, $donutTtl, $keyArrays);
+        $this->resourceStorage->saveDonut($ro->uri, $donut, $donutTtl, $templateKeys);
+    }
+
+    /**
+     * The tags a donut template is stored under: its own URI tag (what `purge($uri)` invalidates -
+     * an untagged template is reachable by no `invalidateTags()` call, issue #185), plus whatever
+     * the resource declared. The children's tags are deliberately absent: a child's write must drop
+     * the content and leave the shell to be recomposed.
+     *
+     * @param list<string> $declaredKeys
+     *
+     * @return list<string>
+     */
+    private function templateKeys(ResourceObject $ro, array $declaredKeys): array
+    {
+        return array_values(array_unique([($this->uriTag)($ro->uri), ...$declaredKeys]));
     }
 
     /**
@@ -284,7 +303,9 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     private function recordContentState(ResourceObject $ro, ResourceDonut $donut): void
     {
         $remainingTtl = $donut->getRemainingStorageTtl();
-        $storageTags = $donut->getStorageTags();
+        // Templates stored before the template carried its own URI tag have an empty tag list;
+        // re-tagging here makes an old entry reachable without a cache flush.
+        $storageTags = $this->templateKeys($ro, $donut->getStorageTags());
         if ($remainingTtl === 0) {
             $this->logger->event(new SaveDonutContext((string) $ro->uri, $storageTags, 0, false));
 

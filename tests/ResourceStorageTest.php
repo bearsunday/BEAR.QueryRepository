@@ -254,7 +254,7 @@ class ResourceStorageTest extends TestCase
         $context = $logger->events[0];
         assert($context instanceof SaveValueContext);
         $this->assertFalse($context->saved, 'the log records that the entry is NOT cached despite the save event');
-        $this->assertSame(10, $context->ttl);
+        $this->assertSame(10, $context->requestedTtl);
     }
 
     public function testSaveDonutLogsSavedFalseWhenPoolRejectsEntry(): void
@@ -330,7 +330,7 @@ class ResourceStorageTest extends TestCase
             || $event instanceof SaveDonutContext,
         );
 
-        return $event->ttl;
+        return $event->requestedTtl;
     }
 
     public function testInvalidateTagsFailsWhenOnlyOnePoolRefuses(): void
