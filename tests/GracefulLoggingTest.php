@@ -267,7 +267,7 @@ class GracefulLoggingTest extends TestCase
         });
         $injector = new Injector($module, __DIR__ . '/tmp');
         $resource = $injector->getInstance(ResourceInterface::class);
-        $logger = $injector->getInstance(SemanticLoggerInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
         $warned = false;
         set_error_handler(static function (int $errno) use (&$warned): bool {
