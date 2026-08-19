@@ -64,6 +64,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A donut refresh advanced `Last-Modified` even when the recomposed content was byte-identical, so an unchanged representation looked changed; the recorded content is compared and the original time carried over. `Age` is now the time since the state was stored (`storedAt`) instead of being derived from `Last-Modified`, which is the content's change time — entries stored before `storedAt` existed fall back to the old derivation.
 - `putStatic()`/`putDonut()` recorded a negative lifetime verbatim while the storage clamped what it stored, so the log both contradicted its own save events and violated the published `put_donut` schema (`minimum: 0`). The requested lifetime is clamped where it is recorded.
 - A donut write failure (pool outage or renderer error during `putStatic()`/`putDonut()` on the AOP path) propagated without any in-band record; it is now recorded as `cache_error{operation: write}` before the exception propagates, matching the read side and the plain `#[Cacheable]` write side.
+- Fixed a 1.16.0 regression: a resource declaring its own `Surrogate-Key` lost embed dependency tracking and kept serving purged children. Behaviour change for 1.16.x installations: such pages are now invalidated when an embedded child is, and child URI tags are sent to the CDN via `Surrogate-Key`.
+- Deduplicated the `Surrogate-Key` header: a resource written twice in one request (`#[Refresh]` after the rebuilding GET) repeated child tags sent to the CDN.
 - `ResourceStorage::saveEtag()` tagged entries with a hard-coded `new UriTag()` instead of the injected `UriTagInterface`, mistagging under a custom binding.
 
 ## [1.16.2] - 2026-06-29
