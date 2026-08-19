@@ -256,9 +256,7 @@ class GracefulLoggingTest extends TestCase
 
     public function testAValueEntryIsStoredWithoutRenderingTheResource(): void
     {
-        // An app resource has no template under an html renderer, so rendering it throws. A
-        // `type: 'value'` entry stores the body, and rendering it was work the write did not
-        // need: it turned every such store into a warning and left the cache permanently empty.
+        // An app resource has no template under an html renderer, so any render attempt throws.
         $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
         $module->override(new class extends AbstractModule {
             protected function configure(): void

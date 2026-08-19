@@ -54,11 +54,8 @@ final readonly class EtagSetter implements EtagSetterInterface
     }
 
     /**
-     * The state the validator stands for: the rendered view, or the body when nothing rendered
-     *
-     * A value entry is stored without rendering, so the view is null there and the body is what
-     * the entry holds. Falling back to it keeps the validator tied to the state - a view-derived
-     * tag over a null view would be the same string for every state of every such resource.
+     * The state the validator stands for: the rendered view, or the body when nothing rendered.
+     * A view-derived tag over a null view would be one constant string for every state.
      */
     public function getEtagByEitireView(ResourceObject $ro): string
     {
