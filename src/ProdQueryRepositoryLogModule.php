@@ -12,6 +12,7 @@ use BEAR\QueryRepository\Log\PolicyLogWriter;
 use BEAR\QueryRepository\Log\RetentionPolicyInterface;
 use BEAR\QueryRepository\Log\SafeSemanticLoggerProvider;
 use BEAR\QueryRepository\Log\ShutdownFlush;
+use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\RepositoryModule\Annotation\LogDestination;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
@@ -59,6 +60,6 @@ final class ProdQueryRepositoryLogModule extends AbstractModule
         $this->bind(LogWriterInterface::class)->annotatedWith(LogDestination::class)->toInstance(new LogStreamWriter($this->stream));
         $this->bind(LogWriterInterface::class)->toConstructor(PolicyLogWriter::class, ['writer' => LogDestination::class]);
         $this->bind(LogSinkInterface::class)->to(ShutdownFlush::class)->in(Scope::SINGLETON);
-        $this->bind(SemanticLoggerInterface::class)->toProvider(SafeSemanticLoggerProvider::class)->in(Scope::SINGLETON);
+        $this->bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)->toProvider(SafeSemanticLoggerProvider::class)->in(Scope::SINGLETON);
     }
 }

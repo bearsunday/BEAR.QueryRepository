@@ -6,6 +6,7 @@ namespace FakeVendor\DemoApp\Resource\App;
 
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\Resource\ResourceObject;
+
 use function error_log;
 
 #[Cacheable]
@@ -24,7 +25,7 @@ class User extends ResourceObject
         error_log('*** onGet() method invoked ***');
         $this->body = [
             'name' => isset($this->data[$id]) ? $this->data[$id]['name'] : '',
-            'update' => self::$i++
+            'update' => self::$i++,
         ];
 
         return $this;

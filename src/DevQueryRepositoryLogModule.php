@@ -9,6 +9,7 @@ use BEAR\QueryRepository\Log\LogSinkInterface;
 use BEAR\QueryRepository\Log\LogWriterInterface;
 use BEAR\QueryRepository\Log\SafeSemanticLoggerProvider;
 use BEAR\QueryRepository\Log\ShutdownFlush;
+use BEAR\RepositoryModule\Annotation\CacheLog;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 use Ray\Di\AbstractModule;
@@ -39,6 +40,6 @@ final class DevQueryRepositoryLogModule extends AbstractModule
         $this->bind(LogWriterInterface::class)->toInstance(new LogFileWriter($this->logDir, $this->keep));
         $this->bind(LogSinkInterface::class)->to(ShutdownFlush::class)->in(Scope::SINGLETON);
         // Shared session: open() at an interceptor and event() at storage resolve to one logger
-        $this->bind(SemanticLoggerInterface::class)->toProvider(SafeSemanticLoggerProvider::class)->in(Scope::SINGLETON);
+        $this->bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)->toProvider(SafeSemanticLoggerProvider::class)->in(Scope::SINGLETON);
     }
 }

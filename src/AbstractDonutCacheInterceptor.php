@@ -9,6 +9,7 @@ use BEAR\QueryRepository\Log\Context\CacheHitContext;
 use BEAR\QueryRepository\Log\Context\CacheMissContext;
 use BEAR\QueryRepository\Log\Context\GetContext;
 use BEAR\QueryRepository\Log\Context\PutSkippedContext;
+use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\Code;
 use BEAR\Resource\ResourceObject;
 use Koriym\SemanticLogger\NullSemanticLogger;
@@ -30,6 +31,7 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
 
     public function __construct(
         private readonly DonutRepositoryInterface $donutRepository,
+        #[CacheLog]
         private readonly SemanticLoggerInterface $logger = new NullSemanticLogger(),
     ) {
     }

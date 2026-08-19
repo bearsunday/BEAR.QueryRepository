@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\ReturnValueIsNotResourceObjectException;
 use BEAR\QueryRepository\Log\Context\CommandResultContext;
+use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\RepositoryModule\Annotation\Commands;
 use BEAR\Resource\Code;
 use BEAR\Resource\ResourceObject;
@@ -37,6 +38,7 @@ final readonly class CommandInterceptor implements MethodInterceptor
     public function __construct(
         #[Commands]
         private array $commands,
+        #[CacheLog]
         private SemanticLoggerInterface $logger = new NullSemanticLogger(),
     ) {
         $this->commandContextFactory = new CommandContextFactory();

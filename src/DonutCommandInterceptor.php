@@ -10,6 +10,7 @@ use BEAR\Resource\AbstractUri;
 use BEAR\Resource\Code;
 use BEAR\Resource\ResourceObject;
 use Koriym\SemanticLogger\NullSemanticLogger;
+use BEAR\RepositoryModule\Annotation\CacheLog;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
@@ -39,6 +40,7 @@ final readonly class DonutCommandInterceptor implements MethodInterceptor
     public function __construct(
         private DonutRepositoryInterface $repository,
         private MatchQueryInterface $matchQuery,
+        #[CacheLog]
         private SemanticLoggerInterface $logger = new NullSemanticLogger()
     ){
         $this->commandContextFactory = new CommandContextFactory();

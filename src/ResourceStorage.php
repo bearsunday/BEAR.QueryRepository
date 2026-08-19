@@ -13,6 +13,7 @@ use BEAR\QueryRepository\Log\Context\SaveEtagContext;
 use BEAR\QueryRepository\Log\Context\SaveValueContext;
 use BEAR\QueryRepository\Log\Context\SaveViewContext;
 use BEAR\QueryRepository\Log\TopLevelAwareInterface;
+use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\RepositoryModule\Annotation\EtagPool;
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\Resource\AbstractUri;
@@ -88,6 +89,7 @@ final class ResourceStorage implements ResourceStorageInterface
      * @param ProviderInterface<TagAwareAdapterInterface> $etagPoolProvider
      */
     public function __construct(
+        #[CacheLog]
         private SemanticLoggerInterface $logger,
         private PurgerInterface $purger,
         private UriTagInterface $uriTag,
@@ -431,6 +433,9 @@ final class ResourceStorage implements ResourceStorageInterface
         $this->uriTag = $data['uriTag'];
         $this->saver = $data['saver'];
         $this->serverContext = $data['serverContext'];
+        // Stateless, so rebuilt rather than carried: left out of the payload it stays
+        // uninitialized, and the first save after a compiled-injector restore throws.
+        $this->evaluateBody = new ResourceBodyEvaluator();
         $this->initializePools($data['roProvider'], $data['etagProvider']);
     }
 }

@@ -10,9 +10,9 @@ use Override;
 use Ray\Di\ProviderInterface;
 
 /**
- * Provides the shared SemanticLoggerInterface (a SafeSemanticLogger wrapping a SemanticLogger)
+ * Provides the cache log: a SafeSemanticLogger wrapping a SemanticLogger, bound with #[CacheLog]
  *
- * Built via a provider so the public SemanticLoggerInterface binding can resolve to
+ * Built via a provider so the #[CacheLog] binding can resolve to
  * SafeSemanticLogger without a self-referential cycle (SafeSemanticLogger consumes the
  * concrete SemanticLogger as its delegate). Bind this in Singleton scope so open() from
  * an interceptor and event() from storage share one session.

@@ -10,6 +10,7 @@ use BEAR\QueryRepository\Log\Context\CacheHitContext;
 use BEAR\QueryRepository\Log\Context\CacheMissContext;
 use BEAR\QueryRepository\Log\Context\GetContext;
 use BEAR\QueryRepository\Log\Context\PutSkippedContext;
+use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\ResourceObject;
 use Koriym\SemanticLogger\NullSemanticLogger;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
@@ -38,6 +39,7 @@ final readonly class CacheInterceptor implements MethodInterceptor
 {
     public function __construct(
         private QueryRepositoryInterface $repository,
+        #[CacheLog]
         private SemanticLoggerInterface $logger = new NullSemanticLogger(),
     ) {
     }

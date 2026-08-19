@@ -13,6 +13,7 @@ use BEAR\QueryRepository\Log\Context\PreWriteCleanupContext;
 use BEAR\QueryRepository\Log\Context\PurgeContext;
 use BEAR\QueryRepository\Log\TopLevelAwareInterface;
 use BEAR\RepositoryModule\Annotation\Cacheable;
+use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\RepositoryModule\Annotation\HttpCache;
 use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\AbstractUri;
@@ -30,6 +31,7 @@ use function time;
 final readonly class QueryRepository implements QueryRepositoryInterface
 {
     public function __construct(
+        #[CacheLog]
         private SemanticLoggerInterface $logger,
         private HeaderSetter $headerSetter,
         private ResourceStorageInterface $storage,

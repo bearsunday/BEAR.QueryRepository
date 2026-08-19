@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Sunday\Extension\Transfer\HttpCacheInterface as HttpCacheInterfaceAlias;
@@ -37,7 +38,7 @@ class DonutCommandRedisCacheTest extends DonutCommandInterceptorTest
         // drop what the previous method stored so each inherited test starts from a cold cache.
         $injector->getInstance(TagAwareAdapterInterface::class, ResourceObjectPool::class)->clear();
         $this->resource = $injector->getInstance(ResourceInterface::class);
-        $this->logger = $injector->getInstance(SemanticLoggerInterface::class);
+        $this->logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
         $httpCache = $injector->getInstance(HttpCacheInterfaceAlias::class);
         $unserializedHttpCache = unserialize(serialize($httpCache));
         assert($unserializedHttpCache instanceof HttpCacheInterfaceAlias);

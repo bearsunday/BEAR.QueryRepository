@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Log\Context\DependsOnContext;
+use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\ResourceObject;
 use Koriym\SemanticLogger\NullSemanticLogger;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
@@ -19,6 +20,7 @@ final readonly class CacheDependency implements CacheDependencyInterface
 {
     public function __construct(
         private UriTagInterface $uriTag,
+        #[CacheLog]
         private SemanticLoggerInterface $logger = new NullSemanticLogger(),
     ) {
     }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
 use FakeVendor\HelloWorld\Resource\Page\Html\MutableComment;
@@ -40,7 +41,7 @@ class DonutQueryInterceptorPurgeTest extends TestCase
         $this->resource = $injector->getInstance(ResourceInterface::class);
         $this->repository = $injector->getInstance(QueryRepository::class);
         $this->storage = $injector->getInstance(ResourceStorageInterface::class);
-        $this->logger = $injector->getInstance(SemanticLoggerInterface::class);
+        $this->logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
         parent::setUp();
     }
