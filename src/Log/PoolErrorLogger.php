@@ -14,6 +14,7 @@ use Stringable;
 use Throwable;
 
 use function in_array;
+use function is_string;
 use function str_contains;
 
 /**
@@ -42,15 +43,17 @@ final class PoolErrorLogger extends AbstractLogger
     #[Override]
     public function log($level, string|Stringable $message, array $context = []): void
     {
-        if (! in_array((string) $level, self::FAILED, true)) {
+        if (! is_string($level) || ! in_array($level, self::FAILED, true)) {
             return;
         }
 
         /** @var mixed $exception */
         $exception = $context['exception'] ?? null;
+        /** @var mixed $key */
+        $key = $context['key'] ?? '';
 
         $this->logger->event(new PoolErrorContext(
-            isset($context['key']) ? (string) $context['key'] : '',
+            is_string($key) ? $key : '',
             $this->operation((string) $message),
             $exception instanceof Throwable ? $exception->getMessage() : (string) $message,
             $exception instanceof Throwable ? $exception::class : 'unknown',

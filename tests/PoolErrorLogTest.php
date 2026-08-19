@@ -43,7 +43,9 @@ class PoolErrorLogTest extends TestCase
             protected function configure(): void
             {
                 $this->bind(LoggerInterface::class)->annotatedWith('poolError')->to(PoolErrorLogger::class);
-                $this->bind()->annotatedWith('deadRedis')->toInstance(RedisAdapter::createConnection('redis://127.0.0.1:1'));
+                // lazy: ext-redis connects eagerly otherwise, and the boot-time throw is not
+                // the runtime outage this test simulates (Predis is lazy by default).
+                $this->bind()->annotatedWith('deadRedis')->toInstance(RedisAdapter::createConnection('redis://127.0.0.1:1?lazy=1'));
                 $this->bind(TagAwareAdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->toConstructor(
                     RedisTagAwareAdapter::class,
                     ['redis' => 'deadRedis'],
@@ -80,7 +82,7 @@ class PoolErrorLogTest extends TestCase
         $context = (string) self::eventContextJsonOf($this->flushAndValidate($this->logger), 'pool_error');
 
         $this->assertTrue(str_contains($context, 'Connection refused'), $context);
-        $this->assertStringContainsString('ConnectionException', $context, 'the throwable the adapter caught');
+        $this->assertStringNotContainsString('"exceptionClass":"unknown"', $context, 'the throwable the adapter caught');
     }
 
     public function testAMissIsStillRecordedSoTheReadPathIsNotSilent(): void

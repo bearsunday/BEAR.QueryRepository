@@ -431,7 +431,9 @@ $injector = $newInjector(new class extends AbstractModule {
                 ['redis' => 'deadRedis'],
                 (new InjectionPoints())->addMethod('setLogger', 'poolError'),
             );
-        $this->bind()->annotatedWith('deadRedis')->toInstance(RedisAdapter::createConnection('redis://127.0.0.1:1'));
+        // lazy=1: with ext-redis the default is an eager connect, and a boot-time throw is not
+        // the runtime outage this session demonstrates (Predis is lazy by default).
+        $this->bind()->annotatedWith('deadRedis')->toInstance(RedisAdapter::createConnection('redis://127.0.0.1:1?lazy=1'));
     }
 });
 $resource = $injector->getInstance(ResourceInterface::class);
