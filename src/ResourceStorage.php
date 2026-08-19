@@ -433,9 +433,8 @@ final class ResourceStorage implements ResourceStorageInterface
         $this->uriTag = $data['uriTag'];
         $this->saver = $data['saver'];
         $this->serverContext = $data['serverContext'];
-        // Stateless, so it is rebuilt rather than carried: a promoted property left out of the
-        // payload stays uninitialized, and the first save would throw where a compiled injector
-        // is restored from disk - every write in production
+        // Stateless, so rebuilt rather than carried: left out of the payload it stays
+        // uninitialized, and the first save after a compiled-injector restore throws.
         $this->evaluateBody = new ResourceBodyEvaluator();
         $this->initializePools($data['roProvider'], $data['etagProvider']);
     }
