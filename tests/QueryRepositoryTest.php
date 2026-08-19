@@ -120,7 +120,7 @@ class QueryRepositoryTest extends TestCase
 
         $saveValue = self::eventContextJsonOf($tree, 'save_value');
         $this->assertNotNull($saveValue);
-        $this->assertStringContainsString('"ttl":0', $saveValue);
+        $this->assertStringContainsString('"requestedTtl":0', $saveValue);
     }
 
     public function testPutResquestEmbeddedResoureView(): void

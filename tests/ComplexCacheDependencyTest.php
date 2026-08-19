@@ -9,6 +9,9 @@ use BEAR\Resource\Uri;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 
+use function array_unique;
+use function explode;
+
 /**
  * Stress test for the cache dependency resolution with a DIAMOND graph.
  *
@@ -29,12 +32,14 @@ class ComplexCacheDependencyTest extends TestCase
 {
     private ResourceInterface $resource;
     private QueryRepositoryInterface $repository;
+    private ResourceStorageInterface $storage;
 
     protected function setUp(): void
     {
         $injector = new Injector(new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld')), __DIR__ . '/tmp');
         $this->resource = $injector->getInstance(ResourceInterface::class);
         $this->repository = $injector->getInstance(QueryRepositoryInterface::class);
+        $this->storage = $injector->getInstance(ResourceStorageInterface::class);
 
         parent::setUp();
     }
@@ -111,5 +116,37 @@ class ComplexCacheDependencyTest extends TestCase
         $this->repository->purge(new Uri('page://self/dep/diamond-bottom'));
 
         $this->assertTrue($this->isCached('child-c'), 'an unrelated resource must not be touched');
+    }
+
+    public function testAParentThatDeclaresItsOwnKeyStillDependsOnItsChild(): void
+    {
+        $this->resource->get('page://self/dep/tagged-parent');
+        $this->assertTrue($this->isCached('tagged-parent'));
+
+        $this->repository->purge(new Uri('page://self/dep/diamond-bottom'));
+
+        $this->assertFalse($this->isCached('tagged-parent'), 'the declared key must not cost the child dependency');
+    }
+
+    public function testTheDeclaredKeyStillInvalidatesTheParent(): void
+    {
+        $this->resource->get('page://self/dep/tagged-parent');
+        $this->assertTrue($this->isCached('tagged-parent'));
+
+        $this->storage->invalidateTags(['shared-corpus']);
+
+        $this->assertFalse($this->isCached('tagged-parent'), 'the declared key must keep invalidating the resource');
+    }
+
+    public function testASecondWriteInTheSameRequestDoesNotRepeatAChildTag(): void
+    {
+        $ro = $this->resource->get('page://self/dep/tagged-parent');
+        $this->repository->put($ro);
+
+        $keys = explode(' ', $ro->headers[Header::SURROGATE_KEY]);
+
+        $this->assertSame(array_unique($keys), $keys, (string) $ro->headers[Header::SURROGATE_KEY]);
+        $this->assertContains('shared-corpus', $keys, 'the declared key survives');
+        $this->assertContains('_dep_diamond-bottom_', $keys, 'so does the child tag');
     }
 }

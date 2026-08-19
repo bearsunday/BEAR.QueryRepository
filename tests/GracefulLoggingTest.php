@@ -138,7 +138,7 @@ class GracefulLoggingTest extends TestCase
         $module->override(new class extends AbstractModule {
             protected function configure(): void
             {
-                // The pools are healthy; rendering the view the store is about to save is what fails.
+                // The pools are healthy; rendering the view this entry stores is what fails.
                 $this->bind(RenderInterface::class)->to(FakeThrowingRenderer::class);
             }
         });
@@ -157,7 +157,9 @@ class GracefulLoggingTest extends TestCase
             return false;
         });
         try {
-            $ro = $resource->get('app://self/user', ['id' => 1]);
+            // A `type: 'view'` entry: the render is the write. A value entry is stored without
+            // rendering, so a renderer that throws cannot reach its write path at all.
+            $ro = $resource->get('page://self/html/like');
         } finally {
             restore_error_handler();
         }
@@ -168,6 +170,7 @@ class GracefulLoggingTest extends TestCase
         $tree = $this->flushAndValidate($logger);
         $error = self::eventContextJsonOf($tree, 'cache_error');
         $this->assertNotNull($error, 'the failed store is recorded, not swallowed');
+        $this->assertStringContainsString('page://self/html/like', $error);
         $this->assertStringContainsString('"operation":"write"', $error);
         // The class is what separates this from the cache-down case above: same context,
         // same operation, but a rendering bug instead of a pool outage.
@@ -250,5 +253,41 @@ class GracefulLoggingTest extends TestCase
         );
         $close = self::closeContextJsonOf($tree, 'cache_miss');
         $this->assertNotNull($close, 'the get scope still closes');
+    }
+
+    public function testAValueEntryIsStoredWithoutRenderingTheResource(): void
+    {
+        // An app resource has no template under an html renderer, so any render attempt throws.
+        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module->override(new class extends AbstractModule {
+            protected function configure(): void
+            {
+                $this->bind(RenderInterface::class)->to(FakeThrowingRenderer::class);
+            }
+        });
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
+
+        $warned = false;
+        set_error_handler(static function (int $errno) use (&$warned): bool {
+            $warned = $warned || $errno === E_USER_WARNING;
+
+            return true;
+        });
+        try {
+            $ro = $resource->get('app://self/user', ['id' => 1]);
+        } finally {
+            restore_error_handler();
+        }
+
+        $this->assertSame(200, $ro->code);
+        $this->assertFalse($warned, 'a value entry has no reason to render, so nothing degraded');
+
+        $tree = $this->flushAndValidate($logger);
+        $this->assertNull(self::eventContextJsonOf($tree, 'cache_error'), 'no write failure to record');
+        $saved = self::eventContextJsonOf($tree, 'save_value');
+        $this->assertNotNull($saved, 'the value was stored');
+        $this->assertStringContainsString('"saved":true', $saved);
     }
 }

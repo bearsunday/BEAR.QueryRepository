@@ -18,7 +18,7 @@ final class SaveDonutContext extends AbstractContext
     public function __construct(
         public readonly string $uri,
         public readonly array $tags,
-        public readonly int|null $ttl,
+        public readonly int|null $requestedTtl,
         public readonly bool $saved,
     ) {
     }

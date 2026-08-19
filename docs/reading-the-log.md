@@ -50,9 +50,9 @@ A session is one tree per request. Nesting is not chronology — it is the struc
 ```text
 get page://self/html/blog-posting          ← a scope: opened, then closed
   get page://self/html/comment             ← an embedded child, nested inside its parent
-    save_value {tags, ttl, saved}          ← an event: something that happened in this scope
+    save_value {tags, requestedTtl, saved} ← an event: something that happened in this scope
     cache_miss {layer: resource}           ← the close: how the scope ended
-  put_donut {ttl, sMaxAge}
+  put_donut {requestedTtl, sMaxAge}
   cache_hit {layer: donut-view}
 ```
 
@@ -89,12 +89,12 @@ operation inside a GET or a command is an ordinary event there instead.
 | Type | Fields | What it tells you |
 |---|---|---|
 | `cache_policy` | `uri`, `expiry`, `expirySecond`, `expiryAt`, `resolvedTtl` | what the resource declared about its lifetime, and what that resolved to |
-| `save_value` | `uri`, `tags`, `ttl`, `saved` | the body was offered to the pool |
-| `save_view` | `uri`, `tags`, `ttl`, `saved` | body + rendered view were offered |
-| `save_etag` | `uri`, `etag`, `tags`, `ttl`, `saved` | the validator was offered to the ETag pool |
-| `save_donut` | `uri`, `tags`, `ttl`, `saved` | the donut template was offered |
-| `save_donut_view` | `uri`, `tags`, `ttl`, `saved` | the recomposed donut view was offered |
-| `put_donut` | `uri`, `ttl`, `sMaxAge` | a donut write was requested, with the lifetime asked for |
+| `save_value` | `uri`, `tags`, `requestedTtl`, `saved` | the body was offered to the pool |
+| `save_view` | `uri`, `tags`, `requestedTtl`, `saved` | body + rendered view were offered |
+| `save_etag` | `uri`, `etag`, `tags`, `requestedTtl`, `saved` | the validator was offered to the ETag pool |
+| `save_donut` | `uri`, `tags`, `requestedTtl`, `saved` | the donut template was offered |
+| `save_donut_view` | `uri`, `tags`, `requestedTtl`, `saved` | the recomposed donut view was offered |
+| `put_donut` | `uri`, `requestedTtl`, `sMaxAge` | a donut write was requested, with the lifetime asked for |
 | `refresh_donut` | `uri` | a cached donut was recomposed rather than served as-is |
 | `cdn_headers` | `uri`, `headers`, `surrogateKeys` | the CDN-facing headers the response actually carried |
 | `depends_on` | `parent`, `child`, `childTags` | one dependency edge: the child's tags were added to the parent |
@@ -119,8 +119,8 @@ Every outcome is a self-describing word, never a bare boolean — except `saved`
 | `operation` | `read` \| `write` | which side of the cache threw |
 | `reason` (`put_skipped`) | `etag-present` \| `error-code` \| `not-cacheable` | why no write happened. `etag-present` = the resource already carried an ETag, so the donut layer left it alone; `not-cacheable` = a donut page re-rendered from its template, which is never stored as a page; `error-code` carries the response `code`, and the threshold differs by path: `#[Cacheable]` skips any non-200 (a `203` appears here), a donut skips 4xx and above |
 | `result` (`manual_*`) | `stored`/`purged`/`invalidated` \| `failed` | the direct call's outcome |
-| `ttl` | seconds | the cache entry's own lifetime. `31536000` is the `never` convention; `0`/`null` = no expiry set |
-| `sMaxAge` (`put_donut`) | seconds | the shared-cache (CDN) lifetime the write asked for — the same argument as `DonutRepositoryInterface::put($ro, ttl: …, sMaxAge: …)`, and not the entry's own `ttl`. `null` = none requested, and `putDonut` always records `null` |
+| `requestedTtl` | seconds | what this package asked the store to keep. `31536000` is the `never` convention; `0`/`null` = it asked for no expiry, which a backend may override (see the rule below) |
+| `sMaxAge` (`put_donut`) | seconds | the shared-cache (CDN) lifetime the write asked for — the same argument as `DonutRepositoryInterface::put($ro, ttl: …, sMaxAge: …)`, and not the entry's own `requestedTtl`. `null` = none requested, and `putDonut` always records `null` |
 | `code` (`put_skipped`) | HTTP status | present only when `reason` is `error-code`; `null` for the other two reasons |
 
 ## Reading rules
@@ -159,10 +159,11 @@ correlation. Any `invalidate` without the marker is a real invalidation.
 which is what serving stale looks like from the inside.
 
 **Read `cache_policy.expiry`, not a TTL, to learn whether an entry is meant to expire.**
-`expiry: "never"` means until invalidation; the number it resolves to is a backstop and depends on
-how the application bound `Expiry` — a default install turns `never` into 31536000 seconds, which
-reads exactly like a deliberate 1-year TTL. `expirySecond` or `expiryAt` being the non-null one
-means the entry expires, and says who decided.
+**`requestedTtl` is what was asked for, not what the store did.** `0`/`null` means this package set no
+expiry, so the entry is meant to live until an invalidation reaches it — but the backend decides
+whether that is possible. `symfony/cache`'s `RedisTagAwareAdapter` gives an unexpiring tagged entry
+8640000 seconds (100 days), because Redis cannot expire tag sets. The effective lifetime is a
+property of the deployment, and the store is where to read it: `TTL <key>` on Redis.
 
 **`cdn_headers` shows what the response really carried**, including a CDN module's silent
 default. A map with no lifetime header is a response that gave the CDN no lifetime directive.
@@ -184,8 +185,8 @@ command {"method": "onPut", "annotations": [], "source": "CommandInterceptor"}
   get {"uri": "page://self/dep/level-three"}
     pre_write_cleanup {"uri": "page://self/dep/level-three"}
     invalidate {"tags": ["_dep_level-three_"], "roPool": "invalidated", "etagPool": "invalidated", "cdn": "skipped"}
-    save_etag {"uri": "page://self/dep/level-three", "tags": ["_dep_level-three_"], "ttl": 31536000, "saved": true}
-    save_value {"uri": "page://self/dep/level-three", "tags": ["_dep_level-three_"], "ttl": 31536000, "saved": true}
+    save_etag {"uri": "page://self/dep/level-three", "tags": ["_dep_level-three_"], "requestedTtl": 31536000, "saved": true}
+    save_value {"uri": "page://self/dep/level-three", "tags": ["_dep_level-three_"], "requestedTtl": 31536000, "saved": true}
     cache_miss {"layer": "resource"}
   purge {"uri": "page://self/dep/level-three"}
   invalidate {"tags": ["_dep_level-three_"], "roPool": "invalidated", "etagPool": "invalidated", "cdn": "skipped"}

@@ -6,15 +6,15 @@
     "type": "object",
     "required": [
         "uri",
-        "ttl",
+        "requestedTtl",
         "sMaxAge"
     ],
     "properties": {
         "uri": {
             "type": "string"
         },
-        "ttl": {
-            "description": "seconds until expiry of the donut template entry (putStatic: the $ttl argument; putDonut: $donutTtl). Interceptor-driven puts log null (no explicit TTL).",
+        "requestedTtl": {
+            "description": "seconds this package asked the store to keep the entry. 0 or null means it asked for no expiry - the entry is meant to live until event-driven invalidation, but a backend may impose its own floor (symfony/cache RedisTagAwareAdapter gives an unexpiring tagged entry 8640000s, since Redis cannot expire tag sets). 31536000 is the `never` convention (365 days). What the store actually did is a property of the deployment: read it there (`TTL <key>` on Redis)",
             "type": [
                 "integer",
                 "null"
