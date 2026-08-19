@@ -254,7 +254,7 @@ class DonutRepositoryTest extends TestCase
         $this->assertNotNull(self::eventContextJsonOf($tree, 'refresh_donut'));
         $saveDonut = self::eventContextJsonOf($tree, 'save_donut');
         $this->assertNotNull($saveDonut);
-        $this->assertStringContainsString('"ttl":0', $saveDonut);
+        $this->assertStringContainsString('"requestedTtl":0', $saveDonut);
         $this->assertStringContainsString('"saved":false', $saveDonut);
     }
 
@@ -276,7 +276,7 @@ class DonutRepositoryTest extends TestCase
 
         $putDonut = self::eventContextJsonOf($tree, 'put_donut');
         $this->assertNotNull($putDonut);
-        $this->assertStringContainsString('"ttl":0', $putDonut);
+        $this->assertStringContainsString('"requestedTtl":0', $putDonut);
         $this->assertStringContainsString('"sMaxAge":0', $putDonut);
     }
 
