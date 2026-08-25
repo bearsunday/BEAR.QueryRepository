@@ -409,8 +409,8 @@ $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class
 $page = $resource->get('page://self/html/blog-posting?id=0');
 $logger->flush(); // drain the GET session: this scenario is about the direct write
 $donutRepository->putStatic($page, ttl: 60, sMaxAge: 30);
-echo 'I  direct putStatic(ttl: 60, sMaxAge: 30) -> put_donut{ttl: 60, sMaxAge: 30}:' . PHP_EOL;
-echo '   the template entry keeps ttl=60 while the rendered view and its ETag take ttl=30,' . PHP_EOL;
+echo 'I  direct putStatic(ttl: 60, sMaxAge: 30) -> put_donut{requestedTtl: 60, sMaxAge: 30}:' . PHP_EOL;
+echo '   the template entry records requestedTtl=60 while the rendered view and its ETag record 30,' . PHP_EOL;
 echo '   and the whole write is rooted in manual_store{,_result} — cleanup invalidate included' . PHP_EOL;
 
 $report($logger->flush(), 'I. donut write through the repository API');

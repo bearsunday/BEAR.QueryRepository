@@ -1,0 +1,600 @@
+=== Donut Cache Demo ===
+
+This demo executes the following scenarios:
+
+1. Initial access to blog-posting
+   - BlogPosting (donut outer shell) is created
+   - Comment (dynamic inner) is embedded
+   - Both donut structure and content are cached
+
+2. Re-access blog-posting
+   - Should be cache-hit (full page from cache)
+
+3. Invalidate comment (inner content only)
+   - Comment cache is purged
+   - Donut structure remains, inner content refreshed
+
+4. Access blog-posting after comment invalidation
+   - Donut is found, but needs refresh
+   - Only Comment is regenerated, donut structure reused
+
+Every donut write and refresh also records what it told the CDN (cdn_headers):
+the literal CDN-Cache-Control the response carries - including the setter's
+default of 10 that no put_donut field reveals - and the Surrogate-Key list a
+purge's tags must reach to drop the page at the edge.
+
+=== Executing... ===
+=== Cache Log Tree ===
+get uri=page://self/html/blog-posting
+├── uri: page://self/html/blog-posting
+├── cache_miss layer=donut [event]
+│   └── layer: donut
+├── put_donut uri=page://self/html/blog-posting [event]
+│   └── uri: page://self/html/blog-posting
+├── cdn_headers uri=page://self/html/blog-posting surrogateKeys=[blog-posting-page, _html_blog-posting_ +2 items] [event]
+│   ├── uri: page://self/html/blog-posting
+│   ├── surrogateKeys[0]: blog-posting-page
+│   ├── surrogateKeys[1]: _html_blog-posting_
+│   ├── surrogateKeys[2]: _html_comment_
+│   └── surrogateKeys[3]: comment01
+├── pre_write_cleanup uri=page://self/html/blog-posting [event]
+│   └── uri: page://self/html/blog-posting
+├── invalidate tags=[_html_blog-posting_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
+│   ├── tags[0]: _html_blog-posting_
+│   ├── roPool: invalidated
+│   ├── etagPool: invalidated
+│   ├── cdn: skipped
+│   └── durationMs: 0.006
+├── save_etag uri=page://self/html/blog-posting etag="4066413688" tags=[blog-posting-page, _html_blog-posting_ +2 items] saved=true [event]
+│   ├── uri: page://self/html/blog-posting
+│   ├── etag: "4066413688"
+│   ├── tags[0]: blog-posting-page
+│   ├── tags[1]: _html_blog-posting_
+│   ├── tags[2]: _html_comment_
+│   ├── tags[3]: comment01
+│   └── saved: 1
+├── save_donut_view uri=page://self/html/blog-posting tags=[_html_blog-posting_, blog-posting-page +2 items] saved=true [event]
+│   ├── uri: page://self/html/blog-posting
+│   ├── tags[0]: _html_blog-posting_
+│   ├── tags[1]: blog-posting-page
+│   ├── tags[2]: _html_comment_
+│   ├── tags[3]: comment01
+│   └── saved: 1
+├── save_donut uri=page://self/html/blog-posting tags=[_html_blog-posting_, blog-posting-page] saved=true [event]
+│   ├── uri: page://self/html/blog-posting
+│   ├── tags[0]: _html_blog-posting_
+│   ├── tags[1]: blog-posting-page
+│   └── saved: 1
+├── get uri=page://self/html/comment
+│   ├── uri: page://self/html/comment
+│   ├── pre_write_cleanup uri=page://self/html/comment [event]
+│   │   └── uri: page://self/html/comment
+│   ├── invalidate tags=[_html_comment_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
+│   │   ├── tags[0]: _html_comment_
+│   │   ├── roPool: invalidated
+│   │   ├── etagPool: invalidated
+│   │   ├── cdn: skipped
+│   │   └── durationMs: 0.106
+│   ├── cache_policy uri=page://self/html/comment expiry=never resolvedTtl=31536000 [event]
+│   │   ├── uri: page://self/html/comment
+│   │   ├── expiry: never
+│   │   └── resolvedTtl: 31536000
+│   ├── save_etag uri=page://self/html/comment etag="1889150619" tags=[comment01, _html_comment_] requestedTtl=31536000 (+1 more) [event]
+│   │   ├── uri: page://self/html/comment
+│   │   ├── etag: "1889150619"
+│   │   ├── tags[0]: comment01
+│   │   ├── tags[1]: _html_comment_
+│   │   ├── requestedTtl: 31536000
+│   │   └── saved: 1
+│   ├── save_value uri=page://self/html/comment tags=[_html_comment_, comment01] requestedTtl=31536000 saved=true [event]
+│   │   ├── uri: page://self/html/comment
+│   │   ├── tags[0]: _html_comment_
+│   │   ├── tags[1]: comment01
+│   │   ├── requestedTtl: 31536000
+│   │   └── saved: 1
+│   └── close
+│       └── layer: resource
+└── close
+    └── layer: donut-view
+get uri=page://self/html/blog-posting
+├── uri: page://self/html/blog-posting
+└── close
+    └── layer: donut-view
+manual_purge uri=page://self/html/comment
+├── uri: page://self/html/comment
+├── invalidate tags=[_html_comment_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
+│   ├── tags[0]: _html_comment_
+│   ├── roPool: invalidated
+│   ├── etagPool: invalidated
+│   ├── cdn: skipped
+│   └── durationMs: 0.004
+└── close
+    └── result: purged
+get uri=page://self/html/blog-posting
+├── uri: page://self/html/blog-posting
+├── cache_hit layer=donut [event]
+│   └── layer: donut
+├── refresh_donut uri=page://self/html/blog-posting [event]
+│   └── uri: page://self/html/blog-posting
+├── cdn_headers uri=page://self/html/blog-posting surrogateKeys=[blog-posting-page, _html_blog-posting_ +2 items] [event]
+│   ├── uri: page://self/html/blog-posting
+│   ├── surrogateKeys[0]: blog-posting-page
+│   ├── surrogateKeys[1]: _html_blog-posting_
+│   ├── surrogateKeys[2]: _html_comment_
+│   └── surrogateKeys[3]: comment01
+├── save_etag uri=page://self/html/blog-posting etag="4066413688" tags=[blog-posting-page, _html_blog-posting_ +2 items] saved=true [event]
+│   ├── uri: page://self/html/blog-posting
+│   ├── etag: "4066413688"
+│   ├── tags[0]: blog-posting-page
+│   ├── tags[1]: _html_blog-posting_
+│   ├── tags[2]: _html_comment_
+│   ├── tags[3]: comment01
+│   └── saved: 1
+├── save_donut_view uri=page://self/html/blog-posting tags=[_html_blog-posting_, blog-posting-page +2 items] saved=true [event]
+│   ├── uri: page://self/html/blog-posting
+│   ├── tags[0]: _html_blog-posting_
+│   ├── tags[1]: blog-posting-page
+│   ├── tags[2]: _html_comment_
+│   ├── tags[3]: comment01
+│   └── saved: 1
+├── get uri=page://self/html/comment
+│   ├── uri: page://self/html/comment
+│   ├── pre_write_cleanup uri=page://self/html/comment [event]
+│   │   └── uri: page://self/html/comment
+│   ├── invalidate tags=[_html_comment_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
+│   │   ├── tags[0]: _html_comment_
+│   │   ├── roPool: invalidated
+│   │   ├── etagPool: invalidated
+│   │   ├── cdn: skipped
+│   │   └── durationMs: 0.003
+│   ├── cache_policy uri=page://self/html/comment expiry=never resolvedTtl=31536000 [event]
+│   │   ├── uri: page://self/html/comment
+│   │   ├── expiry: never
+│   │   └── resolvedTtl: 31536000
+│   ├── save_etag uri=page://self/html/comment etag="1889150619" tags=[comment01, _html_comment_] requestedTtl=31536000 (+1 more) [event]
+│   │   ├── uri: page://self/html/comment
+│   │   ├── etag: "1889150619"
+│   │   ├── tags[0]: comment01
+│   │   ├── tags[1]: _html_comment_
+│   │   ├── requestedTtl: 31536000
+│   │   └── saved: 1
+│   ├── save_value uri=page://self/html/comment tags=[_html_comment_, comment01] requestedTtl=31536000 saved=true [event]
+│   │   ├── uri: page://self/html/comment
+│   │   ├── tags[0]: _html_comment_
+│   │   ├── tags[1]: comment01
+│   │   ├── requestedTtl: 31536000
+│   │   └── saved: 1
+│   └── close
+│       └── layer: resource
+└── close
+    └── layer: donut-view
+
+=== Cache Log JSON ===
+{
+    "$schema": "https://koriym.github.io/Koriym.SemanticLogger/schemas/semantic-log.json",
+    "open": [
+        {
+            "id": "get_1",
+            "type": "get",
+            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/get.json",
+            "context": {
+                "uri": "page://self/html/blog-posting"
+            },
+            "open": [
+                {
+                    "id": "get_2",
+                    "type": "get",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/get.json",
+                    "context": {
+                        "uri": "page://self/html/comment"
+                    },
+                    "events": [
+                        {
+                            "id": "pre_write_cleanup_1",
+                            "type": "pre_write_cleanup",
+                            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/pre_write_cleanup.json",
+                            "context": {
+                                "uri": "page://self/html/comment"
+                            }
+                        },
+                        {
+                            "id": "invalidate_1",
+                            "type": "invalidate",
+                            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/invalidate.json",
+                            "context": {
+                                "tags": [
+                                    "_html_comment_"
+                                ],
+                                "roPool": "invalidated",
+                                "etagPool": "invalidated",
+                                "cdn": "skipped",
+                                "durationMs": 0.106
+                            }
+                        },
+                        {
+                            "id": "cache_policy_1",
+                            "type": "cache_policy",
+                            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_policy.json",
+                            "context": {
+                                "uri": "page://self/html/comment",
+                                "expiry": "never",
+                                "expirySecond": null,
+                                "expiryAt": null,
+                                "resolvedTtl": 31536000
+                            }
+                        },
+                        {
+                            "id": "save_etag_1",
+                            "type": "save_etag",
+                            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
+                            "context": {
+                                "uri": "page://self/html/comment",
+                                "etag": "\"1889150619\"",
+                                "tags": [
+                                    "comment01",
+                                    "_html_comment_"
+                                ],
+                                "requestedTtl": 31536000,
+                                "saved": true
+                            }
+                        },
+                        {
+                            "id": "save_value_1",
+                            "type": "save_value",
+                            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_value.json",
+                            "context": {
+                                "uri": "page://self/html/comment",
+                                "tags": [
+                                    "_html_comment_",
+                                    "comment01"
+                                ],
+                                "requestedTtl": 31536000,
+                                "saved": true
+                            }
+                        }
+                    ],
+                    "close": {
+                        "id": "cache_miss_2",
+                        "type": "cache_miss",
+                        "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
+                        "context": {
+                            "layer": "resource"
+                        }
+                    }
+                }
+            ],
+            "events": [
+                {
+                    "id": "cache_miss_1",
+                    "type": "cache_miss",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
+                    "context": {
+                        "layer": "donut"
+                    }
+                },
+                {
+                    "id": "put_donut_1",
+                    "type": "put_donut",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/put_donut.json",
+                    "context": {
+                        "uri": "page://self/html/blog-posting",
+                        "requestedTtl": null,
+                        "sMaxAge": null
+                    }
+                },
+                {
+                    "id": "cdn_headers_1",
+                    "type": "cdn_headers",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cdn_headers.json",
+                    "context": {
+                        "uri": "page://self/html/blog-posting",
+                        "headers": {
+                            "CDN-Cache-Control": "max-age=10 stale-while-revalidate=10",
+                            "Surrogate-Key": "blog-posting-page _html_blog-posting_ _html_comment_ comment01"
+                        },
+                        "surrogateKeys": [
+                            "blog-posting-page",
+                            "_html_blog-posting_",
+                            "_html_comment_",
+                            "comment01"
+                        ]
+                    }
+                },
+                {
+                    "id": "pre_write_cleanup_2",
+                    "type": "pre_write_cleanup",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/pre_write_cleanup.json",
+                    "context": {
+                        "uri": "page://self/html/blog-posting"
+                    }
+                },
+                {
+                    "id": "invalidate_2",
+                    "type": "invalidate",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/invalidate.json",
+                    "context": {
+                        "tags": [
+                            "_html_blog-posting_"
+                        ],
+                        "roPool": "invalidated",
+                        "etagPool": "invalidated",
+                        "cdn": "skipped",
+                        "durationMs": 0.006
+                    }
+                },
+                {
+                    "id": "save_etag_2",
+                    "type": "save_etag",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
+                    "context": {
+                        "uri": "page://self/html/blog-posting",
+                        "etag": "\"4066413688\"",
+                        "tags": [
+                            "blog-posting-page",
+                            "_html_blog-posting_",
+                            "_html_comment_",
+                            "comment01"
+                        ],
+                        "requestedTtl": null,
+                        "saved": true
+                    }
+                },
+                {
+                    "id": "save_donut_view_1",
+                    "type": "save_donut_view",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_donut_view.json",
+                    "context": {
+                        "uri": "page://self/html/blog-posting",
+                        "tags": [
+                            "_html_blog-posting_",
+                            "blog-posting-page",
+                            "_html_comment_",
+                            "comment01"
+                        ],
+                        "requestedTtl": null,
+                        "saved": true
+                    }
+                },
+                {
+                    "id": "save_donut_1",
+                    "type": "save_donut",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_donut.json",
+                    "context": {
+                        "uri": "page://self/html/blog-posting",
+                        "tags": [
+                            "_html_blog-posting_",
+                            "blog-posting-page"
+                        ],
+                        "requestedTtl": null,
+                        "saved": true
+                    }
+                }
+            ],
+            "close": {
+                "id": "cache_miss_3",
+                "type": "cache_miss",
+                "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
+                "context": {
+                    "layer": "donut-view"
+                }
+            }
+        },
+        {
+            "id": "get_3",
+            "type": "get",
+            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/get.json",
+            "context": {
+                "uri": "page://self/html/blog-posting"
+            },
+            "close": {
+                "id": "cache_hit_1",
+                "type": "cache_hit",
+                "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_hit.json",
+                "context": {
+                    "layer": "donut-view"
+                }
+            }
+        },
+        {
+            "id": "manual_purge_1",
+            "type": "manual_purge",
+            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/manual_purge.json",
+            "context": {
+                "uri": "page://self/html/comment"
+            },
+            "events": [
+                {
+                    "id": "invalidate_3",
+                    "type": "invalidate",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/invalidate.json",
+                    "context": {
+                        "tags": [
+                            "_html_comment_"
+                        ],
+                        "roPool": "invalidated",
+                        "etagPool": "invalidated",
+                        "cdn": "skipped",
+                        "durationMs": 0.004
+                    }
+                }
+            ],
+            "close": {
+                "id": "manual_purge_result_1",
+                "type": "manual_purge_result",
+                "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/manual_purge_result.json",
+                "context": {
+                    "result": "purged"
+                }
+            }
+        },
+        {
+            "id": "get_4",
+            "type": "get",
+            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/get.json",
+            "context": {
+                "uri": "page://self/html/blog-posting"
+            },
+            "open": [
+                {
+                    "id": "get_5",
+                    "type": "get",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/get.json",
+                    "context": {
+                        "uri": "page://self/html/comment"
+                    },
+                    "events": [
+                        {
+                            "id": "pre_write_cleanup_3",
+                            "type": "pre_write_cleanup",
+                            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/pre_write_cleanup.json",
+                            "context": {
+                                "uri": "page://self/html/comment"
+                            }
+                        },
+                        {
+                            "id": "invalidate_4",
+                            "type": "invalidate",
+                            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/invalidate.json",
+                            "context": {
+                                "tags": [
+                                    "_html_comment_"
+                                ],
+                                "roPool": "invalidated",
+                                "etagPool": "invalidated",
+                                "cdn": "skipped",
+                                "durationMs": 0.003
+                            }
+                        },
+                        {
+                            "id": "cache_policy_2",
+                            "type": "cache_policy",
+                            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_policy.json",
+                            "context": {
+                                "uri": "page://self/html/comment",
+                                "expiry": "never",
+                                "expirySecond": null,
+                                "expiryAt": null,
+                                "resolvedTtl": 31536000
+                            }
+                        },
+                        {
+                            "id": "save_etag_3",
+                            "type": "save_etag",
+                            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
+                            "context": {
+                                "uri": "page://self/html/comment",
+                                "etag": "\"1889150619\"",
+                                "tags": [
+                                    "comment01",
+                                    "_html_comment_"
+                                ],
+                                "requestedTtl": 31536000,
+                                "saved": true
+                            }
+                        },
+                        {
+                            "id": "save_value_2",
+                            "type": "save_value",
+                            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_value.json",
+                            "context": {
+                                "uri": "page://self/html/comment",
+                                "tags": [
+                                    "_html_comment_",
+                                    "comment01"
+                                ],
+                                "requestedTtl": 31536000,
+                                "saved": true
+                            }
+                        }
+                    ],
+                    "close": {
+                        "id": "cache_miss_4",
+                        "type": "cache_miss",
+                        "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
+                        "context": {
+                            "layer": "resource"
+                        }
+                    }
+                }
+            ],
+            "events": [
+                {
+                    "id": "cache_hit_2",
+                    "type": "cache_hit",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_hit.json",
+                    "context": {
+                        "layer": "donut"
+                    }
+                },
+                {
+                    "id": "refresh_donut_1",
+                    "type": "refresh_donut",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/refresh_donut.json",
+                    "context": {
+                        "uri": "page://self/html/blog-posting"
+                    }
+                },
+                {
+                    "id": "cdn_headers_2",
+                    "type": "cdn_headers",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cdn_headers.json",
+                    "context": {
+                        "uri": "page://self/html/blog-posting",
+                        "headers": {
+                            "CDN-Cache-Control": "max-age=10 stale-while-revalidate=10",
+                            "Surrogate-Key": "blog-posting-page _html_blog-posting_ _html_comment_ comment01"
+                        },
+                        "surrogateKeys": [
+                            "blog-posting-page",
+                            "_html_blog-posting_",
+                            "_html_comment_",
+                            "comment01"
+                        ]
+                    }
+                },
+                {
+                    "id": "save_etag_4",
+                    "type": "save_etag",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
+                    "context": {
+                        "uri": "page://self/html/blog-posting",
+                        "etag": "\"4066413688\"",
+                        "tags": [
+                            "blog-posting-page",
+                            "_html_blog-posting_",
+                            "_html_comment_",
+                            "comment01"
+                        ],
+                        "requestedTtl": null,
+                        "saved": true
+                    }
+                },
+                {
+                    "id": "save_donut_view_2",
+                    "type": "save_donut_view",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_donut_view.json",
+                    "context": {
+                        "uri": "page://self/html/blog-posting",
+                        "tags": [
+                            "_html_blog-posting_",
+                            "blog-posting-page",
+                            "_html_comment_",
+                            "comment01"
+                        ],
+                        "requestedTtl": null,
+                        "saved": true
+                    }
+                }
+            ],
+            "close": {
+                "id": "cache_hit_3",
+                "type": "cache_hit",
+                "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_hit.json",
+                "context": {
+                    "layer": "donut-view"
+                }
+            }
+        }
+    ]
+}
+Schema validation: OK (36 entries)
