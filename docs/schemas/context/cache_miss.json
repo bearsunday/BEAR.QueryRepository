@@ -5,7 +5,8 @@
     "description": "Close/event: a cache lookup miss at the given layer. Layer `etag` is the conditional-request answer at the transfer boundary: a hit there is the 304 decision, made before any resource runs.",
     "type": "object",
     "required": [
-        "layer"
+        "layer",
+        "durationMs"
     ],
     "properties": {
         "layer": {
@@ -16,6 +17,14 @@
                 "donut-view",
                 "etag"
             ]
+        },
+        "durationMs": {
+            "description": "wall time from the scope opening to this close, in milliseconds. On a hit close this is what serving from the cache cost; on a miss close it is the resource run plus the write it triggered - so the pair says whether the cache is buying anything, and a hit that is not faster than a miss is a cache costing money for nothing. Null on a bare event: an inner lookup has no scope, so it has no duration to report and a zero would read as \"instant\". A measurement, not a contract: it moves with the machine, the pool and the payload.",
+            "type": [
+                "number",
+                "null"
+            ],
+            "minimum": 0
         }
     },
     "additionalProperties": false

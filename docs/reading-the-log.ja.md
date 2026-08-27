@@ -100,7 +100,7 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 | `invalidate` | `tags`, `roPool`, `etagPool`, `cdn`, `durationMs` | タグを無効化した。対象ごとの結果つき |
 | `purge` | `uri` | URI 指定の破棄を要求した |
 | `put_skipped` | `uri`, `reason`, `code` | miss の後に書き込みを**しなかった**ことと、その理由 |
-| `cache_hit` / `cache_miss` | `layer` | 内側の照会。必ず `layer: donut` — donut テンプレートがあったか |
+| `cache_hit` / `cache_miss` | `layer`, `durationMs` | 内側の照会。必ず `layer: donut` — donut テンプレートがあったか |
 | `cache_error` | `uri`, `operation`, `error`, `exceptionClass` | キャッシュ経路が throw した |
 | `pool_error` | `key`, `operation`, `error`, `exceptionClass` | バックエンドが操作を拒み、アダプタが握り潰した |
 | `semantic_logger_error` | `kind`, `message`, … | ロガー自体の誤用(コア側の診断で、このパッケージの語彙ではない) |
@@ -173,6 +173,14 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 リソースは `invalidateTags()` を呼んで無効化し、それは `command` スコープの中ではなく `manual_invalidate`
 として現れます。リソースメソッドの外で起きる書き込みにはインターセプタが一切かかりません。その形では
 直接呼び出しが唯一の道であり、manual スコープがそのイベントを見える場所に留めています。
+
+**close の `durationMs` は「その答えにかかった時間」で、hit と miss の対だけが「このキャッシュに価値が
+あるか」を言えます。** hit の close はプールから配る時間、miss の close はリソース実行とそれが起こした
+書き込みの時間です。つまり `miss - hit` は「節約できた量」ではありません(fill を含む)。意味があるのは
+符号です — **hit が miss より速くないキャッシュは、金を払って何も買っていない**。大きなエントリに対する
+圧縮 marshaller、遅いタグ検索、ネットワーク越しのプールは、内側からはこう見えます。これは計測値であって
+契約ではありません(マシン・プール・ペイロードで動きます)。スコープを持たない event は測る区間がないので
+null です。
 
 **`pool_error` はストアそのもの、`cache_error` はこのパッケージが捕まえた例外です。**
 `symfony/cache` のアダプタはアプリに向けて throw しません。到達できないストアは read には miss、

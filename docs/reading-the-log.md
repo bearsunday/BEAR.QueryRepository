@@ -102,7 +102,7 @@ operation inside a GET or a command is an ordinary event there instead.
 | `invalidate` | `tags`, `roPool`, `etagPool`, `cdn`, `durationMs` | tags were invalidated, with a result per target |
 | `purge` | `uri` | a URI-targeted bust was requested |
 | `put_skipped` | `uri`, `reason`, `code` | a miss was **not** followed by a write, and why |
-| `cache_hit` / `cache_miss` | `layer` | an inner lookup, always `layer: donut` — whether the donut template was there |
+| `cache_hit` / `cache_miss` | `layer`, `durationMs` | an inner lookup, always `layer: donut` — whether the donut template was there. `durationMs` is null here: an event has no scope to measure |
 | `cache_error` | `uri`, `operation`, `error`, `exceptionClass` | the cache path threw |
 | `pool_error` | `key`, `operation`, `error`, `exceptionClass` | the backend refused an operation and the adapter swallowed it |
 | `semantic_logger_error` | `kind`, `message`, … | the logger itself was misused (core diagnostic, not this package's vocabulary) |
@@ -177,6 +177,15 @@ produced an entry - is invalidated by calling `invalidateTags()`, which appears 
 `manual_invalidate` rather than inside a `command` scope. A write outside a resource method has no
 interceptor at all: in that shape the direct call is the only path, and the manual scope is what
 keeps its events visible.
+
+**`durationMs` on a close is what the answer cost, and the pair is the only thing that says the
+cache is worth having.** A hit close measures serving from the pool; a miss close measures the
+resource run and the write it triggered. So `miss - hit` is not "what was saved" - it includes the
+fill - but the sign is the invariant that matters: a hit that is not faster than a miss is a cache
+costing money for nothing, which is what a compressed marshaller on a large entry, a slow tag
+lookup or a pool across the network looks like from the inside. It is a measurement, not a
+contract: it moves with the machine, the pool and the payload, and a bare event carries null
+because it has no scope to measure.
 
 **A `pool_error` is the store itself; a `cache_error` is an exception this package caught.**
 `symfony/cache` adapters never throw at the application: an unreachable store answers a read as a

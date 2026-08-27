@@ -16,8 +16,10 @@ use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 use Throwable;
 
+use function hrtime;
 use function http_response_code;
 use function is_string;
+use function round;
 
 /** @psalm-suppress DeprecatedInterface for BC */
 final readonly class HttpCache implements HttpCacheInterface, DeprecatedHttpCacheInterface
@@ -45,6 +47,8 @@ final readonly class HttpCache implements HttpCacheInterface, DeprecatedHttpCach
         }
 
         $ifNoneMatch = $server[Header::HTTP_IF_NONE_MATCH];
+        // What answering without running the resource cost: this is the whole request on a hit.
+        $start = hrtime(true);
         $openId = $this->logger->open(new ConditionalRequestContext($ifNoneMatch));
         try {
             $hit = $this->storage->hasEtag($ifNoneMatch);
@@ -55,12 +59,13 @@ final readonly class HttpCache implements HttpCacheInterface, DeprecatedHttpCach
             // degrade to a full response instead is the same behavior decision as the
             // donut write and goes to the same issue.
             $this->logger->event(new CacheErrorContext($this->requestUri($server), 'read', $e->getMessage(), $e::class));
-            $this->logger->close(new CacheMissContext('etag'), $openId);
+            $this->logger->close(new CacheMissContext('etag', round((hrtime(true) - $start) / 1_000_000, 3)), $openId);
 
             throw $e;
         }
 
-        $this->logger->close($hit ? new CacheHitContext('etag') : new CacheMissContext('etag'), $openId);
+        $durationMs = round((hrtime(true) - $start) / 1_000_000, 3);
+        $this->logger->close($hit ? new CacheHitContext('etag', $durationMs) : new CacheMissContext('etag', $durationMs), $openId);
 
         return $hit;
     }
