@@ -209,6 +209,11 @@ what the edge holds.
 
 **A `conditional_request` closing `cache_hit{layer: etag}` is a 304** — the whole request
 answered from the ETag pool without running the resource. It is the only place a 304 appears.
+Which question was asked depends on where the application put the check: `isNotModified($server)`
+runs before routing and can only ask whether the validator is alive somewhere, so a validator a
+client obtained for another URI satisfies it. `isNotModifiedFor($uri, $server)` asks whether the
+validator was issued for the resource that was requested, which is the question RFC 9110 §13.1.2
+poses; an application gets it by routing first, which costs a path match and not a resource run.
 
 **A donut `cache_hit` reports the final layer.** Whether the page came from the cache or was
 recomposed on the way out is inside the scope: a `refresh_donut` event means recomposed.

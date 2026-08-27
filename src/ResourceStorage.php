@@ -53,7 +53,7 @@ use function trim;
  *     serverContext: ServerContextInterface
  * }
  */
-final class ResourceStorage implements ResourceStorageInterface
+final class ResourceStorage implements ResourceStorageInterface, ScopedValidatorInterface
 {
     /**
      * Resource object cache prefix
@@ -139,6 +139,27 @@ final class ResourceStorage implements ResourceStorageInterface
         assert($donut instanceof ResourceDonut || $donut === null);
 
         return $donut;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * The stored value is the URI tag the validator was issued for. An entry written before that
+     * was recorded holds the old `etag` placeholder and cannot be scoped, so it answers false: one
+     * full response per client after an upgrade, once.
+     */
+    #[Override]
+    public function hasEtagFor(string $etag, AbstractUri $uri): bool
+    {
+        $uriTag = ($this->uriTag)($uri);
+        foreach ($this->extractOpaqueTags($etag) as $opaqueTag) {
+            $item = $this->etagPool->getItem($opaqueTag);
+            if ($item->isHit() && $item->get() === $uriTag) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -403,8 +424,10 @@ final class ResourceStorage implements ResourceStorageInterface
         $tags[] = ($this->uriTag)($uri);
         /** @var list<string> $uniqueTags */
         $uniqueTags = array_values(array_unique($tags));
-        // The header value is a quoted entity-tag; the pool key is the bare opaque-tag
-        $saved = $this->saver->__invoke(trim($etag, '"'), 'etag', $this->etagPool, $uniqueTags, $ttl);
+        // The header value is a quoted entity-tag; the pool key is the bare opaque-tag. The entry's
+        // value is the URI tag it was issued for - the field used to be the constant 'etag', which
+        // is why a validator from any resource satisfied any request.
+        $saved = $this->saver->__invoke(trim($etag, '"'), ($this->uriTag)($uri), $this->etagPool, $uniqueTags, $ttl);
         $this->logger->event(new SaveEtagContext((string) $uri, $etag, $uniqueTags, $ttl, $saved));
     }
 
