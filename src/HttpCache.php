@@ -119,6 +119,9 @@ final readonly class HttpCache implements HttpCacheInterface, DeprecatedHttpCach
     #[Override]
     public function transfer()
     {
+        // Ignored, not untested: under CLI this function has no response to set and returns false,
+        // so a test could only assert that calling it did nothing. What it does is the SAPI's
+        // behaviour, and the decision that leads here is covered where it is made.
         // @codeCoverageIgnoreStart
         http_response_code(304);
         // @codeCoverageIgnoreEnd
