@@ -33,13 +33,9 @@ use function explode;
 use function hrtime;
 use function implode;
 use function max;
-use function preg_match;
-use function preg_match_all;
 use function round;
 use function sprintf;
-use function str_starts_with;
 use function strtoupper;
-use function substr;
 use function trim;
 
 /**
@@ -64,11 +60,6 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
      * Resource static cache prifix
      */
     private const KEY_DONUT = 'donut-';
-
-    /**
-     * entity-tag (quoted, optionally weak) or a bare legacy token
-     */
-    private const ENTITY_TAG_PATTERN = '(?:W\/)?"[^"]*"|[^,"]+';
 
     /**
      * CDN status when the purge did not throw, indexed by (int) no-CDN:
@@ -151,15 +142,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
     #[Override]
     public function hasEtagFor(string $etag, AbstractUri $uri): bool
     {
-        $uriTag = ($this->uriTag)($uri);
-        foreach ($this->extractOpaqueTags($etag) as $opaqueTag) {
-            $item = $this->etagPool->getItem($opaqueTag);
-            if ($item->isHit() && $item->get() === $uriTag) {
-                return true;
-            }
-        }
-
-        return false;
+        return $this->findEtag($etag, ($this->uriTag)($uri));
     }
 
     /**
@@ -168,51 +151,20 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
     #[Override]
     public function hasEtag(string $etag): bool
     {
-        foreach ($this->extractOpaqueTags($etag) as $opaqueTag) {
-            if ($this->etagPool->hasItem($opaqueTag)) {
+        return $this->findEtag($etag, null);
+    }
+
+    /** Is a live entry for this validator, issued for $uriTag when one is named? */
+    private function findEtag(string $etag, string|null $uriTag): bool
+    {
+        foreach (EntityTags::of($etag) as $opaqueTag) {
+            $item = $this->etagPool->getItem($opaqueTag);
+            if ($item->isHit() && ($uriTag === null || $item->get() === $uriTag)) {
                 return true;
             }
         }
 
         return false;
-    }
-
-    /**
-     * Extract opaque-tags from an If-None-Match field value
-     *
-     * Pool keys are bare opaque-tags, so quoted entity-tags (RFC 9110 §8.8.3),
-     * weak validators, and comma-separated lists are reduced to bare tokens.
-     * A comma inside a quoted opaque-tag is data, not a list separator, and a
-     * bare legacy token (cached before ETags were quoted) passes through unchanged.
-     * The whole field value must parse as a list of entity-tags: a value with an
-     * unterminated quote or trailing garbage is rejected, not salvaged.
-     *
-     * @return list<string>
-     */
-    private function extractOpaqueTags(string $fieldValue): array
-    {
-        $pattern = '(?:' . self::ENTITY_TAG_PATTERN . ')';
-        // \A/\z anchors (not ^/$) and OWS of SP/HTAB per RFC 9110; anything else rejects the whole field value
-        if (! preg_match('/\A[ \t]*' . $pattern . '(?:[ \t]*,[ \t]*' . $pattern . ')*[ \t]*\z/', $fieldValue)) {
-            return [];
-        }
-
-        $opaqueTags = [];
-        // Tokenize as quoted entity-tags (optionally weak) or bare runs, so a comma inside quotes is not split
-        preg_match_all('/' . $pattern . '/', $fieldValue, $entityTags);
-        foreach ($entityTags[0] as $entityTag) {
-            $entityTag = trim($entityTag);
-            if (str_starts_with($entityTag, 'W/')) {
-                $entityTag = substr($entityTag, 2);
-            }
-
-            $opaqueTag = trim($entityTag, '"');
-            if ($opaqueTag !== '') {
-                $opaqueTags[] = $opaqueTag;
-            }
-        }
-
-        return $opaqueTags;
     }
 
     /**
