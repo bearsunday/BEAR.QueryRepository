@@ -86,14 +86,14 @@ final readonly class CliHttpCache implements HttpCacheInterface, UriScopedHttpCa
         }
 
         if (! $this->storage instanceof ScopedValidatorInterface) {
-            // A storage that cannot scope answers the older question; the log still says which
-            // request was decided, so a reader is not left guessing why a 304 was not issued.
+            // A storage that cannot scope answers the older question; a reader of the log can
+            // still see which validator was presented, but not which question was asked.
             return $this->isNotModified($server);
         }
 
         $ifNoneMatch = $server[Header::HTTP_IF_NONE_MATCH];
-        $start = hrtime(true);
         $openId = $this->logger->open(new ConditionalRequestContext($ifNoneMatch));
+        $start = hrtime(true);
         try {
             $hit = $this->storage->hasEtagFor($ifNoneMatch, $uri);
         } catch (Throwable $e) {

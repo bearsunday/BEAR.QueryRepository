@@ -101,6 +101,6 @@ class RefreshInterceptorPurgeTest extends TestCase
         $this->expectException(ReturnValueIsNotResourceObjectException::class);
         $this->expectExceptionMessage(RefreshNotResourceObject::class);
 
-        $this->resource->put('app://self/refresh-not-resource-object', ['id' => 1]);
+        $this->resource->put('app://self/refresh-not-resource-object', []);
     }
 }

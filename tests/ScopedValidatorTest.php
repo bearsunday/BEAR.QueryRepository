@@ -9,6 +9,7 @@ use BEAR\Resource\Uri;
 use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
+use ReflectionProperty;
 
 use function assert;
 
@@ -86,14 +87,35 @@ class ScopedValidatorTest extends TestCase
 
     public function testAQueryOrderDoesNotDecideOwnership(): void
     {
-        // The stored value is the URI tag, which sorts the query: `?a=1&b=2` and `?b=2&a=1` are one
-        // representation, and a client that reorders them is not a different client.
-        $ro = $this->resource->get('app://self/user', ['id' => 3]);
+        // The stored value is the URI tag, which sorts the query: `?id=3&foo=bar` and
+        // `?foo=bar&id=3` are one representation, and a client that reorders them is not a
+        // different client.
+        $ro = $this->resource->get('app://self/user', ['id' => 3, 'foo' => 'bar']);
 
         assert($this->httpCache instanceof UriScopedHttpCacheInterface);
         $this->assertTrue($this->httpCache->isNotModifiedFor(
-            new Uri('app://self/user?id=3'),
+            new Uri('app://self/user?foo=bar&id=3'),
             ['HTTP_IF_NONE_MATCH' => (string) $ro->headers[Header::ETAG]],
         ));
+    }
+
+    public function testAPlaceholderEntryFromAnOlderVersionAnswersFalseScoped(): void
+    {
+        // Upgrading writes new entries with the URI tag, but entries from before still carry the
+        // constant 'etag' placeholder. The scoped answer must be false for those - one full
+        // response per client after upgrade, once - while the unscoped answer stays true.
+        $storage = ResourceStorageTest::getResourceStorageInstance();
+        $user = $this->resource->get('app://self/user', ['id' => 5]);
+        $etag = (string) $user->headers[Header::ETAG];
+        $opaqueTag = trim($etag, '"');
+
+        $refl = new ReflectionProperty($storage, 'etagPool');
+        $pool = $refl->getValue($storage);
+        $item = $pool->getItem($opaqueTag);
+        $item->set('etag'); // pre-PR201 format: constant placeholder, no URI tag
+        $pool->save($item);
+
+        $this->assertTrue($storage->hasEtag($etag));
+        $this->assertFalse($storage->hasEtagFor($etag, new Uri('app://self/user?id=5')));
     }
 }

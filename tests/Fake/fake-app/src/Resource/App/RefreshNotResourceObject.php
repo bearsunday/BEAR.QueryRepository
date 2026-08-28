@@ -20,10 +20,8 @@ class RefreshNotResourceObject extends ResourceObject
 {
     /** @return string the mistake this fixture exists to make */
     #[Refresh(uri: "app://self/refresh-dest{?id}")]
-    public function onPut(mixed $id): string
+    public function onPut(): string
     {
-        unset($id);
-
         return 'not a resource object';
     }
 }
