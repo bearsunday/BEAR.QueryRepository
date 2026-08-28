@@ -51,8 +51,8 @@ final readonly class CliHttpCache implements HttpCacheInterface
         }
 
         // What answering without running the resource cost: this is the whole request on a hit.
-        $start = hrtime(true);
         $openId = $this->logger->open(new ConditionalRequestContext($etag));
+        $start = hrtime(true);
         try {
             $hit = $this->storage->hasEtag($etag);
         } catch (Throwable $e) {

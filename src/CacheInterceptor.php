@@ -57,11 +57,9 @@ final readonly class CacheInterceptor implements MethodInterceptor
     {
         $ro = $invocation->getThis();
         assert($ro instanceof ResourceObject);
-        // What the answer cost, measured around the scope: on a hit this is the pool read, on a
-        // miss it is the resource run and the write it triggered. The pair is what says whether the
-        // cache is buying anything.
-        $start = hrtime(true);
+        // On a hit this is the pool read; on a miss the resource run and the write it triggered.
         $openId = $this->logger->open(new GetContext((string) $ro->uri));
+        $start = hrtime(true);
         $hit = false;
         try {
             try {

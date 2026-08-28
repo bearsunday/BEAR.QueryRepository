@@ -50,8 +50,8 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
         $ro = $invocation->getThis();
         assert($ro instanceof ResourceObject);
         // What the answer cost: a hit reads the recomposed view, a miss renders it.
-        $start = hrtime(true);
         $openId = $this->logger->open(new GetContext((string) $ro->uri));
+        $start = hrtime(true);
         $hit = false;
         try {
             try {

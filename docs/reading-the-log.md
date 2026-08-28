@@ -132,17 +132,20 @@ These are the ones you cannot guess from a field name.
 response code that path will not cache, a validator already present, a donut page served from its
 template — the event names which one.
 
-**`cache_miss` reports that the lookup produced no entry, and two different things produce it.**
+**`cache_miss` reports that the lookup produced no entry, and four different things produce it.**
 The miss itself does not say which:
 
 - **nothing had been stored** — cold, which is normal and self-healing: the next request hits.
 - **the store could not be read** — a `cache_error{operation: read}` in the same scope says so.
   The read threw and the framework ran the resource to build the response instead, which is what
   *degraded* means here: it behaved as if there were no cache.
+- **the write failed** — a `cache_error{operation: write}` in the same scope. The resource ran
+  and the fill attempt threw.
+- **the write was skipped by rule** — `put_skipped` says why (an error code, an existing ETag,
+  a not-cacheable response).
 
-The two behave in opposite ways, which is why they are worth separating. A cold miss fixes itself;
-an unreadable store makes **every** request pay origin cost for as long as the pool is broken, and
-the response is correct throughout, so nothing shows but latency.
+`durationMs` includes the write only for the lone miss and the write-failed miss; read-degraded
+and put-skipped misses measure the resource run only.
 
 **The separation is available in development.** In production the retention policy drops read-only
 sessions, cold and failed alike, so a production log is not where you count degraded misses — read

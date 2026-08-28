@@ -11,6 +11,7 @@ use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 
 use function is_float;
+use function is_int;
 use function json_decode;
 
 /**
@@ -57,7 +58,9 @@ class HitCostLogTest extends TestCase
         $this->assertArrayHasKey('durationMs', $context, (string) $contextJson);
         /** @var mixed $duration */
         $duration = $context['durationMs'] ?? null;
-        $this->assertTrue(is_float($duration), 'a close measures a scope, so it always has a duration');
+        // The log goes through json_encode without JSON_PRESERVE_ZERO_FRACTION, so a
+        // whole-valued duration (1.000 ms) decodes as int. Number, not float.
+        $this->assertTrue(is_int($duration) || is_float($duration), 'a close measures a scope, so it always has a duration');
 
         return (float) $duration;
     }

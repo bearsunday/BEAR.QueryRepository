@@ -48,8 +48,8 @@ final readonly class HttpCache implements HttpCacheInterface, DeprecatedHttpCach
 
         $ifNoneMatch = $server[Header::HTTP_IF_NONE_MATCH];
         // What answering without running the resource cost: this is the whole request on a hit.
-        $start = hrtime(true);
         $openId = $this->logger->open(new ConditionalRequestContext($ifNoneMatch));
+        $start = hrtime(true);
         try {
             $hit = $this->storage->hasEtag($ifNoneMatch);
         } catch (Throwable $e) {

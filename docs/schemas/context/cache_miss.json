@@ -19,7 +19,7 @@
             ]
         },
         "durationMs": {
-            "description": "wall time from the scope opening to this close, in milliseconds. On a hit close this is what serving from the cache cost; on a miss close it is the resource run plus the write it triggered - so the pair says whether the cache is buying anything, and a hit that is not faster than a miss is a cache costing money for nothing. Null on a bare event: an inner lookup has no scope, so it has no duration to report and a zero would read as \"instant\". A measurement, not a contract: it moves with the machine, the pool and the payload.",
+            "description": "wall time from the scope opening to this close, in milliseconds. What is included depends on the layer and the outcome: layer resource/donut-view -> hit = serving from the pool; miss = resource run, and the write it triggered only for the cold (lone) and write-failed cases; layer etag -> the ETag pool lookup only, the resource runs after a false return if at all. Null on a bare event: an inner lookup has no scope, so it has no duration to report and a zero would read as \"instant\". A measurement, not a contract: it moves with the machine, the pool and the payload.",
             "type": [
                 "number",
                 "null"
