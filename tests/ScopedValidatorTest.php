@@ -10,8 +10,10 @@ use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 use ReflectionProperty;
+use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 
 use function assert;
+use function trim;
 
 /**
  * Whose validator is this?
@@ -111,6 +113,7 @@ class ScopedValidatorTest extends TestCase
 
         $refl = new ReflectionProperty($storage, 'etagPool');
         $pool = $refl->getValue($storage);
+        assert($pool instanceof TagAwareAdapterInterface);
         $item = $pool->getItem($opaqueTag);
         $item->set('etag'); // pre-PR201 format: constant placeholder, no URI tag
         $pool->save($item);
