@@ -102,7 +102,7 @@ operation inside a GET or a command is an ordinary event there instead.
 | `invalidate` | `tags`, `roPool`, `etagPool`, `cdn`, `durationMs` | tags were invalidated, with a result per target |
 | `purge` | `uri` | a URI-targeted bust was requested |
 | `put_skipped` | `uri`, `reason`, `code` | a miss was **not** followed by a write, and why |
-| `cache_hit` / `cache_miss` | `layer` | an inner lookup, always `layer: donut` — whether the donut template was there |
+| `cache_hit` / `cache_miss` | `layer`, `durationMs` | an inner lookup, always `layer: donut` — whether the donut template was there. `durationMs` is null here: an event has no scope to measure |
 | `cache_error` | `uri`, `operation`, `error`, `exceptionClass` | the cache path threw |
 | `pool_error` | `key`, `operation`, `error`, `exceptionClass` | the backend refused an operation and the adapter swallowed it |
 | `semantic_logger_error` | `kind`, `message`, … | the logger itself was misused (core diagnostic, not this package's vocabulary) |
@@ -132,17 +132,25 @@ These are the ones you cannot guess from a field name.
 response code that path will not cache, a validator already present, a donut page served from its
 template — the event names which one.
 
-**`cache_miss` reports that the lookup produced no entry, and two different things produce it.**
+**`cache_miss` reports that the lookup produced no entry, and four different things produce it.**
 The miss itself does not say which:
 
 - **nothing had been stored** — cold, which is normal and self-healing: the next request hits.
 - **the store could not be read** — a `cache_error{operation: read}` in the same scope says so.
   The read threw and the framework ran the resource to build the response instead, which is what
   *degraded* means here: it behaved as if there were no cache.
+- **the write failed** — a `cache_error{operation: write}` in the same scope. The resource ran
+  and the fill attempt threw.
+- **the write was skipped by rule** — `put_skipped` says why (an error code, an existing ETag,
+  a not-cacheable response).
 
-The two behave in opposite ways, which is why they are worth separating. A cold miss fixes itself;
-an unreadable store makes **every** request pay origin cost for as long as the pool is broken, and
-the response is correct throughout, so nothing shows but latency.
+`durationMs` includes the write only for the lone miss and the write-failed miss; read-degraded
+misses measure the resource run, and put-skipped misses the resource run plus the purge a non-200
+triggers.
+
+Cold and degraded behave in opposite ways, which is why they are worth separating: a cold miss
+fixes itself, while an unreadable store makes **every** request pay origin cost for as long as
+the pool is broken — and the response is correct throughout, so nothing shows but latency.
 
 **The separation is available in development.** In production the retention policy drops read-only
 sessions, cold and failed alike, so a production log is not where you count degraded misses — read
@@ -177,6 +185,15 @@ produced an entry - is invalidated by calling `invalidateTags()`, which appears 
 `manual_invalidate` rather than inside a `command` scope. A write outside a resource method has no
 interceptor at all: in that shape the direct call is the only path, and the manual scope is what
 keeps its events visible.
+
+**`durationMs` on a close is what the answer cost, and the pair is the only thing that says the
+cache is worth having.** A hit close measures serving from the pool; a miss close measures the
+resource run and the write it triggered. So `miss - hit` is not "what was saved" - it includes the
+fill - but the sign is the invariant that matters: a hit that is not faster than a miss is a cache
+costing money for nothing, which is what a compressed marshaller on a large entry, a slow tag
+lookup or a pool across the network looks like from the inside. It is a measurement, not a
+contract: it moves with the machine, the pool and the payload, and a bare event carries null
+because it has no scope to measure.
 
 **A `pool_error` is the store itself; a `cache_error` is an exception this package caught.**
 `symfony/cache` adapters never throw at the application: an unreachable store answers a read as a

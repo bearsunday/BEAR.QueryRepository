@@ -5,7 +5,8 @@
     "description": "Close/event: a cache lookup miss at the given layer. Layer `etag` is the conditional-request answer at the transfer boundary: a hit there is the 304 decision, made before any resource runs.",
     "type": "object",
     "required": [
-        "layer"
+        "layer",
+        "durationMs"
     ],
     "properties": {
         "layer": {
@@ -16,6 +17,14 @@
                 "donut-view",
                 "etag"
             ]
+        },
+        "durationMs": {
+            "description": "wall time from the scope opening to this close, in milliseconds. What is included depends on the layer and the outcome: layer resource/donut-view -> hit = serving from the pool; miss = resource run, and the write it triggered only for the cold (lone) and write-failed cases; layer etag -> the ETag pool lookup only, the resource runs after a false return if at all. Null on a bare event: an inner lookup has no scope, so it has no duration to report and a zero would read as \"instant\". A measurement, not a contract: it moves with the machine, the pool and the payload.",
+            "type": [
+                "number",
+                "null"
+            ],
+            "minimum": 0
         }
     },
     "additionalProperties": false

@@ -16,8 +16,10 @@ use Override;
 use Throwable;
 
 use function assert;
+use function hrtime;
 use function is_string;
 use function parse_str;
+use function round;
 use function sprintf;
 use function str_replace;
 use function strtoupper;
@@ -48,19 +50,22 @@ final readonly class CliHttpCache implements HttpCacheInterface
             return false;
         }
 
+        // What answering without running the resource cost: this is the whole request on a hit.
         $openId = $this->logger->open(new ConditionalRequestContext($etag));
+        $start = hrtime(true);
         try {
             $hit = $this->storage->hasEtag($etag);
         } catch (Throwable $e) {
             // Same shape as the HTTP-facing HttpCache: record the outage, close the scope
             // as the established idiom reads it, keep the exception's pre-existing path.
             $this->logger->event(new CacheErrorContext($this->requestUri($server), 'read', $e->getMessage(), $e::class));
-            $this->logger->close(new CacheMissContext('etag'), $openId);
+            $this->logger->close(new CacheMissContext('etag', round((hrtime(true) - $start) / 1_000_000, 3)), $openId);
 
             throw $e;
         }
 
-        $this->logger->close($hit ? new CacheHitContext('etag') : new CacheMissContext('etag'), $openId);
+        $durationMs = round((hrtime(true) - $start) / 1_000_000, 3);
+        $this->logger->close($hit ? new CacheHitContext('etag', $durationMs) : new CacheMissContext('etag', $durationMs), $openId);
 
         return $hit;
     }

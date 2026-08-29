@@ -20,6 +20,8 @@ use Ray\Aop\MethodInvocation;
 use Throwable;
 
 use function assert;
+use function hrtime;
+use function round;
 use function sprintf;
 use function trigger_error;
 
@@ -55,7 +57,9 @@ final readonly class CacheInterceptor implements MethodInterceptor
     {
         $ro = $invocation->getThis();
         assert($ro instanceof ResourceObject);
+        // On a hit this is the pool read; on a miss the resource run and the write it triggered.
         $openId = $this->logger->open(new GetContext((string) $ro->uri));
+        $start = hrtime(true);
         $hit = false;
         try {
             try {
@@ -100,10 +104,11 @@ final readonly class CacheInterceptor implements MethodInterceptor
 
             return $ro;
         } finally {
+            $durationMs = round((hrtime(true) - $start) / 1_000_000, 3);
             // Psalm mis-tracks the $hit flag mutated inside try when read from finally.
             /** @psalm-suppress RedundantCondition, TypeDoesNotContainType */
             $this->logger->close(
-                $hit ? new CacheHitContext('resource') : new CacheMissContext('resource'),
+                $hit ? new CacheHitContext('resource', $durationMs) : new CacheMissContext('resource', $durationMs),
                 $openId,
             );
         }
