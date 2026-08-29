@@ -33,13 +33,9 @@ use function explode;
 use function hrtime;
 use function implode;
 use function max;
-use function preg_match;
-use function preg_match_all;
 use function round;
 use function sprintf;
-use function str_starts_with;
 use function strtoupper;
-use function substr;
 use function trim;
 
 /**
@@ -53,7 +49,7 @@ use function trim;
  *     serverContext: ServerContextInterface
  * }
  */
-final class ResourceStorage implements ResourceStorageInterface
+final class ResourceStorage implements ResourceStorageInterface, ScopedValidatorInterface
 {
     /**
      * Resource object cache prefix
@@ -64,11 +60,6 @@ final class ResourceStorage implements ResourceStorageInterface
      * Resource static cache prifix
      */
     private const KEY_DONUT = 'donut-';
-
-    /**
-     * entity-tag (quoted, optionally weak) or a bare legacy token
-     */
-    private const ENTITY_TAG_PATTERN = '(?:W\/)?"[^"]*"|[^,"]+';
 
     /**
      * CDN status when the purge did not throw, indexed by (int) no-CDN:
@@ -143,55 +134,37 @@ final class ResourceStorage implements ResourceStorageInterface
 
     /**
      * {@inheritDoc}
+     *
+     * The stored value is the URI tag the validator was issued for. An entry written before that
+     * was recorded holds the old `etag` placeholder and cannot be scoped, so it answers false: one
+     * full response per client after an upgrade, once.
+     */
+    #[Override]
+    public function hasEtagFor(string $etag, AbstractUri $uri): bool
+    {
+        return $this->findEtag($etag, ($this->uriTag)($uri));
+    }
+
+    /**
+     * {@inheritDoc}
      */
     #[Override]
     public function hasEtag(string $etag): bool
     {
-        foreach ($this->extractOpaqueTags($etag) as $opaqueTag) {
-            if ($this->etagPool->hasItem($opaqueTag)) {
+        return $this->findEtag($etag, null);
+    }
+
+    /** Is a live entry for this validator, issued for $uriTag when one is named? */
+    private function findEtag(string $etag, string|null $uriTag): bool
+    {
+        foreach (EntityTags::of($etag) as $opaqueTag) {
+            $item = $this->etagPool->getItem($opaqueTag);
+            if ($item->isHit() && ($uriTag === null || $item->get() === $uriTag)) {
                 return true;
             }
         }
 
         return false;
-    }
-
-    /**
-     * Extract opaque-tags from an If-None-Match field value
-     *
-     * Pool keys are bare opaque-tags, so quoted entity-tags (RFC 9110 §8.8.3),
-     * weak validators, and comma-separated lists are reduced to bare tokens.
-     * A comma inside a quoted opaque-tag is data, not a list separator, and a
-     * bare legacy token (cached before ETags were quoted) passes through unchanged.
-     * The whole field value must parse as a list of entity-tags: a value with an
-     * unterminated quote or trailing garbage is rejected, not salvaged.
-     *
-     * @return list<string>
-     */
-    private function extractOpaqueTags(string $fieldValue): array
-    {
-        $pattern = '(?:' . self::ENTITY_TAG_PATTERN . ')';
-        // \A/\z anchors (not ^/$) and OWS of SP/HTAB per RFC 9110; anything else rejects the whole field value
-        if (! preg_match('/\A[ \t]*' . $pattern . '(?:[ \t]*,[ \t]*' . $pattern . ')*[ \t]*\z/', $fieldValue)) {
-            return [];
-        }
-
-        $opaqueTags = [];
-        // Tokenize as quoted entity-tags (optionally weak) or bare runs, so a comma inside quotes is not split
-        preg_match_all('/' . $pattern . '/', $fieldValue, $entityTags);
-        foreach ($entityTags[0] as $entityTag) {
-            $entityTag = trim($entityTag);
-            if (str_starts_with($entityTag, 'W/')) {
-                $entityTag = substr($entityTag, 2);
-            }
-
-            $opaqueTag = trim($entityTag, '"');
-            if ($opaqueTag !== '') {
-                $opaqueTags[] = $opaqueTag;
-            }
-        }
-
-        return $opaqueTags;
     }
 
     /**
@@ -403,8 +376,10 @@ final class ResourceStorage implements ResourceStorageInterface
         $tags[] = ($this->uriTag)($uri);
         /** @var list<string> $uniqueTags */
         $uniqueTags = array_values(array_unique($tags));
-        // The header value is a quoted entity-tag; the pool key is the bare opaque-tag
-        $saved = $this->saver->__invoke(trim($etag, '"'), 'etag', $this->etagPool, $uniqueTags, $ttl);
+        // The header value is a quoted entity-tag; the pool key is the bare opaque-tag. The entry's
+        // value is the URI tag it was issued for - the field used to be the constant 'etag', which
+        // is why a validator from any resource satisfied any request.
+        $saved = $this->saver->__invoke(trim($etag, '"'), ($this->uriTag)($uri), $this->etagPool, $uniqueTags, $ttl);
         $this->logger->event(new SaveEtagContext((string) $uri, $etag, $uniqueTags, $ttl, $saved));
     }
 

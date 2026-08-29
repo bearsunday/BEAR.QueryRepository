@@ -61,12 +61,12 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
 
                     return $maybeRo;
                 }
-            } catch (Throwable $e) { // @codeCoverageIgnoreStart
+            } catch (Throwable $e) {
                 // when cache server is down: log it so a miss here is not read as a cold cache
                 $this->logger->event(new CacheErrorContext((string) $ro->uri, 'read', $e->getMessage(), $e::class));
                 $this->triggerWarning($e);
 
-                return $invocation->proceed(); // @codeCoverageIgnoreEnd
+                return $invocation->proceed();
             }
 
             /** @var ResourceObject $ro */
@@ -116,7 +116,6 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
         }
     }
 
-    /** @codeCoverageIgnore */
     private function triggerWarning(Throwable $e): void
     {
         trigger_error(sprintf('%s: %s in %s:%s', $e::class, $e->getMessage(), $e->getFile(), $e->getLine()), E_USER_WARNING);

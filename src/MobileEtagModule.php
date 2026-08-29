@@ -28,6 +28,9 @@ final class MobileEtagModule extends AbstractModule
     protected function configure(): void
     {
         if (! class_exists(MobileDetect::class)) {
+            // Ignored because this package requires mobile-detect/mobiledetectlib in development: with it installed the
+            // branch cannot run, and removing it from require-dev to reach the branch would stop
+            // the rest of this module being tested at all.
             throw new LogicException('Install mobile-detect/mobiledetectlib'); // @codeCoverageIgnore
         }
 

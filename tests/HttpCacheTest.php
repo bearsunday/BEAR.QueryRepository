@@ -9,6 +9,7 @@ use BEAR\QueryRepository\Log\Context\CacheHitContext;
 use BEAR\QueryRepository\Log\Context\CacheMissContext;
 use BEAR\QueryRepository\Log\Context\ConditionalRequestContext;
 use BEAR\Resource\ResourceInterface;
+use BEAR\Resource\Uri;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 use RuntimeException;
@@ -125,6 +126,74 @@ class HttpCacheTest extends TestCase
             $miss = $logger->closes[0];
             assert($miss instanceof CacheMissContext);
             $this->assertSame('etag', $miss->layer, $class);
+        }
+    }
+
+    public function testTheScopedAnswerIsRecordedForBothBoundaries(): void
+    {
+        $resource = (new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld')))->getInstance(ResourceInterface::class);
+        $user = $resource->get('app://self/user', ['id' => 1]);
+        $other = $resource->get('app://self/user', ['id' => 2]);
+        $storage = ResourceStorageTest::getResourceStorageInstance();
+        $storage->saveEtag($user->uri, $user->headers[Header::ETAG], '', 10);
+        $storage->saveEtag($other->uri, $other->headers[Header::ETAG], '', 10);
+
+        // The scoped question, asked of both transfer boundaries: this validator, for this
+        // resource. Another resource's live validator is not an answer about this one.
+        foreach ([HttpCache::class, CliHttpCache::class] as $class) {
+            $logger = new RecordingSemanticLogger();
+            $httpCache = new $class($storage, $logger);
+            $this->assertTrue($httpCache->isNotModifiedFor($user->uri, ['HTTP_IF_NONE_MATCH' => $user->headers[Header::ETAG]]), $class);
+            $this->assertFalse($httpCache->isNotModifiedFor($user->uri, ['HTTP_IF_NONE_MATCH' => $other->headers[Header::ETAG]]), $class);
+            $this->assertFalse($httpCache->isNotModifiedFor($user->uri, []), $class . ': no validator presents nothing');
+
+            $this->assertCount(2, $logger->opens, $class . ': the header-less request records nothing');
+            $hit = $logger->closes[0];
+            assert($hit instanceof CacheHitContext);
+            $this->assertSame('etag', $hit->layer, $class);
+            $this->assertIsFloat($hit->durationMs, $class . ': a close measures its scope');
+        }
+    }
+
+    public function testAStorageThatCannotScopeAnswersTheOlderQuestion(): void
+    {
+        // An application's own ResourceStorageInterface implementation predates the capability.
+        // Falling back keeps its 304s working rather than answering 200 to every revalidation.
+        $resource = (new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld')))->getInstance(ResourceInterface::class);
+        $user = $resource->get('app://self/user', ['id' => 1]);
+        $etag = (string) $user->headers[Header::ETAG];
+        $unscopable = new FakeUnscopableStorage(ResourceStorageTest::getResourceStorageInstance());
+        $unscopable->saveEtag($user->uri, $etag, '', 10);
+
+        foreach ([HttpCache::class, CliHttpCache::class] as $class) {
+            $httpCache = new $class($unscopable, new RecordingSemanticLogger());
+            $this->assertTrue($httpCache->isNotModifiedFor($user->uri, ['HTTP_IF_NONE_MATCH' => $etag]), $class);
+        }
+    }
+
+    public function testTheScopedScopeClosesWhenTheLookupThrows(): void
+    {
+        // Same contract as the unscoped answer: the outage is recorded, the scope is closed, and
+        // the exception keeps its path. An unclosed scope would surface as a diagnostic instead.
+        $storage = ResourceStorageTest::getResourceStorageInstance(etagPool: new TagAwareAdapter(new FakeErrorCache()));
+        $uri = new Uri('app://self/user?id=1');
+
+        foreach ([HttpCache::class, CliHttpCache::class] as $class) {
+            $logger = new RecordingSemanticLogger();
+            $httpCache = new $class($storage, $logger);
+
+            try {
+                $httpCache->isNotModifiedFor($uri, ['HTTP_IF_NONE_MATCH' => '"any"']);
+                $this->fail($class . ': expected the pool outage to surface');
+            } catch (RuntimeException $e) {
+                $this->assertStringContainsString('cache server down', $e->getMessage(), $class);
+            }
+
+            $this->assertCount(1, $logger->closes, $class . ': the scope is closed despite the throw');
+            $error = $logger->events[0];
+            assert($error instanceof CacheErrorContext);
+            $this->assertSame('read', $error->operation, $class);
+            $this->assertSame('app://self/user?id=1', $error->uri, $class);
         }
     }
 }

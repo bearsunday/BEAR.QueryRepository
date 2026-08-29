@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Exception\ReturnValueIsNotResourceObjectException;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
+use FakeVendor\HelloWorld\Resource\App\RefreshNotResourceObject;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
@@ -89,5 +91,16 @@ class RefreshInterceptorPurgeTest extends TestCase
             self::scopeEventTypeSequences($tree),
             'the command scope holds both annotation-driven purges in declaration order',
         );
+    }
+
+    public function testACommandThatDoesNotReturnItsResourceIsNamed(): void
+    {
+        // The interceptor has to refresh something and was handed a string. Continuing would
+        // refresh whatever the URI template resolved against a resource that no longer exists in
+        // this scope, so the class name says what happened and the write stops here.
+        $this->expectException(ReturnValueIsNotResourceObjectException::class);
+        $this->expectExceptionMessage(RefreshNotResourceObject::class);
+
+        $this->resource->put('app://self/refresh-not-resource-object', []);
     }
 }

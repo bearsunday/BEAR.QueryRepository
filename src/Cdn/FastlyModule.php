@@ -23,6 +23,9 @@ final class FastlyModule extends AbstractModule
         parent::__construct($module);
 
         if (! class_exists(FastlyPurgeModule::class)) {
+            // Ignored because this package requires bear/fastly-module in development: with it installed the
+            // branch cannot run, and removing it from require-dev to reach the branch would stop
+            // the rest of this module being tested at all.
             throw new LogicException('Install bear/fastly-module'); // @codeCoverageIgnore
         }
     }

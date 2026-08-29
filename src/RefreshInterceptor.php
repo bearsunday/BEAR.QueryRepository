@@ -46,7 +46,7 @@ final readonly class RefreshInterceptor implements MethodInterceptor
         /** @psalm-suppress MixedAssignment */
         $ro = $invocation->proceed();
         if (! $ro instanceof ResourceObject) {
-            throw new ReturnValueIsNotResourceObjectException($invocation->getThis()::class); // @codeCoverageIgnore
+            throw new ReturnValueIsNotResourceObjectException($invocation->getThis()::class);
         }
 
         // Open the scope even for a failed write: a 4xx command_result with no invalidation

@@ -290,4 +290,46 @@ class GracefulLoggingTest extends TestCase
         $this->assertNotNull($saved, 'the value was stored');
         $this->assertStringContainsString('"saved":true', $saved);
     }
+
+    public function testDonutReadFallsBackToALiveRenderWhenTheStoreIsDown(): void
+    {
+        // The same contract as the `#[Cacheable]` read, on the donut path: a pool that throws
+        // costs latency and a warning, not the page. The two interceptors have separate code for
+        // it, and only one of them was covered - which is how a degrade path rots.
+        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module->override(new class extends AbstractModule {
+            protected function configure(): void
+            {
+                $this->bind(TagAwareAdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->toInstance(new TagAwareAdapter(new FakeErrorCache()));
+            }
+        });
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
+
+        $warningCaught = false;
+        set_error_handler(static function (int $errno) use (&$warningCaught): bool {
+            if ($errno === E_USER_WARNING) {
+                $warningCaught = true;
+
+                return true;
+            }
+
+            return false;
+        });
+        try {
+            $page = $resource->get('page://self/html/blog-posting', ['id' => 0]);
+        } finally {
+            restore_error_handler();
+        }
+
+        $this->assertTrue($warningCaught, 'the donut read warns instead of throwing');
+        $this->assertSame(200, $page->code);
+
+        $tree = $this->flushAndValidate($logger);
+        $error = self::eventContextJsonOf($tree, 'cache_error');
+        $this->assertNotNull($error, 'the outage is recorded, not swallowed');
+        $this->assertStringContainsString('"operation":"read"', $error);
+        $this->assertStringContainsString('cache server down', $error);
+    }
 }
