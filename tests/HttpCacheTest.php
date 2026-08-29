@@ -196,4 +196,25 @@ class HttpCacheTest extends TestCase
             $this->assertSame('app://self/user?id=1', $error->uri, $class);
         }
     }
+
+    public function testAClientChosenUnpoolableTokenIsAMissNotAnError(): void
+    {
+        // Before EntityTags dropped these, `If-None-Match: "x:y"` reached the pool as a key,
+        // Symfony threw InvalidArgumentException, and any client could turn a request into a 500
+        // that logged like a pool outage. Unanswerable tokens are a plain miss at both boundaries.
+        $storage = ResourceStorageTest::getResourceStorageInstance();
+        $uri = new Uri('app://self/user?id=1');
+
+        foreach ([HttpCache::class, CliHttpCache::class] as $class) {
+            $logger = new RecordingSemanticLogger();
+            $httpCache = new $class($storage, $logger);
+
+            $this->assertFalse($httpCache->isNotModified(['HTTP_IF_NONE_MATCH' => '"x:y"']), $class);
+            $this->assertFalse($httpCache->isNotModifiedFor($uri, ['HTTP_IF_NONE_MATCH' => '"a/b, c"']), $class);
+            $this->assertFalse($httpCache->isNotModified(['HTTP_IF_NONE_MATCH' => '*']), $class . ': * is existence semantics, not a key');
+
+            $this->assertCount(0, $logger->events, $class . ': no cache_error - the pool was never asked');
+            $this->assertCount(3, $logger->closes, $class . ': each decision closes as an ordinary miss');
+        }
+    }
 }
