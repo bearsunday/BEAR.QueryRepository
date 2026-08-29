@@ -145,7 +145,12 @@ The miss itself does not say which:
   a not-cacheable response).
 
 `durationMs` includes the write only for the lone miss and the write-failed miss; read-degraded
-and put-skipped misses measure the resource run only.
+misses measure the resource run, and put-skipped misses the resource run plus the purge a non-200
+triggers.
+
+Cold and degraded behave in opposite ways, which is why they are worth separating: a cold miss
+fixes itself, while an unreadable store makes **every** request pay origin cost for as long as
+the pool is broken — and the response is correct throughout, so nothing shows but latency.
 
 **The separation is available in development.** In production the retention policy drops read-only
 sessions, cold and failed alike, so a production log is not where you count degraded misses — read
