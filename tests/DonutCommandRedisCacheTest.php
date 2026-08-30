@@ -27,16 +27,13 @@ class DonutCommandRedisCacheTest extends DonutCommandInterceptorTest
 
     private TagAwareAdapterInterface|null $roPool = null;
 
-    public static function setUpBeforeClass(): void
-    {
-        parent::setUpBeforeClass();
-
-        self::skipWithoutRedisServer();
-    }
-
     protected function setUp(): void
     {
+        // Before the probe: the parent's tearDown validates the log it assigns here, and it runs
+        // for a skipped method too.
         parent::setUp();
+
+        self::skipWithoutRedisServer();
 
         // Override with Redis-backed instances. parent::setUp() assigns the same
         // properties from a non-Redis module, so it must run first.
@@ -46,10 +43,9 @@ class DonutCommandRedisCacheTest extends DonutCommandInterceptorTest
         $module = new FakeEtagPoolModule(ModuleFactory::getInstance($namespace));
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
         $module->override(new StorageRedisDsnModule(self::redisDsn()));
-        // Namespace the pool per test method. The adapter is unnamespaced by default, so its
-        // clear() reaches every key in the database - measured deleting unrelated keys in a
-        // developer's own Redis. A fresh namespace is also cold by construction, which is what
-        // the inherited tests need from a server that outlives the process.
+        // Namespace the pool per test method: the adapter is unnamespaced by default, so its
+        // clear() reaches every key in the database, and a fresh namespace is cold by construction
+        // - which is what the inherited tests need from a server that outlives the process.
         $module->override(new CacheVersionModule(bin2hex(random_bytes(8))));
         $injector = new Injector($module, __DIR__ . '/tmp');
         $this->roPool = $injector->getInstance(TagAwareAdapterInterface::class, ResourceObjectPool::class);

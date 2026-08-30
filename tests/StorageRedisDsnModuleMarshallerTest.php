@@ -14,10 +14,8 @@ final class StorageRedisDsnModuleMarshallerTest extends TestCase
 {
     use RequiresRedisServerTrait;
 
-    public static function setUpBeforeClass(): void
+    protected function setUp(): void
     {
-        parent::setUpBeforeClass();
-
         self::skipWithoutRedisServer();
     }
 
