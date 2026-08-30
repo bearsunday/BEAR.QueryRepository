@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use PHPUnit\Framework\AssertionFailedError;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -47,10 +48,9 @@ final class RequiresRedisServerTraitTest extends TestCase
         ];
     }
 
-    /** @dataProvider unreadableSettings */
+    #[DataProvider('unreadableSettings')]
     public function testAnUnreadableSettingFailsInsteadOfSkipping(string $server): void
     {
-        // Each of these used to become a probe target nobody listens on, reported as "no server".
         $this->expectException(AssertionFailedError::class);
         $this->expectExceptionMessage($server);
 
