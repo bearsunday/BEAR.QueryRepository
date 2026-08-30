@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use function explode;
 use function fclose;
 use function fsockopen;
 use function getenv;
+use function is_array;
 use function is_string;
+use function parse_url;
 use function sprintf;
 
 /**
@@ -23,6 +24,7 @@ use function sprintf;
 trait RequiresRedisServerTrait
 {
     private const REDIS_DEFAULT_SERVER = '127.0.0.1:6379';
+    private const REDIS_DEFAULT_PORT = 6379;
 
     /** Redis server as `{host}:{port}`, so a dev box or a CI service can point elsewhere */
     private static function redisServer(): string
@@ -37,12 +39,30 @@ trait RequiresRedisServerTrait
         return 'redis://' . self::redisServer();
     }
 
+    /**
+     * Host and port of a `{host}` / `{host}:{port}` / `[{ipv6}]:{port}` endpoint
+     *
+     * Splitting on `:` would read `[::1]:6379` as host `[` and no port, and the class would skip
+     * against a server that answers - the false alarm this guard exists to remove. The scheme is
+     * a prefix parse_url needs, not part of the value.
+     *
+     * @return array{0: string, 1: int}
+     */
+    private static function redisEndpoint(string $server): array
+    {
+        $endpoint = parse_url('tcp://' . $server);
+        $host = is_array($endpoint) && isset($endpoint['host']) ? $endpoint['host'] : $server;
+        $port = is_array($endpoint) && isset($endpoint['port']) ? $endpoint['port'] : self::REDIS_DEFAULT_PORT;
+
+        return [$host, $port];
+    }
+
     private static function skipWithoutRedisServer(): void
     {
-        $parts = explode(':', self::redisServer());
+        [$host, $port] = self::redisEndpoint(self::redisServer());
         // Reachability, not a handshake: the adapter is what speaks the protocol, and a test that
         // cannot connect at all is the only case this decides.
-        $connection = @fsockopen($parts[0], (int) ($parts[1] ?? 6379), $errno, $errstr, 1);
+        $connection = @fsockopen($host, $port, $errno, $errstr, 1);
         if ($connection === false) {
             self::markTestSkipped(sprintf('no Redis server on %s', self::redisServer()));
         }
