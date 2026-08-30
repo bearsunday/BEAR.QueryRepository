@@ -21,6 +21,15 @@ use function unserialize;
 /** @requires extension redis */
 class DonutCommandRedisCacheTest extends DonutCommandInterceptorTest
 {
+    use RequiresRedisServerTrait;
+
+    public static function setUpBeforeClass(): void
+    {
+        parent::setUpBeforeClass();
+
+        self::skipWithoutRedisServer();
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -32,7 +41,7 @@ class DonutCommandRedisCacheTest extends DonutCommandInterceptorTest
         $namespace = 'FakeVendor\HelloWorld';
         $module = new FakeEtagPoolModule(ModuleFactory::getInstance($namespace));
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
-        $module->override(new StorageRedisDsnModule('redis://127.0.0.1:6379'));
+        $module->override(new StorageRedisDsnModule(self::redisDsn()));
         $injector = new Injector($module, __DIR__ . '/tmp');
         // The parent's in-memory pool is new in every test method, this Redis server is not:
         // drop what the previous method stored so each inherited test starts from a cold cache.
