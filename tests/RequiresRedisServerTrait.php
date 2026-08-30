@@ -26,7 +26,7 @@ use function substr_count;
  */
 trait RequiresRedisServerTrait
 {
-    private const REDIS_DEFAULT_SERVER = '127.0.0.1:6379';
+    private const REDIS_DEFAULT_HOST = '127.0.0.1';
     private const REDIS_DEFAULT_PORT = 6379;
 
     /** Redis server as `{host}:{port}`, so a dev box or a CI service can point elsewhere */
@@ -34,7 +34,9 @@ trait RequiresRedisServerTrait
     {
         $server = getenv('REDIS_SERVER');
 
-        return is_string($server) && $server !== '' ? $server : self::REDIS_DEFAULT_SERVER;
+        return is_string($server) && $server !== ''
+            ? $server
+            : self::REDIS_DEFAULT_HOST . ':' . self::REDIS_DEFAULT_PORT;
     }
 
     private static function redisDsn(): string
