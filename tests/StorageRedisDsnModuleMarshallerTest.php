@@ -12,10 +12,17 @@ use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 /** @requires extension redis */
 final class StorageRedisDsnModuleMarshallerTest extends TestCase
 {
+    use RequiresRedisServerTrait;
+
+    protected function setUp(): void
+    {
+        self::skipWithoutRedisServer();
+    }
+
     public function testModuleBindings(): void
     {
         $module = new StorageRedisDsnModule(
-            'redis://localhost:6379',
+            self::redisDsn(),
             ['timeout' => 30],
             3600,
             [
@@ -34,7 +41,7 @@ final class StorageRedisDsnModuleMarshallerTest extends TestCase
     public function testMarshallerProviderBinding(): void
     {
         $module = new StorageRedisDsnModule(
-            'redis://localhost:6379',
+            self::redisDsn(),
             [],
             3600,
             [
@@ -52,7 +59,7 @@ final class StorageRedisDsnModuleMarshallerTest extends TestCase
 
     public function testBackwardCompatibilityBindings(): void
     {
-        $module = new StorageRedisDsnModule('redis://localhost:6379', ['timeout' => 30]);
+        $module = new StorageRedisDsnModule(self::redisDsn(), ['timeout' => 30]);
 
         $injector = new Injector($module);
 
@@ -62,7 +69,7 @@ final class StorageRedisDsnModuleMarshallerTest extends TestCase
 
     public function testMarshallerOptionsDefaultValues(): void
     {
-        $module = new StorageRedisDsnModule('redis://localhost:6379');
+        $module = new StorageRedisDsnModule(self::redisDsn());
 
         $injector = new Injector($module);
 
@@ -73,7 +80,7 @@ final class StorageRedisDsnModuleMarshallerTest extends TestCase
     public function testDisabledMarshallerOptions(): void
     {
         $module = new StorageRedisDsnModule(
-            'redis://localhost:6379',
+            self::redisDsn(),
             [],
             0,
             ['enabled' => false],
@@ -88,7 +95,7 @@ final class StorageRedisDsnModuleMarshallerTest extends TestCase
     public function testDefaultLifetimeParameter(): void
     {
         $module = new StorageRedisDsnModule(
-            'redis://localhost:6379',
+            self::redisDsn(),
             [],
             1800,
         );
