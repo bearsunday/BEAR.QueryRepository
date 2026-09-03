@@ -173,6 +173,30 @@ class DonutCacheTest extends TestCase
         $this->assertSame(0, $donut->getRemainingStorageTtl());
     }
 
+    public function testDonutReplaysTheStatusCodeItWasStoredWith(): void
+    {
+        // The refresh path has no page state to read the code from, so the donut carries it.
+        $donut = new ResourceDonut('tmpl', [], null, true, null, null, null, null, 301);
+        $ro = $this->resource->get('page://self/html/comment');
+
+        $donut->refresh($this->resource, $ro);
+
+        $this->assertSame(301, $ro->code);
+    }
+
+    public function testLegacyDonutPayloadLeavesTheStatusCodeAlone(): void
+    {
+        // A payload serialized before the code property existed: the property is
+        // uninitialized, so the refresh leaves whatever code the response already has
+        // rather than overwriting it with a value the entry never recorded.
+        $ro = $this->resource->get('page://self/html/comment');
+        $ro->code = 301;
+
+        $this->legacyDonut()->refresh($this->resource, $ro);
+
+        $this->assertSame(301, $ro->code);
+    }
+
     public function testStorageTagsFallBackToTheSurrogateKeyHeader(): void
     {
         // Donuts stored before the tags were recorded still carry them in the header.
