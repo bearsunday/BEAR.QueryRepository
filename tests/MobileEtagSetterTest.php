@@ -53,6 +53,16 @@ class MobileEtagSetterTest extends TestCase
         $this->assertSame($expected, FakeMobileEtagSetter::$device);
     }
 
+    public function testStatusNotOk(): void
+    {
+        // A validator on a non-200 lets ConditionalResponse::isModified() answer 304 in
+        // place of that response, whatever device the tag was built for.
+        $this->obj->code = 301;
+        ($this->etagSetter)($this->obj, $this->time);
+
+        $this->assertArrayNotHasKey(Header::ETAG, $this->obj->headers);
+    }
+
     public function testModule(): void
     {
         $this->assertInstanceOf(MobileEtagModule::class, new MobileEtagModule());
