@@ -408,8 +408,6 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
     {
         try {
             return $io();
-        } catch (CacheStoreFailure $e) {
-            throw $e;
         } catch (Throwable $e) {
             throw CacheStoreFailure::from($e);
         }

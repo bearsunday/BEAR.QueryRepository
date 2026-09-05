@@ -319,4 +319,70 @@ class GracefulLoggingTest extends TestCase
         $this->assertStringContainsString('"operation":"read"', $error);
         $this->assertStringContainsString('cache server down', $error);
     }
+
+    public function testABrokenCacheableReadKeepsTravelling(): void
+    {
+        // `QueryRepositoryInterface` is a binding an application can replace, so a read can fail
+        // for a reason the store never raised. Degrading that would answer 200 from a defect
+        // nobody sees; only what the store raised is forgiven.
+        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module->override(new class extends AbstractModule {
+            protected function configure(): void
+            {
+                $this->bind(QueryRepositoryInterface::class)->to(FakeDefectiveQueryRepository::class);
+            }
+        });
+
+        $this->assertDefectTravels($module, 'app://self/user?id=1', 'read');
+    }
+
+    public function testABrokenDonutReadKeepsTravelling(): void
+    {
+        // The donut interceptor has its own copy of the decision, which is how one of them rots.
+        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module->override(new class extends AbstractModule {
+            protected function configure(): void
+            {
+                $this->bind(DonutRepositoryInterface::class)->toInstance(new FakeDefectiveDonutRepository('read'));
+            }
+        });
+
+        $this->assertDefectTravels($module, 'page://self/html/blog-posting?id=0', 'read');
+    }
+
+    public function testABrokenDonutWriteKeepsTravelling(): void
+    {
+        // The real write renders the page it stores, so this catch sees a pool outage and a
+        // template bug alike. Only the first degrades: a page that cannot render does not exist.
+        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module->override(new class extends AbstractModule {
+            protected function configure(): void
+            {
+                $this->bind(DonutRepositoryInterface::class)->toInstance(new FakeDefectiveDonutRepository('write'));
+            }
+        });
+
+        $this->assertDefectTravels($module, 'page://self/html/blog-posting?id=0', 'write');
+    }
+
+    /** @param 'read'|'write' $operation */
+    private function assertDefectTravels(AbstractModule $module, string $uri, string $operation): void
+    {
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
+
+        try {
+            $resource->get($uri);
+            $this->fail('expected the defect to surface');
+        } catch (FakeRepositoryDefect $e) {
+            $this->assertSame($operation . ' is broken', $e->getMessage());
+        }
+
+        $tree = $this->flushAndValidate($logger);
+        $error = self::eventContextJsonOf($tree, 'cache_error');
+        $this->assertNotNull($error, 'recorded before it travels');
+        $this->assertStringContainsString('"operation":"' . $operation . '"', $error);
+        $this->assertStringContainsString('FakeRepositoryDefect', $error, 'the defect is named, not a wrapper');
+    }
 }
