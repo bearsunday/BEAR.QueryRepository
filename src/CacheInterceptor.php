@@ -68,7 +68,7 @@ final readonly class CacheInterceptor implements MethodInterceptor
                 // Recorded either way; the store's own failure is the only one this path swallows.
                 // Running the resource answers the request correctly, so a pool outage costs
                 // latency instead of a 500 - but a defect here that returned 200 would be a defect
-                // nobody sees, so anything else keeps travelling (issue #190).
+                // nobody sees, so anything else keeps travelling.
                 $this->logger->event(self::failure((string) $ro->uri, 'read', $e));
                 if (! $e instanceof CacheStoreFailure) {
                     throw $e;
@@ -103,7 +103,7 @@ final readonly class CacheInterceptor implements MethodInterceptor
             } catch (Throwable $e) {
                 // The store refused the write: the response is already correct, so it is served
                 // and the failure is recorded. A render that throws, or a CDN purge that does, is
-                // not the store's failure and keeps its path - see issue #190.
+                // not the store's failure and keeps its path.
                 $this->logger->event(self::failure((string) $ro->uri, 'write', $e));
                 if (! $e instanceof CacheStoreFailure) {
                     throw $e;

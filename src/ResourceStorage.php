@@ -212,7 +212,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
             // Fail-closed, and typed like the rest of the cache path: a command or a direct call
             // has no catch, so this reaches the caller and the write is not reported as done. The
             // automatic write inside a GET does catch it, and degrades - that request changed
-            // nothing, so nothing at the edge became stale by it (issue #190).
+            // nothing, so nothing at the edge became stale by it.
             throw CacheStoreFailure::from($purgerError);
         }
 

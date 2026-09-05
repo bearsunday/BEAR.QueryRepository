@@ -28,7 +28,7 @@ The previous log was a flat op-string format (`RepositoryLoggerInterface`). The 
 | 1 | Store down | `pool_error {key, operation, error, exceptionClass}` — the adapter's own report, carried |
 | 2 | Write refused | `saved` field on all five save contexts (accept/reject) |
 | 3 | No CDN configured | `invalidate.cdn = skipped` (tri-state: `purged` / `failed` / `skipped`) |
-| 4 | CDN purge failure | `invalidate {cdn: failed}` + fail-closed (local pools first, outcome logged, then the exception propagates) |
+| 4 | CDN purge failure | `invalidate {cdn: failed}` + fail-closed (local pools first, outcome logged, then raised - reaching the caller of a command or a direct call) |
 | 5 | Store without rendering | Fixed. The value path falls back to the body with `$ro->view === null`, and the ETag follows the body |
 | 6 | Untagged template | Fixed. Templates are stored under their own URI tag, so `purge($uri)` reaches them |
 | 7 | Lost dependency tracking | Fixed. Declared keys and embed dependencies coexist; tracking is recorded as `depends_on` |

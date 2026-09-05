@@ -28,7 +28,7 @@
 | 1 | ストア停止 | `pool_error {key, operation, error, exceptionClass}` — アダプタ自身の報告をそのまま運ぶ |
 | 2 | 書き込み拒否 | 全 5 save コンテキストの `saved` フィールド（accept/reject） |
 | 3 | CDN 未設定 | `invalidate.cdn = skipped`（tri-state: `purged` / `failed` / `skipped`） |
-| 4 | CDN パージ失敗 | `invalidate {cdn: failed}` + fail-closed（ローカル無効化 → 記録 → 例外伝播） |
+| 4 | CDN パージ失敗 | `invalidate {cdn: failed}` + fail-closed（ローカル無効化 → 記録 → 送出。コマンドや直接呼び出しでは呼び出し元に届く） |
 | 5 | レンダリングなし保存 | 修正済み。value パスは `$ro->view === null` で body にフォールバックし、ETag は body を追う |
 | 6 | 無タグテンプレート | 修正済み。テンプレートは自 URI タグで保存され `purge($uri)` が届く |
 | 7 | 依存追跡の喪失 | 修正済み。宣言キーと埋め込み依存が併存し、`depends_on` で追跡が記録される |

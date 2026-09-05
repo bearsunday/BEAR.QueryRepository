@@ -7,7 +7,7 @@ namespace BEAR\QueryRepository\Exception;
 use Throwable;
 
 /**
- * The cache store failed - the one failure a cache path is allowed to swallow
+ * The cache store failed - the one failure a cache path is allowed to swallow (issue #190)
  *
  * Interceptors degrade rather than fail a request whose response is already correct, and this
  * class is what makes that decision safe to write down. Catching `Throwable` there swallowed
