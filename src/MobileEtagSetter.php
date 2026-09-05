@@ -20,6 +20,13 @@ final class MobileEtagSetter implements EtagSetterInterface
     public function __invoke(ResourceObject $ro, int|null $time = null, HttpCache|null $httpCache = null): void
     {
         unset($httpCache);
+        // A validator on a non-200 makes ConditionalResponse::isModified() answer 304 for a
+        // request whose If-None-Match matches, replacing the 301 or 204 with a Not Modified.
+        // EtagSetter gates on 200 for that reason; these two did not.
+        if ($ro->code !== 200) {
+            return;
+        }
+
         // etag]
         $ro->headers[Header::ETAG] = '"' . crc32($this->getDevice() . serialize($ro->view) . serialize($ro->body)) . '"';
         // time

@@ -31,6 +31,7 @@ final class ResourceDonut
      * @param array<string, string> $headers
      * @param int|null              $lastModified Time when the composed content last actually changed
      * @param list<string>|null     $storageTags  Original invalidation tags for the donut template entry
+     * @param int|null              $code         Status code the page was stored with; null in entries saved before this field existed
      */
     public function __construct(
         private readonly string $template,
@@ -44,6 +45,7 @@ final class ResourceDonut
         private readonly string|null $contentHash = null,
         private readonly int|null $templateExpiresAt = null,
         private readonly array|null $storageTags = null,
+        private readonly int|null $code = null,
     ) {
     }
 
@@ -63,6 +65,11 @@ final class ResourceDonut
 
         $ro->headers = $this->headers;
         $ro->view = $refreshView;
+        // isset() also guards entries serialized before this property existed
+        if (isset($this->code)) {
+            $ro->code = $this->code;
+        }
+
         $etags->setSurrogateHeader($ro);
 
         return $ro;
@@ -117,6 +124,7 @@ final class ResourceDonut
             $this->hashContent((string) $ro->view),
             $templateExpiresAt,
             $storageTags,
+            $this->code ?? null,
         );
     }
 
@@ -140,6 +148,7 @@ final class ResourceDonut
             $contentHash,
             $templateExpiresAt,
             $tags,
+            $this->code ?? null,
         );
     }
 
@@ -172,17 +181,23 @@ final class ResourceDonut
 
     public static function create(ResourceObject $ro, DonutRendererInterface $storage, SurrogateKeys $etags, int|null $ttl, bool $isCacheble): self
     {
-        assert(is_iterable($ro->body));
-        /** @var mixed $maybeRequest */
-        foreach ($ro->body as &$maybeRequest) {
-            if ($maybeRequest instanceof AbstractRequest) {
-                $maybeRequest = new DonutRequest($maybeRequest, $storage, $etags);
+        // A resource with nothing to return leaves its body null - a 204 typically does, while
+        // an #[Embed] would have made it an array - and a null body holds no embedded request
+        // to wrap. It is composed as an empty one rather than refused.
+        assert(is_iterable($ro->body) || $ro->body === null);
+        if (is_iterable($ro->body)) {
+            /** @var mixed $maybeRequest */
+            foreach ($ro->body as &$maybeRequest) {
+                if ($maybeRequest instanceof AbstractRequest) {
+                    $maybeRequest = new DonutRequest($maybeRequest, $storage, $etags);
+                }
             }
+
+            unset($maybeRequest);
         }
 
-        unset($maybeRequest);
         $donutTemplate = (string) $ro;
 
-        return new self($donutTemplate, $ro->headers, $ttl, $isCacheble);
+        return new self($donutTemplate, $ro->headers, $ttl, $isCacheble, code: $ro->code);
     }
 }

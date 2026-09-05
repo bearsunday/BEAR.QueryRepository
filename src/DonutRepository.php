@@ -26,7 +26,6 @@ use Override;
 
 use function array_unique;
 use function array_values;
-use function assert;
 use function explode;
 use function max;
 
@@ -50,6 +49,10 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     {
         $maybeState = $this->queryRepository->get($ro->uri);
         if ($maybeState instanceof ResourceState) {
+            // Field by field rather than ResourceState::visit(): a donut view is stored with an
+            // empty body (ResourceStorage::saveDonutView()) and an unserialized uri, so visit()
+            // would replace a live null body with [] and swap the request's uri object.
+            $ro->code = $maybeState->code;
             $ro->headers = $maybeState->headers;
             $ro->view = $maybeState->view;
 
@@ -233,7 +236,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         // the original Last-Modified instead of advancing it to the recomposition time
         $lastModified = $donut->getUnchangedLastModified((string) $ro->view);
         ($this->headerSetter)($ro, $donut->ttl, null, $lastModified);
-        ($this->cdnCacheControlHeaderSetter)($ro, $donut->ttl);
+        $this->setCdnCacheControl($ro, $donut->ttl);
         $this->logCdnHeaders($ro);
         if ($lastModified === null) {
             $this->recordContentState($ro, $donut);
@@ -315,11 +318,20 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $this->resourceStorage->saveDonut($ro->uri, $donut->withContentState($ro), $remainingTtl, $storageTags);
     }
 
+    /**
+     * Save the page state, and its validator when it has one
+     *
+     * A validator is issued for 200 only (EtagSetter), while the donut save gate lets any
+     * status below 400 through, so a stored 3xx or 204 arrives here with no ETag. The entry
+     * is keyed and invalidated by its URI tag, never by ETag (ResourceStorage::getTags()),
+     * so the save does not need one. Same shape as QueryRepository::doPut().
+     */
     private function saveView(ResourceObject $ro, int|null $ttl): bool
     {
-        assert(isset($ro->headers[Header::ETAG]));
-        $surrogateKeys = $ro->headers[Header::SURROGATE_KEY] ?? '';
-        $this->resourceStorage->saveEtag($ro->uri, $ro->headers[Header::ETAG], $surrogateKeys, $ttl);
+        if (isset($ro->headers[Header::ETAG])) {
+            $surrogateKeys = $ro->headers[Header::SURROGATE_KEY] ?? '';
+            $this->resourceStorage->saveEtag($ro->uri, $ro->headers[Header::ETAG], $surrogateKeys, $ttl);
+        }
 
         return $this->resourceStorage->saveDonutView($ro, $ttl);
     }
@@ -327,8 +339,25 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     private function setHeaders(SurrogateKeys $keys, ResourceObject $ro, int|null $sMaxAge): void
     {
         $keys->setSurrogateHeader($ro);
-        ($this->cdnCacheControlHeaderSetter)($ro, $sMaxAge);
+        $this->setCdnCacheControl($ro, $sMaxAge);
         ($this->headerSetter)($ro, 0, null);
+    }
+
+    /**
+     * Hand the CDN a lifetime for 200 only
+     *
+     * The setters do not read the status code and the Fastly and Akamai defaults are
+     * 31_536_000 seconds - a year - so an unguarded call would tell every shared cache to
+     * hold a 301 or a 204 for that long. The gate sits here rather than in the setters so
+     * it also covers an application's own CdnCacheControlHeaderSetterInterface.
+     */
+    private function setCdnCacheControl(ResourceObject $ro, int|null $sMaxAge): void
+    {
+        if ($ro->code !== 200) {
+            return;
+        }
+
+        ($this->cdnCacheControlHeaderSetter)($ro, $sMaxAge);
     }
 
     /** @return list<string> */
