@@ -118,7 +118,7 @@ Every outcome is a self-describing word, never a bare boolean — except `saved`
 | `roPool` / `etagPool` | `invalidated` \| `failed` | per-pool invalidation result |
 | `cdn` | `purged` \| `failed` \| `skipped` | `skipped` = no purger configured (`NullPurger`), not "nothing to do" |
 | `operation` | `read` \| `write` | which side of the cache threw |
-| `reason` (`put_skipped`) | `etag-present` \| `error-code` \| `not-cacheable` | why no write happened. `etag-present` = the resource already carried an ETag, so the donut layer left it alone; `not-cacheable` = a donut page re-rendered from its template, which is never stored as a page; `error-code` carries the response `code` and covers any non-200 on either path, so a `203` appears here |
+| `reason` (`put_skipped`) | `etag-present` \| `error-code` \| `not-cacheable` | why no write happened. `etag-present` = the resource already carried an ETag, so the donut layer left it alone; `not-cacheable` = a donut page re-rendered from its template, which is never stored as a page; `error-code` carries the response `code`, and the threshold differs by path: `#[Cacheable]` skips any non-200 (a `203` appears here), a donut skips 4xx and above |
 | `result` (`manual_*`) | `stored`/`purged`/`invalidated` \| `failed` | the direct call's outcome |
 | `requestedTtl` | seconds | what this package asked the store to keep. `31536000` is the `never` convention; `0`/`null` = it asked for no expiry, which a backend may override (see the rule below) |
 | `sMaxAge` (`put_donut`) | seconds | the shared-cache (CDN) lifetime the write asked for — the same argument as `DonutRepositoryInterface::put($ro, ttl: …, sMaxAge: …)`, and not the entry's own `requestedTtl`. `null` = none requested, and `putDonut` always records `null` |

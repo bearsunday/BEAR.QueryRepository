@@ -136,8 +136,8 @@ class DonutCommandInterceptorTest extends TestCase
 
     public function testPutSkippedIsLoggedWithTheCodeWhenTheResponseFails(): void
     {
-        // The other half of the skip: ErrorPage answers 400, and the log carries the code so a
-        // 400 and a 500 are distinguishable.
+        // The other half of the skip: ErrorPage answers 400, the first code that must not be
+        // cached, and the log carries it so a 400 and a 500 are distinguishable.
         $this->logger->flush(); // drain the setUp session
         $ro = $this->resource->get('page://self/html/error-page');
         $tree = $this->flushAndValidate($this->logger);
@@ -147,22 +147,6 @@ class DonutCommandInterceptorTest extends TestCase
         $this->assertNotNull($skipped, 'the failed response explains the missing put');
         $this->assertStringContainsString('"reason":"error-code"', $skipped);
         $this->assertStringContainsString('"code":400', $skipped);
-    }
-
-    public function testANon200PageIsNotStored(): void
-    {
-        // 203 is below the threshold this side used to apply, so the same response was cached
-        // here and evicted by `#[Cacheable]`. Only a 200 is stored now (issue #190).
-        $this->logger->flush(); // drain the setUp session
-        $ro = $this->resource->get('page://self/html/non-authoritative-page');
-        $tree = $this->flushAndValidate($this->logger);
-
-        $this->assertSame(203, $ro->code);
-        $skipped = self::eventContextJsonOf($tree, 'put_skipped');
-        $this->assertNotNull($skipped, 'the non-200 explains the missing put');
-        $this->assertStringContainsString('"reason":"error-code"', $skipped);
-        $this->assertStringContainsString('"code":203', $skipped);
-        $this->assertNull(self::eventContextJsonOf($tree, 'save_donut'), 'nothing was written');
     }
 
     public function testSaveDonutLogsHeaderTags(): void

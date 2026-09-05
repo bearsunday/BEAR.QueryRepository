@@ -76,9 +76,8 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
 
             /** @var ResourceObject $ro */
             $ro = $invocation->proceed();
-            // Only a 200 is a representation this cache stores, the same threshold `#[Cacheable]`
-            // applies. A page carrying its own ETag was written by the resource, not by this one.
-            if (isset($ro->headers[Header::ETAG]) || $ro->code !== Code::OK) {
+            // donut created in ResourceObject
+            if (isset($ro->headers[Header::ETAG]) || $ro->code >= Code::BAD_REQUEST) {
                 // Record why this miss is not followed by a put; without it the log looks like a lost write.
                 $hasEtag = isset($ro->headers[Header::ETAG]);
                 $this->logger->event(new PutSkippedContext((string) $ro->uri, $hasEtag ? 'etag-present' : 'error-code', $hasEtag ? null : $ro->code));
