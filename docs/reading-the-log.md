@@ -165,6 +165,17 @@ failures reach the application's warning channel (`trigger_error`), and that is 
 them. A miss nested inside a session kept for another reason — a command, a failed effect — stays
 visible in production.
 
+**A `cache_error` next to a served response is a degrade; one next to no response is a failure.**
+Interceptors swallow exactly one thing: what the cache path itself raised. A pool that cannot be
+read or written costs latency, so the resource runs and the response is served - recorded, and
+raised on the application's warning channel. Anything else the write touches keeps travelling: a
+template that fails to render is not a slow page, it is a page that does not exist. A command or a
+direct `put()`/`purge()`/`invalidateTags()` has no interceptor to degrade it, so a CDN purge that
+fails reaches the caller and the write is never reported as done.
+What the degraded half costs is a cache that can stay empty quietly: every request pays origin
+work while responses stay correct. That is a `cache_error` rate to watch, not a per-request
+exception.
+
 **An `invalidate` is pre-write cleanup iff a `pre_write_cleanup` marker sits immediately before
 it in the same scope.** A writer clears the entry it is about to rewrite, which looks identical
 to a real bust. The marker is recorded at the source, so nothing is inferred from tag

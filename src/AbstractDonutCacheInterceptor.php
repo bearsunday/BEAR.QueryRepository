@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Exception\CacheStoreFailure;
 use BEAR\QueryRepository\Log\Context\CacheErrorContext;
 use BEAR\QueryRepository\Log\Context\CacheHitContext;
 use BEAR\QueryRepository\Log\Context\CacheMissContext;
@@ -63,7 +64,11 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
                 }
             } catch (Throwable $e) {
                 // when cache server is down: log it so a miss here is not read as a cold cache
-                $this->logger->event(new CacheErrorContext((string) $ro->uri, 'read', $e->getMessage(), $e::class));
+                $this->logger->event(self::failure((string) $ro->uri, 'read', $e));
+                if (! $e instanceof CacheStoreFailure) {
+                    throw $e;
+                }
+
                 $this->triggerWarning($e);
 
                 return $invocation->proceed();
@@ -95,13 +100,12 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
     }
 
     /**
-     * Run the donut write, recording a failure in-band before it propagates
+     * Run the donut write, degrading a store failure and recording either way
      *
-     * Without the event the scope shows a put_donut with no saves and no reason,
-     * indistinguishable from an abort - the read side and CacheInterceptor's write side
-     * already record theirs. The exception still propagates: whether a donut write should
-     * degrade to a warning like a plain #[Cacheable] write is a behavior change this
-     * observability rebuild does not make.
+     * A store that refuses the entry leaves a page that was rendered correctly: it is served, and
+     * the failure is recorded rather than turned into a 500. What the store did not raise keeps
+     * travelling - a template that fails to render is not a slow page, it is a page that does not
+     * exist, and swallowing it would answer 200 with nothing in it.
      */
     private function putRecorded(ResourceObject $ro): ResourceObject
     {
@@ -110,10 +114,27 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
                 $this->donutRepository->putStatic($ro, null, null) :
                 $this->donutRepository->putDonut($ro, null);
         } catch (Throwable $e) {
-            $this->logger->event(new CacheErrorContext((string) $ro->uri, 'write', $e->getMessage(), $e::class));
+            $this->logger->event(self::failure((string) $ro->uri, 'write', $e));
+            if (! $e instanceof CacheStoreFailure) {
+                throw $e;
+            }
 
-            throw $e;
+            $this->triggerWarning($e);
+
+            return $ro;
         }
+    }
+
+    /**
+     * Record the throwable that actually failed, not the boundary wrapper
+     *
+     * @param 'read'|'write' $operation
+     */
+    private static function failure(string $uri, string $operation, Throwable $e): CacheErrorContext
+    {
+        $cause = $e instanceof CacheStoreFailure ? $e->getPrevious() ?? $e : $e;
+
+        return new CacheErrorContext($uri, $operation, $cause->getMessage(), $cause::class);
     }
 
     private function triggerWarning(Throwable $e): void

@@ -1,6 +1,6 @@
-# Cache Traceability Report — Next Release (1.16.2 → Unreleased)
+# Cache Traceability Report — 2026-08-19 (`283badd`)
 
-How much the next release improves cache **traceability** and **explicitness**, covering the whole Unreleased section including the seven PRs merged on 2026-08-19 (#191, #192, #193, #194, #195, #196, #198).
+How much cache **traceability** and **explicitness** improved, measured on 2026-08-19 at `283badd` across the seven PRs merged that day (#191, #192, #193, #194, #195, #196, #198). Later Unreleased work is not analysed here; the CHANGELOG is what covers the section as a whole.
 
 ## 1. What 1.16.2 could not observe
 
@@ -28,7 +28,7 @@ The previous log was a flat op-string format (`RepositoryLoggerInterface`). The 
 | 1 | Store down | `pool_error {key, operation, error, exceptionClass}` — the adapter's own report, carried |
 | 2 | Write refused | `saved` field on all five save contexts (accept/reject) |
 | 3 | No CDN configured | `invalidate.cdn = skipped` (tri-state: `purged` / `failed` / `skipped`) |
-| 4 | CDN purge failure | `invalidate {cdn: failed}` + fail-closed (local pools first, outcome logged, then the exception propagates) |
+| 4 | CDN purge failure | `invalidate {cdn: failed}` + fail-closed (local pools first, outcome logged, then raised - reaching the caller of a command or a direct call) |
 | 5 | Store without rendering | Fixed. The value path falls back to the body with `$ro->view === null`, and the ETag follows the body |
 | 6 | Untagged template | Fixed. Templates are stored under their own URI tag, so `purge($uri)` reaches them |
 | 7 | Lost dependency tracking | Fixed. Declared keys and embed dependencies coexist; tracking is recorded as `depends_on` |
@@ -55,7 +55,7 @@ The previous log was a flat op-string format (`RepositoryLoggerInterface`). The 
 
 ## 5. Measured evidence
 
-- Full suite: **283 tests / 812 assertions, green** (1.x tip `283badd`)
+- Full suite at the time of measurement: **283 tests / 812 assertions, green** (1.x tip `283badd`)
 - Every fix PR's pin tests were confirmed FAIL on the old code (reproduction before fix):
   - #193: old code reached `FakeThrowingRenderer` and degraded to a warning; the ETag did not follow the body
   - #194: old code recorded `save_donut` with `"tags":[]` — untagged = unreachable, observed at event level

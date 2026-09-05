@@ -132,7 +132,7 @@ class GracefulLoggingTest extends TestCase
         $this->assertStringContainsString('"layer":"resource"', $close);
     }
 
-    public function testCacheErrorRecordsTheClassOfAStoreSideFailureThatIsNotAnOutage(): void
+    public function testARenderFailureOnTheWritePathKeepsTravelling(): void
     {
         $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
         $module->override(new class extends AbstractModule {
@@ -146,30 +146,19 @@ class GracefulLoggingTest extends TestCase
         $resource = $injector->getInstance(ResourceInterface::class);
         $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
-        $warningCaught = false;
-        set_error_handler(static function (int $errno) use (&$warningCaught): bool {
-            if ($errno === E_USER_WARNING) {
-                $warningCaught = true;
-
-                return true; // swallow the failed-store warning
-            }
-
-            return false;
-        });
+        // A `type: 'view'` entry: the render is the write. A page that cannot render is not a slow
+        // page, it is a page that does not exist, so this failure is recorded and then travels -
+        // only what the store itself raised degrades (issue #190).
         try {
-            // A `type: 'view'` entry: the render is the write. A value entry is stored without
-            // rendering, so a renderer that throws cannot reach its write path at all.
-            $ro = $resource->get('page://self/html/like');
-        } finally {
-            restore_error_handler();
+            $resource->get('page://self/html/like');
+            $this->fail('expected the render failure to surface');
+        } catch (FakeTemplateNotFound $e) {
+            $this->assertStringContainsString('template not found', $e->getMessage());
         }
-
-        $this->assertTrue($warningCaught, 'a failed store degrades to a warning, as a cache-down read does');
-        $this->assertSame(200, $ro->code, 'the response is served even though it was never stored');
 
         $tree = $this->flushAndValidate($logger);
         $error = self::eventContextJsonOf($tree, 'cache_error');
-        $this->assertNotNull($error, 'the failed store is recorded, not swallowed');
+        $this->assertNotNull($error, 'the failure is recorded before it travels');
         $this->assertStringContainsString('page://self/html/like', $error);
         $this->assertStringContainsString('"operation":"write"', $error);
         // The class is what separates this from the cache-down case above: same context,
@@ -211,7 +200,7 @@ class GracefulLoggingTest extends TestCase
         $this->assertStringContainsString('"result":"failed"', $close);
     }
 
-    public function testDonutWriteFailureIsRecordedBeforeItPropagates(): void
+    public function testDonutWriteFailureIsRecordedAndTheRenderedPageIsStillServed(): void
     {
         $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
@@ -227,16 +216,14 @@ class GracefulLoggingTest extends TestCase
         $resource = $injector->getInstance(ResourceInterface::class);
         $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
-        // A donut write meeting a pool outage propagates (whether it should degrade like a
-        // plain #[Cacheable] write is a behavior change this rebuild does not make) - but it
-        // must be recorded in-band first. Without the event the scope shows a put_donut with
-        // no saves and no reason: indistinguishable from an abort.
-        set_error_handler(static fn (): bool => true); // the embedded #[Cacheable] comment degrades with a warning
+        // A donut write meeting a pool outage degrades like a plain #[Cacheable] write: the page
+        // was rendered correctly, so it is served and the failure is recorded in-band. Without the
+        // event the scope would show a put_donut with no saves and no reason - indistinguishable
+        // from an abort (issue #190).
+        set_error_handler(static fn (): bool => true); // both writes degrade with a warning
         try {
-            $resource->get('page://self/html/blog-posting');
-            $this->fail('expected the pool outage to surface from the donut write');
-        } catch (RuntimeException $e) {
-            $this->assertStringContainsString('cache server down', $e->getMessage());
+            $ro = $resource->get('page://self/html/blog-posting');
+            $this->assertSame(200, $ro->code, 'the rendered page is served even though nothing was stored');
         } finally {
             restore_error_handler();
         }
@@ -331,5 +318,71 @@ class GracefulLoggingTest extends TestCase
         $this->assertNotNull($error, 'the outage is recorded, not swallowed');
         $this->assertStringContainsString('"operation":"read"', $error);
         $this->assertStringContainsString('cache server down', $error);
+    }
+
+    public function testABrokenCacheableReadKeepsTravelling(): void
+    {
+        // `QueryRepositoryInterface` is a binding an application can replace, so a read can fail
+        // for a reason the store never raised. Degrading that would answer 200 from a defect
+        // nobody sees; only what the store raised is forgiven.
+        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module->override(new class extends AbstractModule {
+            protected function configure(): void
+            {
+                $this->bind(QueryRepositoryInterface::class)->to(FakeDefectiveQueryRepository::class);
+            }
+        });
+
+        $this->assertDefectTravels($module, 'app://self/user?id=1', 'read');
+    }
+
+    public function testABrokenDonutReadKeepsTravelling(): void
+    {
+        // The donut interceptor has its own copy of the decision, which is how one of them rots.
+        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module->override(new class extends AbstractModule {
+            protected function configure(): void
+            {
+                $this->bind(DonutRepositoryInterface::class)->toInstance(new FakeDefectiveDonutRepository('read'));
+            }
+        });
+
+        $this->assertDefectTravels($module, 'page://self/html/blog-posting?id=0', 'read');
+    }
+
+    public function testABrokenDonutWriteKeepsTravelling(): void
+    {
+        // The real write renders the page it stores, so this catch sees a pool outage and a
+        // template bug alike. Only the first degrades: a page that cannot render does not exist.
+        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module->override(new class extends AbstractModule {
+            protected function configure(): void
+            {
+                $this->bind(DonutRepositoryInterface::class)->toInstance(new FakeDefectiveDonutRepository('write'));
+            }
+        });
+
+        $this->assertDefectTravels($module, 'page://self/html/blog-posting?id=0', 'write');
+    }
+
+    /** @param 'read'|'write' $operation */
+    private function assertDefectTravels(AbstractModule $module, string $uri, string $operation): void
+    {
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
+
+        try {
+            $resource->get($uri);
+            $this->fail('expected the defect to surface');
+        } catch (FakeRepositoryDefect $e) {
+            $this->assertSame($operation . ' is broken', $e->getMessage());
+        }
+
+        $tree = $this->flushAndValidate($logger);
+        $error = self::eventContextJsonOf($tree, 'cache_error');
+        $this->assertNotNull($error, 'recorded before it travels');
+        $this->assertStringContainsString('"operation":"' . $operation . '"', $error);
+        $this->assertStringContainsString('FakeRepositoryDefect', $error, 'the defect is named, not a wrapper');
     }
 }

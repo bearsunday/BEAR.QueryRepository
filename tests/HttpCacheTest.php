@@ -12,10 +12,13 @@ use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
-use RuntimeException;
 use Symfony\Component\Cache\Adapter\TagAwareAdapter;
 
 use function assert;
+use function restore_error_handler;
+use function set_error_handler;
+
+use const E_USER_WARNING;
 
 class HttpCacheTest extends TestCase
 {
@@ -65,6 +68,22 @@ class HttpCacheTest extends TestCase
         $this->assertTrue($httpCache->isNotModified($server));
     }
 
+    public function testIsNotModifiedForUnderstandsTheCliArgvForm(): void
+    {
+        $injector = new Injector(new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld')), __DIR__ . '/tmp');
+        $storage = $injector->getInstance(ResourceStorageInterface::class);
+        $storage->saveEtag(new Uri('page://self/x'), '"abc"', '', null);
+        $httpCache = new CliHttpCache($storage);
+        $server = [
+            'argc' => 4,
+            'argv' => ['bootstrap', 'get', 'page://self/x', 'If-None-Match="abc"'],
+        ];
+
+        $this->assertTrue($httpCache->isNotModifiedFor(new Uri('page://self/x'), $server), 'the CLI argv form carries the same validator isNotModified() reads');
+        $this->assertFalse($httpCache->isNotModifiedFor(new Uri('page://self/y'), $server), 'another resource\'s live validator is not an answer about this one');
+        $this->assertTrue($httpCache->isNotModifiedFor(new Uri('page://self/x'), ['HTTP_IF_NONE_MATCH' => '"abc"']), 'the HTTP form still matches');
+    }
+
     public function testConditionalRequestAnswerIsRecorded(): void
     {
         $resource = (new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld')))->getInstance(ResourceInterface::class);
@@ -98,34 +117,34 @@ class HttpCacheTest extends TestCase
         }
     }
 
-    public function testConditionalRequestScopeClosesWhenTheLookupThrows(): void
+    public function testAnUnreadableEtagPoolAnswersTheRequestInFull(): void
     {
-        // The ETag pool is down: the exception keeps its pre-existing path, but the scope
-        // must not leak - it records the outage and closes as the established idiom reads
-        // it (cache_error + cache_miss = degraded, lone miss = cold). An unclosed scope
-        // would surface as an unclosed_at_flush diagnostic instead of a record.
+        // The ETag pool is down: a validator that cannot be read is a validator that does not
+        // match, so the request is answered in full rather than failed (issue #190). The scope
+        // still closes - an unclosed one would surface as an unclosed_at_flush diagnostic - and
+        // records the outage as the established idiom reads it: cache_error + cache_miss.
         $storage = ResourceStorageTest::getResourceStorageInstance(etagPool: new TagAwareAdapter(new FakeErrorCache()));
 
         foreach ([HttpCache::class, CliHttpCache::class] as $class) {
             $logger = new RecordingSemanticLogger();
             $httpCache = new $class($storage, $logger);
 
+            $warned = false;
+            set_error_handler(static function (int $errno) use (&$warned): bool {
+                $warned = $warned || $errno === E_USER_WARNING;
+
+                return true;
+            });
             try {
-                $httpCache->isNotModified(['HTTP_IF_NONE_MATCH' => '"any"', 'REQUEST_URI' => '/user?id=1']);
-                $this->fail($class . ': expected the pool outage to surface');
-            } catch (RuntimeException $e) {
-                $this->assertStringContainsString('cache server down', $e->getMessage(), $class);
+                $notModified = $httpCache->isNotModified(['HTTP_IF_NONE_MATCH' => '"any"', 'REQUEST_URI' => '/user?id=1']);
+            } finally {
+                restore_error_handler();
             }
 
+            $this->assertFalse($notModified, $class . ': an unreadable validator cannot match');
+            $this->assertTrue($warned, $class . ': the outage reaches the warning channel');
             $this->assertCount(1, $logger->opens, $class);
-            $this->assertCount(1, $logger->closes, $class . ': the scope is closed despite the throw');
-            $error = $logger->events[0];
-            assert($error instanceof CacheErrorContext);
-            $this->assertSame('read', $error->operation, $class);
-            $this->assertSame('/user?id=1', $error->uri, $class);
-            $miss = $logger->closes[0];
-            assert($miss instanceof CacheMissContext);
-            $this->assertSame('etag', $miss->layer, $class);
+            $this->assertCount(1, $logger->closes, $class . ': the scope is closed');
         }
     }
 
@@ -171,10 +190,9 @@ class HttpCacheTest extends TestCase
         }
     }
 
-    public function testTheScopedScopeClosesWhenTheLookupThrows(): void
+    public function testTheScopedAnswerDegradesWhenTheLookupThrows(): void
     {
-        // Same contract as the unscoped answer: the outage is recorded, the scope is closed, and
-        // the exception keeps its path. An unclosed scope would surface as a diagnostic instead.
+        // The same decision as the unscoped answer, recorded against the URI that was asked for.
         $storage = ResourceStorageTest::getResourceStorageInstance(etagPool: new TagAwareAdapter(new FakeErrorCache()));
         $uri = new Uri('app://self/user?id=1');
 
@@ -182,14 +200,21 @@ class HttpCacheTest extends TestCase
             $logger = new RecordingSemanticLogger();
             $httpCache = new $class($storage, $logger);
 
+            $warned = false;
+            set_error_handler(static function (int $errno) use (&$warned): bool {
+                $warned = $warned || $errno === E_USER_WARNING;
+
+                return true;
+            });
             try {
-                $httpCache->isNotModifiedFor($uri, ['HTTP_IF_NONE_MATCH' => '"any"']);
-                $this->fail($class . ': expected the pool outage to surface');
-            } catch (RuntimeException $e) {
-                $this->assertStringContainsString('cache server down', $e->getMessage(), $class);
+                $notModified = $httpCache->isNotModifiedFor($uri, ['HTTP_IF_NONE_MATCH' => '"any"']);
+            } finally {
+                restore_error_handler();
             }
 
-            $this->assertCount(1, $logger->closes, $class . ': the scope is closed despite the throw');
+            $this->assertFalse($notModified, $class . ': an unreadable validator cannot match');
+            $this->assertTrue($warned, $class . ': the outage reaches the warning channel');
+            $this->assertCount(1, $logger->closes, $class . ': the scope is closed');
             $error = $logger->events[0];
             assert($error instanceof CacheErrorContext);
             $this->assertSame('read', $error->operation, $class);

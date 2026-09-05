@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\QueryRepository\Exception\LogicException;
+use BEAR\QueryRepository\Exception\CacheStoreFailure;
 use BEAR\QueryRepository\Log\Context\CacheErrorContext;
 use BEAR\QueryRepository\Log\Context\CacheHitContext;
 use BEAR\QueryRepository\Log\Context\CacheMissContext;
@@ -65,8 +65,15 @@ final readonly class CacheInterceptor implements MethodInterceptor
             try {
                 $state = $this->repository->get($ro->uri);
             } catch (Throwable $e) {
-                // The cache read path is degraded: log it so a miss here is not read as a cold cache
-                $this->logger->event(new CacheErrorContext((string) $ro->uri, 'read', $e->getMessage(), $e::class));
+                // Recorded either way; the store's own failure is the only one this path swallows.
+                // Running the resource answers the request correctly, so a pool outage costs
+                // latency instead of a 500 - but a defect here that returned 200 would be a defect
+                // nobody sees, so anything else keeps travelling.
+                $this->logger->event(self::failure((string) $ro->uri, 'read', $e));
+                if (! $e instanceof CacheStoreFailure) {
+                    throw $e;
+                }
+
                 $this->triggerWarning($e);
 
                 return $invocation->proceed();
@@ -93,12 +100,15 @@ final readonly class CacheInterceptor implements MethodInterceptor
                 }
 
                 $this->repository->put($ro);
-            } catch (LogicException $e) {
-                throw $e;
             } catch (Throwable $e) {
-                // Anything the store path raised, pool outage or not (a view that fails to
-                // render, a CDN purge): the class says which, so the reader is not guessing.
-                $this->logger->event(new CacheErrorContext((string) $ro->uri, 'write', $e->getMessage(), $e::class));
+                // The store refused the write: the response is already correct, so it is served
+                // and the failure is recorded. A render that throws, or a CDN purge that does, is
+                // not the store's failure and keeps its path.
+                $this->logger->event(self::failure((string) $ro->uri, 'write', $e));
+                if (! $e instanceof CacheStoreFailure) {
+                    throw $e;
+                }
+
                 $this->triggerWarning($e);
             }
 
@@ -112,6 +122,18 @@ final readonly class CacheInterceptor implements MethodInterceptor
                 $openId,
             );
         }
+    }
+
+    /**
+     * Record the throwable that actually failed, not the boundary wrapper
+     *
+     * @param 'read'|'write' $operation
+     */
+    private static function failure(string $uri, string $operation, Throwable $e): CacheErrorContext
+    {
+        $cause = $e instanceof CacheStoreFailure ? $e->getPrevious() ?? $e : $e;
+
+        return new CacheErrorContext($uri, $operation, $cause->getMessage(), $cause::class);
     }
 
     /**

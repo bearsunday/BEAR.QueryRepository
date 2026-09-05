@@ -1,6 +1,6 @@
-# キャッシュ追跡可能性レポート — 次期リリース（1.16.2 → Unreleased）
+# キャッシュ追跡可能性レポート — 2026-08-19（`283badd`）
 
-2026-08-19 にマージされた 7 PR（#191, #192, #193, #194, #195, #196, #198）を含む Unreleased セクション全体について、キャッシュの「追跡可能性（traceability）」と「明示性（explicitness）」がどれだけ高まったかをまとめる。
+キャッシュの「追跡可能性（traceability）」と「明示性（explicitness）」がどれだけ高まったかを、2026-08-19 時点の `283badd` で、同日マージの 7 PR（#191, #192, #193, #194, #195, #196, #198）について測ったもの。それ以降の Unreleased の作業はここでは扱わない。セクション全体を見るのは CHANGELOG。
 
 ## 1. 前版（1.16.2）で観測不可能だったもの
 
@@ -28,7 +28,7 @@
 | 1 | ストア停止 | `pool_error {key, operation, error, exceptionClass}` — アダプタ自身の報告をそのまま運ぶ |
 | 2 | 書き込み拒否 | 全 5 save コンテキストの `saved` フィールド（accept/reject） |
 | 3 | CDN 未設定 | `invalidate.cdn = skipped`（tri-state: `purged` / `failed` / `skipped`） |
-| 4 | CDN パージ失敗 | `invalidate {cdn: failed}` + fail-closed（ローカル無効化 → 記録 → 例外伝播） |
+| 4 | CDN パージ失敗 | `invalidate {cdn: failed}` + fail-closed（ローカル無効化 → 記録 → 送出。コマンドや直接呼び出しでは呼び出し元に届く） |
 | 5 | レンダリングなし保存 | 修正済み。value パスは `$ro->view === null` で body にフォールバックし、ETag は body を追う |
 | 6 | 無タグテンプレート | 修正済み。テンプレートは自 URI タグで保存され `purge($uri)` が届く |
 | 7 | 依存追跡の喪失 | 修正済み。宣言キーと埋め込み依存が併存し、`depends_on` で追跡が記録される |
@@ -55,7 +55,7 @@
 
 ## 5. 実測エビデンス
 
-- 全スイート **283 tests / 812 assertions 緑**（1.x 先端 `283badd`）
+- 測定時点の全スイート **283 tests / 812 assertions 緑**（1.x 先端 `283badd`）
 - 修正系 PR の pin テストは旧コードで FAIL を確認済み（バグの再現性を検証してから修正）:
   - #193: 旧コードで `FakeThrowingRenderer` に到達し warning 化、ETag が body を追わない
   - #194: 旧コードで `save_donut` が `"tags":[]` を記録（無タグ = 無効化不能をイベントレベルで実測）
