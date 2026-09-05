@@ -353,6 +353,109 @@ class DonutRepositoryTest extends TestCase
         $this->assertStringContainsString('"result":"failed"', $close);
     }
 
+    /**
+     * A 301 is stored and replayed as a 301
+     *
+     * The donut save gate skips 4xx and above only, so a 301 is stored, and the state
+     * carries the code. Until it was restored the page answered 200 - with the Location
+     * header still attached - from the second request on.
+     */
+    public function testRedirectStatusSurvivesTheCacheHit(): void
+    {
+        $resource = $this->getInjector()->getInstance(ResourceInterface::class);
+
+        $miss = $resource->get('page://self/html/redirect-page');
+        $this->assertSame(301, $miss->code, 'first request, cache miss');
+        $hit = $resource->get('page://self/html/redirect-page');
+        $this->assertSame(301, $hit->code, 'second request, cache hit');
+        $this->assertSame('/html/blog-posting?id=0', $hit->headers['Location']);
+    }
+
+    /**
+     * A stored 301 carries no validator and no CDN lifetime, but stays purgeable
+     *
+     * A validator on a 301 would let ConditionalResponse::isModified() answer 304 in its
+     * place, and the Fastly and Akamai lifetime defaults are a year. Surrogate-Key is the
+     * one header a stored 3xx does need: without it no invalidateTags() call reaches the
+     * entry, and the redirect outlives the reason for it.
+     */
+    public function testStoredRedirectCarriesNoValidatorAndNoCdnLifetime(): void
+    {
+        $resource = $this->getInjector()->getInstance(ResourceInterface::class);
+
+        $responses = ['cache miss' => $resource->get('page://self/html/redirect-page'), 'cache hit' => $resource->get('page://self/html/redirect-page')];
+        foreach ($responses as $when => $ro) {
+            $this->assertArrayNotHasKey(Header::ETAG, $ro->headers, $when);
+            $this->assertArrayNotHasKey(Header::LAST_MODIFIED, $ro->headers, $when);
+            $this->assertArrayNotHasKey(Header::CDN_CACHE_CONTROL, $ro->headers, $when);
+            $this->assertArrayHasKey(Header::SURROGATE_KEY, $ro->headers, $when);
+        }
+    }
+
+    /**
+     * A 202 recomposed from its donut template is still a 202
+     *
+     * Purging the embedded child drops the stored page view but not the template, so this
+     * request is answered by refreshDonut() - the path where the donut, not the page
+     * state, is what has to carry the code, and the one that would hand a shared cache a
+     * lifetime for a response that is not a 200.
+     *
+     * The page answers 202 rather than 301 on purpose: TwigRenderer replaces a redirect's
+     * own template with its redirect page (TwigRenderer::isRedirect()), so a 301 composes
+     * no children, its view is tagged exactly like its template, and no purge can reach
+     * one without the other. A 2xx renders normally and can.
+     */
+    public function testAcceptedStatusSurvivesTheDonutRefresh(): void
+    {
+        $injector = $this->getInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $queryRepository = $injector->getInstance(QueryRepositoryInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
+
+        $resource->get('page://self/html/accepted-page');
+        $this->assertTrue($queryRepository->purge(new Uri('page://self/html/comment')));
+        $refreshed = $resource->get('page://self/html/accepted-page');
+
+        $tree = $this->flushAndValidate($logger);
+        $this->assertNotNull(self::eventContextJsonOf($tree, 'refresh_donut'), 'the page is recomposed from the cached donut');
+        $this->assertSame(202, $refreshed->code);
+        $this->assertArrayNotHasKey(Header::ETAG, $refreshed->headers);
+        $this->assertArrayNotHasKey(Header::CDN_CACHE_CONTROL, $refreshed->headers);
+    }
+
+    /**
+     * A 204 with no body is stored and replayed as a 204
+     *
+     * A resource that has nothing to return leaves the body null, which ResourceDonut
+     * rejected before the status code ever came into it.
+     */
+    public function testNoContentStatusSurvivesTheCacheHit(): void
+    {
+        $resource = $this->getInjector()->getInstance(ResourceInterface::class);
+
+        $this->assertSame(204, $resource->get('page://self/html/no-content-page')->code, 'first request, cache miss');
+        $this->assertSame(204, $resource->get('page://self/html/no-content-page')->code, 'second request, cache hit');
+    }
+
+    /**
+     * The same 301 under #[DonutCache] is still a 301 on the next request
+     *
+     * This path stores the template only, so every later request is a refresh. It never
+     * threw: it answered 200 with the Location header attached, which is the quieter half
+     * of the same missing restore.
+     */
+    public function testDonutCacheRedirectStatusSurvivesTheRefresh(): void
+    {
+        $injector = $this->getInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
+
+        $this->assertSame(301, $resource->get('page://self/html/redirect-donut')->code, 'first request');
+        $this->assertSame(301, $resource->get('page://self/html/redirect-donut')->code, 'second request');
+        $tree = $this->flushAndValidate($logger);
+        $this->assertNotNull(self::eventContextJsonOf($tree, 'refresh_donut'), 'the second request is answered by the template refresh');
+    }
+
     public function testEveryBuiltInCdnHeaderIsInTheRecordedSet(): void
     {
         // cdn_headers records the headers named in DonutRepository::CDN_FACING_HEADERS.

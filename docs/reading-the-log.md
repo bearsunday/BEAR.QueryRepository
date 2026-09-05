@@ -132,6 +132,13 @@ These are the ones you cannot guess from a field name.
 response code that path will not cache, a validator already present, a donut page served from its
 template — the event names which one.
 
+**A donut write of a non-200 has no `save_etag`, and its `cdn_headers` carries no lifetime.**
+The donut threshold lets 2xx and 3xx through, and a validator is issued for 200 only, so a stored
+`204` or `301` has none to save - `save_donut_view` and `save_donut` appear without the
+`save_etag` that precedes them for a 200. The same rule holds the CDN lifetime back: only a 200
+is given one, so a `cdn_headers` for a stored non-200 lists the purge keys and no
+`CDN-Cache-Control`. Neither absence is a failed write.
+
 **`cache_miss` reports that the lookup produced no entry, and four different things produce it.**
 The miss itself does not say which:
 
