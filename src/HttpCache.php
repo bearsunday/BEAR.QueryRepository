@@ -103,8 +103,7 @@ final readonly class HttpCache implements HttpCacheInterface, DeprecatedHttpCach
         try {
             $hit = $this->storage->hasEtagFor($ifNoneMatch, $uri);
         } catch (CacheStoreFailure $e) {
-            // The same decision as the unscoped answer: a validator that cannot be read is one
-            // that does not match.
+            // The same decision as the unscoped answer, against the URI that was asked for.
             $cause = $e->getPrevious() ?? $e;
             $this->logger->event(new CacheErrorContext((string) $uri, 'read', $cause->getMessage(), $cause::class));
             $this->logger->close(new CacheMissContext('etag', round((hrtime(true) - $start) / 1_000_000, 3)), $openId);

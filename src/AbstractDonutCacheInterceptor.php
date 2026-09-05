@@ -76,8 +76,9 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
 
             /** @var ResourceObject $ro */
             $ro = $invocation->proceed();
-            // donut created in ResourceObject
-            if (isset($ro->headers[Header::ETAG]) || $ro->code >= Code::BAD_REQUEST) {
+            // Only a 200 is a representation this cache stores, the same threshold `#[Cacheable]`
+            // applies. A page carrying its own ETag was written by the resource, not by this one.
+            if (isset($ro->headers[Header::ETAG]) || $ro->code !== Code::OK) {
                 // Record why this miss is not followed by a put; without it the log looks like a lost write.
                 $hasEtag = isset($ro->headers[Header::ETAG]);
                 $this->logger->event(new PutSkippedContext((string) $ro->uri, $hasEtag ? 'etag-present' : 'error-code', $hasEtag ? null : $ro->code));
@@ -103,13 +104,9 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
      * Run the donut write, degrading a store failure and recording either way
      *
      * A store that refuses the entry leaves a page that was rendered correctly: it is served, and
-     * the failure is recorded rather than turned into a 500 (issue #190). What the store did not
-     * raise keeps travelling - a template that fails to render is not a slow page, it is a page
-     * that does not exist, and swallowing it would answer 200 with nothing in it.
-     *
-     * The cost of the degraded half is a cache that can stay empty quietly: every request pays
-     * origin work while the response stays correct. That is a rate to alert on in `cache_error`,
-     * not an exception to raise per request.
+     * the failure is recorded rather than turned into a 500. What the store did not raise keeps
+     * travelling - a template that fails to render is not a slow page, it is a page that does not
+     * exist, and swallowing it would answer 200 with nothing in it.
      */
     private function putRecorded(ResourceObject $ro): ResourceObject
     {

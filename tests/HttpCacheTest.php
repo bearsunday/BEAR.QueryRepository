@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Log\Context\CacheErrorContext;
 use BEAR\QueryRepository\Log\Context\CacheHitContext;
 use BEAR\QueryRepository\Log\Context\CacheMissContext;
 use BEAR\QueryRepository\Log\Context\ConditionalRequestContext;
@@ -173,10 +174,9 @@ class HttpCacheTest extends TestCase
         }
     }
 
-    public function testTheScopedScopeClosesWhenTheLookupThrows(): void
+    public function testTheScopedAnswerDegradesWhenTheLookupThrows(): void
     {
-        // Same contract as the unscoped answer: the outage is recorded, the scope is closed, and
-        // the exception keeps its path. An unclosed scope would surface as a diagnostic instead.
+        // The same decision as the unscoped answer, recorded against the URI that was asked for.
         $storage = ResourceStorageTest::getResourceStorageInstance(etagPool: new TagAwareAdapter(new FakeErrorCache()));
         $uri = new Uri('app://self/user?id=1');
 
@@ -184,14 +184,21 @@ class HttpCacheTest extends TestCase
             $logger = new RecordingSemanticLogger();
             $httpCache = new $class($storage, $logger);
 
+            $warned = false;
+            set_error_handler(static function (int $errno) use (&$warned): bool {
+                $warned = $warned || $errno === E_USER_WARNING;
+
+                return true;
+            });
             try {
-                $httpCache->isNotModifiedFor($uri, ['HTTP_IF_NONE_MATCH' => '"any"']);
-                $this->fail($class . ': expected the pool outage to surface');
-            } catch (RuntimeException $e) {
-                $this->assertStringContainsString('cache server down', $e->getMessage(), $class);
+                $notModified = $httpCache->isNotModifiedFor($uri, ['HTTP_IF_NONE_MATCH' => '"any"']);
+            } finally {
+                restore_error_handler();
             }
 
-            $this->assertCount(1, $logger->closes, $class . ': the scope is closed despite the throw');
+            $this->assertFalse($notModified, $class . ': an unreadable validator cannot match');
+            $this->assertTrue($warned, $class . ': the outage reaches the warning channel');
+            $this->assertCount(1, $logger->closes, $class . ': the scope is closed');
             $error = $logger->events[0];
             assert($error instanceof CacheErrorContext);
             $this->assertSame('read', $error->operation, $class);

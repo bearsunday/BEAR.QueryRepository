@@ -125,18 +125,10 @@ final readonly class CacheInterceptor implements MethodInterceptor
     }
 
     /**
-     * A failure on the cache path degrades to a warning rather than an exception, so the
-     * request is still served: the cache is an optimization, not a dependency.
-     */
-
-    /**
      * Record the throwable that actually failed, not the boundary wrapper
      *
-     * `CacheStoreFailure` says where the failure happened; its cause says what it was (a Redis
-     * timeout, a marshalling error), and that is the half a reader needs.
+     * @param 'read'|'write' $operation
      */
-
-    /** @param 'read'|'write' $operation */
     private static function failure(string $uri, string $operation, Throwable $e): CacheErrorContext
     {
         $cause = $e instanceof CacheStoreFailure ? $e->getPrevious() ?? $e : $e;
@@ -144,6 +136,10 @@ final readonly class CacheInterceptor implements MethodInterceptor
         return new CacheErrorContext($uri, $operation, $cause->getMessage(), $cause::class);
     }
 
+    /**
+     * A failure on the cache path degrades to a warning rather than an exception, so the
+     * request is still served: the cache is an optimization, not a dependency.
+     */
     private function triggerWarning(Throwable $e): void
     {
         $message = sprintf('%s: %s in %s:%s', $e::class, $e->getMessage(), $e->getFile(), $e->getLine());

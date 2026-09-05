@@ -7,8 +7,7 @@ use BEAR\Resource\Code;
 use BEAR\Resource\ResourceObject;
 
 /**
- * Fails with the exact code the interceptor treats as the first error, so the donut
- * interceptor skips the put (logged as put_skipped with reason "error-code").
+ * Fails, so the donut interceptor skips the put (logged as put_skipped with reason "error-code")
  */
 #[CacheableResponse]
 class ErrorPage extends ResourceObject

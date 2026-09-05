@@ -15,6 +15,7 @@ use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
 use Koriym\SemanticLogger\NullSemanticLogger;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
+use Throwable;
 
 use function assert;
 use function hrtime;
@@ -102,8 +103,7 @@ final readonly class CliHttpCache implements HttpCacheInterface, UriScopedHttpCa
         try {
             $hit = $this->storage->hasEtagFor($ifNoneMatch, $uri);
         } catch (CacheStoreFailure $e) {
-            // The same decision as the unscoped answer: a validator that cannot be read is one
-            // that does not match.
+            // The same decision as the unscoped answer, against the URI that was asked for.
             $cause = $e->getPrevious() ?? $e;
             $this->logger->event(new CacheErrorContext((string) $uri, 'read', $cause->getMessage(), $cause::class));
             $this->logger->close(new CacheMissContext('etag', round((hrtime(true) - $start) / 1_000_000, 3)), $openId);
@@ -183,12 +183,6 @@ final readonly class CliHttpCache implements HttpCacheInterface, UriScopedHttpCa
         return is_string($uri) ? $uri : '';
     }
 
-    /**
-     * A failure on the cache path degrades to a warning rather than an exception
-     *
-     * The same channel the read side of `#[Cacheable]` uses: the host's own monitoring is what
-     * notices a pool outage, and the log records it at the point it happened.
-     */
     private function triggerWarning(Throwable $e): void
     {
         trigger_error(sprintf('%s: %s in %s:%s', $e::class, $e->getMessage(), $e->getFile(), $e->getLine()), E_USER_WARNING);

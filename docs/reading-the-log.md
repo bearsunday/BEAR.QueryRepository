@@ -118,7 +118,7 @@ Every outcome is a self-describing word, never a bare boolean — except `saved`
 | `roPool` / `etagPool` | `invalidated` \| `failed` | per-pool invalidation result |
 | `cdn` | `purged` \| `failed` \| `skipped` | `skipped` = no purger configured (`NullPurger`), not "nothing to do" |
 | `operation` | `read` \| `write` | which side of the cache threw |
-| `reason` (`put_skipped`) | `etag-present` \| `error-code` \| `not-cacheable` | why no write happened. `etag-present` = the resource already carried an ETag, so the donut layer left it alone; `not-cacheable` = a donut page re-rendered from its template, which is never stored as a page; `error-code` carries the response `code`, and the threshold differs by path: `#[Cacheable]` skips any non-200 (a `203` appears here), a donut skips 4xx and above |
+| `reason` (`put_skipped`) | `etag-present` \| `error-code` \| `not-cacheable` | why no write happened. `etag-present` = the resource already carried an ETag, so the donut layer left it alone; `not-cacheable` = a donut page re-rendered from its template, which is never stored as a page; `error-code` carries the response `code` and covers any non-200 on either path, so a `203` appears here |
 | `result` (`manual_*`) | `stored`/`purged`/`invalidated` \| `failed` | the direct call's outcome |
 | `requestedTtl` | seconds | what this package asked the store to keep. `31536000` is the `never` convention; `0`/`null` = it asked for no expiry, which a backend may override (see the rule below) |
 | `sMaxAge` (`put_donut`) | seconds | the shared-cache (CDN) lifetime the write asked for — the same argument as `DonutRepositoryInterface::put($ro, ttl: …, sMaxAge: …)`, and not the entry's own `requestedTtl`. `null` = none requested, and `putDonut` always records `null` |
@@ -165,6 +165,9 @@ raised on the application's warning channel. Anything else the write touches kee
 template that fails to render is not a slow page, it is a page that does not exist. A command or a
 direct `put()`/`purge()`/`invalidateTags()` has no interceptor to degrade it, so a CDN purge that
 fails reaches the caller and the write is never reported as done.
+What the degraded half costs is a cache that can stay empty quietly: every request pays origin
+work while responses stay correct. That is a `cache_error` rate to watch, not a per-request
+exception.
 
 **An `invalidate` is pre-write cleanup iff a `pre_write_cleanup` marker sits immediately before
 it in the same scope.** A writer clears the entry it is about to rewrite, which looks identical

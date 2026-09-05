@@ -116,7 +116,7 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 | `roPool` / `etagPool` | `invalidated` \| `failed` | プールごとの無効化結果 |
 | `cdn` | `purged` \| `failed` \| `skipped` | `skipped` は purger 未設定 (`NullPurger`)。「やることが無かった」ではない |
 | `operation` | `read` \| `write` | キャッシュのどちら側が throw したか |
-| `reason` (`put_skipped`) | `etag-present` \| `error-code` \| `not-cacheable` | 書き込みが起きなかった理由。`etag-present` = リソースが既に ETag を持っていたので donut 層は手を出さなかった、`not-cacheable` = テンプレートから再描画された donut ページ(ページとしては保存しない)、`error-code` は応答の `code` を伴い閾値は経路で違う: `#[Cacheable]` は 200 以外すべて(`203` もここに出る)、donut は 4xx 以上 |
+| `reason` (`put_skipped`) | `etag-present` \| `error-code` \| `not-cacheable` | 書き込みが起きなかった理由。`etag-present` = リソースが既に ETag を持っていたので donut 層は手を出さなかった、`not-cacheable` = テンプレートから再描画された donut ページ(ページとしては保存しない)、`error-code` は応答の `code` を伴い、どちらの経路でも 200 以外すべてが入る(`203` もここ) |
 | `result` (`manual_*`) | `stored`/`purged`/`invalidated` \| `failed` | 直接呼び出しの結果 |
 | `requestedTtl` | 秒 | このパッケージがストアに要求した保持時間。`31536000` は `never` の慣習値、`0`/`null` は「期限を要求しなかった」— バックエンドが上書きし得る(下の規則) |
 | `sMaxAge` (`put_donut`) | 秒 | その書き込みが要求した共有キャッシュ(CDN)の寿命 — `DonutRepositoryInterface::put($ro, ttl: …, sMaxAge: …)` に渡すのと同じ引数で、エントリ自身の `requestedTtl` とは別物。`null` は未要求で、`putDonut` は常に `null` を記録する |
@@ -160,6 +160,8 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 出します)。書き込みが触るそれ以外は通り抜けます — 描画に失敗するテンプレートは「遅いページ」では
 なく「存在しないページ」です。コマンドや直接の `put()`/`purge()`/`invalidateTags()` には縮退させる
 インターセプタが無いので、CDN purge の失敗は呼び出し元に届き、書き込みは完了として報告されません。
+縮退した側が払う代償は、キャッシュが静かに空のままになることです。応答は正しいまま、毎リクエストが
+オリジンの仕事を払います。1 件ごとの例外ではなく、`cache_error` の発生率で見る対象です。
 
 **`invalidate` が pre-write cleanup であるのは、同じスコープの直前のイベントが `pre_write_cleanup`
 マーカーであるとき、かつそのときだけです。** 書き込み側は上書きするエントリを先に消すので、本物の破棄と
