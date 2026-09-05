@@ -68,6 +68,22 @@ class HttpCacheTest extends TestCase
         $this->assertTrue($httpCache->isNotModified($server));
     }
 
+    public function testIsNotModifiedForUnderstandsTheCliArgvForm(): void
+    {
+        $injector = new Injector(new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld')), __DIR__ . '/tmp');
+        $storage = $injector->getInstance(ResourceStorageInterface::class);
+        $storage->saveEtag(new Uri('page://self/x'), '"abc"', '', null);
+        $httpCache = new CliHttpCache($storage);
+        $server = [
+            'argc' => 4,
+            'argv' => ['bootstrap', 'get', 'page://self/x', 'If-None-Match="abc"'],
+        ];
+
+        $this->assertTrue($httpCache->isNotModifiedFor(new Uri('page://self/x'), $server), 'the CLI argv form carries the same validator isNotModified() reads');
+        $this->assertFalse($httpCache->isNotModifiedFor(new Uri('page://self/y'), $server), 'another resource\'s live validator is not an answer about this one');
+        $this->assertTrue($httpCache->isNotModifiedFor(new Uri('page://self/x'), ['HTTP_IF_NONE_MATCH' => '"abc"']), 'the HTTP form still matches');
+    }
+
     public function testConditionalRequestAnswerIsRecorded(): void
     {
         $resource = (new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld')))->getInstance(ResourceInterface::class);

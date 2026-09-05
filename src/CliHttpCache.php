@@ -87,7 +87,8 @@ final readonly class CliHttpCache implements HttpCacheInterface, UriScopedHttpCa
     #[Override]
     public function isNotModifiedFor(AbstractUri $uri, array $server): bool
     {
-        if (! isset($server[Header::HTTP_IF_NONE_MATCH])) {
+        $ifNoneMatch = $this->getEtag($server);
+        if ($ifNoneMatch === null) {
             return false;
         }
 
@@ -97,7 +98,6 @@ final readonly class CliHttpCache implements HttpCacheInterface, UriScopedHttpCa
             return $this->isNotModified($server);
         }
 
-        $ifNoneMatch = $server[Header::HTTP_IF_NONE_MATCH];
         $openId = $this->logger->open(new ConditionalRequestContext($ifNoneMatch));
         $start = hrtime(true);
         try {
