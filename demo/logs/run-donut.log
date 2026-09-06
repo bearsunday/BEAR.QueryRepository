@@ -289,7 +289,7 @@ get uri=page://self/html/blog-posting
                     "context": {
                         "uri": "page://self/html/blog-posting",
                         "headers": {
-                            "CDN-Cache-Control": "max-age=10 stale-while-revalidate=10",
+                            "CDN-Cache-Control": "max-age=10, stale-while-revalidate=10",
                             "Surrogate-Key": "blog-posting-page _html_blog-posting_ _html_comment_ comment01"
                         },
                         "surrogateKeys": [
@@ -541,7 +541,7 @@ get uri=page://self/html/blog-posting
                     "context": {
                         "uri": "page://self/html/blog-posting",
                         "headers": {
-                            "CDN-Cache-Control": "max-age=10 stale-while-revalidate=10",
+                            "CDN-Cache-Control": "max-age=10, stale-while-revalidate=10",
                             "Surrogate-Key": "blog-posting-page _html_blog-posting_ _html_comment_ comment01"
                         },
                         "surrogateKeys": [

@@ -29,7 +29,7 @@ class CdnCacheControlHeaderTest extends TestCase
         $resource = $injector->getInstance(ResourceInterface::class);
         $ro = $resource->get('page://self/html/blog-posting');
         $this->assertArrayHasKey(Header::CDN_CACHE_CONTROL, $ro->headers);
-        $this->assertSame($ro->headers[Header::CDN_CACHE_CONTROL], 'max-age=10 stale-while-revalidate=10');
+        $this->assertSame($ro->headers[Header::CDN_CACHE_CONTROL], 'max-age=10, stale-while-revalidate=10');
         $repository = $injector->getInstance(QueryRepositoryInterface::class);
         $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
         // Not inside assert(): with zend.assertions=-1 the call would never run and the
@@ -47,7 +47,7 @@ class CdnCacheControlHeaderTest extends TestCase
         // request fields alone therefore cannot reveal.
         $cdnHeaders = self::eventContextJsonOf($tree, 'cdn_headers');
         $this->assertNotNull($cdnHeaders, 'the refresh records what it told the CDN');
-        $this->assertStringContainsString('"CDN-Cache-Control":"max-age=10 stale-while-revalidate=10"', $cdnHeaders);
+        $this->assertStringContainsString('"CDN-Cache-Control":"max-age=10, stale-while-revalidate=10"', $cdnHeaders);
         $this->assertStringContainsString('"blog-posting-page"', $cdnHeaders, 'the keys a purge must reach are recorded');
     }
 
