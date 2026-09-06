@@ -23,7 +23,7 @@ use function time;
  */
 final class ResourceDonut
 {
-    public const FOMRAT = '[le:%s]';
+    public const FORMAT = '[le:%s]';
 
     private const URI_REGEX = '/\[le:([^\]]+)]/';
 

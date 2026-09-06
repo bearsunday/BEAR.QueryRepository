@@ -27,6 +27,6 @@ final readonly class DonutRequest implements Stringable
         $this->etags->addTag($this->request->resourceObject);
         $this->donutStorage->setView($uri, $view);
 
-        return sprintf(ResourceDonut::FOMRAT, $uri);
+        return sprintf(ResourceDonut::FORMAT, $uri);
     }
 }

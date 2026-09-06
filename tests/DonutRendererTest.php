@@ -15,7 +15,7 @@ class DonutRendererTest extends TestCase
         $renderer = new DonutRenderer();
         $renderer->setView('app://foo', 'Foo');
         $renderer->setView('app://bar', 'Bar');
-        $template = sprintf('template foo=%s, bar=%s', sprintf(ResourceDonut::FOMRAT, 'app://foo'), sprintf(ResourceDonut::FOMRAT, 'app://foo'));
+        $template = sprintf('template foo=%s, bar=%s', sprintf(ResourceDonut::FORMAT, 'app://foo'), sprintf(ResourceDonut::FORMAT, 'app://foo'));
         $view = $renderer->render($template);
         $this->assertSame('template foo=Foo, bar=Foo', $view);
     }

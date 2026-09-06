@@ -40,11 +40,11 @@ final readonly class EtagSetter implements EtagSetterInterface
         $ro->headers[Header::LAST_MODIFIED] = gmdate(Header::RFC7231, $time);
     }
 
-    public function getEtagByPartialBody(HttpCache $httpCacche, ResourceObject $ro): string
+    public function getEtagByPartialBody(HttpCache $httpCache, ResourceObject $ro): string
     {
         $etag = '';
         assert(is_array($ro->body));
-        foreach ($httpCacche->etag as $bodyEtag) {
+        foreach ($httpCache->etag as $bodyEtag) {
             if (isset($ro->body[$bodyEtag]) && is_string($ro->body[$bodyEtag])) {
                 $etag .= $ro->body[$bodyEtag];
             }
@@ -57,7 +57,7 @@ final readonly class EtagSetter implements EtagSetterInterface
      * The state the validator stands for: the rendered view, or the body when nothing rendered.
      * A view-derived tag over a null view would be one constant string for every state.
      */
-    public function getEtagByEitireView(ResourceObject $ro): string
+    public function getEtagByEntireView(ResourceObject $ro): string
     {
         // A body may still hold embedded requests, which refuse to serialize; the evaluator
         // materializes the runs that already happened, as copies, without touching this response.
@@ -73,7 +73,7 @@ final readonly class EtagSetter implements EtagSetterInterface
      */
     private function getEtag(ResourceObject $ro, HttpCache|null $httpCache = null): string
     {
-        $etag = $httpCache instanceof HttpCache && $httpCache->etag ? $this->getEtagByPartialBody($httpCache, $ro) : $this->getEtagByEitireView($ro);
+        $etag = $httpCache instanceof HttpCache && $httpCache->etag ? $this->getEtagByPartialBody($httpCache, $ro) : $this->getEtagByEntireView($ro);
 
         return (string) crc32($ro::class . $etag . (string) $ro->uri);
     }
