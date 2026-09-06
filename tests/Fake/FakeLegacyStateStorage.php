@@ -63,7 +63,7 @@ final class FakeLegacyStateStorage implements ResourceStorageInterface
     {
     }
 
-    public function saveDonutView(ResourceObject $ro, int|null $ttl): bool
+    public function saveDonutView(ResourceObject $ro, int|null $ttl, array|null $tags = null): bool
     {
     }
 

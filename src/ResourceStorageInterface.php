@@ -61,8 +61,10 @@ interface ResourceStorageInterface
 
     /**
      * Save donut-cache state
+     *
+     * @param list<string>|null $tags surrogate keys to store under; null reads the Surrogate-Key header
      */
-    public function saveDonutView(ResourceObject $ro, int|null $ttl): bool;
+    public function saveDonutView(ResourceObject $ro, int|null $ttl, array|null $tags = null): bool;
 
     /**
      * Invalidate tags

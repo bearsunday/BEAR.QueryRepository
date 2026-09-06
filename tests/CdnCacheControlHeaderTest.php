@@ -88,6 +88,30 @@ class CdnCacheControlHeaderTest extends TestCase
         $this->assertStringContainsString('"blog-posting-page"', $cdnHeaders, 'the purge keys come from Edge-Cache-Tag');
     }
 
+    public function testAkamaiModuleKeepsPageReachableByEmbeddedResourceTag(): void
+    {
+        $module = $this->getModule();
+        $module->override(new AkamaiModule());
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $storage = $injector->getInstance(ResourceStorageInterface::class);
+        $queryRepository = $injector->getInstance(QueryRepositoryInterface::class);
+        $uri = new Uri('page://self/html/blog-posting');
+        $commentTag = (new UriTag())(new Uri('page://self/html/comment'));
+
+        $ro1 = $resource->get((string) $uri);
+        $etag1 = $ro1->headers[Header::ETAG];
+        $storage->invalidateTags([$commentTag]);
+        $this->assertNull($queryRepository->get($uri), 'the page state written by doPutStatic stays tagged by the embedded comment');
+        $this->assertFalse($storage->hasEtag($etag1), 'the ETag entry written by doPutStatic stays tagged by the embedded comment');
+
+        $ro2 = $resource->get((string) $uri);
+        $etag2 = $ro2->headers[Header::ETAG];
+        $storage->invalidateTags([$commentTag]);
+        $this->assertNull($queryRepository->get($uri), 'the page state rewritten by refreshDonut stays tagged by the embedded comment');
+        $this->assertFalse($storage->hasEtag($etag2), 'the ETag entry rewritten by refreshDonut stays tagged by the embedded comment');
+    }
+
     public function testNullCdnCacheControlModule(): void
     {
         $module = $this->getModule();

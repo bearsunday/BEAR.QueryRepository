@@ -26,7 +26,6 @@ use Ray\Di\ProviderInterface;
 use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 use Throwable;
 
-use function array_merge;
 use function array_unique;
 use function array_values;
 use function assert;
@@ -313,33 +312,33 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
     }
 
     #[Override]
-    public function saveDonutView(ResourceObject $ro, int|null $ttl): bool
+    public function saveDonutView(ResourceObject $ro, int|null $ttl, array|null $tags = null): bool
     {
         $ttl = $ttl === null ? null : max(0, $ttl);
         $resourceState = ResourceState::create($ro, [], $ro->view);
         $key = $this->getUriKey($ro->uri, self::KEY_RO);
-        $tags = $this->getTags($ro);
+        $tags = $this->getTags($ro, $tags);
         $saved = $this->guard(fn (): bool => ($this->saver)($key, $resourceState, $this->roPool, $tags, $ttl));
         $this->logger->event(new SaveDonutViewContext((string) $ro->uri, $tags, $ttl, $saved));
 
         return $saved;
     }
 
-    /** @return list<string> */
-    private function getTags(ResourceObject $ro): array
+    /**
+     * @param list<string>|null $surrogateKeys null reads the Surrogate-Key header
+     *
+     * @return list<string>
+     */
+    private function getTags(ResourceObject $ro, array|null $surrogateKeys = null): array
     {
         // ETag is intentionally NOT used as an invalidation tag. The cache entry is
         // purged by its URI tag (deleteEtag/invalidateTags) and surrogate keys; no code
         // path ever invalidates by ETag. Because ETag is content-versioned, registering it
         // as a tag produced one non-volatile tag Set per content version that, under a
         // volatile-* eviction policy, is never reclaimed - leaking memory without being read.
-        $tags = [($this->uriTag)($ro->uri)];
-        if (isset($ro->headers[Header::SURROGATE_KEY])) {
-            $tags = array_merge($tags, explode(' ', $ro->headers[Header::SURROGATE_KEY]));
-        }
-
+        $surrogateKeys ??= isset($ro->headers[Header::SURROGATE_KEY]) ? explode(' ', $ro->headers[Header::SURROGATE_KEY]) : [];
         /** @var list<string> $uniqueTags */
-        $uniqueTags = array_values(array_unique($tags));
+        $uniqueTags = array_values(array_unique([($this->uriTag)($ro->uri), ...$surrogateKeys]));
 
         return $uniqueTags;
     }
