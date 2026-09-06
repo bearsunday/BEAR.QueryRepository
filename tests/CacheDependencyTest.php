@@ -7,9 +7,13 @@ namespace BEAR\QueryRepository;
 use BEAR\Resource\Module\HalModule;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
+use Override;
 use PHPUnit\Framework\TestCase;
+use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
 
+use function array_map;
+use function array_merge;
 use function explode;
 
 class CacheDependencyTest extends TestCase
@@ -17,11 +21,26 @@ class CacheDependencyTest extends TestCase
     private ResourceInterface $resource;
     private QueryRepositoryInterface $repository;
     private ResourceStorageInterface $storage;
+    private FakeCountingPurger $purger;
 
     protected function setUp(): void
     {
         $namespace = 'FakeVendor\HelloWorld';
-        $injector = new Injector(new FakeEtagPoolModule(ModuleFactory::getInstance($namespace)), __DIR__ . '/tmp');
+        $this->purger = new FakeCountingPurger();
+        $purger = $this->purger;
+        $module = new FakeEtagPoolModule(ModuleFactory::getInstance($namespace));
+        $module->override(new class ($purger) extends AbstractModule {
+            public function __construct(private readonly PurgerInterface $purger)
+            {
+            }
+
+            #[Override]
+            protected function configure(): void
+            {
+                $this->bind(PurgerInterface::class)->toInstance($this->purger);
+            }
+        });
+        $injector = new Injector($module, __DIR__ . '/tmp');
         $this->repository = $injector->getInstance(QueryRepositoryInterface::class);
         $this->resource = $injector->getInstance(ResourceInterface::class);
         $this->storage = $injector->getInstance(ResourceStorageInterface::class);
@@ -118,6 +137,22 @@ class CacheDependencyTest extends TestCase
         $childCAfterPurge = $this->repository->get(new Uri('page://self/dep/child-c'));
         $this->assertInstanceOf(ResourceState::class, $childCAfterPurge);
         $this->assertTrue($this->storage->hasEtag($etagChildC));
+    }
+
+    /** The edge sees only tags, so a purge reaches a page iff its tag is among the keys the page advertised in Surrogate-Key */
+    public function testCommandPurgeSendsTheKeyTheDependentPageAdvertised(): void
+    {
+        $levelOne = $this->resource->get('page://self/dep/level-one');
+        $levelThreeTag = (new UriTag())(new Uri('page://self/dep/level-three'));
+        $childCTag = (new UriTag())(new Uri('page://self/dep/child-c'));
+        $this->assertContains($levelThreeTag, explode(' ', $levelOne->headers[Header::SURROGATE_KEY]), 'level-one told the CDN it depends on level-three');
+        $this->purger->tags = [];
+
+        $this->resource->put('page://self/dep/level-three');
+
+        $purgedKeys = array_merge(...array_map(static fn (string $tags): array => explode(' ', $tags), $this->purger->tags));
+        $this->assertContains($levelThreeTag, $purgedKeys, 'the write purges the key level-one advertised');
+        $this->assertNotContains($childCTag, $purgedKeys, 'and not the unrelated page\'s');
     }
 
     /**
