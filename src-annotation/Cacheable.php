@@ -36,6 +36,7 @@ final class Cacheable
 {
     /**
      * @param 'short'|'medium'|'long'|'never' $expiry
+     * @param bool                            $update Deprecated: has no effect, nothing reads it
      * @param 'value'|'view'                  $type
      */
     public function __construct(

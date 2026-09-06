@@ -20,7 +20,7 @@ final class DonutRenderer implements DonutRendererInterface
     #[Override]
     public function setView(string $uri, string $view): void
     {
-        $this->searches[] = sprintf(ResourceDonut::FOMRAT, $uri);
+        $this->searches[] = sprintf(ResourceDonut::FORMAT, $uri);
         $this->views[] = $view;
     }
 

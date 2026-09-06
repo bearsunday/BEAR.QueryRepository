@@ -56,7 +56,10 @@ final readonly class RefreshAnnotatedCommand implements CommandInterface
         if ($annotation instanceof Refresh) {
             $this->repository->purge($uri);
             $ro = $this->resource->get((string) $uri);
-            $this->repository->put($ro);
+            // A #[Cacheable] destination stored itself during the GET; a second put would purge the CDN again.
+            if ($this->repository->get($uri) === null) {
+                $this->repository->put($ro);
+            }
         }
     }
 }

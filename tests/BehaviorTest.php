@@ -89,6 +89,21 @@ class BehaviorTest extends TestCase
         $this->resource->put('app://self/unmatch', ['id' => 1, 'age' => 10, 'name' => 'Sunday']);
     }
 
+    public function testWriteOmittingMiddleOptionalQueryKeepsLaterOne(): void
+    {
+        $first = $this->resource->get('app://self/optional-param', ['id' => 1, 'sort' => 2]);
+        $second = $this->resource->get('app://self/optional-param', ['id' => 1, 'sort' => 2]);
+        $this->assertSame($first->body, $second->body);
+
+        $this->resource->put('app://self/optional-param', ['id' => 1, 'sort' => 2]);
+
+        $third = $this->resource->get('app://self/optional-param', ['id' => 1, 'sort' => 2]);
+        $this->assertNotSame($first->body, $third->body);
+        $this->assertIsArray($third->body);
+        $this->assertSame(1, $third->body['page']);
+        $this->assertSame(2, $third->body['sort']);
+    }
+
     public function testCacheCode(): void
     {
         $ro = $this->resource->get('app://self/code', []);

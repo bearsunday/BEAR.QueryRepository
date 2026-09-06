@@ -14,8 +14,13 @@ use function gmdate;
 use function serialize;
 use function time;
 
-final class MobileEtagSetter implements EtagSetterInterface
+final readonly class MobileEtagSetter implements EtagSetterInterface
 {
+    public function __construct(
+        private ResourceBodyEvaluator $evaluateBody = new ResourceBodyEvaluator(),
+    ) {
+    }
+
     #[Override]
     public function __invoke(ResourceObject $ro, int|null $time = null, HttpCache|null $httpCache = null): void
     {
@@ -27,11 +32,8 @@ final class MobileEtagSetter implements EtagSetterInterface
             return;
         }
 
-        // etag]
-        $ro->headers[Header::ETAG] = '"' . crc32($this->getDevice() . serialize($ro->view) . serialize($ro->body)) . '"';
-        // time
-        $time ??= time();
-        $ro->headers[Header::LAST_MODIFIED] = gmdate(Header::RFC7231, $time);
+        $ro->headers[Header::ETAG] = '"' . crc32($this->getDevice() . serialize($ro->view) . serialize(($this->evaluateBody)($ro->body))) . '"';
+        $ro->headers[Header::LAST_MODIFIED] = gmdate(Header::RFC7231, $time ?? time());
     }
 
     /**

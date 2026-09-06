@@ -1661,7 +1661,7 @@ get uri=page://self/html/blog-posting
                     "context": {
                         "uri": "page://self/html/blog-posting",
                         "headers": {
-                            "CDN-Cache-Control": "max-age=10 stale-while-revalidate=10",
+                            "CDN-Cache-Control": "max-age=10, stale-while-revalidate=10",
                             "Surrogate-Key": "blog-posting-page _html_blog-posting_ _html_comment_ comment01"
                         },
                         "surrogateKeys": [
@@ -1959,7 +1959,7 @@ command method=onDelete source=DonutCommandInterceptor
                     "context": {
                         "uri": "page://self/html/blog-posting?id=0",
                         "headers": {
-                            "CDN-Cache-Control": "max-age=10 stale-while-revalidate=10",
+                            "CDN-Cache-Control": "max-age=10, stale-while-revalidate=10",
                             "Surrogate-Key": "blog-posting-page _html_blog-posting_id=0 _html_comment_ comment01"
                         },
                         "surrogateKeys": [
@@ -2110,7 +2110,7 @@ command method=onDelete source=DonutCommandInterceptor
                             "context": {
                                 "uri": "page://self/html/blog-posting?id=0",
                                 "headers": {
-                                    "CDN-Cache-Control": "max-age=10 stale-while-revalidate=10",
+                                    "CDN-Cache-Control": "max-age=10, stale-while-revalidate=10",
                                     "Surrogate-Key": "blog-posting-page _html_blog-posting_id=0 _html_comment_ comment01"
                                 },
                                 "surrogateKeys": [
@@ -2584,7 +2584,7 @@ manual_store uri=page://self/html/blog-posting?id=0
                     "context": {
                         "uri": "page://self/html/blog-posting?id=0",
                         "headers": {
-                            "CDN-Cache-Control": "max-age=10 stale-while-revalidate=10",
+                            "CDN-Cache-Control": "max-age=10, stale-while-revalidate=10",
                             "Surrogate-Key": "blog-posting-page _html_blog-posting_id=0 _html_comment_ comment01"
                         },
                         "surrogateKeys": [

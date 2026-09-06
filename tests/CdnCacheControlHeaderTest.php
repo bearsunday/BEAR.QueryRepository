@@ -29,7 +29,7 @@ class CdnCacheControlHeaderTest extends TestCase
         $resource = $injector->getInstance(ResourceInterface::class);
         $ro = $resource->get('page://self/html/blog-posting');
         $this->assertArrayHasKey(Header::CDN_CACHE_CONTROL, $ro->headers);
-        $this->assertSame($ro->headers[Header::CDN_CACHE_CONTROL], 'max-age=10 stale-while-revalidate=10');
+        $this->assertSame($ro->headers[Header::CDN_CACHE_CONTROL], 'max-age=10, stale-while-revalidate=10');
         $repository = $injector->getInstance(QueryRepositoryInterface::class);
         $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
         // Not inside assert(): with zend.assertions=-1 the call would never run and the
@@ -47,7 +47,7 @@ class CdnCacheControlHeaderTest extends TestCase
         // request fields alone therefore cannot reveal.
         $cdnHeaders = self::eventContextJsonOf($tree, 'cdn_headers');
         $this->assertNotNull($cdnHeaders, 'the refresh records what it told the CDN');
-        $this->assertStringContainsString('"CDN-Cache-Control":"max-age=10 stale-while-revalidate=10"', $cdnHeaders);
+        $this->assertStringContainsString('"CDN-Cache-Control":"max-age=10, stale-while-revalidate=10"', $cdnHeaders);
         $this->assertStringContainsString('"blog-posting-page"', $cdnHeaders, 'the keys a purge must reach are recorded');
     }
 
@@ -86,6 +86,30 @@ class CdnCacheControlHeaderTest extends TestCase
         $this->assertStringContainsString('"Edge-Cache-Tag"', $cdnHeaders);
         $this->assertStringNotContainsString('"Surrogate-Key"', $cdnHeaders);
         $this->assertStringContainsString('"blog-posting-page"', $cdnHeaders, 'the purge keys come from Edge-Cache-Tag');
+    }
+
+    public function testAkamaiModuleKeepsPageReachableByEmbeddedResourceTag(): void
+    {
+        $module = $this->getModule();
+        $module->override(new AkamaiModule());
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $storage = $injector->getInstance(ResourceStorageInterface::class);
+        $queryRepository = $injector->getInstance(QueryRepositoryInterface::class);
+        $uri = new Uri('page://self/html/blog-posting');
+        $commentTag = (new UriTag())(new Uri('page://self/html/comment'));
+
+        $ro1 = $resource->get((string) $uri);
+        $etag1 = $ro1->headers[Header::ETAG];
+        $storage->invalidateTags([$commentTag]);
+        $this->assertNull($queryRepository->get($uri), 'the page state written by doPutStatic stays tagged by the embedded comment');
+        $this->assertFalse($storage->hasEtag($etag1), 'the ETag entry written by doPutStatic stays tagged by the embedded comment');
+
+        $ro2 = $resource->get((string) $uri);
+        $etag2 = $ro2->headers[Header::ETAG];
+        $storage->invalidateTags([$commentTag]);
+        $this->assertNull($queryRepository->get($uri), 'the page state rewritten by refreshDonut stays tagged by the embedded comment');
+        $this->assertFalse($storage->hasEtag($etag2), 'the ETag entry rewritten by refreshDonut stays tagged by the embedded comment');
     }
 
     public function testNullCdnCacheControlModule(): void

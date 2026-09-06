@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\HttpCache;
+use BEAR\Resource\ResourceInterface;
+use BEAR\Resource\Uri;
 use FakeVendor\HelloWorld\Resource\App\User;
 use PHPUnit\Framework\TestCase;
+use Ray\Di\Injector;
 
 use function time;
 
@@ -61,6 +64,19 @@ class MobileEtagSetterTest extends TestCase
         ($this->etagSetter)($this->obj, $this->time);
 
         $this->assertArrayNotHasKey(Header::ETAG, $this->obj->headers);
+    }
+
+    public function testBodyWithEmbeddedRequest(): void
+    {
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
+        $module->override(new MobileEtagModule());
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        $uri = new Uri('page://self/dep/level-one');
+
+        $ro = $injector->getInstance(ResourceInterface::class)->get((string) $uri);
+
+        $this->assertArrayHasKey(Header::ETAG, $ro->headers);
+        $this->assertNotNull($injector->getInstance(QueryRepositoryInterface::class)->get($uri));
     }
 
     public function testModule(): void

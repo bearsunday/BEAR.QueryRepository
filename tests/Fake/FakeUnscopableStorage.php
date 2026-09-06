@@ -75,9 +75,9 @@ final class FakeUnscopableStorage implements ResourceStorageInterface
     }
 
     #[Override]
-    public function saveDonutView(ResourceObject $ro, int|null $ttl): bool
+    public function saveDonutView(ResourceObject $ro, int|null $ttl, array|null $tags = null): bool
     {
-        return $this->storage->saveDonutView($ro, $ttl);
+        return $this->storage->saveDonutView($ro, $ttl, $tags);
     }
 
     /** @inheritDoc */

@@ -24,6 +24,10 @@ final class MatchQuery implements MatchQueryInterface
         $query = $ro->uri->query;
         foreach ($refParameters as $parameter) {
             if (! isset($query[$parameter->name])) {
+                if ($parameter->isDefaultValueAvailable()) {
+                    continue;
+                }
+
                 throw new UnmatchedQuery(sprintf('%s %s', $ro->uri->method, (string) $ro->uri));
             }
 

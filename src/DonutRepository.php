@@ -148,14 +148,14 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $templateKeys = $this->templateKeys($ro, $declaredKeys);
         $donut = ResourceDonut::create($ro, $this->renderer, $keys, $sMaxAge, true)->withStorageState($ttl, $templateKeys);
         $donut->render($ro, $this->renderer);
-        $this->setHeaders($keys, $ro, $sMaxAge);
+        $surrogateKeys = $this->setHeaders($keys, $ro, $sMaxAge);
         $this->logCdnHeaders($ro);
         // delete: cleanup for the rewrite below, recorded as such at the source
         $this->logger->event(new PreWriteCleanupContext((string) $ro->uri));
         $this->resourceStorage->invalidateTags([($this->uriTag)($ro->uri)]);
         // save content cache and donut; the donut records the content state so that a
         // later refresh can keep Last-Modified when the recomposed content is identical
-        $this->saveView($ro, $sMaxAge);
+        $this->saveView($ro, $sMaxAge, $surrogateKeys);
         $this->resourceStorage->saveDonut($ro->uri, $donut->withContentState($ro), $ttl, $templateKeys);
     }
 
@@ -221,6 +221,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $this->logger->event(new CacheHitContext('donut'));
         $this->logger->event(new RefreshDonutContext((string) $ro->uri));
         $donut->refresh($this->resource, $ro);
+        $surrogateKeys = $ro->headers[Header::SURROGATE_KEY] ?? '';
         if (! $donut->isCacheble) {
             // The donut was created by putDonut (isCacheble=false): only the template is
             // cached and the page is never stored as a rendered view, so there is no
@@ -242,7 +243,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
             $this->recordContentState($ro, $donut);
         }
 
-        $this->saveView($ro, $donut->ttl);
+        $this->saveView($ro, $donut->ttl, $surrogateKeys);
 
         return $ro;
     }
@@ -325,22 +326,30 @@ final readonly class DonutRepository implements DonutRepositoryInterface
      * status below 400 through, so a stored 3xx or 204 arrives here with no ETag. The entry
      * is keyed and invalidated by its URI tag, never by ETag (ResourceStorage::getTags()),
      * so the save does not need one. Same shape as QueryRepository::doPut().
+     *
+     * The surrogate keys arrive as a parameter because the CDN setter may have renamed the
+     * header by now: Akamai's moves Surrogate-Key to Edge-Cache-Tag.
      */
-    private function saveView(ResourceObject $ro, int|null $ttl): bool
+    private function saveView(ResourceObject $ro, int|null $ttl, string $surrogateKeys): bool
     {
         if (isset($ro->headers[Header::ETAG])) {
-            $surrogateKeys = $ro->headers[Header::SURROGATE_KEY] ?? '';
             $this->resourceStorage->saveEtag($ro->uri, $ro->headers[Header::ETAG], $surrogateKeys, $ttl);
         }
 
-        return $this->resourceStorage->saveDonutView($ro, $ttl);
+        $tags = $surrogateKeys === '' ? [] : explode(' ', $surrogateKeys);
+
+        return $this->resourceStorage->saveDonutView($ro, $ttl, $tags);
     }
 
-    private function setHeaders(SurrogateKeys $keys, ResourceObject $ro, int|null $sMaxAge): void
+    /** @return string The Surrogate-Key header as composed, before the CDN setter runs */
+    private function setHeaders(SurrogateKeys $keys, ResourceObject $ro, int|null $sMaxAge): string
     {
         $keys->setSurrogateHeader($ro);
+        $surrogateKeys = $ro->headers[Header::SURROGATE_KEY] ?? '';
         $this->setCdnCacheControl($ro, $sMaxAge);
         ($this->headerSetter)($ro, 0, null);
+
+        return $surrogateKeys;
     }
 
     /**

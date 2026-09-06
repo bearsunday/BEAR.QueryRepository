@@ -1,29 +1,28 @@
 <?php
 
+// Not strict_types: call_user_func_array() below is compiled as a direct call and takes this
+// file's typing mode, and a string query value must still coerce into a typed onGet parameter.
+
 namespace BEAR\QueryRepository;
 
 use BEAR\Resource\ResourceObject;
+use Override;
 use Ray\Aop\MethodInvocation;
 use ReflectionException;
-use function array_values;
+
 use function call_user_func_array;
 use function is_callable;
-
-// phpcs:ignoreFile SlevomatCodingStandard.TypeHints.DeclareStrictTypes.DeclareStrictTypesMissing -- for call_user_func_array
 
 final readonly class RefreshSameCommand implements CommandInterface
 {
     public function __construct(
         private QueryRepositoryInterface $repository,
-        private MatchQueryInterface $matchQuery
-    ){
+        private MatchQueryInterface $matchQuery,
+    ) {
     }
 
-    /**
-     * @return void
-     */
-    #[\Override]
-    public function command(MethodInvocation $invocation, ResourceObject $ro)
+    #[Override]
+    public function command(MethodInvocation $invocation, ResourceObject $ro): void
     {
         unset($invocation);
         $getQuery = $this->getQuery($ro);
@@ -37,7 +36,9 @@ final readonly class RefreshSameCommand implements CommandInterface
         $ro->uri->query = $getQuery;
         $get = [$ro, 'onGet'];
         if (is_callable($get)) {
-            call_user_func_array($get, array_values($getQuery));
+            // String keys are named arguments: a parameter MatchQuery omitted keeps its
+            // default instead of shifting the positional order.
+            call_user_func_array($get, $getQuery);
         }
     }
 
