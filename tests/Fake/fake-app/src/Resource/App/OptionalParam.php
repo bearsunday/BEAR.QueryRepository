@@ -12,11 +12,12 @@ use BEAR\Resource\ResourceObject;
 #[Cacheable]
 class OptionalParam extends ResourceObject
 {
-    public function onGet(int $id, int $page = 1)
+    public function onGet(int $id, int $page = 1, int $sort = 0)
     {
         $this->body = [
             'id' => $id,
             'page' => $page,
+            'sort' => $sort,
             'time' => \microtime(true),
         ];
 

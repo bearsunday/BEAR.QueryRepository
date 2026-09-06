@@ -91,14 +91,17 @@ class BehaviorTest extends TestCase
 
     public function testWriteToOptionalParamResourceWithoutOptionalQuery(): void
     {
-        $first = $this->resource->get('app://self/optional-param', ['id' => 1]);
-        $second = $this->resource->get('app://self/optional-param', ['id' => 1]);
+        $first = $this->resource->get('app://self/optional-param', ['id' => 1, 'sort' => 2]);
+        $second = $this->resource->get('app://self/optional-param', ['id' => 1, 'sort' => 2]);
         $this->assertSame($first->body, $second->body);
 
-        $this->resource->put('app://self/optional-param', ['id' => 1]);
+        $this->resource->put('app://self/optional-param', ['id' => 1, 'sort' => 2]);
 
-        $third = $this->resource->get('app://self/optional-param', ['id' => 1]);
+        $third = $this->resource->get('app://self/optional-param', ['id' => 1, 'sort' => 2]);
         $this->assertNotSame($first->body, $third->body);
+        // page was omitted from the query, sort was not: a positional call would have put 2 into page
+        $this->assertSame(1, $third->body['page']);
+        $this->assertSame(2, $third->body['sort']);
     }
 
     public function testCacheCode(): void
