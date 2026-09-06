@@ -1,27 +1,23 @@
 <?php
 
-// phpcs:ignoreFile SlevomatCodingStandard.TypeHints.DeclareStrictTypes.DeclareStrictTypesMissing -- for call_user_func_array
+// Not strict_types: call_user_func_array() below is compiled as a direct call and takes this
+// file's typing mode, and a string query value must still coerce into a typed onGet parameter.
 
 namespace BEAR\QueryRepository;
 
-use BEAR\QueryRepository\Exception\UnmatchedQuery;
 use BEAR\QueryRepository\Log\Context\CommandResultContext;
-use BEAR\Resource\AbstractUri;
+use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\Code;
 use BEAR\Resource\ResourceObject;
 use Koriym\SemanticLogger\NullSemanticLogger;
-use BEAR\RepositoryModule\Annotation\CacheLog;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
+use Override;
 use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
-use ReflectionMethod;
 
-use function array_values;
 use function assert;
 use function call_user_func_array;
-use function get_class;
 use function is_callable;
-use function sprintf;
 
 /**
  * Interceptor for donut cache invalidation on CQRS commands
@@ -41,12 +37,12 @@ final readonly class DonutCommandInterceptor implements MethodInterceptor
         private DonutRepositoryInterface $repository,
         private MatchQueryInterface $matchQuery,
         #[CacheLog]
-        private SemanticLoggerInterface $logger = new NullSemanticLogger()
-    ){
+        private SemanticLoggerInterface $logger = new NullSemanticLogger(),
+    ) {
         $this->commandContextFactory = new CommandContextFactory();
     }
 
-    #[\Override]
+    #[Override]
     public function invoke(MethodInvocation $invocation): ResourceObject
     {
         $ro = $invocation->proceed();
@@ -68,7 +64,7 @@ final readonly class DonutCommandInterceptor implements MethodInterceptor
 
     public function refreshDonutAndState(ResourceObject $ro): void
     {
-        $getQuery =($this->matchQuery)($ro);
+        $getQuery = ($this->matchQuery)($ro);
         $delUri = clone $ro->uri;
         $delUri->query = $getQuery;
 
@@ -78,15 +74,15 @@ final readonly class DonutCommandInterceptor implements MethodInterceptor
         $this->refresh($getQuery, $ro);
     }
 
-    /**
-     * @param array<string, mixed> $getQuery
-     */
+    /** @param array<string, mixed> $getQuery */
     private function refresh(array $getQuery, ResourceObject $ro): void
     {
         $ro->uri->query = $getQuery;
         $get = [$ro, 'onGet'];
         if (is_callable($get)) {
-            call_user_func_array($get, array_values($getQuery));
+            // String keys are named arguments: a parameter MatchQuery omitted keeps its
+            // default instead of shifting the positional order.
+            call_user_func_array($get, $getQuery);
         }
     }
 }

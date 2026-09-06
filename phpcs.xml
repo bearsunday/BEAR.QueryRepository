@@ -84,7 +84,8 @@
         </properties>
     </rule>
     <rule ref="SlevomatCodingStandard.TypeHints.DeclareStrictTypes.DeclareStrictTypesMissing">
-        <exclude-pattern>src/ClassParam.php</exclude-pattern>
+        <exclude-pattern>src/RefreshSameCommand.php</exclude-pattern>
+        <exclude-pattern>src/DonutCommandInterceptor.php</exclude-pattern>
     </rule>
     <rule ref="SlevomatCodingStandard.Namespaces.UnusedUses">
         <properties>

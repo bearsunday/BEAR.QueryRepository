@@ -89,6 +89,18 @@ class BehaviorTest extends TestCase
         $this->resource->put('app://self/unmatch', ['id' => 1, 'age' => 10, 'name' => 'Sunday']);
     }
 
+    public function testWriteToOptionalParamResourceWithoutOptionalQuery(): void
+    {
+        $first = $this->resource->get('app://self/optional-param', ['id' => 1]);
+        $second = $this->resource->get('app://self/optional-param', ['id' => 1]);
+        $this->assertSame($first->body, $second->body);
+
+        $this->resource->put('app://self/optional-param', ['id' => 1]);
+
+        $third = $this->resource->get('app://self/optional-param', ['id' => 1]);
+        $this->assertNotSame($first->body, $third->body);
+    }
+
     public function testCacheCode(): void
     {
         $ro = $this->resource->get('app://self/code', []);
