@@ -12,8 +12,6 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 
-use function array_unique;
-use function array_values;
 use function assert;
 use function gettype;
 use function implode;
@@ -36,47 +34,55 @@ use function substr_count;
 class WeavingMatrixTest extends TestCase
 {
     /**
-     * Every shape an application can write, and how many command scopes its write must open
+     * Every shape an application can write: the chain its write carries, and the scopes it opens
      *
-     * 0: the cache declaration sits on `onGet` alone, so nothing names the write - invalidating
-     * what it changed needs `#[Purge]`/`#[Refresh]` on the write itself, which no matcher can
-     * supply. 2: `CRPurge` weaves two interceptors with different jobs - `RefreshInterceptor`
-     * purges the URI the attribute names, `DonutCommandInterceptor` refreshes the resource - so
-     * two scopes are correct there and a duplicate anywhere else is not.
+     * The chain is the contract, order included - the defect this test exists for was a query
+     * interceptor sitting first, answering the write from the store. An empty chain means the
+     * declaration sits on `onGet` alone, so nothing names the write: invalidating what it changed
+     * needs `#[Purge]`/`#[Refresh]` on the write itself, which no matcher can supply.
+     * `CRPurge` carries two interceptors with different jobs - `RefreshInterceptor` purges the URI
+     * the attribute names, `DonutCommandInterceptor` refreshes the resource - so two scopes are
+     * correct there and nowhere else. `CARefresh` shows `#[RefreshCache]` adding nothing to a
+     * `#[Cacheable]` class: `CommandInterceptor` already purges and regenerates, and weaving the
+     * donut command interceptor beside it did the same work twice.
      *
-     * @return list<array{0: string, 1: string, 2: int}>
+     * @return list<array{0: string, 1: string, 2: list<string>, 3: int}>
      */
     public static function writeProvider(): array
     {
-        $commandScopes = [
-            'CANone' => 1,
-            'CAPurge' => 1,
-            'CARefresh' => 1,
-            'CRNone' => 1,
-            'CRPurge' => 2,
-            'CRRefresh' => 1,
-            'CRBoth' => 1,
-            'MRNone' => 0,
-            'MRPurge' => 1,
-            'MRRefresh' => 1,
-            'DCNone' => 0,
-            'DCPurge' => 1,
-            'DCRefresh' => 1,
-            'DCMR' => 0,
+        $expected = [
+            'CANone' => [[CommandInterceptor::class], 1],
+            'CAPurge' => [[CommandInterceptor::class], 1],
+            'CARefresh' => [[CommandInterceptor::class], 1],
+            'CRNone' => [[DonutCommandInterceptor::class], 1],
+            'CRPurge' => [[RefreshInterceptor::class, DonutCommandInterceptor::class], 2],
+            'CRRefresh' => [[DonutCommandInterceptor::class], 1],
+            'CRBoth' => [[DonutCommandInterceptor::class], 1],
+            'MRNone' => [[], 0],
+            'MRPurge' => [[RefreshInterceptor::class], 1],
+            'MRRefresh' => [[DonutCommandInterceptor::class], 1],
+            'DCNone' => [[], 0],
+            'DCPurge' => [[RefreshInterceptor::class], 1],
+            'DCRefresh' => [[DonutCommandInterceptor::class], 1],
+            'DCMR' => [[], 0],
         ];
         $cases = [];
-        foreach ($commandScopes as $shape => $expected) {
+        foreach ($expected as $shape => [$chain, $scopes]) {
             foreach (['onPut', 'onPost', 'onDelete'] as $method) {
-                $cases[] = [$shape, $method, $expected];
+                $cases[] = [$shape, $method, $chain, $scopes];
             }
         }
 
         return $cases;
     }
 
-    /** A write is never answered from the cache, and it announces its change exactly once per announcer */
+    /**
+     * A write runs, answers with its own code, and announces its change once per announcer
+     *
+     * @param list<string> $chain interceptor short class names, in the order they are woven
+     */
     #[DataProvider('writeProvider')]
-    public function testWriteRunsAndAnnounces(string $shape, string $method, int $commandScopes): void
+    public function testWriteRunsAndAnnounces(string $shape, string $method, array $chain, int $commandScopes): void
     {
         $class = 'FakeVendor\HelloWorld\Resource\Page\Mx\\' . $shape;
         $class::$ran = 0;
@@ -94,10 +100,10 @@ class WeavingMatrixTest extends TestCase
         $this->assertSame(204, $ro->code, $shape . '::' . $method . ' returned the cached representation, not its own');
 
         $woven = self::wovenOn($ro, $method);
-        $this->assertSame(array_values(array_unique($woven)), $woven, $shape . '::' . $method . ' carries a duplicated interceptor: ' . implode(', ', $woven));
+        $this->assertSame($chain, $woven, $shape . '::' . $method . ' carries ' . (implode(', ', $woven) ?: 'nothing'));
 
         $log = (string) json_encode($injector->getInstance(SemanticLoggerInterface::class, CacheLog::class)->flush());
-        $this->assertSame($commandScopes, substr_count($log, '"command"'), $shape . '::' . $method . ' opened ' . substr_count($log, '"command"') . ' command scopes, expected ' . $commandScopes . ' - woven: ' . (implode(', ', $woven) ?: 'nothing'));
+        $this->assertSame($commandScopes, substr_count($log, '"command"'), $shape . '::' . $method . ' opened ' . substr_count($log, '"command"') . ' command scopes, expected ' . $commandScopes);
     }
 
     /**
