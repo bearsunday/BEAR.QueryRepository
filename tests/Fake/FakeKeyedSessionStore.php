@@ -28,16 +28,4 @@ final class FakeKeyedSessionStore implements SessionStoreInterface
         unset($this->sessions[$this->key]);
     }
 
-    /** @return array{key: string} */
-    public function __serialize(): array
-    {
-        return ['key' => $this->key];
-    }
-
-    /** @param array{key: string} $data */
-    public function __unserialize(array $data): void
-    {
-        $this->key = $data['key'];
-        $this->sessions = [];
-    }
 }
