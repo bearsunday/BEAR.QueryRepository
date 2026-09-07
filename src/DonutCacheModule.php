@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\CacheableResponse;
 use BEAR\RepositoryModule\Annotation\DonutCache;
 use BEAR\RepositoryModule\Annotation\RefreshCache;
 use Override;
+use Ray\Aop\AbstractMatcher;
+use Ray\Aop\MatcherInterface;
 use Ray\Di\AbstractModule;
 use Ray\Di\Scope;
 
@@ -68,28 +71,72 @@ final class DonutCacheModule extends AbstractModule
 
         $this->bindInterceptor(
             $this->matcher->annotatedWith(CacheableResponse::class),
-            $this->matcher->logicalOr(
-                $this->matcher->startsWith('onPut'),
-                $this->matcher->logicalOr(
-                    $this->matcher->startsWith('onPatch'),
-                    $this->matcher->startsWith('onDelete'),
+            self::commandMethods($this->matcher),
+            [DonutCommandInterceptor::class],
+        );
+    }
+
+    /**
+     * onPost writes too: a POST that changes state must refresh the donut it invalidates
+     *
+     * @see \BEAR\QueryRepository\CacheableModule::installAopModule() same set on the value-cache side
+     */
+    private static function commandMethods(MatcherInterface $matcher): AbstractMatcher
+    {
+        return $matcher->logicalOr(
+            $matcher->startsWith('onPut'),
+            $matcher->logicalOr(
+                $matcher->startsWith('onPost'),
+                $matcher->logicalOr(
+                    $matcher->startsWith('onPatch'),
+                    $matcher->startsWith('onDelete'),
                 ),
             ),
-            [DonutCommandInterceptor::class],
         );
     }
 
     private function installAopMethodModule(): void
     {
-        $this->bindInterceptor(
-            $this->matcher->any(),
-            $this->matcher->annotatedWith(CacheableResponse::class),
-            [DonutCacheInterceptor::class],
+        // Ray.Aop merges overlapping bindings without deduplicating, so a class whose own
+        // declaration already governs the method is excluded. The two sets differ because
+        // #[DonutCache] governs onGet only: excluding it from the write bindings too would
+        // leave a #[RefreshCache] write on such a class with no interceptor at all.
+        $readNotDeclared = $this->matcher->logicalNot(
+            $this->matcher->logicalOr(
+                $this->matcher->annotatedWith(CacheableResponse::class),
+                $this->matcher->logicalOr(
+                    $this->matcher->annotatedWith(Cacheable::class),
+                    $this->matcher->annotatedWith(DonutCache::class),
+                ),
+            ),
+        );
+        $writeNotDeclared = $this->matcher->logicalNot(
+            $this->matcher->logicalOr(
+                $this->matcher->annotatedWith(CacheableResponse::class),
+                $this->matcher->annotatedWith(Cacheable::class),
+            ),
         );
         $this->bindInterceptor(
-            $this->matcher->any(),
-            $this->matcher->annotatedWith(RefreshCache::class),
+            $readNotDeclared,
+            $this->matcher->logicalAnd(
+                $this->matcher->annotatedWith(CacheableResponse::class),
+                $this->matcher->startsWith('onGet'),
+            ),
             [DonutCacheInterceptor::class],
+        );
+
+        $this->bindInterceptor(
+            $writeNotDeclared,
+            $this->matcher->logicalAnd(
+                $this->matcher->annotatedWith(CacheableResponse::class),
+                self::commandMethods($this->matcher),
+            ),
+            [DonutCommandInterceptor::class],
+        );
+        $this->bindInterceptor(
+            $writeNotDeclared,
+            $this->matcher->annotatedWith(RefreshCache::class),
+            [DonutCommandInterceptor::class],
         );
     }
 }
