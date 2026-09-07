@@ -14,14 +14,7 @@ use PHPUnit\Framework\TestCase;
 use function serialize;
 use function unserialize;
 
-/**
- * #179: two concurrent requests sharing one facade must not cross-nest or drop each other's log
- *
- * FakeKeyedSessionStore stands in for a Swoole/RoadRunner store keyed by coroutine or worker
- * request id - real concurrency is not exercised here, only the contract SafeSemanticLogger
- * relies on: switching the store's key mid-flight resolves a different session, and each
- * session's own open/close/flush cycle is unaffected by what happens under another key.
- */
+/** #179: two requests sharing one facade must neither cross-nest nor drop each other's log */
 class SessionStoreTest extends TestCase
 {
     use SemanticLogTreeTrait;

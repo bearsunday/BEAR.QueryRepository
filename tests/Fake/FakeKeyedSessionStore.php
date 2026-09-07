@@ -8,13 +8,7 @@ use BEAR\QueryRepository\Log\Session;
 use BEAR\QueryRepository\Log\SessionStoreInterface;
 use Override;
 
-/**
- * Stands in for a concurrent host's keyed store, without a real coroutine runtime
- *
- * A Swoole/RoadRunner binding would key sessions by coroutine id or worker request id; this
- * fake keys them by a public string a test sets directly, which is enough to prove
- * SafeSemanticLogger never lets two keys share or drop a session.
- */
+/** A concurrent host's keyed store, with the request key set by the test instead of a coroutine id */
 final class FakeKeyedSessionStore implements SessionStoreInterface
 {
     public string $key = 'a';

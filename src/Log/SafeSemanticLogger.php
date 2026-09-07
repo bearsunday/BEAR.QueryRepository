@@ -25,23 +25,15 @@ use function error_log;
  *
  * What remains are the two responsibilities orthogonal to totality:
  *
- *  - Session resolution: this facade is bound once per process (see SafeSemanticLoggerProvider),
- *    but the depth count and the delegate logger it drives are per request, so every call asks
- *    the injected SessionStoreInterface for the session of the request in progress rather than
- *    holding either one itself. The default store answers with one session for the whole
- *    process, which is correct under PHP-FPM/CLI and wrong on a concurrent host - see
- *    SessionStoreInterface for what such a host binds instead.
+ *  - Session resolution: the facade is bound once per process, the depth count and delegate
+ *    logger are per request, so every call resolves them through SessionStoreInterface.
  *  - Serialization boundary: a compiled app serializes the injector between requests; session
  *    state never crosses that boundary. It is also the only hook that runs on every request, so
  *    the flush sink (when one is bound) is armed from there.
  */
 final class SafeSemanticLogger implements SemanticLoggerInterface, TopLevelAwareInterface
 {
-    /**
-     * Set by armOrFallSilent() when the sink proves nothing will drain a session on this host.
-     * The silent session lives outside the store: a store that splits sessions by request is a
-     * concurrent host's, and a silenced logger must not depend on it to record nothing.
-     */
+    /** Once the sink refuses this host, every call is answered by silentSession, never the store */
     private bool $silent = false;
     private Session $silentSession;
 
@@ -131,9 +123,7 @@ final class SafeSemanticLogger implements SemanticLoggerInterface, TopLevelAware
     /**
      * Carry the sink and the store, never a live session
      *
-     * The live session stops at this boundary (the store is asked again for a fresh one on the
-     * next call); the flush destination does not, because the unserialized logger has to arm
-     * the next request without reaching the injector.
+     * The unserialized logger has to arm the next request without reaching the injector.
      *
      * @return array{sink: LogSinkInterface|null, store: SessionStoreInterface}
      */

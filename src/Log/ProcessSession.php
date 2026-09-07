@@ -6,13 +6,7 @@ namespace BEAR\QueryRepository\Log;
 
 use Override;
 
-/**
- * The FPM/CLI default: one lazily created session for the whole process
- *
- * Correct because the premise it stands on is true there and only there - one process
- * serves one request, so "the whole process" and "the request in progress" name the same
- * span. A concurrent host does not get to opt out by leaving this bound; it must replace it.
- */
+/** One session for the whole process: the request in progress under PHP-FPM and the CLI */
 final class ProcessSession implements SessionStoreInterface
 {
     private Session|null $session = null;
@@ -30,9 +24,7 @@ final class ProcessSession implements SessionStoreInterface
     }
 
     /**
-     * Carry nothing: a compiled app serializes the injector between requests, and a session
-     * that survived that boundary would be the very cross-request sharing this class exists
-     * to avoid for the host it is right for.
+     * A compiled app serializes the injector between requests; no session crosses that boundary
      *
      * @return array{}
      */
