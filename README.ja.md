@@ -25,3 +25,4 @@
 - [ログの読み方](docs/reading-the-log.ja.md) — ログに現れる全ての語と、セッションの読み方
 - [QueryRepository ログはなぜ全てを記録するのか](docs/why-the-log-records-everything.ja.md) — 設計根拠、コスト実測、既定オフの判断
 - [このログは何を証明し、何を証明しないか](docs/what-the-log-proves.ja.md) — ログが答える問い、その答えを正直に保つ機構、そして宣言された境界
+- [エージェント用スキル: キャッシュログを読む](docs/skills/bear-cache-log/SKILL.md) — コーディングエージェントに入れて(`~/.claude/skills/`)、推測ではなくログを観測させる。配線、イベント語彙、宣言と実際の照合、アプリとライブラリの切り分け、報告の形
