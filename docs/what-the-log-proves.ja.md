@@ -58,13 +58,13 @@
   テストではなく、構成上のものとして検証されています。記録された時刻に実際に eviction が
   起きるかはキャッシュバックエンドの契約です。
 - **並行するセッション。** ロガーのファサードは injector ごとに 1 つで、記録先のセッションは
-  `SessionStoreInterface` で解決します。既定の `ProcessSession` はプロセスに 1 つ持ちます。sink が
-  ホストが並行だと証明できる場合 — RoadRunner のワーカー、あるいは Swoole のコルーチン内
-  — sink は `arm` を拒否し、記録もそこで止まります。セッションを drain するものが何もない
-  からです。そうしたホストは両方をバインドするか、log モジュールを外します（#179）:
-  リクエスト文脈（コルーチン id、ワーカーのリクエスト）で引く `SessionStoreInterface` と、
-  そのリクエスト終端で flush する `LogSinkInterface`。片方だけでは、セッションがリクエスト間で
-  共有されるか、drain されないままになります。検出できないホスト（ロガーが起動時に構築される Swoole
+  `SessionStoreInterface` で解決します。既定の `ProcessSession` はプロセスごとにセッションを
+  1 つ持ちます。sink がホストは並行だと証明できる場合 — RoadRunner のワーカー、あるいは
+  Swoole のコルーチン内 — sink は `arm` を拒否し、記録もそこで止まります。セッションを drain
+  するものが何もないからです。そうしたホストは、リクエスト文脈（コルーチン id、ワーカーの
+  リクエスト）で引く `SessionStoreInterface` と、そのリクエスト終端で flush する
+  `LogSinkInterface` の両方をバインドするか、log モジュールを外します（#179）。片方だけでは、
+  セッションがリクエスト間で共有されるか、drain されないままになります。検出できないホスト（ロガーが起動時に構築される Swoole
   ワーカー、FrankenPHP の worker モード、ReactPHP、Amp、長命の CLI コンシューマ）は
   運用者の判断です。
 - **条件付きリクエストの外での `ResourceStorage::hasEtag()` 呼び出し。** セマンティックな
