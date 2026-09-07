@@ -8,6 +8,8 @@ use BEAR\RepositoryModule\Annotation\CacheableResponse;
 use BEAR\RepositoryModule\Annotation\DonutCache;
 use BEAR\RepositoryModule\Annotation\RefreshCache;
 use Override;
+use Ray\Aop\AbstractMatcher;
+use Ray\Aop\MatcherInterface;
 use Ray\Di\AbstractModule;
 use Ray\Di\Scope;
 
@@ -68,14 +70,27 @@ final class DonutCacheModule extends AbstractModule
 
         $this->bindInterceptor(
             $this->matcher->annotatedWith(CacheableResponse::class),
-            $this->matcher->logicalOr(
-                $this->matcher->startsWith('onPut'),
-                $this->matcher->logicalOr(
-                    $this->matcher->startsWith('onPatch'),
-                    $this->matcher->startsWith('onDelete'),
+            self::commandMethods($this->matcher),
+            [DonutCommandInterceptor::class],
+        );
+    }
+
+    /**
+     * onPost writes too: a POST that changes state must refresh the donut it invalidates
+     *
+     * @see \BEAR\QueryRepository\CacheableModule::installAopModule() same set on the value-cache side
+     */
+    private static function commandMethods(MatcherInterface $matcher): AbstractMatcher
+    {
+        return $matcher->logicalOr(
+            $matcher->startsWith('onPut'),
+            $matcher->logicalOr(
+                $matcher->startsWith('onPost'),
+                $matcher->logicalOr(
+                    $matcher->startsWith('onPatch'),
+                    $matcher->startsWith('onDelete'),
                 ),
             ),
-            [DonutCommandInterceptor::class],
         );
     }
 
@@ -83,13 +98,27 @@ final class DonutCacheModule extends AbstractModule
     {
         $this->bindInterceptor(
             $this->matcher->any(),
-            $this->matcher->annotatedWith(CacheableResponse::class),
+            $this->matcher->logicalAnd(
+                $this->matcher->annotatedWith(CacheableResponse::class),
+                $this->matcher->startsWith('onGet'),
+            ),
             [DonutCacheInterceptor::class],
+        );
+
+        // A write is not a query: the donut interceptor answers from the store, so binding it to
+        // a command method makes the write return the cached representation without running.
+        $this->bindInterceptor(
+            $this->matcher->any(),
+            $this->matcher->logicalAnd(
+                $this->matcher->annotatedWith(CacheableResponse::class),
+                self::commandMethods($this->matcher),
+            ),
+            [DonutCommandInterceptor::class],
         );
         $this->bindInterceptor(
             $this->matcher->any(),
             $this->matcher->annotatedWith(RefreshCache::class),
-            [DonutCacheInterceptor::class],
+            [DonutCommandInterceptor::class],
         );
     }
 }

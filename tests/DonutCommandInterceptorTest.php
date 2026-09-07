@@ -177,6 +177,6 @@ class DonutCommandInterceptorTest extends TestCase
         assert(is_array($ro->bindings['onDelete']));
         assert(isset($ro->bindings['onGet'][0]));
         assert(isset($ro->bindings['onDelete'][0]));
-        $this->assertInstanceOf(DonutCacheInterceptor::class, $ro->bindings['onDelete'][0]);
+        $this->assertInstanceOf(DonutCommandInterceptor::class, $ro->bindings['onDelete'][0]);
     }
 }
