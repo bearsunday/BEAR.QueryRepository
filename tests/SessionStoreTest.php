@@ -50,6 +50,19 @@ class SessionStoreTest extends TestCase
         $this->assertSame([], $store->sessions, 'both flushes forgot their key; nothing is left to leak into a third request');
     }
 
+    public function testKeyedStoreCarriesNoSessionAcrossSerialization(): void
+    {
+        $store = new FakeKeyedSessionStore();
+        $logger = new SafeSemanticLogger(null, $store);
+        $logger->open(new GetContext('app://self/a'));
+        $this->assertFalse($logger->isTopLevel());
+
+        $restored = unserialize(serialize($logger));
+        $this->assertInstanceOf(SafeSemanticLogger::class, $restored);
+        $this->assertTrue($restored->isTopLevel(), 'the open scope did not cross the serialization boundary');
+        $this->assertSame([], $restored->flush()->toArray()['open'], 'nothing recorded before the boundary is flushed after it');
+    }
+
     public function testProcessSessionStartsFreshAfterSerialization(): void
     {
         $store = new ProcessSession();

@@ -36,6 +36,7 @@ final class ProcessSession implements SessionStoreInterface
     /** @param array{} $data */
     public function __unserialize(array $data): void
     {
+        unset($data);
         $this->session = null;
     }
 }

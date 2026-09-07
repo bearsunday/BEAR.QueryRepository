@@ -11,6 +11,9 @@ namespace BEAR\QueryRepository\Log;
  * host (Swoole coroutine, RoadRunner worker) binds an implementation keyed by its request
  * context, as it does for ServerContextInterface. The store only keeps requests from sharing a
  * session; the host's LogSinkInterface still has to flush at that host's request end.
+ *
+ * Implementations are serialized with the compiled app and must carry configuration only: a
+ * session that crossed that boundary would hand one request's depth and log to the next.
  */
 interface SessionStoreInterface
 {
