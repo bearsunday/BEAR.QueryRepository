@@ -50,8 +50,11 @@ final class CacheableModule extends AbstractModule
             $this->matcher->logicalOr(
                 $this->matcher->startsWith('onPut'),
                 $this->matcher->logicalOr(
-                    $this->matcher->startsWith('onPatch'),
-                    $this->matcher->startsWith('onDelete'),
+                    $this->matcher->startsWith('onPost'),
+                    $this->matcher->logicalOr(
+                        $this->matcher->startsWith('onPatch'),
+                        $this->matcher->startsWith('onDelete'),
+                    ),
                 ),
             ),
             [CommandInterceptor::class],
