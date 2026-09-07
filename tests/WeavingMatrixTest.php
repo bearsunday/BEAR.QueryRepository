@@ -29,50 +29,54 @@ use function substr_count;
  * Which interceptor is woven onto which method, for every cache declaration shape
  *
  * A declaration that does not weave is silent: the resource answers correctly and the suite stays
- * green. The pairs below are the ones an application can actually write, and each is asserted on
- * two observable facts - the write body ran, and the write announced an invalidation.
+ * green. Each shape is asserted on what the log and the response show - the write body ran, it
+ * answered with its own code, no interceptor was woven twice, and the change was announced
+ * exactly as many times as there are interceptors with something to announce.
  */
 class WeavingMatrixTest extends TestCase
 {
     /**
-     * Every shape an application can write, and whether its write must announce the change
+     * Every shape an application can write, and how many command scopes its write must open
      *
-     * `MRNone` and `DCNone` carry the cache declaration on `onGet` only, so nothing names their
-     * write: the binding matches the attribute *on* the method, and no matcher can express "a
-     * class holding this attribute somewhere". Their writes run, and invalidating what they
-     * changed needs `#[Purge]` or `#[Refresh]` written on the write.
+     * 0: the cache declaration sits on `onGet` alone, so nothing names the write - invalidating
+     * what it changed needs `#[Purge]`/`#[Refresh]` on the write itself, which no matcher can
+     * supply. 2: `CRPurge` weaves two interceptors with different jobs - `RefreshInterceptor`
+     * purges the URI the attribute names, `DonutCommandInterceptor` refreshes the resource - so
+     * two scopes are correct there and a duplicate anywhere else is not.
      *
-     * @return list<array{0: string, 1: string, 2: bool}>
+     * @return list<array{0: string, 1: string, 2: int}>
      */
     public static function writeProvider(): array
     {
-        $announces = [
-            'CANone' => true,
-            'CAPurge' => true,
-            'CARefresh' => true,
-            'CRNone' => true,
-            'CRPurge' => true,
-            'CRRefresh' => true,
-            'MRNone' => false,
-            'MRPurge' => true,
-            'MRRefresh' => true,
-            'DCNone' => false,
-            'DCPurge' => true,
-            'DCRefresh' => true,
+        $commandScopes = [
+            'CANone' => 1,
+            'CAPurge' => 1,
+            'CARefresh' => 1,
+            'CRNone' => 1,
+            'CRPurge' => 2,
+            'CRRefresh' => 1,
+            'CRBoth' => 1,
+            'MRNone' => 0,
+            'MRPurge' => 1,
+            'MRRefresh' => 1,
+            'DCNone' => 0,
+            'DCPurge' => 1,
+            'DCRefresh' => 1,
+            'DCMR' => 0,
         ];
         $cases = [];
-        foreach ($announces as $shape => $announce) {
+        foreach ($commandScopes as $shape => $expected) {
             foreach (['onPut', 'onPost', 'onDelete'] as $method) {
-                $cases[] = [$shape, $method, $announce];
+                $cases[] = [$shape, $method, $expected];
             }
         }
 
         return $cases;
     }
 
-    /** A write is never answered from the cache, and it announces what it changed */
+    /** A write is never answered from the cache, and it announces its change exactly once per announcer */
     #[DataProvider('writeProvider')]
-    public function testWriteRunsAndAnnounces(string $shape, string $method, bool $announces): void
+    public function testWriteRunsAndAnnounces(string $shape, string $method, int $commandScopes): void
     {
         $class = 'FakeVendor\HelloWorld\Resource\Page\Mx\\' . $shape;
         $class::$ran = 0;
@@ -92,12 +96,8 @@ class WeavingMatrixTest extends TestCase
         $woven = self::wovenOn($ro, $method);
         $this->assertSame(array_values(array_unique($woven)), $woven, $shape . '::' . $method . ' carries a duplicated interceptor: ' . implode(', ', $woven));
 
-        if (! $announces) {
-            return;
-        }
-
         $log = (string) json_encode($injector->getInstance(SemanticLoggerInterface::class, CacheLog::class)->flush());
-        $this->assertGreaterThan(0, substr_count($log, '"command"'), $shape . '::' . $method . ' left no command scope: nothing was told that the state changed');
+        $this->assertSame($commandScopes, substr_count($log, '"command"'), $shape . '::' . $method . ' opened ' . substr_count($log, '"command"') . ' command scopes, expected ' . $commandScopes . ' - woven: ' . (implode(', ', $woven) ?: 'nothing'));
     }
 
     /**

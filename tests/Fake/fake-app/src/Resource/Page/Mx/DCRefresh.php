@@ -10,12 +10,12 @@ use BEAR\RepositoryModule\Annotation\RefreshCache;
 use BEAR\Resource\ResourceObject;
 
 /** Weaving matrix fixture: DCRefresh */
+#[DonutCache]
 class DCRefresh extends ResourceObject
 {
     /** Number of times a write body really ran */
     public static int $ran = 0;
 
-    #[DonutCache]
     public function onGet(int $id = 0): static
     {
         $this->body = ['v' => $id];

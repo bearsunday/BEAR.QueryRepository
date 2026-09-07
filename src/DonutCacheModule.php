@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\CacheableResponse;
 use BEAR\RepositoryModule\Annotation\DonutCache;
 use BEAR\RepositoryModule\Annotation\RefreshCache;
@@ -96,11 +97,27 @@ final class DonutCacheModule extends AbstractModule
 
     private function installAopMethodModule(): void
     {
-        // Ray.Aop merges overlapping bindings without deduplicating, so a class the class-level
-        // binding already covers is excluded here rather than carrying the interceptor twice.
-        $notCacheableResponse = $this->matcher->logicalNot($this->matcher->annotatedWith(CacheableResponse::class));
+        // Ray.Aop merges overlapping bindings without deduplicating, so a class whose own
+        // declaration already governs the method is excluded. The two sets differ because
+        // #[DonutCache] governs onGet only: excluding it from the write bindings too would
+        // leave a #[RefreshCache] write on such a class with no interceptor at all.
+        $readNotDeclared = $this->matcher->logicalNot(
+            $this->matcher->logicalOr(
+                $this->matcher->annotatedWith(CacheableResponse::class),
+                $this->matcher->logicalOr(
+                    $this->matcher->annotatedWith(Cacheable::class),
+                    $this->matcher->annotatedWith(DonutCache::class),
+                ),
+            ),
+        );
+        $writeNotDeclared = $this->matcher->logicalNot(
+            $this->matcher->logicalOr(
+                $this->matcher->annotatedWith(CacheableResponse::class),
+                $this->matcher->annotatedWith(Cacheable::class),
+            ),
+        );
         $this->bindInterceptor(
-            $this->matcher->any(),
+            $readNotDeclared,
             $this->matcher->logicalAnd(
                 $this->matcher->annotatedWith(CacheableResponse::class),
                 $this->matcher->startsWith('onGet'),
@@ -109,7 +126,7 @@ final class DonutCacheModule extends AbstractModule
         );
 
         $this->bindInterceptor(
-            $notCacheableResponse,
+            $writeNotDeclared,
             $this->matcher->logicalAnd(
                 $this->matcher->annotatedWith(CacheableResponse::class),
                 self::commandMethods($this->matcher),
@@ -117,7 +134,7 @@ final class DonutCacheModule extends AbstractModule
             [DonutCommandInterceptor::class],
         );
         $this->bindInterceptor(
-            $notCacheableResponse,
+            $writeNotDeclared,
             $this->matcher->annotatedWith(RefreshCache::class),
             [DonutCommandInterceptor::class],
         );
