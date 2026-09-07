@@ -12,8 +12,15 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 
+use function array_unique;
+use function array_values;
 use function assert;
+use function gettype;
+use function implode;
+use function is_array;
+use function is_object;
 use function json_encode;
+use function property_exists;
 use function strtolower;
 use function substr;
 use function substr_count;
@@ -63,11 +70,7 @@ class WeavingMatrixTest extends TestCase
         return $cases;
     }
 
-    /**
-     * A write is never answered from the cache, and it announces what it changed
-     *
-     * @param bool $announces whether the shape carries a declaration that must produce a command scope
-     */
+    /** A write is never answered from the cache, and it announces what it changed */
     #[DataProvider('writeProvider')]
     public function testWriteRunsAndAnnounces(string $shape, string $method, bool $announces): void
     {
@@ -79,12 +82,15 @@ class WeavingMatrixTest extends TestCase
         );
         $resource = $injector->getInstance(ResourceInterface::class);
         $uri = 'page://self/mx/' . $shape . '?id=1';
-        $resource->get($uri);                                        // warm the cache
-        $ro = $resource->{strtolower(substr($method, 2))}($uri);     // then write
+        $resource->get($uri);
+        $ro = $resource->{strtolower(substr($method, 2))}($uri);
         assert($ro instanceof ResourceObject);
 
         $this->assertSame(1, $class::$ran, $shape . '::' . $method . ' was answered from the cache instead of running');
         $this->assertSame(204, $ro->code, $shape . '::' . $method . ' returned the cached representation, not its own');
+
+        $woven = self::wovenOn($ro, $method);
+        $this->assertSame(array_values(array_unique($woven)), $woven, $shape . '::' . $method . ' carries a duplicated interceptor: ' . implode(', ', $woven));
 
         if (! $announces) {
             return;
@@ -92,5 +98,31 @@ class WeavingMatrixTest extends TestCase
 
         $log = (string) json_encode($injector->getInstance(SemanticLoggerInterface::class, CacheLog::class)->flush());
         $this->assertGreaterThan(0, substr_count($log, '"command"'), $shape . '::' . $method . ' left no command scope: nothing was told that the state changed');
+    }
+
+    /**
+     * Interceptor class names woven onto one method, in chain order
+     *
+     * @return list<string>
+     */
+    private static function wovenOn(ResourceObject $ro, string $method): array
+    {
+        if (! property_exists($ro, 'bindings') || ! is_array($ro->bindings)) {
+            return [];
+        }
+
+        /** @var mixed $onMethod */
+        $onMethod = $ro->bindings[$method] ?? [];
+        if (! is_array($onMethod)) {
+            return [];
+        }
+
+        $names = [];
+        /** @var mixed $interceptor */
+        foreach ($onMethod as $interceptor) {
+            $names[] = is_object($interceptor) ? $interceptor::class : (string) gettype($interceptor);
+        }
+
+        return $names;
     }
 }

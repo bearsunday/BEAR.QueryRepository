@@ -96,6 +96,9 @@ final class DonutCacheModule extends AbstractModule
 
     private function installAopMethodModule(): void
     {
+        // Ray.Aop merges overlapping bindings without deduplicating, so a class the class-level
+        // binding already covers is excluded here rather than carrying the interceptor twice.
+        $notCacheableResponse = $this->matcher->logicalNot($this->matcher->annotatedWith(CacheableResponse::class));
         $this->bindInterceptor(
             $this->matcher->any(),
             $this->matcher->logicalAnd(
@@ -105,10 +108,8 @@ final class DonutCacheModule extends AbstractModule
             [DonutCacheInterceptor::class],
         );
 
-        // A write is not a query: the donut interceptor answers from the store, so binding it to
-        // a command method makes the write return the cached representation without running.
         $this->bindInterceptor(
-            $this->matcher->any(),
+            $notCacheableResponse,
             $this->matcher->logicalAnd(
                 $this->matcher->annotatedWith(CacheableResponse::class),
                 self::commandMethods($this->matcher),
@@ -116,7 +117,7 @@ final class DonutCacheModule extends AbstractModule
             [DonutCommandInterceptor::class],
         );
         $this->bindInterceptor(
-            $this->matcher->any(),
+            $notCacheableResponse,
             $this->matcher->annotatedWith(RefreshCache::class),
             [DonutCommandInterceptor::class],
         );
