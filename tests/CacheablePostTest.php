@@ -38,15 +38,18 @@ class CacheablePostTest extends TestCase
     {
         $uri = new Uri('app://self/post-writer?id=1');
         $this->resource->get('app://self/post-writer', ['id' => '1']);
-        $this->assertInstanceOf(ResourceState::class, $this->repository->get($uri));
-        $this->assertSame(1, PostWriter::$gets);
+        $stored = $this->repository->get($uri);
+        $this->assertInstanceOf(ResourceState::class, $stored);
+        $this->assertSame(['id' => '1', 'generation' => 1], $stored->body);
 
         $this->resource->post('app://self/post-writer', ['id' => '1']);
 
         // Refresh, not purge: the entry is regenerated, so what says the write was seen is that
-        // the representation was generated again.
+        // the stored representation is the one the second run produced.
         $this->assertSame(2, PostWriter::$gets, 'the POST left its own representation cached');
-        $this->assertInstanceOf(ResourceState::class, $this->repository->get($uri));
+        $refreshed = $this->repository->get($uri);
+        $this->assertInstanceOf(ResourceState::class, $refreshed);
+        $this->assertSame(['id' => '1', 'generation' => 2], $refreshed->body, 'the pre-POST entry is still the one being served');
     }
 
     public function testPostRunsThePurgeWrittenOnIt(): void
