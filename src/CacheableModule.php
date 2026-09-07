@@ -47,11 +47,16 @@ final class CacheableModule extends AbstractModule
         );
         $this->bindInterceptor(
             $this->matcher->annotatedWith(Cacheable::class),
+            // Every write, POST included: it is what a form submits, and the representation it
+            // makes stale is the one this class had cached.
             $this->matcher->logicalOr(
                 $this->matcher->startsWith('onPut'),
                 $this->matcher->logicalOr(
-                    $this->matcher->startsWith('onPatch'),
-                    $this->matcher->startsWith('onDelete'),
+                    $this->matcher->startsWith('onPost'),
+                    $this->matcher->logicalOr(
+                        $this->matcher->startsWith('onPatch'),
+                        $this->matcher->startsWith('onDelete'),
+                    ),
                 ),
             ),
             [CommandInterceptor::class],
