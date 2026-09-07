@@ -11,7 +11,6 @@ use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 
 use function assert;
-use function error_log;
 
 /**
  * Facade over the total (never-throwing) SemanticLogger, resolved per request through a store
@@ -138,20 +137,11 @@ final class SafeSemanticLogger implements SemanticLoggerInterface, TopLevelAware
         $sink = $data['sink'] ?? null;
         assert($sink === null || $sink instanceof LogSinkInterface);
         $store = $data['store'] ?? null;
+        assert($store instanceof SessionStoreInterface);
 
         $this->silent = false;
         $this->silentSession = new Session(new NullSemanticLogger());
         $this->sink = $sink;
-        if (! $store instanceof SessionStoreInterface) {
-            // A snapshot without a store predates this class; guessing one could reinstate the
-            // shared session a concurrent host binds a store to avoid, so record nothing instead.
-            error_log('QueryRepository log: the compiled snapshot carries no session store; recording is off until the app is recompiled.');
-            $this->store = new ProcessSession();
-            $this->silent = true;
-
-            return;
-        }
-
         $this->store = $store;
         $this->armOrFallSilent();
     }
