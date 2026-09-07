@@ -13,7 +13,6 @@ use BEAR\QueryRepository\Log\LogSinkInterface;
 use BEAR\QueryRepository\Log\SafeSemanticLogger;
 use BEAR\QueryRepository\Log\ShutdownFlush;
 use BEAR\RepositoryModule\Annotation\CacheLog;
-use Koriym\SemanticLogger\SemanticLogger;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
@@ -118,7 +117,7 @@ class LogSinkTest extends TestCase
     public function testAnEmptySessionIsNotWritten(): void
     {
         // Nothing was recorded: a file would claim the request had no cache activity to show
-        (new ShutdownFlush(new LogFileWriter($this->logDir)))->flush(new SafeSemanticLogger(new SemanticLogger()));
+        (new ShutdownFlush(new LogFileWriter($this->logDir)))->flush(new SafeSemanticLogger());
 
         $this->assertFalse(is_dir($this->logDir));
     }
@@ -138,7 +137,7 @@ class LogSinkTest extends TestCase
             }
         };
         $sink = new ShutdownFlush(new LogFileWriter($this->logDir), $runtime);
-        $logger = new SafeSemanticLogger(new SemanticLogger());
+        $logger = new SafeSemanticLogger();
 
         $sink->arm($logger);
         $sink->arm($logger);
@@ -153,8 +152,8 @@ class LogSinkTest extends TestCase
         // SemanticLoggerInterface binding would lose every session after the first with no signal.
         $sink = new ShutdownFlush(new LogFileWriter($this->logDir));
         $diagnostic = $this->diagnosticsOf(static function () use ($sink): void {
-            $sink->arm(new SafeSemanticLogger(new SemanticLogger()));
-            $sink->arm(new SafeSemanticLogger(new SemanticLogger()));
+            $sink->arm(new SafeSemanticLogger());
+            $sink->arm(new SafeSemanticLogger());
         });
 
         $this->assertStringContainsString('Scope::SINGLETON', $diagnostic);
@@ -179,7 +178,7 @@ class LogSinkTest extends TestCase
         // stop with it - otherwise the worker accumulates a log no one reads.
         $logger = null;
         $diagnostic = $this->diagnosticsOf(function () use (&$logger): void {
-            $logger = new SafeSemanticLogger(new SemanticLogger(), new ShutdownFlush(
+            $logger = new SafeSemanticLogger(new ShutdownFlush(
                 new LogFileWriter($this->logDir),
                 new class implements ConcurrentRuntimeInterface {
                     public function isConcurrent(): bool
@@ -222,7 +221,7 @@ class LogSinkTest extends TestCase
     /** A logger whose sink refuses this host */
     private function concurrentLogger(): SafeSemanticLogger
     {
-        return new SafeSemanticLogger(new SemanticLogger(), new ShutdownFlush(
+        return new SafeSemanticLogger(new ShutdownFlush(
             new LogFileWriter($this->logDir),
             new class implements ConcurrentRuntimeInterface {
                 public function isConcurrent(): bool
@@ -245,7 +244,7 @@ class LogSinkTest extends TestCase
 
     public function testTheSinkSurvivesTheSerializationBoundaryAndTheSessionDoesNot(): void
     {
-        $logger = new SafeSemanticLogger(new SemanticLogger(), new ShutdownFlush(new LogFileWriter($this->logDir)));
+        $logger = new SafeSemanticLogger(new ShutdownFlush(new LogFileWriter($this->logDir)));
         $logger->open(new Log\Context\GetContext('page://self/unclosed'));
 
         $restored = unserialize(serialize($logger));
