@@ -16,16 +16,21 @@ final class FakeKeyedSessionStore implements SessionStoreInterface
     /** @var array<string, Session> */
     public array $sessions = [];
 
+    /** Every current()/forget(), so a test can assert the store was never consulted */
+    public int $calls = 0;
+
     #[Override]
     public function current(): Session
     {
+        $this->calls++;
+
         return $this->sessions[$this->key] ??= new Session();
     }
 
     #[Override]
     public function forget(): void
     {
+        $this->calls++;
         unset($this->sessions[$this->key]);
     }
-
 }

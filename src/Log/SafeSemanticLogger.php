@@ -113,7 +113,12 @@ final class SafeSemanticLogger implements SemanticLoggerInterface, TopLevelAware
     {
         $session = $this->current();
         $log = $session->logger->flush($links);
-        $session->depth = 0;
+        if ($this->silent) {
+            $session->depth = 0;
+
+            return $log;
+        }
+
         $this->store->forget();
 
         return $log;
@@ -137,7 +142,7 @@ final class SafeSemanticLogger implements SemanticLoggerInterface, TopLevelAware
         $sink = $data['sink'] ?? null;
         assert($sink === null || $sink instanceof LogSinkInterface);
         $store = $data['store'] ?? null;
-        assert($store instanceof SessionStoreInterface);
+        assert($store instanceof SessionStoreInterface, 'stale compiled snapshot: no session store; recompile the app');
 
         $this->silent = false;
         $this->silentSession = new Session(new NullSemanticLogger());

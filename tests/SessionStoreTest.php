@@ -7,8 +7,10 @@ namespace BEAR\QueryRepository;
 use BEAR\QueryRepository\Fake\FakeKeyedSessionStore;
 use BEAR\QueryRepository\Log\Context\CacheHitContext;
 use BEAR\QueryRepository\Log\Context\GetContext;
+use BEAR\QueryRepository\Log\LogSinkInterface;
 use BEAR\QueryRepository\Log\ProcessSession;
 use BEAR\QueryRepository\Log\SafeSemanticLogger;
+use Koriym\SemanticLogger\SemanticLoggerInterface;
 use PHPUnit\Framework\TestCase;
 
 use function serialize;
@@ -48,6 +50,31 @@ class SessionStoreTest extends TestCase
         $this->assertNull(self::eventContextJsonOf($logA, 'semantic_logger_error'), 'key a was interleaved, not violated');
 
         $this->assertSame([], $store->sessions, 'both flushes forgot their key; nothing is left to leak into a third request');
+    }
+
+    /** A keyed store is a live request context; once the sink refuses the host, no call may reach it */
+    public function testARefusedSinkKeepsEveryCallOffTheStore(): void
+    {
+        $store = new FakeKeyedSessionStore();
+        $refusing = new class implements LogSinkInterface {
+            public function arm(SemanticLoggerInterface $logger): bool
+            {
+                return false;
+            }
+
+            public function flush(SemanticLoggerInterface $logger): void
+            {
+            }
+        };
+        $logger = new SafeSemanticLogger($refusing, $store);
+
+        $id = $logger->open(new GetContext('app://self/a'));
+        $this->assertFalse($logger->isTopLevel());
+        $logger->event(new CacheHitContext('view'));
+        $logger->close(new CacheHitContext('view'), $id);
+        $this->assertTrue($logger->isTopLevel());
+        $this->assertSame([], $logger->flush()->open, 'a refused sink records nothing');
+        $this->assertSame(0, $store->calls, 'the store was never consulted, flush included');
     }
 
     public function testProcessSessionStartsFreshAfterSerialization(): void
