@@ -9,8 +9,10 @@ use BEAR\QueryRepository\Log\LogSinkInterface;
 use BEAR\QueryRepository\Log\LogStreamWriter;
 use BEAR\QueryRepository\Log\LogWriterInterface;
 use BEAR\QueryRepository\Log\PolicyLogWriter;
+use BEAR\QueryRepository\Log\ProcessSession;
 use BEAR\QueryRepository\Log\RetentionPolicyInterface;
 use BEAR\QueryRepository\Log\SafeSemanticLoggerProvider;
+use BEAR\QueryRepository\Log\SessionStoreInterface;
 use BEAR\QueryRepository\Log\ShutdownFlush;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\RepositoryModule\Annotation\LogDestination;
@@ -60,6 +62,7 @@ final class ProdQueryRepositoryLogModule extends AbstractModule
         $this->bind(LogWriterInterface::class)->annotatedWith(LogDestination::class)->toInstance(new LogStreamWriter($this->stream));
         $this->bind(LogWriterInterface::class)->toConstructor(PolicyLogWriter::class, ['writer' => LogDestination::class]);
         $this->bind(LogSinkInterface::class)->to(ShutdownFlush::class)->in(Scope::SINGLETON);
+        $this->bind(SessionStoreInterface::class)->to(ProcessSession::class)->in(Scope::SINGLETON);
         $this->bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)->toProvider(SafeSemanticLoggerProvider::class)->in(Scope::SINGLETON);
     }
 }

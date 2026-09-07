@@ -12,7 +12,6 @@ use BEAR\QueryRepository\Log\LogWriterInterface;
 use BEAR\QueryRepository\Log\SafeSemanticLogger;
 use BEAR\QueryRepository\Log\ShutdownFlush;
 use Koriym\SemanticLogger\LogJson;
-use Koriym\SemanticLogger\SemanticLogger;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 use PHPUnit\Framework\TestCase;
@@ -55,7 +54,7 @@ class LogDestinationFailureTest extends TestCase
     {
         $this->dir = sys_get_temp_dir() . '/qr-failure-test-' . bin2hex(random_bytes(6));
         $this->errorLog = $this->dir . '.err';
-        $this->logger = new SafeSemanticLogger(new SemanticLogger());
+        $this->logger = new SafeSemanticLogger();
         $this->logger->close(new CacheHitContext('view'), $this->logger->open(new GetContext('page://self/html/blog-posting')));
     }
 

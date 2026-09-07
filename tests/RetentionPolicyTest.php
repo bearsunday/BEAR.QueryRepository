@@ -21,7 +21,6 @@ use BEAR\QueryRepository\Log\KeepMutationsAndFailures;
 use BEAR\QueryRepository\Log\SafeSemanticLogger;
 use Koriym\SemanticLogger\EventEntry;
 use Koriym\SemanticLogger\LogJson;
-use Koriym\SemanticLogger\SemanticLogger;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use PHPUnit\Framework\TestCase;
 
@@ -40,7 +39,7 @@ class RetentionPolicyTest extends TestCase
     protected function setUp(): void
     {
         $this->policy = new KeepMutationsAndFailures();
-        $this->logger = new SafeSemanticLogger(new SemanticLogger());
+        $this->logger = new SafeSemanticLogger();
     }
 
     public function testAHealthyReadIsDropped(): void

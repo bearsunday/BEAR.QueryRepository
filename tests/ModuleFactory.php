@@ -9,7 +9,6 @@ use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\RepositoryModule\Annotation\EtagPool;
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\Resource\Module\ResourceModule;
-use Koriym\SemanticLogger\SemanticLogger;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Ray\Di\AbstractModule;
 use Symfony\Component\Cache\Adapter\AdapterInterface;
@@ -32,7 +31,7 @@ final class ModuleFactory
             {
                 $this->bind(AdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->to(ArrayAdapter::class);
                 $this->bind(AdapterInterface::class)->annotatedWith(EtagPool::class)->to(ArrayAdapter::class);
-                $this->bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)->toInstance(new SafeSemanticLogger(new SemanticLogger()));
+                $this->bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)->toInstance(new SafeSemanticLogger());
             }
         });
 

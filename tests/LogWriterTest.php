@@ -20,7 +20,6 @@ use BEAR\QueryRepository\Log\RetentionPolicyInterface;
 use BEAR\QueryRepository\Log\SafeSemanticLogger;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use Koriym\SemanticLogger\LogJson;
-use Koriym\SemanticLogger\SemanticLogger;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LogLevel;
@@ -57,7 +56,7 @@ class LogWriterTest extends TestCase
     {
         $this->dir = sys_get_temp_dir() . '/qr-writer-test-' . bin2hex(random_bytes(6));
         $this->file = $this->dir . '/log.jsonl';
-        $this->logger = new SafeSemanticLogger(new SemanticLogger());
+        $this->logger = new SafeSemanticLogger();
         $this->clean();
     }
 

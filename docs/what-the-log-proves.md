@@ -66,10 +66,14 @@ is removed or its meaning inverted (verified by mutation testing).
 - **Wall-clock expiry.** TTL arithmetic (clamping, remaining lifetime, `Age`) is
   verified by construction, not by elapsed-time tests; actual eviction at the
   recorded moment is the cache backend's contract.
-- **Concurrent sessions.** The logger holds one session per injector. Where the sink can prove
-  the host is concurrent — a RoadRunner worker, or inside a Swoole coroutine — it refuses to arm
-  and recording stops with it, because nothing would drain the session. Such a host binds a
-  request-scoped `LogSinkInterface`, or leaves the log module out (#179). Hosts it cannot detect
+- **Concurrent sessions.** The logger facade is one per injector; the session it records into is
+  resolved through `SessionStoreInterface`, and the default `ProcessSession` holds one per process.
+  Where the sink can prove the host is concurrent — a RoadRunner worker, or inside a Swoole
+  coroutine — it refuses to arm and recording stops with it, because nothing would drain the
+  session. Such a host binds both halves or leaves the log module out (#179): a
+  `SessionStoreInterface` keyed by its request context (coroutine id, worker request), and a
+  `LogSinkInterface` that flushes at its request end. One without the other either shares a
+  session between requests or never drains it. Hosts it cannot detect
   (a Swoole worker whose logger is built at boot, FrankenPHP worker mode, ReactPHP, Amp, a
   long-lived CLI consumer) are the operator's call.
 - **A `ResourceStorage::hasEtag()` call outside a conditional request.** The
