@@ -17,13 +17,11 @@ use BEAR\Resource\ResourceObject;
 #[Cacheable]
 class PostWriter extends ResourceObject
 {
-    /** How many times the representation was generated, so a refresh is observable */
     public static int $gets = 0;
 
     public function onGet(string $id): static
     {
         self::$gets++;
-        // The generation is in the body, so a stored entry says which run produced it
         $this->body = ['id' => $id, 'generation' => self::$gets];
 
         return $this;

@@ -44,8 +44,6 @@ class CacheablePostTest extends TestCase
 
         $this->resource->post('app://self/post-writer', ['id' => '1']);
 
-        // Refresh, not purge: the entry is regenerated, so what says the write was seen is that
-        // the stored representation is the one the second run produced.
         $this->assertSame(2, PostWriter::$gets, 'the POST left its own representation cached');
         $refreshed = $this->repository->get($uri);
         $this->assertInstanceOf(ResourceState::class, $refreshed);
