@@ -54,6 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 - `docs/schemas/repository-log.json` (the flat op-string log format it described is gone; per-context schemas in `docs/schemas/context/` replace it).
 - `BEAR\QueryRepository\Log\NullSemanticLogger`: koriym/semantic-logger 0.9 ships its own no-op logger whose `open()` returns a usable id instead of the empty-string sentinel this one returned.
+- `skills/bear-cache-log/`: folded into [bear-observe](https://github.com/bearsunday/BEAR.EventSourcing/blob/1.x/skills/bear-observe/SKILL.md), which sets the observation context up and proves it instead of teaching the wiring by hand.
 
 ### Changed
 - Cache logging call sites (`QueryRepository`, `ResourceStorage`, `DonutRepository`, `CacheInterceptor`, `AbstractDonutCacheInterceptor`, `CommandInterceptor`, `RefreshInterceptor`) now emit typed contexts through `SemanticLoggerInterface` annotated with `#[CacheLog]` instead of `RepositoryLoggerInterface::log()`.
