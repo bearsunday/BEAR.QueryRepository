@@ -25,4 +25,4 @@
 - [ログの読み方](docs/reading-the-log.ja.md) — ログに現れる全ての語と、セッションの読み方
 - [QueryRepository ログはなぜ全てを記録するのか](docs/why-the-log-records-everything.ja.md) — 設計根拠、コスト実測、既定オフの判断
 - [このログは何を証明し、何を証明しないか](docs/what-the-log-proves.ja.md) — ログが答える問い、その答えを正直に保つ機構、そして宣言された境界
-- [エージェント用スキル: キャッシュログを読む](skills/bear-cache-log/SKILL.md) — `vendor/bear/query-repository/skills/` からプロジェクトの `.claude/skills/` にコピーして、コーディングエージェントに推測ではなくログを観測させる。配線、イベント語彙、宣言と実際の照合、アプリとライブラリの切り分け、報告の形
+- エージェント用スキル: [bear-observe](https://github.com/bearsunday/BEAR.EventSourcing/blob/1.x/skills/bear-observe/SKILL.md) — 観測文脈を設置し、1 リクエストを木にして読む。イベント語彙、宣言と実際の照合、アプリとライブラリの切り分け、報告の形
