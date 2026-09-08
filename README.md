@@ -25,3 +25,4 @@
 - [Why the QueryRepository Log Records Everything](docs/why-the-log-records-everything.md) — design rationale, the cost measurements, and why recording is off by default
 - [Reading the Log](docs/reading-the-log.md) — every word the log can contain, and how to read a session
 - [What the Cache Log Proves — and What It Does Not](docs/what-the-log-proves.md) — the questions the log answers, the mechanisms that keep the answers honest, and the declared boundaries
+- [Agent skill: reading the cache log](skills/bear-cache-log/SKILL.md) — copy it out of `vendor/bear/query-repository/skills/` into your project's `.claude/skills/` so a coding agent observes the log instead of guessing: wiring, the event vocabulary, how a declaration is checked against what the log shows, app-vs-library triage, and what to report. Written in Japanese
