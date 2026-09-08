@@ -1,4 +1,5 @@
 ---
+user-invocable: true
 name: bear-cache-log
 description: BEAR.Sunday のキャッシュ挙動をセマンティックログで観測し、宣言した意図どおりに動いているかを自分で確かめ、食い違えばアプリかライブラリかを切り分けて報告する。Use when user says "キャッシュログ", "cache log", "キャッシュが効いてるか確認", "purgeが効かない", "304が返らない", "キャッシュが古い", "アプリかライブラリか切り分けて", or asks to observe, verify, or debug BEAR.Sunday caching behaviour.
 ---
@@ -20,11 +21,18 @@ description: BEAR.Sunday のキャッシュ挙動をセマンティックログ�
 ([PR #178](https://github.com/bearsunday/BEAR.QueryRepository/pull/178) 以降)。
 未リリースの間は `composer require bear/query-repository:"1.x-dev#<sha>"`。
 
-このファイル自体の導入(コーディングエージェントに読ませる):
+このファイル自体の導入(コーディングエージェントに読ませる)。vendor から取ると、アプリが使っている版の
+スキルが入る:
+
+```bash
+mkdir -p .claude/skills && cp -r vendor/bear/query-repository/skills/bear-cache-log .claude/skills/
+```
+
+まだ `composer require` していない、あるいは GitHub で読んでいるなら:
 
 ```bash
 mkdir -p ~/.claude/skills/bear-cache-log && curl -fsSL \
-  https://raw.githubusercontent.com/bearsunday/BEAR.QueryRepository/1.x/docs/skills/bear-cache-log/SKILL.md \
+  https://raw.githubusercontent.com/bearsunday/BEAR.QueryRepository/1.x/skills/bear-cache-log/SKILL.md \
   -o ~/.claude/skills/bear-cache-log/SKILL.md
 ```
 
@@ -51,6 +59,7 @@ GitHub で読むか `composer reinstall bear/query-repository --prefer-source` �
 $this->install(new DevQueryRepositoryLogModule($appDir . '/var/log/query-repository', module: new QueryRepositoryModule()));
 
 // 本番 — セッションを積んで flush 時に判定(mutation / 失敗 / サンプルだけ残す)
+// 出力先に何が流れるかは、下の最終項(セッションが含む値)を先に読む
 $this->install(new ProdQueryRepositoryLogModule('php://stdout', sampleRate: 1000, module: new QueryRepositoryModule()));
 ```
 
@@ -82,8 +91,10 @@ jq -r '[.. | objects | select(.type? == "get")] | .[] |
 # app://self/user?id=1  ->  cache_hit
 ```
 
-**空の結果そのものが一次診断になる。** 上の `jq` が 1 行も返さない = `get` スコープが一度も開いていない
-= インターセプタが織られていない(§2)。「ログが読めない」ではなく「宣言が届いていない」と読む。
+**空の結果そのものが一次診断になる。** ただしこれが言うのは「この JSON に `get` スコープが無い」までだ。
+`#[Cacheable]` なリソースを実際に GET したセッションを見ている、と確かめてはじめて、1 行も返らないことが
+インターセプタが織られていない証拠になる(§2)。「ログが読めない」ではなく「宣言が届いていない」と読む。
+見ているセッションが違うなら次項。
 
 **ファイルが無い現場もある。** テストやオラクルは `DevQueryRepositoryLogModule` を使わず、
 `SemanticLoggerInterface` `#[CacheLog]` に `SafeSemanticLogger`(sink 無し)を束縛して、自分で
