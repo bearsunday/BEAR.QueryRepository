@@ -164,6 +164,131 @@ trait SemanticLogTreeTrait
     }
 
     /**
+     * JSON of every event context whose type matches, depth-first, optionally for one `uri` only
+     *
+     * One type can be emitted for several URIs in one session - a parent and the children
+     * it embeds both `save_etag` - so a tag assertion has to name whose event it reads.
+     *
+     * @param array<string, mixed> $tree
+     *
+     * @return list<string>
+     */
+    private static function eventContextsJsonOf(array $tree, string $type, string|null $uri = null): array
+    {
+        $contexts = [];
+        self::collectEventContextsJson($tree['open'] ?? [], $type, $uri, $contexts);
+        self::appendEventContextsJson($tree['events'] ?? [], $type, $uri, $contexts);
+
+        return $contexts;
+    }
+
+    /**
+     * Close of the first `$openType` scope opened for `$uri`, as `[type, context JSON]`
+     *
+     * @param array<string, mixed> $tree
+     *
+     * @return array{string, string}|null
+     */
+    private static function scopeCloseOf(array $tree, string $openType, string $uri): array|null
+    {
+        $scope = self::findScope($tree['open'] ?? [], $openType, $uri);
+        $close = $scope === null ? null : $scope['close'] ?? null;
+        if (! is_array($close) || ! isset($close['type']) || ! is_string($close['type'])) {
+            return null;
+        }
+
+        return [$close['type'], (string) json_encode($close['context'] ?? null, JSON_UNESCAPED_SLASHES)];
+    }
+
+    /**
+     * Event `type`s of the first `$openType` scope opened for `$uri`, that scope's own events only
+     *
+     * @param array<string, mixed> $tree
+     *
+     * @return list<string>
+     */
+    private static function scopeEventTypesOf(array $tree, string $openType, string $uri): array
+    {
+        $scope = self::findScope($tree['open'] ?? [], $openType, $uri);
+        $types = [];
+        if ($scope !== null) {
+            self::walkEvents($scope['events'] ?? [], $types);
+        }
+
+        return $types;
+    }
+
+    /**
+     * @param mixed        $nodes
+     * @param list<string> $contexts
+     */
+    private static function collectEventContextsJson(mixed $nodes, string $type, string|null $uri, array &$contexts): void
+    {
+        if (! is_array($nodes)) {
+            return;
+        }
+
+        foreach ($nodes as $node) {
+            if (! is_array($node)) {
+                continue;
+            }
+
+            self::appendEventContextsJson($node['events'] ?? [], $type, $uri, $contexts);
+            self::collectEventContextsJson($node['open'] ?? [], $type, $uri, $contexts);
+        }
+    }
+
+    /**
+     * @param mixed        $events
+     * @param list<string> $contexts
+     */
+    private static function appendEventContextsJson(mixed $events, string $type, string|null $uri, array &$contexts): void
+    {
+        if (! is_array($events)) {
+            return;
+        }
+
+        foreach ($events as $event) {
+            if (! is_array($event) || ($event['type'] ?? null) !== $type) {
+                continue;
+            }
+
+            $context = $event['context'] ?? null;
+            if ($uri !== null && (! is_array($context) || ($context['uri'] ?? null) !== $uri)) {
+                continue;
+            }
+
+            $contexts[] = (string) json_encode($context, JSON_UNESCAPED_SLASHES);
+        }
+    }
+
+    /** @return array<array-key, mixed>|null */
+    private static function findScope(mixed $nodes, string $openType, string $uri): array|null
+    {
+        if (! is_array($nodes)) {
+            return null;
+        }
+
+        foreach ($nodes as $node) {
+            if (! is_array($node)) {
+                continue;
+            }
+
+            $context = $node['context'] ?? null;
+            if (($node['type'] ?? null) === $openType && is_array($context) && ($context['uri'] ?? null) === $uri) {
+                return $node;
+            }
+
+            $found = self::findScope($node['open'] ?? [], $openType, $uri);
+            if ($found !== null) {
+                return $found;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Event `type` sequences of every scope in the tree (root events included), depth-first
      *
      * Each list is one scope's `events` array in emission order (events within one

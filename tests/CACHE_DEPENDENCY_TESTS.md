@@ -78,6 +78,23 @@ purge(Comment) → BlogPosting invalidated
 
 **Test:** `DonutRepositoryTest::testCacheDependency`
 
+Which log entry carries the child's tags — and so what the parent's next read looks like — is
+decided by the parent's cache declaration, not by the embed:
+
+| Parent declaration | Child tags recorded on | Parent's read after the child is purged |
+|---|---|---|
+| `#[Cacheable]` | `depends_on`, `save_value`/`save_view`, `save_etag` | `cache_miss{layer: resource}` |
+| `#[CacheableResponse]` | `save_etag`, `save_donut_view`, never `save_donut` | `cache_hit{layer: donut-view}` holding a `refresh_donut` |
+| `#[DonutCache]` | `cdn_headers.surrogateKeys` only | unchanged: `refresh_donut` + `put_skipped{not-cacheable}` |
+
+**Tests:** `DonutDependencyEvidenceTest` — `testCacheableParentRecordsADependsOnEdge`,
+`testCacheableParentMissesAfterItsChildIsPurged`,
+`testCacheableResponseWriteRecordsNoDependsOnEdge`,
+`testCacheableResponseTagsEtagAndViewWithTheChildButNotTheTemplate`,
+`testCacheableResponseRebuildsFromItsTemplateAfterTheChildIsPurged`,
+`testDonutCacheKeepsTheChildTagsOutOfTheStore`,
+`testDonutCacheReadShapeIsUnchangedByPurgingTheChild`
+
 ### Tag-Based Invalidation
 
 Resources can be invalidated by their URI-derived tags.
@@ -266,6 +283,10 @@ All dependency tests verify both resource cache and ETag invalidation:
   `refresh_donut` event inside the scope; the close label is intentionally coarse.
   When the page is not entire-content cacheable, no page-level save follows the
   rebuild — recorded as `put_skipped` with `reason=not-cacheable`.
+  A `#[CacheableResponse]` page read right after its child was purged is this shape, so a
+  reader expecting the `#[Cacheable]` shape (`cache_miss`) reads a healthy rebuild as a stale
+  serve. The stale shape is a `cache_hit` with no `refresh_donut` in it
+  (`DonutDependencyEvidenceTest::testCacheableResponseRebuildsFromItsTemplateAfterTheChildIsPurged`).
 - **Legacy `RepositoryLoggerInterface` receives no events.** Internal cache code logs
   through `SemanticLoggerInterface`; the deprecated flat interface stays bound for code
   BC but its instance stays empty. Consumers should migrate to the SemanticLogger tree.

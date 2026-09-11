@@ -97,7 +97,7 @@ operation inside a GET or a command is an ordinary event there instead.
 | `put_donut` | `uri`, `requestedTtl`, `sMaxAge` | a donut write was requested, with the lifetime asked for |
 | `refresh_donut` | `uri` | a cached donut was recomposed rather than served as-is |
 | `cdn_headers` | `uri`, `headers`, `surrogateKeys` | the CDN-facing headers the response actually carried |
-| `depends_on` | `parent`, `child`, `childTags` | one dependency edge: the child's tags were added to the parent |
+| `depends_on` | `parent`, `child`, `childTags` | one dependency edge: the child's tags were added to the parent. Only a `#[Cacheable]` put records one |
 | `pre_write_cleanup` | `uri` | the writer is about to clear the entry it will rewrite |
 | `invalidate` | `tags`, `roPool`, `etagPool`, `cdn`, `durationMs` | tags were invalidated, with a result per target |
 | `purge` | `uri` | a URI-targeted bust was requested |
@@ -185,6 +185,19 @@ correlation. Any `invalidate` without the marker is a real invalidation.
 `tags` of a later `invalidate`. Tags that do not meet mean the write left that entry standing —
 which is what serving stale looks like from the inside.
 
+**Which entry carries a child's tags is decided by the parent's declaration.** A `#[Cacheable]`
+parent records a `depends_on` edge and puts the child's tags on its `save_value`/`save_view` and
+`save_etag`, so purging the child takes the parent's entry with it and the next read closes
+`cache_miss`. A `#[CacheableResponse]` parent records no `depends_on` — the donut writer never
+calls `put()` — and puts the child's tags on `save_etag` and `save_donut_view` but deliberately not
+on `save_donut`, the shell that has to outlive the child. After the child is purged that parent
+still closes `cache_hit{layer: donut-view}`, with a `refresh_donut` and a fresh
+`save_etag`/`save_donut_view` inside: that is the healthy shape, and stale is a `cache_hit` with no
+`refresh_donut` in it. A `#[DonutCache]` parent stores no child tag anywhere — they reach
+`cdn_headers.surrogateKeys` and stop there — so every read after the first is `refresh_donut`
+then `put_skipped{reason: not-cacheable}`, and purging the child changes only the child's own
+nested `get`.
+
 **Read `cache_policy.expiry`, not a TTL, to learn whether an entry is meant to expire.**
 `expiry: "never"` means until invalidation; the number it resolves to is a backstop and depends on
 how the application bound `Expiry` — a default install turns `never` into 31536000 seconds, which
@@ -234,7 +247,9 @@ validator was issued for the resource that was requested, which is the question 
 poses; an application gets it by routing first, which costs a path match and not a resource run.
 
 **A donut `cache_hit` reports the final layer.** Whether the page came from the cache or was
-recomposed on the way out is inside the scope: a `refresh_donut` event means recomposed.
+recomposed on the way out is inside the scope: a `refresh_donut` event means recomposed. A
+`#[CacheableResponse]` page read after its child was purged is exactly that shape — the template it
+kept makes the read a hit, and the recomposition is what makes the page fresh.
 
 ## Worked example
 
