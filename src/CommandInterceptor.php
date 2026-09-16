@@ -19,7 +19,7 @@ use Ray\Aop\MethodInvocation;
 /**
  * Interceptor for cache invalidation on CQRS commands with #[Purge] or #[Refresh]
  *
- * Automatically bound to all command methods (onPut/onPatch/onDelete) of #[Cacheable] classes.
+ * Automatically bound to all command methods (onPost/onPut/onPatch/onDelete) of #[Cacheable] classes.
  * Processes #[Purge] and #[Refresh] annotations on these methods and executes cache
  * invalidation after successful write operations.
  *
