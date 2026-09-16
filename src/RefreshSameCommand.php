@@ -17,6 +17,7 @@ use ReflectionException;
 
 use function call_user_func_array;
 use function is_callable;
+use function str_starts_with;
 
 final readonly class RefreshSameCommand implements CommandInterface
 {
@@ -45,7 +46,7 @@ final readonly class RefreshSameCommand implements CommandInterface
             // onPut/onPatch/onDelete keep throwing: those act on an entity onGet already
             // addresses, so a required parameter missing there is a real signature mismatch, not
             // this case (BehaviorTest::testUnMatchQuery pins that).
-            if ($invocation->getMethod()->getName() !== 'onPost') {
+            if (! str_starts_with($invocation->getMethod()->getName(), 'onPost')) {
                 throw $e;
             }
 

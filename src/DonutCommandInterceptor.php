@@ -5,6 +5,8 @@
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Exception\UnmatchedQuery;
+use BEAR\QueryRepository\Log\Context\CacheErrorContext;
 use BEAR\QueryRepository\Log\Context\CommandResultContext;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\Code;
@@ -18,11 +20,12 @@ use Ray\Aop\MethodInvocation;
 use function assert;
 use function call_user_func_array;
 use function is_callable;
+use function str_starts_with;
 
 /**
  * Interceptor for donut cache invalidation on CQRS commands
  *
- * Bound to command methods (onPut/onPatch/onDelete) of classes marked with #[CacheableResponse].
+ * Bound to command methods (onPost/onPut/onPatch/onDelete) of classes marked with #[CacheableResponse].
  * Refreshes donut cache and resource state after successful write operations.
  *
  * @see \BEAR\RepositoryModule\Annotation\CacheableResponse
@@ -53,7 +56,21 @@ final readonly class DonutCommandInterceptor implements MethodInterceptor
         $openId = $this->logger->open(($this->commandContextFactory)($invocation, 'DonutCommandInterceptor'));
         try {
             if ($ro->code < Code::BAD_REQUEST) {
-                $this->refreshDonutAndState($ro);
+                try {
+                    $this->refreshDonutAndState($ro);
+                } catch (UnmatchedQuery $e) {
+                    // Same shape as RefreshSameCommand::command() on the value-cache side (#219):
+                    // an onPost-bound class that creates rather than addresses an entity routinely
+                    // lacks a parameter onGet requires. The write already ran; there is no entry
+                    // to refresh, so the purge/refresh is skipped and recorded instead of thrown.
+                    // onPut/onPatch/onDelete keep throwing - a mismatch there addresses an entity
+                    // onGet already does, so it is a real signature mismatch, not this case.
+                    if (! str_starts_with($invocation->getMethod()->getName(), 'onPost')) {
+                        throw $e;
+                    }
+
+                    $this->logger->event(new CacheErrorContext((string) $ro->uri, 'write', $e->getMessage(), $e::class));
+                }
             }
         } finally {
             $this->logger->close(new CommandResultContext($ro->code), $openId);
