@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.17.0] - 2026-09-17
 
+### Highlights
+- **Cache observability rebuilt on [Koriym.SemanticLogger](https://github.com/koriym/Koriym.SemanticLogger)**: hit/miss, saves, invalidations and CDN purges are now a typed, schema-validated open/event/close log tree instead of free-text messages. Off by default; install `DevQueryRepositoryLogModule` / `ProdQueryRepositoryLogModule` to turn it on.
+- **ETag scoped to the requested resource** (`ScopedValidatorInterface::hasEtagFor()`, #197/#201): closes a bug where a validator issued for one URI could answer `304` for a different one. Opt-in via `UriScopedHttpCacheInterface::isNotModifiedFor()`.
+- **`onPost` writes to `#[Cacheable]`/`#[CacheableResponse]` classes are intercepted again** (#212/#214/#219/#220): a POST used to leave the stale cache in place with `#[Refresh]`/`#[Purge]` silently dropped. Fixed, including a same-cycle regression the first fix introduced.
+- **Donut caching now handles non-200 responses** (#206/#207): a `301`/`204`/etc. from a `#[DonutCache]`/`#[CacheableResponse]` resource no longer crashes or loses its status code.
+- **CDN purge failure is fail-closed everywhere** (#208): local pools invalidate first, the outcome is logged, then the purge exception propagates — a CDN outage can no longer look like a successful purge.
+- **Breaking**: resolving the cache log now requires the `#[CacheLog]` qualifier; `RepositoryLoggerInterface` is deprecated and receives no internal events; `ResourceStorageInterface::saveDonutView()` gained an optional `$tags` parameter; new runtime dependency `koriym/semantic-logger ^0.9`. See `### Changed` / `### Deprecated` below for the full list.
+- `WeavingMatrixTest` now covers `onPatch` alongside `onPut`/`onPost`/`onDelete`, and the CHANGELOG notes the `serialize()` limit on unserializable `type: 'value'` bodies.
+
 ### Added
 - The dependency evidence in `docs/reading-the-log.md` is now stated per parent declaration (`#[Cacheable]` / `#[CacheableResponse]` / `#[DonutCache]`), pinned by `DonutDependencyEvidenceTest` (#188).
 - `UriScopedHttpCacheInterface::isNotModifiedFor($uri, $server)` and `ScopedValidatorInterface::hasEtagFor($etag, $uri)`: the conditional-request answer, scoped to the resource that was asked for (#197). `HttpCacheInterface::isNotModified()` receives the request environment and nothing else, so it can only ask whether the offered validator is alive somewhere in the pool - a client or intermediary returning a validator it holds for another URI was answered 304 about content this server never sent it. An application opts in by routing before the check; routing costs a path match, not a resource run. The ETag entry now stores the URI tag it was issued for, where it used to store the constant `etag`: entries written by an older version cannot be scoped, so each client pays one full response after the upgrade, once. The unscoped method is unchanged.
