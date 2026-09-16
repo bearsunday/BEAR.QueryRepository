@@ -95,7 +95,7 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 | `put_donut` | `uri`, `requestedTtl`, `sMaxAge` | donut の書き込みを要求した。要求時の lifetime つき |
 | `refresh_donut` | `uri` | キャッシュ済み donut をそのまま返さず再合成した |
 | `cdn_headers` | `uri`, `headers`, `surrogateKeys` | 応答に実際に付いた CDN 向けヘッダ |
-| `depends_on` | `parent`, `child`, `childTags` | 依存の辺 1 本。子のタグが親に加わった |
+| `depends_on` | `parent`, `child`, `childTags` | 依存の辺 1 本。子のタグが親に加わった。記録するのは `#[Cacheable]` の put だけ |
 | `pre_write_cleanup` | `uri` | 書き込み側が、上書きするエントリを消す直前 |
 | `invalidate` | `tags`, `roPool`, `etagPool`, `cdn`, `durationMs` | タグを無効化した。対象ごとの結果つき |
 | `purge` | `uri` | URI 指定の破棄を要求した |
@@ -179,6 +179,17 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 突き合わせます。交差しないタグは、その書き込みがそのエントリを残したことを意味します — これが
 内側から見た「stale を配信している」状態です。
 
+**子のタグがどのエントリに載るかは、親の宣言で決まります。** `#[Cacheable]` の親は `depends_on` の辺を
+記録し、子のタグを自分の `save_value`/`save_view` と `save_etag` に載せます。だから子を purge すると
+親のエントリも一緒に消え、次の read は `cache_miss` で閉じます。`#[CacheableResponse]` の親は
+`depends_on` を出しません — donut の書き込みは `put()` を通らないからです。子のタグは `save_etag` と
+`save_donut_view` に載り、`save_donut` には載りません。殻は子より長く生きて再合成の土台になるからです。
+子を purge した後もこの親は `cache_hit{layer: donut-view}` で閉じ、中に `refresh_donut` と新しい
+`save_etag`/`save_donut_view` があります。この hit が健全な形で、stale は `refresh_donut` の無い
+`cache_hit` です。`#[DonutCache]` の親は子のタグをどこにも保存しません — `cdn_headers.surrogateKeys`
+まで届いて、そこで終わりです。2 回目からの read は毎回、`refresh_donut` のあとに
+`put_skipped{reason: not-cacheable}` が続きます。子を purge して変わるのは、入れ子の `get` だけです。
+
 **エントリが期限切れになる設計かどうかは、TTL ではなく `cache_policy.expiry` を読みます。**
 `expiry: "never"` は「無効化が届くまで」という意図です。解決した数値は保険であり、アプリが `Expiry` を
 どう束縛したかで変わります — 既定のインストールでは `never` が 31536000 秒になり、意図的な 1 年 TTL と
@@ -226,6 +237,8 @@ ETag プールだけでリクエスト全体に答えています。304 が現�
 
 **donut の `cache_hit` に出るのは最終層です。** ページがキャッシュから来たのか、出力の途中で
 再合成されたのかはスコープの中にあります — `refresh_donut` イベントがあれば再合成です。
+子を purge した後の `#[CacheableResponse]` の親がまさにこの形です。残っていたテンプレートが read を
+hit にし、中身を新しくするのは再合成のほうです。
 
 ## 実例
 
