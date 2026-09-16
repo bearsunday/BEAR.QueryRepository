@@ -41,13 +41,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New runtime dependency: `koriym/semantic-logger`.
 - **Breaking**: recording is off by default - `#[CacheLog]` binds to `NullSemanticLogger` unless a log module is installed.
 - **Breaking** (#190): `Exception\CacheStoreFailure` now marks the cache-failure boundary. An unreadable ETag pool answers the conditional request in full instead of failing it, and a donut write the store refuses now serves the rendered page instead of a 500.
+- **Breaking** (#208): a CDN purge failure now fails closed. Local pools invalidate first, the outcome is logged as `invalidate.cdn: failed`, then the purge exception propagates instead of being swallowed - a CDN outage can no longer look like a successful purge.
 - `#[Refresh]` no longer double-writes its own `#[Cacheable]` destination after a regenerating GET.
 - **Breaking**: renamed `ResourceDonut::FOMRAT` → `FORMAT`, `EtagSetter::getEtagByEitireView()` → `getEtagByEntireView()`, and the misspelled parameters `$httpCacche` → `$httpCache` (`EtagSetter::getEtagByPartialBody()`), `$concheControlMaxAge` → `$cacheControlMaxAge` (`HeaderSetter::__invoke()`) - a named-argument caller has to follow.
 
 ### Fixed
 - Donut caching could not handle a non-200 response: `saveView()` required a 200-only validator, and `DonutRepository`/`ResourceDonut` did not restore the stored status code (#206, #207). Behaviour change: a `#[CacheableResponse]`/`#[DonutCache]` page answering 2xx or 3xx is now served with that status instead of crashing or degrading to 200 - a redirect that was reachable only once now persists until its cache entry is invalidated, so such a page needs the surrogate keys that invalidate it.
-- `onPost` on a `#[Cacheable]` class ran with no interceptor at all, silently dropping `#[Refresh]`/`#[Purge]` (#212).
-- `onPost` on a `#[Cacheable]`/donut class missing an `onGet`-required parameter threw `UnmatchedQuery` uncaught - a regression from #214, the fix above (#219, #220).
+- `onPost` on a `#[Cacheable]` class ran with no interceptor at all, silently dropping `#[Refresh]`/`#[Purge]` (#212, #214).
+- `onPost` on a `#[Cacheable]`/donut class missing an `onGet`-required parameter threw `UnmatchedQuery` uncaught - a regression from #214 above (#219, #220).
 - A write could be answered from cache without running, when a command method carried `#[RefreshCache]` or a method-level `#[CacheableResponse]`; both now bind `DonutCommandInterceptor`. `DonutCacheModule` also missed `onPost` in its write matcher.
 - `DevEtagSetter`/`MobileEtagSetter` set a validator on a non-200 response, where `EtagSetter` always skipped it; `CdnCacheControlHeaderSetterInterface` likewise now applies to 200 only.
 - A client `If-None-Match` token containing a PSR-6 reserved character reached the ETag pool as a cache key and threw a 500; such tokens (and `*`) are now dropped and the request answered in full.
