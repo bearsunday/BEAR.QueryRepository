@@ -134,23 +134,7 @@ trait SemanticLogTreeTrait
      */
     private static function eventContextJsonOf(array $tree, string $type): string|null
     {
-        $found = self::findEventContextJson($tree['open'] ?? [], $type);
-        if ($found !== null) {
-            return $found;
-        }
-
-        $events = $tree['events'] ?? [];
-        if (! is_array($events)) {
-            return null;
-        }
-
-        foreach ($events as $event) {
-            if (is_array($event) && ($event['type'] ?? null) === $type) {
-                return (string) json_encode($event['context'] ?? null, JSON_UNESCAPED_SLASHES);
-            }
-        }
-
-        return null;
+        return self::eventContextsJsonOf($tree, $type)[0] ?? null;
     }
 
     /**
@@ -418,35 +402,6 @@ trait SemanticLogTreeTrait
             }
 
             $found = self::findContextJson($node['open'] ?? [], $type);
-            if ($found !== null) {
-                return $found;
-            }
-        }
-
-        return null;
-    }
-
-    private static function findEventContextJson(mixed $nodes, string $type): string|null
-    {
-        if (! is_array($nodes)) {
-            return null;
-        }
-
-        foreach ($nodes as $node) {
-            if (! is_array($node)) {
-                continue;
-            }
-
-            $events = $node['events'] ?? [];
-            if (is_array($events)) {
-                foreach ($events as $event) {
-                    if (is_array($event) && ($event['type'] ?? null) === $type) {
-                        return (string) json_encode($event['context'] ?? null, JSON_UNESCAPED_SLASHES);
-                    }
-                }
-            }
-
-            $found = self::findEventContextJson($node['open'] ?? [], $type);
             if ($found !== null) {
                 return $found;
             }
