@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New fields on existing save contexts: `saved`, `tags`, `requestedTtl` (`save_etag`), `durationMs` on the `cache_hit`/`cache_miss` close.
 - `#[CacheLog]` qualifier resolves the cache logger. `SafeSemanticLogger`/`SessionStoreInterface`/`ProcessSession` keep it safe across a serialized injector (#179). `TopLevelAwareInterface` lets a custom logger opt into manual-call scope rooting.
 - Direct (non-AOP) `put()`/`putStatic()`/`putDonut()`/`purge()`/`invalidateTags()` calls now open `manual_store`/`manual_purge`/`manual_invalidate` scopes.
-- `LogSinkInterface`/`ShutdownFlush`, `LogWriterInterface` (`LogFileWriter`/`LogStreamWriter`/`PsrLogWriter`), `ConcurrentRuntimeInterface`/`HostRuntime` (refuses to arm under RoadRunner/a Swoole coroutine).
+- `LogSinkInterface`/`ShutdownFlush`, `LogWriterInterface` (`LogFileWriter`/`LogStreamWriter`/`PsrLogWriter`), `ConcurrentRuntimeInterface`/`HostRuntime` (refuses to arm under RoadRunner/a Swoole coroutine). Detection is not exhaustive: FrankenPHP worker mode, ReactPHP, Amp, a long-lived CLI consumer, and a Swoole worker whose logger is built outside a coroutine must bind their own `ConcurrentRuntimeInterface`/`SessionStoreInterface`/`LogSinkInterface`.
 - `ProdQueryRepositoryLogModule`: buffers a session and applies `RetentionPolicyInterface`/`KeepMutationsAndFailures` at flush.
 - `DevQueryRepositoryLogModule`: writes one file per request plus `latest.json` for `vendor/bin/stree`.
 - `demo/run-degraded.php` and `DemoLogCoverageTest`: the demos now cover every context, schema enum value and command source, and self-validate against `docs/schemas/context`.
