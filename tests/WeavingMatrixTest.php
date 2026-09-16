@@ -68,7 +68,7 @@ class WeavingMatrixTest extends TestCase
         ];
         $cases = [];
         foreach ($expected as $shape => [$chain, $scopes]) {
-            foreach (['onPut', 'onPost', 'onDelete'] as $method) {
+            foreach (['onPut', 'onPost', 'onPatch', 'onDelete'] as $method) {
                 $cases[] = [$shape, $method, $chain, $scopes];
             }
         }

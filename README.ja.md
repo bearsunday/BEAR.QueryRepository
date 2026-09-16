@@ -25,4 +25,4 @@
 - [ログの読み方](docs/reading-the-log.ja.md) — ログに現れる全ての語と、セッションの読み方
 - [QueryRepository ログはなぜ全てを記録するのか](docs/why-the-log-records-everything.ja.md) — 設計根拠、コスト実測、既定オフの判断
 - [このログは何を証明し、何を証明しないか](docs/what-the-log-proves.ja.md) — ログが答える問い、その答えを正直に保つ機構、そして宣言された境界
-- エージェント用スキル: [bear-observe](https://github.com/bearsunday/BEAR.EventSourcing/blob/1.x/skills/bear-observe/SKILL.md) — 観測文脈を設置し、1 リクエストを木にして読む。イベント語彙、宣言と実際の照合、アプリとライブラリの切り分け、報告の形
+- エージェント用スキル: [bear-cache-log](https://github.com/bearsunday/BEAR.Skills/blob/1.x/skills/bear-cache-log/SKILL.md)（セッションのインストール・読解・公開スキーマとの照合）と [bear-cache-gate](https://github.com/bearsunday/BEAR.Skills/blob/1.x/skills/bear-cache-gate/SKILL.md)（フローごとの保存・ヒット・無効化・コストを証明する常設オラクルの設置）——いずれも `/plugin install bear-skills` から。キャッシュに限らないリクエスト全体のトレースには [bear-observe](https://github.com/bearsunday/BEAR.EventSourcing/blob/1.x/skills/bear-observe/SKILL.md) を参照。

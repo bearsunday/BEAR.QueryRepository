@@ -50,4 +50,13 @@ class DCPurge extends ResourceObject
         return $this;
     }
 
+    #[Purge(uri: 'page://self/mx/DCPurge?id=1')]
+    public function onPatch(int $id = 0): static
+    {
+        self::$ran++;
+        $this->code = 204;
+
+        return $this;
+    }
+
 }

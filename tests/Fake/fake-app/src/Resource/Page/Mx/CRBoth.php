@@ -43,4 +43,12 @@ class CRBoth extends ResourceObject
 
         return $this;
     }
+
+    public function onPatch(int $id = 0): static
+    {
+        self::$ran++;
+        $this->code = 204;
+
+        return $this;
+    }
 }

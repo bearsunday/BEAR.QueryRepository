@@ -50,4 +50,13 @@ class DCRefresh extends ResourceObject
         return $this;
     }
 
+    #[RefreshCache]
+    public function onPatch(int $id = 0): static
+    {
+        self::$ran++;
+        $this->code = 204;
+
+        return $this;
+    }
+
 }
