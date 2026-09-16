@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Exception\UnmatchedQuery;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\ResourceInterface;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
@@ -56,5 +57,11 @@ class DonutUnmatchedQueryRefreshTest extends TestCase
         $this->assertNotNull($error, 'the skip is a recorded event, not a silent one');
         $this->assertStringContainsString('"operation":"write"', $error);
         $this->assertStringContainsString('"exceptionClass":"BEAR\\\\QueryRepository\\\\Exception\\\\UnmatchedQuery"', $error);
+    }
+
+    public function testPutStillThrowsForAGenuineMismatch(): void
+    {
+        $this->expectException(UnmatchedQuery::class);
+        $this->resource->put('page://self/html/mismatched-donut-writer', ['title' => 'new']);
     }
 }
