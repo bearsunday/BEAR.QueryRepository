@@ -55,8 +55,7 @@ class DefaultLogBindingTest extends TestCase
         $resource->get('page://self/html/blog-posting');
 
         $log = $logger->flush();
-        $this->assertSame([], $log->open, 'nothing was opened');
-        $this->assertSame([], $log->events, 'nothing was recorded');
+        $this->assertSame([], $log->records, 'nothing was recorded');
     }
 
     public function testTheAppsOwnSemanticLoggerBindingIsLeftAlone(): void

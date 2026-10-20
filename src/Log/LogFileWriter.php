@@ -58,7 +58,7 @@ final class LogFileWriter implements LogWriterInterface
     #[Override]
     public function write(LogJson $log): void
     {
-        if ($log->open === [] && $log->events === []) {
+        if ($log->records === []) {
             return; // nothing was recorded: an empty file would claim a request had no cache activity
         }
 

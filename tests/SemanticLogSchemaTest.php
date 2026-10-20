@@ -322,8 +322,9 @@ class SemanticLogSchemaTest extends TestCase
         // cache_hit context without the required "layer" must be rejected.
         $tree = [
             '$schema' => 'https://koriym.github.io/Koriym.SemanticLogger/schemas/semantic-log.json',
-            'open' => [
+            'entries' => [
                 [
+                    'kind' => 'open',
                     'id' => 'get_1',
                     'type' => 'get',
                     'schemaUrl' => 'https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/get.json',

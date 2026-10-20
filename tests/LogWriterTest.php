@@ -150,7 +150,7 @@ class LogWriterTest extends TestCase
         $this->assertSame('query_repository_log', $psr->records[0]['message'], 'the message is a stable key, not the payload');
         $tree = $psr->records[0]['context']['log'] ?? null;
         $this->assertIsArray($tree);
-        $this->assertArrayHasKey('open', $tree, 'the whole tree survives as structured context');
+        $this->assertArrayHasKey('entries', $tree, 'the whole tree survives as structured context');
     }
 
     public function testThePsrAdapterIgnoresAnEmptySession(): void

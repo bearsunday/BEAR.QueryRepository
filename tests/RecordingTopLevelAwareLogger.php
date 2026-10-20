@@ -68,6 +68,6 @@ final class RecordingTopLevelAwareLogger implements SemanticLoggerInterface, Top
     {
         $this->depth = 0; // a flush ends the session, as SafeSemanticLogger's does
 
-        return new LogJson(self::SEMANTIC_LOG_SCHEMA_URL, [], [], [], $links);
+        return new LogJson(self::SEMANTIC_LOG_SCHEMA_URL, [], [], $links);
     }
 }

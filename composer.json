@@ -18,7 +18,7 @@
         "php": "^8.2",
         "bear/resource": "^1.16.1",
         "bear/sunday": "^1.5",
-        "koriym/semantic-logger": "^0.9",
+        "koriym/semantic-logger": "1.x-dev as 0.9.0",
         "psr/cache": "^1.0 || ^2.0 || ^3.0",
         "psr/log": "^1.1 || ^2.0 || ^3.0",
         "ray/aop": "^2.19.1",

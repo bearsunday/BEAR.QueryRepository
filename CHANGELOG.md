@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- `LogFileWriter`/`LogStreamWriter`/`PsrLogWriter`: read the removed `$log->open`/`$log->events` properties after [koriym/semantic-logger#50](https://github.com/koriym/Koriym.SemanticLogger/pull/50) replaced them with a single ordered `entries` list (`kind: open|event`, nested `children`). The empty-session skip (`$log->open === [] && $log->events === []`) degraded to always-false, so an empty log was written on every flush and emitted a PHP warning; replaced with `$log->records === []`, the equivalent check against `LogJson`'s current public API.
+- `KeepMutationsAndFailures`: same shape change, with a sharper consequence — `childIsNotable()`/`hasRealInvalidation()` read `$node['open']`/`$node['events']`, which no longer exist, so every session's retention verdict silently fell back to "nothing notable" (drop everything). The adjacency rule in `hasRealInvalidation()` ("an invalidate is pre-write cleanup iff immediately preceded by `pre_write_cleanup`") now filters `children` to `kind === 'event'` first — a nested open interleaved between the two in true record order must not break the adjacency it used to be structurally exempt from under the old separate `events` list.
+
+### Changed
+- `composer.json`: `koriym/semantic-logger` moved from `^0.9` to `1.x-dev as 0.9.0`, tracking the library's unreleased default branch (no tagged `1.x` exists yet).
+
 ## [1.17.0] - 2026-09-17
 
 ### Added

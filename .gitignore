@@ -10,3 +10,4 @@
 /.phpunit-cache/
 /.phpunit.cache/
 /.dump.rdb
+/dump.rdb

@@ -103,12 +103,8 @@ final class KeepMutationsAndFailures implements RetentionPolicyInterface
      */
     private function childIsNotable(array $node): bool
     {
-        foreach (['open', 'events'] as $key) {
-            $children = $node[$key] ?? null;
-            if (! is_array($children)) {
-                continue;
-            }
-
+        $children = $node['children'] ?? $node['entries'] ?? null;
+        if (is_array($children)) {
             foreach ($children as $child) {
                 if (is_array($child) && $this->isNotable($child)) {
                     return true;
@@ -139,21 +135,29 @@ final class KeepMutationsAndFailures implements RetentionPolicyInterface
     /**
      * An invalidate is pre-write cleanup only when the marker precedes it in this scope
      *
+     * Adjacency is among events only: a nested open sitting between two events in `children`
+     * (semantic-logger#50's single ordered list) must not break the sequence, the same as it
+     * could never appear inside the old shape's separate `events` list.
+     *
      * @param array<mixed, mixed> $node
      *
      * @psalm-suppress MixedAssignment reading a decoded tree: see the class note
      */
     private function hasRealInvalidation(array $node): bool
     {
-        $events = $node['events'] ?? null;
-        if (! is_array($events)) {
+        $children = $node['children'] ?? $node['entries'] ?? null;
+        if (! is_array($children)) {
             return false;
         }
 
         $previous = null;
-        foreach ($events as $event) {
+        foreach ($children as $child) {
+            if (! is_array($child) || ($child['kind'] ?? null) !== 'event') {
+                continue;
+            }
+
             // is_array() narrows rather than guards: an event in the public tree is always a map
-            $type = is_array($event) ? $event['type'] ?? null : null;
+            $type = $child['type'] ?? null;
             if ($type === 'invalidate' && $previous !== self::CLEANUP_MARKER) {
                 return true;
             }

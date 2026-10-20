@@ -96,8 +96,7 @@ trait SemanticLogTreeTrait
     private static function collectTypes(array $tree): array
     {
         $types = [];
-        self::walk($tree['open'] ?? [], $types);
-        self::walkEvents($tree['events'] ?? [], $types);
+        self::walk($tree['entries'] ?? [], $types);
 
         return $types;
     }
@@ -109,20 +108,20 @@ trait SemanticLogTreeTrait
      */
     private static function maxOpenDepth(array $tree): int
     {
-        return self::depth($tree['open'] ?? []);
+        return self::depth($tree['entries'] ?? []);
     }
 
     /**
      * JSON of the first node's context whose type matches, or null if absent
      *
-     * Note: only descends `open` scopes; it does not match types that live under
-     * `events` or a `close`. Sufficient for open-scope types such as `command`.
+     * Note: only descends `open`-kind entries; it does not match types that live on an
+     * event or a `close`. Sufficient for open-scope types such as `command`.
      *
      * @param array<string, mixed> $tree
      */
     private static function contextJsonOf(array $tree, string $type): string|null
     {
-        return self::findContextJson($tree['open'] ?? [], $type);
+        return self::findContextJson($tree['entries'] ?? [], $type);
     }
 
     /**
@@ -144,7 +143,7 @@ trait SemanticLogTreeTrait
      */
     private static function closeContextJsonOf(array $tree, string $type): string|null
     {
-        return self::findCloseContextJson($tree['open'] ?? [], $type);
+        return self::findCloseContextJson($tree['entries'] ?? [], $type);
     }
 
     /**
@@ -160,8 +159,7 @@ trait SemanticLogTreeTrait
     private static function eventContextsJsonOf(array $tree, string $type, string|null $uri = null): array
     {
         $contexts = [];
-        self::collectEventContextsJson($tree['open'] ?? [], $type, $uri, $contexts);
-        self::appendEventContextsJson($tree['events'] ?? [], $type, $uri, $contexts);
+        self::collectEventContextsJson($tree['entries'] ?? [], $type, $uri, $contexts);
 
         return $contexts;
     }
@@ -175,7 +173,7 @@ trait SemanticLogTreeTrait
      */
     private static function scopeCloseOf(array $tree, string $openType, string $uri): array|null
     {
-        $scope = self::findScope($tree['open'] ?? [], $openType, $uri);
+        $scope = self::findScope($tree['entries'] ?? [], $openType, $uri);
         $close = $scope === null ? null : $scope['close'] ?? null;
         if (! is_array($close) || ! isset($close['type']) || ! is_string($close['type'])) {
             return null;
@@ -193,16 +191,19 @@ trait SemanticLogTreeTrait
      */
     private static function scopeEventTypesOf(array $tree, string $openType, string $uri): array
     {
-        $scope = self::findScope($tree['open'] ?? [], $openType, $uri);
+        $scope = self::findScope($tree['entries'] ?? [], $openType, $uri);
         $types = [];
         if ($scope !== null) {
-            self::walkEvents($scope['events'] ?? [], $types);
+            self::walkEvents($scope['children'] ?? [], $types);
         }
 
         return $types;
     }
 
     /**
+     * Every matching event's context, depth-first through both event and open-kind children -
+     * a nested open does not stop the search, it is descended into
+     *
      * @param mixed        $nodes
      * @param list<string> $contexts
      */
@@ -217,32 +218,14 @@ trait SemanticLogTreeTrait
                 continue;
             }
 
-            self::appendEventContextsJson($node['events'] ?? [], $type, $uri, $contexts);
-            self::collectEventContextsJson($node['open'] ?? [], $type, $uri, $contexts);
-        }
-    }
-
-    /**
-     * @param mixed        $events
-     * @param list<string> $contexts
-     */
-    private static function appendEventContextsJson(mixed $events, string $type, string|null $uri, array &$contexts): void
-    {
-        if (! is_array($events)) {
-            return;
-        }
-
-        foreach ($events as $event) {
-            if (! is_array($event) || ($event['type'] ?? null) !== $type) {
-                continue;
+            if (($node['kind'] ?? null) === 'event' && ($node['type'] ?? null) === $type) {
+                $context = $node['context'] ?? null;
+                if ($uri === null || (is_array($context) && ($context['uri'] ?? null) === $uri)) {
+                    $contexts[] = (string) json_encode($context, JSON_UNESCAPED_SLASHES);
+                }
             }
 
-            $context = $event['context'] ?? null;
-            if ($uri !== null && (! is_array($context) || ($context['uri'] ?? null) !== $uri)) {
-                continue;
-            }
-
-            $contexts[] = (string) json_encode($context, JSON_UNESCAPED_SLASHES);
+            self::collectEventContextsJson($node['children'] ?? [], $type, $uri, $contexts);
         }
     }
 
@@ -254,7 +237,7 @@ trait SemanticLogTreeTrait
         }
 
         foreach ($nodes as $node) {
-            if (! is_array($node)) {
+            if (! is_array($node) || ($node['kind'] ?? null) !== 'open') {
                 continue;
             }
 
@@ -263,7 +246,7 @@ trait SemanticLogTreeTrait
                 return $node;
             }
 
-            $found = self::findScope($node['open'] ?? [], $openType, $uri);
+            $found = self::findScope($node['children'] ?? [], $openType, $uri);
             if ($found !== null) {
                 return $found;
             }
@@ -275,9 +258,10 @@ trait SemanticLogTreeTrait
     /**
      * Event `type` sequences of every scope in the tree (root events included), depth-first
      *
-     * Each list is one scope's `events` array in emission order (events within one
-     * scope are time-ordered). Lets tests assert same-scope adjacency rules such as
-     * "a cleanup invalidate is immediately preceded by its pre_write_cleanup marker".
+     * Each list is one scope's direct event children in emission order (events within one
+     * scope are time-ordered; an interleaved nested open does not break the sequence - see
+     * walkEvents()). Lets tests assert same-scope adjacency rules such as "a cleanup invalidate
+     * is immediately preceded by its pre_write_cleanup marker".
      *
      * @param array<string, mixed> $tree
      *
@@ -287,12 +271,12 @@ trait SemanticLogTreeTrait
     {
         $sequences = [];
         $rootTypes = [];
-        self::walkEvents($tree['events'] ?? [], $rootTypes);
+        self::walkEvents($tree['entries'] ?? [], $rootTypes);
         if ($rootTypes !== []) {
             $sequences[] = $rootTypes;
         }
 
-        self::collectScopeEventSequences($tree['open'] ?? [], $sequences);
+        self::collectScopeEventSequences($tree['entries'] ?? [], $sequences);
 
         return $sequences;
     }
@@ -308,21 +292,25 @@ trait SemanticLogTreeTrait
         }
 
         foreach ($nodes as $node) {
-            if (! is_array($node)) {
+            if (! is_array($node) || ($node['kind'] ?? null) !== 'open') {
                 continue;
             }
 
             $types = [];
-            self::walkEvents($node['events'] ?? [], $types);
+            self::walkEvents($node['children'] ?? [], $types);
             if ($types !== []) {
                 $sequences[] = $types;
             }
 
-            self::collectScopeEventSequences($node['open'] ?? [], $sequences);
+            self::collectScopeEventSequences($node['children'] ?? [], $sequences);
         }
     }
 
     /**
+     * Depth-first type collection over a mixed open/event list: each node's own type, then its
+     * children in record order, then its close type if any (an event has neither children nor
+     * close, so it naturally contributes only its own type)
+     *
      * @param mixed        $nodes
      * @param list<string> $types
      */
@@ -341,29 +329,31 @@ trait SemanticLogTreeTrait
                 $types[] = $node['type'];
             }
 
-            self::walkEvents($node['events'] ?? [], $types);
+            self::walk($node['children'] ?? [], $types);
+
             $close = $node['close'] ?? null;
             if (is_array($close) && isset($close['type']) && is_string($close['type'])) {
                 $types[] = $close['type'];
             }
-
-            self::walk($node['open'] ?? [], $types);
         }
     }
 
     /**
-     * @param mixed        $events
+     * Direct event-kind children only, in record order; does not recurse into nested opens -
+     * an interleaved open does not appear here and does not break the adjacency it preserves
+     *
+     * @param mixed        $nodes
      * @param list<string> $types
      */
-    private static function walkEvents(mixed $events, array &$types): void
+    private static function walkEvents(mixed $nodes, array &$types): void
     {
-        if (! is_array($events)) {
+        if (! is_array($nodes)) {
             return;
         }
 
-        foreach ($events as $event) {
-            if (is_array($event) && isset($event['type']) && is_string($event['type'])) {
-                $types[] = $event['type'];
+        foreach ($nodes as $node) {
+            if (is_array($node) && ($node['kind'] ?? null) === 'event' && isset($node['type']) && is_string($node['type'])) {
+                $types[] = $node['type'];
             }
         }
     }
@@ -376,11 +366,11 @@ trait SemanticLogTreeTrait
 
         $max = 0;
         foreach ($nodes as $node) {
-            if (! is_array($node)) {
+            if (! is_array($node) || ($node['kind'] ?? null) !== 'open') {
                 continue;
             }
 
-            $max = max($max, 1 + self::depth($node['open'] ?? []));
+            $max = max($max, 1 + self::depth($node['children'] ?? []));
         }
 
         return $max;
@@ -393,7 +383,7 @@ trait SemanticLogTreeTrait
         }
 
         foreach ($nodes as $node) {
-            if (! is_array($node)) {
+            if (! is_array($node) || ($node['kind'] ?? null) !== 'open') {
                 continue;
             }
 
@@ -401,7 +391,7 @@ trait SemanticLogTreeTrait
                 return (string) json_encode($node['context'] ?? null, JSON_UNESCAPED_SLASHES);
             }
 
-            $found = self::findContextJson($node['open'] ?? [], $type);
+            $found = self::findContextJson($node['children'] ?? [], $type);
             if ($found !== null) {
                 return $found;
             }
@@ -417,7 +407,7 @@ trait SemanticLogTreeTrait
         }
 
         foreach ($nodes as $node) {
-            if (! is_array($node)) {
+            if (! is_array($node) || ($node['kind'] ?? null) !== 'open') {
                 continue;
             }
 
@@ -426,7 +416,7 @@ trait SemanticLogTreeTrait
                 return (string) json_encode($close['context'] ?? null, JSON_UNESCAPED_SLASHES);
             }
 
-            $found = self::findCloseContextJson($node['open'] ?? [], $type);
+            $found = self::findCloseContextJson($node['children'] ?? [], $type);
             if ($found !== null) {
                 return $found;
             }
