@@ -278,8 +278,8 @@ command {"method": "onPut", "annotations": [], "source": "CommandInterceptor"}
 
 ## セッションを特定する
 
-セッションは**時刻も request id も持ちません**。`LogJson` は `$schema` / `records` / `closes` /
-`links` だけです。1 人の顧客のリクエストとセッションを突き合わせるのは、ホストの仕事です:
+セッションは**時刻も request id も持ちません**。ワイヤ形式では `LogJson` は `$schema` / `entries` /
+(任意の、孤立した close のみが入る)`close` / `links` だけです。1 人の顧客のリクエストとセッションを突き合わせるのは、ホストの仕事です:
 
 | | セッションを特定するもの |
 |---|---|
