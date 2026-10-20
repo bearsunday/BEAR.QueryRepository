@@ -50,7 +50,7 @@ use function random_int;
  * is a `pre_write_cleanup`. Nothing is inferred from tag correlation.
  *
  * The session is read as the decoded public tree - the shape the published schemas describe.
- * That type degrades to a bare map at nested opens (`PublicOpenEntry.open` is `list<JsonMap>`),
+ * That type degrades to a bare map at nested opens (`PublicOpenEntry.children` is `list<JsonMap>`),
  * so the walk narrows every value it reads and suppresses the mixed reads per method.
  */
 final class KeepMutationsAndFailures implements RetentionPolicyInterface
