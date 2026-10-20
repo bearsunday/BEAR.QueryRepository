@@ -93,8 +93,8 @@ class LogSinkTest extends TestCase
         $latest = $this->logDir . '/' . LogFileWriter::LATEST;
         $log = json_decode((string) file_get_contents($latest), true);
         $this->assertIsArray($log);
-        $this->assertArrayHasKey('open', $log);
-        $this->assertNotSame([], $log['open'], 'the GET scope reached the writer without an explicit flush');
+        $this->assertArrayHasKey('entries', $log);
+        $this->assertNotSame([], $log['entries'], 'the GET scope reached the writer without an explicit flush');
     }
 
     public function testAnEarlyExitStillWritesItsLog(): void
@@ -191,7 +191,7 @@ class LogSinkTest extends TestCase
         });
 
         $this->assertInstanceOf(SafeSemanticLogger::class, $logger);
-        $this->assertSame([], $logger->flush()->open, 'a refused sink means nothing is recorded at all');
+        $this->assertSame([], $logger->flush()->records, 'a refused sink means nothing is recorded at all');
         $this->assertStringContainsString('concurrent runtime', $diagnostic);
         $this->assertStringContainsString('Recording is off here', $diagnostic, 'the report says what it did, not only what it refused');
     }
@@ -215,7 +215,7 @@ class LogSinkTest extends TestCase
         });
 
         $this->assertInstanceOf(SafeSemanticLogger::class, $logger);
-        $this->assertSame([], $logger->flush()->open);
+        $this->assertSame([], $logger->flush()->records);
     }
 
     /** A logger whose sink refuses this host */
@@ -249,7 +249,7 @@ class LogSinkTest extends TestCase
 
         $restored = unserialize(serialize($logger));
         $this->assertInstanceOf(SafeSemanticLogger::class, $restored);
-        $this->assertSame([], $restored->flush()->open, 'the live session does not cross serialization');
+        $this->assertSame([], $restored->flush()->records, 'the live session does not cross serialization');
 
         // The sink came across, so the restored logger can still write: it flushes through it
         $restored->open(new Log\Context\GetContext('page://self/after-unserialize'));

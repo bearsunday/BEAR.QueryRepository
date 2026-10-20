@@ -196,28 +196,28 @@ class DemoLogCoverageTest extends TestCase
      */
     private static function collect(array $node): void
     {
-        $opens = is_array($node['open'] ?? null) ? $node['open'] : [];
-        foreach ($opens as $open) {
-            if (! is_array($open)) {
+        $children = $node['children'] ?? $node['entries'] ?? null;
+        if (! is_array($children)) {
+            return;
+        }
+
+        foreach ($children as $child) {
+            if (! is_array($child)) {
                 continue;
             }
 
-            self::record($open);
-            $close = $open['close'] ?? null;
+            if (($child['kind'] ?? null) === 'event') {
+                self::record($child);
+                continue;
+            }
+
+            self::record($child);
+            $close = $child['close'] ?? null;
             if (is_array($close)) {
                 self::record($close);
             }
 
-            self::collect($open);
-        }
-
-        $events = is_array($node['events'] ?? null) ? $node['events'] : [];
-        foreach ($events as $event) {
-            if (! is_array($event)) {
-                continue;
-            }
-
-            self::record($event);
+            self::collect($child);
         }
     }
 

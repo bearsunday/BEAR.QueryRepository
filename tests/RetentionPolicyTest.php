@@ -65,6 +65,27 @@ class RetentionPolicyTest extends TestCase
         $this->assertFalse($this->policy->keeps($log), 'a marker-preceded invalidate is pre-write cleanup, not an invalidation');
     }
 
+    public function testAColdReadIsStillDroppedWhenAnEmbeddedReadSitsBetweenCleanupAndInvalidate(): void
+    {
+        // Same marker-preceded shape as above, but with a donut's embedded read recorded as a
+        // nested open between the two events: adjacency must be judged among sibling events only,
+        // the way it always was in the old shape's separate `events` list, not among every child.
+        $open = $this->logger->open(new GetContext('page://self/html/blog-posting'));
+        $this->logger->event(new PreWriteCleanupContext('page://self/html/blog-posting'));
+        $embedded = $this->logger->open(new GetContext('app://self/author/1'));
+        $this->logger->close(new CacheHitContext('view'), $embedded);
+        $this->logger->event($this->invalidate('purged'));
+        $this->logger->event(new SaveValueContext('page://self/html/blog-posting', ['_tag_'], 60, true));
+        $this->logger->event(new SaveEtagContext('page://self/html/blog-posting', '"e"', ['_tag_'], 60, true));
+        $this->logger->close(new CacheMissContext('view'), $open);
+
+        $log = $this->logger->flush();
+        $this->assertFalse(
+            $this->policy->keeps($log),
+            'the embedded open must not break adjacency: this invalidate is still pre-write cleanup',
+        );
+    }
+
     public function testARealInvalidationIsKept(): void
     {
         // The same event without the marker: something was actually busted

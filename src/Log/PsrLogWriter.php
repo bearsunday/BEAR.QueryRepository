@@ -41,7 +41,7 @@ final class PsrLogWriter implements LogWriterInterface
     #[Override]
     public function write(LogJson $log): void
     {
-        if ($log->open === [] && $log->events === []) {
+        if ($log->records === []) {
             return; // nothing was recorded
         }
 

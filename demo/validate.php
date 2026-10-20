@@ -58,19 +58,25 @@ function validateLog(LogJson $log): void
 function countLogEntries(array $node): int
 {
     $count = 0;
-    $opens = $node['open'] ?? [];
-    if (is_array($opens)) {
-        foreach ($opens as $child) {
-            if (! is_array($child)) {
-                continue;
-            }
-
-            $count += 1 + countLogEntries($child); // the scope itself + its contents
-            $count += isset($child['close']) ? 1 : 0;
-        }
+    $children = $node['children'] ?? $node['entries'] ?? [];
+    if (! is_array($children)) {
+        return $count;
     }
 
-    $events = $node['events'] ?? [];
+    foreach ($children as $child) {
+        if (! is_array($child)) {
+            continue;
+        }
 
-    return $count + (is_array($events) ? count($events) : 0);
+        if (($child['kind'] ?? null) === 'event') {
+            $count++;
+
+            continue;
+        }
+
+        $count += 1 + countLogEntries($child); // the scope itself + its contents
+        $count += isset($child['close']) ? 1 : 0;
+    }
+
+    return $count;
 }

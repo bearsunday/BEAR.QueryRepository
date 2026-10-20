@@ -37,7 +37,7 @@ class SessionStoreTest extends TestCase
         $this->assertTrue($logger->isTopLevel(), 'key b closed its only scope');
 
         $logB = $logger->flush()->toArray();
-        $this->assertCount(1, $logB['open'], 'only the session recorded under key b is flushed');
+        $this->assertCount(1, $logB['entries'], 'only the session recorded under key b is flushed');
         $this->assertStringContainsString('app://self/b', (string) self::contextJsonOf($logB, 'get'));
         $this->assertNull(self::eventContextJsonOf($logB, 'semantic_logger_error'), 'key b never touched key a, so nothing looks unclosed');
 
@@ -45,7 +45,7 @@ class SessionStoreTest extends TestCase
         $this->assertFalse($logger->isTopLevel(), "key a's scope, opened before the switch to b, is still open");
         $logger->close(new CacheHitContext('view'), $idA);
         $logA = $logger->flush()->toArray();
-        $this->assertCount(1, $logA['open'], 'only the session recorded under key a is flushed');
+        $this->assertCount(1, $logA['entries'], 'only the session recorded under key a is flushed');
         $this->assertStringContainsString('app://self/a', (string) self::contextJsonOf($logA, 'get'));
         $this->assertNull(self::eventContextJsonOf($logA, 'semantic_logger_error'), 'key a was interleaved, not violated');
 
@@ -73,7 +73,7 @@ class SessionStoreTest extends TestCase
         $logger->event(new CacheHitContext('view'));
         $logger->close(new CacheHitContext('view'), $id);
         $this->assertTrue($logger->isTopLevel());
-        $this->assertSame([], $logger->flush()->open, 'a refused sink records nothing');
+        $this->assertSame([], $logger->flush()->records, 'a refused sink records nothing');
         $this->assertSame(0, $store->calls, 'the store was never consulted, flush included');
     }
 
