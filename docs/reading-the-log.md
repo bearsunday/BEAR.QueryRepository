@@ -289,7 +289,7 @@ Read it in order:
 
 ## Finding the session
 
-A session carries **no clock and no request id**. `LogJson` is `$schema`, `open`, `close`, `events`
+A session carries **no clock and no request id**. `LogJson` is `$schema`, `records`, `closes`
 and `links` — nothing else. So correlating a session with one customer request is the host's job,
 not the log's:
 
