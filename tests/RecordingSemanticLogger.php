@@ -55,6 +55,6 @@ final class RecordingSemanticLogger implements SemanticLoggerInterface
     #[Override]
     public function flush(array $links = []): LogJson
     {
-        return new LogJson(self::SEMANTIC_LOG_SCHEMA_URL, [], [], $links);
+        return new LogJson(self::SEMANTIC_LOG_SCHEMA_URL, [], $links);
     }
 }
