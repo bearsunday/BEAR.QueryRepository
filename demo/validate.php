@@ -51,16 +51,16 @@ function validateLog(LogJson $log): void
 }
 
 /**
- * Count every entry in the log tree: open scopes, their closes and events, recursively
+ * Count every entry in the log tree: scopes, their closes and points, recursively
  *
  * @param array<array-key, mixed> $node
  */
 function countLogEntries(array $node): int
 {
     $count = 0;
-    $children = $node['children'] ?? $node['entries'] ?? [];
+    $children = $node['log'] ?? [];
     if (! is_array($children)) {
-        return $count;
+        return 0;
     }
 
     foreach ($children as $child) {
@@ -68,13 +68,7 @@ function countLogEntries(array $node): int
             continue;
         }
 
-        if (($child['kind'] ?? null) === 'event') {
-            $count++;
-
-            continue;
-        }
-
-        $count += 1 + countLogEntries($child); // the scope itself + its contents
+        $count += 1 + countLogEntries($child); // the node itself + its nested contents
         $count += isset($child['close']) ? 1 : 0;
     }
 

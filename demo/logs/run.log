@@ -2,7 +2,7 @@
 get
 200
 ETag:"3651684678"
-Last-Modified:Wed, 19 Aug 2026 21:58:43 GMT
+Last-Modified:Wed, 21 Oct 2026 18:51:40 GMT
 Cache-Control:max-age=31536000
 {
     "name": "bear",
@@ -12,7 +12,7 @@ Cache-Control:max-age=31536000
 get
 200
 ETag:"3651684678"
-Last-Modified:Wed, 19 Aug 2026 21:58:43 GMT
+Last-Modified:Wed, 21 Oct 2026 18:51:40 GMT
 Cache-Control:max-age=31536000
 Age:0
 {
@@ -25,7 +25,7 @@ Age:0
 patch
 200
 ETag:"294422241"
-Last-Modified:Wed, 19 Aug 2026 21:58:43 GMT
+Last-Modified:Wed, 21 Oct 2026 18:51:40 GMT
 Cache-Control:max-age=31536000
 {
     "name": "kuma",
@@ -35,7 +35,7 @@ Cache-Control:max-age=31536000
 patch
 200
 ETag:"294422241"
-Last-Modified:Wed, 19 Aug 2026 21:58:43 GMT
+Last-Modified:Wed, 21 Oct 2026 18:51:40 GMT
 Cache-Control:max-age=31536000
 Age:0
 {
@@ -46,7 +46,7 @@ Age:0
 patch
 200
 ETag:"294422241"
-Last-Modified:Wed, 19 Aug 2026 21:58:43 GMT
+Last-Modified:Wed, 21 Oct 2026 18:51:40 GMT
 Cache-Control:max-age=31536000
 Age:0
 {
@@ -67,7 +67,7 @@ get uri=app://self/user?id=1
 │   ├── roPool: invalidated
 │   ├── etagPool: invalidated
 │   ├── cdn: skipped
-│   └── durationMs: 0.223
+│   └── durationMs: 0.07
 ├── cache_policy uri=app://self/user?id=1 expiry=never resolvedTtl=31536000 [event]
 │   ├── uri: app://self/user?id=1
 │   ├── expiry: never
@@ -83,12 +83,14 @@ get uri=app://self/user?id=1
 │   ├── tags[0]: _user_id=1
 │   ├── requestedTtl: 31536000
 │   └── saved: 1
-└── close
-    └── layer: resource
+└── close cache_miss
+    ├── layer: resource
+    └── durationMs: 0.723
 get uri=app://self/user?id=1
 ├── uri: app://self/user?id=1
-└── close
-    └── layer: resource
+└── close cache_hit
+    ├── layer: resource
+    └── durationMs: 0.019
 command method=onPatch source=CommandInterceptor
 ├── method: onPatch
 ├── source: CommandInterceptor
@@ -99,7 +101,7 @@ command method=onPatch source=CommandInterceptor
 │   ├── roPool: invalidated
 │   ├── etagPool: invalidated
 │   ├── cdn: skipped
-│   └── durationMs: 0.005
+│   └── durationMs: 0.004
 ├── get uri=app://self/user?id=1
 │   ├── uri: app://self/user?id=1
 │   ├── pre_write_cleanup uri=app://self/user?id=1 [event]
@@ -125,35 +127,41 @@ command method=onPatch source=CommandInterceptor
 │   │   ├── tags[0]: _user_id=1
 │   │   ├── requestedTtl: 31536000
 │   │   └── saved: 1
-│   └── close
-│       └── layer: resource
-└── close
+│   └── close cache_miss
+│       ├── layer: resource
+│       └── durationMs: 0.101
+└── close command_result
     └── code: 200
 get uri=app://self/user?id=1
 ├── uri: app://self/user?id=1
-└── close
-    └── layer: resource
+└── close cache_hit
+    ├── layer: resource
+    └── durationMs: 0.01
 get uri=app://self/user?id=1
 ├── uri: app://self/user?id=1
-└── close
-    └── layer: resource
+└── close cache_hit
+    ├── layer: resource
+    └── durationMs: 0.008
 get uri=app://self/user?id=1
 ├── uri: app://self/user?id=1
-└── close
-    └── layer: resource
+└── close cache_hit
+    ├── layer: resource
+    └── durationMs: 0.007
 conditional_request ifNoneMatch="294422241"
 ├── ifNoneMatch: "294422241"
-└── close
-    └── layer: etag
+└── close cache_hit
+    ├── layer: etag
+    └── durationMs: 0.136
 conditional_request ifNoneMatch="stale"
 ├── ifNoneMatch: "stale"
-└── close
-    └── layer: etag
+└── close cache_miss
+    ├── layer: etag
+    └── durationMs: 0.009
 
 === Cache Log JSON ===
 {
     "$schema": "https://koriym.github.io/Koriym.SemanticLogger/schemas/semantic-log.json",
-    "open": [
+    "log": [
         {
             "id": "get_1",
             "type": "get",
@@ -161,7 +169,7 @@ conditional_request ifNoneMatch="stale"
             "context": {
                 "uri": "app://self/user?id=1"
             },
-            "events": [
+            "log": [
                 {
                     "id": "pre_write_cleanup_1",
                     "type": "pre_write_cleanup",
@@ -181,7 +189,7 @@ conditional_request ifNoneMatch="stale"
                         "roPool": "invalidated",
                         "etagPool": "invalidated",
                         "cdn": "skipped",
-                        "durationMs": 0.223
+                        "durationMs": 0.07
                     }
                 },
                 {
@@ -229,7 +237,8 @@ conditional_request ifNoneMatch="stale"
                 "type": "cache_miss",
                 "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
                 "context": {
-                    "layer": "resource"
+                    "layer": "resource",
+                    "durationMs": 0.723
                 }
             }
         },
@@ -245,7 +254,8 @@ conditional_request ifNoneMatch="stale"
                 "type": "cache_hit",
                 "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_hit.json",
                 "context": {
-                    "layer": "resource"
+                    "layer": "resource",
+                    "durationMs": 0.019
                 }
             }
         },
@@ -258,7 +268,29 @@ conditional_request ifNoneMatch="stale"
                 "annotations": [],
                 "source": "CommandInterceptor"
             },
-            "open": [
+            "log": [
+                {
+                    "id": "purge_1",
+                    "type": "purge",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/purge.json",
+                    "context": {
+                        "uri": "app://self/user?id=1"
+                    }
+                },
+                {
+                    "id": "invalidate_2",
+                    "type": "invalidate",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/invalidate.json",
+                    "context": {
+                        "tags": [
+                            "_user_id=1"
+                        ],
+                        "roPool": "invalidated",
+                        "etagPool": "invalidated",
+                        "cdn": "skipped",
+                        "durationMs": 0.004
+                    }
+                },
                 {
                     "id": "get_3",
                     "type": "get",
@@ -266,7 +298,7 @@ conditional_request ifNoneMatch="stale"
                     "context": {
                         "uri": "app://self/user?id=1"
                     },
-                    "events": [
+                    "log": [
                         {
                             "id": "pre_write_cleanup_2",
                             "type": "pre_write_cleanup",
@@ -334,32 +366,9 @@ conditional_request ifNoneMatch="stale"
                         "type": "cache_miss",
                         "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
                         "context": {
-                            "layer": "resource"
+                            "layer": "resource",
+                            "durationMs": 0.101
                         }
-                    }
-                }
-            ],
-            "events": [
-                {
-                    "id": "purge_1",
-                    "type": "purge",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/purge.json",
-                    "context": {
-                        "uri": "app://self/user?id=1"
-                    }
-                },
-                {
-                    "id": "invalidate_2",
-                    "type": "invalidate",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/invalidate.json",
-                    "context": {
-                        "tags": [
-                            "_user_id=1"
-                        ],
-                        "roPool": "invalidated",
-                        "etagPool": "invalidated",
-                        "cdn": "skipped",
-                        "durationMs": 0.005
                     }
                 }
             ],
@@ -384,7 +393,8 @@ conditional_request ifNoneMatch="stale"
                 "type": "cache_hit",
                 "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_hit.json",
                 "context": {
-                    "layer": "resource"
+                    "layer": "resource",
+                    "durationMs": 0.01
                 }
             }
         },
@@ -400,7 +410,8 @@ conditional_request ifNoneMatch="stale"
                 "type": "cache_hit",
                 "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_hit.json",
                 "context": {
-                    "layer": "resource"
+                    "layer": "resource",
+                    "durationMs": 0.008
                 }
             }
         },
@@ -416,7 +427,8 @@ conditional_request ifNoneMatch="stale"
                 "type": "cache_hit",
                 "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_hit.json",
                 "context": {
-                    "layer": "resource"
+                    "layer": "resource",
+                    "durationMs": 0.007
                 }
             }
         },
@@ -432,7 +444,8 @@ conditional_request ifNoneMatch="stale"
                 "type": "cache_hit",
                 "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_hit.json",
                 "context": {
-                    "layer": "etag"
+                    "layer": "etag",
+                    "durationMs": 0.136
                 }
             }
         },
@@ -448,7 +461,8 @@ conditional_request ifNoneMatch="stale"
                 "type": "cache_miss",
                 "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
                 "context": {
-                    "layer": "etag"
+                    "layer": "etag",
+                    "durationMs": 0.009
                 }
             }
         }
