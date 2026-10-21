@@ -105,7 +105,7 @@ operation inside a GET or a command is an ordinary event there instead.
 | `cache_hit` / `cache_miss` | `layer`, `durationMs` | an inner lookup, always `layer: donut` — whether the donut template was there. `durationMs` is null here: an event has no scope to measure |
 | `cache_error` | `uri`, `operation`, `error`, `exceptionClass` | the cache path threw |
 | `pool_error` | `key`, `operation`, `error`, `exceptionClass` | the backend refused an operation and the adapter swallowed it |
-| `semantic_logger_error` | `kind`, `message`, … | the logger itself was misused (core diagnostic, not this package's vocabulary) |
+| `semantic_logger_error` | `code`, `message`, … | the logger itself was misused (core diagnostic, not this package's vocabulary) |
 
 ## Outcome fields
 
@@ -289,9 +289,8 @@ Read it in order:
 
 ## Finding the session
 
-A session carries **no clock and no request id**. On the wire, `LogJson` is `$schema`, `entries`,
-and an optional `close` (orphan closes only) and `links` — nothing else. So correlating a session
-with one customer request is the host's job,
+A session carries **no clock and no request id**. `LogJson`'s JSON is `$schema`, `log`
+and `links` — nothing else. So correlating a session with one customer request is the host's job,
 not the log's:
 
 | | What identifies a session |
