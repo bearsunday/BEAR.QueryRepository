@@ -279,12 +279,12 @@ trait SemanticLogTreeTrait
     /**
      * Event `type` sequences of every scope in the tree (root included), depth-first
      *
-     * Each list is one scope's own direct points in emission order, nested scopes
-     * filtered out (`walkEvents` does not recurse): points within one scope are
-     * time-ordered relative to each other and to a nested scope's own start, which
-     * the shared `log` list now preserves. Lets tests assert same-scope adjacency
-     * rules such as "a cleanup invalidate is immediately preceded by its
-     * pre_write_cleanup marker".
+     * Each list is one scope's own direct points, filtered out of the one `log`
+     * list that also carries its nested scopes in actual record order (points
+     * within one scope are time-ordered relative to each other and to a nested
+     * scope's own start). Lets tests assert same-scope adjacency rules such as
+     * "a cleanup invalidate is immediately preceded by its pre_write_cleanup
+     * marker".
      *
      * @param array<string, mixed> $tree
      *
