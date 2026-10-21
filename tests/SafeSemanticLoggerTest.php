@@ -42,7 +42,7 @@ class SafeSemanticLoggerTest extends TestCase
         // The restored logger is a fresh session, not the dirty one.
         $id = $restored->open(new GetContext('page://self/z'));
         $restored->close(new CacheMissContext('resource'), $id);
-        $this->assertCount(1, $restored->flush()->toArray()['entries']);
+        $this->assertCount(1, $restored->flush()->toArray()['log']);
     }
 
     public function testLifoViolationIsRecordedAsDiagnosticAndFlushRecovers(): void
@@ -57,31 +57,24 @@ class SafeSemanticLoggerTest extends TestCase
         $safe->close(new CacheMissContext('resource'), $idA); // violation; must not escape
 
         $log = $safe->flush()->toArray();
-        // The tree topology is preserved: scope b stays nested inside scope a. The
-        // unclosed_at_flush diagnostic below is its own root-level entry, not counted here.
-        $rootOpens = array_values(array_filter(
-            $log['entries'],
-            static fn (array $entry): bool => $entry['kind'] === 'open',
-        ));
-        $this->assertCount(1, $rootOpens);
+        // The tree topology is preserved: scope b stays nested inside scope a.
+        $rootScopes = array_values(array_filter($log['log'], static fn (array $node): bool => self::isScope($node)));
+        $this->assertCount(1, $rootScopes);
         $this->assertSame(2, self::maxOpenDepth($log));
         // The violation is marked at the exact failure point, with the culprit id.
         $diagnostic = self::eventContextJsonOf($log, 'semantic_logger_error');
         $this->assertNotNull($diagnostic, 'the LIFO violation is recorded as a diagnostic');
-        $this->assertStringContainsString('"kind":"close_id_mismatch"', $diagnostic);
+        $this->assertStringContainsString('"code":"close_id_mismatch"', $diagnostic);
         $this->assertStringContainsString('"relatedId":"' . $idA . '"', $diagnostic);
         // Nothing is lost silently: the unclosed scopes are enumerated at flush.
-        $rootEvents = array_values(array_filter(
-            $log['entries'],
-            static fn (array $entry): bool => $entry['kind'] === 'event',
-        ));
-        $eventsJson = (string) json_encode($rootEvents, JSON_UNESCAPED_SLASHES);
-        $this->assertStringContainsString('"kind":"unclosed_at_flush"', $eventsJson);
+        $rootPoints = array_values(array_filter($log['log'], static fn (array $node): bool => self::isPoint($node)));
+        $eventsJson = (string) json_encode($rootPoints, JSON_UNESCAPED_SLASHES);
+        $this->assertStringContainsString('"code":"unclosed_at_flush"', $eventsJson);
         $this->assertStringContainsString('"unclosedIds":["get_1","get_2"]', $eventsJson);
 
         // flush() always resets the session, so the next one logs normally.
         $id = $safe->open(new GetContext('page://self/c'));
         $safe->close(new CacheHitContext('resource'), $id);
-        $this->assertCount(1, $safe->flush()->toArray()['entries']);
+        $this->assertCount(1, $safe->flush()->toArray()['log']);
     }
 }

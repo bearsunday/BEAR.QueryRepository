@@ -192,24 +192,16 @@ class DemoLogCoverageTest extends TestCase
     /**
      * Record every entry's type and scalar context values, depth-first
      *
-     * @param array<array-key, mixed> $node an open scope or a whole session
+     * @param array<array-key, mixed> $node a scope or a whole session
      */
     private static function collect(array $node): void
     {
-        $children = $node['children'] ?? $node['entries'] ?? null;
-        if (! is_array($children)) {
-            return;
-        }
-
+        $children = is_array($node['log'] ?? null) ? $node['log'] : [];
         foreach ($children as $child) {
             if (! is_array($child)) {
                 continue;
             }
 
-            if (($child['kind'] ?? null) === 'event') {
-                self::record($child);
-                continue;
-            }
 
             self::record($child);
             $close = $child['close'] ?? null;

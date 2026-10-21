@@ -19,7 +19,7 @@ use BEAR\QueryRepository\Log\Context\SaveEtagContext;
 use BEAR\QueryRepository\Log\Context\SaveValueContext;
 use BEAR\QueryRepository\Log\KeepMutationsAndFailures;
 use BEAR\QueryRepository\Log\SafeSemanticLogger;
-use Koriym\SemanticLogger\EventEntry;
+use Koriym\SemanticLogger\CloseEntry;
 use Koriym\SemanticLogger\LogJson;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use PHPUnit\Framework\TestCase;
@@ -185,13 +185,14 @@ class RetentionPolicyTest extends TestCase
         $this->assertTrue($this->policy->keeps($this->logger->flush()));
     }
 
-    public function testAFailedOutcomeIsFoundWhereTheRootKeepsItAsAList(): void
+    public function testAFailedOutcomeIsFoundWhereTheRootKeepsItAsARecord(): void
     {
-        // `close` is one entry on a scope but a list at the root (LogJson::toArray() collects
-        // orphan closes there), so a policy that assumes the scope shape reads nothing
-        $close = new EventEntry('manual_store_result_1', 'manual_store_result', 'https://example.com/s.json', ['result' => 'failed']);
+        // A `close` is one entry on a scope, but a root record carrying `openId` when its
+        // open is not in this log (LogTreeBuilder splices it into the root `log`), so a
+        // policy that assumes the scope shape reads nothing
+        $close = new CloseEntry('manual_store_result_1', 'manual_store_result', 'https://example.com/s.json', ['result' => 'failed'], 'no_such_open');
 
-        $this->assertTrue($this->policy->keeps(new LogJson('', [], [$close])));
+        $this->assertTrue($this->policy->keeps(new LogJson('', [$close])));
     }
 
     public function testSamplingKeepsAnOtherwiseDroppedSession(): void
@@ -206,7 +207,7 @@ class RetentionPolicyTest extends TestCase
 
     public function testAnEmptySessionIsDropped(): void
     {
-        $this->assertFalse($this->policy->keeps(new LogJson('', [], [])));
+        $this->assertFalse($this->policy->keeps(new LogJson('', [])));
     }
 
     /** @param 'failed'|'purged'|'skipped' $cdnStatus */

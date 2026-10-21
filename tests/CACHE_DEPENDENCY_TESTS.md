@@ -141,7 +141,7 @@ Typed `AbstractContext` subclasses live in `src/Log/Context/` and each carries a
 | `cache_error` (`uri`/`operation`/`error`/`exceptionClass`) | event | `CacheInterceptor`, `AbstractDonutCacheInterceptor` | A failure raised on the cache read/write path — the pool itself (e.g. cache server down) or any work the store performs (rendering a view, purging a CDN); `operation` is the failing side (`read` / `write`) and `exceptionClass` the throwable, so a pool outage is distinguishable from a rendering bug; a `cache_miss` after a read-side outage is a degraded cache, not a cold one |
 | `put_donut` / `refresh_donut` | event | `DonutRepository` | Donut store / re-render from a template hit |
 | `manual_store` / `manual_purge` / `manual_invalidate` (+ `*_result` closes) | open | `QueryRepository::put()`/`purge()`, `DonutRepository::putStatic()`/`putDonut()`, `ResourceStorage::invalidateTags()` | Scope rooting a top-level (non-AOP) call, so an application-initiated store, bust or invalidation reads differently from a framework-driven one; the close carries the outcome. Granted by `Log\TopLevelAwareInterface` — a donut write's own pre-write cleanup invalidation is no longer top-level inside the scope, so it nests as an `invalidate` event instead of rooting its own `manual_invalidate`. In a `manual_invalidate` scope the `invalidate` detail stays a nested event (tag correlation finds manual invalidations too); the close is the one-word verdict |
-| `semantic_logger_error` (`kind` + details) | event | Core SemanticLogger (koriym/semantic-logger ≥ 0.9) | Logging-protocol misuse recorded in-band at the exact failure point — `close_id_mismatch` / `close_without_open` / `unclosed_at_flush` / `context_serialization_failed`; the tree is preserved (a core diagnostic type, not this package's vocabulary) |
+| `semantic_logger_error` (`code` + details) | event | Core SemanticLogger (koriym/semantic-logger ≥ 0.9, `log` format) | Logging-protocol misuse recorded in-band at the exact failure point — `close_id_mismatch` / `close_without_open` / `unclosed_at_flush` / `context_serialization_failed`; the tree is preserved (a core diagnostic type, not this package's vocabulary) |
 
 (SemanticLogger derives entry ids as `{type}_{n}` and constrains them to
 `^[a-z_]+_[0-9]+$`, so context `type`s use underscores; the donut `layer` value
@@ -151,9 +151,9 @@ Typed `AbstractContext` subclasses live in `src/Log/Context/` and each carries a
 
 `php demo/run-dependency.php` renders the session with `vendor/bin/stree`'s
 `Stree\TreeRenderer`. The 3-level chain appears as native nesting — the embed
-structure is the log structure, no reconstruction. Within a node the JSON groups
-nested `open`s separately from `events` (they are not interleaved
-chronologically); the emission order is: the leading `pre_write_cleanup` marker
+structure is the log structure, no reconstruction. Within a scope the JSON
+interleaves its nested events and opens in one `log` list, in the order they
+were recorded; the emission order is: the leading `pre_write_cleanup` marker
 and its `invalidate` (every `QueryRepository::doPut()` records the marker, then
 deleteEtags, before it stores), then the nested child GET scopes run to
 completion, then the parent's `depends_on` / `save_*` (the parent materializes
@@ -192,10 +192,10 @@ correlation and has no undecidable case. Any `invalidate` without the marker
 is a real invalidation; a `#[Refresh]` command shows both shapes: the purge's
 invalidate has no marker (real), the re-put's own deleteEtag is
 marker-preceded (cleanup).
-Note the tree JSON does not interleave a scope's events with its nested scopes
-chronologically — within one scope events are time-ordered, but across the
-events/open-children boundary no shared sequence exists; use scope nesting and
-the next GET's hit/miss as ground truth for final state.
+The tree JSON interleaves a scope's events with its nested scopes in one `log`
+list, in record order: within one scope events are time-ordered, and the
+boundary with a nested scope's own contents carries a position too — so the
+emission order above is the actual JSON order, not just the rendered one.
 
 A write request opens a `command` scope (`method=onPut`, its `#[Refresh]`/`#[Purge]`
 annotations) with the resulting `purge` / `invalidate` events nested beneath — so

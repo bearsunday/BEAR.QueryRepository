@@ -82,7 +82,7 @@ class LogWriterTest extends TestCase
     public function testTheStreamWriterIgnoresAnEmptySession(): void
     {
         mkdir($this->dir, 0755, true);
-        (new LogStreamWriter($this->file))->write(new LogJson('', [], []));
+        (new LogStreamWriter($this->file))->write(new LogJson('', []));
 
         $this->assertFileDoesNotExist($this->file);
     }
@@ -150,13 +150,13 @@ class LogWriterTest extends TestCase
         $this->assertSame('query_repository_log', $psr->records[0]['message'], 'the message is a stable key, not the payload');
         $tree = $psr->records[0]['context']['log'] ?? null;
         $this->assertIsArray($tree);
-        $this->assertArrayHasKey('entries', $tree, 'the whole tree survives as structured context');
+        $this->assertArrayHasKey('log', $tree, 'the whole tree survives as structured context');
     }
 
     public function testThePsrAdapterIgnoresAnEmptySession(): void
     {
         $psr = new FakePsrLogger();
-        (new PsrLogWriter($psr))->write(new LogJson('', [], []));
+        (new PsrLogWriter($psr))->write(new LogJson('', []));
 
         $this->assertSame([], $psr->records);
     }
