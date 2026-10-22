@@ -40,7 +40,7 @@ get uri=page://self/html/blog-posting
 │   │   ├── roPool: invalidated
 │   │   ├── etagPool: invalidated
 │   │   ├── cdn: skipped
-│   │   └── durationMs: 0.06
+│   │   └── durationMs: 0.062
 │   ├── cache_policy uri=page://self/html/comment expiry=never resolvedTtl=31536000 [event]
 │   │   ├── uri: page://self/html/comment
 │   │   ├── expiry: never
@@ -60,7 +60,7 @@ get uri=page://self/html/blog-posting
 │   │   └── saved: 1
 │   └── close cache_miss
 │       ├── layer: resource
-│       └── durationMs: 0.819
+│       └── durationMs: 0.856
 ├── cdn_headers uri=page://self/html/blog-posting surrogateKeys=[blog-posting-page, _html_blog-posting_ +2 items] [event]
 │   ├── uri: page://self/html/blog-posting
 │   ├── surrogateKeys[0]: blog-posting-page
@@ -74,7 +74,7 @@ get uri=page://self/html/blog-posting
 │   ├── roPool: invalidated
 │   ├── etagPool: invalidated
 │   ├── cdn: skipped
-│   └── durationMs: 0.004
+│   └── durationMs: 0.005
 ├── save_etag uri=page://self/html/blog-posting etag="4066413688" tags=[blog-posting-page, _html_blog-posting_ +2 items] saved=true [event]
 │   ├── uri: page://self/html/blog-posting
 │   ├── etag: "4066413688"
@@ -97,12 +97,12 @@ get uri=page://self/html/blog-posting
 │   └── saved: 1
 └── close cache_miss
     ├── layer: donut-view
-    └── durationMs: 11.541
+    └── durationMs: 14.671
 get uri=page://self/html/blog-posting
 ├── uri: page://self/html/blog-posting
 └── close cache_hit
     ├── layer: donut-view
-    └── durationMs: 0.021
+    └── durationMs: 0.019
 manual_purge uri=page://self/html/comment
 ├── uri: page://self/html/comment
 ├── invalidate tags=[_html_comment_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
@@ -148,7 +148,7 @@ get uri=page://self/html/blog-posting
 │   │   └── saved: 1
 │   └── close cache_miss
 │       ├── layer: resource
-│       └── durationMs: 0.114
+│       └── durationMs: 0.119
 ├── cdn_headers uri=page://self/html/blog-posting surrogateKeys=[blog-posting-page, _html_blog-posting_ +2 items] [event]
 │   ├── uri: page://self/html/blog-posting
 │   ├── surrogateKeys[0]: blog-posting-page
@@ -172,7 +172,7 @@ get uri=page://self/html/blog-posting
 │   └── saved: 1
 └── close cache_hit
     ├── layer: donut-view
-    └── durationMs: 0.326
+    └── durationMs: 0.32
 
 === Cache Log JSON ===
 {
@@ -232,7 +232,7 @@ get uri=page://self/html/blog-posting
                                 "roPool": "invalidated",
                                 "etagPool": "invalidated",
                                 "cdn": "skipped",
-                                "durationMs": 0.06
+                                "durationMs": 0.062
                             }
                         },
                         {
@@ -283,7 +283,7 @@ get uri=page://self/html/blog-posting
                         "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
                         "context": {
                             "layer": "resource",
-                            "durationMs": 0.819
+                            "durationMs": 0.856
                         }
                     }
                 },
@@ -324,7 +324,7 @@ get uri=page://self/html/blog-posting
                         "roPool": "invalidated",
                         "etagPool": "invalidated",
                         "cdn": "skipped",
-                        "durationMs": 0.004
+                        "durationMs": 0.005
                     }
                 },
                 {
@@ -381,7 +381,7 @@ get uri=page://self/html/blog-posting
                 "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
                 "context": {
                     "layer": "donut-view",
-                    "durationMs": 11.541
+                    "durationMs": 14.671
                 }
             }
         },
@@ -398,7 +398,7 @@ get uri=page://self/html/blog-posting
                 "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_hit.json",
                 "context": {
                     "layer": "donut-view",
-                    "durationMs": 0.021
+                    "durationMs": 0.019
                 }
             }
         },
@@ -537,7 +537,7 @@ get uri=page://self/html/blog-posting
                         "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
                         "context": {
                             "layer": "resource",
-                            "durationMs": 0.114
+                            "durationMs": 0.119
                         }
                     }
                 },
@@ -599,7 +599,7 @@ get uri=page://self/html/blog-posting
                 "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_hit.json",
                 "context": {
                     "layer": "donut-view",
-                    "durationMs": 0.326
+                    "durationMs": 0.32
                 }
             }
         }

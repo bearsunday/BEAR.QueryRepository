@@ -299,7 +299,7 @@ trait SemanticLogTreeTrait
     }
 
     /**
-     * @param mixed              $nodes one scope's own `log` list
+     * @param mixed              $nodes     one scope's own `log` list
      * @param list<list<string>> $sequences
      */
     private static function collectScopeEventSequences(mixed $nodes, array &$sequences): void

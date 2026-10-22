@@ -202,7 +202,6 @@ class DemoLogCoverageTest extends TestCase
                 continue;
             }
 
-
             self::record($child);
             $close = $child['close'] ?? null;
             if (is_array($close)) {
