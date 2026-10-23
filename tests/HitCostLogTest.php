@@ -19,8 +19,8 @@ use function json_decode;
  *
  * Every other flow asks whether the cache is correct. This one asks whether it is worth having:
  * a hit close measures serving from the pool, a miss close measures the resource run and the
- * write it triggered. The assertions are about shape and sign, never about a number - the value
- * moves with the machine.
+ * write it triggered. The assertions are about shape, never about a number or an ordering of two
+ * measurements - the value moves with the machine.
  */
 class HitCostLogTest extends TestCase
 {
@@ -80,11 +80,19 @@ class HitCostLogTest extends TestCase
         // inside it. That asymmetry is what a cache buys, and unlike two wall-clock readings it
         // does not depend on how busy the machine happens to be at the moment of the assertion.
         $this->resource->get('app://self/user', ['id' => 1]);
-        $missEvents = self::scopeEventTypesOf($this->flushAndValidate($this->logger), 'get', 'app://self/user?id=1');
+        $missTree = $this->flushAndValidate($this->logger);
+        $missClose = self::scopeCloseOf($missTree, 'get', 'app://self/user?id=1');
+        $this->assertNotNull($missClose, 'the get scope must exist and close');
+        $this->assertSame('cache_miss', $missClose[0], 'this run must actually be a miss');
 
         $this->resource->get('app://self/user', ['id' => 1]);
-        $hitEvents = self::scopeEventTypesOf($this->flushAndValidate($this->logger), 'get', 'app://self/user?id=1');
+        $hitTree = $this->flushAndValidate($this->logger);
+        $hitClose = self::scopeCloseOf($hitTree, 'get', 'app://self/user?id=1');
+        $this->assertNotNull($hitClose, 'the get scope must exist and close');
+        $this->assertSame('cache_hit', $hitClose[0], 'this run must actually be a hit');
 
+        $missEvents = self::scopeEventTypesOf($missTree, 'get', 'app://self/user?id=1');
+        $hitEvents = self::scopeEventTypesOf($hitTree, 'get', 'app://self/user?id=1');
         $this->assertNotEmpty($missEvents, 'a miss runs the resource and writes the pool; each step is recorded as a point');
         $this->assertSame([], $hitEvents, 'a hit is a single pool read; nothing happens inside its scope');
     }
