@@ -7,13 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
-- `LogFileWriter`/`LogStreamWriter`/`PsrLogWriter`: read the removed `$log->open`/`$log->events` properties after [koriym/semantic-logger#50](https://github.com/koriym/Koriym.SemanticLogger/pull/50) replaced them with an ordered record list (now the `log`/`close`/`openId` shape described above). The empty-session skip (`$log->open === [] && $log->events === []`) degraded to always-false, so an empty log was written on every flush and emitted a PHP warning; replaced with `$log->records === []`, the equivalent check against `LogJson`'s current public API.
-- `KeepMutationsAndFailures`: same shape change, with a sharper consequence — `childIsNotable()`/`hasRealInvalidation()` read `$node['open']`/`$node['events']`, which no longer exist, so every session's retention verdict silently fell back to "nothing notable" (drop everything). The adjacency rule in `hasRealInvalidation()` ("an invalidate is pre-write cleanup iff immediately preceded by `pre_write_cleanup`") now filters a scope's own `log` to its direct points first — a nested scope interleaved between the two in true record order must not break the adjacency it used to be structurally exempt from under the old separate `events` list.
-- `KeepMutationsAndFailures` keeps a session that carries `semantic_logger_truncated` (semantic-logger 0.11 record limit). Past the limit a `command` leaves no record, only the root truncation point, so the session was dropped as a healthy read.
-
 ### Changed
-- `koriym/semantic-logger` bumped to `dev-log-format` (replaces `^0.9`; switch to `^0.11` once released): the flushed JSON document is now one `log` list, record order, at every level — `open`/`close`/`events` are gone as separate arrays, and a node's kind (completed interval / interrupted interval / point / orphan close) is read structurally from which of `close`/`log`/`openId` it carries instead of nesting-position alone. Every scope's events and nested scopes are interleaved in actual record order instead of two separate arrays, so e.g. `KeepMutationsAndFailures`'s pre-write-cleanup-marker check and `SemanticLogTreeTrait`'s `scopeEventTypeSequences()` now read the one true sequence rather than an events-only approximation. Diagnostic context field `kind` is renamed `code` (`semantic_logger_error`/`semantic_logger_invalid_context`). No consumer-visible behavior change in this package's own context vocabulary or cache semantics.
+- Requires `koriym/semantic-logger` 0.11 (`dev-log-format` until it is released). Written logs use its `log` document shape, and diagnostic `kind` is now `code`.
+- `KeepMutationsAndFailures` also keeps a session cut at the record limit (`semantic_logger_truncated`): a `command` past the limit leaves no other trace.
 
 ## [1.17.0] - 2026-09-17
 
