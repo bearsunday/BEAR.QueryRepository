@@ -238,6 +238,27 @@ class UnstorableGateTest extends TestCase
         $this->assertNull($gate->reason($ro));
     }
 
+    public function testThrowingGateReasonExcludingHoleMarksThrowsWhenMarkedForCurrentScope(): void
+    {
+        $mark = new UncacheableMark();
+        $gate = new ThrowingUnstorableGate(new UnstorableGate($mark, new DeclaredCacheControl()));
+        $ro = new None();
+        $ro->uri = new Uri('app://self/unstorable-value');
+        $mark->mark('csrf-token-issued');
+
+        $this->expectException(UnstorableResponseDetected::class);
+        $this->expectExceptionMessage('app://self/unstorable-value is unstorable for this request (unstorable)');
+        $gate->reasonExcludingHoleMarks($ro);
+    }
+
+    public function testThrowingGateReasonExcludingHoleMarksReturnsNullWhenStorable(): void
+    {
+        $gate = new ThrowingUnstorableGate(new UnstorableGate(new UncacheableMark(), new DeclaredCacheControl()));
+        $ro = new None();
+
+        $this->assertNull($gate->reasonExcludingHoleMarks($ro));
+    }
+
     public function testMarkIsStickyOnceSet(): void
     {
         $mark = new UncacheableMark();
