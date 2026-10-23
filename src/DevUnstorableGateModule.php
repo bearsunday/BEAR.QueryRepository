@@ -25,9 +25,9 @@ use Ray\Di\AbstractModule;
  * module binds the concrete class too: once UnstorableGateInterface points elsewhere,
  * UnstorableGate stops being auto-wireable via the interface binding alone.
  *
- * Use alongside DevEtagModule (installed normally - it does not conflict) to turn a response
- * marked unstorable (issue #222) into a thrown UnstorableResponseDetected instead of the
- * package default of a silent skip.
+ * Turns a response marked unstorable (issue #222) into a thrown UnstorableResponseDetected
+ * instead of the package default of a silent skip - useful alongside other development-time
+ * tooling such as DevEtagModule.
  */
 final class DevUnstorableGateModule extends AbstractModule
 {
