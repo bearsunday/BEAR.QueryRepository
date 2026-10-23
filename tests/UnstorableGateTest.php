@@ -100,7 +100,7 @@ class UnstorableGateTest extends TestCase
 
         $mark->enterHole('page://self/html/some-hole');
         $mark->mark('csrf-token-issued');
-        $mark->leaveHole();
+        $mark->leaveHole('page://self/html/some-hole');
 
         $this->assertNull($gate->reasonExcludingHoleMarks($ro), 'a hole-scoped mark must not trip the #[DonutCache] template gate');
         $this->assertSame('unstorable', $gate->reason($ro), 'the same mark still trips the gate for paths whose stored content includes hole output');
@@ -129,7 +129,7 @@ class UnstorableGateTest extends TestCase
         $mark->enterHole('page://self/html/outer-hole');
         $mark->mark('csrf-token-issued'); // the nested hole's own render-time mark
         $this->assertSame('unstorable', $gate->reasonExcludingHoleMarks($ro), 'the hole\'s own mark, made while it is the current scope, must refuse its own template');
-        $mark->leaveHole();
+        $mark->leaveHole('page://self/html/outer-hole');
 
         $this->assertNull($gate->reasonExcludingHoleMarks($ro), 'back at the top level, the hole\'s mark (owned by the hole) must not refuse the composing page\'s own template');
     }
@@ -139,32 +139,82 @@ class UnstorableGateTest extends TestCase
         // A caller that leaves a hole scope it never entered must not drive the stack
         // negative and then silently stop attributing later marks to the page.
         $mark = new UncacheableMark();
-        $mark->leaveHole();
+        $mark->leaveHole('page://self/html/never-entered');
 
         $mark->mark('csrf-token-issued');
 
         $this->assertTrue($mark->isMarkedForCurrentScope());
     }
 
+    public function testAMismatchedLeaveHoleDoesNotPopAnActiveOuterScope(): void
+    {
+        // A stray leaveHole() call a caller makes without a matching enterHole() of its
+        // own, while nested inside a REAL, still-open outer scope, must not pop that outer
+        // scope out from under it - or a later mark in the outer scope's remaining
+        // execution is wrongly attributed to the page instead, reading as not marked where
+        // the outer resource's own write check expects it to (under-refusal).
+        $mark = new UncacheableMark();
+        $mark->enterHole('page://self/html/outer-hole');
+        $mark->leaveHole('page://self/html/some-other-uri-never-entered');
+
+        $mark->mark('csrf-token-issued');
+
+        // Properly leave the SAME scope now: if the mismatched call above had already
+        // (wrongly) popped it, this is a no-op and the mark - now sitting at top level -
+        // would still read as current here; if the mismatched call was correctly ignored,
+        // this pop succeeds and takes the mark (attributed to 'outer-hole', not top level)
+        // down with it, leaving top level unmarked.
+        $mark->leaveHole('page://self/html/outer-hole');
+
+        $this->assertFalse($mark->isMarkedForCurrentScope(), 'the mark must have been attributed to the outer scope, not leaked to top level by the earlier mismatched call');
+    }
+
+    public function testLeaveHoleSelfHealsALeakedInnerScope(): void
+    {
+        // The mirror failure of the mismatch case above: if code nested inside an
+        // enterHole()/leaveHole() pair pushes its OWN scope and never leaves it (a leak -
+        // third-party misuse again), the outer leaveHole() must still succeed, taking the
+        // leaked entry down with it - a strict "only pop if it is the exact top" check
+        // would instead get permanently stuck behind the leak for the rest of the request.
+        $mark = new UncacheableMark();
+        $mark->enterHole('page://self/html/outer-hole');
+        $mark->enterHole('page://self/html/leaked-inner-hole'); // never left - a leak
+
+        $mark->leaveHole('page://self/html/outer-hole');
+        $mark->mark('csrf-token-issued');
+
+        // Re-enter the LEAKED uri specifically: if the stack had not actually been
+        // unwound, the mark above landed there (still the current top) and this reads
+        // true; if it was correctly unwound, the mark landed at top level instead and
+        // this reads false.
+        $mark->enterHole('page://self/html/leaked-inner-hole');
+        $isLeakedScopeMarked = $mark->isMarkedForCurrentScope();
+        $mark->leaveHole('page://self/html/leaked-inner-hole');
+
+        $this->assertFalse($isLeakedScopeMarked, 'the leaked inner scope must not have captured a mark made after the outer scope was correctly (unwound) closed');
+    }
+
     public function testStackStaysBalancedWhenAHoleScopeIsLeftAfterAnException(): void
     {
         // DonutRequest::__toString() wraps a hole's own execution in try/finally so
         // leaveHole() still runs when the hole throws - simulated here directly on the
-        // mark service. A page mark made afterward must read as the current (top-level)
-        // scope, not as still being inside the unwound hole's scope.
+        // mark service. The hole's own mark, made before it "throws", must not leak into
+        // the current (top-level) scope once that scope is correctly left - checking a
+        // fresh mark() made only afterward would be tautological: it and the immediately
+        // following isMarkedForCurrentScope() always resolve through the same
+        // currentOwner(), so they would agree regardless of whether the stack is balanced.
         $mark = new UncacheableMark();
         $mark->enterHole('page://self/html/throwing-hole');
+        $mark->mark('csrf-token-issued'); // the hole's own mark, before it "throws"
         try {
             throw new RuntimeException('the hole blew up mid-render');
         } catch (RuntimeException) {
             // swallowed here only to simulate try/finally running leaveHole() on the way out
         } finally {
-            $mark->leaveHole();
+            $mark->leaveHole('page://self/html/throwing-hole');
         }
 
-        $mark->mark('csrf-token-issued');
-
-        $this->assertTrue($mark->isMarkedForCurrentScope());
+        $this->assertFalse($mark->isMarkedForCurrentScope(), 'the hole\'s own mark must not leak into the current (top-level) scope once its scope is left');
     }
 
     public function testThrowingGateThrowsWhenUnstorable(): void

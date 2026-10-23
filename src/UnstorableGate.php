@@ -53,7 +53,8 @@ final readonly class UnstorableGate implements UnstorableGateInterface
             return self::REASON;
         }
 
-        $cacheControl = $this->cacheControlHeader($ro);
+        $name = Header::findKey($ro->headers, Header::CACHE_CONTROL);
+        $cacheControl = $name === null ? '' : $ro->headers[$name];
         if ($cacheControl === '' || $cacheControl === ($this->declaredCacheControl)($ro)) {
             return null;
         }
@@ -64,21 +65,5 @@ final readonly class UnstorableGate implements UnstorableGateInterface
         }
 
         return null;
-    }
-
-    /**
-     * Read Cache-Control by header name case-insensitively (RFC 7230 §3.2): $ro->headers is
-     * a plain PHP array, not an HTTP-aware collection, so an application writing
-     * `cache-control` would otherwise slip past this exact-key lookup.
-     */
-    private function cacheControlHeader(ResourceObject $ro): string
-    {
-        foreach ($ro->headers as $name => $value) {
-            if (strtolower($name) === 'cache-control') {
-                return $value;
-            }
-        }
-
-        return '';
     }
 }

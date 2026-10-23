@@ -78,16 +78,17 @@ final readonly class HeaderSetter
     private function setCacheControlMaxAge(ResourceObject $ro, int $age): void
     {
         $setMaxAge = sprintf('max-age=%d', $age);
-        if (! isset($ro->headers[Header::CACHE_CONTROL])) {
+        $existingName = Header::findKey($ro->headers, Header::CACHE_CONTROL);
+        if ($existingName === null) {
             $ro->headers[Header::CACHE_CONTROL] = $setMaxAge;
 
             return;
         }
 
-        if (str_contains($ro->headers[Header::CACHE_CONTROL], 'max-age')) {
+        if (str_contains($ro->headers[$existingName], 'max-age')) {
             return;
         }
 
-        $ro->headers[Header::CACHE_CONTROL] .= ', ' . $setMaxAge;
+        $ro->headers[$existingName] .= ', ' . $setMaxAge;
     }
 }

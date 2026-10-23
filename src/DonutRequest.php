@@ -30,22 +30,20 @@ final readonly class DonutRequest implements Stringable
     #[Override]
     public function __toString(): string
     {
-        // A key to scope the mark by, read before invocation: AbstractRequest::__invoke()
-        // is what syncs resourceObject->uri->query from the request's own query array, so
-        // this read can lack query parameters the final URI below carries - acceptable here
-        // (issue #222 tolerates over-refusal when the same path is embedded twice under
-        // different query args, the safe side), but not for the placeholder/view mapping,
-        // which must be the exact URI ResourceDonut::refresh() later re-fetches by.
-        $holeKey = (string) $this->request->resourceObject->uri;
-        $this->mark->enterHole($holeKey);
+        // toUri() performs the same resourceObject->uri->query sync __invoke() does (its
+        // first statement), without invoking - so this already carries the full query
+        // string before the hole runs, usable both as enterHole()'s key and, unchanged,
+        // for the placeholder/view mapping that ResourceDonut::refresh() later re-fetches
+        // by (issue #222: a query-less key here would also let two sibling holes on the
+        // same path but different query args collide on one owner slot).
+        $uri = $this->request->toUri();
+        $this->mark->enterHole($uri);
         try {
             $view = (string) ($this->request)();
         } finally {
-            $this->mark->leaveHole();
+            $this->mark->leaveHole($uri);
         }
 
-        // Read only now that __invoke() has synced the query string onto it.
-        $uri = (string) $this->request->resourceObject->uri;
         $this->etags->addTag($this->request->resourceObject);
         $this->donutStorage->setView($uri, $view);
 

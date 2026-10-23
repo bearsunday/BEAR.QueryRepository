@@ -265,22 +265,35 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $this->logger->event(new RefreshDonutContext((string) $ro->uri));
         $donut->refresh($this->resource, $ro);
         $surrogateKeys = $ro->headers[Header::SURROGATE_KEY] ?? '';
-        if (! $donut->isCacheble) {
-            // The donut was created by putDonut (isCacheble=false): only the template is
-            // cached and the page is never stored as a rendered view, so there is no
-            // page-level entry to save after the refresh. Record the skip — without it
-            // the scope shows a refresh with no saves and no reason.
-            $this->logCdnHeaders($ro);
-            $this->logger->event(new PutSkippedContext((string) $ro->uri, 'not-cacheable'));
-
-            return $ro;
-        }
 
         // refresh() restores the stored headers before returning, discarding anything a
         // hole set on $ro (issue #222) - so a hole marking this response unstorable is only
         // visible on the mark itself, which is a separate per-request service and survives.
-        // "any mark" semantics here too: the recomposed content, holes included, is stored.
+        // "any mark" semantics here too: the recomposed content, holes included, is what
+        // the storable/unstorable decision below is about.
         $unstorable = $this->gate->reason($ro);
+
+        if (! $donut->isCacheble) {
+            // The donut was created by putDonut (isCacheble=false): only the template is
+            // cached and the page is never stored as a rendered view, so there is no
+            // page-level entry to save after the refresh - and this package never hands
+            // the CDN a lifetime header of its own for this kind, mirroring doPutDonut's
+            // MISS-path exactly: only overwrite the restored headers with Cache-Control:
+            // private, no-store when a hole marks itself on THIS recomposition, never add
+            // a lifetime header that was never there (issue #222 - a hole marking itself
+            // must still be caught on a later, recomposed hit, not just the one that first
+            // wrote the template; but a storable template-only hit must stay exactly as
+            // storable as the MISS that created it, no new CDN lifetime invented here).
+            if ($unstorable !== null) {
+                ($this->donutHeaderSetter)($ro, null, null);
+            }
+
+            $this->logCdnHeaders($ro);
+            $this->logger->event(new PutSkippedContext((string) $ro->uri, $unstorable ?? 'not-cacheable'));
+
+            return $ro;
+        }
+
         // When the recomposed content is byte-identical to the recorded one, carry over
         // the original Last-Modified instead of advancing it to the recomposition time
         $lastModified = $unstorable === null ? $donut->getUnchangedLastModified((string) $ro->view) : null;

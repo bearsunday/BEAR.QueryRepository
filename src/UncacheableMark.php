@@ -7,7 +7,7 @@ namespace BEAR\QueryRepository;
 use Override;
 
 use function array_key_last;
-use function array_pop;
+use function array_slice;
 
 /**
  * {@inheritDoc}
@@ -55,13 +55,30 @@ final class UncacheableMark implements UncacheableMarkInterface
     }
 
     #[Override]
-    public function leaveHole(): void
+    public function leaveHole(string $uri): void
     {
-        if ($this->stack === []) {
+        // The last (innermost) occurrence of $uri, not the first: enterHole() tolerates
+        // the same URI nested twice (same path embedded twice), and only the most recent
+        // push should close on a matching leaveHole().
+        $index = null;
+        foreach ($this->stack as $i => $owner) {
+            if ($owner === $uri) {
+                $index = $i;
+            }
+        }
+
+        if ($index === null) {
             return;
         }
 
-        array_pop($this->stack);
+        // Truncate to just before that occurrence rather than popping exactly one entry:
+        // a caller that pushed its own scope and never left it (third-party misuse, or a
+        // leaked enterHole() above this one) must not permanently block this leaveHole()
+        // from ever closing ITS OWN scope - a strict "only pop if it is the exact top"
+        // check would leave this, and every enterHole()/leaveHole() pair below the leak,
+        // open for the rest of the request. Truncating drops the leaked entry along with
+        // the one actually being closed.
+        $this->stack = array_slice($this->stack, 0, $index);
     }
 
     private function currentOwner(): string

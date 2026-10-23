@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\Resource;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
+use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Madapaja\TwigModule\TwigModule;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
@@ -19,6 +21,8 @@ use function http_build_query;
 
 class DonutRequestTest extends TestCase
 {
+    use SemanticLogTreeTrait;
+
     private AbstractRequest $request;
 
     protected function setUp(): void
@@ -134,5 +138,55 @@ class DonutRequestTest extends TestCase
         $expectedUri = 'app://self/query-hole?' . http_build_query(['token' => 'secret-5', 'visibility' => 'private']);
         $this->assertSame('[le:' . $expectedUri . ']', $placeholder, 'the placeholder must carry the query string even though the hole marked itself');
         $this->assertTrue($mark->isMarked(), 'visibility=private must mark');
+    }
+
+    public function testSiblingHolesOnTheSamePathWithDifferentQueriesDoNotShareAnOwnerSlot(): void
+    {
+        // A query-less enterHole() key would let two embeds of the same path but
+        // different query args share one owner slot: a #[DonutCache] hole whose own
+        // template write checks reasonExcludingHoleMarks() (isMarkedForCurrentScope(),
+        // narrow/scoped) would then read as marked anyway, and refuse ITS OWN template
+        // write, because a sibling with a different query marked itself (over-refusal).
+        // Unreachable through #[Embed] itself - EmbedInterceptor expands the URI template
+        // before building the request, so an #[Embed] request always already carries its
+        // query - but reachable through two manually built requests with different
+        // queries on the same path, exactly as issue #222 follow-up code (a worker
+        // rebinding the mark per request, say) might construct one.
+        //
+        // Checked via the semantic log right after the second write, not a later live GET:
+        // a live response's headers reflect isMarked() (broad, "any mark anywhere in this
+        // request"), which stays true for the rest of this shared mark instance regardless
+        // of this fix - only the per-write put_skipped/save_donut event, read at the point
+        // of the second write itself, observes the scoped template-storage decision.
+        $namespace = 'FakeVendor\HelloWorld';
+        $module = new FakeEtagPoolModule(ModuleFactory::getInstance($namespace));
+        $path = dirname(__DIR__) . '/tests/Fake/fake-app/var/templates';
+        $module->override(new TwigModule([$path]));
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        /** @var Resource $resource */
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $mark = $injector->getInstance(UncacheableMarkInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
+
+        // The first hole marks itself - attributed to its own (query-bearing) scope only.
+        $markedRequest = $resource->get->uri('app://self/query-donut-hole')->withQuery(['token' => 'secret-5', 'visibility' => 'private']);
+        assert($markedRequest instanceof AbstractRequest);
+        $storage = new DonutRenderer();
+        $etags = new SurrogateKeys(new Uri('app://self/foo'));
+        (string) new DonutRequest($markedRequest, $storage, $etags, $mark);
+        $logger->flush();
+
+        // A sibling on the same path, a different query, never marks itself - wrapped the
+        // same way #[Embed] would (DonutRequest's own enterHole()/leaveHole()); its own
+        // #[DonutCache] template write runs here, inside its own scope.
+        $unmarkedRequest = $resource->get->uri('app://self/query-donut-hole')->withQuery(['token' => 'public-9', 'visibility' => 'public']);
+        assert($unmarkedRequest instanceof AbstractRequest);
+        (string) new DonutRequest($unmarkedRequest, $storage, $etags, $mark);
+        $tree = $this->flushAndValidate($logger);
+
+        $this->assertNull(self::eventContextJsonOf($tree, 'put_skipped'), 'a sibling hole on the same path but a different query must not inherit a mark attributed to another query\'s owner slot');
+        $saveDonut = self::eventContextJsonOf($tree, 'save_donut');
+        $this->assertNotNull($saveDonut);
+        $this->assertStringContainsString('"saved":true', $saveDonut, 'the second hole\'s own template write must still go through');
     }
 }

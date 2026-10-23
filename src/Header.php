@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use function array_keys;
+use function strtolower;
+
 final class Header
 {
     /**
@@ -26,4 +29,22 @@ final class Header
      */
     public const RFC7231 = 'D, d M Y H:i:s \G\M\T';
     public const HTTP_IF_NONE_MATCH = 'HTTP_IF_NONE_MATCH';
+
+    /**
+     * Find a header's actual key regardless of casing (RFC 7230 §3.2): $ro->headers is a
+     * plain PHP array, not an HTTP-aware collection, so an application writing a
+     * differently-cased header name would otherwise be invisible to an exact-key lookup.
+     *
+     * @param array<string, string> $headers
+     */
+    public static function findKey(array $headers, string $canonical): string|null
+    {
+        foreach (array_keys($headers) as $name) {
+            if (strtolower($name) === strtolower($canonical)) {
+                return $name;
+            }
+        }
+
+        return null;
+    }
 }

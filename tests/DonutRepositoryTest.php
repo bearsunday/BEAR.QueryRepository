@@ -228,7 +228,12 @@ class DonutRepositoryTest extends TestCase
         // write) must not block the parent template write: this is exactly the "a page
         // whose holes contain a form" case issue #222 explicitly keeps working. The live
         // response is a different matter - the hole's rendered output IS substituted into
-        // it, so it still reads Cache-Control: private, no-store (issue #222 MEDIUM).
+        // it, so it still reads Cache-Control: private, no-store (issue #222 MEDIUM) - on
+        // BOTH the response that wrote the template (cache_miss, doPutDonut) AND every
+        // later one recomposed from it (cache_hit, refreshDonut): the mark is still set
+        // for this request (UncacheableMark is a per-injector singleton), and that refusal
+        // must be read on recomposition too, not just the response that first wrote the
+        // template.
         $injector = $this->getInjector();
         $resource = $injector->getInstance(ResourceInterface::class);
         $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
@@ -236,9 +241,39 @@ class DonutRepositoryTest extends TestCase
         $ro = $resource->get('page://self/html/donut-cache-with-unstorable-hole');
         $this->assertSame('private, no-store', $ro->headers[Header::CACHE_CONTROL]);
         $logger->flush();
-        $resource->get('page://self/html/donut-cache-with-unstorable-hole');
+        $refreshed = $resource->get('page://self/html/donut-cache-with-unstorable-hole');
         $tree = $this->flushAndValidate($logger);
         $this->assertNotNull(self::eventContextJsonOf($tree, 'refresh_donut'), 'the template was saved despite the embedded hole marking itself');
+        $this->assertSame('private, no-store', $refreshed->headers[Header::CACHE_CONTROL], 'the recomposed (refresh) response must still refuse CDN caching, not just the one that first wrote the template');
+    }
+
+    public function testDonutCacheWithAMultiParamEmbedRendersAndRefreshesBothQueryParams(): void
+    {
+        // End-to-end through the real #[Embed] pipeline (URI-template expansion, not a
+        // manually built request): the donut placeholder/view mapping and a later
+        // ResourceDonut::refresh() must carry and re-resolve BOTH query parameters, not
+        // just a single one. `|raw` in the fixture's template sidesteps a separate,
+        // out-of-scope Twig-autoescaping issue (default `{{ hole }}` HTML-escapes the
+        // placeholder's `&` when 2+ params are present - reported separately, not fixed
+        // here).
+        $injector = $this->getInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $storage = $injector->getInstance(ResourceStorageInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
+
+        $first = $resource->get('page://self/html/donut-cache-with-multi-param-query-hole');
+        $this->assertStringContainsString('1-2', (string) $first->view, 'both query params resolved on the first (render) GET');
+
+        // Drop just the hole's own state, leaving the page's donut template behind, so the
+        // next GET takes the refresh path: ResourceDonut::refresh() re-parses the stored
+        // [le:URI] placeholder and re-fetches it independently of the first render.
+        $storage->invalidateTags([(new UriTag())(new Uri('app://self/multi-param-query-hole?id=1&tag=2'))]);
+        $logger->flush();
+
+        $refreshed = $resource->get('page://self/html/donut-cache-with-multi-param-query-hole');
+        $tree = $this->flushAndValidate($logger);
+        $this->assertNotNull(self::eventContextJsonOf($tree, 'refresh_donut'), 'the page is recomposed from the cached donut');
+        $this->assertStringContainsString('1-2', (string) $refreshed->view, 'refresh() re-fetched the hole by its full, multi-param URI, not a partial or query-less one');
     }
 
     public function testNestedDonutCacheHoleDoesNotLeakItsOwnMarkedContentToTheSharedCache(): void
