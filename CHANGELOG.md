@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `UncacheableMarkInterface`/`UncacheableMark`: a request-scoped service a producer of a per-user value (a CSRF token issuer, etc.) calls to mark the current response unstorable - issue #222. A `#[Cacheable]` or `#[CacheableResponse]` write that is marked, or whose `Cache-Control` already says `no-store`/`private`, is skipped (`put_skipped{reason: unstorable}`), and the response gets `Cache-Control: private, no-store` plus `Pragma: no-cache` and no CDN lifetime header instead. Install `DevUnstorableGateModule` to turn the skip into a thrown `UnstorableResponseDetected` during development. Existing cache entries written before this change may hold per-user content - purge on deploy.
 
 ### Changed
-- Requires `koriym/semantic-logger` 0.11 (`dev-log-format` until it is released). Written logs use its `log` document shape, and diagnostic `kind` is now `code`.
+- Requires `koriym/semantic-logger` `^0.11`. Written logs use its `log` document shape, and diagnostic `kind` is now `code`.
 - `KeepMutationsAndFailures` also keeps a session cut at the record limit (`semantic_logger_truncated`): a `command` past the limit leaves no other trace.
 
 ## [1.17.0] - 2026-09-17
