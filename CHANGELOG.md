@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `KeepMutationsAndFailures` also keeps a session cut at the record limit (`semantic_logger_truncated`): a `command` past the limit leaves no other trace.
 
 ### Fixed
-- `HitCostLogTest::testTheHitIsTheCheaperAnswer` compared two wall-clock durations and flaked on a busy CI runner (#227). Replaced with an assertion on the log's own shape: a miss's `get` scope records the resource run and pool write as points, a hit's scope records none.
+- `HitCostLogTest::testTheHitIsTheCheaperAnswer` compared two wall-clock durations and flaked on a busy CI runner (#227). Replaced with an assertion on the log's own shape: a miss's `get` scope records the pool write (`pre_write_cleanup`, `invalidate`, `cache_policy`, `save_etag`, `save_value`) as points, a hit's scope records none.
 
 ## [1.17.0] - 2026-09-17
 
