@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository\Log;
 
+use Closure;
 use Koriym\SemanticLogger\LogJson;
 use Override;
 
@@ -48,10 +49,16 @@ final class LogFileWriter implements LogWriterInterface
     public const LATEST = 'latest.json';
     private const SESSION_GLOB = '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9]-*.json';
 
-    /** @param int $keep number of timestamped files to retain (the oldest are removed) */
+    /**
+     * @param int                     $keep  number of timestamped files to retain (the oldest are removed)
+     * @param (Closure(): float)|null $clock returns the current Unix timestamp with microsecond
+     *     precision; defaults to `microtime(true)`. Overridable only so a test can force two
+     *     sessions into the same microsecond — real contention makes that impractical to force.
+     */
     public function __construct(
         private string $dir,
         private int $keep = 100,
+        private readonly Closure|null $clock = null,
     ) {
     }
 
@@ -67,10 +74,10 @@ final class LogFileWriter implements LogWriterInterface
             return;
         }
 
-        $now = microtime(true);
+        $now = $this->clock !== null ? ($this->clock)() : microtime(true);
         $seconds = (int) $now;
         $micro = (int) (($now - (float) $seconds) * 1000000.0);
-        $name = sprintf('%s-%06d.json', gmdate('Ymd-His', $seconds), $micro);
+        $name = sprintf('%s-%06d-%s.json', gmdate('Ymd-His', $seconds), $micro, bin2hex(random_bytes(3)));
         if (! $this->put($this->dir . '/' . $name, $json)) {
             return;
         }
