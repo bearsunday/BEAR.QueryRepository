@@ -26,13 +26,22 @@ use function time;
  */
 final class ResourceDonut
 {
-    // The %s is a rawurlencode()'d URI (see placeholder()): percent-encoding leaves no
-    // '&', '<', '>', '"' or '\'' for an HTML renderer's default autoescaping to mangle,
-    // so the same placeholder text round-trips unchanged whether it is echoed raw, through
-    // Twig's default `{{ hole }}` escaping, or by a non-HTML renderer (issue #232).
-    private const FORMAT = '[le:%s]';
+    // `le2` placeholders (written by this version onward) carry a rawurlencode()'d URI:
+    // percent-encoding leaves no '&', '<', '>', '"' or '\'' for an HTML renderer's default
+    // autoescaping to mangle, so the same placeholder text round-trips unchanged whether
+    // it is echoed raw, through Twig's default `{{ hole }}` escaping, or by a non-HTML
+    // renderer (issue #232). A legacy `le` placeholder (written before this version) is
+    // never decoded - its URI is used exactly as refresh() always used it, which stays
+    // correct for 0/1 query params (and still broken for 2+, as it already was: that
+    // entry was already corrupted and self-heals once it expires and is rewritten).
+    // Decoding it here too would be wrong, not merely redundant: a legacy query VALUE
+    // that itself needed percent-encoding (a literal '&', '=', '+', '/', non-ASCII bytes)
+    // would be stripped of that encoding before BEAR\Resource\Uri ever parses it, either
+    // corrupting the value (parse_str re-splits it on the now-literal '&'/'=') or failing
+    // URL validation outright (a raw non-ASCII byte is not a valid URL character).
+    private const FORMAT = '[le2:%s]';
 
-    private const URI_REGEX = '/\[le:([^\]]+)]/';
+    private const URI_REGEX = '/\[le2:([^\]]+)]|\[le:([^\]]+)]/';
 
     /**
      * Build the placeholder DonutRequest::__toString() embeds and DonutRenderer matches
@@ -68,9 +77,10 @@ final class ResourceDonut
     {
         $etags = new SurrogateKeys($ro->uri);
         $refreshView =  preg_replace_callback(self::URI_REGEX, static function (array $matches) use ($resource, $etags): string {
-            // rawurldecode() is a no-op on a plain URI with no '%' sequence, so entries
-            // stored by older, un-encoded versions still refresh correctly (issue #232).
-            $uri = rawurldecode($matches[1]);
+            // Group 1 is the rawurlencode()'d URI of a new `le2` match, present only when
+            // that alternative matched; group 2 is a legacy `le` match's URI, used verbatim.
+            $new = $matches[1];
+            $uri = $new !== '' ? rawurldecode($new) : ($matches[2] ?? '');
             $ro = $resource->get($uri);
             $ro->toString();
             if (array_key_exists(Header::SURROGATE_KEY, $ro->headers)) {
