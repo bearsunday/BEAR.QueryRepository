@@ -41,7 +41,7 @@ final class ResourceDonut
     // URL validation outright (a raw non-ASCII byte is not a valid URL character).
     private const FORMAT = '[le2:%s]';
 
-    private const URI_REGEX = '/\[le2:([^\]]+)]|\[le:([^\]]+)]/';
+    private const URI_REGEX = '/\[le(2)?:([^\]]+)]/';
 
     /**
      * Build the placeholder DonutRequest::__toString() embeds and DonutRenderer matches
@@ -77,10 +77,9 @@ final class ResourceDonut
     {
         $etags = new SurrogateKeys($ro->uri);
         $refreshView =  preg_replace_callback(self::URI_REGEX, static function (array $matches) use ($resource, $etags): string {
-            // Group 1 is the rawurlencode()'d URI of a new `le2` match, present only when
-            // that alternative matched; group 2 is a legacy `le` match's URI, used verbatim.
-            $new = $matches[1];
-            $uri = $new !== '' ? rawurldecode($new) : ($matches[2] ?? '');
+            // Group 1 is "2" for a new `le2` match (its URI, group 2, is rawurlencode()'d),
+            // or "" for a legacy `le` match (group 2 is its URI, used verbatim).
+            $uri = $matches[1] === '2' ? rawurldecode($matches[2]) : $matches[2];
             $ro = $resource->get($uri);
             $ro->toString();
             if (array_key_exists(Header::SURROGATE_KEY, $ro->headers)) {

@@ -12,7 +12,10 @@ use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 
 use function dirname;
+use function htmlspecialchars;
 use function http_build_query;
+
+use const ENT_QUOTES;
 
 class ResourceDonutTest extends TestCase
 {
@@ -55,8 +58,12 @@ class ResourceDonutTest extends TestCase
 
     /**
      * A query value a legacy entry's placeholder needed http_build_query() to protect: an
-     * encoded space ('+'), an encoded slash ('%2F'), and a non-ASCII character (its own
-     * multi-byte '%XX' sequence).
+     * encoded space ('+'), an encoded slash ('%2F'), a non-ASCII character (its own
+     * multi-byte '%XX' sequence), and reserved query-string characters within the value
+     * itself ('&', '=') - the case that corrupts silently rather than fatally: blanket-
+     * decoding it before BEAR\Resource\Uri parses it lets parse_str() re-split the
+     * now-literal '&'/'=' into extra, unrelated params instead of leaving them part of
+     * the value.
      *
      * @return array<string, array{0: string}>
      */
@@ -66,6 +73,7 @@ class ResourceDonutTest extends TestCase
             'encoded space (+)' => ['a b'],
             'encoded slash (%2F)' => ['a/b'],
             'non-ASCII' => ['日本語'],
+            'reserved characters (&, =)' => ['a&b=c'],
         ];
     }
 
@@ -88,7 +96,7 @@ class ResourceDonutTest extends TestCase
 
         $refreshed = $donut->refresh($this->resource, $ro);
 
-        $this->assertSame('<p>' . $value . '</p>', (string) $refreshed->view, 'the legacy placeholder\'s URI must reach BEAR\Resource\Uri exactly as stored, not pre-decoded');
+        $this->assertSame('<p>' . htmlspecialchars($value, ENT_QUOTES, 'UTF-8') . '</p>', (string) $refreshed->view, 'the legacy placeholder\'s URI must reach BEAR\Resource\Uri exactly as stored, not pre-decoded');
     }
 
     /**
@@ -104,7 +112,7 @@ class ResourceDonutTest extends TestCase
 
         $refreshed = $donut->refresh($this->resource, $ro);
 
-        $this->assertSame('<p>' . $value . '</p>', (string) $refreshed->view);
+        $this->assertSame('<p>' . htmlspecialchars($value, ENT_QUOTES, 'UTF-8') . '</p>', (string) $refreshed->view);
     }
 
     /**
