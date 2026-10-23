@@ -8,6 +8,7 @@ use BEAR\Resource\ResourceObject;
 use Override;
 
 use function str_contains;
+use function strtolower;
 
 /**
  * {@inheritDoc}
@@ -41,7 +42,8 @@ final readonly class UnstorableGate implements UnstorableGateInterface
             return null;
         }
 
-        if (str_contains($cacheControl, 'no-store') || str_contains($cacheControl, 'private')) {
+        $lower = strtolower($cacheControl);
+        if (str_contains($lower, 'no-store') || str_contains($lower, 'private')) {
             return self::REASON;
         }
 
