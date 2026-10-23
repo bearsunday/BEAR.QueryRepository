@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
-- Requires `koriym/semantic-logger` 0.11 (`dev-log-format` until it is released). Written logs use its `log` document shape, and diagnostic `kind` is now `code`.
+- Requires `koriym/semantic-logger` `^0.11`. Written logs use its `log` document shape, and diagnostic `kind` is now `code`.
 - `KeepMutationsAndFailures` also keeps a session cut at the record limit (`semantic_logger_truncated`): a `command` past the limit leaves no other trace.
 
 ## [1.17.0] - 2026-09-17
