@@ -6,7 +6,6 @@ namespace BEAR\QueryRepository;
 
 use Override;
 
-use function sprintf;
 use function str_replace;
 
 final class DonutRenderer implements DonutRendererInterface
@@ -20,7 +19,7 @@ final class DonutRenderer implements DonutRendererInterface
     #[Override]
     public function setView(string $uri, string $view): void
     {
-        $this->searches[] = sprintf(ResourceDonut::FORMAT, $uri);
+        $this->searches[] = ResourceDonut::placeholder($uri);
         $this->views[] = $view;
     }
 

@@ -8,8 +8,6 @@ use BEAR\Resource\AbstractRequest;
 use Override;
 use Stringable;
 
-use function sprintf;
-
 /**
  * Stands in for an embedded `#[Embed]` request while a donut template is composed
  *
@@ -47,6 +45,6 @@ final readonly class DonutRequest implements Stringable
         $this->etags->addTag($this->request->resourceObject);
         $this->donutStorage->setView($uri, $view);
 
-        return sprintf(ResourceDonut::FORMAT, $uri);
+        return ResourceDonut::placeholder($uri);
     }
 }

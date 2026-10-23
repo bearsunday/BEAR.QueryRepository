@@ -10,9 +10,10 @@ use BEAR\Resource\ResourceObject;
 
 /**
  * A #[DonutCache] page embedding a hole through #[Embed]'s own URI-template expansion with
- * two query parameters (issue #222 follow-up E2E coverage). `|raw` in the template sidesteps
- * a separate, out-of-scope Twig-autoescaping issue (default `{{ hole }}` HTML-escapes the
- * placeholder's `&` when 2+ params are present, reported separately, not fixed here).
+ * two query parameters, rendered with the project's standard `{{ hole }}` (issue #232:
+ * Twig's default autoescape turns the placeholder's `&` into `&amp;`, so neither the
+ * first-request substitution nor the second-request `ResourceDonut::refresh()` re-fetch
+ * matched it before the fix).
  */
 #[DonutCache]
 class DonutCacheWithMultiParamQueryHole extends ResourceObject

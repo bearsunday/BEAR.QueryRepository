@@ -15,6 +15,9 @@ use function hash;
 use function is_iterable;
 use function max;
 use function preg_replace_callback;
+use function rawurldecode;
+use function rawurlencode;
+use function sprintf;
 use function strtotime;
 use function time;
 
@@ -23,9 +26,21 @@ use function time;
  */
 final class ResourceDonut
 {
+    // The %s is a rawurlencode()'d URI (see placeholder()): percent-encoding leaves no
+    // '&', '<', '>', '"' or '\'' for an HTML renderer's default autoescaping to mangle,
+    // so the same placeholder text round-trips unchanged whether it is echoed raw, through
+    // Twig's default `{{ hole }}` escaping, or by a non-HTML renderer (issue #232).
     public const FORMAT = '[le:%s]';
 
     private const URI_REGEX = '/\[le:([^\]]+)]/';
+
+    /**
+     * Build the placeholder DonutRequest::__toString() embeds and DonutRenderer matches
+     */
+    public static function placeholder(string $uri): string
+    {
+        return sprintf(self::FORMAT, rawurlencode($uri));
+    }
 
     /**
      * @param array<string, string> $headers
@@ -53,7 +68,9 @@ final class ResourceDonut
     {
         $etags = new SurrogateKeys($ro->uri);
         $refreshView =  preg_replace_callback(self::URI_REGEX, static function (array $matches) use ($resource, $etags): string {
-            $uri = $matches[1];
+            // rawurldecode() is a no-op on a plain URI with no '%' sequence, so entries
+            // stored by older, un-encoded versions still refresh correctly (issue #232).
+            $uri = rawurldecode($matches[1]);
             $ro = $resource->get($uri);
             $ro->toString();
             if (array_key_exists(Header::SURROGATE_KEY, $ro->headers)) {

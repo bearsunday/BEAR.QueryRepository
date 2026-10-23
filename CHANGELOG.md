@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - `LogFileWriter`: two sessions flushed in the same microsecond no longer overwrite each other. The timestamped filename now carries a random suffix, so both survive (#221).
+- A `#[DonutCache]` page embedding an `#[Embed]` hole whose URI carries two or more query parameters no longer leaks a raw `[le:...]` placeholder to the client, and no longer throws `BEAR\Resource\Exception\ParameterException` on the next request - Twig's default autoescape was turning the placeholder's `&` into `&amp;`, which neither `DonutRenderer`'s substitution nor `ResourceDonut::refresh()`'s re-fetch matched (#232). The placeholder now carries a percent-encoded URI, which no HTML renderer's default escaping alters. No action needed: an already-cached donut template transparently keeps working (percent-decoding a URI with no `%` is a no-op), though any entry that was already corrupted by this bug before upgrading should be purged or left to expire.
 
 ## [1.17.0] - 2026-09-17
 
