@@ -36,7 +36,9 @@ use const JSON_UNESCAPED_UNICODE;
  * `stree` takes a single log file, so a session is written whole rather than appended as a
  * line: `vendor/bin/stree var/log/query-repository/latest.json` renders the request that
  * just ran, and the timestamped siblings keep the scenario before it. Names are UTC so they
- * sort chronologically, and `latest.json` is renamed into place so a reader never opens a
+ * sort chronologically, with a random suffix so two sessions flushed in the same microsecond
+ * get distinct files instead of one silently overwriting the other, and `latest.json` is
+ * renamed into place so a reader never opens a
  * half-written file. Under concurrency `latest.json` holds whichever session finished last,
  * which is not necessarily the newest timestamped sibling.
  *
