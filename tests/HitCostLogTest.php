@@ -75,9 +75,10 @@ class HitCostLogTest extends TestCase
 
     public function testTheHitSkipsTheWorkTheMissDoes(): void
     {
-        // "Cheaper" is not a number, it is a shape: a miss runs the resource and writes the
-        // pool, each step its own point under the scope; a hit is one pool read with nothing
-        // inside it. That asymmetry is what a cache buys, and unlike two wall-clock readings it
+        // "Cheaper" is not a number, it is a shape: a miss writes the pool, each write step
+        // its own point under the scope (pre_write_cleanup, invalidate, cache_policy, save_etag,
+        // save_value); a hit is one pool read with nothing inside it. That asymmetry is what a
+        // cache buys, and unlike two wall-clock readings it
         // does not depend on how busy the machine happens to be at the moment of the assertion.
         $this->resource->get('app://self/user', ['id' => 1]);
         $missTree = $this->flushAndValidate($this->logger);
@@ -93,7 +94,7 @@ class HitCostLogTest extends TestCase
 
         $missEvents = self::scopeEventTypesOf($missTree, 'get', 'app://self/user?id=1');
         $hitEvents = self::scopeEventTypesOf($hitTree, 'get', 'app://self/user?id=1');
-        $this->assertNotEmpty($missEvents, 'a miss runs the resource and writes the pool; each step is recorded as a point');
+        $this->assertNotEmpty($missEvents, 'a miss writes the pool; each write step is recorded as a point');
         $this->assertSame([], $hitEvents, 'a hit is a single pool read; nothing happens inside its scope');
     }
 
