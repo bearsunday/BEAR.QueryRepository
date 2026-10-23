@@ -150,6 +150,23 @@ class CdnCacheControlHeaderTest extends TestCase
         $this->assertSame('private, no-store', $ro->headers[Header::CACHE_CONTROL]);
     }
 
+    public function testCdnHeadersSetDirectlyDoNotSurviveAnUnstorableRefusal(): void
+    {
+        // The resource sets CDN-Cache-Control and Surrogate-Control directly in onGet(),
+        // bypassing CdnCacheControlHeaderSetterInterface entirely, and marks itself
+        // unstorable: HeaderSetter must strip every CDN-facing header it manages, not just
+        // skip adding one, or a CDN reading Cache-Control: no-store alongside a surviving
+        // CDN-Cache-Control could still cache this response at the edge (issue #222).
+        $module = $this->getModule();
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        $resource = $injector->getInstance(ResourceInterface::class);
+
+        $ro = $resource->get('page://self/html/unstorable-with-manual-cdn-header');
+        $this->assertSame('private, no-store', $ro->headers[Header::CACHE_CONTROL]);
+        $this->assertArrayNotHasKey(Header::CDN_CACHE_CONTROL, $ro->headers);
+        $this->assertArrayNotHasKey('Surrogate-Control', $ro->headers);
+    }
+
     public function testCacheableResponseWithHttpCacheNoStoreStillGetsCdnHeader(): void
     {
         // #[HttpCache(noStore: true)] declares its own client-facing Cache-Control: no-store

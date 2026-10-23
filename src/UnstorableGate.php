@@ -15,10 +15,11 @@ use function strtolower;
  *
  * Three conditions make a response unstorable (issue #222): a producer called
  * UncacheableMarkInterface::mark() during this request, Cache-Control already contains
- * no-store, or it contains private - private because this package is a shared cache in the
- * sense of RFC 9111: whatever it stores is served to every later visitor. `isPrivate`/`noStore`
- * applied dynamically by `#[HttpCache(isPrivate: true)]` is unaffected: $declaredCacheControl
- * lets the caller exempt its own attribute's value from the check.
+ * no-store, or it contains private (matched case-insensitively, RFC 9111 §5.2) - private
+ * because this package is a shared cache in the sense of RFC 9111: whatever it stores is
+ * served to every later visitor. `isPrivate`/`noStore` applied by `#[HttpCache]` or
+ * `#[NoHttpCache]` is unaffected: a header that still reads exactly what DeclaredCacheControl
+ * computes for this resource is exempt from the no-store/private check.
  */
 final readonly class UnstorableGate implements UnstorableGateInterface
 {
@@ -26,19 +27,33 @@ final readonly class UnstorableGate implements UnstorableGateInterface
 
     public function __construct(
         private UncacheableMarkInterface $mark,
+        private DeclaredCacheControl $declaredCacheControl,
     ) {
     }
 
     /** @return 'unstorable'|null */
     #[Override]
-    public function reason(ResourceObject $ro, string|null $declaredCacheControl = null): string|null
+    public function reason(ResourceObject $ro): string|null
     {
-        if ($this->mark->isMarked()) {
+        return $this->reasonFor($ro, $this->mark->isMarked());
+    }
+
+    /** @return 'unstorable'|null */
+    #[Override]
+    public function reasonExcludingHoleMarks(ResourceObject $ro): string|null
+    {
+        return $this->reasonFor($ro, $this->mark->isMarkedOutsideHole());
+    }
+
+    /** @return 'unstorable'|null */
+    private function reasonFor(ResourceObject $ro, bool $marked): string|null
+    {
+        if ($marked) {
             return self::REASON;
         }
 
         $cacheControl = $ro->headers[Header::CACHE_CONTROL] ?? '';
-        if ($cacheControl === '' || $cacheControl === $declaredCacheControl) {
+        if ($cacheControl === '' || $cacheControl === ($this->declaredCacheControl)($ro)) {
             return null;
         }
 

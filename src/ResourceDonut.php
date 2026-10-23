@@ -179,7 +179,7 @@ final class ResourceDonut
         return hash('sha256', $view);
     }
 
-    public static function create(ResourceObject $ro, DonutRendererInterface $storage, SurrogateKeys $etags, int|null $ttl, bool $isCacheble): self
+    public static function create(ResourceObject $ro, DonutRendererInterface $storage, SurrogateKeys $etags, int|null $ttl, bool $isCacheble, UncacheableMarkInterface $mark): self
     {
         // A resource with nothing to return leaves its body null - a 204 typically does, while
         // an #[Embed] would have made it an array - and a null body holds no embedded request
@@ -189,7 +189,7 @@ final class ResourceDonut
             /** @var mixed $maybeRequest */
             foreach ($ro->body as &$maybeRequest) {
                 if ($maybeRequest instanceof AbstractRequest) {
-                    $maybeRequest = new DonutRequest($maybeRequest, $storage, $etags);
+                    $maybeRequest = new DonutRequest($maybeRequest, $storage, $etags, $mark);
                 }
             }
 

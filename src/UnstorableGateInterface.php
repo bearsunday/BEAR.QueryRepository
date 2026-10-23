@@ -14,6 +14,11 @@ use BEAR\Resource\ResourceObject;
  * or private - never reaches the shared cache a `#[Cacheable]` or `#[CacheableResponse]`
  * resource would otherwise write to.
  *
+ * Reads the resource's own `#[HttpCache]`/`#[NoHttpCache]` declaration to exempt a
+ * Cache-Control header that still reads exactly that value - the attribute's own client-facing
+ * directive, not a value a method or a render produced: `#[Cacheable]` combined with
+ * `#[HttpCache(noStore: true)]` still stores server-side while telling the client not to.
+ *
  * @see https://github.com/bearsunday/BEAR.QueryRepository/issues/222
  */
 interface UnstorableGateInterface
@@ -21,14 +26,19 @@ interface UnstorableGateInterface
     /**
      * The reason this response must not be written to the shared cache, or null when storable
      *
-     * @param string|null $declaredCacheControl the Cache-Control value `#[HttpCache]` already
-     *     declares for this resource, read before `HeaderSetter` runs. A header that still
-     *     reads exactly this value is the attribute's own client-facing directive, not a value
-     *     the method or a render produced, and is exempt from the no-store/private check -
-     *     `#[Cacheable]` combined with `#[HttpCache(noStore: true)]` still stores server-side
-     *     while telling the client not to.
+     * @return 'unstorable'|null
+     */
+    public function reason(ResourceObject $ro): string|null;
+
+    /**
+     * The same check, but a mark made only inside an embedded hole's own execution
+     * (UncacheableMarkInterface::enterHole()/leaveHole()) does not trip it
+     *
+     * A `#[DonutCache]` template holds no hole content, only a placeholder for it, so only
+     * what the page itself marked - directly, or while its own template renders - matters to
+     * that write; DonutRepository::doPutDonut() is the only caller.
      *
      * @return 'unstorable'|null
      */
-    public function reason(ResourceObject $ro, string|null $declaredCacheControl = null): string|null;
+    public function reasonExcludingHoleMarks(ResourceObject $ro): string|null;
 }

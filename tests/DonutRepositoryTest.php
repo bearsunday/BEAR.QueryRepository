@@ -238,6 +238,34 @@ class DonutRepositoryTest extends TestCase
         $this->assertNotNull(self::eventContextJsonOf($tree, 'refresh_donut'), 'the template was saved despite the embedded hole marking itself');
     }
 
+    public function testDonutCacheTemplateSkipsSaveWhenMarkedWhileItsOwnTemplateRenders(): void
+    {
+        // The mark can also happen while the page's own template renders (e.g. a Twig CSRF
+        // helper), inside the same ResourceDonut::create() call that resolves any embedded
+        // hole - neither in onGet() (too early) nor inside a hole's own execution (wrongly
+        // exempt). Both the read order and the hole-exclusion must get this right (issue #222).
+        $injector = $this->getInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
+
+        $ro = $resource->get('page://self/html/render-time-mark');
+        $this->assertSame('private, no-store', $ro->headers[Header::CACHE_CONTROL]);
+        $this->assertArrayNotHasKey(Header::CDN_CACHE_CONTROL, $ro->headers);
+
+        $tree = $this->flushAndValidate($logger);
+        $putSkipped = self::eventContextJsonOf($tree, 'put_skipped');
+        $this->assertNotNull($putSkipped);
+        $this->assertStringContainsString('"reason":"unstorable"', $putSkipped);
+
+        // Nothing was stored: a second GET is a fresh donut miss again, not a refresh_donut
+        // recomposed from a leaked template.
+        $logger->flush();
+        $resource->get('page://self/html/render-time-mark');
+        $tree2 = $this->flushAndValidate($logger);
+        $this->assertNull(self::eventContextJsonOf($tree2, 'refresh_donut'));
+        $this->assertNotNull(self::eventContextJsonOf($tree2, 'cache_miss'));
+    }
+
     /**
      * When cache A contains cache B, deleting B will automatically delete A as well.
      */

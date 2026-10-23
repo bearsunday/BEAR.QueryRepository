@@ -24,9 +24,25 @@ final readonly class ThrowingUnstorableGate implements UnstorableGateInterface
 
     /** @return 'unstorable'|null */
     #[Override]
-    public function reason(ResourceObject $ro, string|null $declaredCacheControl = null): string|null
+    public function reason(ResourceObject $ro): string|null
     {
-        $reason = $this->gate->reason($ro, $declaredCacheControl);
+        return $this->throwIfUnstorable($this->gate->reason($ro), $ro);
+    }
+
+    /** @return 'unstorable'|null */
+    #[Override]
+    public function reasonExcludingHoleMarks(ResourceObject $ro): string|null
+    {
+        return $this->throwIfUnstorable($this->gate->reasonExcludingHoleMarks($ro), $ro);
+    }
+
+    /**
+     * @param 'unstorable'|null $reason
+     *
+     * @return null a non-null $reason always throws
+     */
+    private function throwIfUnstorable(string|null $reason, ResourceObject $ro): null
+    {
         if ($reason !== null) {
             throw new UnstorableResponseDetected((string) $ro->uri, $reason);
         }
