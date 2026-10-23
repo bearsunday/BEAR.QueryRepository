@@ -30,6 +30,24 @@ class HeaderSetterTest extends TestCase
         $this->assertSame('private, no-store', $ro->headers[Header::CACHE_CONTROL]);
     }
 
+    public function testStripHeadersRemovesEveryCasingWhenTheSameHeaderIsSetTwice(): void
+    {
+        // $ro->headers is a plain array, so 'Cache-Control' and 'cache-control' can coexist
+        // as two distinct keys. stripHeaders() must remove ALL of them, not just the first
+        // match - a single-match lookup here would leave one behind, a lifetime header
+        // surviving the unstorable refusal.
+        $mark = new UncacheableMark();
+        $mark->mark('csrf-token-issued');
+        $ro = new None();
+        $ro->headers[Header::CDN_CACHE_CONTROL] = 'max-age=600';
+        $ro->headers['cdn-cache-control'] = 'max-age=600';
+
+        ($this->headerSetter($mark))($ro, null, null);
+
+        $this->assertArrayNotHasKey(Header::CDN_CACHE_CONTROL, $ro->headers);
+        $this->assertArrayNotHasKey('cdn-cache-control', $ro->headers);
+    }
+
     public function testSetCacheControlMaxAgeFindsAnExistingLowercaseCacheControlHeaderName(): void
     {
         // An app-set 'cache-control' (lowercase) must be recognized as the SAME header an
