@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Requires `koriym/semantic-logger` `^0.11`. Written logs use its `log` document shape, and diagnostic `kind` is now `code`.
 - `KeepMutationsAndFailures` also keeps a session cut at the record limit (`semantic_logger_truncated`): a `command` past the limit leaves no other trace.
 
+### Fixed
+- `LogFileWriter`: two sessions flushed in the same microsecond no longer overwrite each other. The timestamped filename now carries a random suffix, so both survive (#221).
+
 ## [1.17.0] - 2026-09-17
 
 ### Added

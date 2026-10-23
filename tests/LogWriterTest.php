@@ -116,6 +116,28 @@ class LogWriterTest extends TestCase
         $this->assertFileExists($this->dir . '/' . LogFileWriter::LATEST, 'latest.json is not a session file and survives');
     }
 
+    public function testTheFileWriterKeepsBothSessionsWrittenInTheSameMicrosecond(): void
+    {
+        // Forced clock: real contention makes a same-microsecond collision impractical to
+        // reproduce, so the timestamp is injected instead of raced for.
+        $forced = 1732400000.123456;
+        $writer = new LogFileWriter($this->dir, 10, static fn () => $forced);
+
+        $writer->write($this->commandSession());
+        $writer->write($this->commandSession());
+
+        $sessions = glob($this->dir . '/20*.json');
+        $this->assertIsArray($sessions);
+        $this->assertCount(2, $sessions, 'two sessions written in the same microsecond must not overwrite each other');
+
+        $prefix = $this->dir . '/20241123-221320-123456-';
+        foreach ($sessions as $session) {
+            $this->assertStringStartsWith($prefix, $session, 'the forced timestamp is the shared filename prefix');
+        }
+
+        $this->assertNotSame($sessions[0], $sessions[1], 'the random suffix makes the two names distinct');
+    }
+
     public function testTheFileWriterRestrictsWhatItCreates(): void
     {
         if (DIRECTORY_SEPARATOR === '\\') {
