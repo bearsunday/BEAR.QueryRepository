@@ -7,7 +7,7 @@
     "required": ["result"],
     "properties": {
         "result": {
-            "description": "reflects the save_value/save_view outcome only; a failed save_etag inside the same scope does not flip it — inspect the nested save_etag event's \"saved\" field for that",
+            "description": "reflects the save_value/save_view outcome only; a failed save_etag inside the same scope does not flip it — inspect the nested save_etag event's \"saved\" field for that. \"failed\" also covers a write this gate refused outright (issue #222: marked unstorable, or a no-store/private Cache-Control) - no save_value/save_view was attempted, and the nested put_skipped{reason} in the same scope names which",
             "type": "string",
             "enum": ["stored", "failed"]
         }
