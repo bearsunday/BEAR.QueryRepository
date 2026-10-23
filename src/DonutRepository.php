@@ -33,13 +33,14 @@ final readonly class DonutRepository implements DonutRepositoryInterface
 {
     public function __construct(
         private QueryRepositoryInterface $queryRepository,
-        private HeaderSetter $headerSetter,
+        private DonutHeaderSetter $donutHeaderSetter,
         private ResourceStorageInterface $resourceStorage,
         private ResourceInterface $resource,
-        private CdnCacheControlHeaderSetterInterface $cdnCacheControlHeaderSetter,
         #[CacheLog]
         private SemanticLoggerInterface $logger,
         private DonutRendererInterface $renderer,
+        private UnstorableGateInterface $gate,
+        private UncacheableMarkInterface $mark,
         private UriTagInterface $uriTag = new UriTag(),
     ) {
     }
@@ -146,32 +147,74 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $keys->addTag($ro);
         $declaredKeys = $this->getHeaderKeys($ro);
         $templateKeys = $this->templateKeys($ro, $declaredKeys);
-        $donut = ResourceDonut::create($ro, $this->renderer, $keys, $sMaxAge, true)->withStorageState($ttl, $templateKeys);
+        $donut = ResourceDonut::create($ro, $this->renderer, $keys, $sMaxAge, true, $this->mark)->withStorageState($ttl, $templateKeys);
         $donut->render($ro, $this->renderer);
+        // Checked against the still-unmutated header, before setHeaders() below runs
+        // headerSetter/setCdnCacheControl - the same point QueryRepository checks at (issue
+        // #222). "any mark" semantics: the full content, holes included, is what gets stored.
+        $unstorable = $this->gate->reason($ro);
         $surrogateKeys = $this->setHeaders($keys, $ro, $sMaxAge);
         $this->logCdnHeaders($ro);
         // delete: cleanup for the rewrite below, recorded as such at the source
         $this->logger->event(new PreWriteCleanupContext((string) $ro->uri));
         $this->resourceStorage->invalidateTags([($this->uriTag)($ro->uri)]);
+        if ($unstorable !== null) {
+            $this->logger->event(new PutSkippedContext((string) $ro->uri, $unstorable));
+
+            return;
+        }
+
         // save content cache and donut; the donut records the content state so that a
         // later refresh can keep Last-Modified when the recomposed content is identical
         $this->saveView($ro, $sMaxAge, $surrogateKeys);
         $this->resourceStorage->saveDonut($ro->uri, $donut->withContentState($ro), $ttl, $templateKeys);
     }
 
+    /**
+     * A #[DonutCache] template holds placeholders for an embedded hole's content, but a page
+     * can also write a per-user value straight into its own body/view, outside any hole - that
+     * lands in the stored template verbatim and is served to every later visitor (issue #222),
+     * so this write is gated.
+     *
+     * The gate is read after create()/render(), the same point doPutStatic reads it, because
+     * create() is what actually runs each embedded hole's own onGet() (DonutRequest wraps the
+     * embedded request precisely so that run happens there) - and the page's own template may
+     * ALSO mark during that same (string) $ro call (a Twig helper producing a CSRF token
+     * in-place, say), which a read taken before create() would miss entirely.
+     *
+     * Two different checks, because the template and the live response are not the same
+     * content: the template write uses reasonExcludingHoleMarks() - never blocked by a
+     * descendant hole's own mark, whose own storage is separately gated, keeping a page whose
+     * holes "contain a form" working - while the live response (headers only; this path never
+     * stores the response itself) uses reason() - any mark anywhere, page or any hole, because
+     * every hole's rendered output is substituted into this response's own view even when the
+     * template it is not baked into is unaffected.
+     */
     private function doPutDonut(ResourceObject $ro, int|null $donutTtl): void
     {
         $this->logger->event(new PutDonutContext((string) $ro->uri, $donutTtl, null));
         $keys = new SurrogateKeys($ro->uri);
         $declaredKeys = $this->getHeaderKeys($ro);
         $templateKeys = $this->templateKeys($ro, $declaredKeys);
-        $donut = ResourceDonut::create($ro, $this->renderer, $keys, $donutTtl, false)->withStorageState($donutTtl, $templateKeys);
+        $donut = ResourceDonut::create($ro, $this->renderer, $keys, $donutTtl, false, $this->mark)->withStorageState($donutTtl, $templateKeys);
         $donut->render($ro, $this->renderer);
+        $templateUnstorable = $this->gate->reasonExcludingHoleMarks($ro);
+        $responseUnstorable = $this->gate->reason($ro);
         $keys->setSurrogateHeader($ro);
+        if ($responseUnstorable !== null) {
+            ($this->donutHeaderSetter)($ro, null, null);
+        }
+
         $this->logCdnHeaders($ro);
         // delete: cleanup for the rewrite below, recorded as such at the source
         $this->logger->event(new PreWriteCleanupContext((string) $ro->uri));
         $this->resourceStorage->invalidateTags([($this->uriTag)($ro->uri)]);
+        if ($templateUnstorable !== null) {
+            $this->logger->event(new PutSkippedContext((string) $ro->uri, $templateUnstorable));
+
+            return;
+        }
+
         // save donut
         $this->resourceStorage->saveDonut($ro->uri, $donut, $donutTtl, $templateKeys);
     }
@@ -222,23 +265,49 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $this->logger->event(new RefreshDonutContext((string) $ro->uri));
         $donut->refresh($this->resource, $ro);
         $surrogateKeys = $ro->headers[Header::SURROGATE_KEY] ?? '';
+
+        // refresh() restores the stored headers before returning, discarding anything a
+        // hole set on $ro (issue #222) - so a hole marking this response unstorable is only
+        // visible on the mark itself, which is a separate per-request service and survives.
+        // "any mark" semantics here too: the recomposed content, holes included, is what
+        // the storable/unstorable decision below is about.
+        $unstorable = $this->gate->reason($ro);
+
         if (! $donut->isCacheble) {
             // The donut was created by putDonut (isCacheble=false): only the template is
             // cached and the page is never stored as a rendered view, so there is no
-            // page-level entry to save after the refresh. Record the skip — without it
-            // the scope shows a refresh with no saves and no reason.
+            // page-level entry to save after the refresh - and this package never hands
+            // the CDN a lifetime header of its own for this kind, mirroring doPutDonut's
+            // MISS-path exactly: only overwrite the restored headers with Cache-Control:
+            // private, no-store when a hole marks itself on THIS recomposition, never add
+            // a lifetime header that was never there (issue #222 - a hole marking itself
+            // must still be caught on a later, recomposed hit, not just the one that first
+            // wrote the template; but a storable template-only hit must stay exactly as
+            // storable as the MISS that created it, no new CDN lifetime invented here).
+            if ($unstorable !== null) {
+                ($this->donutHeaderSetter)($ro, null, null);
+            }
+
             $this->logCdnHeaders($ro);
-            $this->logger->event(new PutSkippedContext((string) $ro->uri, 'not-cacheable'));
+            $this->logger->event(new PutSkippedContext((string) $ro->uri, $unstorable ?? 'not-cacheable'));
 
             return $ro;
         }
 
         // When the recomposed content is byte-identical to the recorded one, carry over
         // the original Last-Modified instead of advancing it to the recomposition time
-        $lastModified = $donut->getUnchangedLastModified((string) $ro->view);
-        ($this->headerSetter)($ro, $donut->ttl, null, $lastModified);
-        $this->setCdnCacheControl($ro, $donut->ttl);
+        $lastModified = $unstorable === null ? $donut->getUnchangedLastModified((string) $ro->view) : null;
+        // Always run, unstorable or not: this is what replaces the restored, stale-but-
+        // "storable" headers with Cache-Control: private, no-store on an unstorable response.
+        ($this->donutHeaderSetter)($ro, $donut->ttl, null, $lastModified);
+        $this->donutHeaderSetter->setCdnCacheControl($ro, $donut->ttl);
         $this->logCdnHeaders($ro);
+        if ($unstorable !== null) {
+            $this->logger->event(new PutSkippedContext((string) $ro->uri, $unstorable));
+
+            return $ro;
+        }
+
         if ($lastModified === null) {
             $this->recordContentState($ro, $donut);
         }
@@ -346,27 +415,10 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     {
         $keys->setSurrogateHeader($ro);
         $surrogateKeys = $ro->headers[Header::SURROGATE_KEY] ?? '';
-        $this->setCdnCacheControl($ro, $sMaxAge);
-        ($this->headerSetter)($ro, 0, null);
+        $this->donutHeaderSetter->setCdnCacheControl($ro, $sMaxAge);
+        ($this->donutHeaderSetter)($ro, 0, null);
 
         return $surrogateKeys;
-    }
-
-    /**
-     * Hand the CDN a lifetime for 200 only
-     *
-     * The setters do not read the status code and the Fastly and Akamai defaults are
-     * 31_536_000 seconds - a year - so an unguarded call would tell every shared cache to
-     * hold a 301 or a 204 for that long. The gate sits here rather than in the setters so
-     * it also covers an application's own CdnCacheControlHeaderSetterInterface.
-     */
-    private function setCdnCacheControl(ResourceObject $ro, int|null $sMaxAge): void
-    {
-        if ($ro->code !== 200) {
-            return;
-        }
-
-        ($this->cdnCacheControlHeaderSetter)($ro, $sMaxAge);
     }
 
     /** @return list<string> */

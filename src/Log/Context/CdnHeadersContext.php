@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository\Log\Context;
 
+use JsonSerializable;
 use Koriym\SemanticLogger\AbstractContext;
+use Override;
+use stdClass;
 
 /**
  * Event: the CDN-facing headers a donut write or refresh put on the response.
@@ -13,7 +16,9 @@ use Koriym\SemanticLogger\AbstractContext;
  * effect, not the request: the bound setter's default when the caller asked for no
  * sMaxAge, the resource's own value when it set one, and nothing when nothing gives
  * the CDN a lifetime - which is how an un-cacheable donut page is meant to stay off
- * the CDN; what the CDN then does is outside this record.
+ * the CDN, and how a response this gate refused as unstorable (issue #222) is too:
+ * every CDN-facing header is stripped, so this records none. What the CDN then does
+ * is outside this record.
  *
  * `headers` holds the literal name => value pairs of every CDN-facing header this
  * package's setters manage that is present on the response (CDN-Cache-Control,
@@ -23,7 +28,7 @@ use Koriym\SemanticLogger\AbstractContext;
  * present, the list a purge's tags must reach to drop this response at the edge.
  * A state-served hit replays the stored headers unchanged and emits no new event.
  */
-final class CdnHeadersContext extends AbstractContext
+final class CdnHeadersContext extends AbstractContext implements JsonSerializable
 {
     public const TYPE = 'cdn_headers';
     public const SCHEMA_URL = 'https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cdn_headers.json';
@@ -37,5 +42,21 @@ final class CdnHeadersContext extends AbstractContext
         public readonly array $headers,
         public readonly array $surrogateKeys,
     ) {
+    }
+
+    /**
+     * An empty `headers` map is a PHP array indistinguishable from an empty list, which
+     * json_encode() renders `[]` - the schema requires an object (`{}`) even then.
+     *
+     * @return array<string, mixed>
+     */
+    #[Override]
+    public function jsonSerialize(): array
+    {
+        return [
+            'uri' => $this->uri,
+            'headers' => $this->headers === [] ? new stdClass() : $this->headers,
+            'surrogateKeys' => $this->surrogateKeys,
+        ];
     }
 }

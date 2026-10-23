@@ -116,11 +116,11 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 | `roPool` / `etagPool` | `invalidated` \| `failed` | プールごとの無効化結果 |
 | `cdn` | `purged` \| `failed` \| `skipped` | `skipped` は purger 未設定 (`NullPurger`)。「やることが無かった」ではない |
 | `operation` | `read` \| `write` | キャッシュのどちら側が throw したか |
-| `reason` (`put_skipped`) | `etag-present` \| `error-code` \| `not-cacheable` | 書き込みが起きなかった理由。`etag-present` = リソースが既に ETag を持っていたので donut 層は手を出さなかった、`not-cacheable` = テンプレートから再描画された donut ページ(ページとしては保存しない)、`error-code` は応答の `code` を伴い閾値は経路で違う: `#[Cacheable]` は 200 以外すべて(`203` もここに出る)、donut は 4xx 以上 |
+| `reason` (`put_skipped`) | `etag-present` \| `error-code` \| `not-cacheable` \| `unstorable` | 書き込みが起きなかった理由。`etag-present` = リソースが既に ETag を持っていたので donut 層は手を出さなかった、`not-cacheable` = テンプレートから再描画された donut ページ(ページとしては保存しない)、`error-code` は応答の `code` を伴い閾値は経路で違う: `#[Cacheable]` は 200 以外すべて(`203` もここに出る)、donut は 4xx 以上、`unstorable` = このリクエスト中に producer がマークしたか、`Cache-Control` が既に `no-store`/`private` を含んでいた — code や type が許す場合でも書き込みは拒否される |
 | `result` (`manual_*`) | `stored`/`purged`/`invalidated` \| `failed` | 直接呼び出しの結果 |
 | `requestedTtl` | 秒 | このパッケージがストアに要求した保持時間。`31536000` は `never` の慣習値、`0`/`null` は「期限を要求しなかった」— バックエンドが上書きし得る(下の規則) |
 | `sMaxAge` (`put_donut`) | 秒 | その書き込みが要求した共有キャッシュ(CDN)の寿命 — `DonutRepositoryInterface::put($ro, ttl: …, sMaxAge: …)` に渡すのと同じ引数で、エントリ自身の `requestedTtl` とは別物。`null` は未要求で、`putDonut` は常に `null` を記録する |
-| `code` (`put_skipped`) | HTTP ステータス | `reason` が `error-code` のときだけ入る。他の 2 理由では `null` |
+| `code` (`put_skipped`) | HTTP ステータス | `reason` が `error-code` のときだけ入る。他の理由では `null` |
 
 ## 読解規則
 
@@ -128,7 +128,7 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 
 **miss の後に書き込みが無いときは、`put_skipped` にその理由が書かれています。** 保存を禁じる
 規則が働いたからです。その経路がキャッシュしない応答コード、既に立っている検証子、テンプレートから
-返した donut ページ — どれだったかがイベントに入っています。
+返した donut ページ、このリクエストで `unstorable` とマークされた応答 — どれだったかがイベントに入っています。
 
 **非200のdonut書き込みには `save_etag` が無く、`cdn_headers` に寿命も入りません。** donutの
 閾値は2xxと3xxを通しますが、検証子は200にしか作られないため、保存された `204` や `301` には
@@ -147,7 +147,7 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 - **書き込みが失敗した** — 同じスコープの `cache_error{operation: write}`。リソースは走り、
   書き込みの試みが throw した
 - **規則が書き込みを禁じた** — `put_skipped` に理由が出ます(エラーコード、既存の ETag、
-  キャッシュしない応答)
+  キャッシュしない応答、このリクエストで unstorable とマークされた応答)
 
 `durationMs` に書き込みが含まれるのは、コールド(単独)の miss と書き込み失敗の miss だけです。
 縮退 miss はリソース実行のみ、put_skipped はリソース実行と非 200 が引き起こす purge を測ります。

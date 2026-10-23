@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `UncacheableMarkInterface`/`UncacheableMark`: a request-scoped service a producer of a per-user value (a CSRF token issuer, etc.) calls to mark the current response unstorable - issue #222. A `#[Cacheable]` or `#[CacheableResponse]` write that is marked, or whose `Cache-Control` already says `no-store`/`private`, is skipped (`put_skipped{reason: unstorable}`), and the response gets `Cache-Control: private, no-store` plus `Pragma: no-cache` and no CDN lifetime header instead. `$module->override(new DevUnstorableGateModule())` turns the skip into a thrown `UnstorableResponseDetected` during development - `install()` does not work here, since `QueryRepositoryModule` already binds `UnstorableGateInterface` and `install()` never replaces a binding the installer already holds. Existing cache entries written before this change may hold per-user content - purge on deploy. `UncacheableMark` is bound `Scope::SINGLETON` for the request's one container; a long-running worker (Swoole, RoadRunner) reusing a container across requests must rebind it per request, the same way it already must for `ServerContextInterface`.
+
 ### Changed
 - Requires `koriym/semantic-logger` `^0.11`. Written logs use its `log` document shape, and diagnostic `kind` is now `code`.
 - `KeepMutationsAndFailures` also keeps a session cut at the record limit (`semantic_logger_truncated`): a `command` past the limit leaves no other trace.

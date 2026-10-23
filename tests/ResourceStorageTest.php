@@ -74,7 +74,7 @@ class ResourceStorageTest extends TestCase
 
     public function testSaveGetStatic(): void
     {
-        $donut = ResourceDonut::create($this->ro, new DonutRenderer(), new SurrogateKeys(new Uri('app://self/')), null, false);
+        $donut = ResourceDonut::create($this->ro, new DonutRenderer(), new SurrogateKeys(new Uri('app://self/')), null, false, new UncacheableMark());
         $this->storage->saveDonut($this->ro->uri, $donut, null, []);
         $donut = $this->storage->getDonut($this->ro->uri);
         $this->assertInstanceOf(ResourceDonut::class, $donut);
@@ -289,7 +289,7 @@ class ResourceStorageTest extends TestCase
             $poolProvider,
             $poolProvider,
         );
-        $donut = ResourceDonut::create($this->ro, new DonutRenderer(), new SurrogateKeys(new Uri('app://self/')), null, false);
+        $donut = ResourceDonut::create($this->ro, new DonutRenderer(), new SurrogateKeys(new Uri('app://self/')), null, false, new UncacheableMark());
 
         $storage->saveDonut($this->ro->uri, $donut, null, []);
 
@@ -302,7 +302,7 @@ class ResourceStorageTest extends TestCase
     {
         $logger = new RecordingSemanticLogger();
         $storage = self::getResourceStorageInstance($logger);
-        $donut = ResourceDonut::create($this->ro, new DonutRenderer(), new SurrogateKeys(new Uri('app://self/')), null, false);
+        $donut = ResourceDonut::create($this->ro, new DonutRenderer(), new SurrogateKeys(new Uri('app://self/')), null, false, new UncacheableMark());
 
         // The storage is a public interface: a caller handing it a lifetime that already
         // passed must not produce a negative ttl, which every save_* schema forbids

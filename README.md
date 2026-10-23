@@ -17,6 +17,7 @@
 - **CDN Integration**: Seamlessly integrates with modern CDNs (e.g., Fastly, Akamai) for shared cache management.
 - **Conditional Requests with ETag Support**: Reduces network overhead by leveraging `ETag` and `304 Not Modified` responses.
 - **Distributed Cache Support**: Works with server-side caches (e.g., Redis, APC), shared caches (e.g., CDNs), and client-side caches.
+- **Unstorable-Response Guard**: A producer of a per-user value (a CSRF token, etc.) can mark the current response unstorable via `UncacheableMarkInterface`, so it is never written to the shared cache ([#222](https://github.com/bearsunday/BEAR.QueryRepository/issues/222)); the mark is per-request state and must be rebound each request under a long-running worker (Swoole, RoadRunner). This guard only stops *new* writes — deploying it does not clean cache entries already stored before the upgrade, which may hold per-user content; purge them as part of the deploy.
 
 ## Documentation
 

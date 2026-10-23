@@ -92,7 +92,10 @@ class DonutQueryInterceptorTest extends TestCase
 
     public function testCreatDonutInResourceObject(): void
     {
+        // BlogPostingCacheControl declares Cache-Control: no-store on itself (via a plain
+        // property default, not #[HttpCache]) - before issue #222 that response was CDN-
+        // cached anyway; it is now correctly refused a CDN-Cache-Control header.
         $blogPostingCacheControl = $this->resource->get('page://self/html/blog-posting-cache-control');
-        $this->assertArrayHasKey(Header::CDN_CACHE_CONTROL, $blogPostingCacheControl->headers);
+        $this->assertArrayNotHasKey(Header::CDN_CACHE_CONTROL, $blogPostingCacheControl->headers);
     }
 }

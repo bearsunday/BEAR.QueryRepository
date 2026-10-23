@@ -13,9 +13,9 @@
             "type": "string"
         },
         "reason": {
-            "description": "why no store happened: the response already carries an ETag (etag-present), is an error response (error-code), or the entry kind is not whole-content cacheable (not-cacheable: a donut page served from its template plus inner caches is never stored as a rendered page)",
+            "description": "why no store happened: the response already carries an ETag (etag-present), is an error response (error-code), the entry kind is not whole-content cacheable (not-cacheable: a donut page served from its template plus inner caches is never stored as a rendered page), or the response is unstorable for this request (unstorable, issue #222: a producer called UncacheableMarkInterface::mark() during this request, or its Cache-Control already contains no-store or private)",
             "type": "string",
-            "enum": ["etag-present", "error-code", "not-cacheable"]
+            "enum": ["etag-present", "error-code", "not-cacheable", "unstorable"]
         },
         "code": {
             "description": "the response status code when reason is error-code; null otherwise",

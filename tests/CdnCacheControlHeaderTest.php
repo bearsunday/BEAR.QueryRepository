@@ -130,6 +130,64 @@ class CdnCacheControlHeaderTest extends TestCase
         $this->assertStringContainsString('"Surrogate-Key"', $cdnHeaders, 'the purge keys are still recorded');
     }
 
+    public function testUnstorableResponseGetsNoCdnCacheControlHeader(): void
+    {
+        $module = $this->getModule();
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        $resource = $injector->getInstance(ResourceInterface::class);
+
+        // The resource, asked not to mark itself, gets the CDN header - checked first,
+        // since the mark is per-request state (here: one shared container for the whole
+        // test) that cannot be unset once a later call sets it.
+        $ordinary = $resource->get('page://self/html/unstorable-donut', ['unstorable' => false]);
+        $this->assertArrayHasKey(Header::CDN_CACHE_CONTROL, $ordinary->headers);
+        $this->assertSame('max-age=10, stale-while-revalidate=10', $ordinary->headers[Header::CDN_CACHE_CONTROL]);
+
+        // A producer marks this request's response unstorable (issue #222): no
+        // CDN-Cache-Control is emitted, and Cache-Control tells the CDN not to keep it.
+        $ro = $resource->get('page://self/html/unstorable-donut');
+        $this->assertArrayNotHasKey(Header::CDN_CACHE_CONTROL, $ro->headers);
+        $this->assertSame('private, no-store', $ro->headers[Header::CACHE_CONTROL]);
+    }
+
+    public function testCdnHeadersSetDirectlyDoNotSurviveAnUnstorableRefusal(): void
+    {
+        // The resource sets CDN-Cache-Control and Surrogate-Control directly in onGet(),
+        // bypassing CdnCacheControlHeaderSetterInterface entirely, and marks itself
+        // unstorable: HeaderSetter must strip every CDN-facing header it manages, not just
+        // skip adding one, or a CDN reading Cache-Control: no-store alongside a surviving
+        // CDN-Cache-Control could still cache this response at the edge (issue #222).
+        $module = $this->getModule();
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        $resource = $injector->getInstance(ResourceInterface::class);
+
+        $ro = $resource->get('page://self/html/unstorable-with-manual-cdn-header');
+        $this->assertSame('private, no-store', $ro->headers[Header::CACHE_CONTROL]);
+        $this->assertArrayNotHasKey(Header::CDN_CACHE_CONTROL, $ro->headers);
+        $this->assertArrayNotHasKey('Surrogate-Control', $ro->headers);
+    }
+
+    public function testCacheableResponseWithHttpCacheNoStoreStillGetsCdnHeader(): void
+    {
+        // #[HttpCache(noStore: true)] declares its own client-facing Cache-Control: no-store
+        // - a header that equals the declared value is the attribute speaking, not a
+        // per-request value, and must not trip the gate (issue #222 regression guard: 1.x
+        // stored the template/content state and sent CDN headers for this combo).
+        $module = $this->getModule();
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        $resource = $injector->getInstance(ResourceInterface::class);
+
+        $ro = $resource->get('page://self/html/cacheable-response-no-store');
+        $this->assertArrayHasKey(Header::CDN_CACHE_CONTROL, $ro->headers);
+        $this->assertStringContainsString('no-store', $ro->headers[Header::CACHE_CONTROL]);
+
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
+        $logger->flush();
+        $resource->get('page://self/html/cacheable-response-no-store');
+        $tree = $this->flushAndValidate($logger);
+        $this->assertContains('cache_hit', self::collectTypes($tree), 'the content was saved and is being served from the stored page state');
+    }
+
     private function getModule(): AbstractModule
     {
         $namespace = 'FakeVendor\HelloWorld';
