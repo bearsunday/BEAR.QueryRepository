@@ -118,11 +118,11 @@ Every outcome is a self-describing word, never a bare boolean — except `saved`
 | `roPool` / `etagPool` | `invalidated` \| `failed` | per-pool invalidation result |
 | `cdn` | `purged` \| `failed` \| `skipped` | `skipped` = no purger configured (`NullPurger`), not "nothing to do" |
 | `operation` | `read` \| `write` | which side of the cache threw |
-| `reason` (`put_skipped`) | `etag-present` \| `error-code` \| `not-cacheable` | why no write happened. `etag-present` = the resource already carried an ETag, so the donut layer left it alone; `not-cacheable` = a donut page re-rendered from its template, which is never stored as a page; `error-code` carries the response `code`, and the threshold differs by path: `#[Cacheable]` skips any non-200 (a `203` appears here), a donut skips 4xx and above |
+| `reason` (`put_skipped`) | `etag-present` \| `error-code` \| `not-cacheable` \| `unstorable` | why no write happened. `etag-present` = the resource already carried an ETag, so the donut layer left it alone; `not-cacheable` = a donut page re-rendered from its template, which is never stored as a page; `error-code` carries the response `code`, and the threshold differs by path: `#[Cacheable]` skips any non-200 (a `203` appears here), a donut skips 4xx and above; `unstorable` = a producer marked the response during this request, or its `Cache-Control` already says `no-store`/`private` — the write is refused even though the code and type would otherwise allow it |
 | `result` (`manual_*`) | `stored`/`purged`/`invalidated` \| `failed` | the direct call's outcome |
 | `requestedTtl` | seconds | what this package asked the store to keep. `31536000` is the `never` convention; `0`/`null` = it asked for no expiry, which a backend may override (see the rule below) |
 | `sMaxAge` (`put_donut`) | seconds | the shared-cache (CDN) lifetime the write asked for — the same argument as `DonutRepositoryInterface::put($ro, ttl: …, sMaxAge: …)`, and not the entry's own `requestedTtl`. `null` = none requested, and `putDonut` always records `null` |
-| `code` (`put_skipped`) | HTTP status | present only when `reason` is `error-code`; `null` for the other two reasons |
+| `code` (`put_skipped`) | HTTP status | present only when `reason` is `error-code`; `null` for the other reasons |
 
 ## Reading rules
 
@@ -130,7 +130,7 @@ These are the ones you cannot guess from a field name.
 
 **When a miss is not followed by a write, `put_skipped` says why.** A rule forbade storing: a
 response code that path will not cache, a validator already present, a donut page served from its
-template — the event names which one.
+template, a response marked `unstorable` for this request — the event names which one.
 
 **A donut write of a non-200 has no `save_etag`, and its `cdn_headers` carries no lifetime.**
 The donut threshold lets 2xx and 3xx through, and a validator is issued for 200 only, so a stored
@@ -149,7 +149,7 @@ The miss itself does not say which:
 - **the write failed** — a `cache_error{operation: write}` in the same scope. The resource ran
   and the fill attempt threw.
 - **the write was skipped by rule** — `put_skipped` says why (an error code, an existing ETag,
-  a not-cacheable response).
+  a not-cacheable response, a response marked unstorable for this request).
 
 `durationMs` includes the write only for the lone miss and the write-failed miss; read-degraded
 misses measure the resource run, and put-skipped misses the resource run plus the purge a non-200

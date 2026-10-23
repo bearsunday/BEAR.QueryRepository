@@ -280,4 +280,38 @@ class QueryRepositoryTest extends TestCase
         $this->assertGreaterThanOrEqual(FakeLegacyStateStorage::RESIDENCE, $age);
         $this->assertLessThanOrEqual(FakeLegacyStateStorage::RESIDENCE + 1, $age);
     }
+
+    public function testUnstorableMarkSkipsStoreAndOrdinaryResponsesStillStore(): void
+    {
+        // Ordinary (unmarked) responses store and hit normally - checked first, since the
+        // mark is per-request state (here: one shared container for the whole test) that
+        // cannot be unset once a later call sets it.
+        $ordinary = $this->resource->get('app://self/unstorable-value', ['unstorable' => false]);
+        $this->assertArrayNotHasKey(Header::PRAGMA, $ordinary->headers);
+        $this->assertNotSame('private, no-store', $ordinary->headers[Header::CACHE_CONTROL]);
+        $this->logger->flush();
+        $this->resource->get('app://self/unstorable-value', ['unstorable' => false]);
+        $treeOrdinary = $this->flushAndValidate($this->logger);
+        $this->assertContains('cache_hit', self::collectTypes($treeOrdinary));
+
+        // A producer (a CSRF token issuer) marks this request's response unstorable: the
+        // write is skipped, the live response is still served, and its headers tell every
+        // cache - shared or private - not to keep it (issue #222).
+        $ro = $this->resource->get('app://self/unstorable-value');
+        $this->assertSame('private, no-store', $ro->headers[Header::CACHE_CONTROL]);
+        $this->assertSame('no-cache', $ro->headers[Header::PRAGMA]);
+        $this->assertArrayNotHasKey(Header::ETAG, $ro->headers);
+
+        $tree = $this->flushAndValidate($this->logger);
+        $putSkipped = self::eventContextJsonOf($tree, 'put_skipped');
+        $this->assertNotNull($putSkipped);
+        $this->assertStringContainsString('"reason":"unstorable"', $putSkipped);
+
+        // Nothing was stored: a second GET of the same (still marked) request misses again.
+        $this->logger->flush();
+        $this->resource->get('app://self/unstorable-value');
+        $tree2 = $this->flushAndValidate($this->logger);
+        $this->assertContains('cache_miss', self::collectTypes($tree2));
+        $this->assertNotContains('cache_hit', self::collectTypes($tree2));
+    }
 }

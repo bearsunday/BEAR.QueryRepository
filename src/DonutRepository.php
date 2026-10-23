@@ -40,6 +40,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         #[CacheLog]
         private SemanticLoggerInterface $logger,
         private DonutRendererInterface $renderer,
+        private UnstorableGateInterface $gate,
         private UriTagInterface $uriTag = new UriTag(),
     ) {
     }
@@ -148,11 +149,20 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $templateKeys = $this->templateKeys($ro, $declaredKeys);
         $donut = ResourceDonut::create($ro, $this->renderer, $keys, $sMaxAge, true)->withStorageState($ttl, $templateKeys);
         $donut->render($ro, $this->renderer);
+        // Checked against the still-unmutated header, before setHeaders() below runs
+        // headerSetter/setCdnCacheControl - the same point QueryRepository checks at (issue #222).
+        $unstorable = $this->gate->reason($ro);
         $surrogateKeys = $this->setHeaders($keys, $ro, $sMaxAge);
         $this->logCdnHeaders($ro);
         // delete: cleanup for the rewrite below, recorded as such at the source
         $this->logger->event(new PreWriteCleanupContext((string) $ro->uri));
         $this->resourceStorage->invalidateTags([($this->uriTag)($ro->uri)]);
+        if ($unstorable !== null) {
+            $this->logger->event(new PutSkippedContext((string) $ro->uri, $unstorable));
+
+            return;
+        }
+
         // save content cache and donut; the donut records the content state so that a
         // later refresh can keep Last-Modified when the recomposed content is identical
         $this->saveView($ro, $sMaxAge, $surrogateKeys);
@@ -233,12 +243,24 @@ final readonly class DonutRepository implements DonutRepositoryInterface
             return $ro;
         }
 
+        // refresh() restores the stored headers before returning, discarding anything a
+        // hole set on $ro (issue #222) - so a hole marking this response unstorable is only
+        // visible on the mark itself, which is a separate per-request service and survives.
+        $unstorable = $this->gate->reason($ro);
         // When the recomposed content is byte-identical to the recorded one, carry over
         // the original Last-Modified instead of advancing it to the recomposition time
-        $lastModified = $donut->getUnchangedLastModified((string) $ro->view);
+        $lastModified = $unstorable === null ? $donut->getUnchangedLastModified((string) $ro->view) : null;
+        // Always run, unstorable or not: this is what replaces the restored, stale-but-
+        // "storable" headers with Cache-Control: private, no-store on an unstorable response.
         ($this->headerSetter)($ro, $donut->ttl, null, $lastModified);
         $this->setCdnCacheControl($ro, $donut->ttl);
         $this->logCdnHeaders($ro);
+        if ($unstorable !== null) {
+            $this->logger->event(new PutSkippedContext((string) $ro->uri, $unstorable));
+
+            return $ro;
+        }
+
         if ($lastModified === null) {
             $this->recordContentState($ro, $donut);
         }
@@ -353,16 +375,17 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     }
 
     /**
-     * Hand the CDN a lifetime for 200 only
+     * Hand the CDN a lifetime for 200 that is also storable
      *
      * The setters do not read the status code and the Fastly and Akamai defaults are
      * 31_536_000 seconds - a year - so an unguarded call would tell every shared cache to
-     * hold a 301 or a 204 for that long. The gate sits here rather than in the setters so
-     * it also covers an application's own CdnCacheControlHeaderSetterInterface.
+     * hold a 301 or a 204 for that long. A response the gate marks unstorable (issue #222)
+     * is refused the same way: the gate sits here rather than in the setters so both checks
+     * also cover an application's own CdnCacheControlHeaderSetterInterface.
      */
     private function setCdnCacheControl(ResourceObject $ro, int|null $sMaxAge): void
     {
-        if ($ro->code !== 200) {
+        if ($ro->code !== 200 || $this->gate->reason($ro) !== null) {
             return;
         }
 

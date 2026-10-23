@@ -39,7 +39,7 @@ class ResourceRepositoryTest extends TestCase
         };
         $this->repository = new Repository(
             new NullSemanticLogger(),
-            new HeaderSetter(new EtagSetter()),
+            new HeaderSetter(new EtagSetter(), new UnstorableGate(new UncacheableMark())),
             new ResourceStorage(
                 new NullSemanticLogger(),
                 new NullPurger(),
@@ -51,6 +51,7 @@ class ResourceRepositoryTest extends TestCase
             ),
             new Expiry(0, 0, 0),
             new CacheDependency(new UriTag()),
+            new UnstorableGate(new UncacheableMark()),
         );
         $this->ro = new Index();
         $this->ro->uri = new Uri('page://self/user');
@@ -121,7 +122,7 @@ class ResourceRepositoryTest extends TestCase
         };
         $repository = new Repository(
             new NullSemanticLogger(),
-            new HeaderSetter(new EtagSetter()),
+            new HeaderSetter(new EtagSetter(), new UnstorableGate(new UncacheableMark())),
             new ResourceStorage(
                 new NullSemanticLogger(),
                 new NullPurger(),
@@ -133,6 +134,7 @@ class ResourceRepositoryTest extends TestCase
             ),
             new Expiry(0, 0, 0),
             new CacheDependency(new UriTag()),
+            new UnstorableGate(new UncacheableMark()),
         );
         $this->assertInstanceOf(Repository::class, $repository);
     }

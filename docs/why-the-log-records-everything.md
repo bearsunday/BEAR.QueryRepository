@@ -55,7 +55,8 @@ is a fact about the domain, not a fault of the design.
 didn't. A store records its `saved` outcome — a pool that rejects a write no
 longer looks like a successful save. A miss not followed by a put emits
 `put_skipped` with the reason (`etag-present`, `error-code` with the actual
-response code, `not-cacheable`) — an absent save is a recorded decision, not
+response code, `not-cacheable`, `unstorable` for a response marked unstorable
+for this request) — an absent save is a recorded decision, not
 a mystery. Invalidation reports per-target outcomes (`roPool`/`etagPool`:
 `invalidated`|`failed`; `cdn`: `purged`|`failed`|`skipped`) plus its
 duration. A failed write still opens a command scope, closed with its 4xx —

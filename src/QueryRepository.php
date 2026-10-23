@@ -12,6 +12,7 @@ use BEAR\QueryRepository\Log\Context\ManualStoreContext;
 use BEAR\QueryRepository\Log\Context\ManualStoreResultContext;
 use BEAR\QueryRepository\Log\Context\PreWriteCleanupContext;
 use BEAR\QueryRepository\Log\Context\PurgeContext;
+use BEAR\QueryRepository\Log\Context\PutSkippedContext;
 use BEAR\QueryRepository\Log\TopLevelAwareInterface;
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\CacheLog;
@@ -38,6 +39,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         private ResourceStorageInterface $storage,
         private Expiry $expiry,
         private CacheDependencyInterface $cacheDependency,
+        private UnstorableGateInterface $gate,
     ) {
     }
 
@@ -90,7 +92,22 @@ final readonly class QueryRepository implements QueryRepositoryInterface
             $this->logger->event($this->cachePolicy($ro, $cacheable, $ttl));
         }
 
+        // Checked before headerSetter runs, against the still-unmutated header: only a
+        // Cache-Control set dynamically (by the method or during rendering above) or a mark
+        // made during that rendering trips the gate - #[HttpCache]'s own declared value is
+        // exempt (issue #222). headerSetter makes the identical check on this same
+        // unmutated state to decide what it writes, so the two never disagree.
+        $declaredCacheControl = $httpCache instanceof HttpCache ? (string) $httpCache : null;
+        $unstorable = $this->gate->reason($ro, $declaredCacheControl);
+
         ($this->headerSetter)($ro, $ttl, $httpCache);
+
+        if ($unstorable !== null) {
+            $this->logger->event(new PutSkippedContext((string) $ro->uri, $unstorable));
+
+            return false;
+        }
+
         if (isset($ro->headers[Header::ETAG])) {
             $etag = $ro->headers[Header::ETAG];
             $surrogateKeys = $ro->headers[Header::SURROGATE_KEY] ?? '';

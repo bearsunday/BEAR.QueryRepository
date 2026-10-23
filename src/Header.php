@@ -15,6 +15,7 @@ final class Header
     public const ETAG = 'ETag';
     public const CDN_CACHE_CONTROL = 'CDN-Cache-Control';
     public const CACHE_CONTROL = 'Cache-Control';
+    public const PRAGMA = 'Pragma';
     public const AGE = 'Age';
     public const LAST_MODIFIED = 'Last-Modified';
 

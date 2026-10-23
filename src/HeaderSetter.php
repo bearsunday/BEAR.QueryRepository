@@ -14,11 +14,27 @@ final readonly class HeaderSetter
 {
     public function __construct(
         private EtagSetterInterface $etagSetter,
+        private UnstorableGateInterface $gate,
     ) {
     }
 
+    /**
+     * Set the validator and Cache-Control max-age, or - when the gate says this response is
+     * unstorable for this request (issue #222) - replace them with headers that tell every
+     * cache, shared or private, not to keep it. A Cache-Control value #[HttpCache] itself
+     * declared is exempt from the gate's no-store/private check: #[Cacheable] combined with
+     * #[HttpCache(noStore: true)] still stores server-side while telling the client not to.
+     */
     public function __invoke(ResourceObject $ro, int|null $cacheControlMaxAge, HttpCache|null $httpCache, int|null $time = null): void
     {
+        $declaredCacheControl = $httpCache instanceof HttpCache ? (string) $httpCache : null;
+        if ($this->gate->reason($ro, $declaredCacheControl) !== null) {
+            $ro->headers[Header::CACHE_CONTROL] = 'private, no-store';
+            $ro->headers[Header::PRAGMA] = 'no-cache';
+
+            return;
+        }
+
         ($this->etagSetter)($ro, $time, $httpCache);
 
         if ($cacheControlMaxAge !== null && $cacheControlMaxAge > 0) {

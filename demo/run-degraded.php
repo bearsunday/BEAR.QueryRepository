@@ -29,6 +29,10 @@ declare(strict_types=1);
  *                                  placeholder, under #[HttpCache]
  *   I. Direct donut write ........ a donut entry with real TTLs, rooted in
  *                                  manual_store{,_result}
+ *   J. Store unreachable (PSR-3) .. pool_error{read,write}, request still served live
+ *   K. Unstorable response ....... put_skipped{reason: unstorable}, Cache-Control:
+ *                                  private, no-store on both a #[Cacheable] value and
+ *                                  a #[CacheableResponse] donut, no CDN-Cache-Control
  *
  * Together with the other three demos this reaches every context type, every
  * schema enum value and every command producer the package can emit.
@@ -445,3 +449,25 @@ echo '   pool_error{read} for the lookup and pool_error{write} for the store, wi
 echo '   backend\'s own message - without them the miss reads exactly like a cold one' . PHP_EOL;
 
 $report($logger->flush(), 'J. the store is down and says so');
+
+// -------------------------------------------- K. unstorable response (issue #222)
+// A producer (a CSRF token issuer) marks the response unstorable mid-request: the write
+// is skipped, the live response is still served, and its headers tell every cache -
+// shared or private - not to keep it. A plain #[Cacheable] value and a
+// #[CacheableResponse] donut both take the same gate, and the donut also loses its
+// CDN-Cache-Control.
+$injector = $newInjector(null, twig: true);
+$resource = $injector->getInstance(ResourceInterface::class);
+$logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
+
+$valueRo = $resource->get('app://self/unstorable-value');
+echo sprintf('K1 GET a marked #[Cacheable] value -> Cache-Control: %s, put_skipped(unstorable)', $valueRo->headers['Cache-Control'] ?? '(none)') . PHP_EOL;
+
+$donutRo = $resource->get('page://self/html/unstorable-donut');
+echo sprintf(
+    'K2 GET a marked #[CacheableResponse] donut -> Cache-Control: %s, CDN-Cache-Control: %s, put_skipped(unstorable)',
+    $donutRo->headers['Cache-Control'] ?? '(none)',
+    $donutRo->headers['CDN-Cache-Control'] ?? '(none)',
+) . PHP_EOL;
+
+$report($logger->flush(), 'K. unstorable response');

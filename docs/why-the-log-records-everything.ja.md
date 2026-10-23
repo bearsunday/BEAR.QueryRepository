@@ -53,7 +53,8 @@ surrogate key を追加せずに上書きしていた）。失われた子を pu
 かった理由を出します。保存は `saved` の結果を記録します — 書き込みを拒否した
 プールが、成功した保存に見えることはもうありません。put が続かない miss は
 理由付きの `put_skipped` を出します（`etag-present`、実際のレスポンスコードを
-伴う `error-code`、`not-cacheable`）— 保存の不在は記録された決定であり、謎
+伴う `error-code`、`not-cacheable`、このリクエストで unstorable とマークされた
+応答の `unstorable`）— 保存の不在は記録された決定であり、謎
 ではありません。無効化はターゲットごとの結果（`roPool`/`etagPool`:
 `invalidated`|`failed`、`cdn`: `purged`|`failed`|`skipped`）と所要時間を
 報告します。失敗した書き込みでも command スコープは開かれ、その 4xx とともに

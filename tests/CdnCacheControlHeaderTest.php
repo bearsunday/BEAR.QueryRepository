@@ -130,6 +130,26 @@ class CdnCacheControlHeaderTest extends TestCase
         $this->assertStringContainsString('"Surrogate-Key"', $cdnHeaders, 'the purge keys are still recorded');
     }
 
+    public function testUnstorableResponseGetsNoCdnCacheControlHeader(): void
+    {
+        $module = $this->getModule();
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        $resource = $injector->getInstance(ResourceInterface::class);
+
+        // The resource, asked not to mark itself, gets the CDN header - checked first,
+        // since the mark is per-request state (here: one shared container for the whole
+        // test) that cannot be unset once a later call sets it.
+        $ordinary = $resource->get('page://self/html/unstorable-donut', ['unstorable' => false]);
+        $this->assertArrayHasKey(Header::CDN_CACHE_CONTROL, $ordinary->headers);
+        $this->assertSame('max-age=10, stale-while-revalidate=10', $ordinary->headers[Header::CDN_CACHE_CONTROL]);
+
+        // A producer marks this request's response unstorable (issue #222): no
+        // CDN-Cache-Control is emitted, and Cache-Control tells the CDN not to keep it.
+        $ro = $resource->get('page://self/html/unstorable-donut');
+        $this->assertArrayNotHasKey(Header::CDN_CACHE_CONTROL, $ro->headers);
+        $this->assertSame('private, no-store', $ro->headers[Header::CACHE_CONTROL]);
+    }
+
     private function getModule(): AbstractModule
     {
         $namespace = 'FakeVendor\HelloWorld';

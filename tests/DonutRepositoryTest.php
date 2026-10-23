@@ -115,6 +115,73 @@ class DonutRepositoryTest extends TestCase
         $this->assertStringContainsString('"layer":"donut"', $hit);
     }
 
+    public function testUnstorableMarkSkipsDonutStoreAndOrdinaryResponsesStillStore(): void
+    {
+        $injector = $this->getInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
+
+        // Ordinary (unmarked) responses store and hit normally - checked first, since the
+        // mark is per-request state (here: one shared container for the whole test) that
+        // cannot be unset once a later call sets it.
+        $ordinary = $resource->get('page://self/html/unstorable-donut', ['unstorable' => false]);
+        $this->assertArrayHasKey(Header::CDN_CACHE_CONTROL, $ordinary->headers);
+        $logger->flush();
+        $resource->get('page://self/html/unstorable-donut', ['unstorable' => false]);
+        $treeOrdinary = $this->flushAndValidate($logger);
+        $this->assertContains('cache_hit', self::collectTypes($treeOrdinary));
+
+        // A producer (a CSRF token issuer) marks this request's response unstorable: the
+        // donut write is skipped, the live response is still served, and no CDN header is
+        // emitted (issue #222).
+        $ro = $resource->get('page://self/html/unstorable-donut');
+        $this->assertSame('private, no-store', $ro->headers[Header::CACHE_CONTROL]);
+        $this->assertArrayNotHasKey(Header::CDN_CACHE_CONTROL, $ro->headers);
+
+        $tree = $this->flushAndValidate($logger);
+        $putSkipped = self::eventContextJsonOf($tree, 'put_skipped');
+        $this->assertNotNull($putSkipped);
+        $this->assertStringContainsString('"reason":"unstorable"', $putSkipped);
+
+        // Nothing was stored: a second GET of the same (still marked) request misses again.
+        $logger->flush();
+        $resource->get('page://self/html/unstorable-donut');
+        $tree2 = $this->flushAndValidate($logger);
+        $this->assertNotNull(self::eventContextJsonOf($tree2, 'cache_miss'));
+        $this->assertNull(self::eventContextJsonOf($tree2, 'cache_hit'));
+    }
+
+    public function testRefreshSkipsSavingContentAndCdnHeaderWhenMarkedUnstorable(): void
+    {
+        $injector = $this->getInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $storage = $injector->getInstance(ResourceStorageInterface::class);
+        $mark = $injector->getInstance(UncacheableMarkInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
+
+        // Populate the donut template and page state first (ordinary write).
+        $resource->get('page://self/html/blog-posting');
+        // Drop just the page state - same mechanism testCreatedByDonut uses - leaving the
+        // template behind, so the next GET takes the refresh path.
+        $storage->invalidateTags([(new UriTag())(new Uri('page://self/html/comment'))]);
+        $logger->flush();
+
+        // A hole marked this recomposition unstorable - e.g. it issued a CSRF token.
+        // ResourceDonut::refresh() restores the stored headers afterwards, but the mark is
+        // a separate per-request service and survives that (issue #222).
+        $mark->mark('csrf-token-issued');
+        $donutRo = $resource->get('page://self/html/blog-posting');
+
+        $this->assertSame('private, no-store', $donutRo->headers[Header::CACHE_CONTROL]);
+        $this->assertArrayNotHasKey(Header::CDN_CACHE_CONTROL, $donutRo->headers);
+
+        $tree = $this->flushAndValidate($logger);
+        $this->assertNotNull(self::eventContextJsonOf($tree, 'refresh_donut'), 'the page is recomposed from the cached donut');
+        $putSkipped = self::eventContextJsonOf($tree, 'put_skipped');
+        $this->assertNotNull($putSkipped);
+        $this->assertStringContainsString('"reason":"unstorable"', $putSkipped);
+    }
+
     /**
      * When cache A contains cache B, deleting B will automatically delete A as well.
      */
