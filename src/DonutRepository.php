@@ -174,18 +174,21 @@ final readonly class DonutRepository implements DonutRepositoryInterface
      * A #[DonutCache] template holds placeholders for an embedded hole's content, but a page
      * can also write a per-user value straight into its own body/view, outside any hole - that
      * lands in the stored template verbatim and is served to every later visitor (issue #222),
-     * so this write is gated. No CDN lifetime header is ever set on this path; headerSetter
-     * still runs on a skip so the live response itself reads Cache-Control: private, no-store.
+     * so this write is gated.
      *
      * The gate is read after create()/render(), the same point doPutStatic reads it, because
      * create() is what actually runs each embedded hole's own onGet() (DonutRequest wraps the
      * embedded request precisely so that run happens there) - and the page's own template may
      * ALSO mark during that same (string) $ro call (a Twig helper producing a CSRF token
-     * in-place, say), which a read taken before create() would miss entirely. What tells a
-     * hole's mark apart from the page's own is reasonExcludingHoleMarks(), not read order -
-     * DonutRequest scopes a mark made during a hole's own execution so it is not attributed
-     * to the page (UncacheableMarkInterface::isMarkedOutsideHole()), keeping a page whose
-     * holes "contain a form" working while still catching the page's own leak.
+     * in-place, say), which a read taken before create() would miss entirely.
+     *
+     * Two different checks, because the template and the live response are not the same
+     * content: the template write uses reasonExcludingHoleMarks() - never blocked by a
+     * descendant hole's own mark, whose own storage is separately gated, keeping a page whose
+     * holes "contain a form" working - while the live response (headers only; this path never
+     * stores the response itself) uses reason() - any mark anywhere, page or any hole, because
+     * every hole's rendered output is substituted into this response's own view even when the
+     * template it is not baked into is unaffected.
      */
     private function doPutDonut(ResourceObject $ro, int|null $donutTtl): void
     {
@@ -195,9 +198,10 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $templateKeys = $this->templateKeys($ro, $declaredKeys);
         $donut = ResourceDonut::create($ro, $this->renderer, $keys, $donutTtl, false, $this->mark)->withStorageState($donutTtl, $templateKeys);
         $donut->render($ro, $this->renderer);
-        $unstorable = $this->gate->reasonExcludingHoleMarks($ro);
+        $templateUnstorable = $this->gate->reasonExcludingHoleMarks($ro);
+        $responseUnstorable = $this->gate->reason($ro);
         $keys->setSurrogateHeader($ro);
-        if ($unstorable !== null) {
+        if ($responseUnstorable !== null) {
             ($this->donutHeaderSetter)($ro, null, null);
         }
 
@@ -205,8 +209,8 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         // delete: cleanup for the rewrite below, recorded as such at the source
         $this->logger->event(new PreWriteCleanupContext((string) $ro->uri));
         $this->resourceStorage->invalidateTags([($this->uriTag)($ro->uri)]);
-        if ($unstorable !== null) {
-            $this->logger->event(new PutSkippedContext((string) $ro->uri, $unstorable));
+        if ($templateUnstorable !== null) {
+            $this->logger->event(new PutSkippedContext((string) $ro->uri, $templateUnstorable));
 
             return;
         }

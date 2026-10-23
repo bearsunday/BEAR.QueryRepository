@@ -15,11 +15,12 @@ use function strtolower;
  *
  * Three conditions make a response unstorable (issue #222): a producer called
  * UncacheableMarkInterface::mark() during this request, Cache-Control already contains
- * no-store, or it contains private (matched case-insensitively, RFC 9111 §5.2) - private
- * because this package is a shared cache in the sense of RFC 9111: whatever it stores is
- * served to every later visitor. `isPrivate`/`noStore` applied by `#[HttpCache]` or
- * `#[NoHttpCache]` is unaffected: a header that still reads exactly what DeclaredCacheControl
- * computes for this resource is exempt from the no-store/private check.
+ * no-store, or it contains private (header name and directives matched case-insensitively,
+ * RFC 7230 §3.2/RFC 9111 §5.2) - private because this package is a shared cache in the sense
+ * of RFC 9111: whatever it stores is served to every later visitor. `isPrivate`/`noStore`
+ * applied by `#[HttpCache]` or `#[NoHttpCache]` is unaffected: a header that still reads
+ * exactly what DeclaredCacheControl computes for this resource is exempt from the
+ * no-store/private check.
  */
 final readonly class UnstorableGate implements UnstorableGateInterface
 {
@@ -42,7 +43,7 @@ final readonly class UnstorableGate implements UnstorableGateInterface
     #[Override]
     public function reasonExcludingHoleMarks(ResourceObject $ro): string|null
     {
-        return $this->reasonFor($ro, $this->mark->isMarkedOutsideHole());
+        return $this->reasonFor($ro, $this->mark->isMarkedForCurrentScope());
     }
 
     /** @return 'unstorable'|null */
@@ -52,7 +53,7 @@ final readonly class UnstorableGate implements UnstorableGateInterface
             return self::REASON;
         }
 
-        $cacheControl = $ro->headers[Header::CACHE_CONTROL] ?? '';
+        $cacheControl = $this->cacheControlHeader($ro);
         if ($cacheControl === '' || $cacheControl === ($this->declaredCacheControl)($ro)) {
             return null;
         }
@@ -63,5 +64,21 @@ final readonly class UnstorableGate implements UnstorableGateInterface
         }
 
         return null;
+    }
+
+    /**
+     * Read Cache-Control by header name case-insensitively (RFC 7230 §3.2): $ro->headers is
+     * a plain PHP array, not an HTTP-aware collection, so an application writing
+     * `cache-control` would otherwise slip past this exact-key lookup.
+     */
+    private function cacheControlHeader(ResourceObject $ro): string
+    {
+        foreach ($ro->headers as $name => $value) {
+            if (strtolower($name) === 'cache-control') {
+                return $value;
+            }
+        }
+
+        return '';
     }
 }

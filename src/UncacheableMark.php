@@ -6,6 +6,9 @@ namespace BEAR\QueryRepository;
 
 use Override;
 
+use function array_key_last;
+use function array_pop;
+
 /**
  * {@inheritDoc}
  *
@@ -18,43 +21,51 @@ use Override;
  */
 final class UncacheableMark implements UncacheableMarkInterface
 {
-    private string|null $reason = null;
-    private string|null $outsideHoleReason = null;
-    private int $holeDepth = 0;
+    /** The top-level page's own scope, distinct from any real URI */
+    private const TOP_LEVEL = '';
+
+    /** @var list<string> */
+    private array $stack = [];
+
+    /** @var array<string, true> */
+    private array $markedOwners = [];
 
     #[Override]
     public function mark(string $reason): void
     {
-        $this->reason ??= $reason;
-        // <= 0, not === 0: an unbalanced leaveHole() (a caller that never entered) must not
-        // drive this negative and then silently stop attributing marks to the page - that
-        // would fail open on the exact check doPutDonut() relies on.
-        if ($this->holeDepth <= 0) {
-            $this->outsideHoleReason ??= $reason;
-        }
+        $this->markedOwners[$this->currentOwner()] = true;
     }
 
     #[Override]
     public function isMarked(): bool
     {
-        return $this->reason !== null;
+        return $this->markedOwners !== [];
     }
 
     #[Override]
-    public function isMarkedOutsideHole(): bool
+    public function isMarkedForCurrentScope(): bool
     {
-        return $this->outsideHoleReason !== null;
+        return isset($this->markedOwners[$this->currentOwner()]);
     }
 
     #[Override]
-    public function enterHole(): void
+    public function enterHole(string $uri): void
     {
-        $this->holeDepth++;
+        $this->stack[] = $uri;
     }
 
     #[Override]
     public function leaveHole(): void
     {
-        $this->holeDepth--;
+        if ($this->stack === []) {
+            return;
+        }
+
+        array_pop($this->stack);
+    }
+
+    private function currentOwner(): string
+    {
+        return $this->stack === [] ? self::TOP_LEVEL : $this->stack[array_key_last($this->stack)];
     }
 }

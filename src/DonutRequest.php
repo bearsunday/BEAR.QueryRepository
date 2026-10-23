@@ -30,14 +30,14 @@ final readonly class DonutRequest implements Stringable
     #[Override]
     public function __toString(): string
     {
-        $this->mark->enterHole();
+        $uri = (string) $this->request->resourceObject->uri;
+        $this->mark->enterHole($uri);
         try {
             $view = (string) ($this->request)();
         } finally {
             $this->mark->leaveHole();
         }
 
-        $uri =  (string) $this->request->resourceObject->uri;
         $this->etags->addTag($this->request->resourceObject);
         $this->donutStorage->setView($uri, $view);
 

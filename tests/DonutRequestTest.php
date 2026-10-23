@@ -11,6 +11,7 @@ use BEAR\Resource\Uri;
 use Madapaja\TwigModule\TwigModule;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
+use RuntimeException;
 
 use function assert;
 use function dirname;
@@ -50,5 +51,32 @@ class DonutRequestTest extends TestCase
     {
         $view = $storage->render('cmt=[le:page://self/html/comment]');
         $this->assertSame('cmt=comment01', $view);
+    }
+
+    public function testHoleScopeIsLeftWhenTheHoleThrows(): void
+    {
+        $namespace = 'FakeVendor\HelloWorld';
+        $module = new FakeEtagPoolModule(ModuleFactory::getInstance($namespace));
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        /** @var Resource $resource */
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $throwingRequest = $resource->get->uri('app://self/throwing-hole');
+        assert($throwingRequest instanceof AbstractRequest);
+
+        // The same instance ThrowingHole itself resolves via DI (UncacheableMarkInterface
+        // is Scope::SINGLETON): its own mark() call and this test's check share one state.
+        $mark = $injector->getInstance(UncacheableMarkInterface::class);
+        $donutRequest = new DonutRequest($throwingRequest, new DonutRenderer(), new SurrogateKeys(new Uri('app://self/foo')), $mark);
+
+        $this->expectException(RuntimeException::class);
+        try {
+            (string) $donutRequest;
+        } finally {
+            // ThrowingHole marks itself - attributed to its own scope - before throwing. If
+            // leaveHole() ran despite the exception, that scope is popped and the current
+            // scope is top-level, which was never marked; if leaveHole() did not run, the
+            // hole's scope is still current and this reads as marked, wrongly, from here.
+            $this->assertFalse($mark->isMarkedForCurrentScope(), 'the hole\'s own mark must not leak into the current (top-level) scope once its scope is left');
+        }
     }
 }

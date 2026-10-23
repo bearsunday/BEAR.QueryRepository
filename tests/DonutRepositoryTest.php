@@ -226,16 +226,49 @@ class DonutRepositoryTest extends TestCase
         // at render/refresh time, never baked into the stored template - so a hole marking
         // itself unstorable (its own storage is separately gated by its own #[Cacheable]
         // write) must not block the parent template write: this is exactly the "a page
-        // whose holes contain a form" case issue #222 explicitly keeps working.
+        // whose holes contain a form" case issue #222 explicitly keeps working. The live
+        // response is a different matter - the hole's rendered output IS substituted into
+        // it, so it still reads Cache-Control: private, no-store (issue #222 MEDIUM).
         $injector = $this->getInjector();
         $resource = $injector->getInstance(ResourceInterface::class);
         $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
-        $resource->get('page://self/html/donut-cache-with-unstorable-hole');
+        $ro = $resource->get('page://self/html/donut-cache-with-unstorable-hole');
+        $this->assertSame('private, no-store', $ro->headers[Header::CACHE_CONTROL]);
         $logger->flush();
         $resource->get('page://self/html/donut-cache-with-unstorable-hole');
         $tree = $this->flushAndValidate($logger);
         $this->assertNotNull(self::eventContextJsonOf($tree, 'refresh_donut'), 'the template was saved despite the embedded hole marking itself');
+    }
+
+    public function testNestedDonutCacheHoleDoesNotLeakItsOwnMarkedContentToTheSharedCache(): void
+    {
+        // The hole (RenderTimeMark, itself #[DonutCache]) runs its own write while still
+        // nested inside this page's enterHole() scope; its own render-time mark must refuse
+        // only ITS OWN template - a flat "inside any hole" flag would misattribute that mark
+        // to "inside a hole" from the hole's own perspective too, and store the leak.
+        //
+        // One shared injector/container for both GETs, not two: the mark is request-scoped
+        // state that legitimately differs per request, but the underlying storage pool must
+        // be the SAME one a later visitor's request would actually share - two separate
+        // injectors each get their own in-memory ArrayAdapter (ModuleFactory/FakeEtagPoolModule),
+        // which would make the second GET below a cold miss regardless of whether the bug
+        // exists, proving nothing.
+        $injector = $this->getInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
+
+        $resource->get('page://self/html/donut-cache-with-nested-donut-cache-hole');
+        $logger->flush();
+
+        // A later, different visitor requesting the hole's own URI directly, against the
+        // same shared cache this GET also reads. If the hole's template had been stored
+        // with the leaked content, this would be a hit serving it.
+        $ro = $resource->get('page://self/html/render-time-mark');
+
+        $tree = $this->flushAndValidate($logger);
+        $this->assertNull(self::eventContextJsonOf($tree, 'refresh_donut'), 'nothing was stored for this later visitor to recompose from');
+        $this->assertSame('private, no-store', $ro->headers[Header::CACHE_CONTROL]);
     }
 
     public function testDonutCacheTemplateSkipsSaveWhenMarkedWhileItsOwnTemplateRenders(): void

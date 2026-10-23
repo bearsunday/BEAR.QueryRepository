@@ -9,19 +9,23 @@ use BEAR\QueryRepository\Cdn\FastlyCacheControlHeaderSetter;
 use BEAR\RepositoryModule\Annotation\HttpCache;
 use BEAR\Resource\ResourceObject;
 
+use function array_keys;
 use function sprintf;
 use function str_contains;
+use function strtolower;
 
 final readonly class HeaderSetter
 {
     /**
-     * Every CDN-facing header this package's setters manage, across every flavor (default,
-     * Fastly, Akamai) - unset wholesale on an unstorable response (issue #222), so one the
-     * application set directly in onGet(), bypassing the setters, does not survive the
-     * refusal: a CDN that honors Cache-Control: no-store might still key on a surviving
-     * CDN-Cache-Control/Surrogate-Control/Surrogate-Key.
+     * Every header unset on an unstorable response (issue #222): the CDN-facing ones this
+     * package's setters manage, across every flavor (default, Fastly, Akamai), plus
+     * Cache-Control/Pragma themselves - so one the application set directly in onGet(),
+     * bypassing the setters, does not survive the refusal under any header-name casing (RFC
+     * 7230 §3.2: $ro->headers is a plain PHP array, not an HTTP-aware collection).
      */
-    private const CDN_FACING_HEADERS = [
+    private const STRIPPED_HEADERS = [
+        Header::CACHE_CONTROL,
+        Header::PRAGMA,
         Header::CDN_CACHE_CONTROL,
         FastlyCacheControlHeaderSetter::CDN_CACHE_CONTROL_HEADER,
         AkamaiCacheControlHeaderSetter::CDN_CACHE_CONTROL_HEADER,
@@ -46,10 +50,7 @@ final readonly class HeaderSetter
     public function __invoke(ResourceObject $ro, int|null $cacheControlMaxAge, HttpCache|null $httpCache, int|null $time = null): void
     {
         if ($this->gate->reason($ro) !== null) {
-            foreach (self::CDN_FACING_HEADERS as $name) {
-                unset($ro->headers[$name]);
-            }
-
+            $this->stripHeaders($ro);
             $ro->headers[Header::CACHE_CONTROL] = 'private, no-store';
             $ro->headers[Header::PRAGMA] = 'no-cache';
 
@@ -60,6 +61,17 @@ final readonly class HeaderSetter
 
         if ($cacheControlMaxAge !== null && $cacheControlMaxAge > 0) {
             $this->setCacheControlMaxAge($ro, $cacheControlMaxAge);
+        }
+    }
+
+    private function stripHeaders(ResourceObject $ro): void
+    {
+        foreach (self::STRIPPED_HEADERS as $canonical) {
+            foreach (array_keys($ro->headers) as $name) {
+                if (strtolower($name) === strtolower($canonical)) {
+                    unset($ro->headers[$name]);
+                }
+            }
         }
     }
 
