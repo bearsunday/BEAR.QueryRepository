@@ -98,9 +98,8 @@ class DonutRequestTest extends TestCase
         $resource = $injector->getInstance(ResourceInterface::class);
         $mark = $injector->getInstance(UncacheableMarkInterface::class);
 
-        $request = $resource->get->uri('app://self/query-hole');
+        $request = $resource->get->uri('app://self/query-hole')->withQuery(['token' => 'public-9', 'visibility' => 'public']);
         assert($request instanceof AbstractRequest);
-        $request->query = ['token' => 'public-9', 'visibility' => 'public'];
 
         $storage = new DonutRenderer();
         $donutRequest = new DonutRequest($request, $storage, new SurrogateKeys(new Uri('app://self/foo')), $mark);
@@ -125,9 +124,8 @@ class DonutRequestTest extends TestCase
         $resource = $injector->getInstance(ResourceInterface::class);
         $mark = $injector->getInstance(UncacheableMarkInterface::class);
 
-        $request = $resource->get->uri('app://self/query-hole');
+        $request = $resource->get->uri('app://self/query-hole')->withQuery(['token' => 'secret-5', 'visibility' => 'private']);
         assert($request instanceof AbstractRequest);
-        $request->query = ['token' => 'secret-5', 'visibility' => 'private'];
 
         $storage = new DonutRenderer();
         $donutRequest = new DonutRequest($request, $storage, new SurrogateKeys(new Uri('app://self/foo')), $mark);
