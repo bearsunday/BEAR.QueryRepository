@@ -73,13 +73,20 @@ class HitCostLogTest extends TestCase
         $this->assertGreaterThanOrEqual(0, $cost['hit']);
     }
 
-    public function testTheHitIsTheCheaperAnswer(): void
+    public function testTheHitSkipsTheWorkTheMissDoes(): void
     {
-        // The invariant is the sign, not the size: a hit that is not faster than a miss is a cache
-        // costing money for nothing. The fixture's miss does real work, so this is not a coin flip.
-        $cost = $this->costOfBothAnswers();
+        // "Cheaper" is not a number, it is a shape: a miss runs the resource and writes the
+        // pool, each step its own point under the scope; a hit is one pool read with nothing
+        // inside it. That asymmetry is what a cache buys, and unlike two wall-clock readings it
+        // does not depend on how busy the machine happens to be at the moment of the assertion.
+        $this->resource->get('app://self/user', ['id' => 1]);
+        $missEvents = self::scopeEventTypesOf($this->flushAndValidate($this->logger), 'get', 'app://self/user?id=1');
 
-        $this->assertLessThan($cost['miss'], $cost['hit'], 'a hit that is not cheaper than a miss buys nothing');
+        $this->resource->get('app://self/user', ['id' => 1]);
+        $hitEvents = self::scopeEventTypesOf($this->flushAndValidate($this->logger), 'get', 'app://self/user?id=1');
+
+        $this->assertNotEmpty($missEvents, 'a miss runs the resource and writes the pool; each step is recorded as a point');
+        $this->assertSame([], $hitEvents, 'a hit is a single pool read; nothing happens inside its scope');
     }
 
     public function testAnInnerLookupCarriesNoDuration(): void
