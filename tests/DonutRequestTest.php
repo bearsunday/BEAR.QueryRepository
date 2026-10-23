@@ -46,7 +46,7 @@ class DonutRequestTest extends TestCase
         $storage = new DonutRenderer();
         $request = new DonutRequest($this->request, $storage, new SurrogateKeys(new Uri('app://self/foo')), new UncacheableMark());
         $view = (string) $request;
-        $this->assertSame('[le:page://self/html/comment]', $view);
+        $this->assertSame(ResourceDonut::placeholder('page://self/html/comment'), $view);
 
         return $storage;
     }
@@ -54,7 +54,7 @@ class DonutRequestTest extends TestCase
     /** @depends testToString */
     public function testRender(DonutRenderer $storage): void
     {
-        $view = $storage->render('cmt=[le:page://self/html/comment]');
+        $view = $storage->render('cmt=' . ResourceDonut::placeholder('page://self/html/comment'));
         $this->assertSame('cmt=comment01', $view);
     }
 
@@ -110,8 +110,8 @@ class DonutRequestTest extends TestCase
         $placeholder = (string) $donutRequest;
 
         $expectedUri = 'app://self/query-hole?' . http_build_query(['token' => 'public-9', 'visibility' => 'public']);
-        $this->assertSame('[le:' . $expectedUri . ']', $placeholder, 'the placeholder must carry the query string set via the request\'s own query array');
-        $this->assertSame('public-9', $storage->render('[le:' . $expectedUri . ']'), 'the stored view must be keyed by the exact same full URI the placeholder carries');
+        $this->assertSame(ResourceDonut::placeholder($expectedUri), $placeholder, 'the placeholder must carry the query string set via the request\'s own query array');
+        $this->assertSame('public-9', $storage->render(ResourceDonut::placeholder($expectedUri)), 'the stored view must be keyed by the exact same full URI the placeholder carries');
         $this->assertFalse($mark->isMarked(), 'visibility=public must not mark');
     }
 
@@ -136,7 +136,7 @@ class DonutRequestTest extends TestCase
         $placeholder = (string) $donutRequest;
 
         $expectedUri = 'app://self/query-hole?' . http_build_query(['token' => 'secret-5', 'visibility' => 'private']);
-        $this->assertSame('[le:' . $expectedUri . ']', $placeholder, 'the placeholder must carry the query string even though the hole marked itself');
+        $this->assertSame(ResourceDonut::placeholder($expectedUri), $placeholder, 'the placeholder must carry the query string even though the hole marked itself');
         $this->assertTrue($mark->isMarked(), 'visibility=private must mark');
     }
 

@@ -15,6 +15,9 @@ use function hash;
 use function is_iterable;
 use function max;
 use function preg_replace_callback;
+use function rawurldecode;
+use function rawurlencode;
+use function sprintf;
 use function strtotime;
 use function time;
 
@@ -23,9 +26,30 @@ use function time;
  */
 final class ResourceDonut
 {
-    public const FORMAT = '[le:%s]';
+    // `le2` placeholders (written by this version onward) carry a rawurlencode()'d URI:
+    // percent-encoding leaves no '&', '<', '>', '"' or '\'' for an HTML renderer's default
+    // autoescaping to mangle, so the same placeholder text round-trips unchanged whether
+    // it is echoed raw, through Twig's default `{{ hole }}` escaping, or by a non-HTML
+    // renderer (issue #232). A legacy `le` placeholder (written before this version) is
+    // never decoded - its URI is used exactly as refresh() always used it, which stays
+    // correct for 0/1 query params (and still broken for 2+, as it already was: that
+    // entry was already corrupted and self-heals once it expires and is rewritten).
+    // Decoding it here too would be wrong, not merely redundant: a legacy query VALUE
+    // that itself needed percent-encoding (a literal '&', '=', '+', '/', non-ASCII bytes)
+    // would be stripped of that encoding before BEAR\Resource\Uri ever parses it, either
+    // corrupting the value (parse_str re-splits it on the now-literal '&'/'=') or failing
+    // URL validation outright (a raw non-ASCII byte is not a valid URL character).
+    private const FORMAT = '[le2:%s]';
 
-    private const URI_REGEX = '/\[le:([^\]]+)]/';
+    private const URI_REGEX = '/\[le(2)?:([^\]]+)]/';
+
+    /**
+     * Build the placeholder DonutRequest::__toString() embeds and DonutRenderer matches
+     */
+    public static function placeholder(string $uri): string
+    {
+        return sprintf(self::FORMAT, rawurlencode($uri));
+    }
 
     /**
      * @param array<string, string> $headers
@@ -53,7 +77,9 @@ final class ResourceDonut
     {
         $etags = new SurrogateKeys($ro->uri);
         $refreshView =  preg_replace_callback(self::URI_REGEX, static function (array $matches) use ($resource, $etags): string {
-            $uri = $matches[1];
+            // Group 1 is "2" for a new `le2` match (its URI, group 2, is rawurlencode()'d),
+            // or "" for a legacy `le` match (group 2 is its URI, used verbatim).
+            $uri = $matches[1] === '2' ? rawurldecode($matches[2]) : $matches[2];
             $ro = $resource->get($uri);
             $ro->toString();
             if (array_key_exists(Header::SURROGATE_KEY, $ro->headers)) {

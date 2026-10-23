@@ -250,18 +250,18 @@ class DonutRepositoryTest extends TestCase
     public function testDonutCacheWithAMultiParamEmbedRendersAndRefreshesBothQueryParams(): void
     {
         // End-to-end through the real #[Embed] pipeline (URI-template expansion, not a
-        // manually built request): the donut placeholder/view mapping and a later
+        // manually built request), through the project's standard `{{ hole }}` (no
+        // `|raw`): the donut placeholder/view mapping and a later
         // ResourceDonut::refresh() must carry and re-resolve BOTH query parameters, not
-        // just a single one. `|raw` in the fixture's template sidesteps a separate,
-        // out-of-scope Twig-autoescaping issue (default `{{ hole }}` HTML-escapes the
-        // placeholder's `&` when 2+ params are present - reported separately, not fixed
-        // here).
+        // just a single one, and the placeholder itself must survive Twig's default
+        // HTML-escaping of its `&` (issue #232).
         $injector = $this->getInjector();
         $resource = $injector->getInstance(ResourceInterface::class);
         $storage = $injector->getInstance(ResourceStorageInterface::class);
         $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
         $first = $resource->get('page://self/html/donut-cache-with-multi-param-query-hole');
+        $this->assertStringNotContainsString('[le:', (string) $first->view, 'the escaped placeholder must be substituted, not leaked raw to the client');
         $this->assertStringContainsString('1-2', (string) $first->view, 'both query params resolved on the first (render) GET');
 
         // Drop just the hole's own state, leaving the page's donut template behind, so the
