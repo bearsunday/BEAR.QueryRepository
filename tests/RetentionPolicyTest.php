@@ -19,8 +19,10 @@ use BEAR\QueryRepository\Log\Context\SaveEtagContext;
 use BEAR\QueryRepository\Log\Context\SaveValueContext;
 use BEAR\QueryRepository\Log\KeepMutationsAndFailures;
 use BEAR\QueryRepository\Log\SafeSemanticLogger;
+use Koriym\SemanticLogger\CloseEntry;
 use Koriym\SemanticLogger\EventEntry;
 use Koriym\SemanticLogger\LogJson;
+use Koriym\SemanticLogger\OpenEntry;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use PHPUnit\Framework\TestCase;
 
@@ -185,13 +187,25 @@ class RetentionPolicyTest extends TestCase
         $this->assertTrue($this->policy->keeps($this->logger->flush()));
     }
 
-    public function testAFailedOutcomeIsFoundWhereTheRootKeepsItAsAList(): void
+    public function testASessionCutAtTheRecordLimitIsKept(): void
     {
-        // `close` is one entry on a scope but a list at the root (LogJson::toArray() collects
-        // orphan closes there), so a policy that assumes the scope shape reads nothing
-        $close = new EventEntry('manual_store_result_1', 'manual_store_result', 'https://example.com/s.json', ['result' => 'failed']);
+        // Past the limit the core logger records nothing more, so a command opened after it
+        // leaves no record at all; the root truncation point is the only trace of it.
+        $open = new OpenEntry('get_1', 'get', 'https://example.com/get.json', ['uri' => 'page://self/html/blog-posting'], null);
+        $close = new CloseEntry('cache_hit_1', 'cache_hit', 'https://example.com/hit.json', ['source' => 'view'], 'get_1');
+        $truncated = new EventEntry('semantic_logger_truncated_1', 'semantic_logger_truncated', 'https://example.com/t.json', ['limit' => 2, 'dropped' => 2, 'firstDroppedType' => 'command'], null);
 
-        $this->assertTrue($this->policy->keeps(new LogJson('', [], [$close])));
+        $this->assertTrue($this->policy->keeps(new LogJson('', [$open, $close, $truncated])));
+    }
+
+    public function testAFailedOutcomeIsFoundWhereTheRootKeepsItAsARecord(): void
+    {
+        // A `close` is one entry on a scope, but a root record carrying `openId` when its
+        // open is not in this log (LogTreeBuilder splices it into the root `log`), so a
+        // policy that assumes the scope shape reads nothing
+        $close = new CloseEntry('manual_store_result_1', 'manual_store_result', 'https://example.com/s.json', ['result' => 'failed'], 'no_such_open');
+
+        $this->assertTrue($this->policy->keeps(new LogJson('', [$close])));
     }
 
     public function testSamplingKeepsAnOtherwiseDroppedSession(): void
@@ -206,7 +220,7 @@ class RetentionPolicyTest extends TestCase
 
     public function testAnEmptySessionIsDropped(): void
     {
-        $this->assertFalse($this->policy->keeps(new LogJson('', [], [])));
+        $this->assertFalse($this->policy->keeps(new LogJson('', [])));
     }
 
     /** @param 'failed'|'purged'|'skipped' $cdnStatus */

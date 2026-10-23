@@ -37,66 +37,66 @@ get uri=app://self/code
 ├── put_skipped uri=app://self/code reason=error-code code=203 [event]
 ├── purge uri=app://self/code [event]
 ├── invalidate tags=[_code_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
-└── layer=resource
+└── cache_miss layer=resource durationMs=0.288
 get uri=page://self/html/self-etag
 ├── cache_miss layer=donut [event]
 ├── put_skipped uri=page://self/html/self-etag reason=etag-present [event]
-└── layer=donut-view
+└── cache_miss layer=donut-view durationMs=0.03
 get uri=page://self/html/blog-posting-donut
 ├── cache_miss layer=donut [event]
 ├── put_donut uri=page://self/html/blog-posting-donut [event]
+├── get uri=page://self/html/comment
+│   ├── pre_write_cleanup uri=page://self/html/comment [event]
+│   ├── invalidate tags=[_html_comment_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
+│   ├── cache_policy uri=page://self/html/comment expiry=never resolvedTtl=31536000 [event]
+│   ├── save_etag uri=page://self/html/comment etag="1889150619" tags=[comment01, _html_comment_] requestedTtl=31536000 (+1 more) [event]
+│   ├── save_value uri=page://self/html/comment tags=[_html_comment_, comment01] requestedTtl=31536000 saved=true [event]
+│   └── cache_miss layer=resource durationMs=0.834
 ├── cdn_headers uri=page://self/html/blog-posting-donut surrogateKeys=[_html_blog-posting-donut_ +2 items] [event]
 ├── pre_write_cleanup uri=page://self/html/blog-posting-donut [event]
 ├── invalidate tags=[_html_blog-posting-donut_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 ├── save_donut uri=page://self/html/blog-posting-donut tags=[_html_blog-posting-donut_] saved=true [event]
-├── get uri=page://self/html/comment
-│   ├── pre_write_cleanup uri=page://self/html/comment [event]
-│   ├── invalidate tags=[_html_comment_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
-│   ├── cache_policy uri=page://self/html/comment expiry=never resolvedTtl=31536000 [event]
-│   ├── save_etag uri=page://self/html/comment etag="1889150619" tags=[comment01, _html_comment_] requestedTtl=31536000 (+1 more) [event]
-│   ├── save_value uri=page://self/html/comment tags=[_html_comment_, comment01] requestedTtl=31536000 saved=true [event]
-│   └── layer=resource
-└── layer=donut-view
+└── cache_miss layer=donut-view durationMs=10.989
 manual_purge uri=page://self/html/comment
 ├── invalidate tags=[_html_comment_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
-└── result=purged
+└── manual_purge_result result=purged
 get uri=page://self/html/blog-posting-donut
 ├── cache_hit layer=donut [event]
 ├── refresh_donut uri=page://self/html/blog-posting-donut [event]
-├── cdn_headers uri=page://self/html/blog-posting-donut surrogateKeys=[_html_blog-posting-donut_ +2 items] [event]
-├── put_skipped uri=page://self/html/blog-posting-donut reason=not-cacheable [event]
 ├── get uri=page://self/html/comment
 │   ├── pre_write_cleanup uri=page://self/html/comment [event]
 │   ├── invalidate tags=[_html_comment_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 │   ├── cache_policy uri=page://self/html/comment expiry=never resolvedTtl=31536000 [event]
 │   ├── save_etag uri=page://self/html/comment etag="1889150619" tags=[comment01, _html_comment_] requestedTtl=31536000 (+1 more) [event]
 │   ├── save_value uri=page://self/html/comment tags=[_html_comment_, comment01] requestedTtl=31536000 saved=true [event]
-│   └── layer=resource
-└── layer=donut-view
+│   └── cache_miss layer=resource durationMs=0.123
+├── cdn_headers uri=page://self/html/blog-posting-donut surrogateKeys=[_html_blog-posting-donut_ +2 items] [event]
+├── put_skipped uri=page://self/html/blog-posting-donut reason=not-cacheable [event]
+└── cache_hit layer=donut-view durationMs=0.338
 command method=onDelete source=CommandInterceptor
-└── code=400
+└── command_result code=400
 get uri=app://self/view
 ├── pre_write_cleanup uri=app://self/view [event]
 ├── invalidate tags=[_view_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 ├── cache_policy uri=app://self/view expiry=never resolvedTtl=31536000 [event]
-├── save_etag uri=app://self/view etag="844952131" tags=[_view_] requestedTtl=31536000 (+1 more) [event]
+├── save_etag uri=app://self/view etag="1004456377" tags=[_view_] requestedTtl=31536000 (+1 more) [event]
 ├── save_view uri=app://self/view tags=[_view_] requestedTtl=31536000 saved=true [event]
-└── layer=resource
+└── cache_miss layer=resource durationMs=0.173
 manual_store uri=app://self/view
 ├── pre_write_cleanup uri=app://self/view [event]
 ├── invalidate tags=[_view_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 ├── cache_policy uri=app://self/view expiry=never resolvedTtl=31536000 [event]
-├── save_etag uri=app://self/view etag="844952131" tags=[_view_] requestedTtl=31536000 (+1 more) [event]
+├── save_etag uri=app://self/view etag="1004456377" tags=[_view_] requestedTtl=31536000 (+1 more) [event]
 ├── save_view uri=app://self/view tags=[_view_] requestedTtl=31536000 saved=true [event]
-└── result=stored
+└── manual_store_result result=stored
 manual_invalidate tags=[_demo_manual_tag_, _demo_second_tag_]
 ├── invalidate tags=[_demo_manual_tag_, _demo_second_tag_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
-└── result=invalidated
+└── manual_invalidate_result result=invalidated
 
 === Cache Log JSON — A. recorded refusals ===
 {
     "$schema": "https://koriym.github.io/Koriym.SemanticLogger/schemas/semantic-log.json",
-    "open": [
+    "log": [
         {
             "id": "get_1",
             "type": "get",
@@ -104,7 +104,7 @@ manual_invalidate tags=[_demo_manual_tag_, _demo_second_tag_]
             "context": {
                 "uri": "app://self/code"
             },
-            "events": [
+            "log": [
                 {
                     "id": "put_skipped_1",
                     "type": "put_skipped",
@@ -134,7 +134,7 @@ manual_invalidate tags=[_demo_manual_tag_, _demo_second_tag_]
                         "roPool": "invalidated",
                         "etagPool": "invalidated",
                         "cdn": "skipped",
-                        "durationMs": 0.283
+                        "durationMs": 0.067
                     }
                 }
             ],
@@ -143,7 +143,8 @@ manual_invalidate tags=[_demo_manual_tag_, _demo_second_tag_]
                 "type": "cache_miss",
                 "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
                 "context": {
-                    "layer": "resource"
+                    "layer": "resource",
+                    "durationMs": 0.288
                 }
             }
         },
@@ -154,13 +155,14 @@ manual_invalidate tags=[_demo_manual_tag_, _demo_second_tag_]
             "context": {
                 "uri": "page://self/html/self-etag"
             },
-            "events": [
+            "log": [
                 {
                     "id": "cache_miss_2",
                     "type": "cache_miss",
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
                     "context": {
-                        "layer": "donut"
+                        "layer": "donut",
+                        "durationMs": null
                     }
                 },
                 {
@@ -179,7 +181,8 @@ manual_invalidate tags=[_demo_manual_tag_, _demo_second_tag_]
                 "type": "cache_miss",
                 "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
                 "context": {
-                    "layer": "donut-view"
+                    "layer": "donut-view",
+                    "durationMs": 0.03
                 }
             }
         },
@@ -190,7 +193,26 @@ manual_invalidate tags=[_demo_manual_tag_, _demo_second_tag_]
             "context": {
                 "uri": "page://self/html/blog-posting-donut"
             },
-            "open": [
+            "log": [
+                {
+                    "id": "cache_miss_4",
+                    "type": "cache_miss",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
+                    "context": {
+                        "layer": "donut",
+                        "durationMs": null
+                    }
+                },
+                {
+                    "id": "put_donut_1",
+                    "type": "put_donut",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/put_donut.json",
+                    "context": {
+                        "uri": "page://self/html/blog-posting-donut",
+                        "requestedTtl": null,
+                        "sMaxAge": null
+                    }
+                },
                 {
                     "id": "get_4",
                     "type": "get",
@@ -198,7 +220,7 @@ manual_invalidate tags=[_demo_manual_tag_, _demo_second_tag_]
                     "context": {
                         "uri": "page://self/html/comment"
                     },
-                    "events": [
+                    "log": [
                         {
                             "id": "pre_write_cleanup_1",
                             "type": "pre_write_cleanup",
@@ -218,7 +240,7 @@ manual_invalidate tags=[_demo_manual_tag_, _demo_second_tag_]
                                 "roPool": "invalidated",
                                 "etagPool": "invalidated",
                                 "cdn": "skipped",
-                                "durationMs": 0.006
+                                "durationMs": 0.005
                             }
                         },
                         {
@@ -268,28 +290,9 @@ manual_invalidate tags=[_demo_manual_tag_, _demo_second_tag_]
                         "type": "cache_miss",
                         "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
                         "context": {
-                            "layer": "resource"
+                            "layer": "resource",
+                            "durationMs": 0.834
                         }
-                    }
-                }
-            ],
-            "events": [
-                {
-                    "id": "cache_miss_4",
-                    "type": "cache_miss",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
-                    "context": {
-                        "layer": "donut"
-                    }
-                },
-                {
-                    "id": "put_donut_1",
-                    "type": "put_donut",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/put_donut.json",
-                    "context": {
-                        "uri": "page://self/html/blog-posting-donut",
-                        "requestedTtl": null,
-                        "sMaxAge": null
                     }
                 },
                 {
@@ -327,7 +330,7 @@ manual_invalidate tags=[_demo_manual_tag_, _demo_second_tag_]
                         "roPool": "invalidated",
                         "etagPool": "invalidated",
                         "cdn": "skipped",
-                        "durationMs": 0.004
+                        "durationMs": 0.005
                     }
                 },
                 {
@@ -349,7 +352,8 @@ manual_invalidate tags=[_demo_manual_tag_, _demo_second_tag_]
                 "type": "cache_miss",
                 "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
                 "context": {
-                    "layer": "donut-view"
+                    "layer": "donut-view",
+                    "durationMs": 10.989
                 }
             }
         },
@@ -360,7 +364,7 @@ manual_invalidate tags=[_demo_manual_tag_, _demo_second_tag_]
             "context": {
                 "uri": "page://self/html/comment"
             },
-            "events": [
+            "log": [
                 {
                     "id": "invalidate_4",
                     "type": "invalidate",
@@ -372,7 +376,7 @@ manual_invalidate tags=[_demo_manual_tag_, _demo_second_tag_]
                         "roPool": "invalidated",
                         "etagPool": "invalidated",
                         "cdn": "skipped",
-                        "durationMs": 0.014
+                        "durationMs": 0.004
                     }
                 }
             ],
@@ -392,7 +396,24 @@ manual_invalidate tags=[_demo_manual_tag_, _demo_second_tag_]
             "context": {
                 "uri": "page://self/html/blog-posting-donut"
             },
-            "open": [
+            "log": [
+                {
+                    "id": "cache_hit_1",
+                    "type": "cache_hit",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_hit.json",
+                    "context": {
+                        "layer": "donut",
+                        "durationMs": null
+                    }
+                },
+                {
+                    "id": "refresh_donut_1",
+                    "type": "refresh_donut",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/refresh_donut.json",
+                    "context": {
+                        "uri": "page://self/html/blog-posting-donut"
+                    }
+                },
                 {
                     "id": "get_6",
                     "type": "get",
@@ -400,7 +421,7 @@ manual_invalidate tags=[_demo_manual_tag_, _demo_second_tag_]
                     "context": {
                         "uri": "page://self/html/comment"
                     },
-                    "events": [
+                    "log": [
                         {
                             "id": "pre_write_cleanup_3",
                             "type": "pre_write_cleanup",
@@ -470,26 +491,9 @@ manual_invalidate tags=[_demo_manual_tag_, _demo_second_tag_]
                         "type": "cache_miss",
                         "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
                         "context": {
-                            "layer": "resource"
+                            "layer": "resource",
+                            "durationMs": 0.123
                         }
-                    }
-                }
-            ],
-            "events": [
-                {
-                    "id": "cache_hit_1",
-                    "type": "cache_hit",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_hit.json",
-                    "context": {
-                        "layer": "donut"
-                    }
-                },
-                {
-                    "id": "refresh_donut_1",
-                    "type": "refresh_donut",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/refresh_donut.json",
-                    "context": {
-                        "uri": "page://self/html/blog-posting-donut"
                     }
                 },
                 {
@@ -524,7 +528,8 @@ manual_invalidate tags=[_demo_manual_tag_, _demo_second_tag_]
                 "type": "cache_hit",
                 "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_hit.json",
                 "context": {
-                    "layer": "donut-view"
+                    "layer": "donut-view",
+                    "durationMs": 0.338
                 }
             }
         },
@@ -553,7 +558,7 @@ manual_invalidate tags=[_demo_manual_tag_, _demo_second_tag_]
             "context": {
                 "uri": "app://self/view"
             },
-            "events": [
+            "log": [
                 {
                     "id": "pre_write_cleanup_4",
                     "type": "pre_write_cleanup",
@@ -594,7 +599,7 @@ manual_invalidate tags=[_demo_manual_tag_, _demo_second_tag_]
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                     "context": {
                         "uri": "app://self/view",
-                        "etag": "\"844952131\"",
+                        "etag": "\"1004456377\"",
                         "tags": [
                             "_view_"
                         ],
@@ -621,7 +626,8 @@ manual_invalidate tags=[_demo_manual_tag_, _demo_second_tag_]
                 "type": "cache_miss",
                 "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
                 "context": {
-                    "layer": "resource"
+                    "layer": "resource",
+                    "durationMs": 0.173
                 }
             }
         },
@@ -632,7 +638,7 @@ manual_invalidate tags=[_demo_manual_tag_, _demo_second_tag_]
             "context": {
                 "uri": "app://self/view"
             },
-            "events": [
+            "log": [
                 {
                     "id": "pre_write_cleanup_5",
                     "type": "pre_write_cleanup",
@@ -673,7 +679,7 @@ manual_invalidate tags=[_demo_manual_tag_, _demo_second_tag_]
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                     "context": {
                         "uri": "app://self/view",
-                        "etag": "\"844952131\"",
+                        "etag": "\"1004456377\"",
                         "tags": [
                             "_view_"
                         ],
@@ -714,7 +720,7 @@ manual_invalidate tags=[_demo_manual_tag_, _demo_second_tag_]
                     "_demo_second_tag_"
                 ]
             },
-            "events": [
+            "log": [
                 {
                     "id": "invalidate_8",
                     "type": "invalidate",
@@ -727,7 +733,7 @@ manual_invalidate tags=[_demo_manual_tag_, _demo_second_tag_]
                         "roPool": "invalidated",
                         "etagPool": "invalidated",
                         "cdn": "skipped",
-                        "durationMs": 0.006
+                        "durationMs": 0.005
                     }
                 }
             ],
@@ -743,18 +749,18 @@ manual_invalidate tags=[_demo_manual_tag_, _demo_second_tag_]
     ]
 }
 Schema validation: OK (59 entries)
-   (warning) RuntimeException: cache server down
+   (warning) BEAR\QueryRepository\Exception\CacheStoreFailure: cache server down
 B  GET app://self/value -> 200 served live; the outage is logged, not swallowed
 
 === Cache Log Tree — B. cache layer down ===
 get uri=app://self/value
 ├── cache_error uri=app://self/value operation=read error=cache server down exceptionClass=RuntimeException [event]
-└── layer=resource
+└── cache_miss layer=resource durationMs=0.641
 
 === Cache Log JSON — B. cache layer down ===
 {
     "$schema": "https://koriym.github.io/Koriym.SemanticLogger/schemas/semantic-log.json",
-    "open": [
+    "log": [
         {
             "id": "get_1",
             "type": "get",
@@ -762,7 +768,7 @@ get uri=app://self/value
             "context": {
                 "uri": "app://self/value"
             },
-            "events": [
+            "log": [
                 {
                     "id": "cache_error_1",
                     "type": "cache_error",
@@ -780,7 +786,8 @@ get uri=app://self/value
                 "type": "cache_miss",
                 "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
                 "context": {
-                    "layer": "resource"
+                    "layer": "resource",
+                    "durationMs": 0.641
                 }
             }
         }
@@ -794,17 +801,17 @@ get uri=app://self/value
 ├── pre_write_cleanup uri=app://self/value [event]
 ├── invalidate tags=[_value_] roPool=invalidated etagPool=invalidated cdn=purged (+1 more) [event]
 ├── cache_policy uri=app://self/value expiry=never resolvedTtl=31536000 [event]
-├── save_etag uri=app://self/value etag="1359910855" tags=[_value_] requestedTtl=31536000 (+1 more) [event]
+├── save_etag uri=app://self/value etag="965076465" tags=[_value_] requestedTtl=31536000 (+1 more) [event]
 ├── save_value uri=app://self/value tags=[_value_] requestedTtl=31536000 saved=true [event]
-└── layer=resource
+└── cache_miss layer=resource durationMs=0.102
 manual_purge uri=app://self/value
 ├── invalidate tags=[_value_] roPool=invalidated etagPool=invalidated cdn=purged (+1 more) [event]
-└── result=purged
+└── manual_purge_result result=purged
 
 === Cache Log JSON — C1. CDN purge succeeded ===
 {
     "$schema": "https://koriym.github.io/Koriym.SemanticLogger/schemas/semantic-log.json",
-    "open": [
+    "log": [
         {
             "id": "get_1",
             "type": "get",
@@ -812,7 +819,7 @@ manual_purge uri=app://self/value
             "context": {
                 "uri": "app://self/value"
             },
-            "events": [
+            "log": [
                 {
                     "id": "pre_write_cleanup_1",
                     "type": "pre_write_cleanup",
@@ -832,7 +839,7 @@ manual_purge uri=app://self/value
                         "roPool": "invalidated",
                         "etagPool": "invalidated",
                         "cdn": "purged",
-                        "durationMs": 0.006
+                        "durationMs": 0.005
                     }
                 },
                 {
@@ -853,7 +860,7 @@ manual_purge uri=app://self/value
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                     "context": {
                         "uri": "app://self/value",
-                        "etag": "\"1359910855\"",
+                        "etag": "\"965076465\"",
                         "tags": [
                             "_value_"
                         ],
@@ -880,7 +887,8 @@ manual_purge uri=app://self/value
                 "type": "cache_miss",
                 "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
                 "context": {
-                    "layer": "resource"
+                    "layer": "resource",
+                    "durationMs": 0.102
                 }
             }
         },
@@ -891,7 +899,7 @@ manual_purge uri=app://self/value
             "context": {
                 "uri": "app://self/value"
             },
-            "events": [
+            "log": [
                 {
                     "id": "invalidate_2",
                     "type": "invalidate",
@@ -903,7 +911,7 @@ manual_purge uri=app://self/value
                         "roPool": "invalidated",
                         "etagPool": "invalidated",
                         "cdn": "purged",
-                        "durationMs": 0.003
+                        "durationMs": 0.004
                     }
                 }
             ],
@@ -919,7 +927,7 @@ manual_purge uri=app://self/value
     ]
 }
 Schema validation: OK (10 entries)
-   (warning) BEAR\QueryRepository\FakeCdnPurgeFailed: purge failed: _value_
+   (warning) BEAR\QueryRepository\Exception\CacheStoreFailure: purge failed: _value_
 C2 purge propagated the CDN failure: purge failed: _value_
 
 === Cache Log Tree — C2. CDN purge failed (fail-closed) ===
@@ -927,15 +935,15 @@ get uri=app://self/value
 ├── pre_write_cleanup uri=app://self/value [event]
 ├── invalidate tags=[_value_] roPool=invalidated etagPool=invalidated cdn=failed (+1 more) [event]
 ├── cache_error uri=app://self/value operation=write error=purge failed: _value_ exceptionClass=FakeCdnPurgeFailed [event]
-└── layer=resource
+└── cache_miss layer=resource durationMs=0.296
 manual_purge uri=app://self/value
 ├── invalidate tags=[_value_] roPool=invalidated etagPool=invalidated cdn=failed (+1 more) [event]
-└── result=failed
+└── manual_purge_result result=failed
 
 === Cache Log JSON — C2. CDN purge failed (fail-closed) ===
 {
     "$schema": "https://koriym.github.io/Koriym.SemanticLogger/schemas/semantic-log.json",
-    "open": [
+    "log": [
         {
             "id": "get_1",
             "type": "get",
@@ -943,7 +951,7 @@ manual_purge uri=app://self/value
             "context": {
                 "uri": "app://self/value"
             },
-            "events": [
+            "log": [
                 {
                     "id": "pre_write_cleanup_1",
                     "type": "pre_write_cleanup",
@@ -963,7 +971,7 @@ manual_purge uri=app://self/value
                         "roPool": "invalidated",
                         "etagPool": "invalidated",
                         "cdn": "failed",
-                        "durationMs": 0.446
+                        "durationMs": 0.252
                     }
                 },
                 {
@@ -983,7 +991,8 @@ manual_purge uri=app://self/value
                 "type": "cache_miss",
                 "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
                 "context": {
-                    "layer": "resource"
+                    "layer": "resource",
+                    "durationMs": 0.296
                 }
             }
         },
@@ -994,7 +1003,7 @@ manual_purge uri=app://self/value
             "context": {
                 "uri": "app://self/value"
             },
-            "events": [
+            "log": [
                 {
                     "id": "invalidate_2",
                     "type": "invalidate",
@@ -1028,25 +1037,25 @@ C3 Akamai flavor -> cdn_headers: Akamai-Cache-Control=max-age=31536000, keys in 
 get uri=page://self/html/blog-posting
 ├── cache_miss layer=donut [event]
 ├── put_donut uri=page://self/html/blog-posting [event]
-├── cdn_headers uri=page://self/html/blog-posting surrogateKeys=[blog-posting-page, _html_blog-posting_ +2 items] [event]
-├── pre_write_cleanup uri=page://self/html/blog-posting [event]
-├── invalidate tags=[_html_blog-posting_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
-├── save_etag uri=page://self/html/blog-posting etag="4066413688" tags=[_html_blog-posting_] saved=true [event]
-├── save_donut_view uri=page://self/html/blog-posting tags=[_html_blog-posting_] saved=true [event]
-├── save_donut uri=page://self/html/blog-posting tags=[_html_blog-posting_, blog-posting-page] saved=true [event]
 ├── get uri=page://self/html/comment
 │   ├── pre_write_cleanup uri=page://self/html/comment [event]
 │   ├── invalidate tags=[_html_comment_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 │   ├── cache_policy uri=page://self/html/comment expiry=never resolvedTtl=31536000 [event]
 │   ├── save_etag uri=page://self/html/comment etag="1889150619" tags=[comment01, _html_comment_] requestedTtl=31536000 (+1 more) [event]
 │   ├── save_value uri=page://self/html/comment tags=[_html_comment_, comment01] requestedTtl=31536000 saved=true [event]
-│   └── layer=resource
-└── layer=donut-view
+│   └── cache_miss layer=resource durationMs=0.384
+├── cdn_headers uri=page://self/html/blog-posting surrogateKeys=[blog-posting-page, _html_blog-posting_ +2 items] [event]
+├── pre_write_cleanup uri=page://self/html/blog-posting [event]
+├── invalidate tags=[_html_blog-posting_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
+├── save_etag uri=page://self/html/blog-posting etag="4066413688" tags=[blog-posting-page, _html_blog-posting_ +2 items] saved=true [event]
+├── save_donut_view uri=page://self/html/blog-posting tags=[_html_blog-posting_, blog-posting-page +2 items] saved=true [event]
+├── save_donut uri=page://self/html/blog-posting tags=[_html_blog-posting_, blog-posting-page] saved=true [event]
+└── cache_miss layer=donut-view durationMs=1.584
 
 === Cache Log JSON — C3. Akamai CDN headers ===
 {
     "$schema": "https://koriym.github.io/Koriym.SemanticLogger/schemas/semantic-log.json",
-    "open": [
+    "log": [
         {
             "id": "get_1",
             "type": "get",
@@ -1054,7 +1063,26 @@ get uri=page://self/html/blog-posting
             "context": {
                 "uri": "page://self/html/blog-posting"
             },
-            "open": [
+            "log": [
+                {
+                    "id": "cache_miss_1",
+                    "type": "cache_miss",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
+                    "context": {
+                        "layer": "donut",
+                        "durationMs": null
+                    }
+                },
+                {
+                    "id": "put_donut_1",
+                    "type": "put_donut",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/put_donut.json",
+                    "context": {
+                        "uri": "page://self/html/blog-posting",
+                        "requestedTtl": null,
+                        "sMaxAge": null
+                    }
+                },
                 {
                     "id": "get_2",
                     "type": "get",
@@ -1062,7 +1090,7 @@ get uri=page://self/html/blog-posting
                     "context": {
                         "uri": "page://self/html/comment"
                     },
-                    "events": [
+                    "log": [
                         {
                             "id": "pre_write_cleanup_1",
                             "type": "pre_write_cleanup",
@@ -1082,7 +1110,7 @@ get uri=page://self/html/blog-posting
                                 "roPool": "invalidated",
                                 "etagPool": "invalidated",
                                 "cdn": "skipped",
-                                "durationMs": 0.007
+                                "durationMs": 0.004
                             }
                         },
                         {
@@ -1132,28 +1160,9 @@ get uri=page://self/html/blog-posting
                         "type": "cache_miss",
                         "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
                         "context": {
-                            "layer": "resource"
+                            "layer": "resource",
+                            "durationMs": 0.384
                         }
-                    }
-                }
-            ],
-            "events": [
-                {
-                    "id": "cache_miss_1",
-                    "type": "cache_miss",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
-                    "context": {
-                        "layer": "donut"
-                    }
-                },
-                {
-                    "id": "put_donut_1",
-                    "type": "put_donut",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/put_donut.json",
-                    "context": {
-                        "uri": "page://self/html/blog-posting",
-                        "requestedTtl": null,
-                        "sMaxAge": null
                     }
                 },
                 {
@@ -1193,7 +1202,7 @@ get uri=page://self/html/blog-posting
                         "roPool": "invalidated",
                         "etagPool": "invalidated",
                         "cdn": "skipped",
-                        "durationMs": 0.003
+                        "durationMs": 0.004
                     }
                 },
                 {
@@ -1204,7 +1213,10 @@ get uri=page://self/html/blog-posting
                         "uri": "page://self/html/blog-posting",
                         "etag": "\"4066413688\"",
                         "tags": [
-                            "_html_blog-posting_"
+                            "blog-posting-page",
+                            "_html_blog-posting_",
+                            "_html_comment_",
+                            "comment01"
                         ],
                         "requestedTtl": null,
                         "saved": true
@@ -1217,7 +1229,10 @@ get uri=page://self/html/blog-posting
                     "context": {
                         "uri": "page://self/html/blog-posting",
                         "tags": [
-                            "_html_blog-posting_"
+                            "_html_blog-posting_",
+                            "blog-posting-page",
+                            "_html_comment_",
+                            "comment01"
                         ],
                         "requestedTtl": null,
                         "saved": true
@@ -1243,7 +1258,8 @@ get uri=page://self/html/blog-posting
                 "type": "cache_miss",
                 "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
                 "context": {
-                    "layer": "donut-view"
+                    "layer": "donut-view",
+                    "durationMs": 1.584
                 }
             }
         }
@@ -1258,28 +1274,28 @@ get uri=app://self/value
 ├── pre_write_cleanup uri=app://self/value [event]
 ├── invalidate tags=[_value_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 ├── cache_policy uri=app://self/value expiry=never resolvedTtl=31536000 [event]
-├── save_etag uri=app://self/value etag="1727834961" tags=[_value_] requestedTtl=31536000 (+1 more) [event]
+├── save_etag uri=app://self/value etag="711014647" tags=[_value_] requestedTtl=31536000 (+1 more) [event]
 ├── save_value uri=app://self/value tags=[_value_] requestedTtl=31536000 saved=false [event]
-└── layer=resource
+└── cache_miss layer=resource durationMs=0.068
 get uri=app://self/view
 ├── pre_write_cleanup uri=app://self/view [event]
 ├── invalidate tags=[_view_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 ├── cache_policy uri=app://self/view expiry=never resolvedTtl=31536000 [event]
-├── save_etag uri=app://self/view etag="3097302823" tags=[_view_] requestedTtl=31536000 (+1 more) [event]
+├── save_etag uri=app://self/view etag="3606779895" tags=[_view_] requestedTtl=31536000 (+1 more) [event]
 ├── save_view uri=app://self/view tags=[_view_] requestedTtl=31536000 saved=false [event]
-└── layer=resource
+└── cache_miss layer=resource durationMs=0.06
 manual_store uri=app://self/value
 ├── pre_write_cleanup uri=app://self/value [event]
 ├── invalidate tags=[_value_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 ├── cache_policy uri=app://self/value expiry=never resolvedTtl=31536000 [event]
-├── save_etag uri=app://self/value etag="1727834961" tags=[_value_] requestedTtl=31536000 (+1 more) [event]
+├── save_etag uri=app://self/value etag="711014647" tags=[_value_] requestedTtl=31536000 (+1 more) [event]
 ├── save_value uri=app://self/value tags=[_value_] requestedTtl=31536000 saved=false [event]
-└── result=failed
+└── manual_store_result result=failed
 
 === Cache Log JSON — D. write-refusing pool ===
 {
     "$schema": "https://koriym.github.io/Koriym.SemanticLogger/schemas/semantic-log.json",
-    "open": [
+    "log": [
         {
             "id": "get_1",
             "type": "get",
@@ -1287,7 +1303,7 @@ manual_store uri=app://self/value
             "context": {
                 "uri": "app://self/value"
             },
-            "events": [
+            "log": [
                 {
                     "id": "pre_write_cleanup_1",
                     "type": "pre_write_cleanup",
@@ -1307,7 +1323,7 @@ manual_store uri=app://self/value
                         "roPool": "invalidated",
                         "etagPool": "invalidated",
                         "cdn": "skipped",
-                        "durationMs": 0.005
+                        "durationMs": 0.004
                     }
                 },
                 {
@@ -1328,7 +1344,7 @@ manual_store uri=app://self/value
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                     "context": {
                         "uri": "app://self/value",
-                        "etag": "\"1727834961\"",
+                        "etag": "\"711014647\"",
                         "tags": [
                             "_value_"
                         ],
@@ -1355,7 +1371,8 @@ manual_store uri=app://self/value
                 "type": "cache_miss",
                 "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
                 "context": {
-                    "layer": "resource"
+                    "layer": "resource",
+                    "durationMs": 0.068
                 }
             }
         },
@@ -1366,7 +1383,7 @@ manual_store uri=app://self/value
             "context": {
                 "uri": "app://self/view"
             },
-            "events": [
+            "log": [
                 {
                     "id": "pre_write_cleanup_2",
                     "type": "pre_write_cleanup",
@@ -1386,7 +1403,7 @@ manual_store uri=app://self/value
                         "roPool": "invalidated",
                         "etagPool": "invalidated",
                         "cdn": "skipped",
-                        "durationMs": 0.003
+                        "durationMs": 0.004
                     }
                 },
                 {
@@ -1407,7 +1424,7 @@ manual_store uri=app://self/value
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                     "context": {
                         "uri": "app://self/view",
-                        "etag": "\"3097302823\"",
+                        "etag": "\"3606779895\"",
                         "tags": [
                             "_view_"
                         ],
@@ -1434,7 +1451,8 @@ manual_store uri=app://self/value
                 "type": "cache_miss",
                 "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
                 "context": {
-                    "layer": "resource"
+                    "layer": "resource",
+                    "durationMs": 0.06
                 }
             }
         },
@@ -1445,7 +1463,7 @@ manual_store uri=app://self/value
             "context": {
                 "uri": "app://self/value"
             },
-            "events": [
+            "log": [
                 {
                     "id": "pre_write_cleanup_3",
                     "type": "pre_write_cleanup",
@@ -1486,7 +1504,7 @@ manual_store uri=app://self/value
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                     "context": {
                         "uri": "app://self/value",
-                        "etag": "\"1727834961\"",
+                        "etag": "\"711014647\"",
                         "tags": [
                             "_value_"
                         ],
@@ -1526,25 +1544,25 @@ E  GET donut page -> save_donut / save_donut_view saved=false
 get uri=page://self/html/blog-posting
 ├── cache_miss layer=donut [event]
 ├── put_donut uri=page://self/html/blog-posting [event]
-├── cdn_headers uri=page://self/html/blog-posting surrogateKeys=[blog-posting-page, _html_blog-posting_ +2 items] [event]
-├── pre_write_cleanup uri=page://self/html/blog-posting [event]
-├── invalidate tags=[_html_blog-posting_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
-├── save_etag uri=page://self/html/blog-posting etag="4066413688" tags=[blog-posting-page, _html_blog-posting_ +2 items] saved=false [event]
-├── save_donut_view uri=page://self/html/blog-posting tags=[_html_blog-posting_, blog-posting-page +2 items] saved=false [event]
-├── save_donut uri=page://self/html/blog-posting tags=[_html_blog-posting_, blog-posting-page] saved=false [event]
 ├── get uri=page://self/html/comment
 │   ├── pre_write_cleanup uri=page://self/html/comment [event]
 │   ├── invalidate tags=[_html_comment_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 │   ├── cache_policy uri=page://self/html/comment expiry=never resolvedTtl=31536000 [event]
 │   ├── save_etag uri=page://self/html/comment etag="1889150619" tags=[comment01, _html_comment_] requestedTtl=31536000 (+1 more) [event]
 │   ├── save_value uri=page://self/html/comment tags=[_html_comment_, comment01] requestedTtl=31536000 saved=false [event]
-│   └── layer=resource
-└── layer=donut-view
+│   └── cache_miss layer=resource durationMs=0.344
+├── cdn_headers uri=page://self/html/blog-posting surrogateKeys=[blog-posting-page, _html_blog-posting_ +2 items] [event]
+├── pre_write_cleanup uri=page://self/html/blog-posting [event]
+├── invalidate tags=[_html_blog-posting_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
+├── save_etag uri=page://self/html/blog-posting etag="4066413688" tags=[blog-posting-page, _html_blog-posting_ +2 items] saved=false [event]
+├── save_donut_view uri=page://self/html/blog-posting tags=[_html_blog-posting_, blog-posting-page +2 items] saved=false [event]
+├── save_donut uri=page://self/html/blog-posting tags=[_html_blog-posting_, blog-posting-page] saved=false [event]
+└── cache_miss layer=donut-view durationMs=0.852
 
 === Cache Log JSON — E. donut writes refused ===
 {
     "$schema": "https://koriym.github.io/Koriym.SemanticLogger/schemas/semantic-log.json",
-    "open": [
+    "log": [
         {
             "id": "get_1",
             "type": "get",
@@ -1552,7 +1570,26 @@ get uri=page://self/html/blog-posting
             "context": {
                 "uri": "page://self/html/blog-posting"
             },
-            "open": [
+            "log": [
+                {
+                    "id": "cache_miss_1",
+                    "type": "cache_miss",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
+                    "context": {
+                        "layer": "donut",
+                        "durationMs": null
+                    }
+                },
+                {
+                    "id": "put_donut_1",
+                    "type": "put_donut",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/put_donut.json",
+                    "context": {
+                        "uri": "page://self/html/blog-posting",
+                        "requestedTtl": null,
+                        "sMaxAge": null
+                    }
+                },
                 {
                     "id": "get_2",
                     "type": "get",
@@ -1560,7 +1597,7 @@ get uri=page://self/html/blog-posting
                     "context": {
                         "uri": "page://self/html/comment"
                     },
-                    "events": [
+                    "log": [
                         {
                             "id": "pre_write_cleanup_1",
                             "type": "pre_write_cleanup",
@@ -1580,7 +1617,7 @@ get uri=page://self/html/blog-posting
                                 "roPool": "invalidated",
                                 "etagPool": "invalidated",
                                 "cdn": "skipped",
-                                "durationMs": 0.006
+                                "durationMs": 0.004
                             }
                         },
                         {
@@ -1630,28 +1667,9 @@ get uri=page://self/html/blog-posting
                         "type": "cache_miss",
                         "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
                         "context": {
-                            "layer": "resource"
+                            "layer": "resource",
+                            "durationMs": 0.344
                         }
-                    }
-                }
-            ],
-            "events": [
-                {
-                    "id": "cache_miss_1",
-                    "type": "cache_miss",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
-                    "context": {
-                        "layer": "donut"
-                    }
-                },
-                {
-                    "id": "put_donut_1",
-                    "type": "put_donut",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/put_donut.json",
-                    "context": {
-                        "uri": "page://self/html/blog-posting",
-                        "requestedTtl": null,
-                        "sMaxAge": null
                     }
                 },
                 {
@@ -1691,7 +1709,7 @@ get uri=page://self/html/blog-posting
                         "roPool": "invalidated",
                         "etagPool": "invalidated",
                         "cdn": "skipped",
-                        "durationMs": 0.003
+                        "durationMs": 0.004
                     }
                 },
                 {
@@ -1747,7 +1765,8 @@ get uri=page://self/html/blog-posting
                 "type": "cache_miss",
                 "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
                 "context": {
-                    "layer": "donut-view"
+                    "layer": "donut-view",
+                    "durationMs": 0.852
                 }
             }
         }
@@ -1759,12 +1778,12 @@ F  invalidateTags() on pools that refuse it -> roPool=failed etagPool=failed
 === Cache Log Tree — F. invalidation refused ===
 manual_invalidate tags=[_demo_stuck_tag_]
 ├── invalidate tags=[_demo_stuck_tag_] roPool=failed etagPool=failed cdn=skipped (+1 more) [event]
-└── result=failed
+└── manual_invalidate_result result=failed
 
 === Cache Log JSON — F. invalidation refused ===
 {
     "$schema": "https://koriym.github.io/Koriym.SemanticLogger/schemas/semantic-log.json",
-    "open": [
+    "log": [
         {
             "id": "manual_invalidate_1",
             "type": "manual_invalidate",
@@ -1774,7 +1793,7 @@ manual_invalidate tags=[_demo_stuck_tag_]
                     "_demo_stuck_tag_"
                 ]
             },
-            "events": [
+            "log": [
                 {
                     "id": "invalidate_1",
                     "type": "invalidate",
@@ -1808,41 +1827,41 @@ G1 DELETE a whole-page donut resource -> command{source: DonutCommandInterceptor
 get uri=page://self/html/blog-posting?id=0
 ├── cache_miss layer=donut [event]
 ├── put_donut uri=page://self/html/blog-posting?id=0 [event]
-├── cdn_headers uri=page://self/html/blog-posting?id=0 surrogateKeys=[blog-posting-page +3 items] [event]
-├── pre_write_cleanup uri=page://self/html/blog-posting?id=0 [event]
-├── invalidate tags=[_html_blog-posting_id=0] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
-├── save_etag uri=page://self/html/blog-posting?id=0 etag="2699203007" tags=[blog-posting-page +3 items] saved=true [event]
-├── save_donut_view uri=page://self/html/blog-posting?id=0 tags=[_html_blog-posting_id=0 +3 items] saved=true [event]
-├── save_donut uri=page://self/html/blog-posting?id=0 tags=[_html_blog-posting_id=0 +1 items] saved=true [event]
 ├── get uri=page://self/html/comment
 │   ├── pre_write_cleanup uri=page://self/html/comment [event]
 │   ├── invalidate tags=[_html_comment_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 │   ├── cache_policy uri=page://self/html/comment expiry=never resolvedTtl=31536000 [event]
 │   ├── save_etag uri=page://self/html/comment etag="1889150619" tags=[comment01, _html_comment_] requestedTtl=31536000 (+1 more) [event]
 │   ├── save_value uri=page://self/html/comment tags=[_html_comment_, comment01] requestedTtl=31536000 saved=true [event]
-│   └── layer=resource
-└── layer=donut-view
+│   └── cache_miss layer=resource durationMs=0.369
+├── cdn_headers uri=page://self/html/blog-posting?id=0 surrogateKeys=[blog-posting-page +3 items] [event]
+├── pre_write_cleanup uri=page://self/html/blog-posting?id=0 [event]
+├── invalidate tags=[_html_blog-posting_id=0] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
+├── save_etag uri=page://self/html/blog-posting?id=0 etag="2699203007" tags=[blog-posting-page +3 items] saved=true [event]
+├── save_donut_view uri=page://self/html/blog-posting?id=0 tags=[_html_blog-posting_id=0 +3 items] saved=true [event]
+├── save_donut uri=page://self/html/blog-posting?id=0 tags=[_html_blog-posting_id=0 +1 items] saved=true [event]
+└── cache_miss layer=donut-view durationMs=0.921
 command method=onDelete source=DonutCommandInterceptor
 ├── purge uri=page://self/html/blog-posting?id=0 [event]
 ├── invalidate tags=[_html_blog-posting_id=0] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 ├── get uri=page://self/html/blog-posting?id=0
 │   ├── cache_miss layer=donut [event]
 │   ├── put_donut uri=page://self/html/blog-posting?id=0 [event]
+│   ├── get uri=page://self/html/comment
+│   │   └── cache_hit layer=resource durationMs=0.011
 │   ├── cdn_headers uri=page://self/html/blog-posting?id=0 surrogateKeys=[blog-posting-page +3 items] [event]
 │   ├── pre_write_cleanup uri=page://self/html/blog-posting?id=0 [event]
 │   ├── invalidate tags=[_html_blog-posting_id=0] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 │   ├── save_etag uri=page://self/html/blog-posting?id=0 etag="2699203007" tags=[blog-posting-page +3 items] saved=true [event]
 │   ├── save_donut_view uri=page://self/html/blog-posting?id=0 tags=[_html_blog-posting_id=0 +3 items] saved=true [event]
 │   ├── save_donut uri=page://self/html/blog-posting?id=0 tags=[_html_blog-posting_id=0 +1 items] saved=true [event]
-│   ├── get uri=page://self/html/comment
-│   │   └── layer=resource
-│   └── layer=donut-view
-└── code=200
+│   └── cache_miss layer=donut-view durationMs=0.231
+└── command_result code=200
 
 === Cache Log JSON — G1. donut command ===
 {
     "$schema": "https://koriym.github.io/Koriym.SemanticLogger/schemas/semantic-log.json",
-    "open": [
+    "log": [
         {
             "id": "get_1",
             "type": "get",
@@ -1850,7 +1869,26 @@ command method=onDelete source=DonutCommandInterceptor
             "context": {
                 "uri": "page://self/html/blog-posting?id=0"
             },
-            "open": [
+            "log": [
+                {
+                    "id": "cache_miss_1",
+                    "type": "cache_miss",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
+                    "context": {
+                        "layer": "donut",
+                        "durationMs": null
+                    }
+                },
+                {
+                    "id": "put_donut_1",
+                    "type": "put_donut",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/put_donut.json",
+                    "context": {
+                        "uri": "page://self/html/blog-posting?id=0",
+                        "requestedTtl": null,
+                        "sMaxAge": null
+                    }
+                },
                 {
                     "id": "get_2",
                     "type": "get",
@@ -1858,7 +1896,7 @@ command method=onDelete source=DonutCommandInterceptor
                     "context": {
                         "uri": "page://self/html/comment"
                     },
-                    "events": [
+                    "log": [
                         {
                             "id": "pre_write_cleanup_1",
                             "type": "pre_write_cleanup",
@@ -1878,7 +1916,7 @@ command method=onDelete source=DonutCommandInterceptor
                                 "roPool": "invalidated",
                                 "etagPool": "invalidated",
                                 "cdn": "skipped",
-                                "durationMs": 0.012
+                                "durationMs": 0.004
                             }
                         },
                         {
@@ -1928,28 +1966,9 @@ command method=onDelete source=DonutCommandInterceptor
                         "type": "cache_miss",
                         "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
                         "context": {
-                            "layer": "resource"
+                            "layer": "resource",
+                            "durationMs": 0.369
                         }
-                    }
-                }
-            ],
-            "events": [
-                {
-                    "id": "cache_miss_1",
-                    "type": "cache_miss",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
-                    "context": {
-                        "layer": "donut"
-                    }
-                },
-                {
-                    "id": "put_donut_1",
-                    "type": "put_donut",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/put_donut.json",
-                    "context": {
-                        "uri": "page://self/html/blog-posting?id=0",
-                        "requestedTtl": null,
-                        "sMaxAge": null
                     }
                 },
                 {
@@ -1989,7 +2008,7 @@ command method=onDelete source=DonutCommandInterceptor
                         "roPool": "invalidated",
                         "etagPool": "invalidated",
                         "cdn": "skipped",
-                        "durationMs": 0.005
+                        "durationMs": 0.004
                     }
                 },
                 {
@@ -2045,7 +2064,8 @@ command method=onDelete source=DonutCommandInterceptor
                 "type": "cache_miss",
                 "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
                 "context": {
-                    "layer": "donut-view"
+                    "layer": "donut-view",
+                    "durationMs": 0.921
                 }
             }
         },
@@ -2058,7 +2078,29 @@ command method=onDelete source=DonutCommandInterceptor
                 "annotations": [],
                 "source": "DonutCommandInterceptor"
             },
-            "open": [
+            "log": [
+                {
+                    "id": "purge_1",
+                    "type": "purge",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/purge.json",
+                    "context": {
+                        "uri": "page://self/html/blog-posting?id=0"
+                    }
+                },
+                {
+                    "id": "invalidate_3",
+                    "type": "invalidate",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/invalidate.json",
+                    "context": {
+                        "tags": [
+                            "_html_blog-posting_id=0"
+                        ],
+                        "roPool": "invalidated",
+                        "etagPool": "invalidated",
+                        "cdn": "skipped",
+                        "durationMs": 0.003
+                    }
+                },
                 {
                     "id": "get_3",
                     "type": "get",
@@ -2066,7 +2108,26 @@ command method=onDelete source=DonutCommandInterceptor
                     "context": {
                         "uri": "page://self/html/blog-posting?id=0"
                     },
-                    "open": [
+                    "log": [
+                        {
+                            "id": "cache_miss_4",
+                            "type": "cache_miss",
+                            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
+                            "context": {
+                                "layer": "donut",
+                                "durationMs": null
+                            }
+                        },
+                        {
+                            "id": "put_donut_2",
+                            "type": "put_donut",
+                            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/put_donut.json",
+                            "context": {
+                                "uri": "page://self/html/blog-posting?id=0",
+                                "requestedTtl": null,
+                                "sMaxAge": null
+                            }
+                        },
                         {
                             "id": "get_4",
                             "type": "get",
@@ -2079,28 +2140,9 @@ command method=onDelete source=DonutCommandInterceptor
                                 "type": "cache_hit",
                                 "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_hit.json",
                                 "context": {
-                                    "layer": "resource"
+                                    "layer": "resource",
+                                    "durationMs": 0.011
                                 }
-                            }
-                        }
-                    ],
-                    "events": [
-                        {
-                            "id": "cache_miss_4",
-                            "type": "cache_miss",
-                            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
-                            "context": {
-                                "layer": "donut"
-                            }
-                        },
-                        {
-                            "id": "put_donut_2",
-                            "type": "put_donut",
-                            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/put_donut.json",
-                            "context": {
-                                "uri": "page://self/html/blog-posting?id=0",
-                                "requestedTtl": null,
-                                "sMaxAge": null
                             }
                         },
                         {
@@ -2196,32 +2238,9 @@ command method=onDelete source=DonutCommandInterceptor
                         "type": "cache_miss",
                         "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
                         "context": {
-                            "layer": "donut-view"
+                            "layer": "donut-view",
+                            "durationMs": 0.231
                         }
-                    }
-                }
-            ],
-            "events": [
-                {
-                    "id": "purge_1",
-                    "type": "purge",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/purge.json",
-                    "context": {
-                        "uri": "page://self/html/blog-posting?id=0"
-                    }
-                },
-                {
-                    "id": "invalidate_3",
-                    "type": "invalidate",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/invalidate.json",
-                    "context": {
-                        "tags": [
-                            "_html_blog-posting_id=0"
-                        ],
-                        "roPool": "invalidated",
-                        "etagPool": "invalidated",
-                        "cdn": "skipped",
-                        "durationMs": 0.003
                     }
                 }
             ],
@@ -2247,12 +2266,12 @@ command method=onPut annotations=[1 items] source=RefreshInterceptor
 ├── invalidate tags=[_refresh-dest_id=1] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 ├── save_etag uri=app://self/refresh-dest?id=1 etag="85792652" tags=[_refresh-dest_id=1] saved=true [event]
 ├── save_value uri=app://self/refresh-dest?id=1 tags=[_refresh-dest_id=1] saved=true [event]
-└── code=200
+└── command_result code=200
 
 === Cache Log JSON — G2. refresh command ===
 {
     "$schema": "https://koriym.github.io/Koriym.SemanticLogger/schemas/semantic-log.json",
-    "open": [
+    "log": [
         {
             "id": "command_1",
             "type": "command",
@@ -2267,7 +2286,7 @@ command method=onPut annotations=[1 items] source=RefreshInterceptor
                 ],
                 "source": "RefreshInterceptor"
             },
-            "events": [
+            "log": [
                 {
                     "id": "purge_1",
                     "type": "purge",
@@ -2287,7 +2306,7 @@ command method=onPut annotations=[1 items] source=RefreshInterceptor
                         "roPool": "invalidated",
                         "etagPool": "invalidated",
                         "cdn": "skipped",
-                        "durationMs": 0.009
+                        "durationMs": 0.005
                     }
                 },
                 {
@@ -2360,12 +2379,12 @@ command method=onPut annotations=[2 items] source=RefreshInterceptor
 ├── invalidate tags=[_dep_purge-src_id=1] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 ├── purge uri=page://self/dep/level-two [event]
 ├── invalidate tags=[_dep_level-two_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
-└── code=200
+└── command_result code=200
 
 === Cache Log JSON — G3. purge-only command ===
 {
     "$schema": "https://koriym.github.io/Koriym.SemanticLogger/schemas/semantic-log.json",
-    "open": [
+    "log": [
         {
             "id": "command_1",
             "type": "command",
@@ -2384,7 +2403,7 @@ command method=onPut annotations=[2 items] source=RefreshInterceptor
                 ],
                 "source": "RefreshInterceptor"
             },
-            "events": [
+            "log": [
                 {
                     "id": "purge_1",
                     "type": "purge",
@@ -2446,18 +2465,18 @@ H  GET a #[Cacheable(expirySecond: 10), HttpCache(isPrivate: true)] resource -> 
    the save events carry requestedTtl=10, not the 31536000 `never` placeholder
 
 === Cache Log Tree — H. finite TTL ===
-get uri=app://self/http-cache-control-with-cache…
-├── pre_write_cleanup uri=app://self/http-cache-control-with-cache… [event]
+get uri=app://self/http-cache-control-with-cache...(+4)
+├── pre_write_cleanup uri=app://self/http-cache-control-with-cache...(+4) [event]
 ├── invalidate tags=[_http-cache-control-with-cacheable_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
-├── cache_policy uri=app://self/http-cache-control-with-cache… expirySecond=10 resolvedTtl=10 [event]
-├── save_etag uri=app://self/http-cache-control-with-cache… etag="3810187743" tags=[_http-cache-control-with-cacheable_] requestedTtl=10 (+1 more) [event]
-├── save_value uri=app://self/http-cache-control-with-cache… tags=[_http-cache-control-with-cacheable_] requestedTtl=10 saved=true [event]
-└── layer=resource
+├── cache_policy uri=app://self/http-cache-control-with-cache...(+4) expirySecond=10 resolvedTtl=10 [event]
+├── save_etag uri=app://self/http-cache-control-with-cache...(+4) etag="3810187743" tags=[_http-cache-control-with-cacheable_] requestedTtl=10 (+1 more) [event]
+├── save_value uri=app://self/http-cache-control-with-cache...(+4) tags=[_http-cache-control-with-cacheable_] requestedTtl=10 saved=true [event]
+└── cache_miss layer=resource durationMs=0.093
 
 === Cache Log JSON — H. finite TTL ===
 {
     "$schema": "https://koriym.github.io/Koriym.SemanticLogger/schemas/semantic-log.json",
-    "open": [
+    "log": [
         {
             "id": "get_1",
             "type": "get",
@@ -2465,7 +2484,7 @@ get uri=app://self/http-cache-control-with-cache…
             "context": {
                 "uri": "app://self/http-cache-control-with-cacheable"
             },
-            "events": [
+            "log": [
                 {
                     "id": "pre_write_cleanup_1",
                     "type": "pre_write_cleanup",
@@ -2533,7 +2552,8 @@ get uri=app://self/http-cache-control-with-cache…
                 "type": "cache_miss",
                 "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
                 "context": {
-                    "layer": "resource"
+                    "layer": "resource",
+                    "durationMs": 0.093
                 }
             }
         }
@@ -2553,12 +2573,12 @@ manual_store uri=page://self/html/blog-posting?id=0
 ├── save_etag uri=page://self/html/blog-posting?id=0 etag="2699203007" tags=[blog-posting-page +3 items] requestedTtl=30 (+1 more) [event]
 ├── save_donut_view uri=page://self/html/blog-posting?id=0 tags=[_html_blog-posting_id=0 +3 items] requestedTtl=30 saved=true [event]
 ├── save_donut uri=page://self/html/blog-posting?id=0 tags=[_html_blog-posting_id=0 +3 items] requestedTtl=60 saved=true [event]
-└── result=stored
+└── manual_store_result result=stored
 
 === Cache Log JSON — I. donut write through the repository API ===
 {
     "$schema": "https://koriym.github.io/Koriym.SemanticLogger/schemas/semantic-log.json",
-    "open": [
+    "log": [
         {
             "id": "manual_store_1",
             "type": "manual_store",
@@ -2566,7 +2586,7 @@ manual_store uri=page://self/html/blog-posting?id=0
             "context": {
                 "uri": "page://self/html/blog-posting?id=0"
             },
-            "events": [
+            "log": [
                 {
                     "id": "put_donut_1",
                     "type": "put_donut",
@@ -2685,24 +2705,24 @@ J  GET app://self/value -> 200 served live while the store is unreachable:
 
 === Cache Log Tree — J. the store is down and says so ===
 get uri=app://self/value
-├── pool_error key=ro-_value_ operation=read error=Redis connection failed: Connection refu… exceptionClass=InvalidArgumentException [event]
+├── pool_error key=ro-_value_ operation=read error=Redis connection failed: Connection refu...(+3) exceptionClass=InvalidArgumentException [event]
 ├── pre_write_cleanup uri=app://self/value [event]
-├── pool_error operation=write error=Redis connection failed: Connection refu… exceptionClass=InvalidArgumentException [event]
-├── pool_error operation=write error=Redis connection failed: Connection refu… exceptionClass=InvalidArgumentException [event]
+├── pool_error operation=write error=Redis connection failed: Connection refu...(+3) exceptionClass=InvalidArgumentException [event]
+├── pool_error operation=write error=Redis connection failed: Connection refu...(+3) exceptionClass=InvalidArgumentException [event]
 ├── invalidate tags=[_value_] roPool=failed etagPool=failed cdn=skipped (+1 more) [event]
 ├── cache_policy uri=app://self/value expiry=never resolvedTtl=31536000 [event]
-├── pool_error key=174171846 operation=read error=Redis connection failed: Connection refu… exceptionClass=InvalidArgumentException [event]
-├── pool_error key=174171846 operation=write error=Redis connection failed: Connection refu… exceptionClass=InvalidArgumentException [event]
-├── save_etag uri=app://self/value etag="174171846" tags=[_value_] requestedTtl=31536000 (+1 more) [event]
-├── pool_error key=ro-_value_ operation=read error=Redis connection failed: Connection refu… exceptionClass=InvalidArgumentException [event]
-├── pool_error key=ro-_value_ operation=write error=Redis connection failed: Connection refu… exceptionClass=InvalidArgumentException [event]
+├── pool_error key=3500272762 operation=read error=Redis connection failed: Connection refu...(+3) exceptionClass=InvalidArgumentException [event]
+├── pool_error key=3500272762 operation=write error=Redis connection failed: Connection refu...(+3) exceptionClass=InvalidArgumentException [event]
+├── save_etag uri=app://self/value etag="3500272762" tags=[_value_] requestedTtl=31536000 (+1 more) [event]
+├── pool_error key=ro-_value_ operation=read error=Redis connection failed: Connection refu...(+3) exceptionClass=InvalidArgumentException [event]
+├── pool_error key=ro-_value_ operation=write error=Redis connection failed: Connection refu...(+3) exceptionClass=InvalidArgumentException [event]
 ├── save_value uri=app://self/value tags=[_value_] requestedTtl=31536000 saved=false [event]
-└── layer=resource
+└── cache_miss layer=resource durationMs=1.368
 
 === Cache Log JSON — J. the store is down and says so ===
 {
     "$schema": "https://koriym.github.io/Koriym.SemanticLogger/schemas/semantic-log.json",
-    "open": [
+    "log": [
         {
             "id": "get_1",
             "type": "get",
@@ -2710,7 +2730,7 @@ get uri=app://self/value
             "context": {
                 "uri": "app://self/value"
             },
-            "events": [
+            "log": [
                 {
                     "id": "pool_error_1",
                     "type": "pool_error",
@@ -2783,7 +2803,7 @@ get uri=app://self/value
                     "type": "pool_error",
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/pool_error.json",
                     "context": {
-                        "key": "174171846",
+                        "key": "3500272762",
                         "operation": "read",
                         "error": "Redis connection failed: Connection refused",
                         "exceptionClass": "Symfony\\Component\\Cache\\Exception\\InvalidArgumentException"
@@ -2794,7 +2814,7 @@ get uri=app://self/value
                     "type": "pool_error",
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/pool_error.json",
                     "context": {
-                        "key": "174171846",
+                        "key": "3500272762",
                         "operation": "write",
                         "error": "Redis connection failed: Connection refused",
                         "exceptionClass": "Symfony\\Component\\Cache\\Exception\\InvalidArgumentException"
@@ -2806,7 +2826,7 @@ get uri=app://self/value
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                     "context": {
                         "uri": "app://self/value",
-                        "etag": "\"174171846\"",
+                        "etag": "\"3500272762\"",
                         "tags": [
                             "_value_"
                         ],
@@ -2855,7 +2875,8 @@ get uri=app://self/value
                 "type": "cache_miss",
                 "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
                 "context": {
-                    "layer": "resource"
+                    "layer": "resource",
+                    "durationMs": 1.368
                 }
             }
         }

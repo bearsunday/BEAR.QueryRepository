@@ -189,9 +189,7 @@ class DonutRepositoryTest extends TestCase
         $this->assertStringContainsString('"result":"stored"', $close);
         // Every event the write emits — the cleanup invalidation included, which therefore
         // no longer roots a manual_invalidate of its own — belongs to that one scope.
-        $rootEvents = [];
-        self::walkEvents($tree['entries'] ?? [], $rootEvents);
-        $this->assertSame([], $rootEvents, 'nothing is left bare at the session root');
+        $this->assertSame([], self::rootPointTypes($tree), 'nothing is left bare at the session root');
         $this->assertSame(
             [['put_donut', 'cdn_headers', 'pre_write_cleanup', 'invalidate', 'save_etag', 'save_donut_view', 'save_donut']],
             self::scopeEventTypeSequences($tree),
@@ -212,9 +210,7 @@ class DonutRepositoryTest extends TestCase
 
         // The un-cacheable sibling of the write above: the page is never stored as a
         // rendered view, so the shape is the same minus the two page-level saves.
-        $rootEvents = [];
-        self::walkEvents($tree['entries'] ?? [], $rootEvents);
-        $this->assertSame([], $rootEvents, 'nothing is left bare at the session root');
+        $this->assertSame([], self::rootPointTypes($tree), 'nothing is left bare at the session root');
         $this->assertSame(
             [['put_donut', 'cdn_headers', 'pre_write_cleanup', 'invalidate', 'save_donut']],
             self::scopeEventTypeSequences($tree),
@@ -251,8 +247,7 @@ class DonutRepositoryTest extends TestCase
         // template no longer has, so the write is recorded as skipped instead.
         $donut = new ResourceDonut('cmt=[le:page://self/html/comment]', [], 30, true, null, null, time() - 5, ['lapsed-tag']);
         $storage->saveDonut($this->uri, $donut, 30, ['lapsed-tag']);
-        $logger->flush(); // drain the seed's own save_donut: this is about the request that follows
-
+        $logger->flush(); // drain the seed write: this test is about the refresh that follows, not the setup
         $page = $resource->get((string) $this->uri);
         $tree = $this->flushAndValidate($logger);
 

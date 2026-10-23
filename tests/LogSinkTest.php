@@ -93,8 +93,8 @@ class LogSinkTest extends TestCase
         $latest = $this->logDir . '/' . LogFileWriter::LATEST;
         $log = json_decode((string) file_get_contents($latest), true);
         $this->assertIsArray($log);
-        $this->assertArrayHasKey('entries', $log);
-        $this->assertNotSame([], $log['entries'], 'the GET scope reached the writer without an explicit flush');
+        $this->assertArrayHasKey('log', $log);
+        $this->assertNotSame([], $log['log'], 'the GET scope reached the writer without an explicit flush');
     }
 
     public function testAnEarlyExitStillWritesItsLog(): void

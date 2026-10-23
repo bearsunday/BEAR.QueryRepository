@@ -30,8 +30,9 @@ use function random_int;
  *    decide the tags, TTLs and CDN keys every later read repeats.
  *  - effects that did not happen: `saved: false`, `invalidate` with `roPool`/`etagPool`/`cdn`
  *    `failed`, a `manual_*` result of `failed`, and `cache_error{operation: write}` - a store or
- *    an invalidation that was aborted. `semantic_logger_error` joins them because it means the
- *    records themselves may be incomplete.
+ *    an invalidation that was aborted. `semantic_logger_error` and `semantic_logger_truncated`
+ *    join them because they mean the records themselves may be incomplete: past the record
+ *    limit a mutation leaves no record, only the truncation point.
  *  - a sample, when a rate is configured.
  *
  * Deliberately not kept: `cache_error{operation: read}` (availability, monitored elsewhere -
@@ -50,8 +51,9 @@ use function random_int;
  * is a `pre_write_cleanup`. Nothing is inferred from tag correlation.
  *
  * The session is read as the decoded public tree - the shape the published schemas describe.
- * That type degrades to a bare map at nested opens (`PublicOpenEntry.children` is `list<JsonMap>`),
- * so the walk narrows every value it reads and suppresses the mixed reads per method.
+ * A record's `log` (`PublicRecord.log`) interleaves its nested events and opens in record order
+ * and degrades to a bare map, so the walk narrows every value it reads and suppresses the mixed
+ * reads per method.
  */
 final class KeepMutationsAndFailures implements RetentionPolicyInterface
 {
@@ -66,6 +68,10 @@ final class KeepMutationsAndFailures implements RetentionPolicyInterface
     #[Override]
     public function keeps(LogJson $log): bool
     {
+        // The document itself is a node: it carries `log` (like any scope's own children)
+        // but no `type`/`context`/`close`, so the mutation-scope and missing-effect checks
+        // below are no-ops on it and only `hasRealInvalidation`/`childIsNotable` apply -
+        // which is exactly what finds a bare root-level invalidate.
         if ($this->isNotable($log->jsonSerialize())) {
             return true;
         }
@@ -103,7 +109,7 @@ final class KeepMutationsAndFailures implements RetentionPolicyInterface
      */
     private function childIsNotable(array $node): bool
     {
-        $children = $node['children'] ?? $node['entries'] ?? null;
+        $children = $node['log'] ?? null;
         if (is_array($children)) {
             foreach ($children as $child) {
                 if (is_array($child) && $this->isNotable($child)) {
@@ -112,28 +118,14 @@ final class KeepMutationsAndFailures implements RetentionPolicyInterface
             }
         }
 
-        return $this->closeIsNotable($node['close'] ?? null);
-    }
+        $close = $node['close'] ?? null;
 
-    /** @psalm-suppress MixedAssignment reading a decoded tree: see the class note */
-    private function closeIsNotable(mixed $close): bool
-    {
-        if (! is_array($close)) {
-            return false;
-        }
-
-        // `close` is one entry on a scope, but a list of orphan closes at the root
-        foreach (isset($close['type']) ? [$close] : $close as $entry) {
-            if (is_array($entry) && $this->isNotable($entry)) {
-                return true;
-            }
-        }
-
-        return false;
+        return is_array($close) && $this->isNotable($close);
     }
 
     /**
-     * An invalidate is pre-write cleanup only when the marker precedes it in this scope
+     * An invalidate is pre-write cleanup only when the marker precedes it among this scope's
+     * own events - nested opens interleaved in `log` are skipped, not reset against
      *
      * Adjacency is among events only: a nested open sitting between two events in `children`
      * (semantic-logger#50's single ordered list) must not break the sequence, the same as it
@@ -145,18 +137,18 @@ final class KeepMutationsAndFailures implements RetentionPolicyInterface
      */
     private function hasRealInvalidation(array $node): bool
     {
-        $children = $node['children'] ?? $node['entries'] ?? null;
+        $children = $node['log'] ?? null;
         if (! is_array($children)) {
             return false;
         }
 
         $previous = null;
         foreach ($children as $child) {
-            if (! is_array($child) || ($child['kind'] ?? null) !== 'event') {
-                continue;
+            if (! is_array($child) || ! $this->isPoint($child)) {
+                continue; // a nested open, not this scope's own event
             }
 
-            // is_array() narrows rather than guards: an event in the public tree is always a map
+            // is_array() narrows rather than guards: a point in the public tree is always a map
             $type = $child['type'] ?? null;
             if ($type === 'invalidate' && $previous !== self::CLEANUP_MARKER) {
                 return true;
@@ -169,13 +161,23 @@ final class KeepMutationsAndFailures implements RetentionPolicyInterface
     }
 
     /**
+     * A record with none of `close`/`log`/`openId` is an event recorded in the active scope
+     *
+     * @param array<mixed, mixed> $record
+     */
+    private function isPoint(array $record): bool
+    {
+        return ! isset($record['close']) && ! isset($record['log']) && ! isset($record['openId']);
+    }
+
+    /**
      * An effect that was intended and did not happen
      *
      * @param array<mixed, mixed> $node
      */
     private function isMissingEffect(array $node, mixed $type): bool
     {
-        if ($type === 'semantic_logger_error') {
+        if ($type === 'semantic_logger_error' || $type === 'semantic_logger_truncated') {
             return true; // the records themselves may be incomplete
         }
 

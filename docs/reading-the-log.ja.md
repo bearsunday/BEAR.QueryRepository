@@ -103,7 +103,7 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 | `cache_hit` / `cache_miss` | `layer`, `durationMs` | 内側の照会。close context では `resource`、`donut-view`、`etag` のいずれかで `durationMs` が入る。`layer: donut` の inner event では `durationMs` は null — donut テンプレートがあったかの判定だけ |
 | `cache_error` | `uri`, `operation`, `error`, `exceptionClass` | キャッシュ経路が throw した |
 | `pool_error` | `key`, `operation`, `error`, `exceptionClass` | バックエンドが操作を拒み、アダプタが握り潰した |
-| `semantic_logger_error` | `kind`, `message`, … | ロガー自体の誤用(コア側の診断で、このパッケージの語彙ではない) |
+| `semantic_logger_error` | `code`, `message`, … | ロガー自体の誤用(コア側の診断で、このパッケージの語彙ではない) |
 
 ## 結果が入るフィールド
 
@@ -278,8 +278,8 @@ command {"method": "onPut", "annotations": [], "source": "CommandInterceptor"}
 
 ## セッションを特定する
 
-セッションは**時刻も request id も持ちません**。ワイヤ形式では `LogJson` は `$schema` / `entries` /
-(任意の、孤立した close のみが入る)`close` / `links` だけです。1 人の顧客のリクエストとセッションを突き合わせるのは、ホストの仕事です:
+セッションは**時刻も request id も持ちません**。`LogJson` の JSON は `$schema` / `log` /
+`links` だけです。1 人の顧客のリクエストとセッションを突き合わせるのは、ホストの仕事です:
 
 | | セッションを特定するもの |
 |---|---|
