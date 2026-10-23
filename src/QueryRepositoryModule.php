@@ -37,6 +37,7 @@ use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
  *  MatchQueryInterface
  *  UncacheableMarkInterface
  *  UnstorableGateInterface
+ *  DeclaredCacheControl
  *
  *  The following module are installed.
  *
@@ -83,6 +84,7 @@ final class QueryRepositoryModule extends AbstractModule
         // One mark per request (see UncacheableMark); issue #222
         $this->bind(UncacheableMarkInterface::class)->to(UncacheableMark::class)->in(Scope::SINGLETON);
         $this->bind(UnstorableGateInterface::class)->to(UnstorableGate::class);
+        $this->bind(DeclaredCacheControl::class);
         // #[Cacheable]
         $this->install(new CacheableModule());
         // #[CacheableResponse]

@@ -150,6 +150,27 @@ class CdnCacheControlHeaderTest extends TestCase
         $this->assertSame('private, no-store', $ro->headers[Header::CACHE_CONTROL]);
     }
 
+    public function testCacheableResponseWithHttpCacheNoStoreStillGetsCdnHeader(): void
+    {
+        // #[HttpCache(noStore: true)] declares its own client-facing Cache-Control: no-store
+        // - a header that equals the declared value is the attribute speaking, not a
+        // per-request value, and must not trip the gate (issue #222 regression guard: 1.x
+        // stored the template/content state and sent CDN headers for this combo).
+        $module = $this->getModule();
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        $resource = $injector->getInstance(ResourceInterface::class);
+
+        $ro = $resource->get('page://self/html/cacheable-response-no-store');
+        $this->assertArrayHasKey(Header::CDN_CACHE_CONTROL, $ro->headers);
+        $this->assertStringContainsString('no-store', $ro->headers[Header::CACHE_CONTROL]);
+
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
+        $logger->flush();
+        $resource->get('page://self/html/cacheable-response-no-store');
+        $tree = $this->flushAndValidate($logger);
+        $this->assertContains('cache_hit', self::collectTypes($tree), 'the content was saved and is being served from the stored page state');
+    }
+
     private function getModule(): AbstractModule
     {
         $namespace = 'FakeVendor\HelloWorld';

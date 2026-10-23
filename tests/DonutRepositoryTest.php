@@ -182,6 +182,44 @@ class DonutRepositoryTest extends TestCase
         $this->assertStringContainsString('"reason":"unstorable"', $putSkipped);
     }
 
+    public function testDonutCacheTemplateSkipsSaveWhenThePageMarksItsOwnBody(): void
+    {
+        // A #[DonutCache] template holds only placeholders for an embedded hole's content -
+        // but a page can also write a per-user value straight into its own body/view,
+        // outside any hole, and that lands in the stored template verbatim (issue #222).
+        $injector = $this->getInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
+
+        // Ordinary (unmarked) first - the shared mark is sticky once set. A normal
+        // #[DonutCache] page still saves its template: the next GET recomposes from it
+        // (refresh_donut), not a fresh donut miss.
+        $resource->get('page://self/html/unstorable-donut-cache-template', ['unstorable' => false]);
+        $logger->flush();
+        $resource->get('page://self/html/unstorable-donut-cache-template', ['unstorable' => false]);
+        $treeOrdinary = $this->flushAndValidate($logger);
+        $this->assertNotNull(self::eventContextJsonOf($treeOrdinary, 'refresh_donut'), 'an ordinary #[DonutCache] page still saves and reuses its template');
+
+        // The page marks itself unstorable: the template write must be refused - otherwise
+        // the secret value, baked verbatim into the stored template, is served to every
+        // later visitor.
+        $ro = $resource->get('page://self/html/unstorable-donut-cache-template');
+        $this->assertSame('private, no-store', $ro->headers[Header::CACHE_CONTROL]);
+
+        $tree = $this->flushAndValidate($logger);
+        $putSkipped = self::eventContextJsonOf($tree, 'put_skipped');
+        $this->assertNotNull($putSkipped);
+        $this->assertStringContainsString('"reason":"unstorable"', $putSkipped);
+
+        // Nothing was stored: a second GET of the same (still marked) request is a fresh
+        // donut miss again, not a refresh_donut recomposed from a leaked template.
+        $logger->flush();
+        $resource->get('page://self/html/unstorable-donut-cache-template');
+        $tree2 = $this->flushAndValidate($logger);
+        $this->assertNull(self::eventContextJsonOf($tree2, 'refresh_donut'));
+        $this->assertNotNull(self::eventContextJsonOf($tree2, 'cache_miss'));
+    }
+
     /**
      * When cache A contains cache B, deleting B will automatically delete A as well.
      */

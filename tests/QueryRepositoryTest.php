@@ -314,4 +314,20 @@ class QueryRepositoryTest extends TestCase
         $this->assertContains('cache_miss', self::collectTypes($tree2));
         $this->assertNotContains('cache_hit', self::collectTypes($tree2));
     }
+
+    public function testCacheableWithNoHttpCacheStillStores(): void
+    {
+        // #[NoHttpCache] declares its own Cache-Control (private, no-store, no-cache,
+        // must-revalidate) - a header that equals the declared value is the attribute
+        // speaking, not a per-request value, and must not trip the gate (issue #222
+        // regression guard: 1.x stored this).
+        $ro = $this->resource->get('app://self/cacheable-no-http-cache');
+        $this->assertStringContainsString('max-age=10', $ro->headers[Header::CACHE_CONTROL]);
+        $this->assertArrayNotHasKey(Header::PRAGMA, $ro->headers, 'the gate must not override #[NoHttpCache]\'s own headers');
+
+        $this->logger->flush();
+        $this->resource->get('app://self/cacheable-no-http-cache');
+        $tree = $this->flushAndValidate($this->logger);
+        $this->assertContains('cache_hit', self::collectTypes($tree), '#[NoHttpCache] must not disable the server-side store');
+    }
 }
