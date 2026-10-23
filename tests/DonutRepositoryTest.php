@@ -220,6 +220,24 @@ class DonutRepositoryTest extends TestCase
         $this->assertNotNull(self::eventContextJsonOf($tree2, 'cache_miss'));
     }
 
+    public function testDonutCacheTemplateStoresWhenOnlyAnEmbeddedHoleMarksItself(): void
+    {
+        // #[DonutCache] templates hold placeholders only - a hole's content is substituted
+        // at render/refresh time, never baked into the stored template - so a hole marking
+        // itself unstorable (its own storage is separately gated by its own #[Cacheable]
+        // write) must not block the parent template write: this is exactly the "a page
+        // whose holes contain a form" case issue #222 explicitly keeps working.
+        $injector = $this->getInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
+
+        $resource->get('page://self/html/donut-cache-with-unstorable-hole');
+        $logger->flush();
+        $resource->get('page://self/html/donut-cache-with-unstorable-hole');
+        $tree = $this->flushAndValidate($logger);
+        $this->assertNotNull(self::eventContextJsonOf($tree, 'refresh_donut'), 'the template was saved despite the embedded hole marking itself');
+    }
+
     /**
      * When cache A contains cache B, deleting B will automatically delete A as well.
      */

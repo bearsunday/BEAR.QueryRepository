@@ -178,16 +178,24 @@ final readonly class DonutRepository implements DonutRepositoryInterface
      * so this write is gated exactly like doPutStatic's content-bearing one. No CDN lifetime
      * header is ever set on this path; headerSetter still runs on a skip so the live response
      * itself reads Cache-Control: private, no-store.
+     *
+     * The gate is read first, before ResourceDonut::create() resolves any embedded hole -
+     * stringifying $ro there is what actually runs each hole's own onGet() (DonutRequest -
+     * wraps the embedded request precisely so that run happens here, producing the `[le:URI]`
+     * placeholder the template stores instead of the hole's content). A hole marking itself
+     * unstorable is a mark on this request's one shared service, indistinguishable at that
+     * point from the page's own; reading the gate before create() runs keeps it to what the
+     * page itself marked, so a hole that "contains a form" still keeps the template working.
      */
     private function doPutDonut(ResourceObject $ro, int|null $donutTtl): void
     {
         $this->logger->event(new PutDonutContext((string) $ro->uri, $donutTtl, null));
+        $unstorable = $this->gate->reason($ro, ($this->declaredCacheControl)($ro));
         $keys = new SurrogateKeys($ro->uri);
         $declaredKeys = $this->getHeaderKeys($ro);
         $templateKeys = $this->templateKeys($ro, $declaredKeys);
         $donut = ResourceDonut::create($ro, $this->renderer, $keys, $donutTtl, false)->withStorageState($donutTtl, $templateKeys);
         $donut->render($ro, $this->renderer);
-        $unstorable = $this->gate->reason($ro, ($this->declaredCacheControl)($ro));
         $keys->setSurrogateHeader($ro);
         $this->logCdnHeaders($ro);
         // delete: cleanup for the rewrite below, recorded as such at the source
