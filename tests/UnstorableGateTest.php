@@ -138,4 +138,16 @@ class UnstorableGateTest extends TestCase
         $mark->mark('second');
         $this->assertTrue($mark->isMarked());
     }
+
+    public function testUnbalancedLeaveHoleDoesNotFailOpen(): void
+    {
+        // A caller that leaves a hole scope it never entered must not drive holeDepth
+        // negative and then stop attributing later marks to the page.
+        $mark = new UncacheableMark();
+        $mark->leaveHole();
+
+        $mark->mark('csrf-token-issued');
+
+        $this->assertTrue($mark->isMarkedOutsideHole());
+    }
 }

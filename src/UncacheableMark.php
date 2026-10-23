@@ -26,7 +26,10 @@ final class UncacheableMark implements UncacheableMarkInterface
     public function mark(string $reason): void
     {
         $this->reason ??= $reason;
-        if ($this->holeDepth === 0) {
+        // <= 0, not === 0: an unbalanced leaveHole() (a caller that never entered) must not
+        // drive this negative and then silently stop attributing marks to the page - that
+        // would fail open on the exact check doPutDonut() relies on.
+        if ($this->holeDepth <= 0) {
             $this->outsideHoleReason ??= $reason;
         }
     }
