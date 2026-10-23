@@ -30,7 +30,7 @@ final class ResourceDonut
     // '&', '<', '>', '"' or '\'' for an HTML renderer's default autoescaping to mangle,
     // so the same placeholder text round-trips unchanged whether it is echoed raw, through
     // Twig's default `{{ hole }}` escaping, or by a non-HTML renderer (issue #232).
-    public const FORMAT = '[le:%s]';
+    private const FORMAT = '[le:%s]';
 
     private const URI_REGEX = '/\[le:([^\]]+)]/';
 
