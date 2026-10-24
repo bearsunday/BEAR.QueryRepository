@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `DevUnstorableGateModule`: `$module->override(new DevUnstorableGateModule())` turns such a skip into a thrown `Exception\UnstorableResponseDetected` during development (`install()` has no effect here).
 
 ### Changed
-- Deploy this version with a new `CacheVersionModule` version: entries written by earlier versions may hold per-user content, and an earlier version reading this version's donut cache shows raw `[le2:...]` placeholders during a rolling deploy.
+- Deploy this version with a new `CacheVersionModule` version: entries written by earlier versions may hold per-user content, and an earlier version reading this version's donut cache shows raw `[le2:...]` placeholders during a rolling deploy. Only namespaces the pools this package's own `Storage*Module`s (or a `#[CacheNamespace]`-aware adapter) construct - an app binding its own cache adapter directly must clear those pools instead.
 - A `#[Cacheable]`/`#[CacheableResponse]` response whose own code sets `Cache-Control` to `private` or `no-store` is no longer stored server-side; its header is kept and CDN headers are removed. A value declared by `#[HttpCache]`/`#[NoHttpCache]` is still stored.
 - `ResourceDonut::FORMAT` is no longer public; use `ResourceDonut::placeholder()`.
 - Requires `koriym/semantic-logger` `^0.11`. Written logs use its `log` document shape, and diagnostic `kind` is now `code`.
