@@ -20,6 +20,7 @@ use const ENT_QUOTES;
 class ResourceDonutTest extends TestCase
 {
     private ResourceInterface $resource;
+    private UncacheableMarkInterface $mark;
 
     protected function setUp(): void
     {
@@ -28,6 +29,7 @@ class ResourceDonutTest extends TestCase
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
         $injector = new Injector($module, __DIR__ . '/tmp');
         $this->resource = $injector->getInstance(ResourceInterface::class);
+        $this->mark = new UncacheableMark();
 
         parent::setUp();
     }
@@ -37,7 +39,7 @@ class ResourceDonutTest extends TestCase
         $ro = $this->resource->newInstance('page://self/html/blog-posting-donut');
         $donut = new ResourceDonut('<p>[le:page://self/html/comment][le:page://self/html/like]</p>', [], null, false);
 
-        $refreshed = $donut->refresh($this->resource, $ro);
+        $refreshed = $donut->refresh($this->resource, $ro, $this->mark);
 
         $this->assertStringContainsString('comment01', (string) $refreshed->view);
         $this->assertStringContainsString('like0', (string) $refreshed->view);
@@ -49,7 +51,7 @@ class ResourceDonutTest extends TestCase
         $ro = $this->resource->newInstance('page://self/html/blog-posting-donut');
         $donut = new ResourceDonut("<p>[le:page://self/html/comment]</p>\n<p>[le:page://self/html/like]</p>", [], null, false);
 
-        $refreshed = $donut->refresh($this->resource, $ro);
+        $refreshed = $donut->refresh($this->resource, $ro, $this->mark);
 
         $this->assertStringContainsString('comment01', (string) $refreshed->view);
         $this->assertStringContainsString('like0', (string) $refreshed->view);
@@ -94,7 +96,7 @@ class ResourceDonutTest extends TestCase
         $query = http_build_query(['token' => $value]);
         $donut = new ResourceDonut('<p>[le:app://self/query-hole?' . $query . ']</p>', [], null, false);
 
-        $refreshed = $donut->refresh($this->resource, $ro);
+        $refreshed = $donut->refresh($this->resource, $ro, $this->mark);
 
         $this->assertSame('<p>' . htmlspecialchars($value, ENT_QUOTES, 'UTF-8') . '</p>', (string) $refreshed->view, 'the legacy placeholder\'s URI must reach BEAR\Resource\Uri exactly as stored, not pre-decoded');
     }
@@ -110,7 +112,7 @@ class ResourceDonutTest extends TestCase
         $placeholder = ResourceDonut::placeholder('app://self/query-hole?' . http_build_query(['token' => $value]));
         $donut = new ResourceDonut('<p>' . $placeholder . '</p>', [], null, false);
 
-        $refreshed = $donut->refresh($this->resource, $ro);
+        $refreshed = $donut->refresh($this->resource, $ro, $this->mark);
 
         $this->assertSame('<p>' . htmlspecialchars($value, ENT_QUOTES, 'UTF-8') . '</p>', (string) $refreshed->view);
     }
@@ -130,7 +132,7 @@ class ResourceDonutTest extends TestCase
         $ro = $this->resource->newInstance('page://self/html/blog-posting-donut');
         $donut = new ResourceDonut('<p>[le:app://self/query-hole?token=a&amp;token=b]</p>', [], null, false);
 
-        $refreshed = $donut->refresh($this->resource, $ro);
+        $refreshed = $donut->refresh($this->resource, $ro, $this->mark);
 
         $this->assertSame('<p>a</p>', (string) $refreshed->view, 'the first token "wins" exactly as it already did - not "b", and not an exception');
     }
@@ -147,6 +149,6 @@ class ResourceDonutTest extends TestCase
         $donut = new ResourceDonut('<p>[le:app://self/multi-param-query-hole?id=1&amp;tag=2]</p>', [], null, false);
 
         $this->expectException(ParameterException::class);
-        $donut->refresh($this->resource, $ro);
+        $donut->refresh($this->resource, $ro, $this->mark);
     }
 }

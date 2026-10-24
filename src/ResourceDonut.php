@@ -73,15 +73,27 @@ final class ResourceDonut
     ) {
     }
 
-    public function refresh(ResourceInterface $resource, ResourceObject $ro): ResourceObject
+    public function refresh(ResourceInterface $resource, ResourceObject $ro, UncacheableMarkInterface $mark): ResourceObject
     {
         $etags = new SurrogateKeys($ro->uri);
-        $refreshView =  preg_replace_callback(self::URI_REGEX, static function (array $matches) use ($resource, $etags): string {
+        $refreshView =  preg_replace_callback(self::URI_REGEX, static function (array $matches) use ($resource, $etags, $mark): string {
             // Group 1 is "2" for a new `le2` match (its URI, group 2, is rawurlencode()'d),
             // or "" for a legacy `le` match (group 2 is its URI, used verbatim).
             $uri = $matches[1] === '2' ? rawurldecode($matches[2]) : $matches[2];
-            $ro = $resource->get($uri);
-            $ro->toString();
+            // Scoped the same way DonutRequest::__toString() scopes the MISS path: a mark
+            // made while this hole re-runs (onGet() or its own template render) must be
+            // attributed to the hole's own owner slot, not TOP_LEVEL - otherwise an
+            // unrelated sibling hole marking itself here is misread as "the page itself
+            // marked", and a nested #[DonutCache] hole's OWN template write is wrongly
+            // refused by reasonExcludingHoleMarks() for a mark that was never its own.
+            $mark->enterHole($uri);
+            try {
+                $ro = $resource->get($uri);
+                $ro->toString();
+            } finally {
+                $mark->leaveHole($uri);
+            }
+
             if (array_key_exists(Header::SURROGATE_KEY, $ro->headers)) {
                 $etags->addTag($ro);
             }
