@@ -11,7 +11,7 @@ class HeaderSetterTest extends TestCase
 {
     private function headerSetter(UncacheableMarkInterface $mark): HeaderSetter
     {
-        return new HeaderSetter(new EtagSetter(), new UnstorableGate($mark, new DeclaredCacheControl()));
+        return new HeaderSetter(new EtagSetter(), new UnstorableGate($mark, new DeclaredCacheControl()), $mark);
     }
 
     public function testStripHeadersMatchesALowercaseCdnCacheControlHeaderName(): void

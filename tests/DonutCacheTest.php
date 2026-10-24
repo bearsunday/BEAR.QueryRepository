@@ -20,6 +20,7 @@ use function unserialize;
 class DonutCacheTest extends TestCase
 {
     private ResourceInterface $resource;
+    private UncacheableMarkInterface $mark;
 
     protected function setUp(): void
     {
@@ -29,6 +30,7 @@ class DonutCacheTest extends TestCase
         $module->override(new TwigModule([$path]));
         $injector = new Injector($module, __DIR__ . '/tmp');
         $this->resource = $injector->getInstance(ResourceInterface::class);
+        $this->mark = new UncacheableMark();
 
         parent::setUp();
     }
@@ -38,7 +40,7 @@ class DonutCacheTest extends TestCase
         $headers = ['Content-Type' => 'application/xml;'];
         $donut = new ResourceDonut('cmt=[le:page://self/html/comment]', $headers, null, true);
         $blog = $this->resource->get('page://self/html/blog-posting');
-        $ro = $donut->refresh($this->resource, $blog);
+        $ro = $donut->refresh($this->resource, $blog, $this->mark);
         $this->assertInstanceOf(ResourceObject::class, $ro);
         $this->assertSame('cmt=comment01', $ro->view);
         $this->assertSame($headers['Content-Type'], $ro->headers['Content-Type']);
@@ -179,7 +181,7 @@ class DonutCacheTest extends TestCase
         $donut = new ResourceDonut('tmpl', [], null, true, null, null, null, null, 301);
         $ro = $this->resource->get('page://self/html/comment');
 
-        $donut->refresh($this->resource, $ro);
+        $donut->refresh($this->resource, $ro, $this->mark);
 
         $this->assertSame(301, $ro->code);
     }
@@ -192,7 +194,7 @@ class DonutCacheTest extends TestCase
         $ro = $this->resource->get('page://self/html/comment');
         $ro->code = 301;
 
-        $this->legacyDonut()->refresh($this->resource, $ro);
+        $this->legacyDonut()->refresh($this->resource, $ro, $this->mark);
 
         $this->assertSame(301, $ro->code);
     }

@@ -306,6 +306,78 @@ class DonutRepositoryTest extends TestCase
         $this->assertSame('private, no-store', $ro->headers[Header::CACHE_CONTROL]);
     }
 
+    public function testRefreshReSavesAnUnrelatedNestedDonutCacheHolesTemplateAfterASiblingHoleMarksDuringTheRefresh(): void
+    {
+        // ResourceDonut::refresh() re-fetches each placeholder with $resource->get($uri);
+        // without scoping that re-fetch to its own URI the way DonutRequest::__toString()
+        // scopes the MISS path, a sibling hole's own mark (UnstorableValue marks every
+        // request) is attributed to TOP_LEVEL during the refresh - and an UNRELATED nested
+        // #[DonutCache] hole (PlainDonutHole, which never marks) reads
+        // isMarkedForCurrentScope() as true for its own write and wrongly refuses to
+        // re-save its own purged template (issue #222).
+        $injector = $this->getInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $storage = $injector->getInstance(ResourceStorageInterface::class);
+        $mark = $injector->getInstance(UncacheableMarkInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
+
+        // First GET: MISS. Composes the outer page's own template and, via its own
+        // nested write, PlainDonutHole's own template too.
+        $resource->get('page://self/html/donut-cache-with-marking-and-nested-donut-cache-hole');
+        $logger->flush();
+
+        // Drop only the unrelated nested hole's own template, so the outer page's next
+        // GET - always a refresh for a #[DonutCache] page, which never stores its own
+        // state - re-fetches it as a fresh MISS that must re-save it.
+        $storage->invalidateTags([(new UriTag())(new Uri('page://self/html/plain-donut-hole'))]);
+
+        $resource->get('page://self/html/donut-cache-with-marking-and-nested-donut-cache-hole');
+        $tree = $this->flushAndValidate($logger);
+        $this->assertNotNull(self::eventContextJsonOf($tree, 'refresh_donut'), 'the outer page is recomposed from its own cached donut');
+        $this->assertTrue($mark->isMarked(), 'sanity: the sibling hole did mark during this refresh');
+
+        // A later visitor requesting the unrelated hole directly: if its own template was
+        // re-saved (the fix), this is a refresh (template hit); if the sibling's mark was
+        // misattributed to it instead (the bug), this is a fresh MISS again.
+        $logger->flush();
+        $resource->get('page://self/html/plain-donut-hole');
+        $laterTree = $this->flushAndValidate($logger);
+        $this->assertNotNull(self::eventContextJsonOf($laterTree, 'refresh_donut'), "the unrelated hole's own purged template was re-saved during the sibling's marked refresh, not skipped because of the sibling's mark");
+    }
+
+    public function testRefreshStillRefusesANestedDonutCacheHolesOwnTemplateWhenItMarksItselfDuringTheRefresh(): void
+    {
+        // Same safety property as testNestedDonutCacheHoleDoesNotLeakItsOwnMarkedContentToTheSharedCache
+        // above, but reached through ResourceDonut::refresh() instead of the initial
+        // compose (DonutRequest): enterHole()/leaveHole() around the refresh re-fetch must
+        // still let the hole's own render-time mark refuse ITS OWN template, the same way
+        // it does on the MISS path - the fix for the unrelated-sibling case above must not
+        // loosen this.
+        $injector = $this->getInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
+
+        // First GET composes the outer page's own template (MISS); RenderTimeMark marks
+        // itself every time, so its own write is refused here too.
+        $resource->get('page://self/html/donut-cache-with-nested-donut-cache-hole');
+        $logger->flush();
+
+        // A #[DonutCache] page never stores its own state, so this second GET is always a
+        // refresh - re-fetching RenderTimeMark through ResourceDonut::refresh(), not
+        // DonutRequest.
+        $resource->get('page://self/html/donut-cache-with-nested-donut-cache-hole');
+        $tree = $this->flushAndValidate($logger);
+        $this->assertNotNull(self::eventContextJsonOf($tree, 'refresh_donut'), 'the outer page is recomposed from its own cached donut');
+
+        // A later, different visitor requesting the hole's own URI directly. If the
+        // hole's template had been stored with the leaked content during the refresh
+        // above, this would be a hit serving it.
+        $ro = $resource->get('page://self/html/render-time-mark');
+        $laterTree = $this->flushAndValidate($logger);
+        $this->assertNull(self::eventContextJsonOf($laterTree, 'refresh_donut'), "nothing was stored for this later visitor to recompose from, even though the hole's own mark fired during the OUTER page's refresh");
+        $this->assertSame('private, no-store', $ro->headers[Header::CACHE_CONTROL]);
+    }
+
     public function testDonutCacheTemplateSkipsSaveWhenMarkedWhileItsOwnTemplateRenders(): void
     {
         // The mark can also happen while the page's own template renders (e.g. a Twig CSRF

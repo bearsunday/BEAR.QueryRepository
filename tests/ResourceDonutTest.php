@@ -5,11 +5,15 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\Resource\Exception\ParameterException;
+use BEAR\Resource\Method;
+use BEAR\Resource\RequestInterface;
 use BEAR\Resource\ResourceInterface;
+use BEAR\Resource\ResourceObject;
 use Madapaja\TwigModule\TwigModule;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
+use RuntimeException;
 
 use function dirname;
 use function htmlspecialchars;
@@ -20,6 +24,7 @@ use const ENT_QUOTES;
 class ResourceDonutTest extends TestCase
 {
     private ResourceInterface $resource;
+    private UncacheableMarkInterface $mark;
 
     protected function setUp(): void
     {
@@ -28,6 +33,7 @@ class ResourceDonutTest extends TestCase
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
         $injector = new Injector($module, __DIR__ . '/tmp');
         $this->resource = $injector->getInstance(ResourceInterface::class);
+        $this->mark = new UncacheableMark();
 
         parent::setUp();
     }
@@ -37,7 +43,7 @@ class ResourceDonutTest extends TestCase
         $ro = $this->resource->newInstance('page://self/html/blog-posting-donut');
         $donut = new ResourceDonut('<p>[le:page://self/html/comment][le:page://self/html/like]</p>', [], null, false);
 
-        $refreshed = $donut->refresh($this->resource, $ro);
+        $refreshed = $donut->refresh($this->resource, $ro, $this->mark);
 
         $this->assertStringContainsString('comment01', (string) $refreshed->view);
         $this->assertStringContainsString('like0', (string) $refreshed->view);
@@ -49,7 +55,7 @@ class ResourceDonutTest extends TestCase
         $ro = $this->resource->newInstance('page://self/html/blog-posting-donut');
         $donut = new ResourceDonut("<p>[le:page://self/html/comment]</p>\n<p>[le:page://self/html/like]</p>", [], null, false);
 
-        $refreshed = $donut->refresh($this->resource, $ro);
+        $refreshed = $donut->refresh($this->resource, $ro, $this->mark);
 
         $this->assertStringContainsString('comment01', (string) $refreshed->view);
         $this->assertStringContainsString('like0', (string) $refreshed->view);
@@ -94,7 +100,7 @@ class ResourceDonutTest extends TestCase
         $query = http_build_query(['token' => $value]);
         $donut = new ResourceDonut('<p>[le:app://self/query-hole?' . $query . ']</p>', [], null, false);
 
-        $refreshed = $donut->refresh($this->resource, $ro);
+        $refreshed = $donut->refresh($this->resource, $ro, $this->mark);
 
         $this->assertSame('<p>' . htmlspecialchars($value, ENT_QUOTES, 'UTF-8') . '</p>', (string) $refreshed->view, 'the legacy placeholder\'s URI must reach BEAR\Resource\Uri exactly as stored, not pre-decoded');
     }
@@ -110,7 +116,7 @@ class ResourceDonutTest extends TestCase
         $placeholder = ResourceDonut::placeholder('app://self/query-hole?' . http_build_query(['token' => $value]));
         $donut = new ResourceDonut('<p>' . $placeholder . '</p>', [], null, false);
 
-        $refreshed = $donut->refresh($this->resource, $ro);
+        $refreshed = $donut->refresh($this->resource, $ro, $this->mark);
 
         $this->assertSame('<p>' . htmlspecialchars($value, ENT_QUOTES, 'UTF-8') . '</p>', (string) $refreshed->view);
     }
@@ -130,7 +136,7 @@ class ResourceDonutTest extends TestCase
         $ro = $this->resource->newInstance('page://self/html/blog-posting-donut');
         $donut = new ResourceDonut('<p>[le:app://self/query-hole?token=a&amp;token=b]</p>', [], null, false);
 
-        $refreshed = $donut->refresh($this->resource, $ro);
+        $refreshed = $donut->refresh($this->resource, $ro, $this->mark);
 
         $this->assertSame('<p>a</p>', (string) $refreshed->view, 'the first token "wins" exactly as it already did - not "b", and not an exception');
     }
@@ -147,6 +153,106 @@ class ResourceDonutTest extends TestCase
         $donut = new ResourceDonut('<p>[le:app://self/multi-param-query-hole?id=1&amp;tag=2]</p>', [], null, false);
 
         $this->expectException(ParameterException::class);
-        $donut->refresh($this->resource, $ro);
+        $donut->refresh($this->resource, $ro, $this->mark);
+    }
+
+    /**
+     * A re-fetch that throws must still leave the hole's scope closed, the same way
+     * `finally` guarantees `leaveHole()` runs: an exception from `$resource->get($uri)`
+     * (a pool outage, a broken onGet()) must not leave `$uri` stuck on the mark's owner
+     * stack for the rest of the request - which would misattribute a later, unrelated
+     * mark() to this hole's scope instead of TOP_LEVEL.
+     */
+    public function testRefreshLeavesTheHoleScopeEvenWhenTheReFetchThrows(): void
+    {
+        $ro = $this->resource->newInstance('page://self/html/blog-posting-donut');
+        $uri = 'app://self/query-hole?token=x';
+        $donut = new ResourceDonut('<p>' . ResourceDonut::placeholder($uri) . '</p>', [], null, false);
+        $throwingResource = new class implements ResourceInterface {
+            public function newInstance($uri): ResourceObject
+            {
+                throw new RuntimeException('not used');
+            }
+
+            public function object(ResourceObject $ro): RequestInterface
+            {
+                throw new RuntimeException('not used');
+            }
+
+            public function uri($uri): RequestInterface
+            {
+                throw new RuntimeException('not used');
+            }
+
+            public function newRequest(Method $method, string $uri, array $query = []): RequestInterface
+            {
+                throw new RuntimeException('not used');
+            }
+
+            public function crawl(string $uri, string $linkKey, array $query = []): ResourceObject
+            {
+                throw new RuntimeException('not used');
+            }
+
+            public function href(string $rel, array $query = [], ResourceObject|null $ro = null): ResourceObject
+            {
+                throw new RuntimeException('not used');
+            }
+
+            public function get(string $uri, array $query = []): ResourceObject
+            {
+                throw new RuntimeException('pool outage');
+            }
+
+            public function post(string $uri, array $query = []): ResourceObject
+            {
+                throw new RuntimeException('not used');
+            }
+
+            public function put(string $uri, array $query = []): ResourceObject
+            {
+                throw new RuntimeException('not used');
+            }
+
+            public function patch(string $uri, array $query = []): ResourceObject
+            {
+                throw new RuntimeException('not used');
+            }
+
+            public function delete(string $uri, array $query = []): ResourceObject
+            {
+                throw new RuntimeException('not used');
+            }
+
+            public function head(string $uri, array $query = []): ResourceObject
+            {
+                throw new RuntimeException('not used');
+            }
+
+            public function options(string $uri, array $query = []): ResourceObject
+            {
+                throw new RuntimeException('not used');
+            }
+        };
+
+        try {
+            $donut->refresh($throwingResource, $ro, $this->mark);
+            $this->fail('expected the re-fetch to throw');
+        } catch (RuntimeException $e) {
+            $this->assertSame('pool outage', $e->getMessage());
+        }
+
+        // A balanced stack would make this leaveHole() a no-op (the uri is not on it), so
+        // the mark() just above stays filed under TOP_LEVEL and is still visible here. A
+        // leaked entry instead puts $uri back on top: mark() files under $uri, leaveHole()
+        // pops exactly that entry, and the current scope reverts to TOP_LEVEL - which this
+        // mark() never touched - making the check below read false instead.
+        $this->mark->mark('after the throw');
+        $this->mark->leaveHole($uri);
+
+        $this->assertTrue(
+            $this->mark->isMarkedForCurrentScope(),
+            'a mark right after the aborted re-fetch must stay filed under TOP_LEVEL, not get displaced by a scope the throw left stuck on the stack',
+        );
     }
 }
