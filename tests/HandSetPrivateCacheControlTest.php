@@ -55,4 +55,17 @@ class HandSetPrivateCacheControlTest extends TestCase
         $this->assertArrayNotHasKey(Header::CDN_CACHE_CONTROL, $ro->headers);
         $this->assertArrayNotHasKey(Header::SURROGATE_KEY, $ro->headers);
     }
+
+    public function testHandSetNoStoreOnADonutResponseKeepsItsHeaderAndStripsCdnHeaders(): void
+    {
+        // BlogPostingCacheControl (#[CacheableResponse]) hand-sets Cache-Control: no-store
+        // via a plain property default (bypassing #[HttpCache]) - the donut-path sibling of
+        // the #[Cacheable] case above. DonutRepository::setHeaders() sets Surrogate-Key
+        // unconditionally before HeaderSetter runs, so this is not a vacuous check: it
+        // proves the CDN-facing headers are actually stripped, not merely absent.
+        $ro = $this->resource->get('page://self/html/blog-posting-cache-control');
+        $this->assertSame('no-store', $ro->headers[Header::CACHE_CONTROL], "the developer's own header is kept exactly");
+        $this->assertArrayNotHasKey(Header::CDN_CACHE_CONTROL, $ro->headers);
+        $this->assertArrayNotHasKey(Header::SURROGATE_KEY, $ro->headers);
+    }
 }
