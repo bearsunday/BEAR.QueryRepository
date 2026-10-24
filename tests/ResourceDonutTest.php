@@ -242,16 +242,17 @@ class ResourceDonutTest extends TestCase
             $this->assertSame('pool outage', $e->getMessage());
         }
 
-        // A sibling hole with the SAME uri visiting correctly later (its own balanced
-        // enterHole()/mark()/leaveHole()) must leave the stack exactly as it found it -
-        // which it only does if the aborted re-fetch above left no entry behind.
-        $this->mark->enterHole($uri);
-        $this->mark->mark('elsewhere');
+        // A balanced stack would make this leaveHole() a no-op (the uri is not on it), so
+        // the mark() just above stays filed under TOP_LEVEL and is still visible here. A
+        // leaked entry instead puts $uri back on top: mark() files under $uri, leaveHole()
+        // pops exactly that entry, and the current scope reverts to TOP_LEVEL - which this
+        // mark() never touched - making the check below read false instead.
+        $this->mark->mark('after the throw');
         $this->mark->leaveHole($uri);
 
-        $this->assertFalse(
+        $this->assertTrue(
             $this->mark->isMarkedForCurrentScope(),
-            'a later, unrelated top-level check must read TOP_LEVEL, not a scope the aborted re-fetch left stuck on the stack',
+            'a mark right after the aborted re-fetch must stay filed under TOP_LEVEL, not get displaced by a scope the throw left stuck on the stack',
         );
     }
 }
