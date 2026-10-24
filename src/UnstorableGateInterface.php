@@ -19,6 +19,10 @@ use BEAR\Resource\ResourceObject;
  * directive, not a value a method or a render produced: `#[Cacheable]` combined with
  * `#[HttpCache(noStore: true)]` still stores server-side while telling the client not to.
  *
+ * reason() reads `UncacheableMarkInterface::isMarked()`, "marked anywhere in this request" -
+ * see that interface's docblock for the resulting, deliberate limitation: a mark made by one
+ * `#[DonutCache]` hole also refuses an entirely unrelated sibling resource's own write.
+ *
  * @see https://github.com/bearsunday/BEAR.QueryRepository/issues/222
  */
 interface UnstorableGateInterface
