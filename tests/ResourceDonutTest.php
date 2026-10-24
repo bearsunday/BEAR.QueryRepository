@@ -5,11 +5,15 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\Resource\Exception\ParameterException;
+use BEAR\Resource\Method;
+use BEAR\Resource\RequestInterface;
 use BEAR\Resource\ResourceInterface;
+use BEAR\Resource\ResourceObject;
 use Madapaja\TwigModule\TwigModule;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
+use RuntimeException;
 
 use function dirname;
 use function htmlspecialchars;
@@ -150,5 +154,104 @@ class ResourceDonutTest extends TestCase
 
         $this->expectException(ParameterException::class);
         $donut->refresh($this->resource, $ro, $this->mark);
+    }
+
+    /**
+     * A re-fetch that throws must still leave the hole's scope closed, the same way
+     * `finally` guarantees `leaveHole()` runs: an exception from `$resource->get($uri)`
+     * (a pool outage, a broken onGet()) must not leave `$uri` stuck on the mark's owner
+     * stack for the rest of the request - which would misattribute a later, unrelated
+     * mark() to this hole's scope instead of TOP_LEVEL.
+     */
+    public function testRefreshLeavesTheHoleScopeEvenWhenTheReFetchThrows(): void
+    {
+        $ro = $this->resource->newInstance('page://self/html/blog-posting-donut');
+        $uri = 'app://self/query-hole?token=x';
+        $donut = new ResourceDonut('<p>' . ResourceDonut::placeholder($uri) . '</p>', [], null, false);
+        $throwingResource = new class implements ResourceInterface {
+            public function newInstance($uri): ResourceObject
+            {
+                throw new RuntimeException('not used');
+            }
+
+            public function object(ResourceObject $ro): RequestInterface
+            {
+                throw new RuntimeException('not used');
+            }
+
+            public function uri($uri): RequestInterface
+            {
+                throw new RuntimeException('not used');
+            }
+
+            public function newRequest(Method $method, string $uri, array $query = []): RequestInterface
+            {
+                throw new RuntimeException('not used');
+            }
+
+            public function crawl(string $uri, string $linkKey, array $query = []): ResourceObject
+            {
+                throw new RuntimeException('not used');
+            }
+
+            public function href(string $rel, array $query = [], ResourceObject|null $ro = null): ResourceObject
+            {
+                throw new RuntimeException('not used');
+            }
+
+            public function get(string $uri, array $query = []): ResourceObject
+            {
+                throw new RuntimeException('pool outage');
+            }
+
+            public function post(string $uri, array $query = []): ResourceObject
+            {
+                throw new RuntimeException('not used');
+            }
+
+            public function put(string $uri, array $query = []): ResourceObject
+            {
+                throw new RuntimeException('not used');
+            }
+
+            public function patch(string $uri, array $query = []): ResourceObject
+            {
+                throw new RuntimeException('not used');
+            }
+
+            public function delete(string $uri, array $query = []): ResourceObject
+            {
+                throw new RuntimeException('not used');
+            }
+
+            public function head(string $uri, array $query = []): ResourceObject
+            {
+                throw new RuntimeException('not used');
+            }
+
+            public function options(string $uri, array $query = []): ResourceObject
+            {
+                throw new RuntimeException('not used');
+            }
+        };
+
+        try {
+            $donut->refresh($throwingResource, $ro, $this->mark);
+            $this->fail('expected the re-fetch to throw');
+        } catch (RuntimeException $e) {
+            $this->assertSame('pool outage', $e->getMessage());
+        }
+
+        // A sibling hole with the SAME uri visiting correctly later (its own balanced
+        // enterHole()/mark()/leaveHole()) must leave the stack exactly as it found it -
+        // which it only does if the aborted re-fetch above left no entry behind.
+        $this->mark->enterHole($uri);
+        $this->mark->mark('elsewhere');
+        $this->mark->leaveHole($uri);
+
+        $this->assertFalse(
+            $this->mark->isMarkedForCurrentScope(),
+            'a later, unrelated top-level check must read TOP_LEVEL, not a scope the aborted re-fetch left stuck on the stack',
+        );
     }
 }
