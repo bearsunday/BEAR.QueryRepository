@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- `UncacheableMarkInterface::mark($reason)`: code that produces a per-user value (a CSRF token, etc.) marks the current response unstorable; it is then not cached (`put_skipped{reason: unstorable}`) and is sent with `Cache-Control: private, no-store` and `Pragma: no-cache` and no CDN headers (#222). A mark also skips every `#[Cacheable]` write that happens later in the same request.
+- `UncacheableMarkInterface::mark($reason)`: code that produces a per-user value (a CSRF token, etc.) marks the current response unstorable; it is then not cached (`put_skipped{reason: unstorable}`) and is sent with `Cache-Control: private, no-store` and `Pragma: no-cache` and no CDN headers (#222). A mark also skips every `#[Cacheable]`/`#[CacheableResponse]` write that happens later in the same request, including an unrelated sibling's (#234).
 - `UncacheableMark` is request-scoped: a long-running worker (Swoole, RoadRunner) that reuses one container across requests must rebind it per request, as it already must for `ServerContextInterface`.
 - `DevUnstorableGateModule`: `$module->override(new DevUnstorableGateModule())` turns such a skip into a thrown `Exception\UnstorableResponseDetected` during development (`install()` has no effect here).
 

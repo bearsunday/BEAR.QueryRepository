@@ -32,13 +32,14 @@ namespace BEAR\QueryRepository;
  *
  * Known limitation, not a regression: isMarked() answers "marked anywhere in this request, by
  * any owner" - every check except a `#[DonutCache]` write's own template uses it, including
- * `QueryRepository::doPut()` for an entirely unrelated `#[Cacheable]` resource embedded
- * elsewhere in the same request tree. A sibling hole that marks itself therefore also refuses
- * every OTHER `#[Cacheable]` write in that request, not just its own - because
+ * `QueryRepository::doPut()` and `DonutRepository::doPutStatic()` for an entirely unrelated
+ * `#[Cacheable]` or `#[CacheableResponse]` resource embedded elsewhere in the same request
+ * tree. A sibling hole that marks itself therefore also refuses every OTHER `#[Cacheable]`/
+ * `#[CacheableResponse]` write in that request, not just its own - because
  * `QueryRepositoryInterface`/`DonutRepositoryInterface` cannot see the resource call tree
- * `UncacheableMark`'s owner stack is built from, only "was anything marked". Scoping
- * `QueryRepository::doPut()`'s own check the same way `reasonExcludingHoleMarks()` scopes a
- * donut template write is deliberately left for a later release.
+ * `UncacheableMark`'s owner stack is built from, only "was anything marked". Scoping those
+ * writes' own checks the same way `reasonExcludingHoleMarks()` scopes a donut template
+ * write is deliberately left for a later release (#234).
  *
  * @see https://github.com/bearsunday/BEAR.QueryRepository/issues/222
  */

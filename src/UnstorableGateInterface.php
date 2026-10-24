@@ -21,7 +21,7 @@ use BEAR\Resource\ResourceObject;
  *
  * reason() reads `UncacheableMarkInterface::isMarked()`, "marked anywhere in this request" -
  * see that interface's docblock for the resulting, deliberate limitation: a mark made by one
- * `#[DonutCache]` hole also refuses an entirely unrelated sibling resource's own write.
+ * `#[DonutCache]` hole also refuses an entirely unrelated sibling resource's own write (#234).
  *
  * @see https://github.com/bearsunday/BEAR.QueryRepository/issues/222
  */
