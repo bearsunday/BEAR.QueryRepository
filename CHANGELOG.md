@@ -8,15 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- `UncacheableMarkInterface`/`UncacheableMark`: a request-scoped service a producer of a per-user value (a CSRF token issuer, etc.) calls to mark the current response unstorable - issue #222. A `#[Cacheable]` or `#[CacheableResponse]` write that is marked, or whose `Cache-Control` already says `no-store`/`private`, is skipped (`put_skipped{reason: unstorable}`), and the response gets `Cache-Control: private, no-store` plus `Pragma: no-cache` and no CDN lifetime header instead. `$module->override(new DevUnstorableGateModule())` turns the skip into a thrown `UnstorableResponseDetected` during development - `install()` does not work here, since `QueryRepositoryModule` already binds `UnstorableGateInterface` and `install()` never replaces a binding the installer already holds. Existing cache entries written before this change may hold per-user content - purge on deploy. `UncacheableMark` is bound `Scope::SINGLETON` for the request's one container; a long-running worker (Swoole, RoadRunner) reusing a container across requests must rebind it per request, the same way it already must for `ServerContextInterface`.
+- `UncacheableMarkInterface::mark($reason)`: code that produces a per-user value (a CSRF token, etc.) marks the current response unstorable; it is then not cached (`put_skipped{reason: unstorable}`) and is sent with `Cache-Control: private, no-store` and `Pragma: no-cache` and no CDN headers (#222). A mark also skips every `#[Cacheable]` write that happens later in the same request.
+- `UncacheableMark` is request-scoped: a long-running worker (Swoole, RoadRunner) that reuses one container across requests must rebind it per request, as it already must for `ServerContextInterface`.
+- `DevUnstorableGateModule`: `$module->override(new DevUnstorableGateModule())` turns such a skip into a thrown `Exception\UnstorableResponseDetected` during development (`install()` has no effect here).
 
 ### Changed
+- Deploy this version with a new `CacheVersionModule` version: entries written by earlier versions may hold per-user content, and an earlier version reading this version's donut cache shows raw `[le2:...]` placeholders during a rolling deploy.
+- A `#[Cacheable]`/`#[CacheableResponse]` response whose own code sets `Cache-Control` to `private` or `no-store` is no longer stored server-side; its header is kept and CDN headers are removed. A value declared by `#[HttpCache]`/`#[NoHttpCache]` is still stored.
+- `ResourceDonut::FORMAT` is no longer public; use `ResourceDonut::placeholder()`.
 - Requires `koriym/semantic-logger` `^0.11`. Written logs use its `log` document shape, and diagnostic `kind` is now `code`.
 - `KeepMutationsAndFailures` also keeps a session cut at the record limit (`semantic_logger_truncated`): a `command` past the limit leaves no other trace.
 
 ### Fixed
 - `LogFileWriter`: two sessions flushed in the same microsecond no longer overwrite each other. The timestamped filename now carries a random suffix, so both survive (#221).
-- A `#[DonutCache]` page embedding an `#[Embed]` hole whose URI carries two or more query parameters leaked a raw `[le:...]` placeholder to the client on the first request and could throw `BEAR\Resource\Exception\ParameterException` on the next - fixed (#232) by moving new placeholders to a `[le2:...]` marker. No action needed for existing entries: an old-form `[le:...]` entry keeps working exactly as before; only an entry already corrupted by this bug before upgrading should be purged or left to expire.
+- A `#[DonutCache]` page embedding an `#[Embed]` hole whose URI carried two or more query parameters leaked a raw `[le:...]` placeholder to the client and could throw `ParameterException` on the next request - fixed by moving new placeholders to a `[le2:...]` marker (#232).
 
 ## [1.17.0] - 2026-09-17
 
