@@ -278,12 +278,14 @@ final readonly class DonutRepository implements DonutRepositoryInterface
             // cached and the page is never stored as a rendered view, so there is no
             // page-level entry to save after the refresh - and this package never hands
             // the CDN a lifetime header of its own for this kind, mirroring doPutDonut's
-            // MISS-path exactly: only overwrite the restored headers with Cache-Control:
-            // private, no-store when a hole marks itself on THIS recomposition, never add
-            // a lifetime header that was never there (issue #222 - a hole marking itself
-            // must still be caught on a later, recomposed hit, not just the one that first
-            // wrote the template; but a storable template-only hit must stay exactly as
-            // storable as the MISS that created it, no new CDN lifetime invented here).
+            // MISS-path exactly: only touch the restored headers (HeaderSetter overwrites
+            // Cache-Control/Pragma when a mark fired, keeps a hand-set private/no-store
+            // header as-is otherwise - issue #222) when a hole marks itself on THIS
+            // recomposition, never add a lifetime header that was never there (a hole
+            // marking itself must still be caught on a later, recomposed hit, not just the
+            // one that first wrote the template; but a storable template-only hit must
+            // stay exactly as storable as the MISS that created it, no new CDN lifetime
+            // invented here).
             if ($unstorable !== null) {
                 ($this->donutHeaderSetter)($ro, null, null);
             }
@@ -297,8 +299,9 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         // When the recomposed content is byte-identical to the recorded one, carry over
         // the original Last-Modified instead of advancing it to the recomposition time
         $lastModified = $unstorable === null ? $donut->getUnchangedLastModified((string) $ro->view) : null;
-        // Always run, unstorable or not: this is what replaces the restored, stale-but-
-        // "storable" headers with Cache-Control: private, no-store on an unstorable response.
+        // Always run, unstorable or not: this is what strips the restored, stale-but-
+        // "storable" CDN headers from an unstorable response and - when a mark fired -
+        // also replaces Cache-Control/Pragma (HeaderSetter, issue #222).
         ($this->donutHeaderSetter)($ro, $donut->ttl, null, $lastModified);
         $this->donutHeaderSetter->setCdnCacheControl($ro, $donut->ttl);
         $this->logCdnHeaders($ro);
