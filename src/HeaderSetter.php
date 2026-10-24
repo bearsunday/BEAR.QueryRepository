@@ -17,15 +17,12 @@ use function strtolower;
 final readonly class HeaderSetter
 {
     /**
-     * Every header unset on an unstorable response (issue #222): the CDN-facing ones this
-     * package's setters manage, across every flavor (default, Fastly, Akamai), plus
-     * Cache-Control/Pragma themselves - so one the application set directly in onGet(),
-     * bypassing the setters, does not survive the refusal under any header-name casing (RFC
-     * 7230 §3.2: $ro->headers is a plain PHP array, not an HTTP-aware collection).
+     * The CDN-facing headers unset on an unstorable response (issue #222), across every
+     * flavor (default, Fastly, Akamai) - unset unconditionally, whether the gate tripped on
+     * a mark or on a Cache-Control the response set itself, since this package never hands a
+     * shared cache a lifetime for a response it is itself refusing to store.
      */
-    private const STRIPPED_HEADERS = [
-        Header::CACHE_CONTROL,
-        Header::PRAGMA,
+    private const CDN_FACING_HEADERS = [
         Header::CDN_CACHE_CONTROL,
         FastlyCacheControlHeaderSetter::CDN_CACHE_CONTROL_HEADER,
         AkamaiCacheControlHeaderSetter::CDN_CACHE_CONTROL_HEADER,
@@ -36,23 +33,34 @@ final readonly class HeaderSetter
     public function __construct(
         private EtagSetterInterface $etagSetter,
         private UnstorableGateInterface $gate,
+        private UncacheableMarkInterface $mark,
     ) {
     }
 
     /**
      * Set the validator and Cache-Control max-age, or - when the gate says this response is
-     * unstorable for this request (issue #222) - strip every CDN-facing header and replace
-     * Cache-Control/Pragma with ones that tell every cache, shared or private, not to keep it.
-     * A Cache-Control value #[HttpCache] or #[NoHttpCache] itself declared is exempt from the
-     * gate's no-store/private check: #[Cacheable] combined with #[HttpCache(noStore: true)]
-     * still stores server-side while telling the client not to.
+     * unstorable for this request (issue #222) - strip every CDN-facing header under any
+     * casing (RFC 7230 §3.2: $ro->headers is a plain PHP array, not an HTTP-aware collection).
+     *
+     * A producer that called UncacheableMarkInterface::mark() gets its Cache-Control/Pragma
+     * replaced too, with ones that tell every cache, shared or private, not to keep the
+     * response - the response was never meant to carry a cache directive of its own. A
+     * response refused only because it already set its own Cache-Control to `private`/
+     * `no-store` - no mark - keeps exactly the header the developer wrote: the gate decides
+     * whether THIS package stores it server-side, not what the client is told. A
+     * Cache-Control value #[HttpCache] or #[NoHttpCache] itself declared is exempt from the
+     * gate's no-store/private check either way: #[Cacheable] combined with
+     * #[HttpCache(noStore: true)] still stores server-side while telling the client not to.
      */
     public function __invoke(ResourceObject $ro, int|null $cacheControlMaxAge, HttpCache|null $httpCache, int|null $time = null): void
     {
         if ($this->gate->reason($ro) !== null) {
-            $this->stripHeaders($ro);
-            $ro->headers[Header::CACHE_CONTROL] = 'private, no-store';
-            $ro->headers[Header::PRAGMA] = 'no-cache';
+            $this->stripHeaders($ro, self::CDN_FACING_HEADERS);
+            if ($this->mark->isMarked()) {
+                $this->stripHeaders($ro, [Header::CACHE_CONTROL, Header::PRAGMA]);
+                $ro->headers[Header::CACHE_CONTROL] = 'private, no-store';
+                $ro->headers[Header::PRAGMA] = 'no-cache';
+            }
 
             return;
         }
@@ -64,9 +72,10 @@ final readonly class HeaderSetter
         }
     }
 
-    private function stripHeaders(ResourceObject $ro): void
+    /** @param list<string> $canonicalNames */
+    private function stripHeaders(ResourceObject $ro, array $canonicalNames): void
     {
-        foreach (self::STRIPPED_HEADERS as $canonical) {
+        foreach ($canonicalNames as $canonical) {
             foreach (array_keys($ro->headers) as $name) {
                 if (strtolower($name) === strtolower($canonical)) {
                     unset($ro->headers[$name]);
