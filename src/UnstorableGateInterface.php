@@ -60,4 +60,17 @@ interface UnstorableGateInterface
      * @return 'unstorable'|null
      */
     public function reasonForOwnWrite(ResourceObject $ro): string|null;
+
+    /**
+     * Whether reasonForOwnWrite()'s own-write-scoped-or-any-owner-fallback predicate (see
+     * that method's own docblock) answered 'unstorable' specifically because of a mark, not a
+     * Cache-Control value the response set itself - the exact distinction `HeaderSetter`
+     * needs to decide whether to replace the developer's own Cache-Control with
+     * `private, no-store` (a mark reason) or keep it as written (a Cache-Control-only
+     * reason). Passed in by `QueryRepository::doPut()` rather than `HeaderSetter` re-deriving
+     * its own, possibly differently-scoped answer (the bug this method fixes: `HeaderSetter`
+     * previously asked its own any-owner `isMarked()` regardless of caller, wrongly
+     * overriding an own-write-scoped refusal that was never actually caused by a mark).
+     */
+    public function isMarkReasonForOwnWrite(ResourceObject $ro): bool;
 }

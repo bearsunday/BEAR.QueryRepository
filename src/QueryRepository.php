@@ -99,10 +99,14 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         // declared value is exempt (issue #222). Own-write-scoped, not any-owner (#234): an
         // unrelated sibling resource's own mark elsewhere in the request tree must not refuse
         // THIS write. headerSetter is handed the SAME result rather than recomputing it, so
-        // the store decision and the header decision can never disagree.
+        // the store decision and the header decision can never disagree - likewise
+        // isMarkReasonForOwnWrite(), the SAME own-write-scoped predicate, so headerSetter's
+        // own "was it actually a mark, not just my own Cache-Control" check cannot disagree
+        // with reasonForOwnWrite() either (CodeRabbit review).
         $unstorable = $this->gate->reasonForOwnWrite($ro);
+        $wasMarked = $this->gate->isMarkReasonForOwnWrite($ro);
 
-        ($this->headerSetter)($ro, $ttl, $httpCache, unstorable: $unstorable);
+        ($this->headerSetter)($ro, $ttl, $httpCache, unstorable: $unstorable, wasMarked: $wasMarked);
 
         if ($unstorable !== null) {
             $this->logger->event(new PutSkippedContext((string) $ro->uri, $unstorable));

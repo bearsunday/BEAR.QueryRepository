@@ -60,11 +60,31 @@ final readonly class UnstorableGate implements UnstorableGateInterface
     #[Override]
     public function reasonForOwnWrite(ResourceObject $ro): string|null
     {
+        return $this->reasonFor($ro, $this->isMarkReasonForOwnWrite($ro));
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * The exact same own-write-scoped-or-any-owner-fallback predicate reasonForOwnWrite()
+     * itself trusts (see that method's own docblock) - exposed separately so a caller already
+     * holding THAT method's own 'unstorable'|null result (HeaderSetter, handed it by
+     * QueryRepository::doPut() instead of recomputing its own answer) can also tell a mark
+     * apart from a Cache-Control-only refusal, using the SAME predicate reasonForOwnWrite()
+     * used to decide 'unstorable' in the first place - CodeRabbit review: HeaderSetter's own
+     * any-owner isMarked() previously answered this for every caller, even the own-write-scoped
+     * one, wrongly overriding a #[Cacheable] resource's own Cache-Control header (e.g.
+     * `private, max-age=60`, no mark of its own) with `private, no-store` whenever an UNRELATED
+     * mark happened anywhere else in the request.
+     */
+    #[Override]
+    public function isMarkReasonForOwnWrite(ResourceObject $ro): bool
+    {
         if (! $this->mark->isCurrentWriteFor($ro)) {
-            return $this->reasonFor($ro, $this->mark->isMarked());
+            return $this->mark->isMarked();
         }
 
-        return $this->reasonFor($ro, $this->mark->isMarkedForCurrentScope() || $this->mark->wasMarkedSinceCurrentWrite());
+        return $this->mark->isMarkedForCurrentScope() || $this->mark->wasMarkedSinceCurrentWrite();
     }
 
     /** @return 'unstorable'|null */

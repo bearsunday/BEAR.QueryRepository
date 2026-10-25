@@ -50,6 +50,18 @@ final readonly class HeaderSetter
      * trailing, named-only-in-practice parameter (BC: released 1.17.0 has `$time` 4th) - both
      * internal call sites pass it as `unstorable: ...` rather than positionally.
      *
+     * $wasMarked is the SAME split: whether $unstorable was caused by a mark specifically (as
+     * opposed to the response's own Cache-Control already saying no-store/private) must be
+     * read with the SAME predicate that computed $unstorable, or the two can disagree -
+     * QueryRepository::doPut() passes UnstorableGateInterface::isMarkReasonForOwnWrite()'s
+     * own-write-scoped answer; DonutHeaderSetter leaves it null, falling back to this class's
+     * own any-owner isMarked() below, matching its own any-owner reason() (CodeRabbit review:
+     * without this split, a #[Cacheable] resource that set its own `private, max-age=60`
+     * Cache-Control - refused for THAT reason alone, no mark of its own - had that header
+     * wrongly replaced by `private, no-store` whenever an UNRELATED mark fired anywhere else
+     * in the request, because the any-owner isMarked() this class asked internally did not
+     * agree with the own-write-scoped reasonForOwnWrite() that decided $unstorable).
+     *
      * A producer that called UncacheableMarkInterface::mark() (app-facing) gets its Cache-Control/Pragma
      * replaced too, with ones that tell every cache, shared or private, not to keep the
      * response - the response was never meant to carry a cache directive of its own. A
@@ -60,11 +72,11 @@ final readonly class HeaderSetter
      * gate's no-store/private check either way: #[Cacheable] combined with
      * #[HttpCache(noStore: true)] still stores server-side while telling the client not to.
      */
-    public function __invoke(ResourceObject $ro, int|null $cacheControlMaxAge, HttpCache|null $httpCache, int|null $time = null, string|null $unstorable = null): void
+    public function __invoke(ResourceObject $ro, int|null $cacheControlMaxAge, HttpCache|null $httpCache, int|null $time = null, string|null $unstorable = null, bool|null $wasMarked = null): void
     {
         if ($unstorable !== null) {
             $this->stripHeaders($ro, self::CDN_FACING_HEADERS);
-            if ($this->mark->isMarked()) {
+            if ($wasMarked ?? $this->mark->isMarked()) {
                 $this->stripHeaders($ro, [Header::CACHE_CONTROL, Header::PRAGMA]);
                 $ro->headers[Header::CACHE_CONTROL] = 'private, no-store';
                 $ro->headers[Header::PRAGMA] = 'no-cache';
