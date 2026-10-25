@@ -360,6 +360,9 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         }
 
         ($this->donutHeaderSetter)($ro, null, null);
+        // delete: cleanup for the rewrite below, recorded as such at the source - same
+        // marker doPutStatic()/doPutDonut() record before their own invalidateTags()
+        $this->logger->event(new PreWriteCleanupContext((string) $ro->uri));
         $this->resourceStorage->invalidateTags([($this->uriTag)($ro->uri)]);
 
         return $unstorable;
