@@ -14,6 +14,26 @@ use Ray\Aop\MatcherInterface;
 use Ray\Di\AbstractModule;
 use Ray\Di\Scope;
 
+/**
+ * Provides ResourceStorageInterface and derived bindings
+ *
+ * The following bindings are provided:
+ *
+ * HeaderSetter
+ * DonutHeaderSetter
+ * CdnCacheControlHeaderSetterInterface
+ * DonutRepositoryInterface
+ * RepositoryLoggerInterface
+ * PurgerInterface
+ * UriTagInterface
+ *
+ * The following interceptors are provided:
+ *
+ * DonutCacheableResponseInterceptor
+ * DonutCacheInterceptor
+ * DonutCommandInterceptor
+ * DonutCacheInterceptor
+ */
 final class DonutCacheModule extends AbstractModule
 {
     /**
@@ -80,7 +100,8 @@ final class DonutCacheModule extends AbstractModule
     private function installAopMethodModule(): void
     {
         // Ray.Aop merges without deduplicating, so a class whose own declaration governs a
-        // method is excluded here - read and write sets differ since #[DonutCache] covers onGet only.
+        // method is excluded; unifying the sets would leave a #[RefreshCache] write with no
+        // interceptor.
         $readNotDeclared = $this->matcher->logicalNot(
             $this->matcher->logicalOr(
                 $this->matcher->annotatedWith(CacheableResponse::class),

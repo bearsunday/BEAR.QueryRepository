@@ -64,8 +64,8 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     {
         $maybeState = $this->queryRepository->get($ro->uri);
         if ($maybeState instanceof ResourceState) {
-            // Field by field, not visit(): a donut view's stored null body/unserialized uri
-            // would overwrite the live request object via visit().
+            // Field by field, not visit(): a stored donut view's empty body and unserialized
+            // uri would clobber the live null body and uri object.
             $ro->code = $maybeState->code;
             $ro->headers = $maybeState->headers;
             $ro->view = $maybeState->view;
