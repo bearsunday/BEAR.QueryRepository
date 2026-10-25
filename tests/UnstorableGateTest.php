@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\Resource\Uri;
 use FakeVendor\HelloWorld\Resource\App\HttpCacheControlWithCacheable;
 use FakeVendor\HelloWorld\Resource\Page\None;
 use PHPUnit\Framework\TestCase;
@@ -225,8 +226,9 @@ class UnstorableGateTest extends TestCase
         $mark = new UncacheableMark();
         $gate = new UnstorableGate($mark, new DeclaredCacheControl());
         $ro = new None();
+        $ro->uri = new Uri('page://self/html/p');
 
-        $mark->enterWrite(); // P's own write window opens
+        $mark->enterWrite($ro); // P's own write window opens
         $mark->enterHole('page://self/html/nested-donut-hole'); // H's own scope
         $mark->mark('csrf-token-issued'); // H marks itself, owned by H, not P
         $mark->leaveHole('page://self/html/nested-donut-hole');
@@ -244,14 +246,15 @@ class UnstorableGateTest extends TestCase
         $mark = new UncacheableMark();
         $gate = new UnstorableGate($mark, new DeclaredCacheControl());
         $ro = new None();
+        $ro->uri = new Uri('app://self/mine');
 
-        $mark->enterWrite();
+        $mark->enterWrite(new None());
         $mark->enterHole('page://self/html/marking-hole');
         $mark->mark('csrf-token-issued');
         $mark->leaveHole('page://self/html/marking-hole');
         $mark->leaveWrite();
 
-        $mark->enterWrite();
+        $mark->enterWrite($ro);
         $this->assertNull($gate->reasonForOwnWrite($ro), 'an unrelated sibling marked and closed BEFORE my own write window opened must not refuse mine');
         $mark->leaveWrite();
     }
@@ -266,9 +269,10 @@ class UnstorableGateTest extends TestCase
         $mark = new UncacheableMark();
         $gate = new UnstorableGate($mark, new DeclaredCacheControl());
         $ro = new None();
+        $ro->uri = new Uri('app://self/mine');
 
         $mark->mark('pre-existing');
-        $mark->enterWrite(); // this write's own window opens AFTER the mark
+        $mark->enterWrite($ro); // this write's own window opens AFTER the mark
 
         $this->assertFalse($mark->wasMarkedSinceCurrentWrite(), 'sanity: nothing marked SINCE this write opened');
         $this->assertSame('unstorable', $gate->reasonForOwnWrite($ro), 'a pre-existing mark sharing this write\'s own scope must still refuse it');
@@ -285,10 +289,11 @@ class UnstorableGateTest extends TestCase
         $mark = new UncacheableMark();
         $gate = new UnstorableGate($mark, new DeclaredCacheControl());
         $ro = new None();
+        $ro->uri = new Uri('app://self/mine');
 
         $mark->enterHole('page://self/html/marking-hole');
         $mark->mark('csrf-token-issued');
-        $mark->enterWrite(); // the descendant's own write window, opened AFTER the mark
+        $mark->enterWrite($ro); // the descendant's own write window, opened AFTER the mark
 
         $this->assertFalse($mark->wasMarkedSinceCurrentWrite(), 'sanity: nothing marked SINCE this write opened');
         $this->assertSame('unstorable', $gate->reasonForOwnWrite($ro), 'a descendant sharing the still-open marking ancestor\'s scope must be refused');
@@ -302,6 +307,37 @@ class UnstorableGateTest extends TestCase
         $ro = new None();
 
         $this->assertNull($gate->reasonForOwnWrite($ro));
+    }
+
+    public function testReasonForOwnWriteFallsBackToAnyOwnerWhenTheOpenFrameBelongsToADifferentInstanceSharingTheSameUri(): void
+    {
+        // Object identity, not URI equality (Kimi/Fable review): a different INSTANCE at the
+        // same URI as the one enterWrite() opened the frame with must not be treated as
+        // owning it. A mark made and closed in an UNRELATED hole scope BEFORE the write
+        // opens is invisible to both halves of the scoped predicate
+        // (isMarkedForCurrentScope(): never shared TOP_LEVEL; wasMarkedSinceCurrentWrite():
+        // already ticked before enterWrite() snapshotted it) - storable for the TRUE frame
+        // owner. A uri-string match would wrongly trust that same scoped predicate for the
+        // different instance too, also reading storable; identity correctly falls back to
+        // any-owner isMarked() instead, which IS true, refusing it - the two instances must
+        // disagree, proving identity (not uri) is what is actually being compared.
+        $mark = new UncacheableMark();
+        $gate = new UnstorableGate($mark, new DeclaredCacheControl());
+
+        $mark->enterHole('page://self/html/unrelated-hole');
+        $mark->mark('csrf-token-issued'); // marked and closed BEFORE any write opens
+        $mark->leaveHole('page://self/html/unrelated-hole');
+
+        $frameOwner = new None();
+        $frameOwner->uri = new Uri('app://self/mine');
+        $differentInstanceSameUri = new None();
+        $differentInstanceSameUri->uri = new Uri('app://self/mine');
+
+        $mark->enterWrite($frameOwner);
+
+        $this->assertNull($gate->reasonForOwnWrite($frameOwner), 'the TRUE frame owner: the pre-existing mark belongs to a different, already-closed scope - neither scoped half catches it');
+        $this->assertSame('unstorable', $gate->reasonForOwnWrite($differentInstanceSameUri), 'a DIFFERENT instance at the same uri does not own this frame - any-owner isMarked() (true) refuses it instead, disagreeing with the frame owner\'s own answer above');
+        $mark->leaveWrite();
     }
 
     public function testMarkIsStickyOnceSet(): void
