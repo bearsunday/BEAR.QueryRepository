@@ -21,7 +21,7 @@ final readonly class DonutRequest implements Stringable
         private AbstractRequest $request,
         private DonutRendererInterface $donutStorage,
         private SurrogateKeys $etags,
-        private UncacheableMarkInterface $mark,
+        private UncacheableMarkScopeInterface $mark,
     ) {
     }
 

@@ -36,7 +36,7 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
         private readonly DonutRepositoryInterface $donutRepository,
         #[CacheLog]
         private readonly SemanticLoggerInterface $logger = new NullSemanticLogger(),
-        private readonly UncacheableMarkInterface $mark = new UncacheableMark(),
+        private readonly UncacheableMarkScopeInterface $mark = new UncacheableMark(),
         private readonly UnstorableWriteObserverInterface $writeObserver = new NullUnstorableWriteObserver(),
     ) {
     }
@@ -64,7 +64,7 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
         // never read wasMarkedSinceCurrentWrite() (any-owner isMarked()/isMarkedForCurrentScope()
         // only), and a borrowed scope here would let a direct, non-AOP QueryRepository::put()
         // nested inside this page's own rendering wrongly inherit it - isCurrentWriteFor()
-        // (UncacheableMarkInterface) is what keeps that write safely any-owner instead.
+        // (UncacheableMarkScopeInterface) is what keeps that write safely any-owner instead.
         $threw = false;
         $this->mark->enterInterceptor();
         try {

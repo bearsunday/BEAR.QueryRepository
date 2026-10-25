@@ -43,7 +43,7 @@ final readonly class CacheInterceptor implements MethodInterceptor
         private QueryRepositoryInterface $repository,
         #[CacheLog]
         private SemanticLoggerInterface $logger = new NullSemanticLogger(),
-        private UncacheableMarkInterface $mark = new UncacheableMark(),
+        private UncacheableMarkScopeInterface $mark = new UncacheableMark(),
         private UnstorableWriteObserverInterface $writeObserver = new NullUnstorableWriteObserver(),
     ) {
     }

@@ -18,7 +18,7 @@ use Override;
  * `ResourceObject::__toString()` degrades that to an `E_USER_WARNING` and an empty string, so
  * the developer never actually saw the exception, only a silently empty template. skipped()
  * suppresses a hole legitimately refusing its OWN write
- * (`UncacheableMarkInterface::isMarkedForCurrentScope()` true while `isNested()` is also true
+ * (`UncacheableMarkScopeInterface::isMarkedForCurrentScope()` true while `isNested()` is also true
  * - e.g. a CSRF form hole) - expected, not worth reporting - and otherwise records only the
  * FIRST skip of the request (sticky, mirroring `UncacheableMark::mark()`'s own
  * sticky-once-set behaviour); later skips in the same request do not overwrite it.
@@ -34,7 +34,7 @@ final class ThrowingUnstorableWriteObserver implements UnstorableWriteObserverIn
     private string|null $pendingReason = null;
 
     public function __construct(
-        private readonly UncacheableMarkInterface $mark,
+        private readonly UncacheableMarkScopeInterface $mark,
     ) {
     }
 

@@ -27,7 +27,7 @@ final readonly class UnstorableGate implements UnstorableGateInterface
     private const REASON = 'unstorable';
 
     public function __construct(
-        private UncacheableMarkInterface $mark,
+        private UncacheableMarkScopeInterface $mark,
         private DeclaredCacheControl $declaredCacheControl,
     ) {
     }

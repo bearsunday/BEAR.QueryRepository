@@ -35,7 +35,7 @@ use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
  *  MatchQueryInterface
  *  UriTag
  *  MatchQueryInterface
- *  UncacheableMarkInterface
+ *  UncacheableMarkInterface (app-facing) / UncacheableMarkScopeInterface (package-internal, same instance)
  *  UnstorableGateInterface
  *  UnstorableWriteObserverInterface (no-op by default - install/override DevUnstorableGateModule to report)
  *  DeclaredCacheControl
@@ -82,8 +82,12 @@ final class QueryRepositoryModule extends AbstractModule
         $this->bind(ResourceStorageSaver::class);
         // Server context for thread safety (Swoole, RoadRunner, etc.)
         $this->bind(ServerContextInterface::class)->to(GlobalServerContext::class)->in(Scope::SINGLETON);
-        // One mark per request (see UncacheableMark); issue #222
-        $this->bind(UncacheableMarkInterface::class)->to(UncacheableMark::class)->in(Scope::SINGLETON);
+        // One mark per request (see UncacheableMark); issue #222. UncacheableMarkScopeInterface
+        // (package-internal) is the primary, singleton-scoped binding; UncacheableMarkInterface
+        // (app-facing: mark() only) is resolved to the SAME instance via a provider, not a
+        // second ->to() binding, which would otherwise construct its OWN separate singleton.
+        $this->bind(UncacheableMarkScopeInterface::class)->to(UncacheableMark::class)->in(Scope::SINGLETON);
+        $this->bind(UncacheableMarkInterface::class)->toProvider(UncacheableMarkInterfaceProvider::class);
         $this->bind(UnstorableGateInterface::class)->to(UnstorableGate::class);
         // Skipped-write reporting default: no-op (see DevUnstorableGateModule)
         $this->bind(UnstorableWriteObserverInterface::class)->to(NullUnstorableWriteObserver::class)->in(Scope::SINGLETON);

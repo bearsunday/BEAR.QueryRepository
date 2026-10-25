@@ -32,7 +32,7 @@ final readonly class HeaderSetter
 
     public function __construct(
         private EtagSetterInterface $etagSetter,
-        private UncacheableMarkInterface $mark,
+        private UncacheableMarkScopeInterface $mark,
     ) {
     }
 
@@ -50,7 +50,7 @@ final readonly class HeaderSetter
      * trailing, named-only-in-practice parameter (BC: released 1.17.0 has `$time` 4th) - both
      * internal call sites pass it as `unstorable: ...` rather than positionally.
      *
-     * A producer that called UncacheableMarkInterface::mark() gets its Cache-Control/Pragma
+     * A producer that called UncacheableMarkInterface::mark() (app-facing) gets its Cache-Control/Pragma
      * replaced too, with ones that tell every cache, shared or private, not to keep the
      * response - the response was never meant to carry a cache directive of its own. A
      * response refused only because it already set its own Cache-Control to `private`/

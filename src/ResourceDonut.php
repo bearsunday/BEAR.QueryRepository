@@ -75,7 +75,7 @@ final class ResourceDonut
     ) {
     }
 
-    public function refresh(ResourceInterface $resource, ResourceObject $ro, UncacheableMarkInterface $mark): ResourceObject
+    public function refresh(ResourceInterface $resource, ResourceObject $ro, UncacheableMarkScopeInterface $mark): ResourceObject
     {
         $etags = new SurrogateKeys($ro->uri);
         $refreshView =  preg_replace_callback(self::URI_REGEX, static function (array $matches) use ($resource, $etags, $mark): string {
@@ -241,7 +241,7 @@ final class ResourceDonut
      * Either way, the original Throwable - not a reconstruction - travels to the caller, and
      * nothing past this call ever stores or returns a template.
      */
-    public static function create(ResourceObject $ro, DonutRendererInterface $storage, SurrogateKeys $etags, int|null $ttl, bool $isCacheble, UncacheableMarkInterface $mark): self
+    public static function create(ResourceObject $ro, DonutRendererInterface $storage, SurrogateKeys $etags, int|null $ttl, bool $isCacheble, UncacheableMarkScopeInterface $mark): self
     {
         // A resource with nothing to return leaves its body null - a 204 typically does, while
         // an #[Embed] would have made it an array - and a null body holds no embedded request

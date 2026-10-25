@@ -18,12 +18,12 @@ use BEAR\Resource\ResourceObject;
  * skipped() is called only at the sites that actually skip a store
  * (`QueryRepository::doPut()`, `DonutRepository::doPutStatic()`/`doPutDonut()`'s template
  * check/`refreshDonut()` when the donut is cacheable) - never at a header-only check. A hole
- * legitimately refusing its OWN write (`UncacheableMarkInterface::isMarkedForCurrentScope()`
+ * legitimately refusing its OWN write (`UncacheableMarkScopeInterface::isMarkedForCurrentScope()`
  * true while `isNested()` is also true - e.g. a CSRF form hole) is expected, not reported.
  *
  * raiseIfPending() is called once per top-level request, after the OUTERMOST cacheable GET
  * interceptor (`CacheInterceptor`/`AbstractDonutCacheInterceptor`,
- * `UncacheableMarkInterface::enterInterceptor()`/`leaveInterceptor()`) returns NORMALLY - so a
+ * `UncacheableMarkScopeInterface::enterInterceptor()`/`leaveInterceptor()`) returns NORMALLY - so a
  * thrown exception never corrupts a template mid-`__toString()`, it surfaces only after the
  * full response was correctly rendered.
  *

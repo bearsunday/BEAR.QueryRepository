@@ -12,7 +12,11 @@ use function array_pop;
 use function array_slice;
 
 /**
- * {@inheritDoc}
+ * The single implementation backing both UncacheableMarkInterface (app-facing: mark() only)
+ * and UncacheableMarkScopeInterface (package-internal: the write-scope/hole-scope mechanics
+ * that decide whose write a mark actually refuses - see that interface's own docblock). Both
+ * are bound to the SAME instance (QueryRepositoryModule, via UncacheableMarkInterfaceProvider)
+ * so a mark() made through the app-facing interface is always visible to the internal one.
  *
  * Bound Scope::SINGLETON (see QueryRepositoryModule): one instance per DI container, which is
  * one per request in the usual BEAR.Sunday bootstrap - the same lifetime ResourceStorage and
@@ -23,7 +27,7 @@ use function array_slice;
  * interceptor-depth behind too, the same reset `DevUnstorableGateModule`'s
  * `ThrowingUnstorableWriteObserver` (bound SINGLETON for the same reason) also needs.
  */
-final class UncacheableMark implements UncacheableMarkInterface
+final class UncacheableMark implements UncacheableMarkInterface, UncacheableMarkScopeInterface
 {
     /** The top-level page's own scope, distinct from any real URI */
     private const TOP_LEVEL = '';
