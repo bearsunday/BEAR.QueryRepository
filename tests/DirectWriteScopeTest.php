@@ -507,4 +507,91 @@ class DirectWriteScopeTest extends TestCase
         $tree = $this->flushAndValidate($logger);
         $this->assertNotEmpty(self::eventContextsJsonOf($tree, 'put_skipped', $uri), 'the shortcut path must have reached the gate for this exact uri');
     }
+
+    public function testADirectPutThenARenderTimeMarkNeverMarksOnDonutPagesNormalPath(): void
+    {
+        // Main's unverified ordering (b), donut side, verified by execution: unlike
+        // #[Cacheable] (CacheInterceptor), a direct put() on a #[DonutCache]-only resource
+        // never renders at all (QueryRepository::doPut()'s $storesView check only
+        // recognizes #[Cacheable]) - but its headerSetter still sets an ETag
+        // unconditionally, reaching AbstractDonutCacheInterceptor's own shortcut BEFORE
+        // putRecorded()/doPutDonut() - the ONLY place that would ever stringify the
+        // render-time token - could run. The mark can never fire; nothing is refused,
+        // nothing leaks either (the stored token is never stringified, so no secret VALUE
+        // is ever exposed - confirmed by real output in the PR discussion, not just this
+        // assertion).
+        $uri = 'page://self/html/donut-direct-put-then-render-time-mark-inside-own-on-get';
+        $injector = $this->newInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $repository = $injector->getInstance(QueryRepository::class);
+        $mark = $injector->getInstance(UncacheableMarkScopeInterface::class);
+
+        $ro = $resource->get($uri);
+
+        $this->assertFalse($mark->isMarked(), 'the render-time token is never stringified on this path, so mark() never fires at all');
+        $this->assertArrayNotHasKey(Header::CACHE_CONTROL, $ro->headers, 'never unstorable, so no refusal header either - this is the etag-present shortcut, not the gate');
+        $state = $repository->get(new Uri($uri));
+        $this->assertNotNull($state, 'the inner put() legitimately succeeds - nothing was ever marked for it to refuse');
+    }
+
+    public function testADirectPutThenARenderTimeMarkNeverMarksOnDonutPagesDegradedReadFallback(): void
+    {
+        $uri = 'page://self/html/donut-direct-put-then-render-time-mark-inside-own-on-get';
+        $injector = $this->newInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $repository = $injector->getInstance(QueryRepository::class);
+        $mark = $injector->getInstance(UncacheableMarkScopeInterface::class);
+        $fakeDonutRepository = $injector->getInstance(DonutRepositoryInterface::class);
+        assert($fakeDonutRepository instanceof FakeDonutReadFailsForOneUri);
+        $fakeDonutRepository->failingUri = $uri;
+
+        set_error_handler(static fn (): bool => true);
+        $ro = $resource->get($uri);
+        restore_error_handler();
+
+        $this->assertFalse($mark->isMarked(), 'the degraded-read fallback reaches the identical shortcut - the mark still never fires');
+        $this->assertArrayNotHasKey(Header::CACHE_CONTROL, $ro->headers);
+        $state = $repository->get(new Uri($uri));
+        $this->assertNotNull($state, 'the inner put() legitimately succeeds on the degraded path too');
+    }
+
+    public function testARenderTimeMarkWithoutADirectPutIsRefusedOnDonutPagesNormalPath(): void
+    {
+        // The control: the SAME render-time token, no inner put() at all, so no ETag side
+        // effect and no shortcut - the normal write path (doPutDonut() -> donut->render())
+        // is what actually stringifies the token and marks, the same as it always has
+        // (RenderTimeMark's own, pre-existing behaviour, unaffected by this round). Proves
+        // the token/template mechanism itself works - the tests above are structurally
+        // unreachable, not accidentally broken.
+        $uri = 'page://self/html/donut-render-time-mark-without-direct-put';
+        $injector = $this->newInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $repository = $injector->getInstance(QueryRepository::class);
+        $mark = $injector->getInstance(UncacheableMarkScopeInterface::class);
+
+        $ro = $resource->get($uri);
+
+        $this->assertTrue($mark->isMarked(), 'the normal write path\'s own render DOES stringify the token and mark');
+        $this->assertSame('private, no-store', $ro->headers[Header::CACHE_CONTROL] ?? null);
+        $state = $repository->get(new Uri($uri));
+        $this->assertNull($state, 'with no direct put() at all, nothing was ever stored in QueryRepository\'s own value pool for this URI');
+    }
+
+    public function testARenderTimeMarkWithoutADirectPutIsRefusedOnDonutPagesDegradedReadFallback(): void
+    {
+        $uri = 'page://self/html/donut-render-time-mark-without-direct-put';
+        $injector = $this->newInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $mark = $injector->getInstance(UncacheableMarkScopeInterface::class);
+        $fakeDonutRepository = $injector->getInstance(DonutRepositoryInterface::class);
+        assert($fakeDonutRepository instanceof FakeDonutReadFailsForOneUri);
+        $fakeDonutRepository->failingUri = $uri;
+
+        set_error_handler(static fn (): bool => true);
+        $ro = $resource->get($uri);
+        restore_error_handler();
+
+        $this->assertTrue($mark->isMarked(), 'the degraded fallback also routes through the SAME putRecorded()/doPutDonut() render');
+        $this->assertSame('private, no-store', $ro->headers[Header::CACHE_CONTROL] ?? null);
+    }
 }
