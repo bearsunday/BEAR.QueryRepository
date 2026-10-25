@@ -18,13 +18,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Upgrading changes the Ray.Aop-woven class name - and so the ETag (`crc32($ro::class . ...)`) - for a `#[CacheableResponse]` class or method that also declares an `#[Embed]`, because it is now woven with a new interceptor (#226); a page with no `#[Embed]` keeps its stock woven class and ETag, and a `#[DonutCache]` page never carries an ETag at all, so neither is affected.
 - `ResourceDonut::FORMAT` is no longer public; use `ResourceDonut::placeholder()`. `ResourceDonut::refresh()` takes an additional `UncacheableMarkInterface` argument.
 - Requires `koriym/semantic-logger` `^0.11`. Written logs use its `log` document shape, and diagnostic `kind` is now `code`.
+- Requires `bear/resource` `^1.22.4`.
 - `KeepMutationsAndFailures` also keeps a session cut at the record limit (`semantic_logger_truncated`): a `command` past the limit leaves no other trace.
 
 ### Fixed
 - `LogFileWriter`: two sessions flushed in the same microsecond no longer overwrite each other. The timestamped filename now carries a random suffix, so both survive (#221).
 - A `#[DonutCache]` page embedding an `#[Embed]` hole whose URI carried two or more query parameters leaked a raw `[le:...]` placeholder to the client and could throw `ParameterException` on the next request - fixed by moving new placeholders to a `[le2:...]` marker (#232).
-- An embedded child of a `#[DonutCache]`/`#[CacheableResponse]` page now runs at most once per request: it previously ran again when rendered as a hole after already being read in `onGet()`. A child read into the body but never rendered as a hole now tags the stored template, so purging that child's own tag refreshes the page instead of leaving it stale (#226).
-- `ResourceBodyEvaluator` no longer crashes materializing an embedded `AbstractRequest` whose `jsonSerialize()` does not answer the memoized `ResourceObject` (`BEAR\Async\AsyncRequest`'s own shape): such a request is now left unmaterialized instead of asserting. Full async support remains out of scope.
+- An embedded child of a `#[DonutCache]`/`#[CacheableResponse]` page is now reused until its query or links change, instead of running again when rendered as a hole after already being read in `onGet()`. Every such execution that was read but never rendered as a hole now tags the stored template and the live response's own Surrogate-Key/ETag, so purging any one of them refreshes the page instead of leaving it stale (#226).
+- `ResourceBodyEvaluator` no longer crashes materializing an embedded child whose `jsonSerialize()` does not answer the memoized `ResourceObject` (the shape `BEAR\Async\AsyncRequest` overrides it to): such a child is now left unmaterialized instead of asserting. Async support itself remains out of scope.
 
 ## [1.17.0] - 2026-09-17
 
