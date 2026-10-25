@@ -47,10 +47,4 @@ final class FakeDefectiveDonutRepository implements DonutRepositoryInterface
     public function invalidateTags(array $tags): void
     {
     }
-
-    #[Override]
-    public function refuseIfUnstorable(ResourceObject $ro): string|null
-    {
-        return null;
-    }
 }
