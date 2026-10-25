@@ -11,7 +11,7 @@ class HeaderSetterTest extends TestCase
 {
     private function headerSetter(UncacheableMarkInterface $mark): HeaderSetter
     {
-        return new HeaderSetter(new EtagSetter(), new UnstorableGate($mark, new DeclaredCacheControl()), $mark);
+        return new HeaderSetter(new EtagSetter(), $mark);
     }
 
     public function testStripHeadersMatchesALowercaseCdnCacheControlHeaderName(): void
@@ -24,7 +24,7 @@ class HeaderSetterTest extends TestCase
         $ro = new None();
         $ro->headers['cdn-cache-control'] = 'max-age=600';
 
-        ($this->headerSetter($mark))($ro, null, null);
+        ($this->headerSetter($mark))($ro, null, null, 'unstorable');
 
         $this->assertArrayNotHasKey('cdn-cache-control', $ro->headers);
         $this->assertSame('private, no-store', $ro->headers[Header::CACHE_CONTROL]);
@@ -42,7 +42,7 @@ class HeaderSetterTest extends TestCase
         $ro->headers[Header::CDN_CACHE_CONTROL] = 'max-age=600';
         $ro->headers['cdn-cache-control'] = 'max-age=600';
 
-        ($this->headerSetter($mark))($ro, null, null);
+        ($this->headerSetter($mark))($ro, null, null, 'unstorable');
 
         $this->assertArrayNotHasKey(Header::CDN_CACHE_CONTROL, $ro->headers);
         $this->assertArrayNotHasKey('cdn-cache-control', $ro->headers);
@@ -57,7 +57,7 @@ class HeaderSetterTest extends TestCase
         $ro = new None();
         $ro->headers['cache-control'] = 'public';
 
-        ($this->headerSetter($mark))($ro, 60, null);
+        ($this->headerSetter($mark))($ro, 60, null, null);
 
         $this->assertArrayNotHasKey(Header::CACHE_CONTROL, $ro->headers, 'no second, canonically-cased header was added');
         $this->assertSame('public, max-age=60', $ro->headers['cache-control']);
@@ -69,7 +69,7 @@ class HeaderSetterTest extends TestCase
         $ro = new None();
         $ro->headers['cache-control'] = 'max-age=30';
 
-        ($this->headerSetter($mark))($ro, 60, null);
+        ($this->headerSetter($mark))($ro, 60, null, null);
 
         $this->assertArrayNotHasKey(Header::CACHE_CONTROL, $ro->headers, 'no second, canonically-cased header was added');
         $this->assertSame('max-age=30', $ro->headers['cache-control']);

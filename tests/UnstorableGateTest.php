@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\QueryRepository\Exception\UnstorableResponseDetected;
-use BEAR\Resource\Uri;
 use FakeVendor\HelloWorld\Resource\App\HttpCacheControlWithCacheable;
 use FakeVendor\HelloWorld\Resource\Page\None;
 use PHPUnit\Framework\TestCase;
@@ -217,46 +215,93 @@ class UnstorableGateTest extends TestCase
         $this->assertFalse($mark->isMarkedForCurrentScope(), 'the hole\'s own mark must not leak into the current (top-level) scope once its scope is left');
     }
 
-    public function testThrowingGateThrowsWhenUnstorable(): void
+    public function testReasonForOwnWriteCatchesACompoundLeakMarkedDuringMyOwnWriteWindow(): void
     {
+        // #234 rejected option: rescoping doPut() to isMarkedForCurrentScope() ONLY leaks a
+        // #[Cacheable] page P embedding an independently donut-composed hole H that marks -
+        // H's mark is recorded under H's own owner, never P's, so P's scope check alone never
+        // trips. wasMarkedSinceCurrentWrite() is what catches it: H marked DURING P's own open
+        // write window.
         $mark = new UncacheableMark();
-        $gate = new ThrowingUnstorableGate(new UnstorableGate($mark, new DeclaredCacheControl()));
-        $ro = new None();
-        $ro->uri = new Uri('app://self/unstorable-value');
-        $mark->mark('csrf-token-issued');
-
-        $this->expectException(UnstorableResponseDetected::class);
-        $this->expectExceptionMessage('app://self/unstorable-value is unstorable for this request (unstorable)');
-        $gate->reason($ro);
-    }
-
-    public function testThrowingGateReturnsNullWhenStorable(): void
-    {
-        $gate = new ThrowingUnstorableGate(new UnstorableGate(new UncacheableMark(), new DeclaredCacheControl()));
+        $gate = new UnstorableGate($mark, new DeclaredCacheControl());
         $ro = new None();
 
-        $this->assertNull($gate->reason($ro));
+        $mark->enterWrite(); // P's own write window opens
+        $mark->enterHole('page://self/html/nested-donut-hole'); // H's own scope
+        $mark->mark('csrf-token-issued'); // H marks itself, owned by H, not P
+        $mark->leaveHole('page://self/html/nested-donut-hole');
+
+        $this->assertSame('unstorable', $gate->reasonForOwnWrite($ro), 'a mark during my own write window refuses MY write even though it belongs to a different owner');
+        $mark->leaveWrite();
     }
 
-    public function testThrowingGateReasonExcludingHoleMarksThrowsWhenMarkedForCurrentScope(): void
+    public function testReasonForOwnWriteIgnoresASiblingThatMarkedAndClosedItsOwnWriteBeforeMineOpened(): void
     {
+        // The literal #234 repro: an unrelated sibling marks inside its OWN write window,
+        // which closes before the next (unrelated) write's own window opens.
+        // wasMarkedSinceCurrentWrite() alone would correctly ignore this; so must the OR'd
+        // isMarkedForCurrentScope() - neither half may over-refuse this.
         $mark = new UncacheableMark();
-        $gate = new ThrowingUnstorableGate(new UnstorableGate($mark, new DeclaredCacheControl()));
+        $gate = new UnstorableGate($mark, new DeclaredCacheControl());
         $ro = new None();
-        $ro->uri = new Uri('app://self/unstorable-value');
-        $mark->mark('csrf-token-issued');
 
-        $this->expectException(UnstorableResponseDetected::class);
-        $this->expectExceptionMessage('app://self/unstorable-value is unstorable for this request (unstorable)');
-        $gate->reasonExcludingHoleMarks($ro);
+        $mark->enterWrite();
+        $mark->enterHole('page://self/html/marking-hole');
+        $mark->mark('csrf-token-issued');
+        $mark->leaveHole('page://self/html/marking-hole');
+        $mark->leaveWrite();
+
+        $mark->enterWrite();
+        $this->assertNull($gate->reasonForOwnWrite($ro), 'an unrelated sibling marked and closed BEFORE my own write window opened must not refuse mine');
+        $mark->leaveWrite();
     }
 
-    public function testThrowingGateReasonExcludingHoleMarksReturnsNullWhenStorable(): void
+    public function testReasonForOwnWriteStillRefusesAPreExistingMarkInTheSameScope(): void
     {
-        $gate = new ThrowingUnstorableGate(new UnstorableGate(new UncacheableMark(), new DeclaredCacheControl()));
+        // #234 rejected option: a pure counter/snapshot-only predicate misses a mark made
+        // BEFORE the resource tree (and so this write's own enterWrite()) even started -
+        // breaking testRefreshSkipsSavingContentAndCdnHeaderWhenMarkedUnstorable. The OR'd
+        // isMarkedForCurrentScope() is what still catches it here: the pre-existing mark
+        // shares this write's own (TOP_LEVEL) scope.
+        $mark = new UncacheableMark();
+        $gate = new UnstorableGate($mark, new DeclaredCacheControl());
         $ro = new None();
 
-        $this->assertNull($gate->reasonExcludingHoleMarks($ro));
+        $mark->mark('pre-existing');
+        $mark->enterWrite(); // this write's own window opens AFTER the mark
+
+        $this->assertFalse($mark->wasMarkedSinceCurrentWrite(), 'sanity: nothing marked SINCE this write opened');
+        $this->assertSame('unstorable', $gate->reasonForOwnWrite($ro), 'a pre-existing mark sharing this write\'s own scope must still refuse it');
+        $mark->leaveWrite();
+    }
+
+    public function testReasonForOwnWriteCatchesADescendantCalledSynchronouslyAfterAnAncestorHolesOwnMark(): void
+    {
+        // #234 rejected option: wasMarkedSinceCurrentWrite() ALONE misses this - a
+        // #[Cacheable] resource called from inside a marking hole's own execution, right
+        // after its mark(), opens its own write window AFTER the mark already fired, so the
+        // counter alone reads "nothing new". isMarkedForCurrentScope() is what catches it:
+        // the descendant shares the still-open marking ancestor's own scope.
+        $mark = new UncacheableMark();
+        $gate = new UnstorableGate($mark, new DeclaredCacheControl());
+        $ro = new None();
+
+        $mark->enterHole('page://self/html/marking-hole');
+        $mark->mark('csrf-token-issued');
+        $mark->enterWrite(); // the descendant's own write window, opened AFTER the mark
+
+        $this->assertFalse($mark->wasMarkedSinceCurrentWrite(), 'sanity: nothing marked SINCE this write opened');
+        $this->assertSame('unstorable', $gate->reasonForOwnWrite($ro), 'a descendant sharing the still-open marking ancestor\'s scope must be refused');
+        $mark->leaveWrite();
+        $mark->leaveHole('page://self/html/marking-hole');
+    }
+
+    public function testReasonForOwnWriteIsStorableWithNoMarkAtAll(): void
+    {
+        $gate = new UnstorableGate(new UncacheableMark(), new DeclaredCacheControl());
+        $ro = new None();
+
+        $this->assertNull($gate->reasonForOwnWrite($ro));
     }
 
     public function testMarkIsStickyOnceSet(): void

@@ -8,13 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- `UncacheableMarkInterface::mark($reason)`: code that produces a per-user value (a CSRF token, etc.) marks the current response unstorable; it is then not cached (`put_skipped{reason: unstorable}`) and is sent with `Cache-Control: private, no-store` and `Pragma: no-cache` and no CDN headers (#222). A mark also skips every `#[Cacheable]`/`#[CacheableResponse]` write that happens later in the same request, including an unrelated sibling's (#234).
-- `UncacheableMark` is request-scoped: a long-running worker (Swoole, RoadRunner) that reuses one container across requests must rebind it per request, as it already must for `ServerContextInterface`.
-- `DevUnstorableGateModule`: `$module->override(new DevUnstorableGateModule())` turns such a skip into a thrown `Exception\UnstorableResponseDetected` during development (`install()` has no effect here).
+- `UncacheableMarkInterface::mark($reason)`: code that produces a per-user value (a CSRF token, etc.) marks the current response unstorable; it is then not cached (`put_skipped{reason: unstorable}`) and is sent with `Cache-Control: private, no-store` and `Pragma: no-cache` and no CDN headers (#222).
+- `UncacheableMark` and `DevUnstorableGateModule`'s observer are both request-scoped: a long-running worker (Swoole, RoadRunner) that reuses one container across requests must rebind both per request, as it already must for `ServerContextInterface`.
+- `DevUnstorableGateModule`: `$module->override(new DevUnstorableGateModule())` reports a skipped write as a thrown `Exception\UnstorableResponseDetected`, once, after the response finishes rendering (`install()` has no effect here).
 
 ### Changed
 - Deploy this version with a new `CacheVersionModule` version (an app that binds its own cache adapter rather than this package's `Storage*Module`s must clear its pools instead): entries written by earlier versions may hold per-user content, and an earlier version reading this version's donut cache shows raw `[le2:...]` placeholders during a rolling deploy.
 - A `#[Cacheable]`/`#[CacheableResponse]` response whose own code sets `Cache-Control` to `private` or `no-store` is no longer stored server-side; its header is kept and CDN headers are removed. A value declared by `#[HttpCache]`/`#[NoHttpCache]` is still stored.
+- `DevUnstorableGateModule` now binds `UnstorableWriteObserverInterface` (`ThrowingUnstorableWriteObserver`) instead of decorating the gate: it reports a skipped write once after rendering instead of throwing mid-render, and a hole legitimately refusing its own write (e.g. a CSRF form hole on an otherwise-correct `#[DonutCache]` page) is no longer reported. `ThrowingUnstorableGate` is removed.
 - Upgrading changes the Ray.Aop-woven class name - and so the ETag (`crc32($ro::class . ...)`) - for a `#[CacheableResponse]` class or method that also declares an `#[Embed]`, because it is now woven with a new interceptor (#226); a page with no `#[Embed]` keeps its stock woven class and ETag, and a `#[DonutCache]` page never carries an ETag at all, so neither is affected.
 - `ResourceDonut::FORMAT` is no longer public; use `ResourceDonut::placeholder()`. `ResourceDonut::refresh()` takes an additional `UncacheableMarkInterface` argument.
 - Requires `koriym/semantic-logger` `^0.11`. Written logs use its `log` document shape, and diagnostic `kind` is now `code`.
@@ -26,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A `#[DonutCache]` page embedding an `#[Embed]` hole whose URI carried two or more query parameters leaked a raw `[le:...]` placeholder to the client and could throw `ParameterException` on the next request - fixed by moving new placeholders to a `[le2:...]` marker (#232).
 - An embedded child of a `#[DonutCache]`/`#[CacheableResponse]` page is now reused until its query or links change, instead of running again when rendered as a hole after already being read in `onGet()`. Every such execution that was read but never rendered as a hole now tags the stored template and the live response's own Surrogate-Key/ETag, so purging any one of them refreshes the page instead of leaving it stale (#226).
 - `ResourceBodyEvaluator` no longer crashes materializing an embedded child whose `jsonSerialize()` does not answer the memoized `ResourceObject` (the shape `BEAR\Async\AsyncRequest` overrides it to): such a child is now left unmaterialized instead of asserting. Async support itself remains out of scope.
+- A `mark()` no longer refuses unrelated `#[Cacheable]`/`#[CacheableResponse]` writes later in the same request; `QueryRepository::doPut()`'s own write check is now scoped to the marking resource's own subtree (`isMarkedForCurrentScope()` OR'd with a new `wasMarkedSinceCurrentWrite()`), not "marked anywhere" (#234).
 
 ## [1.17.0] - 2026-09-17
 

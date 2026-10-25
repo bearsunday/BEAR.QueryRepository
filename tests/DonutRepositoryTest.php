@@ -28,6 +28,7 @@ use function dirname;
 use function glob;
 use function is_string;
 use function is_subclass_of;
+use function str_contains;
 use function time;
 
 class DonutRepositoryTest extends TestCase
@@ -782,5 +783,95 @@ class DonutRepositoryTest extends TestCase
                 $this->assertContains($value, $known, "$setter::$name names a CDN-facing header the log does not record");
             }
         }
+    }
+
+    public function testAnUnrelatedCacheableSiblingAfterAMarkingHoleIsStoredNotRefused(): void
+    {
+        // The literal #234 repro: UnstorableValue marks every request; InnocentCacheableSibling,
+        // an entirely unrelated #[Cacheable] resource embedded as the NEXT sibling hole, never
+        // marks. Its own write must be stored regardless of the sibling's mark.
+        $injector = $this->getInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
+
+        $resource->get('page://self/html/donut-cache-with-marking-hole-and-cacheable-sibling');
+        $tree = $this->flushAndValidate($logger);
+        $this->assertNotNull(self::eventContextJsonOf($tree, 'put_skipped'), 'sanity: the marking hole still refuses its own write, as before #234');
+
+        // The real assertion: a later, different visitor requesting the unrelated sibling's
+        // own URI directly hits the stored entry - it was NOT refused because of the
+        // sibling's mark.
+        $logger->flush();
+        $resource->get('app://self/innocent-cacheable-sibling');
+        $laterTree = $this->flushAndValidate($logger);
+        $this->assertContains('cache_hit', self::collectTypes($laterTree), 'the unrelated sibling\'s own entry was stored, not refused by the marking hole (#234)');
+    }
+
+    public function testACacheableViewEmbeddingAnIndependentlyDonutComposedMarkingHoleIsNotStoredCompoundLeak(): void
+    {
+        // #234 rejected fix #1 (rescoping doPut() to isMarkedForCurrentScope() ONLY): a
+        // #[Cacheable] (type: 'view') page P embeds D (DonutCacheWithUnstorableHole, itself
+        // #[DonutCache]), whose own hole H (UnstorableValue) marks. H's mark is recorded
+        // under H's own owner, never P's - a scope-only check on P would never see it and
+        // would store P's rendered template with H's secret baked in verbatim.
+        // wasMarkedSinceCurrentWrite() is what refuses P: H marked DURING P's own open write
+        // window (P's own toString() call, inside doPut()).
+        $injector = $this->getInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
+
+        $ro = $resource->get('page://self/html/cacheable-view-embedding-marking-donut');
+        $this->assertSame('private, no-store', $ro->headers[Header::CACHE_CONTROL], 'the compound leak must be refused, not just the inner hole');
+        $this->assertStringContainsString('secret', (string) $ro->view, 'sanity: the secret IS baked into the rendered view - the leak is real if this write is not refused');
+
+        $tree = $this->flushAndValidate($logger);
+        // Several writes skip in this scenario (H's own, and P's own) - find P's own
+        // specifically, not just the first skip in the tree.
+        $ownSkip = null;
+        foreach (self::eventContextsJsonOf($tree, 'put_skipped') as $json) {
+            if (str_contains($json, 'cacheable-view-embedding-marking-donut')) {
+                $ownSkip = $json;
+            }
+        }
+
+        $this->assertNotNull($ownSkip, 'P\'s own write (not just H\'s own) must be recorded as skipped');
+        $this->assertStringContainsString('"reason":"unstorable"', $ownSkip);
+
+        // Nothing was stored: a second GET of P is a fresh MISS again (its own outer close),
+        // not a hit serving the leak - D's own, independently-cached entry legitimately hits
+        // on this second GET too, so this checks P's OWN close specifically, not a blanket
+        // tree-wide cache_hit absence.
+        $logger->flush();
+        $resource->get('page://self/html/cacheable-view-embedding-marking-donut');
+        $tree2 = $this->flushAndValidate($logger);
+        $this->assertNotNull(self::closeContextJsonOf($tree2, 'cache_miss'), 'the page\'s own outer GET must still be a MISS, not a hit serving the leak');
+        $this->assertStringContainsString('"layer":"resource"', self::closeContextJsonOf($tree2, 'cache_miss'), 'the outermost close (the page\'s own, via CacheInterceptor) must be the miss, not a deeper donut-layer one');
+    }
+
+    public function testBeMartShapedProductPageStoresStockWhenTheCartFormHoleComesBeforeTheStockHoleOrderA(): void
+    {
+        // BeMart-shaped #234 repro: page://self/product embeds the cart-form hole (marks,
+        // CSRF) BEFORE the cacheable stock hole ("order A" - the order that actually triggers
+        // #234; the real app's own stock-before-form order happens to warm the stock write
+        // before the mark fires, masking the bug by accident - this fixture does not rely on
+        // that).
+        $injector = $this->getInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
+        $mark = $injector->getInstance(UncacheableMarkInterface::class);
+
+        $ro = $resource->get('page://self/product', ['productCode' => 'sample-001']);
+        $this->assertSame(200, $ro->code);
+        $this->assertTrue($mark->isMarked(), 'sanity: the cart-form hole did mark during this request');
+
+        $tree = $this->flushAndValidate($logger);
+        $this->assertNull(self::eventContextJsonOf($tree, 'put_skipped'), 'nothing was refused on this page - the form hole is not itself cacheable, and #234 must not make the page template or the stock hole look refused either');
+
+        // The real assertion: stock is now stored - no put_skipped on app://self/product/stock.
+        $logger->flush();
+        $resource->get('app://self/product/stock', ['productCode' => 'sample-001']);
+        $laterTree = $this->flushAndValidate($logger);
+        $this->assertContains('cache_hit', self::collectTypes($laterTree), 'app://self/product/stock must be stored, not refused by the form hole\'s mark (#234)');
+        $this->assertNull(self::eventContextJsonOf($laterTree, 'put_skipped'), 'no put_skipped on app://self/product/stock');
     }
 }

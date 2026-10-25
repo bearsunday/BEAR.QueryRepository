@@ -7,6 +7,7 @@ namespace BEAR\QueryRepository;
 use Override;
 
 use function array_key_last;
+use function array_pop;
 use function array_slice;
 
 /**
@@ -17,7 +18,9 @@ use function array_slice;
  * QueryRepository already rely on. A long-running worker (Swoole, RoadRunner) that reuses one
  * container across requests must rebind this per request, the same way it already must for
  * ServerContextInterface; left unrebound, a mark from one request would silently disable the
- * store for every request after it.
+ * store for every request after it - and (#234) would leave a stale tick/write-scope/
+ * interceptor-depth behind too, the same reset `DevUnstorableGateModule`'s
+ * `ThrowingUnstorableWriteObserver` (bound SINGLETON for the same reason) also needs.
  */
 final class UncacheableMark implements UncacheableMarkInterface
 {
@@ -30,10 +33,18 @@ final class UncacheableMark implements UncacheableMarkInterface
     /** @var array<string, true> */
     private array $markedOwners = [];
 
+    /** Advanced by every mark(), any owner - what wasMarkedSinceCurrentWrite() compares against */
+    private int $tick = 0;
+
+    /** @var list<int> the tick snapshotted at each currently open enterWrite() */
+    private array $writeSnapshots = [];
+    private int $interceptorDepth = 0;
+
     #[Override]
     public function mark(string $reason): void
     {
         $this->markedOwners[$this->currentOwner()] = true;
+        $this->tick++;
     }
 
     #[Override]
@@ -79,6 +90,54 @@ final class UncacheableMark implements UncacheableMarkInterface
         // open for the rest of the request. Truncating drops the leaked entry along with
         // the one actually being closed.
         $this->stack = array_slice($this->stack, 0, $index);
+    }
+
+    #[Override]
+    public function isNested(): bool
+    {
+        return $this->stack !== [];
+    }
+
+    #[Override]
+    public function enterWrite(): void
+    {
+        $this->writeSnapshots[] = $this->tick;
+    }
+
+    #[Override]
+    public function leaveWrite(): void
+    {
+        // A plain pop, unlike leaveHole()'s URI-matching truncation: write scopes are not
+        // exposed to third-party callers by URI identity, only CacheInterceptor/the donut
+        // interceptors open them, strictly call-stack nested around their own proceed()+put().
+        array_pop($this->writeSnapshots);
+    }
+
+    #[Override]
+    public function wasMarkedSinceCurrentWrite(): bool
+    {
+        if ($this->writeSnapshots === []) {
+            // No write is open (e.g. a direct, non-AOP put() call outside any interceptor):
+            // nothing to compare against, so this half of the #234 predicate stays silent and
+            // isMarkedForCurrentScope() alone decides.
+            return false;
+        }
+
+        return $this->tick !== $this->writeSnapshots[array_key_last($this->writeSnapshots)];
+    }
+
+    #[Override]
+    public function enterInterceptor(): void
+    {
+        $this->interceptorDepth++;
+    }
+
+    #[Override]
+    public function leaveInterceptor(): bool
+    {
+        $this->interceptorDepth--;
+
+        return $this->interceptorDepth === 0;
     }
 
     private function currentOwner(): string

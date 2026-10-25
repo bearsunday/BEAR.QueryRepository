@@ -44,6 +44,7 @@ class QueryRepositoryTest extends TestCase
     private QueryRepositoryInterface $repository;
     private HttpCacheInterface $httpCache;
     private SemanticLoggerInterface $logger;
+    private UncacheableMarkInterface $mark;
 
     protected function setUp(): void
     {
@@ -53,6 +54,7 @@ class QueryRepositoryTest extends TestCase
         $this->resource = $injector->getInstance(ResourceInterface::class);
         $this->httpCache = $injector->getInstance(HttpCacheInterface::class);
         $this->logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
+        $this->mark = $injector->getInstance(UncacheableMarkInterface::class);
 
         parent::setUp();
     }
@@ -329,5 +331,48 @@ class QueryRepositoryTest extends TestCase
         $this->resource->get('app://self/cacheable-no-http-cache');
         $tree = $this->flushAndValidate($this->logger);
         $this->assertContains('cache_hit', self::collectTypes($tree), '#[NoHttpCache] must not disable the server-side store');
+    }
+
+    public function testAPreExistingMarkRefusesATopLevelCacheableResourcesOwnWriteEvenThoughItsOwnWriteWindowOpensAfterTheMark(): void
+    {
+        // #234 rejected option: a pure counter/snapshot-only predicate
+        // (wasMarkedSinceCurrentWrite() ALONE) would miss this - CacheInterceptor's own
+        // enterWrite() opens AFTER this mark, so the counter alone would read "nothing marked
+        // since I opened". isMarkedForCurrentScope() is what still refuses it: the mark and
+        // this top-level resource share the same (TOP_LEVEL) scope. Donut-side counterpart:
+        // DonutRepositoryTest::testRefreshSkipsSavingContentAndCdnHeaderWhenMarkedUnstorable()
+        // proves the same property on refreshDonut()'s (unchanged, any-owner) path; this is
+        // QueryRepository::doPut()'s own, newly-scoped one.
+        $this->mark->mark('pre-existing');
+
+        $ro = $this->resource->get('app://self/value');
+        $this->assertSame('private, no-store', $ro->headers[Header::CACHE_CONTROL]);
+
+        $tree = $this->flushAndValidate($this->logger);
+        $putSkipped = self::eventContextJsonOf($tree, 'put_skipped');
+        $this->assertNotNull($putSkipped);
+        $this->assertStringContainsString('"reason":"unstorable"', $putSkipped);
+    }
+
+    public function testADescendantCacheableResourceCalledSynchronouslyAfterAnAncestorsMarkIsAlsoRefused(): void
+    {
+        // #234 rejected option: wasMarkedSinceCurrentWrite() ALONE misses this - the
+        // descendant's own write window (CacheInterceptor's enterWrite()) opens AFTER the
+        // ancestor already marked, so the counter alone reads "nothing new". Only
+        // isMarkedForCurrentScope() catches it: the descendant (InnocentCacheableSibling,
+        // called synchronously from inside MarksThenCallsCacheableSibling's own onGet(),
+        // right after its own mark()) shares the still-open marking ancestor's own scope.
+        $this->resource->get('app://self/marks-then-calls-cacheable-sibling');
+
+        $tree = $this->flushAndValidate($this->logger);
+        $this->assertNotNull(self::eventContextJsonOf($tree, 'put_skipped'), 'sanity: the ancestor refuses its own write, as before #234');
+
+        // The real assertion: the DESCENDANT's own entry was never stored either - a direct
+        // GET of its own URI is a fresh MISS, not a hit serving the leaked content.
+        $this->logger->flush();
+        $this->resource->get('app://self/innocent-cacheable-sibling');
+        $tree2 = $this->flushAndValidate($this->logger);
+        $this->assertContains('cache_miss', self::collectTypes($tree2), 'the descendant, called synchronously right after the ancestor\'s own mark, must also be refused');
+        $this->assertNotContains('cache_hit', self::collectTypes($tree2));
     }
 }

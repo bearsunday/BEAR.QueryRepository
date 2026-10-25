@@ -36,6 +36,8 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
         private readonly DonutRepositoryInterface $donutRepository,
         #[CacheLog]
         private readonly SemanticLoggerInterface $logger = new NullSemanticLogger(),
+        private readonly UncacheableMarkInterface $mark = new UncacheableMark(),
+        private readonly UnstorableWriteObserverInterface $writeObserver = new NullUnstorableWriteObserver(),
     ) {
     }
 
@@ -54,6 +56,7 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
         $openId = $this->logger->open(new GetContext((string) $ro->uri));
         $start = hrtime(true);
         $hit = false;
+        $this->mark->enterInterceptor();
         try {
             try {
                 $maybeRo = $this->donutRepository->get($ro);
@@ -74,18 +77,23 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
                 return $invocation->proceed();
             }
 
-            /** @var ResourceObject $ro */
-            $ro = $invocation->proceed();
-            // donut created in ResourceObject
-            if (isset($ro->headers[Header::ETAG]) || $ro->code >= Code::BAD_REQUEST) {
-                // Record why this miss is not followed by a put; without it the log looks like a lost write.
-                $hasEtag = isset($ro->headers[Header::ETAG]);
-                $this->logger->event(new PutSkippedContext((string) $ro->uri, $hasEtag ? 'etag-present' : 'error-code', $hasEtag ? null : $ro->code));
+            $this->mark->enterWrite();
+            try {
+                /** @var ResourceObject $ro */
+                $ro = $invocation->proceed();
+                // donut created in ResourceObject
+                if (isset($ro->headers[Header::ETAG]) || $ro->code >= Code::BAD_REQUEST) {
+                    // Record why this miss is not followed by a put; without it the log looks like a lost write.
+                    $hasEtag = isset($ro->headers[Header::ETAG]);
+                    $this->logger->event(new PutSkippedContext((string) $ro->uri, $hasEtag ? 'etag-present' : 'error-code', $hasEtag ? null : $ro->code));
 
-                return $ro;
+                    return $ro;
+                }
+
+                return $this->putRecorded($ro);
+            } finally {
+                $this->mark->leaveWrite();
             }
-
-            return $this->putRecorded($ro);
         } finally {
             $durationMs = round((hrtime(true) - $start) / 1_000_000, 3);
             // Psalm mis-tracks the $hit flag mutated inside try when read from finally.
@@ -96,6 +104,20 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
                     : new CacheMissContext('donut-view', $durationMs),
                 $openId,
             );
+            // #234 dev gate: report a pending skip once the OUTERMOST cacheable interceptor
+            // (depth back to zero) returns, never mid-render.
+            $this->reportIfOutermost();
+        }
+    }
+
+    /**
+     * #234 dev gate: report a pending skip once the OUTERMOST cacheable interceptor (depth
+     * back to zero) returns, never mid-render. See CacheInterceptor's own copy of this check.
+     */
+    private function reportIfOutermost(): void
+    {
+        if ($this->mark->leaveInterceptor()) {
+            $this->writeObserver->raiseIfPending();
         }
     }
 

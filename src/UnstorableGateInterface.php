@@ -20,8 +20,7 @@ use BEAR\Resource\ResourceObject;
  * `#[HttpCache(noStore: true)]` still stores server-side while telling the client not to.
  *
  * reason() reads `UncacheableMarkInterface::isMarked()`, "marked anywhere in this request" -
- * see that interface's docblock for the resulting, deliberate limitation: a mark made by one
- * `#[DonutCache]` hole also refuses an entirely unrelated sibling resource's own write (#234).
+ * every check except `reasonExcludingHoleMarks()` and `reasonForOwnWrite()` uses it.
  *
  * @see https://github.com/bearsunday/BEAR.QueryRepository/issues/222
  */
@@ -45,4 +44,16 @@ interface UnstorableGateInterface
      * @return 'unstorable'|null
      */
     public function reasonExcludingHoleMarks(ResourceObject $ro): string|null;
+
+    /**
+     * The same check, but ONLY for `QueryRepository::doPut()`'s own write (and `HeaderSetter`'s
+     * header decision for that same write) - never blocked by an unrelated sibling resource's
+     * own mark elsewhere in the request tree (#234). Reads
+     * `UncacheableMarkInterface::isMarkedForCurrentScope()` OR'd with
+     * `wasMarkedSinceCurrentWrite()`; see that interface's docblock for why both halves are
+     * needed.
+     *
+     * @return 'unstorable'|null
+     */
+    public function reasonForOwnWrite(ResourceObject $ro): string|null;
 }

@@ -32,15 +32,21 @@ final readonly class HeaderSetter
 
     public function __construct(
         private EtagSetterInterface $etagSetter,
-        private UnstorableGateInterface $gate,
         private UncacheableMarkInterface $mark,
     ) {
     }
 
     /**
-     * Set the validator and Cache-Control max-age, or - when the gate says this response is
-     * unstorable for this request (issue #222) - strip every CDN-facing header under any
-     * casing (RFC 7230 §3.2: $ro->headers is a plain PHP array, not an HTTP-aware collection).
+     * Set the validator and Cache-Control max-age, or - when $unstorable is non-null - strip
+     * every CDN-facing header under any casing (RFC 7230 §3.2: $ro->headers is a plain PHP
+     * array, not an HTTP-aware collection).
+     *
+     * $unstorable is the caller's own reason() check (issue #222): QueryRepository::doPut()
+     * passes its OWN-write-scoped UnstorableGateInterface::reasonForOwnWrite() result (#234);
+     * DonutHeaderSetter's pass-through computes the any-owner reason() instead - the two call
+     * sites deliberately use different predicates, so the decision is computed once by the
+     * caller and handed in rather than recomputed here, which would risk the two disagreeing
+     * (Kimi review: the prototype left this on the any-owner check for every caller).
      *
      * A producer that called UncacheableMarkInterface::mark() gets its Cache-Control/Pragma
      * replaced too, with ones that tell every cache, shared or private, not to keep the
@@ -52,9 +58,9 @@ final readonly class HeaderSetter
      * gate's no-store/private check either way: #[Cacheable] combined with
      * #[HttpCache(noStore: true)] still stores server-side while telling the client not to.
      */
-    public function __invoke(ResourceObject $ro, int|null $cacheControlMaxAge, HttpCache|null $httpCache, int|null $time = null): void
+    public function __invoke(ResourceObject $ro, int|null $cacheControlMaxAge, HttpCache|null $httpCache, string|null $unstorable, int|null $time = null): void
     {
-        if ($this->gate->reason($ro) !== null) {
+        if ($unstorable !== null) {
             $this->stripHeaders($ro, self::CDN_FACING_HEADERS);
             if ($this->mark->isMarked()) {
                 $this->stripHeaders($ro, [Header::CACHE_CONTROL, Header::PRAGMA]);

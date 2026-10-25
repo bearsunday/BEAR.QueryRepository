@@ -47,6 +47,13 @@ final readonly class UnstorableGate implements UnstorableGateInterface
     }
 
     /** @return 'unstorable'|null */
+    #[Override]
+    public function reasonForOwnWrite(ResourceObject $ro): string|null
+    {
+        return $this->reasonFor($ro, $this->mark->isMarkedForCurrentScope() || $this->mark->wasMarkedSinceCurrentWrite());
+    }
+
+    /** @return 'unstorable'|null */
     private function reasonFor(ResourceObject $ro, bool $marked): string|null
     {
         if ($marked) {

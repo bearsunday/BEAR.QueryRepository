@@ -49,6 +49,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         private UnstorableGateInterface $gate,
         private UncacheableMarkInterface $mark,
         private DonutChildExecutionsInterface $childExecutions,
+        private UnstorableWriteObserverInterface $writeObserver,
         private UriTagInterface $uriTag = new UriTag(),
     ) {
     }
@@ -181,6 +182,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $this->resourceStorage->invalidateTags([($this->uriTag)($ro->uri)]);
         if ($unstorable !== null) {
             $this->logger->event(new PutSkippedContext((string) $ro->uri, $unstorable));
+            $this->writeObserver->skipped($ro, $unstorable);
 
             return;
         }
@@ -244,6 +246,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $this->resourceStorage->invalidateTags([($this->uriTag)($ro->uri)]);
         if ($templateUnstorable !== null) {
             $this->logger->event(new PutSkippedContext((string) $ro->uri, $templateUnstorable));
+            $this->writeObserver->skipped($ro, $templateUnstorable);
 
             return;
         }
@@ -400,6 +403,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $this->logCdnHeaders($ro);
         if ($unstorable !== null) {
             $this->logger->event(new PutSkippedContext((string) $ro->uri, $unstorable));
+            $this->writeObserver->skipped($ro, $unstorable);
 
             return $ro;
         }

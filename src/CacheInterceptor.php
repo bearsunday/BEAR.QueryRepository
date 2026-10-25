@@ -43,6 +43,8 @@ final readonly class CacheInterceptor implements MethodInterceptor
         private QueryRepositoryInterface $repository,
         #[CacheLog]
         private SemanticLoggerInterface $logger = new NullSemanticLogger(),
+        private UncacheableMarkInterface $mark = new UncacheableMark(),
+        private UnstorableWriteObserverInterface $writeObserver = new NullUnstorableWriteObserver(),
     ) {
     }
 
@@ -61,6 +63,7 @@ final readonly class CacheInterceptor implements MethodInterceptor
         $openId = $this->logger->open(new GetContext((string) $ro->uri));
         $start = hrtime(true);
         $hit = false;
+        $this->mark->enterInterceptor();
         try {
             try {
                 $state = $this->repository->get($ro->uri);
@@ -86,33 +89,38 @@ final readonly class CacheInterceptor implements MethodInterceptor
                 return $ro;
             }
 
-            /** @psalm-suppress MixedAssignment */
-            $ro = $invocation->proceed();
-            assert($ro instanceof ResourceObject);
+            $this->mark->enterWrite();
             try {
-                if ($ro->code !== 200) {
-                    // Record the actual non-200 code; without it the purge below reads
-                    // as if a 203 and a 404 were the same thing.
-                    $this->logger->event(new PutSkippedContext((string) $ro->uri, 'error-code', $ro->code));
-                    $this->repository->purge($ro->uri);
+                /** @psalm-suppress MixedAssignment */
+                $ro = $invocation->proceed();
+                assert($ro instanceof ResourceObject);
+                try {
+                    if ($ro->code !== 200) {
+                        // Record the actual non-200 code; without it the purge below reads
+                        // as if a 203 and a 404 were the same thing.
+                        $this->logger->event(new PutSkippedContext((string) $ro->uri, 'error-code', $ro->code));
+                        $this->repository->purge($ro->uri);
 
-                    return $ro;
+                        return $ro;
+                    }
+
+                    $this->repository->put($ro);
+                } catch (Throwable $e) {
+                    // The store refused the write: the response is already correct, so it is served
+                    // and the failure is recorded. A render that throws, or a CDN purge that does, is
+                    // not the store's failure and keeps its path.
+                    $this->logger->event(self::failure((string) $ro->uri, 'write', $e));
+                    if (! $e instanceof CacheStoreFailure) {
+                        throw $e;
+                    }
+
+                    $this->triggerWarning($e);
                 }
 
-                $this->repository->put($ro);
-            } catch (Throwable $e) {
-                // The store refused the write: the response is already correct, so it is served
-                // and the failure is recorded. A render that throws, or a CDN purge that does, is
-                // not the store's failure and keeps its path.
-                $this->logger->event(self::failure((string) $ro->uri, 'write', $e));
-                if (! $e instanceof CacheStoreFailure) {
-                    throw $e;
-                }
-
-                $this->triggerWarning($e);
+                return $ro;
+            } finally {
+                $this->mark->leaveWrite();
             }
-
-            return $ro;
         } finally {
             $durationMs = round((hrtime(true) - $start) / 1_000_000, 3);
             // Psalm mis-tracks the $hit flag mutated inside try when read from finally.
@@ -121,6 +129,11 @@ final readonly class CacheInterceptor implements MethodInterceptor
                 $hit ? new CacheHitContext('resource', $durationMs) : new CacheMissContext('resource', $durationMs),
                 $openId,
             );
+            // #234 dev gate: report a pending skip once the OUTERMOST cacheable interceptor
+            // (depth back to zero) returns, never mid-render.
+            if ($this->mark->leaveInterceptor()) {
+                $this->writeObserver->raiseIfPending();
+            }
         }
     }
 

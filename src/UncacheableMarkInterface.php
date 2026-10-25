@@ -7,6 +7,8 @@ namespace BEAR\QueryRepository;
 /**
  * A request-scoped mark that a per-user value made this response unstorable
  *
+ * @see https://github.com/bearsunday/BEAR.QueryRepository/issues/222
+ *
  * A producer of a per-user value - a CSRF token issuer, or anything else that must never be
  * written to the shared resource cache - calls mark() at the point it produces that value, the
  * same way ASP.NET Core, Django, Symfony, Spring and Rails mark their response. The service
@@ -31,17 +33,34 @@ namespace BEAR\QueryRepository;
  * arguments - gets its own.
  *
  * Known limitation, not a regression: isMarked() answers "marked anywhere in this request, by
- * any owner" - every check except a `#[DonutCache]` write's own template uses it, including
- * `QueryRepository::doPut()` and `DonutRepository::doPutStatic()` for an entirely unrelated
- * `#[Cacheable]` or `#[CacheableResponse]` resource embedded elsewhere in the same request
- * tree. A sibling hole that marks itself therefore also refuses every OTHER `#[Cacheable]`/
- * `#[CacheableResponse]` write in that request, not just its own - because
- * `QueryRepositoryInterface`/`DonutRepositoryInterface` cannot see the resource call tree
- * `UncacheableMark`'s owner stack is built from, only "was anything marked". Scoping those
- * writes' own checks the same way `reasonExcludingHoleMarks()` scopes a donut template
- * write is deliberately left for a later release (#234).
+ * any owner" - every decision EXCEPT the following three uses it: a `#[DonutCache]` write's
+ * own template (isMarkedForCurrentScope()), `QueryRepository::doPut()`'s own write
+ * (isMarkedForCurrentScope() || wasMarkedSinceCurrentWrite(), #234) and `HeaderSetter`'s
+ * private/no-store decision for that same write. Every other check stays any-owner:
+ * `DonutRepositoryInterface` cannot see the resource call tree closely enough to scope
+ * `doPutStatic()`/`doPutDonut()`'s response check or `refreshDonut()` safely (a rescoped
+ * response leaks a nested donut's own hole content into the parent's stored entry).
  *
- * @see https://github.com/bearsunday/BEAR.QueryRepository/issues/222
+ * enterWrite()/leaveWrite() push/pop a write-scope stack, mirroring enterHole()/leaveHole():
+ * `CacheInterceptor`/the donut interceptors open one around their own `proceed()` + the write
+ * it triggers. wasMarkedSinceCurrentWrite() answers "did ANY owner mark() since my own
+ * enterWrite()" (a monotonic tick), catching what isMarkedForCurrentScope() alone cannot: a
+ * `#[Cacheable]` page P embedding an independently donut-composed hole H that marks - H's
+ * mark is owned by H, never P, but it happened DURING P's open write window (the #234
+ * compound-leak rejected fix). The two checks are OR'd because each alone under-catches: the
+ * counter alone misses a mark made before the write window opened (before the tree starts, or
+ * a descendant called synchronously right after an ancestor's own mark, sharing its still-open
+ * scope); the scope check alone misses the compound leak above.
+ *
+ * enterInterceptor()/leaveInterceptor() track nesting depth across every cacheable GET
+ * interceptor, independent of the write-scope stack: a dev-mode write observer
+ * (`DevUnstorableGateModule`) uses leaveInterceptor()'s `true` return (depth back to zero) to
+ * report a skipped write once rendering completes, not mid-render - kept here, not in the
+ * semantic logger, which is `NullSemanticLogger` by default and would never fire.
+ *
+ * isNested() lets that observer tell a hole legitimately refusing its OWN write (expected)
+ * from a top-level resource marking itself with no hole to isolate it in (the #222 misuse a
+ * developer needs to see).
  */
 interface UncacheableMarkInterface
 {
@@ -67,4 +86,22 @@ interface UncacheableMarkInterface
      * open, and marks after it misattributed one level up, for the rest of the request.
      */
     public function leaveHole(string $uri): void;
+
+    /** Whether a hole scope (enterHole()/leaveHole()) is currently open */
+    public function isNested(): bool;
+
+    /** Snapshot the current mark tick as the innermost open write's own starting point */
+    public function enterWrite(): void;
+
+    /** Close the innermost open write scope opened by enterWrite() */
+    public function leaveWrite(): void;
+
+    /** Did ANY owner mark() between the innermost open write's own enterWrite() and now? */
+    public function wasMarkedSinceCurrentWrite(): bool;
+
+    /** Enter one more nested cacheable GET interceptor (CacheInterceptor/AbstractDonutCacheInterceptor) */
+    public function enterInterceptor(): void;
+
+    /** Leave one nested cacheable GET interceptor; true when this was the outermost one (depth back to zero) */
+    public function leaveInterceptor(): bool;
 }

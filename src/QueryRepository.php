@@ -40,6 +40,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         private Expiry $expiry,
         private CacheDependencyInterface $cacheDependency,
         private UnstorableGateInterface $gate,
+        private UnstorableWriteObserverInterface $writeObserver,
     ) {
     }
 
@@ -95,14 +96,17 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         // Checked before headerSetter runs, against the still-unmutated header: only a
         // Cache-Control set dynamically (by the method or during rendering above) or a mark
         // made during that rendering trips the gate - #[HttpCache]/#[NoHttpCache]'s own
-        // declared value is exempt (issue #222). headerSetter makes the identical check on
-        // this same unmutated state to decide what it writes, so the two never disagree.
-        $unstorable = $this->gate->reason($ro);
+        // declared value is exempt (issue #222). Own-write-scoped, not any-owner (#234): an
+        // unrelated sibling resource's own mark elsewhere in the request tree must not refuse
+        // THIS write. headerSetter is handed the SAME result rather than recomputing it, so
+        // the store decision and the header decision can never disagree.
+        $unstorable = $this->gate->reasonForOwnWrite($ro);
 
-        ($this->headerSetter)($ro, $ttl, $httpCache);
+        ($this->headerSetter)($ro, $ttl, $httpCache, $unstorable);
 
         if ($unstorable !== null) {
             $this->logger->event(new PutSkippedContext((string) $ro->uri, $unstorable));
+            $this->writeObserver->skipped($ro, $unstorable);
 
             return false;
         }
