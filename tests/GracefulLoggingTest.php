@@ -455,6 +455,20 @@ class GracefulLoggingTest extends TestCase
             (string) $second->view,
             'the fresh render\'s full body - not empty, and not the raw AbstractRequest a bare proceed() fallback would leave unrendered',
         );
+
+        // Self-heals: the degraded read's fallback render reaches putRecorded(), so the
+        // template is re-stored - this is what makes a transient failure (including the
+        // CHANGELOG's corrupted-legacy-placeholder example) answer 200 on every later
+        // request too, not just this one. Proved two ways: a stored entry now exists at
+        // all (the earlier bug left the entry untouched - neither healed nor failing), and
+        // a further HIT refreshes it successfully with no warning needed this time.
+        $resourceStorage = $injector->getInstance(ResourceStorageInterface::class);
+        $uri = new Uri('page://self/html/donut-cache-with-flaky-hole');
+        $this->assertNotNull($resourceStorage->getDonut($uri), 'the fresh render re-stores the template instead of leaving no entry behind');
+
+        $third = $resource->get('page://self/html/donut-cache-with-flaky-hole');
+        $this->assertSame(200, $third->code);
+        $this->assertStringContainsString('healthy', (string) $third->view, 'a later request reads the re-stored, healed template directly - no further degrade needed');
     }
 
     /**
