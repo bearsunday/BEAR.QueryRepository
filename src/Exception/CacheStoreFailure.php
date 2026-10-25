@@ -22,6 +22,14 @@ use Throwable;
  * command or a direct call has no interceptor, so it reaches the caller and the write is not
  * reported as done. The automatic write inside a GET is caught and degraded - that request
  * changed nothing, so nothing at an edge became stale by it.
+ *
+ * `ResourceDonut::refresh()` also raises this type when a hole throws while an already-cached
+ * page is being recomposed - deliberately, not by accident: the read path degrades through
+ * the same catch that handles a storage outage, falling back to a full fresh render
+ * (`ResourceDonut::create()`), which then fails exactly as the hole would without the cache
+ * attribute at all if it is genuinely broken, or serves the full page if the failure was
+ * transient. `create()`'s own render does NOT use this type - a render failure there
+ * propagates unwrapped, matching a page with no cache attribute (see its docblock).
  */
 final class CacheStoreFailure extends RuntimeException
 {

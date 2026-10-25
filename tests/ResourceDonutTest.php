@@ -4,17 +4,24 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Exception\CacheStoreFailure;
+use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\Exception\ParameterException;
 use BEAR\Resource\Method;
+use BEAR\Resource\RenderInterface;
 use BEAR\Resource\RequestInterface;
+use BEAR\Resource\Resource;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use Madapaja\TwigModule\TwigModule;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
 use RuntimeException;
+use Twig\Error\Error as TwigError;
 
+use function assert;
 use function dirname;
 use function htmlspecialchars;
 use function http_build_query;
@@ -143,17 +150,24 @@ class ResourceDonutTest extends TestCase
 
     /**
      * A legacy `[le:URI]` placeholder for a hole with two REQUIRED query params, corrupted
-     * the same way, stays exactly as broken as it already was: still a ParameterException,
-     * the same failure a pre-#232-fix refresh() threw - not this fix's rawurldecode()
-     * turning it into a different, new failure.
+     * the same way, fails the re-fetch with the same underlying cause as a pre-#232-fix
+     * refresh() threw - still a ParameterException, not this fix's rawurldecode() turning it
+     * into a different, new failure. Unlike before this PR, that cause no longer reaches the
+     * caller raw: it now arrives wrapped in a CacheStoreFailure, the same conversion any
+     * re-fetch failure gets, so `AbstractDonutCacheInterceptor`'s read path degrades to a
+     * fresh render instead of a 500 - an intentional behavior change (see CHANGELOG).
      */
     public function testRefreshOfALegacyMultiParamPlaceholderFailsTheSameWayAsBeforeThisFix(): void
     {
         $ro = $this->resource->newInstance('page://self/html/blog-posting-donut');
         $donut = new ResourceDonut('<p>[le:app://self/multi-param-query-hole?id=1&amp;tag=2]</p>', [], null, false);
 
-        $this->expectException(ParameterException::class);
-        $donut->refresh($this->resource, $ro, $this->mark);
+        try {
+            $donut->refresh($this->resource, $ro, $this->mark);
+            $this->fail('expected the malformed legacy placeholder to fail the re-fetch');
+        } catch (CacheStoreFailure $e) {
+            $this->assertInstanceOf(ParameterException::class, $e->getPrevious());
+        }
     }
 
     /**
@@ -253,6 +267,187 @@ class ResourceDonutTest extends TestCase
         $this->assertTrue(
             $this->mark->isMarkedForCurrentScope(),
             'a mark right after the aborted re-fetch must stay filed under TOP_LEVEL, not get displaced by a scope the throw left stuck on the stack',
+        );
+    }
+
+    /**
+     * A hole's own onGet() propagates uncaught through `DonutRequest::__toString()`
+     * (issue: storing an empty donut template whose hole threw, since 1.17.0). `create()`
+     * renders with `$ro->toString()`, which does not swallow, so the ORIGINAL Throwable -
+     * here wrapped once by Twig as it bubbles through template evaluation - reaches the
+     * caller unmodified. Nothing past the render call ever runs, so nothing is stored.
+     */
+    public function testCreateLetsAHoleThrowTravelAndStoresNothing(): void
+    {
+        $ro = $this->resource->newInstance('page://self/html/donut-cache-with-throwing-hole');
+        $resource = $this->resource;
+        assert($resource instanceof Resource);
+        $throwingRequest = $resource->get->uri('app://self/throwing-hole');
+        assert($throwingRequest instanceof AbstractRequest);
+        $ro->body = ['secret' => $throwingRequest];
+
+        try {
+            ResourceDonut::create($ro, new DonutRenderer(), new SurrogateKeys($ro->uri), null, false, $this->mark);
+            $this->fail('expected the hole throw to travel');
+        } catch (TwigError $e) {
+            $this->assertInstanceOf(RuntimeException::class, $e->getPrevious());
+            $this->assertSame('the hole blew up mid-render', $e->getPrevious()->getMessage());
+        }
+    }
+
+    /**
+     * Unlike `app://self/throwing-hole` (fails inside `($this->request)()`, before
+     * `DonutRequest::__toString()` ever reaches its own render step), this hole's `onGet()`
+     * succeeds and its OWN template is what fails - specifically exercising the
+     * `$executed->toString()` call (not `(string) $executed`, which would swallow this into
+     * an E_USER_WARNING and an empty placeholder view instead of letting it travel).
+     */
+    public function testCreateLetsAHolesOwnRenderFailureTravelAndStoresNothing(): void
+    {
+        $ro = $this->resource->newInstance('page://self/html/donut-cache-with-throwing-hole');
+        $resource = $this->resource;
+        assert($resource instanceof Resource);
+        $holeRequest = $resource->get->uri('app://self/hole-with-no-template');
+        assert($holeRequest instanceof AbstractRequest);
+        $ro->body = ['secret' => $holeRequest];
+
+        try {
+            ResourceDonut::create($ro, new DonutRenderer(), new SurrogateKeys($ro->uri), null, false, $this->mark);
+            $this->fail("expected the hole's own render failure to travel");
+        } catch (TwigError $e) {
+            $this->assertStringContainsString('HoleWithNoTemplate', $e->getMessage());
+        }
+    }
+
+    /**
+     * `app://self/throwing-hole` marks itself unstorable, THEN throws (Kimi LOW: document
+     * which surfaces). The render exception wins, not a dev-gate exception
+     * (`UnstorableResponseDetected`): the mark only ever affects a SUCCESSFUL render's
+     * storability, checked by `UnstorableGateInterface::reason()` after `create()` returns -
+     * which it never does here, so nothing ever reads the mark at all. The scope the mark
+     * was filed under is still left correctly despite the throw (DonutRequest::__toString()'s
+     * own finally), confirmed the same way DonutRequestTest's own throw test does.
+     */
+    public function testCreateLetsAHoleThatMarkedItselfThrowTravelAsTheRenderException(): void
+    {
+        $ro = $this->resource->newInstance('page://self/html/donut-cache-with-throwing-hole');
+        $resource = $this->resource;
+        assert($resource instanceof Resource);
+        $throwingRequest = $resource->get->uri('app://self/throwing-hole');
+        assert($throwingRequest instanceof AbstractRequest);
+        $ro->body = ['secret' => $throwingRequest];
+
+        try {
+            ResourceDonut::create($ro, new DonutRenderer(), new SurrogateKeys($ro->uri), null, false, $this->mark);
+            $this->fail('expected the render exception to travel, not any dev-gate exception');
+        } catch (TwigError $e) {
+            // Not UnstorableResponseDetected or any other gate-related exception: the mark
+            // ThrowingHole made before throwing is simply never read.
+            $this->assertInstanceOf(RuntimeException::class, $e->getPrevious());
+            $this->assertSame('the hole blew up mid-render', $e->getPrevious()->getMessage());
+        }
+
+        // The hole's own scope was left (DonutRequest::__toString()'s finally), so a mark
+        // right after is filed under TOP_LEVEL, not displaced by a leaked hole scope.
+        $this->mark->mark('after the throw');
+        $this->assertTrue($this->mark->isMarkedForCurrentScope());
+    }
+
+    /**
+     * An anonymous exception class (`new class extends RuntimeException {}`) must travel
+     * exactly like a named one - Kimi's MEDIUM: a class-name-matching guard would silently
+     * miss this and still store the empty template. This design never inspects the class at
+     * all, so there is nothing for an anonymous class to evade.
+     */
+    public function testCreateLetsAnAnonymousExceptionHoleThrowTravelAndStoresNothing(): void
+    {
+        $ro = $this->resource->newInstance('page://self/html/donut-cache-with-throwing-hole');
+        $resource = $this->resource;
+        assert($resource instanceof Resource);
+        $throwingRequest = $resource->get->uri('app://self/anonymous-throwing-hole');
+        assert($throwingRequest instanceof AbstractRequest);
+        $ro->body = ['secret' => $throwingRequest];
+
+        try {
+            ResourceDonut::create($ro, new DonutRenderer(), new SurrogateKeys($ro->uri), null, false, $this->mark);
+            $this->fail('expected the anonymous-class hole throw to travel');
+        } catch (TwigError $e) {
+            $this->assertStringContainsString('anonymous hole blew up', $e->getPrevious()?->getMessage() ?? '');
+        }
+    }
+
+    /**
+     * The same holds when the composing page's OWN template fails, outside any hole -
+     * `$ro->toString()` in create() renders the page itself, not only its holes.
+     */
+    public function testCreateLetsAPageTemplateThrowTravelAndStoresNothing(): void
+    {
+        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module->override(new class extends AbstractModule {
+            protected function configure(): void
+            {
+                $this->bind(RenderInterface::class)->to(FakeThrowingRenderer::class);
+            }
+        });
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $mark = $injector->getInstance(UncacheableMarkInterface::class);
+        $ro = $resource->newInstance('page://self/html/plain-donut-hole');
+        $ro->body = ['value' => 'plain'];
+
+        try {
+            ResourceDonut::create($ro, new DonutRenderer(), new SurrogateKeys($ro->uri), null, false, $mark);
+            $this->fail('expected the page template throw to travel');
+        } catch (FakeTemplateNotFound $e) {
+            $this->assertSame('template not found: user.html.twig', $e->getMessage());
+        }
+    }
+
+    /**
+     * The render must not be disturbed when nothing throws - `$ro->toString()` behaves
+     * exactly like the magic cast it replaced for the success path, only diverging on a
+     * Throwable.
+     */
+    public function testCreateStillStoresTheTemplateWhenNothingThrows(): void
+    {
+        $ro = $this->resource->newInstance('page://self/html/plain-donut-hole');
+        $ro->body = ['value' => 'plain'];
+
+        $donut = ResourceDonut::create($ro, new DonutRenderer(), new SurrogateKeys($ro->uri), null, false, $this->mark);
+        $rendered = $donut->render($ro, new DonutRenderer());
+
+        $this->assertStringContainsString('plain-donut-hole:plain', (string) $rendered->view);
+    }
+
+    /**
+     * refresh()'s per-hole `$ro->toString()` (and the `$resource->get($uri)` re-fetch that
+     * runs the hole's onGet()) does not swallow a Throwable either - it propagates directly,
+     * the same non-swallowing render create() itself now uses. Unlike create(), which lets
+     * it travel unwrapped, this is a plain try/catch converting it to CacheStoreFailure
+     * deliberately: a HIT's re-fetch degrades through the interceptor's read path instead,
+     * falling back to a full fresh render (the reviewed design both reviewers said to keep).
+     */
+    public function testRefreshRefusesToServeWhenAHoleThrows(): void
+    {
+        $ro = $this->resource->newInstance('page://self/html/blog-posting-donut');
+        $uri = 'app://self/throwing-hole';
+        $donut = new ResourceDonut('<p>' . ResourceDonut::placeholder($uri) . '</p>', [], null, false);
+
+        try {
+            $donut->refresh($this->resource, $ro, $this->mark);
+            $this->fail('expected the hole throw to be refused as a CacheStoreFailure');
+        } catch (CacheStoreFailure $e) {
+            $this->assertStringContainsString('the hole blew up mid-render', $e->getMessage());
+        }
+
+        // Same stack-balance check as testRefreshLeavesTheHoleScopeEvenWhenTheReFetchThrows:
+        // the catch must not skip the finally that leaves the hole's scope.
+        $this->mark->mark('after the throw');
+        $this->mark->leaveHole($uri);
+
+        $this->assertTrue(
+            $this->mark->isMarkedForCurrentScope(),
+            'a mark right after the refused re-fetch must stay filed under TOP_LEVEL, not get displaced by a scope the throw left stuck on the stack',
         );
     }
 }
