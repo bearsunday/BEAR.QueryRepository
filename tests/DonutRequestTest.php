@@ -15,7 +15,6 @@ use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Madapaja\TwigModule\TwigModule;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
-use ReflectionMethod;
 use RuntimeException;
 
 use function assert;
@@ -63,15 +62,10 @@ class DonutRequestTest extends TestCase
 
     public function testANonRequestHoleIsInvokedDirectlyOnceWithoutTouchingJsonSerialize(): void
     {
-        $returnType = (new ReflectionMethod(AbstractRequest::class, 'jsonSerialize'))->getReturnType();
-        if ((string) $returnType !== 'mixed') {
-            self::markTestSkipped('this bear/resource release declares AbstractRequest::jsonSerialize(): ' . $returnType . ' - a request answering non-ResourceObject data from it cannot be constructed here');
-        }
-
         $child = new class extends ResourceObject {
         };
-        $child->uri = new Uri('app://self/async-like');
-        $child->view = 'async-view';
+        $child->uri = new Uri('app://self/non-request');
+        $child->view = 'non-request-view';
         $invoker = new class ($child) implements InvokerInterface {
             public int $calls = 0;
 
@@ -86,7 +80,7 @@ class DonutRequestTest extends TestCase
                 return $this->ro;
             }
         };
-        $request = new FakeAsyncLikeRequest($child, $invoker);
+        $request = new FakeNonRequestHole($invoker, $child);
         $storage = new DonutRenderer();
         $donutRequest = new DonutRequest($request, $storage, new SurrogateKeys(new Uri('app://self/foo')), new UncacheableMark());
 
@@ -94,7 +88,7 @@ class DonutRequestTest extends TestCase
 
         $this->assertSame(1, $invoker->calls);
         $this->assertSame(0, $request->jsonSerializeCalls, 'jsonSerialize() of a non-Request (e.g. AsyncRequest) has side effects');
-        $this->assertSame('hole=async-view', $storage->render('hole=' . $placeholder));
+        $this->assertSame('hole=non-request-view', $storage->render('hole=' . $placeholder));
     }
 
     public function testHoleScopeIsLeftWhenTheHoleThrows(): void
