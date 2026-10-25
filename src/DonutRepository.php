@@ -348,6 +348,23 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $this->resourceStorage->invalidateTags($tags);
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    #[Override]
+    public function refuseIfUnstorable(ResourceObject $ro): string|null
+    {
+        $unstorable = $this->gate->reason($ro);
+        if ($unstorable === null) {
+            return null;
+        }
+
+        ($this->donutHeaderSetter)($ro, null, null);
+        $this->resourceStorage->invalidateTags([($this->uriTag)($ro->uri)]);
+
+        return $unstorable;
+    }
+
     private function refreshDonut(ResourceObject $ro): ResourceObject|null
     {
         $donut = $this->resourceStorage->getDonut($ro->uri);

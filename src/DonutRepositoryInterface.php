@@ -43,4 +43,23 @@ interface DonutRepositoryInterface
 
     /** @param list<string> $tags */
     public function invalidateTags(array $tags): void;
+
+    /**
+     * Clean up and refuse the response header the SAME way putStatic()/putDonut()'s own
+     * cleanup+refusal would, for a $ro that is NOT going through either of them at all - a
+     * no-op unless $ro is ALSO marked unstorable.
+     *
+     * AbstractDonutCacheInterceptor's own "already answered" shortcut (an ETag already on
+     * $ro, or an error code) skips putStatic()/putDonut() entirely so a resource's own,
+     * legitimately pre-set validator is never overwritten by the donut machinery - but that
+     * ETag can also be a side effect of a direct, non-AOP QueryRepository::put() call made
+     * from inside this page's own onGet() (Kimi's finding): doPut()'s own headerSetter sets
+     * one whenever that direct write is not itself refused. If onGet() then marks the
+     * response AFTER that direct put(), the shortcut's own early return left whatever the
+     * direct put() already stored uncleaned and the response headers unrefused - this method
+     * closes that gap without touching $ro at all when it turns out NOT to be unstorable.
+     *
+     * @return 'unstorable'|null
+     */
+    public function refuseIfUnstorable(ResourceObject $ro): string|null;
 }

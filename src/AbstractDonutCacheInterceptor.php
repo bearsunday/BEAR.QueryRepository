@@ -163,6 +163,14 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
      * served as-is and the non-write recorded; anything else is rendered and stored through
      * `putRecorded()`.
      *
+     * An ETag already on $ro here is not always the resource's own, legitimate validator -
+     * it can also be a side effect of a direct, non-AOP QueryRepository::put() call made
+     * from inside this page's own onGet(), left behind by that write's own headerSetter
+     * (Kimi's finding). refuseIfUnstorable() tells the two apart and is a no-op unless $ro
+     * is ALSO marked unstorable, so a resource's own legitimately pre-set ETag is never
+     * touched; when it IS marked, this applies the SAME cleanup/header-refusal
+     * putStatic()/putDonut() would, on the one exact path that used to skip both entirely.
+     *
      * @param bool $threw set by reference, forwarded to putRecorded() - see that method's own
      *     docblock.
      */
@@ -170,8 +178,16 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
     {
         // donut created in ResourceObject
         if (isset($ro->headers[Header::ETAG]) || $ro->code >= Code::BAD_REQUEST) {
-            // Record why this miss is not followed by a put; without it the log looks like a lost write.
             $hasEtag = isset($ro->headers[Header::ETAG]);
+            $unstorable = $this->donutRepository->refuseIfUnstorable($ro);
+            if ($unstorable !== null) {
+                $this->logger->event(new PutSkippedContext((string) $ro->uri, $unstorable));
+                $this->writeObserver->skipped($ro, $unstorable);
+
+                return $ro;
+            }
+
+            // Record why this miss is not followed by a put; without it the log looks like a lost write.
             $this->logger->event(new PutSkippedContext((string) $ro->uri, $hasEtag ? 'etag-present' : 'error-code', $hasEtag ? null : $ro->code));
 
             return $ro;

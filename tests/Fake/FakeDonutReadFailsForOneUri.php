@@ -58,4 +58,10 @@ final class FakeDonutReadFailsForOneUri implements DonutRepositoryInterface
     {
         $this->real->invalidateTags($tags);
     }
+
+    #[Override]
+    public function refuseIfUnstorable(ResourceObject $ro): string|null
+    {
+        return $this->real->refuseIfUnstorable($ro);
+    }
 }
