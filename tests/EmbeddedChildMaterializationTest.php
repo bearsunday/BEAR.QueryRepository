@@ -12,6 +12,7 @@ use BEAR\Resource\Uri;
 use FakeVendor\HelloWorld\Resource\Page\Dep\CountingChild;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
+use ReflectionMethod;
 
 use function assert;
 use function is_array;
@@ -149,6 +150,37 @@ class EmbeddedChildMaterializationTest extends TestCase
         $this->assertInstanceOf(ResourceObject::class, $child);
         $this->assertSame(['n' => 1], $child->body);
         $this->assertSame(1, $request->invoked);
+    }
+
+    /**
+     * An AbstractRequest whose jsonSerialize() does not answer a memoized ResourceObject
+     * (BEAR\Async\AsyncRequest's own shape, see ResourceBodyEvaluator::materialize()) is
+     * left as the live request instead of crashing: a blind assert($memo instanceof
+     * ResourceObject) would raise AssertionError here (zend.assertions=1 in this suite),
+     * and even with assertions off, `clone` on the decoded array would be a fatal error.
+     *
+     * `AbstractRequest::jsonSerialize()` is declared `: ResourceObject` in older bear/resource
+     * releases (this project's own lowest-supported one among them) and `: mixed` in newer
+     * ones - a fixture overriding it to answer an array is only loadable under the latter, so
+     * this skips rather than fatal-erroring PHP's own class-declaration check under the former
+     * (`FakeAsyncLikeRequest` is only autoloaded past this guard).
+     */
+    public function testAsyncLikeRequestIsLeftUnmaterializedInsteadOfCrashing(): void
+    {
+        $returnType = (new ReflectionMethod(AbstractRequest::class, 'jsonSerialize'))->getReturnType();
+        if ((string) $returnType !== 'mixed') {
+            self::markTestSkipped('this bear/resource release declares AbstractRequest::jsonSerialize(): ' . $returnType . ' - a request answering non-ResourceObject data from it cannot be constructed here');
+        }
+
+        $ro = new class extends ResourceObject {
+        };
+        $ro->uri = new Uri('app://self/async-like');
+        $request = new FakeAsyncLikeRequest($ro);
+
+        $body = (new ResourceBodyEvaluator())(['child' => $request]);
+
+        assert(is_array($body));
+        $this->assertSame($request, $body['child'], 'not materialized - the live request is kept, not wrapped into a ResourceObject');
     }
 
     /**

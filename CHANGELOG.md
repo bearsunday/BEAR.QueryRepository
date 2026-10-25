@@ -15,8 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Deploy this version with a new `CacheVersionModule` version (an app that binds its own cache adapter rather than this package's `Storage*Module`s must clear its pools instead): entries written by earlier versions may hold per-user content, and an earlier version reading this version's donut cache shows raw `[le2:...]` placeholders during a rolling deploy.
 - A `#[Cacheable]`/`#[CacheableResponse]` response whose own code sets `Cache-Control` to `private` or `no-store` is no longer stored server-side; its header is kept and CDN headers are removed. A value declared by `#[HttpCache]`/`#[NoHttpCache]` is still stored.
+- Upgrading changes the Ray.Aop-woven class name - and so the ETag (`crc32($ro::class . ...)`) - for a `#[CacheableResponse]` class or method that also declares an `#[Embed]`, because it is now woven with a new interceptor (#226); a page with no `#[Embed]` keeps its stock woven class and ETag, and a `#[DonutCache]` page never carries an ETag at all, so neither is affected.
 - `ResourceDonut::FORMAT` is no longer public; use `ResourceDonut::placeholder()`. `ResourceDonut::refresh()` takes an additional `UncacheableMarkInterface` argument.
 - Requires `koriym/semantic-logger` `^0.11`. Written logs use its `log` document shape, and diagnostic `kind` is now `code`.
+- Requires `bear/resource` `^1.22.4`.
 - `KeepMutationsAndFailures` also keeps a session cut at the record limit (`semantic_logger_truncated`): a `command` past the limit leaves no other trace.
 - `ResourceDonut::refresh()`: a hole that throws while an already-cached `#[DonutCache]` page is recomposed (its own `onGet()` or its render) no longer lets that exception reach the caller. It now degrades the same way a cache-store failure does - recorded as a `cache_error` and served via a fresh, non-donut render of the whole page - so a transient hole failure costs latency, not an error response. A permanently broken hole (for example a corrupted legacy placeholder's `ParameterException`, previously an uncaught 500) now degrades to 200 on every refresh instead.
 
@@ -24,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `LogFileWriter`: two sessions flushed in the same microsecond no longer overwrite each other. The timestamped filename now carries a random suffix, so both survive (#221).
 - A `#[DonutCache]` page embedding an `#[Embed]` hole whose URI carried two or more query parameters leaked a raw `[le:...]` placeholder to the client and could throw `ParameterException` on the next request - fixed by moving new placeholders to a `[le2:...]` marker (#232).
 - A `#[DonutCache]`/`#[CacheableResponse]` page whose render threw - a hole's own resource or the page's own template - no longer stores the empty template BEAR.Resource's `ResourceObject::__toString()` swallows that failure into; that empty template would otherwise be served to every later visitor (since 1.17.0).
+- An embedded child of a `#[DonutCache]`/`#[CacheableResponse]` page is now reused until its query or links change, instead of running again when rendered as a hole after already being read in `onGet()`. Every such execution that was read but never rendered as a hole now tags the stored template and the live response's own Surrogate-Key/ETag, so purging any one of them refreshes the page instead of leaving it stale (#226).
+- `ResourceBodyEvaluator` no longer crashes materializing an embedded child whose `jsonSerialize()` does not answer the memoized `ResourceObject` (the shape `BEAR\Async\AsyncRequest` overrides it to): such a child is now left unmaterialized instead of asserting. Async support itself remains out of scope.
 
 ## [1.17.0] - 2026-09-17
 
