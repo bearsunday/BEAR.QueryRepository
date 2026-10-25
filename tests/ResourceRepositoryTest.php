@@ -40,7 +40,7 @@ class ResourceRepositoryTest extends TestCase
         $mark = new UncacheableMark();
         $this->repository = new Repository(
             new NullSemanticLogger(),
-            new HeaderSetter(new EtagSetter(), $mark),
+            new HeaderSetter(new EtagSetter()),
             new ResourceStorage(
                 new NullSemanticLogger(),
                 new NullPurger(),
@@ -125,7 +125,7 @@ class ResourceRepositoryTest extends TestCase
         $mark = new UncacheableMark();
         $repository = new Repository(
             new NullSemanticLogger(),
-            new HeaderSetter(new EtagSetter(), $mark),
+            new HeaderSetter(new EtagSetter()),
             new ResourceStorage(
                 new NullSemanticLogger(),
                 new NullPurger(),

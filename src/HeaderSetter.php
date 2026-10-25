@@ -8,6 +8,7 @@ use BEAR\QueryRepository\Cdn\AkamaiCacheControlHeaderSetter;
 use BEAR\QueryRepository\Cdn\FastlyCacheControlHeaderSetter;
 use BEAR\RepositoryModule\Annotation\HttpCache;
 use BEAR\Resource\ResourceObject;
+use LogicException;
 
 use function array_keys;
 use function sprintf;
@@ -32,7 +33,6 @@ final readonly class HeaderSetter
 
     public function __construct(
         private EtagSetterInterface $etagSetter,
-        private UncacheableMarkScopeInterface $mark,
     ) {
     }
 
@@ -50,17 +50,21 @@ final readonly class HeaderSetter
      * trailing, named-only-in-practice parameter (BC: released 1.17.0 has `$time` 4th) - both
      * internal call sites pass it as `unstorable: ...` rather than positionally.
      *
-     * $wasMarked is the SAME split: whether $unstorable was caused by a mark specifically (as
-     * opposed to the response's own Cache-Control already saying no-store/private) must be
-     * read with the SAME predicate that computed $unstorable, or the two can disagree -
+     * $wasMarked is the SAME split, mandatory whenever $unstorable is non-null (loudly, a
+     * thrown LogicException, not a default - CodeRabbit review round 2: a nullable
+     * $wasMarked that silently fell back to an any-owner isMarked() this class asked on its
+     * OWN UncacheableMarkScopeInterface dependency was exactly how the bug below happened in
+     * the first place, and left that same drift possible for the next call site that forgets
+     * to pass it; this class holds no mark dependency of its own to drift back to). Read with
+     * the SAME predicate that computed $unstorable, or the two can disagree -
      * QueryRepository::doPut() passes UnstorableGateInterface::isMarkReasonForOwnWrite()'s
-     * own-write-scoped answer; DonutHeaderSetter leaves it null, falling back to this class's
-     * own any-owner isMarked() below, matching its own any-owner reason() (CodeRabbit review:
-     * without this split, a #[Cacheable] resource that set its own `private, max-age=60`
-     * Cache-Control - refused for THAT reason alone, no mark of its own - had that header
-     * wrongly replaced by `private, no-store` whenever an UNRELATED mark fired anywhere else
-     * in the request, because the any-owner isMarked() this class asked internally did not
-     * agree with the own-write-scoped reasonForOwnWrite() that decided $unstorable).
+     * own-write-scoped answer; DonutHeaderSetter passes isMarkReason()'s any-owner one,
+     * matching its own any-owner reason() (CodeRabbit review round 1: without this split, a
+     * #[Cacheable] resource that set its own `private, max-age=60` Cache-Control - refused
+     * for THAT reason alone, no mark of its own - had that header wrongly replaced by
+     * `private, no-store` whenever an UNRELATED mark fired anywhere else in the request,
+     * because the any-owner isMarked() this class asked internally did not agree with the
+     * own-write-scoped reasonForOwnWrite() that decided $unstorable).
      *
      * A producer that called UncacheableMarkInterface::mark() (app-facing) gets its Cache-Control/Pragma
      * replaced too, with ones that tell every cache, shared or private, not to keep the
@@ -75,8 +79,12 @@ final readonly class HeaderSetter
     public function __invoke(ResourceObject $ro, int|null $cacheControlMaxAge, HttpCache|null $httpCache, int|null $time = null, string|null $unstorable = null, bool|null $wasMarked = null): void
     {
         if ($unstorable !== null) {
+            if ($wasMarked === null) {
+                throw new LogicException('HeaderSetter::__invoke() requires $wasMarked whenever $unstorable is given - compute it with the SAME predicate that decided $unstorable (UnstorableGateInterface::isMarkReasonForOwnWrite() or ::isMarkReason()) and pass it, rather than leaving this class to guess.');
+            }
+
             $this->stripHeaders($ro, self::CDN_FACING_HEADERS);
-            if ($wasMarked ?? $this->mark->isMarked()) {
+            if ($wasMarked) {
                 $this->stripHeaders($ro, [Header::CACHE_CONTROL, Header::PRAGMA]);
                 $ro->headers[Header::CACHE_CONTROL] = 'private, no-store';
                 $ro->headers[Header::PRAGMA] = 'no-cache';

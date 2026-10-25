@@ -36,7 +36,7 @@ final readonly class UnstorableGate implements UnstorableGateInterface
     #[Override]
     public function reason(ResourceObject $ro): string|null
     {
-        return $this->reasonFor($ro, $this->mark->isMarked());
+        return $this->reasonFor($ro, $this->isMarkReason($ro));
     }
 
     /** @return 'unstorable'|null */
@@ -61,6 +61,23 @@ final readonly class UnstorableGate implements UnstorableGateInterface
     public function reasonForOwnWrite(ResourceObject $ro): string|null
     {
         return $this->reasonFor($ro, $this->isMarkReasonForOwnWrite($ro));
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * The exact same any-owner predicate reason() itself trusts - exposed separately, for the
+     * same reason isMarkReasonForOwnWrite() is: a caller already holding reason()'s own
+     * 'unstorable'|null result (DonutHeaderSetter, passing it to HeaderSetter as $unstorable)
+     * needs the SAME predicate, not HeaderSetter re-deriving its own, to tell a mark apart
+     * from a Cache-Control-only refusal (CodeRabbit review - see isMarkReasonForOwnWrite()'s
+     * own docblock for the own-write-scoped twin, and for why HeaderSetter itself no longer
+     * holds an UncacheableMarkScopeInterface of its own to derive either answer from).
+     */
+    #[Override]
+    public function isMarkReason(ResourceObject $ro): bool
+    {
+        return $this->mark->isMarked();
     }
 
     /**

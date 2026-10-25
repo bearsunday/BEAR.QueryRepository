@@ -23,13 +23,14 @@ final readonly class DonutHeaderSetter
     }
 
     /**
-     * Pass-through to HeaderSetter::__invoke(), with the any-owner reason() this package's
-     * Donut write/refresh sites stay on (unchanged, #234: only QueryRepository::doPut() uses
-     * the own-write-scoped reasonForOwnWrite() instead).
+     * Pass-through to HeaderSetter::__invoke(), with the any-owner reason()/isMarkReason()
+     * this package's Donut write/refresh sites stay on (unchanged, #234: only
+     * QueryRepository::doPut() uses the own-write-scoped reasonForOwnWrite()/
+     * isMarkReasonForOwnWrite() instead).
      */
     public function __invoke(ResourceObject $ro, int|null $cacheControlMaxAge, HttpCache|null $httpCache, int|null $time = null): void
     {
-        ($this->headerSetter)($ro, $cacheControlMaxAge, $httpCache, $time, unstorable: $this->gate->reason($ro));
+        ($this->headerSetter)($ro, $cacheControlMaxAge, $httpCache, $time, unstorable: $this->gate->reason($ro), wasMarked: $this->gate->isMarkReason($ro));
     }
 
     /**

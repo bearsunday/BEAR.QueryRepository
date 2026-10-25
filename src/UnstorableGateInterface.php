@@ -62,6 +62,15 @@ interface UnstorableGateInterface
     public function reasonForOwnWrite(ResourceObject $ro): string|null;
 
     /**
+     * Whether reason()'s own any-owner predicate answered 'unstorable' specifically because
+     * of a mark, not a Cache-Control value the response set itself - the donut-path twin of
+     * isMarkReasonForOwnWrite() below, same reason: a caller already holding reason()'s own
+     * 'unstorable'|null result (DonutHeaderSetter, passing it to HeaderSetter as $unstorable)
+     * needs the SAME predicate `HeaderSetter` itself no longer derives on its own.
+     */
+    public function isMarkReason(ResourceObject $ro): bool;
+
+    /**
      * Whether reasonForOwnWrite()'s own-write-scoped-or-any-owner-fallback predicate (see
      * that method's own docblock) answered 'unstorable' specifically because of a mark, not a
      * Cache-Control value the response set itself - the exact distinction `HeaderSetter`
