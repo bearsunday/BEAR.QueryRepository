@@ -5,7 +5,7 @@ namespace FakeVendor\HelloWorld\Resource\App;
 use BEAR\Resource\ResourceObject;
 
 /**
- * Counts its onGet() runs
+ * Counts its onGet() runs; not cacheable, so every explicit get() and every embedded read runs it
  */
 class Counter extends ResourceObject
 {

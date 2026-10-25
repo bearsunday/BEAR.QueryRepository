@@ -16,6 +16,10 @@ use function dirname;
 
 /**
  * #226: an embedded child read in onGet() and rendered as a hole runs once
+ *
+ * - for a #[DonutCache] page, a class-level #[CacheableResponse] page and a method-level one
+ * - the MISS render and the stored-template HIT refresh of an idempotent child are identical
+ * - an explicit resource call, and a #[Cacheable] resource outside a donut page, still run on every call
  */
 class EmbeddedChildExecutesOnceTest extends TestCase
 {
