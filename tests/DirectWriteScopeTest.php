@@ -278,4 +278,127 @@ class DirectWriteScopeTest extends TestCase
         $tree = $this->flushAndValidate($logger);
         $this->assertCount(0, self::eventContextsJsonOf($tree, 'put_skipped', $uri), 'neither the inner (manual) put() nor the outer (AOP) write may have been refused - the mark that fired is unrelated and already closed');
     }
+
+    public function testADirectPutThenMarkIsCleanedUpByCacheInterceptorsDegradedReadFallback(): void
+    {
+        // Kimi's finding: onGet() sets a secret, calls put($this) directly - stored, nothing
+        // marked yet - THEN calls mark(). The normal path's OUTER write (CacheInterceptor's
+        // own, after proceed() returns) is refused and its own pre-write cleanup
+        // (QueryRepository::doPut()'s unconditional deleteEtag()) removes the secret the
+        // inner write already stored. CacheInterceptor's degraded-read fallback used to
+        // return proceed()'s result directly, skipping that outer write entirely - no
+        // cleanup ever reached the already-stored secret, and no header refusal either.
+        // Fixed by converging the fallback into the SAME write path a miss takes
+        // (CacheInterceptor::invoke()).
+        $uri = 'app://self/direct-put-inside-own-on-get?markAfterPut=1';
+        $injector = $this->newInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $repository = $injector->getInstance(QueryRepository::class);
+        $fakeRepository = $injector->getInstance(QueryRepositoryInterface::class);
+        assert($fakeRepository instanceof FakeReadFailsForOneUri);
+        $fakeRepository->failingUri = $uri;
+
+        set_error_handler(static fn (): bool => true);
+        $ro = $resource->get('app://self/direct-put-inside-own-on-get', ['markAfterPut' => true]);
+        restore_error_handler();
+
+        $state = $repository->get(new Uri($uri));
+        $this->assertNull($state, 'the degraded-read fallback must reach the same end state as a normal miss: the outer write refuses and cleans up the secret the inner put() already stored');
+        $this->assertSame('private, no-store', $ro->headers[Header::CACHE_CONTROL] ?? null, 'the live response must carry the SAME refusal header the normal path would set');
+        $this->assertSame('no-cache', $ro->headers[Header::PRAGMA] ?? null);
+    }
+
+    public function testADirectPutThenMarkIsRefusedTheSameWayOnCacheInterceptorsNormalPath(): void
+    {
+        // The SAME ordering, no degraded read involved - confirms the degraded-fallback fix
+        // above did not change this already-correct, pre-existing outcome.
+        $uri = 'app://self/direct-put-inside-own-on-get?markAfterPut=1';
+        $injector = $this->newInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $repository = $injector->getInstance(QueryRepository::class);
+
+        $ro = $resource->get('app://self/direct-put-inside-own-on-get', ['markAfterPut' => true]);
+
+        $state = $repository->get(new Uri($uri));
+        $this->assertNull($state, 'put() then mark() must still be refused on the normal (non-degraded) path, unaffected by the degraded-fallback fix');
+        $this->assertSame('private, no-store', $ro->headers[Header::CACHE_CONTROL] ?? null);
+    }
+
+    public function testAnUnmarkedDirectPutIsStillStoredUnderCacheInterceptorsDegradedReadFallback(): void
+    {
+        // Guards against over-cleanup: a degraded-read fallback with NO mark at all must
+        // still store the resource's own result, the same as a normal miss would.
+        $uri = 'app://self/direct-put-inside-own-on-get';
+        $injector = $this->newInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $repository = $injector->getInstance(QueryRepository::class);
+        $fakeRepository = $injector->getInstance(QueryRepositoryInterface::class);
+        assert($fakeRepository instanceof FakeReadFailsForOneUri);
+        $fakeRepository->failingUri = $uri;
+
+        set_error_handler(static fn (): bool => true);
+        $resource->get($uri);
+        restore_error_handler();
+
+        $state = $repository->get(new Uri($uri));
+        $this->assertNotNull($state, 'with no mark anywhere, the degraded-read fallback must still store the resource\'s own result, the same as a normal miss');
+    }
+
+    public function testADirectPutThenMarkIsCleanedUpByDonutPagesDegradedReadFallback(): void
+    {
+        // The donut-interceptor twin of the CacheInterceptor leak test above. Unlike
+        // CacheInterceptor, AbstractDonutCacheInterceptor's degraded-read fallback already
+        // calls handleProceedResult() - the SAME render+store call the normal miss path
+        // uses - so this is run to PROVE by execution (not by reading the code) that no
+        // equivalent fix is needed here, and to guard the next review round against
+        // reopening this on the donut side.
+        $uri = 'page://self/html/donut-direct-put-then-mark-inside-own-on-get?markAfterPut=1';
+        $injector = $this->newInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $repository = $injector->getInstance(QueryRepository::class);
+        $fakeDonutRepository = $injector->getInstance(DonutRepositoryInterface::class);
+        assert($fakeDonutRepository instanceof FakeDonutReadFailsForOneUri);
+        $fakeDonutRepository->failingUri = $uri;
+
+        set_error_handler(static fn (): bool => true);
+        $ro = $resource->get('page://self/html/donut-direct-put-then-mark-inside-own-on-get', ['markAfterPut' => true]);
+        restore_error_handler();
+
+        $state = $repository->get(new Uri($uri));
+        $this->assertNull($state, 'the donut degraded-read fallback must reach the same end state as a normal miss: the outer donut write refuses and cleans up the secret the inner put() already stored');
+        $this->assertSame('private, no-store', $ro->headers[Header::CACHE_CONTROL] ?? null, 'the live response must carry the SAME refusal header the normal path would set');
+        $this->assertSame('no-cache', $ro->headers[Header::PRAGMA] ?? null);
+    }
+
+    public function testADirectPutThenMarkIsRefusedTheSameWayOnDonutPagesNormalPath(): void
+    {
+        $uri = 'page://self/html/donut-direct-put-then-mark-inside-own-on-get?markAfterPut=1';
+        $injector = $this->newInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $repository = $injector->getInstance(QueryRepository::class);
+
+        $ro = $resource->get('page://self/html/donut-direct-put-then-mark-inside-own-on-get', ['markAfterPut' => true]);
+
+        $state = $repository->get(new Uri($uri));
+        $this->assertNull($state, 'put() then mark() must still be refused on the donut normal (non-degraded) path');
+        $this->assertSame('private, no-store', $ro->headers[Header::CACHE_CONTROL] ?? null);
+    }
+
+    public function testAnUnmarkedDirectPutIsStillStoredUnderDonutPagesDegradedReadFallback(): void
+    {
+        $uri = 'page://self/html/donut-direct-put-then-mark-inside-own-on-get';
+        $injector = $this->newInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $repository = $injector->getInstance(QueryRepository::class);
+        $fakeDonutRepository = $injector->getInstance(DonutRepositoryInterface::class);
+        assert($fakeDonutRepository instanceof FakeDonutReadFailsForOneUri);
+        $fakeDonutRepository->failingUri = $uri;
+
+        set_error_handler(static fn (): bool => true);
+        $resource->get($uri);
+        restore_error_handler();
+
+        $state = $repository->get(new Uri($uri));
+        $this->assertNotNull($state, 'with no mark anywhere, the donut degraded-read fallback must still store the resource\'s own result, the same as a normal miss');
+    }
 }
