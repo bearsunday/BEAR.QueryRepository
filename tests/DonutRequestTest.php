@@ -15,6 +15,7 @@ use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Madapaja\TwigModule\TwigModule;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
+use ReflectionMethod;
 use RuntimeException;
 
 use function assert;
@@ -62,6 +63,11 @@ class DonutRequestTest extends TestCase
 
     public function testANonRequestHoleIsInvokedDirectlyOnceWithoutTouchingJsonSerialize(): void
     {
+        $returnType = (new ReflectionMethod(AbstractRequest::class, 'jsonSerialize'))->getReturnType();
+        if ((string) $returnType !== 'mixed') {
+            self::markTestSkipped('this bear/resource release declares AbstractRequest::jsonSerialize(): ' . $returnType . ' - a request answering non-ResourceObject data from it cannot be constructed here');
+        }
+
         $child = new class extends ResourceObject {
         };
         $child->uri = new Uri('app://self/async-like');
