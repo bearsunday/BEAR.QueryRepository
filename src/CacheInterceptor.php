@@ -84,47 +84,7 @@ final readonly class CacheInterceptor implements MethodInterceptor
                 return $ro;
             }
 
-            $this->mark->enterWrite($ro);
-            try {
-                /** @psalm-suppress MixedAssignment */
-                $ro = $this->proceedTrackingThrew($invocation, $threw);
-
-                assert($ro instanceof ResourceObject);
-                // proceed()'s return value is not always the same instance enterWrite()
-                // above opened this frame with (onGet() may return a freshly built
-                // ResourceObject rather than $this) - re-bind now, immediately before the
-                // write this frame actually governs, or isCurrentWriteFor() would silently
-                // stop matching and this write would quietly fall back to any-owner.
-                $this->mark->setWriteOwner($ro);
-                try {
-                    if ($ro->code !== 200) {
-                        // Record the actual non-200 code; without it the purge below reads
-                        // as if a 203 and a 404 were the same thing.
-                        $this->logger->event(new PutSkippedContext((string) $ro->uri, 'error-code', $ro->code));
-                        $this->repository->purge($ro->uri);
-
-                        return $ro;
-                    }
-
-                    $this->repository->put($ro);
-                } catch (Throwable $e) {
-                    // The store refused the write: the response is already correct, so it is served
-                    // and the failure is recorded. A render that throws, or a CDN purge that does, is
-                    // not the store's failure and keeps its path.
-                    $this->logger->event(self::failure((string) $ro->uri, 'write', $e));
-                    if (! $e instanceof CacheStoreFailure) {
-                        $threw = true;
-
-                        throw $e;
-                    }
-
-                    $this->triggerWarning($e);
-                }
-
-                return $ro;
-            } finally {
-                $this->mark->leaveWrite();
-            }
+            return $this->writeFreshResult($ro, $invocation, $threw);
         } finally {
             $durationMs = round((hrtime(true) - $start) / 1_000_000, 3);
             // Psalm mis-tracks the $hit flag mutated inside try when read from finally.
@@ -138,6 +98,63 @@ final readonly class CacheInterceptor implements MethodInterceptor
             // already propagating out of this same finally, so the skip is dropped without
             // being raised instead (never silently lost: put_skipped already recorded it).
             $this->reportIfOutermost($threw);
+        }
+    }
+
+    /**
+     * Run proceed() for a MISS - normal or degraded, same shape either way - and the write
+     * it triggers: non-200 purges instead, a 200 is put(). A store failure on the write
+     * degrades to a warning, the same as a read failure does; anything else keeps travelling.
+     *
+     * Opens its own write-scope frame around proceed() so isCurrentWriteFor() matches THIS
+     * resource's own write for both a normal miss and a degraded read alike - a direct
+     * (non-AOP) put() made from inside onGet() is scoped the same way regardless of which
+     * path reached it.
+     *
+     * @param MethodInvocation<object> $invocation
+     */
+    private function writeFreshResult(ResourceObject $ro, MethodInvocation $invocation, bool &$threw): ResourceObject
+    {
+        $this->mark->enterWrite($ro);
+        try {
+            /** @psalm-suppress MixedAssignment */
+            $ro = $this->proceedTrackingThrew($invocation, $threw);
+
+            assert($ro instanceof ResourceObject);
+            // proceed()'s return value is not always the same instance enterWrite()
+            // above opened this frame with (onGet() may return a freshly built
+            // ResourceObject rather than $this) - re-bind now, immediately before the
+            // write this frame actually governs, or isCurrentWriteFor() would silently
+            // stop matching and this write would quietly fall back to any-owner.
+            $this->mark->setWriteOwner($ro);
+            try {
+                if ($ro->code !== 200) {
+                    // Record the actual non-200 code; without it the purge below reads
+                    // as if a 203 and a 404 were the same thing.
+                    $this->logger->event(new PutSkippedContext((string) $ro->uri, 'error-code', $ro->code));
+                    $this->repository->purge($ro->uri);
+
+                    return $ro;
+                }
+
+                $this->repository->put($ro);
+            } catch (Throwable $e) {
+                // The store refused the write: the response is already correct, so it is served
+                // and the failure is recorded. A render that throws, or a CDN purge that does, is
+                // not the store's failure and keeps its path.
+                $this->logger->event(self::failure((string) $ro->uri, 'write', $e));
+                if (! $e instanceof CacheStoreFailure) {
+                    $threw = true;
+
+                    throw $e;
+                }
+
+                $this->triggerWarning($e);
+            }
+
+            return $ro;
+        } finally {
+            $this->mark->leaveWrite();
         }
     }
 

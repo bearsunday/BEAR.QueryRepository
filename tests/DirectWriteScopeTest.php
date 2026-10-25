@@ -72,7 +72,7 @@ class DirectWriteScopeTest extends TestCase
 
         $repository = $injector->getInstance(QueryRepository::class);
         $state = $repository->get(new Uri('app://self/direct-put-compound-parent-cache-interceptor'));
-        $this->assertNull($state, 'a direct put() nested inside a degraded-read fallback, carrying a secret baked in from an independently donut-composed marking hole, must not be stored - no write-scope frame of its own means it falls back to conservative, any-owner isMarked()');
+        $this->assertNull($state, 'a direct put() nested inside a degraded-read fallback, carrying a secret baked in from an independently donut-composed marking hole, must not be stored - the degraded fallback\'s own write-scope frame (opened for the resource actually being invoked) is not owned by this compound PARENT object, so isCurrentWriteFor() is still false for it and it falls back to conservative, any-owner isMarked()');
 
         // Positive control: the put() genuinely reached the gate and was refused for THIS
         // exact uri - assertNull above cannot tell "refused" from "never attempted" or "the
