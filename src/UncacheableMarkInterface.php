@@ -11,8 +11,12 @@ namespace BEAR\QueryRepository;
  *
  * A producer of a per-user value - a CSRF token issuer, or anything else that must never be
  * written to the shared resource cache - calls mark() at the point it produces that value, the
- * same way ASP.NET Core, Django, Symfony, Spring and Rails mark their response. The service
- * carries no knowledge of what marked it or why; it only answers whether this request was.
+ * same way ASP.NET Core, Django, Symfony, Spring and Rails mark their response; every resource
+ * whose OWN output carries that value must call mark() itself, even when it got the value
+ * indirectly (a shared service, or a value another resource already marked) - a mark covers
+ * only the marking resource and whatever embeds it, never an unrelated sibling that reads the
+ * same value. The service carries no knowledge of what marked it or why; it only answers
+ * whether this request was.
  *
  * This is the app-facing surface: the only method an application's own resource classes ever
  * need. The package's own write-scope mechanics (the hole stack, the write-scope stack, the
