@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\Resource\AbstractRequest;
+use BEAR\Resource\ResourceObject;
 use Override;
 use Stringable;
 
@@ -40,11 +41,21 @@ final readonly class DonutRequest implements Stringable
         $this->mark->enterHole($uri);
         try {
             // The single execution this hole's content and tags both come from - not a
-            // second, fresh call through $this->request (which for a plain, unwrapped
-            // AbstractRequest would double-execute a non-idempotent child, and for an
-            // OnceRequest would still be correct, but there is no reason to prefer a
-            // second call over the result already in hand).
-            //
+            // second, fresh call through $this->request (which for a plain AbstractRequest
+            // would double-execute a non-idempotent child, see issue #226). jsonSerialize()
+            // is AbstractRequest's own public accessor for the private, memoizing invoke()
+            // that offsetGet()/__get()/__toString()/getIterator() already funnel through -
+            // so a child the page's own onGet() already read answers from that same
+            // execution here, and a child nothing has read yet runs for the first (and
+            // only) time right now. A subclass may override jsonSerialize() to mean
+            // something else (BEAR\Async\AsyncRequest decodes an already-flushed JSON view
+            // into an array instead - see ResourceBodyEvaluator::materialize()'s own
+            // identical check), so the result is trusted only when it genuinely is the
+            // memoized ResourceObject; anything else falls back to invoking the request
+            // directly, exactly as before this fix.
+            /** @psalm-suppress MixedAssignment $memo - mixed when jsonSerialize() answers something other than the memo */
+            $memo = $this->request->jsonSerialize();
+            $executed = $memo instanceof ResourceObject ? $memo : ($this->request)();
             // toString(), not (string) $executed: the magic __toString() swallows a
             // Throwable from rendering into an E_USER_WARNING and '' - storing that empty
             // placeholder content would make a #[CacheableResponse] view persist a hole
@@ -52,7 +63,6 @@ final readonly class DonutRequest implements Stringable
             // through this __toString() (PHP 8 allows one to throw), through the
             // template engine (Twig re-wraps it as a Twig\Error\RuntimeError), up to
             // ResourceDonut::create()'s own non-swallowing render of the composing page.
-            $executed = ($this->request)();
             $view = $executed->toString();
         } finally {
             $this->mark->leaveHole($uri);
@@ -60,13 +70,6 @@ final readonly class DonutRequest implements Stringable
 
         $this->etags->addTag($executed);
         $this->donutStorage->setView($uri, $view);
-        if ($this->request instanceof OnceRequest) {
-            // Excludes this child from DonutRepository's issue #226 "executed but not
-            // rendered" sweep: a rendered hole's tag already landed on $this->etags above,
-            // and (by design, see DonutRepository::templateKeys()) a rendered hole's tag
-            // stays out of the template's own storage tags either way.
-            $this->request->markRendered();
-        }
 
         return ResourceDonut::placeholder($uri);
     }
