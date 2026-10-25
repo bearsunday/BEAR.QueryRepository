@@ -1,0 +1,168 @@
+<?php
+
+declare(strict_types=1);
+
+namespace BEAR\QueryRepository;
+
+use BEAR\RepositoryModule\Annotation\EtagPool;
+use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
+use BEAR\Resource\Module\ResourceModule;
+use BEAR\Resource\ResourceInterface;
+use BEAR\Resource\Uri;
+use FakeVendor\HelloWorld\Resource\Page\None;
+use Madapaja\TwigModule\TwigModule;
+use PHPUnit\Framework\TestCase;
+use Ray\Di\AbstractModule;
+use Ray\Di\Injector;
+use Ray\Di\Scope;
+use Symfony\Component\Cache\Adapter\AdapterInterface;
+use Symfony\Component\Cache\Adapter\ArrayAdapter;
+
+use function assert;
+use function dirname;
+use function restore_error_handler;
+use function set_error_handler;
+
+/**
+ * UncacheableMarkInterface::isCurrentWriteFor() - a direct (non-AOP) QueryRepository::put()
+ * call has no write-scope frame of its own, so a CacheInterceptor/AbstractDonutCacheInterceptor
+ * write-scope frame belonging to a DIFFERENT resource must never be trusted for it (Kimi's
+ * compound-leak finding), yet removing write-scope tracking altogether must not make it
+ * over-refuse the UNRELATED #[Cacheable] siblings normal #234 scoping still protects
+ * (Fable's finding). Both resolve together: a write only trusts the scoped #234 predicate
+ * (isMarkedForCurrentScope() || wasMarkedSinceCurrentWrite()) when the innermost open write
+ * frame's own owner matches the resource actually being written; otherwise it falls back to
+ * the conservative, any-owner isMarked() - pre-#234/1.17.0 behaviour, which can over-refuse
+ * but never leaks.
+ */
+class DirectWriteScopeTest extends TestCase
+{
+    private function newInjector(): Injector
+    {
+        $namespace = 'FakeVendor\HelloWorld';
+        $module = new QueryRepositoryModule(new ResourceModule($namespace));
+        $module->override(new class extends AbstractModule {
+            protected function configure(): void
+            {
+                $this->bind(AdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->to(ArrayAdapter::class);
+                $this->bind(AdapterInterface::class)->annotatedWith(EtagPool::class)->to(ArrayAdapter::class);
+                $this->bind(QueryRepository::class)->in(Scope::SINGLETON);
+                $this->bind(QueryRepositoryInterface::class)->to(FakeReadFailsForOneUri::class)->in(Scope::SINGLETON);
+                $this->bind(DonutRepository::class)->in(Scope::SINGLETON);
+                $this->bind(DonutRepositoryInterface::class)->to(FakeDonutReadFailsForOneUri::class)->in(Scope::SINGLETON);
+            }
+        });
+        $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
+
+        return new Injector($module, __DIR__ . '/tmp');
+    }
+
+    public function testADirectPutInsideCacheInterceptorsDegradedReadFallbackDoesNotLeakACompoundParentsSecret(): void
+    {
+        $injector = $this->newInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $fakeRepository = $injector->getInstance(QueryRepositoryInterface::class);
+        assert($fakeRepository instanceof FakeReadFailsForOneUri);
+        $fakeRepository->failingUri = 'app://self/direct-put-leaks-compound-parent-via-degraded-read-fallback';
+
+        // triggerWarning() fires as part of this degrade - expected, suppressed the same way
+        // DevUnstorableGateModuleTest does for the identical call site.
+        set_error_handler(static fn (): bool => true);
+        $resource->get('app://self/direct-put-leaks-compound-parent-via-degraded-read-fallback');
+        restore_error_handler();
+
+        $repository = $injector->getInstance(QueryRepository::class);
+        $state = $repository->get(new Uri('app://self/direct-put-compound-parent-cache-interceptor'));
+        $this->assertNull($state, 'a direct put() nested inside a degraded-read fallback, carrying a secret baked in from an independently donut-composed marking hole, must not be stored - no write-scope frame of its own means it falls back to conservative, any-owner isMarked()');
+    }
+
+    public function testADirectPutInsideADonutPagesDegradedReadFallbackDoesNotLeakACompoundParentsSecret(): void
+    {
+        $injector = $this->newInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $fakeDonutRepository = $injector->getInstance(DonutRepositoryInterface::class);
+        assert($fakeDonutRepository instanceof FakeDonutReadFailsForOneUri);
+        $fakeDonutRepository->failingUri = 'page://self/html/donut-direct-put-leaks-compound-parent-via-degraded-read-fallback';
+
+        set_error_handler(static fn (): bool => true);
+        $resource->get('page://self/html/donut-direct-put-leaks-compound-parent-via-degraded-read-fallback');
+        restore_error_handler();
+
+        $repository = $injector->getInstance(QueryRepository::class);
+        $state = $repository->get(new Uri('app://self/direct-put-compound-parent-donut-fallback'));
+        $this->assertNull($state, 'the same compound-leak scenario, reached via AbstractDonutCacheInterceptor\'s own degraded-read fallback - which, like CacheInterceptor\'s, opens no write scope of its own - must not be stored either');
+    }
+
+    public function testADirectPutInsideADonutPageAfterAnUnrelatedHoleMarkIsConservativelyRefusedWhileTheAopCachedSiblingIsStillStored(): void
+    {
+        $injector = $this->newInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+
+        $resource->get('page://self/html/donut-page-with-marking-hole-cacheable-sibling-and-direct-put');
+
+        $repository = $injector->getInstance(QueryRepository::class);
+
+        $directState = $repository->get(new Uri('app://self/direct-put-after-unrelated-hole-mark'));
+        $this->assertNull($directState, 'a direct put(), nested inside this page\'s own rendering after an unrelated hole already marked during it, has no write-scope frame of its own - conservative, any-owner isMarked() refuses it, the same as 1.17.0/pre-#234 behaviour (not a regression)');
+
+        $siblingState = $repository->get(new Uri('app://self/innocent-cacheable-sibling'));
+        $this->assertNotNull($siblingState, 'the #[Cacheable] sibling, reached through its OWN CacheInterceptor-opened write scope (isCurrentWriteFor() true for its own uri), stays correctly #234-scoped and must still be stored - the unrelated hole\'s mark must not over-refuse it');
+    }
+
+    public function testAFramelessDirectPutAfterAnUnrelatedMarkIsRefusedWhileTheSameResourceCachedThroughItsOwnCacheInterceptorIsStored(): void
+    {
+        // The SAME uri, two different writes: a frameless direct put() (no write-scope frame
+        // at all - called from here, not nested inside any interceptor) for it is refused by
+        // the unrelated mark below (any-owner isMarked(), isCurrentWriteFor() false with no
+        // open frame); the real #[Cacheable] resource at that SAME uri, read normally right
+        // after, opens its OWN CacheInterceptor frame (isCurrentWriteFor() true for its own
+        // instance) and is stored - the unrelated mark shares neither
+        // isMarkedForCurrentScope() (made and closed inside a different hole) nor
+        // wasMarkedSinceCurrentWrite() (already ticked before either write's own enterWrite()
+        // snapshotted it).
+        $injector = $this->newInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $repository = $injector->getInstance(QueryRepository::class);
+        $mark = $injector->getInstance(UncacheableMarkInterface::class);
+
+        $mark->enterHole('page://self/html/unrelated-hole');
+        $mark->mark('csrf-token-issued');
+        $mark->leaveHole('page://self/html/unrelated-hole');
+
+        $uri = new Uri('app://self/innocent-cacheable-sibling');
+        $direct = new None();
+        $direct->uri = $uri;
+        $direct->code = 200;
+        $direct->body = ['value' => 'direct'];
+        $repository->put($direct);
+        $this->assertNull($repository->get($uri), 'the frameless direct put() has no write-scope frame of its own - any-owner isMarked() (true) refuses it');
+
+        $resource->get('app://self/innocent-cacheable-sibling');
+        $this->assertNotNull($repository->get($uri), 'the SAME uri, read normally through its own CacheInterceptor-opened frame, is correctly #234-scoped and must be stored - the unrelated mark never shared its scope or write window');
+    }
+
+    public function testAnUnrelatedPreExistingMarkDoesNotOverRefuseAResourceWhoseOnGetReturnsAFreshInstance(): void
+    {
+        // CacheInterceptor::setWriteOwner() re-bind: enterWrite() opens the frame with the
+        // PRE-proceed instance (before onGet() runs), but CacheableReturnsAFreshInstanceFromOnGet
+        // returns a DIFFERENT (freshly built) instance from onGet() - the one actually passed
+        // to put(). Without the re-bind, isCurrentWriteFor() would never match it, falling
+        // back to any-owner isMarked() and wrongly refusing this write past the unrelated,
+        // already-closed hole mark below - which #234's own scoping (isMarkedForCurrentScope():
+        // different, closed scope; wasMarkedSinceCurrentWrite(): already ticked before this
+        // write's own enterWrite()) would otherwise correctly ignore.
+        $injector = $this->newInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $repository = $injector->getInstance(QueryRepository::class);
+        $mark = $injector->getInstance(UncacheableMarkInterface::class);
+
+        $mark->enterHole('page://self/html/unrelated-hole');
+        $mark->mark('csrf-token-issued');
+        $mark->leaveHole('page://self/html/unrelated-hole');
+
+        $resource->get('app://self/cacheable-returns-a-fresh-instance-from-on-get');
+
+        $state = $repository->get(new Uri('app://self/cacheable-returns-a-fresh-instance-from-on-get'));
+        $this->assertNotNull($state, 'the write-scope frame must have been re-bound to the fresh instance proceed() returned, or this write would be wrongly refused by the unrelated, already-closed hole mark above');
+    }
+}
