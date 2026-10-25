@@ -16,10 +16,10 @@ use Override;
  *
  * Bound WITHOUT `Scope::SINGLETON` (see `QueryRepositoryModule`): a fresh instance is
  * constructed on every `UncacheableMarkInterface` resolution, always wrapping whichever
- * `UncacheableMarkScopeInterface` is currently bound - so rebinding that one key (the SAME
- * `UncacheableMark` instance's own docblock explains why only that key, never this class)
- * for a long-running worker's next request is enough; this class itself holds no per-request
- * state of its own to rebind.
+ * `UncacheableMarkScopeInterface` instance is currently bound - so giving each request its
+ * own fresh `UncacheableMarkScopeInterface` instance (the SAME `UncacheableMark` instance's
+ * own docblock explains why only that key, never this class) is enough; this class itself
+ * holds no per-request state of its own.
  */
 final readonly class UncacheableMarker implements UncacheableMarkInterface
 {

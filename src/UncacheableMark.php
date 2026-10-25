@@ -23,14 +23,17 @@ use function array_slice;
  * Bound Scope::SINGLETON (see QueryRepositoryModule): one instance per DI container, which is
  * one per request in the usual BEAR.Sunday bootstrap - the same lifetime ResourceStorage and
  * QueryRepository already rely on. A long-running worker (Swoole, RoadRunner) that reuses one
- * container across requests must rebind `UncacheableMarkScopeInterface` (ONLY that key - see
- * its own docblock) per request, the same way it already must for `ServerContextInterface`;
- * left unrebound, a mark from one request would silently disable the store for every request
- * after it - and (#234) would leave a stale tick/write-scope/interceptor-depth behind too, the
- * same reset `DevUnstorableGateModule`'s `ThrowingUnstorableWriteObserver` (bound SINGLETON
- * for the same reason) also needs. `UncacheableMarker` itself needs no rebinding: freshly
+ * process across requests must give each request its own fresh `UncacheableMarkScopeInterface`
+ * instance (ONLY that key - see its own docblock) by building that request's own
+ * Injector/object graph, the same way it already must for `ServerContextInterface` -
+ * `$module->override()`/rebinding has no effect on an already-built Injector, so a fresh
+ * instance appears only from a fresh one. Reused unchanged across requests, a mark from one
+ * would silently disable the store for every request after it - and (#234) would leave a
+ * stale tick/write-scope/interceptor-depth behind too, the same reset
+ * `DevUnstorableGateModule`'s `ThrowingUnstorableWriteObserver` (bound SINGLETON for the same
+ * reason) also needs. `UncacheableMarker` itself needs nothing done for it: freshly
  * constructed (not singleton) on every `UncacheableMarkInterface` resolution, it always wraps
- * whichever `UncacheableMarkScopeInterface` is currently bound.
+ * whichever `UncacheableMarkScopeInterface` instance is currently bound.
  */
 final class UncacheableMark implements UncacheableMarkScopeInterface
 {
