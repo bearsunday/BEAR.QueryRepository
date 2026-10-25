@@ -23,13 +23,24 @@ use BEAR\Resource\ResourceObject;
  *
  * raiseIfPending() is called once per top-level request, after the OUTERMOST cacheable GET
  * interceptor (`CacheInterceptor`/`AbstractDonutCacheInterceptor`,
- * `UncacheableMarkInterface::enterInterceptor()`/`leaveInterceptor()`) returns - so a thrown
- * exception never corrupts a template mid-`__toString()`, it surfaces only after the full
- * response was correctly rendered.
+ * `UncacheableMarkInterface::enterInterceptor()`/`leaveInterceptor()`) returns NORMALLY - so a
+ * thrown exception never corrupts a template mid-`__toString()`, it surfaces only after the
+ * full response was correctly rendered.
+ *
+ * clearPending() is called instead, at that same point, when a genuine exception is already
+ * propagating out of that same finally (the resource's own execution, a render, or the store
+ * itself failed for a reason that is not this skip): raising there would REPLACE that
+ * exception rather than let it travel, which is worse than the skip going unreported this one
+ * time - the `put_skipped` semantic-log event already recorded it. Either way the pending
+ * state is gone afterward, so a later, unrelated request sharing this same (SINGLETON)
+ * instance never inherits it.
  */
 interface UnstorableWriteObserverInterface
 {
     public function skipped(ResourceObject $ro, string $reason): void;
 
     public function raiseIfPending(): void;
+
+    /** Drop a pending skip without raising - see raiseIfPending()'s own docblock */
+    public function clearPending(): void;
 }

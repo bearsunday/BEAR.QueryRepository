@@ -22,8 +22,11 @@ use Override;
  * - e.g. a CSRF form hole) - expected, not worth reporting - and otherwise records only the
  * FIRST skip of the request (sticky, mirroring `UncacheableMark::mark()`'s own
  * sticky-once-set behaviour); later skips in the same request do not overwrite it.
- * raiseIfPending() throws for that recorded skip, then clears it, so a later, unrelated request
- * sharing this same (SINGLETON) instance starts clean.
+ * raiseIfPending() throws for that recorded skip, then clears it via clearPending(), so a
+ * later, unrelated request sharing this same (SINGLETON) instance starts clean. clearPending()
+ * is also called directly - without raising - by the interceptor's own finally when a genuine
+ * exception is already propagating: raising there would replace that exception, which the
+ * interceptor must never do (see UnstorableWriteObserverInterface's own docblock).
  */
 final class ThrowingUnstorableWriteObserver implements UnstorableWriteObserverInterface
 {
@@ -55,9 +58,15 @@ final class ThrowingUnstorableWriteObserver implements UnstorableWriteObserverIn
 
         $ro = $this->pendingRo;
         $reason = $this->pendingReason;
-        $this->pendingRo = null;
-        $this->pendingReason = null;
+        $this->clearPending();
 
         throw new UnstorableResponseDetected((string) $ro->uri, $reason);
+    }
+
+    #[Override]
+    public function clearPending(): void
+    {
+        $this->pendingRo = null;
+        $this->pendingReason = null;
     }
 }

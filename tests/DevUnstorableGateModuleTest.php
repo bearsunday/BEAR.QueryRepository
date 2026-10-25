@@ -18,6 +18,7 @@ use Madapaja\TwigModule\TwigModule;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
+use RuntimeException;
 use Symfony\Component\Cache\Adapter\AdapterInterface;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 
@@ -198,6 +199,84 @@ class DevUnstorableGateModuleTest extends TestCase
         [$caught] = $this->getAndCaptureWarnings($resource, 'page://self/html/cacheable-response-with-marking-hole');
 
         $this->assertInstanceOf(UnstorableResponseDetected::class, $caught);
+    }
+
+    public function testAGenuineResourceExceptionSurfacesEvenWithAPendingDevGateSkipAndIsNotLeakedToTheNextRequest(): void
+    {
+        // A sibling (UnstorableValue) marks itself and has its own write skipped first -
+        // reported pending by the observer, not suppressed (a plain get(), not a hole, so
+        // isNested() is false) - and THEN, still inside the SAME top-level CacheInterceptor
+        // scope, something entirely unrelated fails for real (CacheInterceptor's own NEW
+        // try/catch around $invocation->proceed()). The pending skip must never replace it.
+        $injector = $this->getInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+
+        try {
+            $resource->get('app://self/marks-sibling-then-genuinely-fails');
+            $this->fail('expected the genuine RuntimeException to surface');
+        } catch (RuntimeException $e) {
+            $this->assertSame('a genuine failure unrelated to the pending skip', $e->getMessage());
+        }
+
+        // No leak: the pending skip from the sibling was cleared, not raised, when the real
+        // exception left CacheInterceptor's own finally - a later request sharing this same
+        // (SINGLETON) observer must start clean, not surface a stale UnstorableResponseDetected.
+        $observer = $injector->getInstance(UnstorableWriteObserverInterface::class);
+        $observer->raiseIfPending();
+        $this->addToAssertionCount(1);
+    }
+
+    public function testAGenuineDonutResourceExceptionSurfacesEvenWithAPendingDevGateSkipAndIsNotLeakedToTheNextRequest(): void
+    {
+        // The donut-interceptor twin of the test above: AbstractDonutCacheInterceptor's own
+        // NEW try/catch around $invocation->proceed().
+        $injector = $this->getInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+
+        try {
+            $resource->get('page://self/html/donut-marks-sibling-then-genuinely-fails');
+            $this->fail('expected the genuine RuntimeException to surface');
+        } catch (RuntimeException $e) {
+            $this->assertSame('a genuine failure unrelated to the pending skip', $e->getMessage());
+        }
+
+        $observer = $injector->getInstance(UnstorableWriteObserverInterface::class);
+        $observer->raiseIfPending();
+        $this->addToAssertionCount(1);
+    }
+
+    public function testAGenuineDonutWriteFailureInPutRecordedSurfacesEvenWithAPendingDevGateSkipAndIsNotLeakedToTheNextRequest(): void
+    {
+        // Unlike the two tests above (the resource's own onGet() throws, before putRecorded()
+        // is ever reached), here onGet() returns normally and the store itself - putRecorded()
+        // - fails for a genuine (non-CacheStoreFailure) reason: FakeDefectiveDonutRepository
+        // throws from putStatic(). This is putRecorded()'s OWN by-reference $threw, not the
+        // interceptor's proceed() wrap.
+        $namespace = 'FakeVendor\HelloWorld';
+        $module = new QueryRepositoryModule(new ResourceModule($namespace));
+        $module->override(new class extends AbstractModule {
+            protected function configure(): void
+            {
+                $this->bind(AdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->to(ArrayAdapter::class);
+                $this->bind(AdapterInterface::class)->annotatedWith(EtagPool::class)->to(ArrayAdapter::class);
+                $this->bind(DonutRepositoryInterface::class)->toInstance(new FakeDefectiveDonutRepository('write'));
+            }
+        });
+        $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
+        $module->override(new DevUnstorableGateModule());
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        $resource = $injector->getInstance(ResourceInterface::class);
+
+        try {
+            $resource->get('page://self/html/cacheable-response-with-pending-skip-sibling');
+            $this->fail('expected the genuine FakeRepositoryDefect to surface');
+        } catch (FakeRepositoryDefect $e) {
+            $this->assertSame('write is broken', $e->getMessage());
+        }
+
+        $observer = $injector->getInstance(UnstorableWriteObserverInterface::class);
+        $observer->raiseIfPending();
+        $this->addToAssertionCount(1);
     }
 
     public function testWithNoLogModuleInstalledTheObserverStillThrows(): void

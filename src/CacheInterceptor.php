@@ -63,10 +63,11 @@ final readonly class CacheInterceptor implements MethodInterceptor
         $openId = $this->logger->open(new GetContext((string) $ro->uri));
         $start = hrtime(true);
         $hit = false;
-        // Set right before a genuine (non-CacheStoreFailure) exception is rethrown below, so
-        // the outer finally's raiseIfPending() never fires while that exception is
-        // propagating - raising there would replace it instead of letting it travel (#234
-        // dev gate: a store failure degrades to a warning and keeps going, never reaches here).
+        // Set before ANY genuine (non-CacheStoreFailure) exception - from the resource's own
+        // proceed(), or from the store's put() - is rethrown below, so the outer finally never
+        // raises a pending dev-gate skip while that exception is already on its way out:
+        // raising there would REPLACE it instead of letting it travel (a store failure
+        // degrades to a warning and keeps going, so it never sets this).
         $threw = false;
         $this->mark->enterInterceptor();
         try {
@@ -99,7 +100,8 @@ final readonly class CacheInterceptor implements MethodInterceptor
             $this->mark->enterWrite();
             try {
                 /** @psalm-suppress MixedAssignment */
-                $ro = $invocation->proceed();
+                $ro = $this->proceedTrackingThrew($invocation, $threw);
+
                 assert($ro instanceof ResourceObject);
                 try {
                     if ($ro->code !== 200) {
@@ -139,11 +141,48 @@ final readonly class CacheInterceptor implements MethodInterceptor
                 $openId,
             );
             // #234 dev gate: report a pending skip once the OUTERMOST cacheable interceptor
-            // (depth back to zero) returns, never mid-render.
-            if ($this->mark->leaveInterceptor() && ! $threw) {
-                $this->writeObserver->raiseIfPending();
-            }
+            // (depth back to zero) returns NORMALLY - $threw means a genuine exception is
+            // already propagating out of this same finally, so the skip is dropped without
+            // being raised instead (never silently lost: put_skipped already recorded it).
+            $this->reportIfOutermost($threw);
         }
+    }
+
+    /**
+     * $invocation->proceed(), with $threw set by reference if it throws - see invoke()'s own
+     * $threw comment for why.
+     *
+     * @param MethodInvocation<object> $invocation
+     */
+    private function proceedTrackingThrew(MethodInvocation $invocation, bool &$threw): mixed
+    {
+        try {
+            return $invocation->proceed();
+        } catch (Throwable $e) {
+            $threw = true;
+
+            throw $e;
+        }
+    }
+
+    /**
+     * #234 dev gate: report a pending skip once the OUTERMOST cacheable interceptor (depth
+     * back to zero) returns NORMALLY, never mid-render. See AbstractDonutCacheInterceptor's
+     * own copy of this check.
+     */
+    private function reportIfOutermost(bool $threw): void
+    {
+        if (! $this->mark->leaveInterceptor()) {
+            return;
+        }
+
+        if ($threw) {
+            $this->writeObserver->clearPending();
+
+            return;
+        }
+
+        $this->writeObserver->raiseIfPending();
     }
 
     /**
