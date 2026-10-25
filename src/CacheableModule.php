@@ -13,16 +13,6 @@ use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
 use Override;
 use Ray\Di\AbstractModule;
 
-/**
- *  Provides HttpCacheInterface and derived bindings
- *
- *  The following bindings are provided:
- *
- *  HttpCacheInterface
- *  -Commands
- *  RefreshInterceptor
- *  StorageExpiryModule
- */
 final class CacheableModule extends AbstractModule
 {
     /**

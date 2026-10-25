@@ -64,9 +64,8 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     {
         $maybeState = $this->queryRepository->get($ro->uri);
         if ($maybeState instanceof ResourceState) {
-            // Field by field rather than ResourceState::visit(): a donut view is stored with an
-            // empty body (ResourceStorage::saveDonutView()) and an unserialized uri, so visit()
-            // would replace a live null body with [] and swap the request's uri object.
+            // Field by field, not visit(): a donut view's stored null body/unserialized uri
+            // would overwrite the live request object via visit().
             $ro->code = $maybeState->code;
             $ro->headers = $maybeState->headers;
             $ro->view = $maybeState->view;
@@ -107,11 +106,8 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     /**
      * Clamp a requested lifetime the way the storage does
      *
-     * `ResourceStorageSaver` calls expiresAfter() only for a positive value, so anything at
-     * or below zero is stored with no expiry at all - which is what the schemas mean by
-     * `0`: "no expiry is set, the entry lives until event-driven invalidation". Clamping
-     * here keeps the recorded request equal to that effect instead of reporting a negative
-     * lifetime the entry never had (`minimum: 0` in put_donut and every save_* schema).
+     * `ResourceStorageSaver` treats zero or below as no expiry; clamping here keeps the
+     * recorded lifetime at 0 instead of a negative value the entry never had.
      */
     private static function lifetime(int|null $seconds): int|null
     {
@@ -119,17 +115,12 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     }
 
     /**
-     * Run a donut write, rooting it in a manual_store scope when it is top-level
+     * Run a donut write, rooting it in a manual_store scope only when top-level
      *
-     * A top-level donut write is a direct (non-AOP) call on the repository, so it is rooted
-     * like a direct put()/purge()/invalidateTags(): every event the write emits, including
-     * the pre-write cleanup invalidation, nests under one scope instead of scattering over
-     * the session root. A write nested in a request GET or a write command keeps emitting
-     * its events under that scope instead.
-     *
-     * The close says `stored` when the write ran to completion: the storage saves the
-     * donut through a void call, so per-entry outcomes stay on the nested save_donut /
-     * save_donut_view events and only an aborted write reads as `failed`.
+     * A direct (non-AOP) call roots its own scope so every event it emits nests under one
+     * scope instead of scattering at the session root; a nested call emits into the
+     * caller's scope instead. The close reports `stored` once the write (a void call)
+     * completes.
      *
      * @param callable(): void $write
      */
@@ -163,9 +154,8 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $templateKeys = $this->templateKeys($ro, $declaredKeys);
         $donut = ResourceDonut::create($ro, $this->renderer, $keys, $sMaxAge, true, $this->mark)->withStorageState($ttl, $templateKeys);
         $donut->render($ro, $this->renderer);
-        // Checked against the still-unmutated header, before setHeaders() below runs
-        // headerSetter/setCdnCacheControl - the same point QueryRepository checks at (#222).
-        // "any mark" semantics: the full content, holes included, is what gets stored.
+        // Gate checked against the unmutated response, before setHeaders() mutates it
+        // (#222): "any mark" anywhere in the content decides storability.
         $unstorable = $this->gate->reason($ro);
         $surrogateKeys = $this->setHeaders($keys, $ro, $sMaxAge);
         $this->logCdnHeaders($ro);
@@ -177,24 +167,19 @@ final readonly class DonutRepository implements DonutRepositoryInterface
             return;
         }
 
-        // save content cache and donut; the donut records the content state so that a
-        // later refresh can keep Last-Modified when the recomposed content is identical
+        // The donut's content state lets a later refresh keep Last-Modified when the
+        // recomposed content is unchanged.
         $this->saveView($ro, $sMaxAge, $surrogateKeys);
         $this->resourceStorage->saveDonut($ro->uri, $donut->withContentState($ro), $ttl, $templateKeys);
     }
 
     /**
-     * A page can write a per-user value straight into its own body/view, outside any hole,
-     * which would land in the stored template verbatim and be served to every later visitor
-     * (#222) - so this write is gated.
+     * Write the donut, gated against a per-user value baked into the template outside a hole (#222)
      *
-     * The gate is read after create()/render(), the same point doPutStatic reads it: create()
-     * is what runs each hole's own onGet(), and the page's own template may also mark during
-     * that call, so reading before create() would miss it.
-     *
-     * The template write uses reasonExcludingHoleMarks() (a descendant hole's own mark does
-     * not block it, since that hole is gated separately) while the live response uses
-     * reason() (any mark, page or hole, since every hole's output is substituted into it).
+     * The gate is read after create()/render(), since create() runs each hole's own onGet()
+     * and may itself mark. The template write excludes hole marks
+     * (reasonExcludingHoleMarks()); the live response does not, since every hole's output
+     * lands in it too.
      */
     private function doPutDonut(ResourceObject $ro, int|null $donutTtl): void
     {
@@ -292,18 +277,13 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $donut->refresh($this->resource, $ro, $this->mark);
         $surrogateKeys = $ro->headers[Header::SURROGATE_KEY] ?? '';
 
-        // refresh() restores the stored headers before returning, discarding anything a hole
-        // set on $ro (#222) - so a hole marking this response unstorable is only visible on
-        // the mark itself, a separate per-request service that survives. "Any mark" semantics
-        // here too: the recomposed content, holes included, is what the decision below is about.
+        // refresh() discards any header a hole set on $ro (#222); an unstorable mark
+        // survives only via the separate per-request mark service, read below instead.
         $unstorable = $this->gate->reason($ro);
 
         if (! $donut->isCacheble) {
-            // isCacheble=false: a putDonut template is never stored as a rendered page view and
-            // never gets a CDN lifetime header of its own, so only touch the restored headers
-            // (mirrors doPutDonut's MISS path) when a hole marks itself on this recomposition -
-            // a storable template-only hit must stay exactly as storable as the MISS that
-            // created it, with no new lifetime header invented here.
+            // Template-only (isCacheble=false): never stored as a page view, so only refresh
+            // restored headers here (#222) - never invent a new CDN lifetime for this hit.
             if ($unstorable !== null) {
                 ($this->donutHeaderSetter)($ro, null, null);
             }
@@ -359,11 +339,9 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     /**
      * Record the CDN-facing headers the response ended up with
      *
-     * Read back from the response after the setters ran, so the log carries the effect:
-     * the bound setter's default when no sMaxAge was requested, the resource's own value
-     * when it set one, and no lifetime header when nothing gives the CDN one (the
-     * un-cacheable donut page, or the Null setter). A state-served hit replays these
-     * stored headers, so only writes and refreshes emit the event.
+     * Read back after the setters ran, so the log reflects the actual effect, not the
+     * request. A state-served hit replays these stored headers, so only writes and
+     * refreshes emit this event.
      */
     private function logCdnHeaders(ResourceObject $ro): void
     {
@@ -387,11 +365,9 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     /**
      * Record the recomposed content as the state the next refresh compares against
      *
-     * The donut keeps the lifetime its template entry was stored with, so the state
-     * rides along on the template's remaining time instead of restarting it. A
-     * remaining time of 0 means that entry is expiring right now (the pool answered
-     * within the second it lapses), and re-saving would hand it a fresh lifetime it
-     * no longer has — so the skipped write is recorded rather than performed.
+     * The state rides on the template's remaining TTL, not a fresh one. When that
+     * remaining time is 0, saving would hand it a lifetime it no longer has, so the write
+     * is skipped and recorded instead.
      */
     private function recordContentState(ResourceObject $ro, ResourceDonut $donut): void
     {
@@ -411,13 +387,10 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     /**
      * Save the page state, and its validator when it has one
      *
-     * A validator is issued for 200 only (EtagSetter), while the donut save gate lets any
-     * status below 400 through, so a stored 3xx or 204 arrives here with no ETag. The entry
-     * is keyed and invalidated by its URI tag, never by ETag (ResourceStorage::getTags()),
-     * so the save does not need one. Same shape as QueryRepository::doPut().
-     *
-     * The surrogate keys arrive as a parameter because the CDN setter may have renamed the
-     * header by now: Akamai's moves Surrogate-Key to Edge-Cache-Tag.
+     * A 3xx/204 arrives here with no ETag (only 200 gets one), but the entry is keyed and
+     * invalidated by its URI tag, never by ETag, so that's fine. Surrogate keys arrive as a
+     * parameter because the CDN setter may have already renamed the header (Akamai moves
+     * Surrogate-Key to Edge-Cache-Tag).
      */
     private function saveView(ResourceObject $ro, int|null $ttl, string $surrogateKeys): bool
     {

@@ -38,17 +38,13 @@ final readonly class HeaderSetter
     }
 
     /**
-     * Set the validator and Cache-Control max-age, or - when the gate says this response is
-     * unstorable for this request (#222) - strip every CDN-facing header under any
-     * casing (RFC 7230 §3.2: $ro->headers is a plain PHP array, not an HTTP-aware collection).
+     * Set the validator and Cache-Control max-age, or strip every CDN-facing header when
+     * the gate says this response is unstorable for this request (#222)
      *
-     * A producer that called UncacheableMarkInterface::mark() also gets Cache-Control/Pragma
-     * replaced with no-store directives, since the response was never meant to carry a cache
-     * directive of its own; a response refused only for its own `private`/`no-store`
-     * Cache-Control (no mark) keeps exactly what the developer wrote, since the gate controls
-     * server-side storage, not what the client is told. A Cache-Control value #[HttpCache] or
-     * #[NoHttpCache] declared is exempt from this check either way, so #[Cacheable] combined
-     * with #[HttpCache(noStore: true)] still stores server-side while telling the client not to.
+     * A mark additionally replaces Cache-Control/Pragma with no-store directives, since the
+     * response was never meant to carry a cache directive of its own; without a mark, a
+     * developer-set private/no-store Cache-Control is left as-is. A value #[HttpCache] or
+     * #[NoHttpCache] declared is exempt from this check either way.
      */
     public function __invoke(ResourceObject $ro, int|null $cacheControlMaxAge, HttpCache|null $httpCache, int|null $time = null): void
     {

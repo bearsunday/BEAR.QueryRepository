@@ -7,13 +7,6 @@ namespace BEAR\QueryRepository;
 use Override;
 use Ray\Di\AbstractModule;
 
-/**
- * Provides EtagSetterInterface and derived bindings
- *
- * The following module is installed:
- *
- * EtagSetterInterface
- */
 final class DevEtagModule extends AbstractModule
 {
     /**

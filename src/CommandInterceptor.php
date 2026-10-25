@@ -19,12 +19,8 @@ use Ray\Aop\MethodInvocation;
 /**
  * Interceptor for cache invalidation on CQRS commands with #[Purge] or #[Refresh]
  *
- * Automatically bound to all command methods (onPost/onPut/onPatch/onDelete) of #[Cacheable] classes.
- * Processes #[Purge] and #[Refresh] annotations on these methods and executes cache
- * invalidation after successful write operations.
- *
- * For non-Cacheable classes, use RefreshInterceptor instead by explicitly marking methods
- * with #[Purge] or #[Refresh].
+ * Bound to all command methods of #[Cacheable] classes. For non-Cacheable classes, use
+ * RefreshInterceptor instead, marking methods explicitly with #[Purge] or #[Refresh].
  *
  * @see \BEAR\RepositoryModule\Annotation\Purge
  * @see \BEAR\RepositoryModule\Annotation\Refresh
@@ -59,8 +55,7 @@ final readonly class CommandInterceptor implements MethodInterceptor
         }
 
         // Open the scope even for a failed write: a 4xx command_result with no invalidation
-        // events records that the purge/refresh was correctly skipped (symmetric with the
-        // query side, which logs purge on non-200).
+        // events records that the purge/refresh was correctly skipped.
         $openId = $this->logger->open(($this->commandContextFactory)($invocation, 'CommandInterceptor'));
         try {
             if ($ro->code < Code::BAD_REQUEST) {

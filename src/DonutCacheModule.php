@@ -14,26 +14,6 @@ use Ray\Aop\MatcherInterface;
 use Ray\Di\AbstractModule;
 use Ray\Di\Scope;
 
-/**
- * Provides ResourceStorageInterface and derived bindings
- *
- * The following bindings are provided:
- *
- * HeaderSetter
- * DonutHeaderSetter
- * CdnCacheControlHeaderSetterInterface
- * DonutRepositoryInterface
- * RepositoryLoggerInterface
- * PurgerInterface
- * UriTagInterface
- *
- * The following interceptors are provided:
- *
- * DonutCacheableResponseInterceptor
- * DonutCacheInterceptor
- * DonutCommandInterceptor
- * DonutCacheInterceptor
- */
 final class DonutCacheModule extends AbstractModule
 {
     /**
@@ -81,7 +61,7 @@ final class DonutCacheModule extends AbstractModule
     /**
      * onPost writes too: a POST that changes state must refresh the donut it invalidates
      *
-     * @see \BEAR\QueryRepository\CacheableModule::installAopModule() same set on the value-cache side
+     * @see \BEAR\QueryRepository\CacheableModule::installAopModule()
      */
     private static function commandMethods(MatcherInterface $matcher): AbstractMatcher
     {
@@ -99,10 +79,8 @@ final class DonutCacheModule extends AbstractModule
 
     private function installAopMethodModule(): void
     {
-        // Ray.Aop merges overlapping bindings without deduplicating, so a class whose own
-        // declaration already governs the method is excluded. The two sets differ because
-        // #[DonutCache] governs onGet only: excluding it from the write bindings too would
-        // leave a #[RefreshCache] write on such a class with no interceptor at all.
+        // Ray.Aop merges without deduplicating, so a class whose own declaration governs a
+        // method is excluded here - read and write sets differ since #[DonutCache] covers onGet only.
         $readNotDeclared = $this->matcher->logicalNot(
             $this->matcher->logicalOr(
                 $this->matcher->annotatedWith(CacheableResponse::class),

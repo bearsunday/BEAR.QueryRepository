@@ -25,8 +25,8 @@ use function str_starts_with;
 /**
  * Interceptor for donut cache invalidation on CQRS commands
  *
- * Bound to command methods (onPost/onPut/onPatch/onDelete) of classes marked with #[CacheableResponse].
- * Refreshes donut cache and resource state after successful write operations.
+ * Bound to command methods (onPost/onPut/onPatch/onDelete) of classes marked with
+ * #[CacheableResponse].
  *
  * @see \BEAR\RepositoryModule\Annotation\CacheableResponse
  * @see \BEAR\RepositoryModule\Annotation\DonutCache
@@ -59,12 +59,8 @@ final readonly class DonutCommandInterceptor implements MethodInterceptor
                 try {
                     $this->refreshDonutAndState($ro);
                 } catch (UnmatchedQuery $e) {
-                    // Same shape as RefreshSameCommand::command() (#219): an onPost-bound class
-                    // that creates rather than addresses an entity routinely lacks a parameter
-                    // onGet requires, and since the write already ran, the skipped purge/refresh
-                    // is recorded instead of thrown. onPut/onPatch/onDelete still throw - there a
-                    // mismatch is a real signature error, since those address an entity onGet
-                    // already does.
+                    // onPost-bound classes often lack a parameter onGet requires (#219); the
+                    // write already ran, so this is recorded, not thrown. Other methods still throw.
                     if (! str_starts_with($invocation->getMethod()->getName(), 'onPost')) {
                         throw $e;
                     }

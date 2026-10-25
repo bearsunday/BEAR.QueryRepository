@@ -12,13 +12,9 @@ use ReflectionClass;
 /**
  * The Cache-Control value `#[HttpCache]` or `#[NoHttpCache]` declares for a resource
  *
- * Mirrors `HttpCacheInterceptor`'s own precedence (`#[HttpCache]` first, `#[NoHttpCache]`
- * fallback), so the value this returns is always what that interceptor actually wrote to the
- * header. `UnstorableGateInterface::reason()` exempts a header that still reads exactly this
- * value: the attribute speaking - a client-facing directive - not a per-request value a method
- * or a render produced. Shared by `QueryRepository` and every `DonutRepository` write/refresh
- * path so `#[NoHttpCache]` and the donut kinds are exempted the same way `#[HttpCache]` already
- * is on the plain `#[Cacheable]` path (#222).
+ * Mirrors `HttpCacheInterceptor`'s precedence, so this always matches what was written to
+ * the header. `UnstorableGateInterface::reason()` exempts a header that still reads exactly
+ * this value, since it's the attribute speaking, not a per-request value (#222).
  */
 final readonly class DeclaredCacheControl
 {

@@ -42,9 +42,8 @@ final readonly class CliHttpCache implements HttpCacheInterface, UriScopedHttpCa
     /**
      * {@inheritDoc}
      *
-     * The answer is recorded as its own conditional_request scope, exactly as the
-     * HTTP-facing HttpCache records it: a hit is the 304 decision. No validator
-     * presents nothing, so nothing is recorded.
+     * Recorded as its own conditional_request scope: a hit is the 304 decision. No
+     * validator presents nothing, so nothing is recorded.
      */
     #[Override]
     public function isNotModified(array $server): bool
@@ -60,9 +59,8 @@ final readonly class CliHttpCache implements HttpCacheInterface, UriScopedHttpCa
         try {
             $hit = $this->storage->hasEtag($etag);
         } catch (CacheStoreFailure $e) {
-            // Same shape as the HTTP-facing HttpCache: a validator that cannot be read does not
-            // match, so the request is answered in full rather than failed. Recorded as the
-            // established idiom reads it, and the scope is closed either way.
+            // An unreadable validator does not match: serve the request in full rather than
+            // fail it.
             $cause = $e->getPrevious() ?? $e;
             $this->logger->event(new CacheErrorContext($this->requestUri($server), 'read', $cause->getMessage(), $cause::class));
             $this->logger->close(new CacheMissContext('etag', round((hrtime(true) - $start) / 1_000_000, 3)), $openId);
@@ -80,9 +78,8 @@ final readonly class CliHttpCache implements HttpCacheInterface, UriScopedHttpCa
     /**
      * {@inheritDoc}
      *
-     * The same decision as {@see self::isNotModified()}, made against the resource that was asked
-     * for: a validator issued for another URI is not this representation's, so the request is
-     * answered in full. Recorded as its own `conditional_request` scope, like the unscoped one.
+     * A validator issued for another URI is not this representation's, so the request is
+     * answered in full.
      */
     #[Override]
     public function isNotModifiedFor(AbstractUri $uri, array $server): bool

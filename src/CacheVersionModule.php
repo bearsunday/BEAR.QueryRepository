@@ -8,13 +8,6 @@ use Override;
 use Ray\Di\AbstractModule;
 use Ray\PsrCacheModule\CacheNamespaceModule;
 
-/**
- * Provides CacheNamespace and derived bindings
- *
- * The following module is installed:
- *
- * -CacheNamespaceModule
- */
 final class CacheVersionModule extends AbstractModule
 {
     public function __construct(

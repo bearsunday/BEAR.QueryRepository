@@ -40,10 +40,8 @@ final readonly class HttpCache implements HttpCacheInterface, DeprecatedHttpCach
     /**
      * {@inheritDoc}
      *
-     * The answer is recorded as its own conditional_request scope: a hit here is the
-     * 304 decision, the whole request served without running the resource - the one
-     * cache event no get scope can ever show. No If-None-Match presents nothing, so
-     * nothing is recorded.
+     * Recorded as its own conditional_request scope: a hit is the 304 decision that no get
+     * scope ever shows. No If-None-Match presents nothing, so nothing is recorded.
      */
     #[Override]
     public function isNotModified(array $server): bool
@@ -59,10 +57,8 @@ final readonly class HttpCache implements HttpCacheInterface, DeprecatedHttpCach
         try {
             $hit = $this->storage->hasEtag($ifNoneMatch);
         } catch (CacheStoreFailure $e) {
-            // A validator this pool cannot read is a validator that does not match: answering the
-            // request in full is the correct response, and the alternative - a 500 because the ETag
-            // store is down - fails a request the application could have served. Recorded as the
-            // established idiom reads it: cache_error + cache_miss = degraded, a lone miss = cold.
+            // An unreadable validator does not match: serve the request in full rather than
+            // fail it with a 500 for a down ETag store.
             $cause = $e->getPrevious() ?? $e;
             $this->logger->event(new CacheErrorContext($this->requestUri($server), 'read', $cause->getMessage(), $cause::class));
             $this->logger->close(new CacheMissContext('etag', round((hrtime(true) - $start) / 1_000_000, 3)), $openId);
@@ -80,9 +76,8 @@ final readonly class HttpCache implements HttpCacheInterface, DeprecatedHttpCach
     /**
      * {@inheritDoc}
      *
-     * The same decision as {@see self::isNotModified()}, made against the resource that was asked
-     * for: a validator issued for another URI is not this representation's, so the request is
-     * answered in full. Recorded as its own `conditional_request` scope, like the unscoped one.
+     * A validator issued for another URI is not this representation's, so the request is
+     * answered in full.
      */
     #[Override]
     public function isNotModifiedFor(AbstractUri $uri, array $server): bool
@@ -126,9 +121,8 @@ final readonly class HttpCache implements HttpCacheInterface, DeprecatedHttpCach
     #[Override]
     public function transfer()
     {
-        // Ignored, not untested: under CLI this function has no response to set and returns false,
-        // so a test could only assert that calling it did nothing. What it does is the SAPI's
-        // behaviour, and the decision that leads here is covered where it is made.
+        // Ignored, not untested: under CLI this has no response to set, so a test could only
+        // assert it did nothing; the real behaviour is the SAPI's, tested where it's invoked.
         // @codeCoverageIgnoreStart
         http_response_code(304);
         // @codeCoverageIgnoreEnd
@@ -153,8 +147,8 @@ final readonly class HttpCache implements HttpCacheInterface, DeprecatedHttpCach
     /**
      * A failure on the cache path degrades to a warning rather than an exception
      *
-     * The same channel the read side of `#[Cacheable]` uses: the host's own monitoring is what
-     * notices a pool outage, and the log records it at the point it happened.
+     * The host's own monitoring is what notices a pool outage; the log records it at the
+     * point it happened.
      */
     private function triggerWarning(Throwable $e): void
     {
