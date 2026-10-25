@@ -74,20 +74,7 @@ final readonly class CacheInterceptor implements MethodInterceptor
             try {
                 $state = $this->repository->get($ro->uri);
             } catch (Throwable $e) {
-                // Recorded either way; the store's own failure is the only one this path swallows.
-                // Running the resource answers the request correctly, so a pool outage costs
-                // latency instead of a 500 - but a defect here that returned 200 would be a defect
-                // nobody sees, so anything else keeps travelling.
-                $this->logger->event(self::failure((string) $ro->uri, 'read', $e));
-                if (! $e instanceof CacheStoreFailure) {
-                    $threw = true;
-
-                    throw $e;
-                }
-
-                $this->triggerWarning($e);
-
-                return $this->proceedTrackingThrew($invocation, $threw);
+                $state = $this->degradeReadFailure($e, $ro, $threw);
             }
 
             if ($state instanceof ResourceState) {
@@ -152,6 +139,40 @@ final readonly class CacheInterceptor implements MethodInterceptor
             // being raised instead (never silently lost: put_skipped already recorded it).
             $this->reportIfOutermost($threw);
         }
+    }
+
+    /**
+     * A genuine read failure keeps travelling; a store outage (CacheStoreFailure) degrades to
+     * a warning and this resource's own read is treated as a MISS - not an early return of
+     * proceed()'s raw result, so the SAME write path a normal miss takes below still runs for
+     * this resource's own result.
+     *
+     * A direct (non-AOP) put() made from inside this resource's own onGet() - say, setting a
+     * secret and only marking it unstorable afterward - relies on that outer write's own
+     * pre-write cleanup (QueryRepository::doPut()'s unconditional deleteEtag()) to remove
+     * what the inner write already stored when the OUTER write is then refused; returning
+     * proceed()'s result directly here used to skip that outer write entirely, so the inner
+     * write's secret survived a degraded read where it would not have survived a normal miss
+     * (Kimi's finding).
+     *
+     * @return null always - the caller reads it as a MISS
+     */
+    private function degradeReadFailure(Throwable $e, ResourceObject $ro, bool &$threw): null
+    {
+        // Recorded either way; the store's own failure is the only one this path swallows.
+        // Running the resource answers the request correctly, so a pool outage costs latency
+        // instead of a 500 - but a defect here that returned 200 would be a defect nobody
+        // sees, so anything else keeps travelling.
+        $this->logger->event(self::failure((string) $ro->uri, 'read', $e));
+        if (! $e instanceof CacheStoreFailure) {
+            $threw = true;
+
+            throw $e;
+        }
+
+        $this->triggerWarning($e);
+
+        return null;
     }
 
     /**

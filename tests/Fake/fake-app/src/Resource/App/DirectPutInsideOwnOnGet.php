@@ -18,6 +18,12 @@ use BEAR\Resource\ResourceObject;
  * the SAME scoped predicate it trusts for CacheInterceptor's own write, not any-owner.
  * `$markSelf` marks this resource's own (TOP_LEVEL) scope before the direct put, inside the
  * SAME write window the frame opened around - exercising #234's own semantics for this path.
+ *
+ * `$markAfterPut` exercises Kimi's own ordering instead: the direct put() happens FIRST
+ * (storing whatever secret is in the body at that point, since nothing is marked yet), THEN
+ * mark() fires - CacheInterceptor's own OUTER write (after proceed() returns) is what
+ * actually refuses and cleans up that already-stored secret, not the inner direct put()
+ * itself (which legitimately succeeded, nothing was marked at the time it ran).
  */
 #[Cacheable]
 class DirectPutInsideOwnOnGet extends ResourceObject
@@ -28,16 +34,20 @@ class DirectPutInsideOwnOnGet extends ResourceObject
     ) {
     }
 
-    public function onGet(bool $markSelf = false): static
+    public function onGet(bool $markSelf = false, bool $markAfterPut = false): static
     {
         $this->code = 200;
-        $this->body = ['value' => 'direct-put-inside-own-on-get'];
+        $this->body = ['value' => 'direct-put-inside-own-on-get', 'secret' => 'leak-check'];
 
         if ($markSelf) {
             $this->mark->mark('self-mark');
         }
 
         $this->queryRepository->put($this);
+
+        if ($markAfterPut) {
+            $this->mark->mark('mark-after-put');
+        }
 
         return $this;
     }
