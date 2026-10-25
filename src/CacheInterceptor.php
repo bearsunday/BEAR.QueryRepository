@@ -63,6 +63,11 @@ final readonly class CacheInterceptor implements MethodInterceptor
         $openId = $this->logger->open(new GetContext((string) $ro->uri));
         $start = hrtime(true);
         $hit = false;
+        // Set right before a genuine (non-CacheStoreFailure) exception is rethrown below, so
+        // the outer finally's raiseIfPending() never fires while that exception is
+        // propagating - raising there would replace it instead of letting it travel (#234
+        // dev gate: a store failure degrades to a warning and keeps going, never reaches here).
+        $threw = false;
         $this->mark->enterInterceptor();
         try {
             try {
@@ -74,6 +79,8 @@ final readonly class CacheInterceptor implements MethodInterceptor
                 // nobody sees, so anything else keeps travelling.
                 $this->logger->event(self::failure((string) $ro->uri, 'read', $e));
                 if (! $e instanceof CacheStoreFailure) {
+                    $threw = true;
+
                     throw $e;
                 }
 
@@ -111,6 +118,8 @@ final readonly class CacheInterceptor implements MethodInterceptor
                     // not the store's failure and keeps its path.
                     $this->logger->event(self::failure((string) $ro->uri, 'write', $e));
                     if (! $e instanceof CacheStoreFailure) {
+                        $threw = true;
+
                         throw $e;
                     }
 
@@ -131,7 +140,7 @@ final readonly class CacheInterceptor implements MethodInterceptor
             );
             // #234 dev gate: report a pending skip once the OUTERMOST cacheable interceptor
             // (depth back to zero) returns, never mid-render.
-            if ($this->mark->leaveInterceptor()) {
+            if ($this->mark->leaveInterceptor() && ! $threw) {
                 $this->writeObserver->raiseIfPending();
             }
         }

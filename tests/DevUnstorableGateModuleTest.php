@@ -29,6 +29,8 @@ use const E_USER_WARNING;
 
 class DevUnstorableGateModuleTest extends TestCase
 {
+    use SemanticLogTreeTrait;
+
     public function testOverrideIsTheSupportedWiringAndResolvesToThrowingUnstorableWriteObserver(): void
     {
         // The only wiring that actually works: QueryRepositoryModule already binds
@@ -140,15 +142,33 @@ class DevUnstorableGateModuleTest extends TestCase
         // page response is expected there) - indistinguishable from an actual regression. The
         // observer suppresses this: isMarkedForCurrentScope() && isNested() at the hole's own
         // (still-open) write check.
-        $resource = $this->getInjector()->getInstance(ResourceInterface::class);
+        //
+        // A recording logger (not the bare injector's NullSemanticLogger) so "stores the
+        // template" is proved by a refresh_donut event, not just identical rendered content -
+        // this page's content is deterministic either way (article '1' + token 'secret'), so
+        // comparing the two views alone would pass even on a cold MISS each time.
+        $module = new QueryRepositoryModule(new ResourceModule('FakeVendor\HelloWorld'));
+        $module->override(new class extends AbstractModule {
+            protected function configure(): void
+            {
+                $this->bind(AdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->to(ArrayAdapter::class);
+                $this->bind(AdapterInterface::class)->annotatedWith(EtagPool::class)->to(ArrayAdapter::class);
+                $this->bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)->toInstance(new Log\SafeSemanticLogger());
+            }
+        });
+        $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
+        $module->override(new DevUnstorableGateModule());
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
         $ro = $resource->get('page://self/html/donut-cache-with-unstorable-hole');
         $this->assertSame(200, $ro->code);
+        $this->flushAndValidate($logger);
 
-        // Storage worked (no-op NullAdapter swapped for ArrayAdapter above): a second GET
-        // against the same pool recomposes from the saved template instead of a fresh MISS.
-        $again = $resource->get('page://self/html/donut-cache-with-unstorable-hole');
-        $this->assertSame((string) $ro->view, (string) $again->view);
+        $resource->get('page://self/html/donut-cache-with-unstorable-hole');
+        $tree = $this->flushAndValidate($logger);
+        $this->assertNotNull(self::eventContextJsonOf($tree, 'refresh_donut'), 'the template was actually saved - the second GET recomposes from it, not a fresh MISS');
     }
 
     public function testATopLevelCacheableResourceMarkingItselfThrowsExactlyOnceAfterRenderingWithoutCorruptingTheTemplate(): void
