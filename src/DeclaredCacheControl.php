@@ -18,7 +18,7 @@ use ReflectionClass;
  * value: the attribute speaking - a client-facing directive - not a per-request value a method
  * or a render produced. Shared by `QueryRepository` and every `DonutRepository` write/refresh
  * path so `#[NoHttpCache]` and the donut kinds are exempted the same way `#[HttpCache]` already
- * is on the plain `#[Cacheable]` path (issue #222).
+ * is on the plain `#[Cacheable]` path (#222).
  */
 final readonly class DeclaredCacheControl
 {

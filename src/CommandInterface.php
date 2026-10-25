@@ -7,11 +7,6 @@ namespace BEAR\QueryRepository;
 use BEAR\Resource\ResourceObject;
 use Ray\Aop\MethodInvocation;
 
-/**
- * Command
- *
- * Change resource state
- */
 interface CommandInterface
 {
     /**

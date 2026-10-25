@@ -65,10 +65,9 @@ final readonly class CacheInterceptor implements MethodInterceptor
             try {
                 $state = $this->repository->get($ro->uri);
             } catch (Throwable $e) {
-                // Recorded either way; the store's own failure is the only one this path swallows.
-                // Running the resource answers the request correctly, so a pool outage costs
-                // latency instead of a 500 - but a defect here that returned 200 would be a defect
-                // nobody sees, so anything else keeps travelling.
+                // A pool outage is swallowed and recorded, since running the resource still
+                // answers the request correctly (latency instead of a 500); anything else
+                // propagates, as a defect that silently returned 200 would be invisible.
                 $this->logger->event(self::failure((string) $ro->uri, 'read', $e));
                 if (! $e instanceof CacheStoreFailure) {
                     throw $e;

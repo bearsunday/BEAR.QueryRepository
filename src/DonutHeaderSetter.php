@@ -22,7 +22,6 @@ final readonly class DonutHeaderSetter
     ) {
     }
 
-    /** Pass-through to HeaderSetter::__invoke() */
     public function __invoke(ResourceObject $ro, int|null $cacheControlMaxAge, HttpCache|null $httpCache, int|null $time = null): void
     {
         ($this->headerSetter)($ro, $cacheControlMaxAge, $httpCache, $time);
@@ -33,7 +32,7 @@ final readonly class DonutHeaderSetter
      *
      * The setters do not read the status code and the Fastly and Akamai defaults are
      * 31_536_000 seconds - a year - so an unguarded call would tell every shared cache to
-     * hold a 301 or a 204 for that long. A response the gate marks unstorable (issue #222)
+     * hold a 301 or a 204 for that long. A response the gate marks unstorable (#222)
      * is refused the same way: the gate sits here rather than in the setters so both checks
      * also cover an application's own CdnCacheControlHeaderSetterInterface.
      */

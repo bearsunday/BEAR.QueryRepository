@@ -65,11 +65,9 @@ final readonly class EtagSetter implements EtagSetterInterface
     }
 
     /**
-     * Return crc32 encoded Etag
+     * crc32-encoded ETag
      *
-     * Is crc32 enough for Etag ?
-     *
-     * @see https://cloud.google.com/storage/docs/hashes-etags
+     * @see https://cloud.google.com/storage/docs/hashes-etags for the collision-rate tradeoff
      */
     private function getEtag(ResourceObject $ro, HttpCache|null $httpCache = null): string
     {

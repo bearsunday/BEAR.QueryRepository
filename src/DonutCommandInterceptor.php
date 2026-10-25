@@ -59,12 +59,12 @@ final readonly class DonutCommandInterceptor implements MethodInterceptor
                 try {
                     $this->refreshDonutAndState($ro);
                 } catch (UnmatchedQuery $e) {
-                    // Same shape as RefreshSameCommand::command() on the value-cache side (#219):
-                    // an onPost-bound class that creates rather than addresses an entity routinely
-                    // lacks a parameter onGet requires. The write already ran; there is no entry
-                    // to refresh, so the purge/refresh is skipped and recorded instead of thrown.
-                    // onPut/onPatch/onDelete keep throwing - a mismatch there addresses an entity
-                    // onGet already does, so it is a real signature mismatch, not this case.
+                    // Same shape as RefreshSameCommand::command() (#219): an onPost-bound class
+                    // that creates rather than addresses an entity routinely lacks a parameter
+                    // onGet requires, and since the write already ran, the skipped purge/refresh
+                    // is recorded instead of thrown. onPut/onPatch/onDelete still throw - there a
+                    // mismatch is a real signature error, since those address an entity onGet
+                    // already does.
                     if (! str_starts_with($invocation->getMethod()->getName(), 'onPost')) {
                         throw $e;
                     }
@@ -85,9 +85,7 @@ final readonly class DonutCommandInterceptor implements MethodInterceptor
         $delUri = clone $ro->uri;
         $delUri->query = $getQuery;
 
-        // purge donut, resource state cache and etag
         $this->repository->purge($delUri);
-        // update donut and create resource state
         $this->refresh($getQuery, $ro);
     }
 

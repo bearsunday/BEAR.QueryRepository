@@ -74,13 +74,11 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
                 /** @var ResourceObject $fresh */
                 $fresh = $invocation->proceed();
 
-                // Same outcome a normal MISS reaches below: render (and, if the render and
-                // the store both succeed, re-cache) via the full donut path - a degraded
-                // read must not return $invocation->proceed()'s raw, un-rendered result
-                // (an un-executed #[Embed] request, `view` still null) directly to the
-                // caller, which would either show nothing or make a later `(string)` cast
-                // execute a hole untracked by UncacheableMark/SurrogateKeys, or - for a
-                // raw (non-donut-wrapped) AbstractRequest - trigger its own E_USER_ERROR.
+                // Route through handleProceedResult(), same as a MISS: a degraded read must not
+                // return the raw, un-rendered proceed() result (holes unexecuted, view still
+                // null) - a later `(string)` cast could then run a hole untracked by
+                // UncacheableMark/SurrogateKeys, or, for a non-donut AbstractRequest, trigger
+                // its own E_USER_ERROR.
                 return $this->handleProceedResult($fresh);
             }
 
@@ -109,7 +107,6 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
      */
     private function handleProceedResult(ResourceObject $ro): ResourceObject
     {
-        // donut created in ResourceObject
         if (isset($ro->headers[Header::ETAG]) || $ro->code >= Code::BAD_REQUEST) {
             // Record why this miss is not followed by a put; without it the log looks like a lost write.
             $hasEtag = isset($ro->headers[Header::ETAG]);
