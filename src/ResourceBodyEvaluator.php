@@ -74,11 +74,21 @@ final class ResourceBodyEvaluator
      * The copy is the storage boundary: the memoized object stays reachable through the
      * live request and the pool may hold it by reference, while the recursion above
      * rewrites body in place.
+     *
+     * AbstractRequest's own contract is that jsonSerialize() answers that memoized
+     * ResourceObject - but a subclass may override it to mean something else (BEAR\Async\
+     * AsyncRequest decodes an already-flushed JSON view into an array instead, to support
+     * PendingRequests' own parallel-execution protocol). Materializing such a request would
+     * need that package's own flush semantics, which is out of scope here, so it is left as
+     * the live request rather than forced through asResourceObject() and crashed on.
      */
-    private function materialize(RequestInterface $request): ResourceObject
+    private function materialize(RequestInterface $request): mixed
     {
         if ($request instanceof AbstractRequest) {
-            return clone $this->asResourceObject($request->jsonSerialize());
+            /** @psalm-suppress MixedAssignment $memo - mixed when jsonSerialize() answers something other than the memo */
+            $memo = $request->jsonSerialize();
+
+            return $memo instanceof ResourceObject ? clone $memo : $request;
         }
 
         return $this->asResourceObject($request());

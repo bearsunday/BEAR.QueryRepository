@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Deploy this version with a new `CacheVersionModule` version (an app that binds its own cache adapter rather than this package's `Storage*Module`s must clear its pools instead): entries written by earlier versions may hold per-user content, and an earlier version reading this version's donut cache shows raw `[le2:...]` placeholders during a rolling deploy.
 - A `#[Cacheable]`/`#[CacheableResponse]` response whose own code sets `Cache-Control` to `private` or `no-store` is no longer stored server-side; its header is kept and CDN headers are removed. A value declared by `#[HttpCache]`/`#[NoHttpCache]` is still stored.
+- Upgrading changes the Ray.Aop-woven class name - and so the ETag (`crc32($ro::class . ...)`) - for a `#[CacheableResponse]` class or method that also declares an `#[Embed]`, because it is now woven with a new interceptor (#226); a page with no `#[Embed]` keeps its stock woven class and ETag, and a `#[DonutCache]` page never carries an ETag at all, so neither is affected.
 - `ResourceDonut::FORMAT` is no longer public; use `ResourceDonut::placeholder()`. `ResourceDonut::refresh()` takes an additional `UncacheableMarkInterface` argument.
 - Requires `koriym/semantic-logger` `^0.11`. Written logs use its `log` document shape, and diagnostic `kind` is now `code`.
 - `KeepMutationsAndFailures` also keeps a session cut at the record limit (`semantic_logger_truncated`): a `command` past the limit leaves no other trace.
@@ -22,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - `LogFileWriter`: two sessions flushed in the same microsecond no longer overwrite each other. The timestamped filename now carries a random suffix, so both survive (#221).
 - A `#[DonutCache]` page embedding an `#[Embed]` hole whose URI carried two or more query parameters leaked a raw `[le:...]` placeholder to the client and could throw `ParameterException` on the next request - fixed by moving new placeholders to a `[le2:...]` marker (#232).
+- An embedded child of a `#[DonutCache]`/`#[CacheableResponse]` page now runs at most once per request: it previously ran again when rendered as a hole after already being read in `onGet()`. A child read into the body but never rendered as a hole now tags the stored template, so purging that child's own tag refreshes the page instead of leaving it stale (#226).
+- `ResourceBodyEvaluator` no longer crashes materializing an embedded `AbstractRequest` whose `jsonSerialize()` does not answer the memoized `ResourceObject` (`BEAR\Async\AsyncRequest`'s own shape): such a request is now left unmaterialized instead of asserting. Full async support remains out of scope.
 
 ## [1.17.0] - 2026-09-17
 

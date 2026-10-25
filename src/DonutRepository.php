@@ -24,6 +24,8 @@ use BEAR\Resource\ResourceObject;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 
+use function array_key_exists;
+use function array_merge;
 use function array_unique;
 use function array_values;
 use function explode;
@@ -31,6 +33,11 @@ use function max;
 
 final readonly class DonutRepository implements DonutRepositoryInterface
 {
+    /**
+     * One dependency per collaborator, all constructor-injected.
+     *
+     * @SuppressWarnings("PHPMD.ExcessiveParameterList")
+     */
     public function __construct(
         private QueryRepositoryInterface $queryRepository,
         private DonutHeaderSetter $donutHeaderSetter,
@@ -41,6 +48,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         private DonutRendererInterface $renderer,
         private UnstorableGateInterface $gate,
         private UncacheableMarkInterface $mark,
+        private DonutChildExecutionsInterface $childExecutions,
         private UriTagInterface $uriTag = new UriTag(),
     ) {
     }
@@ -146,8 +154,12 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $keys = new SurrogateKeys($ro->uri);
         $keys->addTag($ro);
         $declaredKeys = $this->getHeaderKeys($ro);
-        $templateKeys = $this->templateKeys($ro, $declaredKeys);
-        $donut = ResourceDonut::create($ro, $this->renderer, $keys, $sMaxAge, true, $this->mark)->withStorageState($ttl, $templateKeys);
+        // create() must run before templateKeys(): it is what actually runs onGet()'s
+        // embeds and the page's own (string) $ro template render, so an OnceRequest's
+        // wasRendered() (issue #226) is not final until it returns.
+        $donut = ResourceDonut::create($ro, $this->renderer, $keys, $sMaxAge, true, $this->mark);
+        $templateKeys = $this->templateKeys($ro, $declaredKeys, $this->executedChildTags($ro));
+        $donut = $donut->withStorageState($ttl, $templateKeys);
         $donut->render($ro, $this->renderer);
         // Checked against the still-unmutated header, before setHeaders() below runs
         // headerSetter/setCdnCacheControl - the same point QueryRepository checks at (issue
@@ -195,8 +207,10 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $this->logger->event(new PutDonutContext((string) $ro->uri, $donutTtl, null));
         $keys = new SurrogateKeys($ro->uri);
         $declaredKeys = $this->getHeaderKeys($ro);
-        $templateKeys = $this->templateKeys($ro, $declaredKeys);
-        $donut = ResourceDonut::create($ro, $this->renderer, $keys, $donutTtl, false, $this->mark)->withStorageState($donutTtl, $templateKeys);
+        // create() must run before templateKeys(): see doPutStatic()'s own comment above.
+        $donut = ResourceDonut::create($ro, $this->renderer, $keys, $donutTtl, false, $this->mark);
+        $templateKeys = $this->templateKeys($ro, $declaredKeys, $this->executedChildTags($ro));
+        $donut = $donut->withStorageState($donutTtl, $templateKeys);
         $donut->render($ro, $this->renderer);
         $templateUnstorable = $this->gate->reasonExcludingHoleMarks($ro);
         $responseUnstorable = $this->gate->reason($ro);
@@ -221,17 +235,49 @@ final readonly class DonutRepository implements DonutRepositoryInterface
 
     /**
      * The tags a donut template is stored under: its own URI tag (what `purge($uri)` invalidates -
-     * an untagged template is reachable by no `invalidateTags()` call, issue #185), plus whatever
-     * the resource declared. The children's tags are deliberately absent: a child's write must drop
-     * the content and leave the shell to be recomposed.
+     * an untagged template is reachable by no `invalidateTags()` call, issue #185), whatever the
+     * resource declared, plus (issue #226) whatever executedChildTags() found. The latter already
+     * excludes a child rendered as a hole - deliberately kept out so that child's own write drops
+     * only the rendered content and leaves the shell to be recomposed, not the whole template.
      *
      * @param list<string> $declaredKeys
+     * @param list<string> $extraChildTags
      *
      * @return list<string>
      */
-    private function templateKeys(ResourceObject $ro, array $declaredKeys): array
+    private function templateKeys(ResourceObject $ro, array $declaredKeys, array $extraChildTags = []): array
     {
-        return array_values(array_unique([($this->uriTag)($ro->uri), ...$declaredKeys]));
+        return array_values(array_unique([($this->uriTag)($ro->uri), ...$declaredKeys, ...$extraChildTags]));
+    }
+
+    /**
+     * The tags of this page's own embedded children that ran during its onGet()/template
+     * render but were never substituted into the template as a hole (issue #226) - read
+     * from whatever EmbedOnceInterceptor registered for $ro, regardless of whether the
+     * child is still reachable through $ro->body by now (onGet() may have unset() it, or
+     * overwritten the slot with a plain value pulled out of it).
+     *
+     * Never runs a child to find this out: hasExecuted() answers from the wrapper's own
+     * memo, set only if something already read it.
+     *
+     * @return list<string>
+     */
+    private function executedChildTags(ResourceObject $ro): array
+    {
+        $tags = [];
+        foreach ($this->childExecutions->take($ro) as $once) {
+            if (! $once->hasExecuted() || $once->wasRendered()) {
+                continue;
+            }
+
+            $childRo = $once->executedResourceObject();
+            $tags[] = ($this->uriTag)($childRo->uri);
+            if (array_key_exists(Header::SURROGATE_KEY, $childRo->headers)) {
+                $tags = array_merge($tags, explode(' ', $childRo->headers[Header::SURROGATE_KEY]));
+            }
+        }
+
+        return array_values(array_unique($tags));
     }
 
     /**

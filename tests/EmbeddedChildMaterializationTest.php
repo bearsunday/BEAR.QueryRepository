@@ -152,6 +152,26 @@ class EmbeddedChildMaterializationTest extends TestCase
     }
 
     /**
+     * An AbstractRequest whose jsonSerialize() does not answer a memoized ResourceObject
+     * (BEAR\Async\AsyncRequest's own shape, see ResourceBodyEvaluator::materialize()) is
+     * left as the live request instead of crashing: a blind assert($memo instanceof
+     * ResourceObject) would raise AssertionError here (zend.assertions=1 in this suite),
+     * and even with assertions off, `clone` on the decoded array would be a fatal error.
+     */
+    public function testAsyncLikeRequestIsLeftUnmaterializedInsteadOfCrashing(): void
+    {
+        $ro = new class extends ResourceObject {
+        };
+        $ro->uri = new Uri('app://self/async-like');
+        $request = new FakeAsyncLikeRequest($ro);
+
+        $body = (new ResourceBodyEvaluator())(['child' => $request]);
+
+        assert(is_array($body));
+        $this->assertSame($request, $body['child'], 'not materialized - the live request is kept, not wrapped into a ResourceObject');
+    }
+
+    /**
      * A ResourceObject sitting in the body is copied before its own body is rewritten
      *
      * `clone` is shallow, so a materialized parent shares the objects inside its body with
