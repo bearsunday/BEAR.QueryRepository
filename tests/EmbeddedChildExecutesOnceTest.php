@@ -15,13 +15,7 @@ use Ray\Di\Injector;
 use function dirname;
 
 /**
- * Proves issue #226's fix end to end:
- *
- * - an embedded child read in onGet() and rendered as a hole runs exactly once, whether the
- *   page is #[DonutCache], class-level #[CacheableResponse] or method-level #[CacheableResponse]
- * - the MISS render and the stored-template HIT refresh of an idempotent child are byte-identical
- * - a plain explicit resource call, and a #[Cacheable] resource outside a donut page, keep
- *   running every time they always did (the "dice" principle) - untouched by this fix
+ * #226: an embedded child read in onGet() and rendered as a hole runs once
  */
 class EmbeddedChildExecutesOnceTest extends TestCase
 {
@@ -71,10 +65,6 @@ class EmbeddedChildExecutesOnceTest extends TestCase
 
     public function testMethodLevelCacheableResponseEmbedExecutesOnceToo(): void
     {
-        // DonutCacheModule::installAopMethodModule() binds DonutCacheInterceptor for a class
-        // whose #[CacheableResponse] sits on onGet() itself (like BlogPostingCache) rather than
-        // on the class - this is the fixture proving that path's own embed read exercises the
-        // same single execution as the class-level case above.
         $ro = $this->resource->get(self::COUNTER_CACHE_METHOD_LEVEL);
         $this->flushAndValidate($this->logger);
 

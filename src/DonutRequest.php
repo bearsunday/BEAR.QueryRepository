@@ -13,11 +13,7 @@ use Stringable;
 use function assert;
 
 /**
- * Stands in for an embedded `#[Embed]` request while a donut template is composed
- *
- * `__toString()` is where that hole's own `onGet()` actually runs (`(string) $ro` on the
- * composing page calls this during template rendering): a mark() the hole makes during that
- * run is scoped to it, not attributed to the composing page (issue #222, `UncacheableMark`).
+ * Runs an embedded hole while a donut template renders; a mark() made then is scoped to the hole (#222)
  */
 final readonly class DonutRequest implements Stringable
 {
@@ -32,32 +28,16 @@ final readonly class DonutRequest implements Stringable
     #[Override]
     public function __toString(): string
     {
-        // toUri() performs the same resourceObject->uri->query sync __invoke() does (its
-        // first statement), without invoking - so this already carries the full query
-        // string before the hole runs, usable both as enterHole()'s key and, unchanged,
-        // for the placeholder/view mapping that ResourceDonut::refresh() later re-fetches
-        // by (issue #222: a query-less key here would also let two sibling holes on the
-        // same path but different query args collide on one owner slot). Verified equal to
-        // the executed object's own URI below: __invoke()'s first statement does the exact
-        // same sync from the exact same $this->query, so the two can never disagree.
+        // Includes the query, so sibling holes on one path get separate owner slots (#222)
         $uri = $this->request->toUri();
         $this->mark->enterHole($uri);
         try {
-            // The single execution this hole's content and tags both come from (#226): a
-            // Request's jsonSerialize() returns AbstractRequest's memoized result, so a child
-            // the page's own onGet() already read is not executed again. Any other
-            // AbstractRequest is invoked directly, as before: BEAR\Async\AsyncRequest, for one,
-            // overrides jsonSerialize() to flush its pending batch and decode a view.
+            // A Request answers its memoized result, so a child onGet() already read is not run again (#226).
+            // Other requests are invoked directly: AsyncRequest's jsonSerialize() flushes its batch.
             /** @psalm-suppress MixedAssignment $executed - Request::jsonSerialize() answers its memoized ResourceObject */
             $executed = $this->request instanceof Request ? $this->request->jsonSerialize() : ($this->request)();
             assert($executed instanceof ResourceObject);
-            // toString(), not (string) $executed: the magic __toString() swallows a
-            // Throwable from rendering into an E_USER_WARNING and '' - storing that empty
-            // placeholder content would make a #[CacheableResponse] view persist a hole
-            // that failed. toString() has no such catch, so the Throwable propagates
-            // through this __toString() (PHP 8 allows one to throw), through the
-            // template engine (Twig re-wraps it as a Twig\Error\RuntimeError), up to
-            // ResourceDonut::create()'s own non-swallowing render of the composing page.
+            // Not (string): the cast turns a render failure into '', which would be stored (#237)
             $view = $executed->toString();
         } finally {
             $this->mark->leaveHole($uri);

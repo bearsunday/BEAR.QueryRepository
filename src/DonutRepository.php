@@ -31,7 +31,6 @@ use function max;
 
 final readonly class DonutRepository implements DonutRepositoryInterface
 {
-    /** One dependency per collaborator, all constructor-injected. */
     public function __construct(
         private QueryRepositoryInterface $queryRepository,
         private DonutHeaderSetter $donutHeaderSetter,
@@ -221,10 +220,8 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     }
 
     /**
-     * The tags a donut template is stored under: its own URI tag (what `purge($uri)` invalidates -
-     * an untagged template is reachable by no `invalidateTags()` call, issue #185), plus whatever
-     * the resource declared. The children's tags are deliberately absent: a child's write must drop
-     * the content and leave the shell to be recomposed.
+     * The template's own URI tag (so `purge($uri)` reaches it, #185) and the declared keys. Children's
+     * tags are left out: a child's write drops only the content and the shell is recomposed.
      *
      * @param list<string> $declaredKeys
      *

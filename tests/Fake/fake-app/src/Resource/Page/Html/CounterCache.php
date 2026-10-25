@@ -7,10 +7,7 @@ use BEAR\Resource\Annotation\Embed;
 use BEAR\Resource\ResourceObject;
 
 /**
- * Same shape as CounterDonut, but `#[CacheableResponse]` at the class level (not
- * `#[DonutCache]`) - proves DonutCacheModule::installAopClassModule()'s own
- * DonutCacheableResponseInterceptor path reads an already-read embed from the same single
- * execution too, not only the `#[DonutCache]` path.
+ * CounterDonut with class-level #[CacheableResponse]
  */
 #[CacheableResponse]
 class CounterCache extends ResourceObject
