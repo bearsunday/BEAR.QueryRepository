@@ -47,6 +47,7 @@ class DirectWriteScopeTest extends TestCase
                 $this->bind(QueryRepositoryInterface::class)->to(FakeReadFailsForOneUri::class)->in(Scope::SINGLETON);
                 $this->bind(DonutRepository::class)->in(Scope::SINGLETON);
                 $this->bind(DonutRepositoryInterface::class)->to(FakeDonutReadFailsForOneUri::class)->in(Scope::SINGLETON);
+                $this->bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)->toInstance(new Log\SafeSemanticLogger());
             }
         });
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
@@ -195,14 +196,32 @@ class DirectWriteScopeTest extends TestCase
         // identity and the scoped predicate applies. A mark made by onGet() itself, inside
         // that SAME open write window, before the direct put - wasMarkedSinceCurrentWrite()
         // must catch it, #234's own semantics for a descendant mark during an open write.
+        //
+        // The final repository->get() state alone cannot prove the INNER (manual) put's own
+        // decision: CacheInterceptor's OUTER write runs the SAME $ro right after, in the SAME
+        // scope, against the SAME mark state - it necessarily agrees with the inner write
+        // either way, so a bug that made ONLY the inner write misbehave could still pass a
+        // final-state-only check. Each write logs its own put_skipped event, so asserting the
+        // per-URI COUNT (inner + outer, 2) proves BOTH decisions independently, not just the
+        // observable outcome.
+        // onGet() takes a query param ($markSelf), so the written $ro->uri carries it
+        // (?markSelf=1) - both the repository->get() lookup key and the put_skipped filter
+        // below have to match the SAME, actual URI the write happened under, not the bare
+        // path (a bare-URI lookup would be a different, always-empty cache entry and pass
+        // vacuously regardless of whether the write was refused).
+        $uri = 'app://self/direct-put-inside-own-on-get?markSelf=1';
         $injector = $this->newInjector();
         $resource = $injector->getInstance(ResourceInterface::class);
         $repository = $injector->getInstance(QueryRepository::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
         $resource->get('app://self/direct-put-inside-own-on-get', ['markSelf' => true]);
 
-        $state = $repository->get(new Uri('app://self/direct-put-inside-own-on-get'));
+        $state = $repository->get(new Uri($uri));
         $this->assertNull($state, 'onGet() marked its own write window before the direct put() - wasMarkedSinceCurrentWrite() must refuse it, the same as any other mark during an open write');
+
+        $tree = $this->flushAndValidate($logger);
+        $this->assertCount(2, self::eventContextsJsonOf($tree, 'put_skipped', $uri), 'both the inner (manual) put() and the outer (AOP) write must have independently refused this URI');
     }
 
     public function testADirectPutInsideOwnOnGetIsRefusedByAPreTreeMarkSharingItsTopLevelScope(): void
@@ -212,16 +231,22 @@ class DirectWriteScopeTest extends TestCase
         // it, but isMarkedForCurrentScope() catches it: the pre-tree mark and this resource's
         // own onGet() share the same (TOP_LEVEL) scope, exactly like
         // UnstorableGateTest::testReasonForOwnWriteStillRefusesAPreExistingMarkInTheSameScope.
+        // Per-URI put_skipped count, not just final state - see the sibling test above.
+        $uri = 'app://self/direct-put-inside-own-on-get';
         $injector = $this->newInjector();
         $resource = $injector->getInstance(ResourceInterface::class);
         $repository = $injector->getInstance(QueryRepository::class);
         $mark = $injector->getInstance(UncacheableMarkInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
         $mark->mark('pre-tree-mark');
-        $resource->get('app://self/direct-put-inside-own-on-get');
+        $resource->get($uri);
 
-        $state = $repository->get(new Uri('app://self/direct-put-inside-own-on-get'));
+        $state = $repository->get(new Uri($uri));
         $this->assertNull($state, 'a pre-tree mark sharing this resource\'s own (TOP_LEVEL) scope must still refuse its direct put(), via isMarkedForCurrentScope()');
+
+        $tree = $this->flushAndValidate($logger);
+        $this->assertCount(2, self::eventContextsJsonOf($tree, 'put_skipped', $uri), 'both the inner (manual) put() and the outer (AOP) write must have independently refused this URI');
     }
 
     public function testADirectPutInsideOwnOnGetIsStoredWhenOnlyAnUnrelatedSiblingMarkedAndClosedBeforehand(): void
@@ -231,20 +256,26 @@ class DirectWriteScopeTest extends TestCase
         // it - neither isMarkedForCurrentScope() (different, closed scope) nor
         // wasMarkedSinceCurrentWrite() (already ticked before this write's own enterWrite())
         // catches it; no secret is involved, this is the conservative-but-not-over-refusing
-        // case CodeRabbit's own review asked be checked.
+        // case CodeRabbit's own review asked be checked. Zero put_skipped for this URI proves
+        // NEITHER write was refused, not just that something ended up stored.
+        $uri = 'app://self/direct-put-inside-own-on-get';
         $injector = $this->newInjector();
         $resource = $injector->getInstance(ResourceInterface::class);
         $repository = $injector->getInstance(QueryRepository::class);
         $scope = $injector->getInstance(UncacheableMarkScopeInterface::class);
         $mark = $injector->getInstance(UncacheableMarkInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
         $scope->enterHole('page://self/html/unrelated-hole');
         $mark->mark('unrelated-sibling-mark');
         $scope->leaveHole('page://self/html/unrelated-hole');
 
-        $resource->get('app://self/direct-put-inside-own-on-get');
+        $resource->get($uri);
 
-        $state = $repository->get(new Uri('app://self/direct-put-inside-own-on-get'));
+        $state = $repository->get(new Uri($uri));
         $this->assertNotNull($state, 'an unrelated sibling marked and closed BEFORE this resource\'s own write-scope frame opened must not refuse its direct put() - no secret, nothing over-refused');
+
+        $tree = $this->flushAndValidate($logger);
+        $this->assertCount(0, self::eventContextsJsonOf($tree, 'put_skipped', $uri), 'neither the inner (manual) put() nor the outer (AOP) write may have been refused - the mark that fired is unrelated and already closed');
     }
 }
