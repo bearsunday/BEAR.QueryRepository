@@ -32,6 +32,11 @@ namespace BEAR\QueryRepository;
  * the very instance it was handed for `mark()`, forging a write-scope frame for its own
  * direct `put()` and making an UNRELATED mark()'s refusal look scoped away from it - storing
  * a marked secret that should have been refused (security review finding).
+ *
+ * `mark()` must be called at the point the value is actually produced, not deferred to
+ * wherever it is later rendered or stringified: a value already placed in a response's own
+ * body/properties before `mark()` runs can reach a direct, non-AOP `put()` call made before
+ * that later point and be stored as-is, `mark()` never having run yet to stop it.
  */
 interface UncacheableMarkInterface
 {
