@@ -401,4 +401,110 @@ class DirectWriteScopeTest extends TestCase
         $state = $repository->get(new Uri($uri));
         $this->assertNotNull($state, 'with no mark anywhere, the donut degraded-read fallback must still store the resource\'s own result, the same as a normal miss');
     }
+
+    public function testADirectPutThenANestedChildMarkIsCleanedUpOnCacheInterceptorsNormalPath(): void
+    {
+        // Main's unverified ordering (a): put($this) then a NESTED CHILD resource marks -
+        // not onGet() marking directly. The child's mark happens inside the same
+        // write-scope window CacheInterceptor's own enterWrite() opened before proceed(),
+        // so wasMarkedSinceCurrentWrite() must catch it for the OUTER write the same way.
+        $uri = 'app://self/direct-put-then-child-marks-inside-own-on-get';
+        $injector = $this->newInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $repository = $injector->getInstance(QueryRepository::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
+
+        $resource->get($uri);
+
+        $state = $repository->get(new Uri($uri));
+        $this->assertNull($state, 'a nested child marking AFTER the direct put() must still refuse the outer write and clean up the secret the inner put() already stored');
+
+        $tree = $this->flushAndValidate($logger);
+        $this->assertCount(2, self::eventContextsJsonOf($tree, 'put_skipped', $uri), 'both the inner (manual) put() and the outer (AOP) write must have independently refused this URI');
+    }
+
+    public function testADirectPutThenANestedChildMarkIsCleanedUpOnCacheInterceptorsDegradedReadFallback(): void
+    {
+        $uri = 'app://self/direct-put-then-child-marks-inside-own-on-get';
+        $injector = $this->newInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $repository = $injector->getInstance(QueryRepository::class);
+        $fakeRepository = $injector->getInstance(QueryRepositoryInterface::class);
+        assert($fakeRepository instanceof FakeReadFailsForOneUri);
+        $fakeRepository->failingUri = $uri;
+
+        set_error_handler(static fn (): bool => true);
+        $resource->get($uri);
+        restore_error_handler();
+
+        $state = $repository->get(new Uri($uri));
+        $this->assertNull($state, 'the degraded-read fallback must reach the same end state as a normal miss for a nested-child mark too');
+    }
+
+    public function testADirectPutThenARenderTimeMarkIsRefusedOnCacheInterceptorsNormalPath(): void
+    {
+        // Main's unverified ordering (b): the FULL body (the render-time-marking token
+        // included) is set BEFORE the direct put($this) call, not after. BEAR.Resource's
+        // own ResourceObject::toString() memoizes $this->view once rendered - a LATER
+        // render (the outer write's own) would see the SAME, already-memoized view instead
+        // of re-rendering, so the token has to be in the body for the FIRST (inner) render,
+        // or no write would ever actually stringify it at all. QueryRepository::doPut()'s
+        // own render-before-gate-check ordering (type:'view') means the INNER put() itself
+        // sees the mark it just caused and refuses - unchanged by this round's fixes.
+        $uri = 'app://self/direct-put-then-render-time-mark-inside-own-on-get';
+        $injector = $this->newInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $repository = $injector->getInstance(QueryRepository::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
+
+        $resource->get($uri);
+
+        $state = $repository->get(new Uri($uri));
+        $this->assertNull($state, 'a render-time mark reached during the inner put()\'s own (memoized) render must refuse both that write and the outer one');
+
+        $tree = $this->flushAndValidate($logger);
+        $this->assertCount(2, self::eventContextsJsonOf($tree, 'put_skipped', $uri), 'both the inner (manual) put() and the outer (AOP) write must have independently refused this URI');
+    }
+
+    public function testADirectPutThenARenderTimeMarkIsRefusedOnCacheInterceptorsDegradedReadFallback(): void
+    {
+        $uri = 'app://self/direct-put-then-render-time-mark-inside-own-on-get';
+        $injector = $this->newInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $repository = $injector->getInstance(QueryRepository::class);
+        $fakeRepository = $injector->getInstance(QueryRepositoryInterface::class);
+        assert($fakeRepository instanceof FakeReadFailsForOneUri);
+        $fakeRepository->failingUri = $uri;
+
+        set_error_handler(static fn (): bool => true);
+        $resource->get($uri);
+        restore_error_handler();
+
+        $state = $repository->get(new Uri($uri));
+        $this->assertNull($state, 'the degraded-read fallback must reach the same end state as a normal miss for a render-time mark too');
+    }
+
+    public function testADirectPutThenANestedChildMarkIsCleanedUpOnDonutPages(): void
+    {
+        // The donut-interceptor twin of the CacheInterceptor nested-child test above. The
+        // inner put()'s own headerSetter sets an ETag as a side effect, so this always
+        // reaches AbstractDonutCacheInterceptor's own "already answered" shortcut
+        // regardless of normal/degraded - the same mechanism the put()-then-mark() leak
+        // fix already covers for a direct mark() call in onGet(); this confirms it also
+        // covers a mark reached via an explicit, nested child resource fetch.
+        $uri = 'page://self/html/donut-direct-put-then-child-marks-inside-own-on-get';
+        $injector = $this->newInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $repository = $injector->getInstance(QueryRepository::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
+
+        $ro = $resource->get($uri);
+
+        $state = $repository->get(new Uri($uri));
+        $this->assertNull($state, 'a nested child marking after the direct put() must still clean up the secret the inner put() already stored');
+        $this->assertSame('private, no-store', $ro->headers[Header::CACHE_CONTROL] ?? null);
+
+        $tree = $this->flushAndValidate($logger);
+        $this->assertNotEmpty(self::eventContextsJsonOf($tree, 'put_skipped', $uri), 'the shortcut path must have reached the gate for this exact uri');
+    }
 }
