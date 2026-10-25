@@ -179,6 +179,12 @@ final class UncacheableMark implements UncacheableMarkScopeInterface
         return $this->interceptorDepth === 0;
     }
 
+    #[Override]
+    public function isInterceptorActive(): bool
+    {
+        return $this->interceptorDepth > 0;
+    }
+
     private function currentOwner(): string
     {
         return $this->stack === [] ? self::TOP_LEVEL : $this->stack[array_key_last($this->stack)];

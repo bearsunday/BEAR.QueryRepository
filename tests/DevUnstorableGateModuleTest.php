@@ -471,6 +471,106 @@ class DevUnstorableGateModuleTest extends TestCase
         $resource->get('page://self/html/unstorable-donut');
     }
 
+    public function testADirectPutAtInterceptorDepthZeroWithTheDevGateRaisesOnceImmediately(): void
+    {
+        // CodeRabbit review (outside-diff, QueryRepository.php:113): a direct put() reached
+        // with NO cacheable GET interceptor active at all (interceptorDepth 0 - a CLI script,
+        // a command handler) has no outermost CacheInterceptor whose own leaveInterceptor()
+        // will ever reach depth zero to report the pending skip doPut() just recorded. This
+        // put() must report its OWN skip, immediately, as soon as it returns.
+        $injector = $this->getInjector();
+        $repository = $injector->getInstance(QueryRepositoryInterface::class);
+        $mark = $injector->getInstance(UncacheableMarkInterface::class);
+        $mark->mark('csrf-token-issued');
+
+        $ro = new None();
+        $ro->uri = new Uri('app://self/direct-put-depth-zero');
+        $ro->code = 200;
+        $ro->body = ['value' => 'secret'];
+
+        $this->expectException(UnstorableResponseDetected::class);
+        $repository->put($ro);
+    }
+
+    public function testAFollowingUnrelatedRequestInTheSameContainerDoesNotInheritTheRaisedSkip(): void
+    {
+        // raiseIfPending() clears before it throws (ThrowingUnstorableWriteObserver's own
+        // docblock) - a LATER, unrelated request sharing this same (SINGLETON) observer must
+        // not inherit a skip this put() already raised and consumed for itself. The mark
+        // itself is sticky for the whole request/container (by design, unrelated to the
+        // observer), so the later resource's own write is scoped OUTSIDE the mark's own
+        // (TOP_LEVEL) scope via a manually pushed hole - isolating it from a SEPARATE,
+        // genuine #234 refusal that would otherwise also legitimately apply here and
+        // confound what this test is actually checking: the OBSERVER's own stale state, not
+        // the mark's (correctly sticky) one.
+        $injector = $this->getInjector();
+        $repository = $injector->getInstance(QueryRepositoryInterface::class);
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $scope = $injector->getInstance(UncacheableMarkScopeInterface::class);
+        $mark = $injector->getInstance(UncacheableMarkInterface::class);
+        $mark->mark('csrf-token-issued');
+
+        $ro = new None();
+        $ro->uri = new Uri('app://self/direct-put-depth-zero');
+        $ro->code = 200;
+        $ro->body = ['value' => 'secret'];
+
+        try {
+            $repository->put($ro);
+            $this->fail('expected UnstorableResponseDetected from the direct put() itself');
+        } catch (UnstorableResponseDetected) {
+            // expected and consumed here - the point under test is what happens AFTER this.
+        }
+
+        // A later, unrelated, never-marking resource in the SAME container, isolated from
+        // the still-active top-level mark by its own hole scope, must not inherit a stale
+        // raise from the earlier put()'s own (already consumed) pending skip.
+        $scope->enterHole('page://self/html/an-isolated-scope');
+        $ro2 = $resource->get('app://self/innocent-cacheable-sibling');
+        $scope->leaveHole('page://self/html/an-isolated-scope');
+        $this->assertSame(200, $ro2->code, 'no stale UnstorableResponseDetected from the earlier direct put() leaked into this unrelated request');
+    }
+
+    public function testADirectPutInsideAnInterceptorStillDefersToTheOutermostInterceptor(): void
+    {
+        // A direct put() made from WITHIN a resource's own onGet() (DirectPutInsideOwnOnGet)
+        // is reached WITH CacheInterceptor's own frame already open (interceptorDepth > 0) -
+        // it must NOT report its own skip immediately: doing so would throw from inside
+        // onGet()'s own execution, unwinding past CacheInterceptor's own post-proceed write
+        // (the AOP write every #[Cacheable] resource gets) before it ever runs. Proven by the
+        // semantic log: BOTH the inner (manual) and outer (AOP) writes must have recorded
+        // their OWN put_skipped event - two, not one - before the exception, deferred to the
+        // OUTERMOST interceptor's own normal completion, finally surfaces.
+        $module = new QueryRepositoryModule(new ResourceModule('FakeVendor\HelloWorld'));
+        $module->override(new class extends AbstractModule {
+            protected function configure(): void
+            {
+                $this->bind(AdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->to(ArrayAdapter::class);
+                $this->bind(AdapterInterface::class)->annotatedWith(EtagPool::class)->to(ArrayAdapter::class);
+                $this->bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)->toInstance(new Log\SafeSemanticLogger());
+            }
+        });
+        $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
+        $module->override(new DevUnstorableGateModule());
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
+
+        $caught = null;
+        try {
+            $resource->get('app://self/direct-put-inside-own-on-get', ['markSelf' => true]);
+            $this->fail('expected UnstorableResponseDetected from the outermost interceptor');
+        } catch (UnstorableResponseDetected $e) {
+            $caught = $e;
+        }
+
+        $this->assertStringContainsString('direct-put-inside-own-on-get', $caught->getMessage());
+        $tree = $this->flushAndValidate($logger);
+        $putSkipped = self::eventContextsJsonOf($tree, 'put_skipped');
+        $this->assertCount(2, $putSkipped, 'the inner (manual) put() AND the outer (AOP) write must BOTH have recorded their own put_skipped - the inner one reporting immediately would have thrown before the outer write was ever attempted');
+        $this->assertNotNull(self::closeContextJsonOf($tree, 'cache_miss'), 'the GET scope must have closed normally - the exception was deferred, not raised mid-render');
+    }
+
     /** @return array{0: UnstorableResponseDetected|null, 1: list<string>} */
     private function getAndCaptureWarnings(ResourceInterface $resource, string $uri): array
     {

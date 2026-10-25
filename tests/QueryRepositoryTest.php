@@ -377,17 +377,25 @@ class QueryRepositoryTest extends TestCase
         $this->assertNotContains('cache_hit', self::collectTypes($tree2));
     }
 
-    public function testConstructorDefaultsWriteObserverSoAPre1180CallerPassingOnlySixArgumentsStillConstructs(): void
+    public function testConstructorDefaultsMarkAndWriteObserverSoAPre1180CallerPassingOnlySixArgumentsStillConstructs(): void
     {
-        // The constructor argument count went 6->7 adding $writeObserver (#234 dev gate): a
-        // caller that constructs this class directly (bypassing DI), built against the
-        // released 6-argument signature, must not TypeError on a missing 7th argument.
+        // The constructor argument count went 6->7->8 adding $writeObserver (#234 dev gate)
+        // then $mark (dev-gate stale-skip fix for a direct put() with no enclosing
+        // interceptor): a caller that constructs this class directly (bypassing DI), built
+        // against the released 6-argument signature, must not TypeError on a missing 7th or
+        // 8th argument.
         $constructor = (new ReflectionClass(Repository::class))->getConstructor();
         assert($constructor !== null);
         $parameters = $constructor->getParameters();
-        $writeObserverParam = $parameters[6];
+        $markParam = $parameters[6];
+        $this->assertSame('mark', $markParam->getName());
+        $this->assertTrue($markParam->isOptional(), 'a pre-1.18.0 6-argument caller must still construct');
+        $this->assertTrue($markParam->isDefaultValueAvailable());
+        $this->assertInstanceOf(UncacheableMark::class, $markParam->getDefaultValue());
+
+        $writeObserverParam = $parameters[7];
         $this->assertSame('writeObserver', $writeObserverParam->getName());
-        $this->assertTrue($writeObserverParam->isOptional(), 'a pre-1.18.0 6-argument caller must still construct');
+        $this->assertTrue($writeObserverParam->isOptional());
         $this->assertTrue($writeObserverParam->isDefaultValueAvailable());
         $default = $writeObserverParam->getDefaultValue();
         $this->assertInstanceOf(NullUnstorableWriteObserver::class, $default);

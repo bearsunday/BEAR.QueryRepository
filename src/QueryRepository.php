@@ -23,6 +23,7 @@ use BEAR\Resource\ResourceObject;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 use ReflectionClass;
+use Throwable;
 
 use function is_array;
 use function max;
@@ -40,31 +41,69 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         private Expiry $expiry,
         private CacheDependencyInterface $cacheDependency,
         private UnstorableGateInterface $gate,
+        private UncacheableMarkScopeInterface $mark = new UncacheableMark(),
         private UnstorableWriteObserverInterface $writeObserver = new NullUnstorableWriteObserver(),
     ) {
     }
 
     /**
      * {@inheritDoc}
+     *
+     * CodeRabbit review: a direct (non-AOP) put() reached with NO cacheable GET interceptor
+     * currently active at all (a CLI script, a command handler, anything outside a GET flow -
+     * `$mark->isInterceptorActive()` false) has no outermost `CacheInterceptor`/
+     * `AbstractDonutCacheInterceptor` whose own `leaveInterceptor()` will ever reach depth
+     * zero to report a pending dev-gate skip `doPut()` recorded - left unhandled, that skip
+     * stays pending in the (SINGLETON) observer until a LATER, unrelated request's own
+     * interceptor happens to reach depth zero first, inheriting a stale
+     * `UnstorableResponseDetected` that was never its own. This put() reports its own skip
+     * instead, the same way `CacheInterceptor::reportIfOutermost()` does for the AOP path:
+     * raise after normal completion, clear (never raise) when a genuine exception is already
+     * propagating. A put() reached WITH an interceptor active (interceptorDepth > 0 - a
+     * direct put() made from inside a resource's own `onGet()`, say) defers to that
+     * interceptor's own outermost completion, unchanged.
      */
     #[Override]
     public function put(ResourceObject $ro)
     {
-        // A top-level put is a direct (non-AOP) cache write: root it in a manual_store
-        // scope so it stands out from a write the framework drove, and so its outcome has
-        // a close to ride on. A put nested inside a request GET or a write command keeps
-        // emitting its save events under that scope, unchanged.
-        if ($this->logger instanceof TopLevelAwareInterface && $this->logger->isTopLevel()) {
-            $openId = $this->logger->open(new ManualStoreContext((string) $ro->uri));
-            $stored = false;
-            try {
-                return $stored = $this->doPut($ro);
-            } finally {
-                $this->logger->close(new ManualStoreResultContext($stored), $openId);
+        $reportDirectly = ! $this->mark->isInterceptorActive();
+        $threw = false;
+        try {
+            // A top-level put is a direct (non-AOP) cache write: root it in a manual_store
+            // scope so it stands out from a write the framework drove, and so its outcome has
+            // a close to ride on. A put nested inside a request GET or a write command keeps
+            // emitting its save events under that scope, unchanged.
+            if ($this->logger instanceof TopLevelAwareInterface && $this->logger->isTopLevel()) {
+                $openId = $this->logger->open(new ManualStoreContext((string) $ro->uri));
+                $stored = false;
+                try {
+                    return $stored = $this->doPut($ro);
+                } finally {
+                    $this->logger->close(new ManualStoreResultContext($stored), $openId);
+                }
+            }
+
+            return $this->doPut($ro);
+        } catch (Throwable $e) {
+            $threw = true;
+
+            throw $e;
+        } finally {
+            if ($reportDirectly) {
+                $this->reportDirectPut($threw);
             }
         }
+    }
 
-        return $this->doPut($ro);
+    private function reportDirectPut(bool $threw): void
+    {
+        if ($threw) {
+            $this->writeObserver->clearPending();
+
+            return;
+        }
+
+        $this->writeObserver->raiseIfPending();
     }
 
     private function doPut(ResourceObject $ro): bool

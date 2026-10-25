@@ -153,4 +153,16 @@ interface UncacheableMarkScopeInterface
 
     /** Leave one nested cacheable GET interceptor; true when this was the outermost one (depth back to zero) */
     public function leaveInterceptor(): bool;
+
+    /**
+     * Is any cacheable GET interceptor (CacheInterceptor/AbstractDonutCacheInterceptor)
+     * currently active (depth > 0)? A direct, non-AOP `QueryRepository::put()` call reached
+     * with no enclosing interceptor at all - a CLI script, a command handler, anything
+     * outside a GET flow - must report its OWN pending dev-gate skip, since no interceptor's
+     * own `leaveInterceptor()` will ever reach depth zero to report it (see
+     * `QueryRepository::put()`'s own docblock on why the stale-skip leak this prevents
+     * matters: a later, unrelated request sharing the same SINGLETON observer could
+     * otherwise inherit it).
+     */
+    public function isInterceptorActive(): bool;
 }
