@@ -8,8 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- `UncacheableMarkInterface::mark($reason)`: code that produces a per-user value (a CSRF token, etc.) marks the current response unstorable; it is then not cached (`put_skipped{reason: unstorable}`) and is sent with `Cache-Control: private, no-store` and `Pragma: no-cache` and no CDN headers (#222).
-- `UncacheableMark` and `DevUnstorableGateModule`'s observer are both request-scoped: a long-running worker (Swoole, RoadRunner) that reuses one container across requests must rebind both per request, as it already must for `ServerContextInterface`.
+- `UncacheableMarkInterface::mark($reason)`: code that produces a per-user value (a CSRF token, etc.) marks the current response unstorable; it is then not cached (`put_skipped{reason: unstorable}`) and is sent with `Cache-Control: private, no-store` and `Pragma: no-cache` and no CDN headers (#222). This is the app-facing interface's only method; the package's own write-scope mechanics live on a separate, internal `UncacheableMarkScopeInterface` instead (security review: application code holding the single, do-everything interface an earlier draft of this feature shipped could call its internal `enterWrite()` itself and forge a write-scope frame for its own direct `put()`, storing a marked secret that should have been refused).
+- `UncacheableMark` (bound to both `UncacheableMarkInterface` and `UncacheableMarkScopeInterface`, always the SAME instance) and `DevUnstorableGateModule`'s observer are both request-scoped: a long-running worker (Swoole, RoadRunner) that reuses one container across requests must rebind both per request, as it already must for `ServerContextInterface`.
 - `DevUnstorableGateModule`: `$module->override(new DevUnstorableGateModule())` reports a skipped write as a thrown `Exception\UnstorableResponseDetected`, once, after the response finishes rendering (`install()` has no effect here).
 
 ### Changed
@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A `#[Cacheable]`/`#[CacheableResponse]` response whose own code sets `Cache-Control` to `private` or `no-store` is no longer stored server-side; its header is kept and CDN headers are removed. A value declared by `#[HttpCache]`/`#[NoHttpCache]` is still stored.
 - `DevUnstorableGateModule` now binds `UnstorableWriteObserverInterface` (`ThrowingUnstorableWriteObserver`) instead of decorating the gate: it reports a skipped write once after rendering instead of throwing mid-render, and a hole legitimately refusing its own write (e.g. a CSRF form hole on an otherwise-correct `#[DonutCache]` page) is no longer reported. `ThrowingUnstorableGate` is removed.
 - Upgrading changes the Ray.Aop-woven class name - and so the ETag (`crc32($ro::class . ...)`) - for a `#[CacheableResponse]` class or method that also declares an `#[Embed]`, because it is now woven with a new interceptor (#226); a page with no `#[Embed]` keeps its stock woven class and ETag, and a `#[DonutCache]` page never carries an ETag at all, so neither is affected.
-- `ResourceDonut::FORMAT` is no longer public; use `ResourceDonut::placeholder()`. `ResourceDonut::refresh()` takes an additional `UncacheableMarkInterface` argument.
+- `ResourceDonut::FORMAT` is no longer public; use `ResourceDonut::placeholder()`. `ResourceDonut::refresh()` takes an additional `UncacheableMarkScopeInterface` argument (package-internal - see the Added entry above).
 - Requires `koriym/semantic-logger` `^0.11`. Written logs use its `log` document shape, and diagnostic `kind` is now `code`.
 - Requires `bear/resource` `^1.22.4`.
 - `KeepMutationsAndFailures` also keeps a session cut at the record limit (`semantic_logger_truncated`): a `command` past the limit leaves no other trace.
