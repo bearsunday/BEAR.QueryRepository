@@ -25,6 +25,10 @@ class OnceRequestUnitTest extends TestCase
 
     protected function setUp(): void
     {
+        if (! method_exists(ResourceInterface::class, 'newRequest')) {
+            self::markTestSkipped('this bear/resource release has no ResourceInterface::newRequest() - the delegate/discard methods this suite covers are exercised end to end instead, in OnceRequestBehaviorTest');
+        }
+
         Counter::$calls = 0;
         $injector = new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld'), __DIR__ . '/tmp');
         $this->resource = $injector->getInstance(ResourceInterface::class);
