@@ -102,10 +102,13 @@ final class OnceRequest extends AbstractRequest
     /**
      * {@inheritDoc}
      *
-     * Mirrors `Request::__get()`'s own DSL exactly - `AbstractRequest`'s default `__get()`
-     * answers through its own private memo, not this class's `$executed`, which would read
-     * as unset (and so re-execute) even after a prior `offsetGet()`/`__toString()` call
-     * already ran this generation through `__invoke()` above.
+     * Mirrors `Request::__get()`'s own DSL exactly. `eager`/`lazy` is genuinely new here -
+     * `AbstractRequest`'s default `__get()` has no such case and would instead try to read
+     * a non-existent `eager`/`lazy` property off the memoized `ResourceObject`. The `code`/
+     * `headers`/`body` branch is a deliberate, explicit match for `Request`'s own contract
+     * rather than a correctness fix: `AbstractRequest`'s default already funnels every
+     * unknown property through its own private memo's `invoke()`, which calls this class's
+     * overridden `__invoke()` just the same, so it already answers from the one execution.
      */
     #[Override]
     public function __get(string $name): mixed
