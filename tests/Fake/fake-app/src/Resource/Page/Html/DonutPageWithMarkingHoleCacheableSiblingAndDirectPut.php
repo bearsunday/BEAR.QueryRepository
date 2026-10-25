@@ -4,46 +4,33 @@ declare(strict_types=1);
 
 namespace FakeVendor\HelloWorld\Resource\Page\Html;
 
-use BEAR\QueryRepository\QueryRepositoryInterface;
 use BEAR\RepositoryModule\Annotation\DonutCache;
 use BEAR\Resource\Annotation\Embed;
 use BEAR\Resource\ResourceObject;
-use BEAR\Resource\Uri;
-use FakeVendor\HelloWorld\Resource\Page\None;
 
 /**
  * Fable's scenario: like DonutCacheWithMarkingHoleAndCacheableSibling (the literal #234
  * repro - a marking hole, UnstorableValue, before an unrelated #[Cacheable] sibling,
  * InnocentCacheableSibling, that must still be stored), PLUS a direct (non-AOP)
- * `QueryRepository::put()` call made from inside this page's own onGet(), nested inside this
- * page's own rendering. The direct put() has no write-scope frame of its own
- * (`UncacheableMarkInterface::isCurrentWriteFor()` false), so it falls back to the
- * conservative, any-owner `isMarked()` - refused by the unrelated hole's mark, same as
- * 1.17.0/pre-#234 behaviour, not a regression. The AOP-cached sibling, reached through its
- * OWN `CacheInterceptor`-opened scope, stays correctly #234-scoped and is stored regardless.
+ * `QueryRepository::put()` call made from App\DirectPutHole, embedded as a THIRD hole AFTER
+ * the marking one. All three embeds stay LAZY here, resolved later by
+ * `ResourceDonut::create()`'s own DonutRequest wrapping during this page's own write -
+ * exactly like the marking hole and the AOP sibling, DirectPutHole's own execution gets its
+ * OWN hole scope then too, distinct from TOP_LEVEL and from the marking hole's own scope -
+ * isolating the direct put()'s refusal to genuinely come from the any-owner `isMarked()`
+ * fallback (`UncacheableMarkScopeInterface::isCurrentWriteFor()` false, since the open frame,
+ * if any, belongs to neither DirectPutHole's own write nor this page's), same as
+ * 1.17.0/pre-#234 behaviour, not a regression. The AOP-cached sibling, reached through its OWN
+ * `CacheInterceptor`-opened scope, stays correctly #234-scoped and is stored regardless.
  */
 #[DonutCache]
 class DonutPageWithMarkingHoleCacheableSiblingAndDirectPut extends ResourceObject
 {
-    public function __construct(
-        private readonly QueryRepositoryInterface $queryRepository,
-    ) {
-    }
-
     #[Embed(rel: 'secret', src: 'app://self/unstorable-value')]
     #[Embed(rel: 'innocent', src: 'app://self/innocent-cacheable-sibling')]
+    #[Embed(rel: 'directPutHole', src: 'app://self/direct-put-hole')]
     public function onGet(): static
     {
-        // Force the marking hole to execute now, synchronously - its mark is attributed to
-        // its own (hole) scope, unrelated to the direct put below.
-        $this->body['secret'] = (string) $this->body['secret'];
-
-        $direct = new None();
-        $direct->uri = new Uri('app://self/direct-put-after-unrelated-hole-mark');
-        $direct->code = 200;
-        $direct->body = ['value' => 'unrelated'];
-        $this->queryRepository->put($direct);
-
         $this->body['article'] = '1';
 
         return $this;
