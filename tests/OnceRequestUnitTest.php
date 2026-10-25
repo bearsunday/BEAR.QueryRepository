@@ -13,6 +13,7 @@ use Ray\Di\Injector;
 
 use function assert;
 use function is_array;
+use function method_exists;
 
 /**
  * Unit-level coverage for the OnceRequest delegate/discard methods that the end-to-end
@@ -25,7 +26,7 @@ class OnceRequestUnitTest extends TestCase
 
     protected function setUp(): void
     {
-        if (! method_exists(ResourceInterface::class, 'newRequest')) {
+        if (! method_exists(ResourceInterface::class, 'newRequest')) { // @phpstan-ignore-line
             self::markTestSkipped('this bear/resource release has no ResourceInterface::newRequest() - the delegate/discard methods this suite covers are exercised end to end instead, in OnceRequestBehaviorTest');
         }
 
