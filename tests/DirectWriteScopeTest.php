@@ -185,4 +185,66 @@ class DirectWriteScopeTest extends TestCase
         $state = $repository->get(new Uri('app://self/cacheable-returns-a-fresh-instance-from-on-get'));
         $this->assertNotNull($state, 'the write-scope frame must have been re-bound to the fresh instance proceed() returned, or this write would be wrongly refused by the unrelated, already-closed hole mark above');
     }
+
+    public function testADirectPutInsideOwnOnGetIsRefusedWhenThisResourcesOwnOnGetMarksItselfFirst(): void
+    {
+        // CodeRabbit review (thread on f728c8d): a direct, manual put($this) call made from
+        // WITHIN this resource's own onGet() is still reached while CacheInterceptor's own
+        // write-scope frame is open (tagged with the pre-proceed $ro - the SAME instance as
+        // $this here, since onGet() returns $this), so isCurrentWriteFor($this) matches by
+        // identity and the scoped predicate applies. A mark made by onGet() itself, inside
+        // that SAME open write window, before the direct put - wasMarkedSinceCurrentWrite()
+        // must catch it, #234's own semantics for a descendant mark during an open write.
+        $injector = $this->newInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $repository = $injector->getInstance(QueryRepository::class);
+
+        $resource->get('app://self/direct-put-inside-own-on-get', ['markSelf' => true]);
+
+        $state = $repository->get(new Uri('app://self/direct-put-inside-own-on-get'));
+        $this->assertNull($state, 'onGet() marked its own write window before the direct put() - wasMarkedSinceCurrentWrite() must refuse it, the same as any other mark during an open write');
+    }
+
+    public function testADirectPutInsideOwnOnGetIsRefusedByAPreTreeMarkSharingItsTopLevelScope(): void
+    {
+        // A mark made BEFORE this GET even started (before CacheInterceptor's own
+        // enterWrite() snapshotted the tick) - wasMarkedSinceCurrentWrite() alone would miss
+        // it, but isMarkedForCurrentScope() catches it: the pre-tree mark and this resource's
+        // own onGet() share the same (TOP_LEVEL) scope, exactly like
+        // UnstorableGateTest::testReasonForOwnWriteStillRefusesAPreExistingMarkInTheSameScope.
+        $injector = $this->newInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $repository = $injector->getInstance(QueryRepository::class);
+        $mark = $injector->getInstance(UncacheableMarkInterface::class);
+
+        $mark->mark('pre-tree-mark');
+        $resource->get('app://self/direct-put-inside-own-on-get');
+
+        $state = $repository->get(new Uri('app://self/direct-put-inside-own-on-get'));
+        $this->assertNull($state, 'a pre-tree mark sharing this resource\'s own (TOP_LEVEL) scope must still refuse its direct put(), via isMarkedForCurrentScope()');
+    }
+
+    public function testADirectPutInsideOwnOnGetIsStoredWhenOnlyAnUnrelatedSiblingMarkedAndClosedBeforehand(): void
+    {
+        // The literal #234 semantics for this path too: an unrelated hole that marked and
+        // closed BEFORE this resource's own write-scope frame even opened must not refuse
+        // it - neither isMarkedForCurrentScope() (different, closed scope) nor
+        // wasMarkedSinceCurrentWrite() (already ticked before this write's own enterWrite())
+        // catches it; no secret is involved, this is the conservative-but-not-over-refusing
+        // case CodeRabbit's own review asked be checked.
+        $injector = $this->newInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $repository = $injector->getInstance(QueryRepository::class);
+        $scope = $injector->getInstance(UncacheableMarkScopeInterface::class);
+        $mark = $injector->getInstance(UncacheableMarkInterface::class);
+
+        $scope->enterHole('page://self/html/unrelated-hole');
+        $mark->mark('unrelated-sibling-mark');
+        $scope->leaveHole('page://self/html/unrelated-hole');
+
+        $resource->get('app://self/direct-put-inside-own-on-get');
+
+        $state = $repository->get(new Uri('app://self/direct-put-inside-own-on-get'));
+        $this->assertNotNull($state, 'an unrelated sibling marked and closed BEFORE this resource\'s own write-scope frame opened must not refuse its direct put() - no secret, nothing over-refused');
+    }
 }
