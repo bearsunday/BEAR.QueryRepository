@@ -6,8 +6,10 @@ namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\AbstractRequest;
+use BEAR\Resource\InvokerInterface;
 use BEAR\Resource\Resource;
 use BEAR\Resource\ResourceInterface;
+use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Madapaja\TwigModule\TwigModule;
@@ -56,6 +58,37 @@ class DonutRequestTest extends TestCase
     {
         $view = $storage->render('cmt=' . ResourceDonut::placeholder('page://self/html/comment'));
         $this->assertSame('cmt=comment01', $view);
+    }
+
+    public function testANonRequestHoleIsInvokedDirectlyOnceWithoutTouchingJsonSerialize(): void
+    {
+        $child = new class extends ResourceObject {
+        };
+        $child->uri = new Uri('app://self/async-like');
+        $child->view = 'async-view';
+        $invoker = new class ($child) implements InvokerInterface {
+            public int $calls = 0;
+
+            public function __construct(private readonly ResourceObject $ro)
+            {
+            }
+
+            public function invoke(AbstractRequest $request): ResourceObject
+            {
+                $this->calls++;
+
+                return $this->ro;
+            }
+        };
+        $request = new FakeAsyncLikeRequest($child, $invoker);
+        $storage = new DonutRenderer();
+        $donutRequest = new DonutRequest($request, $storage, new SurrogateKeys(new Uri('app://self/foo')), new UncacheableMark());
+
+        $placeholder = (string) $donutRequest;
+
+        $this->assertSame(1, $invoker->calls);
+        $this->assertSame(0, $request->jsonSerializeCalls, 'jsonSerialize() of a non-Request (e.g. AsyncRequest) has side effects');
+        $this->assertSame('hole=async-view', $storage->render('hole=' . $placeholder));
     }
 
     public function testHoleScopeIsLeftWhenTheHoleThrows(): void

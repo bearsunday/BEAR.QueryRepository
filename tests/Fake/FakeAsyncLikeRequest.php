@@ -16,16 +16,19 @@ use Override;
  * bear/async itself: jsonSerialize() answers something other than the memoized
  * ResourceObject AbstractRequest's own contract promises (BEAR\Async\AsyncRequest decodes
  * an already-flushed JSON view into an array instead, to support its own PendingRequests
- * parallel-execution protocol). Never actually invoked - a real AsyncRequest's jsonSerialize()
- * reads a result PendingRequests already flushed, not a fresh invoke() - so the inner
- * invoker is a stub that would fail the test loudly if ResourceBodyEvaluator ever called it.
+ * parallel-execution protocol). By default never actually invoked - a real AsyncRequest's
+ * jsonSerialize() reads a result PendingRequests already flushed, not a fresh invoke() - so the
+ * default inner invoker fails the test loudly if ResourceBodyEvaluator ever calls it. Pass an
+ * invoker to exercise a caller that falls back to invoking it (DonutRequest).
  */
 final class FakeAsyncLikeRequest extends AbstractRequest
 {
-    public function __construct(ResourceObject $resourceObject)
+    public int $jsonSerializeCalls = 0;
+
+    public function __construct(ResourceObject $resourceObject, InvokerInterface|null $invoker = null)
     {
         parent::__construct(
-            new class implements InvokerInterface {
+            $invoker ?? new class implements InvokerInterface {
                 public function invoke(AbstractRequest $request): ResourceObject
                 {
                     throw new LogicException('ResourceBodyEvaluator must not invoke an AsyncRequest-shaped request');
@@ -38,6 +41,8 @@ final class FakeAsyncLikeRequest extends AbstractRequest
     #[Override]
     public function jsonSerialize(): mixed
     {
+        $this->jsonSerializeCalls++;
+
         return ['decoded' => 'from-pending-requests'];
     }
 
