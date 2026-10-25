@@ -12,6 +12,8 @@ use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\Resource\RenderInterface;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
+use ErrorException;
+use FakeVendor\HelloWorld\Resource\App\FlakyHole;
 use FakeVendor\HelloWorld\Resource\Page\Index;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Madapaja\TwigModule\TwigModule;
@@ -22,6 +24,7 @@ use RuntimeException;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
+use Twig\Error\Error as TwigError;
 
 use function assert;
 use function dirname;
@@ -43,6 +46,18 @@ use const JSON_UNESCAPED_SLASHES;
 class GracefulLoggingTest extends TestCase
 {
     use SemanticLogTreeTrait;
+
+    /**
+     * `FlakyHole::$failureCount` is mutable static state (PHP has no other way to make a
+     * resource's own onGet() behavior controllable per test) - reset unconditionally so a
+     * test that leaves it non-zero can never leak into a later, unrelated test.
+     */
+    protected function tearDown(): void
+    {
+        FlakyHole::$failureCount = 0;
+
+        parent::tearDown();
+    }
 
     public function testCacheWorksWhenLoggingSessionIsMisused(): void
     {
@@ -244,11 +259,15 @@ class GracefulLoggingTest extends TestCase
 
     /**
      * A render that throws must never bake an empty donut template into the store - that
-     * would serve an empty page to every later visitor (since 1.17.0). The first request's
-     * write is refused and recorded; a second request is still a cache miss, not a hit
-     * reading the empty template the bug would have stored.
+     * would serve an empty page to every later visitor (since 1.17.0). `ResourceDonut::create()`
+     * renders with the non-swallowing `toString()`, and the hole is wrapped the same way
+     * (`DonutRequest::__toString()`), so the Throwable travels to the caller as a clean,
+     * catchable exception - the write is refused (and recorded) as a side effect of nothing
+     * past the render ever running, not a caught, degraded failure. (Verified by execution:
+     * this is actually BETTER than the same hole embedded outside `#[DonutCache]`, where the
+     * raw `AbstractRequest::__toString()` swallows it into a fatal E_USER_ERROR instead.)
      */
-    public function testDonutWriteIsRefusedNotStoredWhenAHoleThrowsDuringRender(): void
+    public function testDonutWriteLetsAHoleThrowTravelAndStoresNothing(): void
     {
         $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
@@ -256,44 +275,41 @@ class GracefulLoggingTest extends TestCase
         $resource = $injector->getInstance(ResourceInterface::class);
         $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
-        set_error_handler(static fn (): bool => true); // the swallowed-render warning and the degrade warning both fire
         try {
-            $first = $resource->get('page://self/html/donut-cache-with-throwing-hole');
-            $this->assertSame(200, $first->code, 'the request still completes even though nothing is stored');
-        } finally {
-            restore_error_handler();
+            $resource->get('page://self/html/donut-cache-with-throwing-hole');
+            $this->fail('expected the hole throw to travel to the caller');
+        } catch (TwigError $e) {
+            $this->assertInstanceOf(RuntimeException::class, $e->getPrevious());
+            $this->assertSame('the hole blew up mid-render', $e->getPrevious()->getMessage());
         }
 
         $tree = $this->flushAndValidate($logger);
         $error = self::eventContextJsonOf($tree, 'cache_error');
-        $this->assertNotNull($error, 'the aborted render is recorded, not silently cached');
+        $this->assertNotNull($error, 'the aborted render is recorded before it travels');
         $this->assertStringContainsString('"operation":"write"', $error);
-        $this->assertStringContainsString('DonutRenderAborted', $error);
 
         // Independent of what a later request happens to do: directly proves nothing was
-        // stored, rather than inferring it from a second request's cache_miss.
+        // stored, rather than inferring it from a second request's behavior alone.
         $resourceStorage = $injector->getInstance(ResourceStorageInterface::class);
-        $this->assertNull($resourceStorage->getDonut($first->uri), 'nothing was stored after the aborted render');
+        $uri = new Uri('page://self/html/donut-cache-with-throwing-hole');
+        $this->assertNull($resourceStorage->getDonut($uri), 'nothing was stored after the aborted render');
 
         // If the bug were present, this second request would be a cache HIT serving the
-        // empty template the first request's write would otherwise have stored.
-        set_error_handler(static fn (): bool => true);
+        // empty template the first request's write would otherwise have stored, instead of
+        // throwing again.
         try {
             $resource->get('page://self/html/donut-cache-with-throwing-hole');
-        } finally {
-            restore_error_handler();
+            $this->fail('expected the second request to also throw, not read a cached empty template');
+        } catch (TwigError $e) {
+            $this->assertSame('the hole blew up mid-render', $e->getPrevious()?->getMessage());
         }
-
-        $tree2 = $this->flushAndValidate($logger);
-        $this->assertNull(self::closeContextJsonOf($tree2, 'cache_hit'), 'a later request must not be served from a cached empty template');
-        $this->assertNotNull(self::closeContextJsonOf($tree2, 'cache_miss'), 'a later request is still a cache miss - nothing was ever stored');
     }
 
     /**
-     * The same guard refuses a store when the composing page's own template throws, outside
-     * any hole - `(string) $ro` in ResourceDonut::create() renders the page itself too.
+     * The same holds when the composing page's own template throws, outside any hole -
+     * `$ro->toString()` in `ResourceDonut::create()` renders the page itself too.
      */
-    public function testDonutWriteIsRefusedNotStoredWhenThePageTemplateItselfThrows(): void
+    public function testDonutWriteLetsAPageTemplateThrowTravelAndStoresNothing(): void
     {
         $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
         $module->override(new class extends AbstractModule {
@@ -306,19 +322,181 @@ class GracefulLoggingTest extends TestCase
         $resource = $injector->getInstance(ResourceInterface::class);
         $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
-        set_error_handler(static fn (): bool => true);
         try {
-            $ro = $resource->get('page://self/html/plain-donut-hole');
-            $this->assertSame(200, $ro->code, 'the request still completes even though nothing is stored');
-        } finally {
-            restore_error_handler();
+            $resource->get('page://self/html/plain-donut-hole');
+            $this->fail('expected the page template throw to travel to the caller');
+        } catch (FakeTemplateNotFound $e) {
+            $this->assertSame('template not found: user.html.twig', $e->getMessage());
         }
 
         $tree = $this->flushAndValidate($logger);
         $error = self::eventContextJsonOf($tree, 'cache_error');
-        $this->assertNotNull($error, 'the aborted render is recorded, not silently cached');
+        $this->assertNotNull($error, 'the aborted render is recorded before it travels');
         $this->assertStringContainsString('"operation":"write"', $error);
-        $this->assertStringContainsString('DonutRenderAborted', $error);
+
+        $resourceStorage = $injector->getInstance(ResourceStorageInterface::class);
+        $uri = new Uri('page://self/html/plain-donut-hole');
+        $this->assertNull($resourceStorage->getDonut($uri), 'nothing was stored after the aborted render');
+    }
+
+    /**
+     * The guard never inspects a warning - it just lets `toString()` propagate a genuine
+     * Throwable unwrapped. A page that merely emits an unrelated warning during render and
+     * then renders successfully has nothing to propagate, so it is stored normally.
+     */
+    public function testDonutWriteStoresAPageThatEmitsAnUnrelatedWarningButRendersFine(): void
+    {
+        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module->override(new class extends AbstractModule {
+            protected function configure(): void
+            {
+                $this->bind(RenderInterface::class)->to(FakeWarningEmittingRenderer::class);
+            }
+        });
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        $resource = $injector->getInstance(ResourceInterface::class);
+
+        set_error_handler(static fn (): bool => true); // let the unrelated warning pass quietly
+        try {
+            $ro = $resource->get('page://self/html/plain-donut-hole');
+        } finally {
+            restore_error_handler();
+        }
+
+        $this->assertSame('rendered-ok', (string) $ro->view);
+
+        $resourceStorage = $injector->getInstance(ResourceStorageInterface::class);
+        $uri = new Uri('page://self/html/plain-donut-hole');
+        $this->assertNotNull($resourceStorage->getDonut($uri), 'a page that renders fine despite an unrelated warning is stored');
+    }
+
+    /**
+     * Fable's CRITICAL finding against the previous (warning-regex) design: an app with a
+     * warning->exception converter (Whoops, Symfony ErrorHandler, Sentry) turns ANY warning
+     * during render into a real exception. This design never installs a handler of its own
+     * and never inspects a warning, so that converted exception is just an ordinary Throwable
+     * `toString()` propagates - behaving identically to the same render with NO cache
+     * attribute at all (not merely a different attribute like `#[Cacheable]`), and
+     * identically on every later request (never "refused forever").
+     */
+    public function testAWarningToExceptionConverterBehavesIdenticallyWithAndWithoutDonutCache(): void
+    {
+        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module->override(new class extends AbstractModule {
+            protected function configure(): void
+            {
+                $this->bind(RenderInterface::class)->to(FakeWarningEmittingRenderer::class);
+            }
+        });
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        $resource = $injector->getInstance(ResourceInterface::class);
+
+        $converter = static function (int $errno, string $errstr): bool {
+            throw new ErrorException($errstr, 0, $errno);
+        };
+
+        set_error_handler($converter);
+        try {
+            // No cache attribute: $resource->get() alone does not render (onGet() only) -
+            // the render happens later, the same place HttpResponder::getOutput() triggers
+            // it (`$ro->toString()`), so that call is what this is compared against.
+            $resource->get('page://self/html/plain-no-cache-attribute')->toString();
+            $this->fail('expected the converted warning to surface for the no-cache-attribute page');
+        } catch (ErrorException $e) {
+            $this->assertSame('an unrelated notice during render', $e->getMessage());
+        } finally {
+            restore_error_handler();
+        }
+
+        // Twice, to show the donut page is not treated worse (or better) than the plain
+        // page, and not treated worse (or better) on a later request than on the first.
+        for ($i = 0; $i < 2; $i++) {
+            set_error_handler($converter);
+            try {
+                $resource->get('page://self/html/plain-donut-hole'); // #[DonutCache]
+                $this->fail('expected the converted warning to surface identically for the donut page');
+            } catch (ErrorException $e) {
+                $this->assertSame('an unrelated notice during render', $e->getMessage(), 'identical to the no-#[DonutCache] behavior, every time');
+            } finally {
+                restore_error_handler();
+            }
+        }
+    }
+
+    /**
+     * HIT refresh, transient hole failure: `ResourceDonut::refresh()`'s own re-fetch hits a
+     * hole that fails once, degrades (the reviewed-and-kept CacheStoreFailure conversion),
+     * and falls back to a full fresh render - which succeeds because the failure already
+     * consumed itself. The response must be the fresh render's FULL body, not empty/partial.
+     */
+    public function testHitRefreshFallsBackToAFreshRenderWhenAHoleTransientlyFails(): void
+    {
+        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        $resource = $injector->getInstance(ResourceInterface::class);
+
+        FlakyHole::$failureCount = 0;
+        $first = $resource->get('page://self/html/donut-cache-with-flaky-hole');
+        $this->assertSame(200, $first->code);
+        $this->assertStringContainsString('healthy', (string) $first->view);
+
+        FlakyHole::$failureCount = 1;
+        set_error_handler(static fn (): bool => true); // the fallback degrade still warns
+        try {
+            $second = $resource->get('page://self/html/donut-cache-with-flaky-hole');
+        } finally {
+            restore_error_handler();
+        }
+
+        $this->assertSame(200, $second->code);
+        $this->assertStringContainsString(
+            'healthy',
+            (string) $second->view,
+            'the fresh render\'s full body - not empty, and not the raw AbstractRequest a bare proceed() fallback would leave unrendered',
+        );
+    }
+
+    /**
+     * HIT refresh, persistent hole failure: both the re-fetch and the fresh-render fallback
+     * hit a still-broken hole, so the request fails exactly as the hole's own URI does when
+     * requested directly with no donut composition at all.
+     */
+    public function testHitRefreshFailsTheSameWayAsNoDonutCacheWhenAHoleIsPersistentlyBroken(): void
+    {
+        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        $resource = $injector->getInstance(ResourceInterface::class);
+
+        FlakyHole::$failureCount = 0;
+        $resource->get('page://self/html/donut-cache-with-flaky-hole'); // caches a good template
+
+        FlakyHole::$failureCount = 1000; // outlasts both the re-fetch and the fallback render
+        set_error_handler(static fn (): bool => true); // the degraded-read warning still fires
+        $threw = false;
+        try {
+            $resource->get('page://self/html/donut-cache-with-flaky-hole');
+        } catch (TwigError $e) {
+            $threw = true;
+            $this->assertInstanceOf(RuntimeException::class, $e->getPrevious());
+            $this->assertSame('the hole is currently broken', $e->getPrevious()->getMessage());
+        } finally {
+            restore_error_handler();
+        }
+
+        $this->assertTrue($threw, 'expected the persistently broken hole to fail the request, same as without the cache attribute');
+
+        FlakyHole::$failureCount = 1;
+        $threw = false;
+        try {
+            $resource->get('app://self/flaky-hole'); // the hole's own URI, no donut composition
+        } catch (RuntimeException $e) {
+            $threw = true;
+            $this->assertSame('the hole is currently broken', $e->getMessage());
+        }
+
+        $this->assertTrue($threw, 'expected the same failure requesting the hole directly');
     }
 
     public function testAValueEntryIsStoredWithoutRenderingTheResource(): void

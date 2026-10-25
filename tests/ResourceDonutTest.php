@@ -19,15 +19,13 @@ use PHPUnit\Framework\TestCase;
 use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
 use RuntimeException;
+use Twig\Error\Error as TwigError;
 
 use function assert;
 use function dirname;
-use function error_clear_last;
-use function error_get_last;
 use function htmlspecialchars;
 use function http_build_query;
 
-use const E_USER_WARNING;
 use const ENT_QUOTES;
 
 class ResourceDonutTest extends TestCase
@@ -273,18 +271,13 @@ class ResourceDonutTest extends TestCase
     }
 
     /**
-     * `BEAR\Resource\ResourceObject::__toString()` swallows a Throwable from a failed render
-     * into an E_USER_WARNING and an empty string - a hole's own onGet() propagates here
-     * uncaught (`DonutRequest::__toString()` has no catch of its own). Storing that empty
-     * string as the donut template would serve an empty page to every later visitor (since
-     * 1.17.0).
-     *
-     * This also pins the guard's precision through the public API: a regex that matched too
-     * late in the trace would show up here as a reconstructed message polluted with stray
-     * `#0 `/`.php(` trace fragments, and a regex that stopped matching at all (BEAR.Resource's
-     * warning shape drifting) would show up as no exception being thrown.
+     * A hole's own onGet() propagates uncaught through `DonutRequest::__toString()`
+     * (issue: storing an empty donut template whose hole threw, since 1.17.0). `create()`
+     * renders with `$ro->toString()`, which does not swallow, so the ORIGINAL Throwable -
+     * here wrapped once by Twig as it bubbles through template evaluation - reaches the
+     * caller unmodified. Nothing past the render call ever runs, so nothing is stored.
      */
-    public function testCreateRefusesToStoreTheTemplateWhenAHoleThrows(): void
+    public function testCreateLetsAHoleThrowTravelAndStoresNothing(): void
     {
         $ro = $this->resource->newInstance('page://self/html/donut-cache-with-throwing-hole');
         $resource = $this->resource;
@@ -293,31 +286,101 @@ class ResourceDonutTest extends TestCase
         assert($throwingRequest instanceof AbstractRequest);
         $ro->body = ['secret' => $throwingRequest];
 
-        error_clear_last();
         try {
             ResourceDonut::create($ro, new DonutRenderer(), new SurrogateKeys($ro->uri), null, false, $this->mark);
-            $this->fail('expected the hole throw to refuse the store');
-        } catch (CacheStoreFailure $e) {
-            $this->assertStringStartsWith('Twig\Error\RuntimeError: ', $e->getMessage());
-            $this->assertStringContainsString('the hole blew up mid-render', $e->getMessage());
-            $this->assertStringNotContainsString('#0 ', $e->getMessage());
-            $this->assertStringNotContainsString('.php(', $e->getMessage());
+            $this->fail('expected the hole throw to travel');
+        } catch (TwigError $e) {
+            $this->assertInstanceOf(RuntimeException::class, $e->getPrevious());
+            $this->assertSame('the hole blew up mid-render', $e->getPrevious()->getMessage());
         }
-
-        // The handler returns false on a match, so PHP's own handling of the warning still
-        // runs unsuppressed - error_get_last() is set by the engine regardless of what any
-        // handler returns, so this proves the original warning was not lost.
-        $last = error_get_last();
-        $this->assertNotNull($last, 'the swallowed render warning must still surface, not be suppressed');
-        $this->assertSame(E_USER_WARNING, $last['type']);
-        $this->assertStringContainsString('the hole blew up mid-render', $last['message']);
     }
 
     /**
-     * The same swallow happens when the composing page's OWN template fails, outside any
-     * hole - `(string) $ro` in create() renders the page itself, not only its holes.
+     * Unlike `app://self/throwing-hole` (fails inside `($this->request)()`, before
+     * `DonutRequest::__toString()` ever reaches its own render step), this hole's `onGet()`
+     * succeeds and its OWN template is what fails - specifically exercising the
+     * `$executed->toString()` call (not `(string) $executed`, which would swallow this into
+     * an E_USER_WARNING and an empty placeholder view instead of letting it travel).
      */
-    public function testCreateRefusesToStoreTheTemplateWhenThePageTemplateItselfThrows(): void
+    public function testCreateLetsAHolesOwnRenderFailureTravelAndStoresNothing(): void
+    {
+        $ro = $this->resource->newInstance('page://self/html/donut-cache-with-throwing-hole');
+        $resource = $this->resource;
+        assert($resource instanceof Resource);
+        $holeRequest = $resource->get->uri('app://self/hole-with-no-template');
+        assert($holeRequest instanceof AbstractRequest);
+        $ro->body = ['secret' => $holeRequest];
+
+        try {
+            ResourceDonut::create($ro, new DonutRenderer(), new SurrogateKeys($ro->uri), null, false, $this->mark);
+            $this->fail("expected the hole's own render failure to travel");
+        } catch (TwigError $e) {
+            $this->assertStringContainsString('HoleWithNoTemplate', $e->getMessage());
+        }
+    }
+
+    /**
+     * `app://self/throwing-hole` marks itself unstorable, THEN throws (Kimi LOW: document
+     * which surfaces). The render exception wins, not a dev-gate exception
+     * (`UnstorableResponseDetected`): the mark only ever affects a SUCCESSFUL render's
+     * storability, checked by `UnstorableGateInterface::reason()` after `create()` returns -
+     * which it never does here, so nothing ever reads the mark at all. The scope the mark
+     * was filed under is still left correctly despite the throw (DonutRequest::__toString()'s
+     * own finally), confirmed the same way DonutRequestTest's own throw test does.
+     */
+    public function testCreateLetsAHoleThatMarkedItselfThrowTravelAsTheRenderException(): void
+    {
+        $ro = $this->resource->newInstance('page://self/html/donut-cache-with-throwing-hole');
+        $resource = $this->resource;
+        assert($resource instanceof Resource);
+        $throwingRequest = $resource->get->uri('app://self/throwing-hole');
+        assert($throwingRequest instanceof AbstractRequest);
+        $ro->body = ['secret' => $throwingRequest];
+
+        try {
+            ResourceDonut::create($ro, new DonutRenderer(), new SurrogateKeys($ro->uri), null, false, $this->mark);
+            $this->fail('expected the render exception to travel, not any dev-gate exception');
+        } catch (TwigError $e) {
+            // Not UnstorableResponseDetected or any other gate-related exception: the mark
+            // ThrowingHole made before throwing is simply never read.
+            $this->assertInstanceOf(RuntimeException::class, $e->getPrevious());
+            $this->assertSame('the hole blew up mid-render', $e->getPrevious()->getMessage());
+        }
+
+        // The hole's own scope was left (DonutRequest::__toString()'s finally), so a mark
+        // right after is filed under TOP_LEVEL, not displaced by a leaked hole scope.
+        $this->mark->mark('after the throw');
+        $this->assertTrue($this->mark->isMarkedForCurrentScope());
+    }
+
+    /**
+     * An anonymous exception class (`new class extends RuntimeException {}`) must travel
+     * exactly like a named one - Kimi's MEDIUM: a class-name-matching guard would silently
+     * miss this and still store the empty template. This design never inspects the class at
+     * all, so there is nothing for an anonymous class to evade.
+     */
+    public function testCreateLetsAnAnonymousExceptionHoleThrowTravelAndStoresNothing(): void
+    {
+        $ro = $this->resource->newInstance('page://self/html/donut-cache-with-throwing-hole');
+        $resource = $this->resource;
+        assert($resource instanceof Resource);
+        $throwingRequest = $resource->get->uri('app://self/anonymous-throwing-hole');
+        assert($throwingRequest instanceof AbstractRequest);
+        $ro->body = ['secret' => $throwingRequest];
+
+        try {
+            ResourceDonut::create($ro, new DonutRenderer(), new SurrogateKeys($ro->uri), null, false, $this->mark);
+            $this->fail('expected the anonymous-class hole throw to travel');
+        } catch (TwigError $e) {
+            $this->assertStringContainsString('anonymous hole blew up', $e->getPrevious()?->getMessage() ?? '');
+        }
+    }
+
+    /**
+     * The same holds when the composing page's OWN template fails, outside any hole -
+     * `$ro->toString()` in create() renders the page itself, not only its holes.
+     */
+    public function testCreateLetsAPageTemplateThrowTravelAndStoresNothing(): void
     {
         $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
         $module->override(new class extends AbstractModule {
@@ -332,18 +395,12 @@ class ResourceDonutTest extends TestCase
         $ro = $resource->newInstance('page://self/html/plain-donut-hole');
         $ro->body = ['value' => 'plain'];
 
-        error_clear_last();
         try {
             ResourceDonut::create($ro, new DonutRenderer(), new SurrogateKeys($ro->uri), null, false, $mark);
-            $this->fail('expected the page template throw to refuse the store');
-        } catch (CacheStoreFailure $e) {
-            $this->assertSame('BEAR\QueryRepository\FakeTemplateNotFound: template not found: user.html.twig', $e->getMessage());
+            $this->fail('expected the page template throw to travel');
+        } catch (FakeTemplateNotFound $e) {
+            $this->assertSame('template not found: user.html.twig', $e->getMessage());
         }
-
-        $last = error_get_last();
-        $this->assertNotNull($last, 'the swallowed render warning must still surface, not be suppressed');
-        $this->assertSame(E_USER_WARNING, $last['type']);
-        $this->assertStringContainsString('template not found', $last['message']);
     }
 
     /**

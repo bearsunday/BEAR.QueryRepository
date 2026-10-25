@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\CacheStoreFailure;
-use BEAR\QueryRepository\Exception\DonutRenderAborted;
 use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
@@ -17,17 +16,12 @@ use function explode;
 use function hash;
 use function is_iterable;
 use function max;
-use function preg_match;
 use function preg_replace_callback;
 use function rawurldecode;
 use function rawurlencode;
-use function restore_error_handler;
-use function set_error_handler;
 use function sprintf;
 use function strtotime;
 use function time;
-
-use const E_USER_WARNING;
 
 /**
  * Donut cache resource state
@@ -50,15 +44,6 @@ final class ResourceDonut
     private const FORMAT = '[le2:%s]';
 
     private const URI_REGEX = '/\[le(2)?:([^\]]+)]/';
-
-    /**
-     * Matches the E_USER_WARNING message `BEAR\Resource\ResourceObject::__toString()` emits
-     * when it swallows a Throwable from rendering - `"{$e::class}({$e->getMessage()})\n" .
-     * $e->getTraceAsString()` (vendor/bear/resource/src/ResourceObject.php). Anchored on the
-     * `#0 ` a Throwable::getTraceAsString() trace always starts with, so an unrelated warning
-     * that merely happens to look like "Class(message)" is not misread as a swallowed render.
-     */
-    private const SWALLOWED_RENDER_WARNING = '/\A(?<class>[\\\\\w]+)\((?<message>.*)\)\n#0 /s';
 
     /**
      * Build the placeholder DonutRequest::__toString() embeds and DonutRenderer matches
@@ -239,6 +224,21 @@ final class ResourceDonut
         return hash('sha256', $view);
     }
 
+    /**
+     * `(string) $ro` here would call the page's own `ResourceObject::__toString()`, which
+     * swallows a render Throwable into an E_USER_WARNING and `''` - storing that would bake
+     * an empty page into the cache for every later visitor (since 1.17.0). `toString()` is
+     * the same render with no such catch (vendor/bear/resource), the same method
+     * `BEAR\Sunday\...\HttpResponder::getOutput()` already renders a response with - so a
+     * failure in the PAGE's own template propagates exactly as it would for a page with no
+     * cache attribute at all. A HOLE's failure travels too (DonutRequest wraps it with the
+     * same non-swallowing render, see DonutRequest::__toString()) - a clean, catchable
+     * exception, actually BETTER than the no-attribute baseline for an embedded hole: an
+     * un-donut-wrapped `#[Embed]` renders its child via the raw `AbstractRequest::__toString()`,
+     * which swallows into a fatal E_USER_ERROR instead (verified by execution, not assumed).
+     * Either way, the original Throwable - not a reconstruction - travels to the caller, and
+     * nothing past this call ever stores or returns a template.
+     */
     public static function create(ResourceObject $ro, DonutRendererInterface $storage, SurrogateKeys $etags, int|null $ttl, bool $isCacheble, UncacheableMarkInterface $mark): self
     {
         // A resource with nothing to return leaves its body null - a 204 typically does, while
@@ -256,52 +256,8 @@ final class ResourceDonut
             unset($maybeRequest);
         }
 
-        $donutTemplate = self::renderTemplateOrAbort($ro);
+        $donutTemplate = $ro->toString();
 
         return new self($donutTemplate, $ro->headers, $ttl, $isCacheble, code: $ro->code);
-    }
-
-    /**
-     * Cast a page RO to its template string, refusing the donut store if the render was
-     * actually a Throwable that `ResourceObject::__toString()` swallowed (both a hole's own
-     * render - DonutRequest::__toString() does not catch, so a hole's failure surfaces here
-     * too - and the composing page's own template failing outside any hole).
-     *
-     * A scoped error handler, installed only for the duration of this cast, is the only way
-     * to see that: the Throwable itself never reaches here, only the E_USER_WARNING the
-     * swallow leaves behind. On a match it still returns false, so PHP's own handling of
-     * that original warning (log, display) runs exactly as it would with no handler
-     * installed at all - only the empty return value this call would otherwise produce is
-     * refused, via CacheStoreFailure, which the interceptors already catch and degrade.
-     */
-    private static function renderTemplateOrAbort(ResourceObject $ro): string
-    {
-        /** @var string|null $abortedRenderMessage */
-        $abortedRenderMessage = null;
-        /** @var callable|null $previous */
-        $previous = null;
-        $previous = set_error_handler(
-            static function (int $errno, string $errstr, string $errfile = '', int $errline = 0) use (&$abortedRenderMessage, &$previous): bool {
-                if ($errno === E_USER_WARNING && preg_match(self::SWALLOWED_RENDER_WARNING, $errstr, $match) === 1) {
-                    $abortedRenderMessage = sprintf('%s: %s', $match['class'], $match['message']);
-
-                    return false;
-                }
-
-                return $previous !== null ? (bool) $previous($errno, $errstr, $errfile, $errline) : false;
-            },
-        );
-
-        try {
-            $donutTemplate = (string) $ro;
-        } finally {
-            restore_error_handler();
-        }
-
-        if ($abortedRenderMessage !== null) {
-            throw CacheStoreFailure::from(new DonutRenderAborted($abortedRenderMessage));
-        }
-
-        return $donutTemplate;
     }
 }

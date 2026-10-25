@@ -23,14 +23,13 @@ use Throwable;
  * reported as done. The automatic write inside a GET is caught and degraded - that request
  * changed nothing, so nothing at an edge became stale by it.
  *
- * `ResourceDonut::create()`'s render also arrives here, which looks like the "renderer with a
- * bug" case this class says it deliberately excludes - but it is not that case: by the time
- * `ResourceObject::__toString()` returns, BEAR.Resource has already caught and discarded the
- * real Throwable itself (an E_USER_WARNING and `''` are all that is left of it), so there is
- * no longer a genuine exception left to let travel - only a reconstruction from that warning's
- * text (`Exception\DonutRenderAborted`). Degrading is what lets the response stay servable
- * without fabricating a 500 from a guessed cause; the original warning still surfaces
- * unsuppressed, and the reconstruction is recorded in the semantic log either way.
+ * `ResourceDonut::refresh()` also raises this type when a hole throws while an already-cached
+ * page is being recomposed - deliberately, not by accident: the read path degrades through
+ * the same catch that handles a storage outage, falling back to a full fresh render
+ * (`ResourceDonut::create()`), which then fails exactly as the hole would without the cache
+ * attribute at all if it is genuinely broken, or serves the full page if the failure was
+ * transient. `create()`'s own render does NOT use this type - a render failure there
+ * propagates unwrapped, matching a page with no cache attribute (see its docblock).
  */
 final class CacheStoreFailure extends RuntimeException
 {
