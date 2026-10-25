@@ -12,22 +12,27 @@ use function array_pop;
 use function array_slice;
 
 /**
- * The single implementation backing both UncacheableMarkInterface (app-facing: mark() only)
- * and UncacheableMarkScopeInterface (package-internal: the write-scope/hole-scope mechanics
- * that decide whose write a mark actually refuses - see that interface's own docblock). Both
- * are bound to the SAME instance (QueryRepositoryModule, via UncacheableMarkInterfaceProvider)
- * so a mark() made through the app-facing interface is always visible to the internal one.
+ * The sole implementation of UncacheableMarkScopeInterface (package-internal) ONLY - never
+ * UncacheableMarkInterface (app-facing). `UncacheableMarker` is the app-facing wrapper,
+ * holding this instance and delegating `mark()` to it, so application code is never handed an
+ * object whose class also happens to have `enterWrite()`/`isCurrentWriteFor()`/etc on it.
+ * Binding `UncacheableMarkInterface::class` straight to this class instead - the natural
+ * mistake the split exists to make impossible - fails at DI construction
+ * (`Ray\Di\Exception\InvalidType`), because this class does not implement that interface.
  *
  * Bound Scope::SINGLETON (see QueryRepositoryModule): one instance per DI container, which is
  * one per request in the usual BEAR.Sunday bootstrap - the same lifetime ResourceStorage and
  * QueryRepository already rely on. A long-running worker (Swoole, RoadRunner) that reuses one
- * container across requests must rebind this per request, the same way it already must for
- * ServerContextInterface; left unrebound, a mark from one request would silently disable the
- * store for every request after it - and (#234) would leave a stale tick/write-scope/
- * interceptor-depth behind too, the same reset `DevUnstorableGateModule`'s
- * `ThrowingUnstorableWriteObserver` (bound SINGLETON for the same reason) also needs.
+ * container across requests must rebind `UncacheableMarkScopeInterface` (ONLY that key - see
+ * its own docblock) per request, the same way it already must for `ServerContextInterface`;
+ * left unrebound, a mark from one request would silently disable the store for every request
+ * after it - and (#234) would leave a stale tick/write-scope/interceptor-depth behind too, the
+ * same reset `DevUnstorableGateModule`'s `ThrowingUnstorableWriteObserver` (bound SINGLETON
+ * for the same reason) also needs. `UncacheableMarker` itself needs no rebinding: freshly
+ * constructed (not singleton) on every `UncacheableMarkInterface` resolution, it always wraps
+ * whichever `UncacheableMarkScopeInterface` is currently bound.
  */
-final class UncacheableMark implements UncacheableMarkInterface, UncacheableMarkScopeInterface
+final class UncacheableMark implements UncacheableMarkScopeInterface
 {
     /** The top-level page's own scope, distinct from any real URI */
     private const TOP_LEVEL = '';

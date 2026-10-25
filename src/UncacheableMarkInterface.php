@@ -17,12 +17,17 @@ namespace BEAR\QueryRepository;
  * This is the app-facing surface: the only method an application's own resource classes ever
  * need. The package's own write-scope mechanics (the hole stack, the write-scope stack, the
  * interceptor-depth counter - what decides whose write a mark actually refuses) live on
- * `UncacheableMarkScopeInterface` instead, a package-internal interface `UncacheableMark` also
- * implements, bound to the SAME request-scoped instance. They are kept off this interface
- * deliberately: application code that could call `enterWrite($myOwnRo)` could forge a
- * write-scope frame for its own direct `put()`, making an UNRELATED mark()'s refusal look
- * scoped away from it and storing a marked secret that should have been refused (security
- * review finding against an earlier draft of the #234 fix).
+ * `UncacheableMarkScopeInterface` instead, a SEPARATE, package-internal interface
+ * `UncacheableMark` implements - never this one. This interface itself is resolved to
+ * `UncacheableMarker`, a thin wrapper whose only method is `mark()` (delegating to an
+ * injected `UncacheableMarkScopeInterface`) - keeping the internal methods off this interface
+ * is enforced at RUNTIME, not just by static analysis: application code holding an
+ * `UncacheableMarkInterface` has no `enterWrite()` to call even if it tried - there is no such
+ * method on the object it was handed, a fatal `Error`. A single do-everything interface an
+ * earlier draft of the #234 fix shipped let application code call `enterWrite($myOwnRo)` on
+ * the very instance it was handed for `mark()`, forging a write-scope frame for its own
+ * direct `put()` and making an UNRELATED mark()'s refusal look scoped away from it - storing
+ * a marked secret that should have been refused (security review finding).
  */
 interface UncacheableMarkInterface
 {

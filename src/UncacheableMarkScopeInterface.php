@@ -7,13 +7,19 @@ namespace BEAR\QueryRepository;
 use BEAR\Resource\ResourceObject;
 
 /**
- * @internal Package-internal write-scope/hole-scope mechanics backing `UncacheableMarkInterface::mark()`'s
- * refusal decisions. `UncacheableMark` implements both interfaces, bound to the SAME
- * request-scoped (`Scope::SINGLETON`) instance (see `QueryRepositoryModule`) - only the
- * package's own interceptors, gate, repositories and `DonutRequest` depend on this one.
- * Application code depends on `UncacheableMarkInterface` only: these methods let a caller that
- * holds them forge a write-scope frame for its own direct `put()`, which is exactly what this
- * split exists to prevent (see that interface's own docblock).
+ * @internal Package-internal state and write-scope/hole-scope mechanics backing
+ * `UncacheableMarkInterface::mark()`'s refusal decisions. `UncacheableMark` is the sole
+ * implementation and declares ONLY this interface - never `UncacheableMarkInterface` - so the
+ * natural mistake of binding the app-facing interface straight to it fails loudly at DI
+ * construction time (`Ray\Di\Exception\InvalidType`, verified by execution) instead of
+ * silently handing application code the full internal surface. Application code is meant to
+ * depend on `UncacheableMarkInterface` only, resolved to `UncacheableMarker` instead (see that
+ * class): a thin wrapper whose only method is `mark()`, so a caller holding it cannot call
+ * `enterWrite()` or any other method below even if it tried - there is no such method on the
+ * object it was handed, a runtime `Error`, not just a static-analysis warning (security
+ * review: the previous, single do-everything interface let application code forge its own
+ * write-scope frame for a direct `put()`, by calling `enterWrite()` on the very instance it
+ * was handed for `mark()`).
  *
  * enterHole()/leaveHole() push/pop an owner stack: DonutRequest opens a scope around each
  * embedded `#[DonutCache]`/`#[CacheableResponse]` hole's own execution, naming it by the
@@ -91,6 +97,9 @@ use BEAR\Resource\ResourceObject;
  */
 interface UncacheableMarkScopeInterface
 {
+    /** Record that the current scope's response must not be stored in the shared cache - the underlying operation UncacheableMarker::mark() delegates to */
+    public function mark(string $reason): void;
+
     /** Was mark() called by any owner during this request? */
     public function isMarked(): bool;
 

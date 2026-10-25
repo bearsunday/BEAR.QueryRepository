@@ -35,7 +35,7 @@ use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
  *  MatchQueryInterface
  *  UriTag
  *  MatchQueryInterface
- *  UncacheableMarkInterface (app-facing) / UncacheableMarkScopeInterface (package-internal, same instance)
+ *  UncacheableMarkInterface (app-facing, wraps) / UncacheableMarkScopeInterface (package-internal, the state)
  *  UnstorableGateInterface
  *  UnstorableWriteObserverInterface (no-op by default - install/override DevUnstorableGateModule to report)
  *  DeclaredCacheControl
@@ -84,10 +84,12 @@ final class QueryRepositoryModule extends AbstractModule
         $this->bind(ServerContextInterface::class)->to(GlobalServerContext::class)->in(Scope::SINGLETON);
         // One mark per request (see UncacheableMark); issue #222. UncacheableMarkScopeInterface
         // (package-internal) is the primary, singleton-scoped binding; UncacheableMarkInterface
-        // (app-facing: mark() only) is resolved to the SAME instance via a provider, not a
-        // second ->to() binding, which would otherwise construct its OWN separate singleton.
+        // (app-facing: mark() only) resolves to UncacheableMarker, a thin wrapper around it -
+        // UncacheableMark itself implements ONLY the internal interface, so binding the
+        // app-facing one straight to it (the natural mistake this split exists to prevent)
+        // fails loudly at DI construction instead of silently leaking the internal surface.
         $this->bind(UncacheableMarkScopeInterface::class)->to(UncacheableMark::class)->in(Scope::SINGLETON);
-        $this->bind(UncacheableMarkInterface::class)->toProvider(UncacheableMarkInterfaceProvider::class);
+        $this->bind(UncacheableMarkInterface::class)->to(UncacheableMarker::class);
         $this->bind(UnstorableGateInterface::class)->to(UnstorableGate::class);
         // Skipped-write reporting default: no-op (see DevUnstorableGateModule)
         $this->bind(UnstorableWriteObserverInterface::class)->to(NullUnstorableWriteObserver::class)->in(Scope::SINGLETON);
