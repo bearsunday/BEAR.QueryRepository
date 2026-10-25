@@ -348,6 +348,7 @@ class DevUnstorableGateModuleTest extends TestCase
             {
                 $this->bind(AdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->to(ArrayAdapter::class);
                 $this->bind(AdapterInterface::class)->annotatedWith(EtagPool::class)->to(ArrayAdapter::class);
+                $this->bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)->toInstance(new Log\SafeSemanticLogger());
                 $this->bind(DonutRepository::class)->in(Scope::SINGLETON);
                 $this->bind(DonutRepositoryInterface::class)->to(FakeDonutReadFailsForOneUri::class)->in(Scope::SINGLETON);
             }
@@ -365,6 +366,7 @@ class DevUnstorableGateModuleTest extends TestCase
         });
         $injector = new Injector($module, __DIR__ . '/tmp');
         $resource = $injector->getInstance(ResourceInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
         $fakeDonutRepository = $injector->getInstance(DonutRepositoryInterface::class);
         assert($fakeDonutRepository instanceof FakeDonutReadFailsForOneUri);
 
@@ -381,6 +383,14 @@ class DevUnstorableGateModuleTest extends TestCase
         } finally {
             restore_error_handler();
         }
+
+        // Sanity: the fake's read actually degraded (not a silently-vacuous normal MISS
+        // reaching the same render failure via a different path) - without this, a URI
+        // mismatch would let the test pass without ever reaching the fallback under test.
+        $tree = $this->flushAndValidate($logger);
+        $readError = self::eventContextJsonOf($tree, 'cache_error');
+        $this->assertNotNull($readError, 'sanity: the degraded read must have actually happened');
+        $this->assertStringContainsString('"operation":"read"', $readError);
 
         $observer = $injector->getInstance(UnstorableWriteObserverInterface::class);
         $observer->raiseIfPending();

@@ -964,6 +964,13 @@ class DonutRepositoryTest extends TestCase
 
         $this->assertSame(200, $ro->code);
         $tree = $this->flushAndValidate($logger);
+        // Sanity: the fake's read actually degraded (not a silently-vacuous normal MISS) -
+        // without this, a URI mismatch (e.g. a query string FakeDonutReadFailsForOneUri's
+        // exact-string match missed) would let the test pass without ever reaching the
+        // fallback path under test.
+        $readError = self::eventContextJsonOf($tree, 'cache_error');
+        $this->assertNotNull($readError, 'sanity: the degraded read must have actually happened');
+        $this->assertStringContainsString('"operation":"read"', $readError);
         $this->assertNull(self::eventContextJsonOf($tree, 'put_skipped'), 'the unrelated, hole-scoped earlier mark must not block this page\'s own fallback template store');
 
         // Proof it actually stored, not merely "didn't skip this once": stop degrading the
@@ -1009,6 +1016,9 @@ class DonutRepositoryTest extends TestCase
 
         $this->assertSame(200, $ro->code);
         $tree = $this->flushAndValidate($logger);
+        $readError = self::eventContextJsonOf($tree, 'cache_error');
+        $this->assertNotNull($readError, 'sanity: the degraded read must have actually happened');
+        $this->assertStringContainsString('"operation":"read"', $readError);
         $putSkipped = self::eventContextJsonOf($tree, 'put_skipped');
         $this->assertNotNull($putSkipped, 'a mark inside this page\'s own write window (its own template render) must still refuse the fallback\'s store');
         $this->assertStringContainsString('"reason":"unstorable"', $putSkipped);
