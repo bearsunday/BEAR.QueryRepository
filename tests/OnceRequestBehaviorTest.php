@@ -39,6 +39,7 @@ class OnceRequestBehaviorTest extends TestCase
     private const CHILD_SURROGATE_KEY = 'comment01';
     private const COUNTER_URI_TAG = '_app_counter_';
     private const BLOG_POSTING_DONUT = 'page://self/html/blog-posting-donut';
+    private const BODY_ONLY_CHILD_CACHEABLE_RESPONSE = 'page://self/html/body-only-child-cacheable-response';
 
     private ResourceInterface $resource;
     private QueryRepositoryInterface $queryRepository;
@@ -81,6 +82,32 @@ class OnceRequestBehaviorTest extends TestCase
         $this->assertStringContainsString('secondTag:requeried', $view, 'the second read reflects the new query, not a stale memo of the first');
     }
 
+    public function testEveryGenerationTagsTheStoredTemplateAndPurgingTheFirstOneInvalidatesThePage(): void
+    {
+        $this->resource->get(self::REQUERY_DONUT);
+        $this->flushAndValidate($this->logger);
+
+        $this->resource->get(self::REQUERY_DONUT);
+        $warm = $this->flushAndValidate($this->logger);
+        $warmClose = self::scopeCloseOf($warm, 'get', self::REQUERY_DONUT);
+        $this->assertNotNull($warmClose);
+        $this->assertSame('cache_hit', $warmClose[0], 'the stored template is warm before the purge');
+
+        // Only the FIRST generation's tag (the pre-withQuery() counter, no query) - never
+        // the second's (tag=requeried). Issue #226 review: OnceRequest discarded its own
+        // execution history on resync(), so only the LAST generation's tag ever reached
+        // the stored template - purging an earlier generation's tag left the page serving
+        // a stale cache_hit.
+        $this->queryRepository->purge(new Uri(self::COUNTER));
+        $this->flushAndValidate($this->logger);
+
+        $this->resource->get(self::REQUERY_DONUT);
+        $afterPurge = $this->flushAndValidate($this->logger);
+        $closeAfterPurge = self::scopeCloseOf($afterPurge, 'get', self::REQUERY_DONUT);
+        $this->assertNotNull($closeAfterPurge);
+        $this->assertSame('cache_miss', $closeAfterPurge[0], "purging the FIRST generation's tag alone must invalidate the page - every generation is tagged, not only the last");
+    }
+
     public function testExplicitResourceCallAlwaysExecutes(): void
     {
         $this->resource->get(self::COUNTER);
@@ -105,6 +132,33 @@ class OnceRequestBehaviorTest extends TestCase
         $this->assertSame('cache_hit', $hitClose[0], '#[Cacheable] outside any donut page caches exactly as before - untouched by EmbedOnceInterceptor');
     }
 
+    /**
+     * The doPutStatic()/#[CacheableResponse] counterpart of
+     * testPurgingTheBodyOnlyChildInvalidatesThePage(): that test proves the #[DonutCache]
+     * TEMPLATE is tagged; this one proves the live response's own stored VIEW/ETag - saved
+     * through a separate SurrogateKeys instance on this path (issue #226 review) - is too.
+     */
+    public function testPurgingTheBodyOnlyChildInvalidatesTheCacheableResponseViewToo(): void
+    {
+        $this->resource->get(self::BODY_ONLY_CHILD_CACHEABLE_RESPONSE);
+        $this->flushAndValidate($this->logger);
+
+        $this->resource->get(self::BODY_ONLY_CHILD_CACHEABLE_RESPONSE);
+        $warm = $this->flushAndValidate($this->logger);
+        $warmClose = self::scopeCloseOf($warm, 'get', self::BODY_ONLY_CHILD_CACHEABLE_RESPONSE);
+        $this->assertNotNull($warmClose);
+        $this->assertSame('cache_hit', $warmClose[0], 'the stored view/ETag is warm before the purge');
+
+        $this->queryRepository->purge(new Uri(self::CHILD));
+        $this->flushAndValidate($this->logger);
+
+        $this->resource->get(self::BODY_ONLY_CHILD_CACHEABLE_RESPONSE);
+        $tree = $this->flushAndValidate($this->logger);
+        $close = self::scopeCloseOf($tree, 'get', self::BODY_ONLY_CHILD_CACHEABLE_RESPONSE);
+        $this->assertNotNull($close);
+        $this->assertSame('cache_miss', $close[0], "purging the body-only child's tag must invalidate the live response's own stored view/ETag too, not only a #[DonutCache] template");
+    }
+
     public function testBodyOnlyChildTagsTheStoredTemplateAndNeverTouchedEmbedDoesNot(): void
     {
         $this->resource->get(self::BODY_ONLY_CHILD_DONUT);
@@ -117,6 +171,21 @@ class OnceRequestBehaviorTest extends TestCase
         $this->assertStringContainsString('"' . self::CHILD_URI_TAG . '"', $saveDonut[0], "the body-only child's own URI tag lands on the stored template (issue #226)");
         $this->assertStringContainsString('"' . self::CHILD_SURROGATE_KEY . '"', $saveDonut[0], "the body-only child's own declared Surrogate-Key lands on the stored template too");
         $this->assertStringNotContainsString('"' . self::COUNTER_URI_TAG . '"', $saveDonut[0], 'the never-touched embed contributes no tag');
+    }
+
+    /**
+     * The #[DonutCache] path's own live-response counterpart: no server-side ETag/view is
+     * ever saved for this path (doPutDonut() never calls saveEtag()/saveView()), but the
+     * CDN-facing Surrogate-Key header on the response itself (issue #226 review) must still
+     * carry the body-only child's tag, or a CDN-level purge by that tag cannot reach it.
+     */
+    public function testDonutCachePathAlsoPutsTheBodyOnlyChildTagOnTheLiveSurrogateKeyHeader(): void
+    {
+        $ro = $this->resource->get(self::BODY_ONLY_CHILD_DONUT);
+        $this->flushAndValidate($this->logger);
+
+        $surrogateKey = $ro->headers[Header::SURROGATE_KEY] ?? '';
+        $this->assertStringContainsString(self::CHILD_URI_TAG, $surrogateKey, "the live #[DonutCache] response's own Surrogate-Key header must carry the body-only child's tag too");
     }
 
     public function testPurgingTheBodyOnlyChildInvalidatesThePage(): void

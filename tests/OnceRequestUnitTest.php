@@ -8,6 +8,7 @@ use BEAR\Resource\Method;
 use BEAR\Resource\Request;
 use BEAR\Resource\ResourceInterface;
 use FakeVendor\HelloWorld\Resource\App\Counter;
+use OutOfRangeException;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 
@@ -108,5 +109,69 @@ class OnceRequestUnitTest extends TestCase
         $once->linkCrawl('someLink');
         $this->assertFalse($once->hasExecuted());
         $this->assertNotSame([], $once->links);
+    }
+
+    public function testGetCodeReadsFromTheMemoizedExecutionWithoutReExecuting(): void
+    {
+        $once = new OnceRequest($this->newCounterRequest());
+
+        $code = $once->code;
+        $this->assertSame(1, Counter::$calls, '__get() must run through this class\'s own memo, not AbstractRequest\'s separate one');
+
+        $this->assertSame($code, $once->code);
+        $this->assertSame(1, Counter::$calls, 'a second __get() for the same generation must not execute again');
+    }
+
+    public function testGetBodyMatchesTheSameExecutionCodeCameFrom(): void
+    {
+        $once = new OnceRequest($this->newCounterRequest());
+
+        $body = $once->body;
+        assert(is_array($body));
+        $this->assertSame(1, $body['call'], 'the body must come from the one execution __get(\'code\') above would also have read');
+    }
+
+    public function testGetHeadersAlsoReadsFromTheSameMemoizedExecution(): void
+    {
+        $once = new OnceRequest($this->newCounterRequest());
+
+        $executed = $once();
+        $this->assertSame(1, Counter::$calls);
+
+        $this->assertSame($executed->headers, $once->headers, '__get(\'headers\') must answer the same execution __invoke() already memoized, not a fresh one');
+        $this->assertSame(1, Counter::$calls, 'reading headers after an already-memoized execution must not run a second one');
+    }
+
+    public function testGetEagerSetsInOnBothWrapperAndInnerRequestAndReturnsItself(): void
+    {
+        $inner = $this->newCounterRequest();
+        $once = new OnceRequest($inner);
+
+        $result = $once->eager;
+
+        $this->assertSame($once, $result, 'the eager/lazy DSL returns $this for chaining, same as Request::__get()');
+        $this->assertSame('eager', $once->in);
+        $this->assertSame('eager', $inner->in, 'must forward to the inner request too, not only set the wrapper\'s own $in');
+    }
+
+    public function testGetLazySetsInOnBothWrapperAndInnerRequest(): void
+    {
+        $inner = $this->newCounterRequest();
+        $once = new OnceRequest($inner);
+
+        $flippedToEager = $once->eager; // flip away from the default 'lazy' first, so this assertion is not a no-op
+        $flippedToLazy = $flippedToEager->lazy;
+
+        $this->assertSame($once, $flippedToLazy, 'the DSL keeps returning $this across the chain');
+        $this->assertSame('lazy', $once->in);
+        $this->assertSame('lazy', $inner->in);
+    }
+
+    public function testGetUnknownPropertyThrowsOutOfRangeException(): void
+    {
+        $once = new OnceRequest($this->newCounterRequest());
+
+        $this->expectException(OutOfRangeException::class);
+        $once->notAKnownProperty; // @phpstan-ignore-line
     }
 }

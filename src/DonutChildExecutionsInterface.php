@@ -14,8 +14,8 @@ use BEAR\Resource\ResourceObject;
  * even if `onGet()` later `unset()`s it from `$ro->body` (or overwrites the slot with a
  * plain value pulled out of it) and `ResourceDonut::create()`'s body walk can no longer find
  * it. `DonutRepository` reads the list back once the page's donut template has been built -
- * late enough that `OnceRequest::wasRendered()` is final for every wrapper that did become a
- * hole - to tag the template with whichever children executed but were not.
+ * late enough that `OnceRequest::generations()` is final for every generation of every
+ * wrapper - to tag the template with whichever generations executed but were never rendered.
  *
  * Bound `Scope::SINGLETON`, one instance per DI container (per request in the usual
  * BEAR.Sunday bootstrap) - the same lifetime `UncacheableMark` already relies on. Keyed by
