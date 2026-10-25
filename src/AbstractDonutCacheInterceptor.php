@@ -32,15 +32,27 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
 {
     protected const IS_ENTIRE_CONTENT_CACHEABLE = false;
 
+    /**
+     * Not promoted/defaulted like the other constructor dependencies below: a disconnected
+     * `new UnstorableGate(new UncacheableMark(), ...)` default would never share state with
+     * $mark, permanently unable to see any mark a BC/manually-constructed caller's own
+     * request ever makes. Computed in the constructor body instead, after $mark is already
+     * assigned, so the default (only reached when $gate is omitted) is always the SAME
+     * mark instance this class uses everywhere else - correct for a manual caller too, not
+     * just a DI-wired one.
+     */
+    private readonly UnstorableGateInterface $gate;
+
     public function __construct(
         private readonly DonutRepositoryInterface $donutRepository,
         #[CacheLog]
         private readonly SemanticLoggerInterface $logger = new NullSemanticLogger(),
         private readonly UncacheableMarkScopeInterface $mark = new UncacheableMark(),
         private readonly UnstorableWriteObserverInterface $writeObserver = new NullUnstorableWriteObserver(),
-        private readonly UnstorableGateInterface $gate = new UnstorableGate(new UncacheableMark(), new DeclaredCacheControl()),
+        UnstorableGateInterface|null $gate = null,
         private readonly HeaderSetter $headerSetter = new HeaderSetter(new EtagSetter()),
     ) {
+        $this->gate = $gate ?? new UnstorableGate($this->mark, new DeclaredCacheControl());
     }
 
     /**
