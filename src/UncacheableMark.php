@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\Resource\ResourceObject;
 use Override;
 
 use function array_key_last;
@@ -35,6 +36,9 @@ final class UncacheableMark implements UncacheableMarkInterface
 
     /** Advanced by every mark(), any owner - what wasMarkedSinceCurrentWrite() compares against */
     private int $tick = 0;
+
+    /** @var list<ResourceObject> the ResourceObject instance owning each currently open enterWrite(), parallel to $writeSnapshots */
+    private array $writeOwners = [];
 
     /** @var list<int> the tick snapshotted at each currently open enterWrite() */
     private array $writeSnapshots = [];
@@ -99,17 +103,30 @@ final class UncacheableMark implements UncacheableMarkInterface
     }
 
     #[Override]
-    public function enterWrite(): void
+    public function enterWrite(ResourceObject $ro): void
     {
+        $this->writeOwners[] = $ro;
         $this->writeSnapshots[] = $this->tick;
+    }
+
+    #[Override]
+    public function setWriteOwner(ResourceObject $ro): void
+    {
+        if ($this->writeOwners === []) {
+            return;
+        }
+
+        array_pop($this->writeOwners);
+        $this->writeOwners[] = $ro;
     }
 
     #[Override]
     public function leaveWrite(): void
     {
         // A plain pop, unlike leaveHole()'s URI-matching truncation: write scopes are not
-        // exposed to third-party callers by URI identity, only CacheInterceptor/the donut
-        // interceptors open them, strictly call-stack nested around their own proceed()+put().
+        // exposed to third-party callers by URI identity, only CacheInterceptor opens them,
+        // strictly call-stack nested around its own proceed()+put().
+        array_pop($this->writeOwners);
         array_pop($this->writeSnapshots);
     }
 
@@ -118,12 +135,22 @@ final class UncacheableMark implements UncacheableMarkInterface
     {
         if ($this->writeSnapshots === []) {
             // No write is open (e.g. a direct, non-AOP put() call outside any interceptor):
-            // nothing to compare against, so this half of the #234 predicate stays silent and
-            // isMarkedForCurrentScope() alone decides.
+            // nothing to compare against, so this half of the #234 predicate stays silent -
+            // isCurrentWriteFor() is what keeps a caller from trusting this answer at all here.
             return false;
         }
 
         return $this->tick !== $this->writeSnapshots[array_key_last($this->writeSnapshots)];
+    }
+
+    #[Override]
+    public function isCurrentWriteFor(ResourceObject $ro): bool
+    {
+        if ($this->writeOwners === []) {
+            return false;
+        }
+
+        return $this->writeOwners[array_key_last($this->writeOwners)] === $ro;
     }
 
     #[Override]

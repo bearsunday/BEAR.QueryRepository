@@ -97,12 +97,18 @@ final readonly class CacheInterceptor implements MethodInterceptor
                 return $ro;
             }
 
-            $this->mark->enterWrite();
+            $this->mark->enterWrite($ro);
             try {
                 /** @psalm-suppress MixedAssignment */
                 $ro = $this->proceedTrackingThrew($invocation, $threw);
 
                 assert($ro instanceof ResourceObject);
+                // proceed()'s return value is not always the same instance enterWrite()
+                // above opened this frame with (onGet() may return a freshly built
+                // ResourceObject rather than $this) - re-bind now, immediately before the
+                // write this frame actually governs, or isCurrentWriteFor() would silently
+                // stop matching and this write would quietly fall back to any-owner.
+                $this->mark->setWriteOwner($ro);
                 try {
                     if ($ro->code !== 200) {
                         // Record the actual non-200 code; without it the purge below reads

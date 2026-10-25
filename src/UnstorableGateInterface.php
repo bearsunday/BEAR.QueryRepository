@@ -48,10 +48,14 @@ interface UnstorableGateInterface
     /**
      * The same check, but ONLY for `QueryRepository::doPut()`'s own write (and `HeaderSetter`'s
      * header decision for that same write) - never blocked by an unrelated sibling resource's
-     * own mark elsewhere in the request tree (#234). Reads
-     * `UncacheableMarkInterface::isMarkedForCurrentScope()` OR'd with
-     * `wasMarkedSinceCurrentWrite()`; see that interface's docblock for why both halves are
-     * needed.
+     * own mark elsewhere in the request tree (#234), PROVIDED this write is actually running
+     * inside its own `CacheInterceptor`-opened scope
+     * (`UncacheableMarkInterface::isCurrentWriteFor()`): then reads
+     * `isMarkedForCurrentScope()` OR'd with `wasMarkedSinceCurrentWrite()` (see that
+     * interface's docblock for why both halves are needed). A direct, non-AOP `put()` call -
+     * no scope of its own, or nested inside a DIFFERENT resource's own write - falls back to
+     * the conservative, any-owner `isMarked()` instead (1.17.0/pre-#234 behaviour): the only
+     * safe answer when write-scope tracking has nothing to do with the write being judged.
      *
      * @return 'unstorable'|null
      */

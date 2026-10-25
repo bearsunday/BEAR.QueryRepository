@@ -46,10 +46,24 @@ final readonly class UnstorableGate implements UnstorableGateInterface
         return $this->reasonFor($ro, $this->mark->isMarkedForCurrentScope());
     }
 
-    /** @return 'unstorable'|null */
+    /**
+     * {@inheritDoc}
+     *
+     * Only trusts the own-write-scoped predicate (isMarkedForCurrentScope() ||
+     * wasMarkedSinceCurrentWrite()) when the innermost open write actually belongs to $ro, by
+     * object identity (CacheInterceptor's own opened scope, isCurrentWriteFor()) - otherwise
+     * (a direct, non-AOP put(), or one nested inside a DIFFERENT resource's own write) falls
+     * back to the conservative, any-owner isMarked() instead, which can only over-refuse,
+     * never leak past a mark that write-scope tracking was never actually watching for THIS
+     * write (#234/#222, see UncacheableMarkInterface's own docblock on isCurrentWriteFor()).
+     */
     #[Override]
     public function reasonForOwnWrite(ResourceObject $ro): string|null
     {
+        if (! $this->mark->isCurrentWriteFor($ro)) {
+            return $this->reasonFor($ro, $this->mark->isMarked());
+        }
+
         return $this->reasonFor($ro, $this->mark->isMarkedForCurrentScope() || $this->mark->wasMarkedSinceCurrentWrite());
     }
 

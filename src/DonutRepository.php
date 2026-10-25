@@ -49,8 +49,8 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         private UnstorableGateInterface $gate,
         private UncacheableMarkInterface $mark,
         private DonutChildExecutionsInterface $childExecutions,
-        private UnstorableWriteObserverInterface $writeObserver = new NullUnstorableWriteObserver(),
         private UriTagInterface $uriTag = new UriTag(),
+        private UnstorableWriteObserverInterface $writeObserver = new NullUnstorableWriteObserver(),
     ) {
     }
 

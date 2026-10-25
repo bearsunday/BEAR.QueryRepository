@@ -59,7 +59,12 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
         // See CacheInterceptor's own copy of this flag and comment: set before ANY genuine
         // (non-CacheStoreFailure) exception - from the resource's own proceed(), or from the
         // store's putRecorded() - is rethrown below, so the outer finally never raises a
-        // pending dev-gate skip while that exception is already on its way out.
+        // pending dev-gate skip while that exception is already on its way out. No write
+        // scope of its own (unlike CacheInterceptor): donutRepository->putStatic()/putDonut()
+        // never read wasMarkedSinceCurrentWrite() (any-owner isMarked()/isMarkedForCurrentScope()
+        // only), and a borrowed scope here would let a direct, non-AOP QueryRepository::put()
+        // nested inside this page's own rendering wrongly inherit it - isCurrentWriteFor()
+        // (UncacheableMarkInterface) is what keeps that write safely any-owner instead.
         $threw = false;
         $this->mark->enterInterceptor();
         try {
@@ -81,33 +86,23 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
 
                 $this->triggerWarning($e);
 
-                $this->mark->enterWrite();
-                try {
-                    /** @var ResourceObject $fresh */
-                    $fresh = $this->proceedTrackingThrew($invocation, $threw);
+                /** @var ResourceObject $fresh */
+                $fresh = $this->proceedTrackingThrew($invocation, $threw);
 
-                    // Same outcome a normal MISS reaches below: render (and, if the render and
-                    // the store both succeed, re-cache) via the full donut path - a degraded
-                    // read must not return $invocation->proceed()'s raw, un-rendered result
-                    // (an un-executed #[Embed] request, `view` still null) directly to the
-                    // caller, which would either show nothing or make a later `(string)` cast
-                    // execute a hole untracked by UncacheableMark/SurrogateKeys, or - for a
-                    // raw (non-donut-wrapped) AbstractRequest - trigger its own E_USER_ERROR.
-                    return $this->handleProceedResult($fresh, $threw);
-                } finally {
-                    $this->mark->leaveWrite();
-                }
+                // Same outcome a normal MISS reaches below: render (and, if the render and
+                // the store both succeed, re-cache) via the full donut path - a degraded
+                // read must not return $invocation->proceed()'s raw, un-rendered result
+                // (an un-executed #[Embed] request, `view` still null) directly to the
+                // caller, which would either show nothing or make a later `(string)` cast
+                // execute a hole untracked by UncacheableMark/SurrogateKeys, or - for a
+                // raw (non-donut-wrapped) AbstractRequest - trigger its own E_USER_ERROR.
+                return $this->handleProceedResult($fresh, $threw);
             }
 
-            $this->mark->enterWrite();
-            try {
-                /** @var ResourceObject $ro */
-                $ro = $this->proceedTrackingThrew($invocation, $threw);
+            /** @var ResourceObject $ro */
+            $ro = $this->proceedTrackingThrew($invocation, $threw);
 
-                return $this->handleProceedResult($ro, $threw);
-            } finally {
-                $this->mark->leaveWrite();
-            }
+            return $this->handleProceedResult($ro, $threw);
         } finally {
             $durationMs = round((hrtime(true) - $start) / 1_000_000, 3);
             // Psalm mis-tracks the $hit flag mutated inside try when read from finally.
