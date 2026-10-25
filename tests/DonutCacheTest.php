@@ -20,7 +20,7 @@ use function unserialize;
 class DonutCacheTest extends TestCase
 {
     private ResourceInterface $resource;
-    private UncacheableMarkInterface $mark;
+    private UncacheableMarkScopeInterface $mark;
 
     protected function setUp(): void
     {

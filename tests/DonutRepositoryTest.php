@@ -322,7 +322,7 @@ class DonutRepositoryTest extends TestCase
         $injector = $this->getInjector();
         $resource = $injector->getInstance(ResourceInterface::class);
         $storage = $injector->getInstance(ResourceStorageInterface::class);
-        $mark = $injector->getInstance(UncacheableMarkInterface::class);
+        $mark = $injector->getInstance(UncacheableMarkScopeInterface::class);
         $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
         // First GET: MISS. Composes the outer page's own template and, via its own
@@ -867,7 +867,7 @@ class DonutRepositoryTest extends TestCase
         $injector = $this->getInjector();
         $resource = $injector->getInstance(ResourceInterface::class);
         $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
-        $mark = $injector->getInstance(UncacheableMarkInterface::class);
+        $mark = $injector->getInstance(UncacheableMarkScopeInterface::class);
 
         $ro = $resource->get('page://self/product', ['productCode' => 'sample-001']);
         $this->assertSame(200, $ro->code);
@@ -929,7 +929,7 @@ class DonutRepositoryTest extends TestCase
             $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class),
             $injector->getInstance(DonutRendererInterface::class),
             $injector->getInstance(UnstorableGateInterface::class),
-            $injector->getInstance(UncacheableMarkInterface::class),
+            $injector->getInstance(UncacheableMarkScopeInterface::class),
             $injector->getInstance(DonutChildExecutionsInterface::class),
             $myOwnUriTag,
         );

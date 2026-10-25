@@ -4,19 +4,16 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\RepositoryModule\Annotation\EtagPool;
-use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
-use BEAR\Resource\Module\ResourceModule;
+use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
 use FakeVendor\HelloWorld\Resource\Page\None;
+use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Madapaja\TwigModule\TwigModule;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
 use Ray\Di\Scope;
-use Symfony\Component\Cache\Adapter\AdapterInterface;
-use Symfony\Component\Cache\Adapter\ArrayAdapter;
 
 use function assert;
 use function dirname;
@@ -24,7 +21,7 @@ use function restore_error_handler;
 use function set_error_handler;
 
 /**
- * UncacheableMarkInterface::isCurrentWriteFor() - a direct (non-AOP) QueryRepository::put()
+ * UncacheableMarkScopeInterface::isCurrentWriteFor() - a direct (non-AOP) QueryRepository::put()
  * call has no write-scope frame of its own, so a CacheInterceptor/AbstractDonutCacheInterceptor
  * write-scope frame belonging to a DIFFERENT resource must never be trusted for it (Kimi's
  * compound-leak finding), yet removing write-scope tracking altogether must not make it
@@ -37,15 +34,15 @@ use function set_error_handler;
  */
 class DirectWriteScopeTest extends TestCase
 {
+    use SemanticLogTreeTrait;
+
     private function newInjector(): Injector
     {
         $namespace = 'FakeVendor\HelloWorld';
-        $module = new QueryRepositoryModule(new ResourceModule($namespace));
+        $module = ModuleFactory::getInstance($namespace);
         $module->override(new class extends AbstractModule {
             protected function configure(): void
             {
-                $this->bind(AdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->to(ArrayAdapter::class);
-                $this->bind(AdapterInterface::class)->annotatedWith(EtagPool::class)->to(ArrayAdapter::class);
                 $this->bind(QueryRepository::class)->in(Scope::SINGLETON);
                 $this->bind(QueryRepositoryInterface::class)->to(FakeReadFailsForOneUri::class)->in(Scope::SINGLETON);
                 $this->bind(DonutRepository::class)->in(Scope::SINGLETON);
@@ -61,6 +58,7 @@ class DirectWriteScopeTest extends TestCase
     {
         $injector = $this->newInjector();
         $resource = $injector->getInstance(ResourceInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
         $fakeRepository = $injector->getInstance(QueryRepositoryInterface::class);
         assert($fakeRepository instanceof FakeReadFailsForOneUri);
         $fakeRepository->failingUri = 'app://self/direct-put-leaks-compound-parent-via-degraded-read-fallback';
@@ -74,12 +72,21 @@ class DirectWriteScopeTest extends TestCase
         $repository = $injector->getInstance(QueryRepository::class);
         $state = $repository->get(new Uri('app://self/direct-put-compound-parent-cache-interceptor'));
         $this->assertNull($state, 'a direct put() nested inside a degraded-read fallback, carrying a secret baked in from an independently donut-composed marking hole, must not be stored - no write-scope frame of its own means it falls back to conservative, any-owner isMarked()');
+
+        // Positive control: the put() genuinely reached the gate and was refused for THIS
+        // exact uri - assertNull above cannot tell "refused" from "never attempted" or "the
+        // uri drifted" apart on its own.
+        $tree = $this->flushAndValidate($logger);
+        $putSkipped = self::eventContextsJsonOf($tree, 'put_skipped', 'app://self/direct-put-compound-parent-cache-interceptor');
+        $this->assertNotEmpty($putSkipped, 'the direct put() must have actually reached the gate for this exact uri');
+        $this->assertStringContainsString('"reason":"unstorable"', $putSkipped[0]);
     }
 
     public function testADirectPutInsideADonutPagesDegradedReadFallbackDoesNotLeakACompoundParentsSecret(): void
     {
         $injector = $this->newInjector();
         $resource = $injector->getInstance(ResourceInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
         $fakeDonutRepository = $injector->getInstance(DonutRepositoryInterface::class);
         assert($fakeDonutRepository instanceof FakeDonutReadFailsForOneUri);
         $fakeDonutRepository->failingUri = 'page://self/html/donut-direct-put-leaks-compound-parent-via-degraded-read-fallback';
@@ -91,12 +98,18 @@ class DirectWriteScopeTest extends TestCase
         $repository = $injector->getInstance(QueryRepository::class);
         $state = $repository->get(new Uri('app://self/direct-put-compound-parent-donut-fallback'));
         $this->assertNull($state, 'the same compound-leak scenario, reached via AbstractDonutCacheInterceptor\'s own degraded-read fallback - which, like CacheInterceptor\'s, opens no write scope of its own - must not be stored either');
+
+        $tree = $this->flushAndValidate($logger);
+        $putSkipped = self::eventContextsJsonOf($tree, 'put_skipped', 'app://self/direct-put-compound-parent-donut-fallback');
+        $this->assertNotEmpty($putSkipped, 'the direct put() must have actually reached the gate for this exact uri');
+        $this->assertStringContainsString('"reason":"unstorable"', $putSkipped[0]);
     }
 
     public function testADirectPutInsideADonutPageAfterAnUnrelatedHoleMarkIsConservativelyRefusedWhileTheAopCachedSiblingIsStillStored(): void
     {
         $injector = $this->newInjector();
         $resource = $injector->getInstance(ResourceInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
         $resource->get('page://self/html/donut-page-with-marking-hole-cacheable-sibling-and-direct-put');
 
@@ -107,6 +120,11 @@ class DirectWriteScopeTest extends TestCase
 
         $siblingState = $repository->get(new Uri('app://self/innocent-cacheable-sibling'));
         $this->assertNotNull($siblingState, 'the #[Cacheable] sibling, reached through its OWN CacheInterceptor-opened write scope (isCurrentWriteFor() true for its own uri), stays correctly #234-scoped and must still be stored - the unrelated hole\'s mark must not over-refuse it');
+
+        $tree = $this->flushAndValidate($logger);
+        $putSkipped = self::eventContextsJsonOf($tree, 'put_skipped', 'app://self/direct-put-after-unrelated-hole-mark');
+        $this->assertNotEmpty($putSkipped, 'the direct put() must have actually reached the gate for this exact uri, not been silently skipped by a drifted uri or an early exception');
+        $this->assertStringContainsString('"reason":"unstorable"', $putSkipped[0]);
     }
 
     public function testAFramelessDirectPutAfterAnUnrelatedMarkIsRefusedWhileTheSameResourceCachedThroughItsOwnCacheInterceptorIsStored(): void
@@ -123,11 +141,12 @@ class DirectWriteScopeTest extends TestCase
         $injector = $this->newInjector();
         $resource = $injector->getInstance(ResourceInterface::class);
         $repository = $injector->getInstance(QueryRepository::class);
+        $scope = $injector->getInstance(UncacheableMarkScopeInterface::class);
         $mark = $injector->getInstance(UncacheableMarkInterface::class);
 
-        $mark->enterHole('page://self/html/unrelated-hole');
+        $scope->enterHole('page://self/html/unrelated-hole');
         $mark->mark('csrf-token-issued');
-        $mark->leaveHole('page://self/html/unrelated-hole');
+        $scope->leaveHole('page://self/html/unrelated-hole');
 
         $uri = new Uri('app://self/innocent-cacheable-sibling');
         $direct = new None();
@@ -154,11 +173,12 @@ class DirectWriteScopeTest extends TestCase
         $injector = $this->newInjector();
         $resource = $injector->getInstance(ResourceInterface::class);
         $repository = $injector->getInstance(QueryRepository::class);
+        $scope = $injector->getInstance(UncacheableMarkScopeInterface::class);
         $mark = $injector->getInstance(UncacheableMarkInterface::class);
 
-        $mark->enterHole('page://self/html/unrelated-hole');
+        $scope->enterHole('page://self/html/unrelated-hole');
         $mark->mark('csrf-token-issued');
-        $mark->leaveHole('page://self/html/unrelated-hole');
+        $scope->leaveHole('page://self/html/unrelated-hole');
 
         $resource->get('app://self/cacheable-returns-a-fresh-instance-from-on-get');
 

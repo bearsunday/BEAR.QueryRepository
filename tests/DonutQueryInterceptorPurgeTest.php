@@ -181,7 +181,7 @@ class DonutQueryInterceptorPurgeTest extends TestCase
         $injector = self::newInjector();
         $resource = $injector->getInstance(ResourceInterface::class);
         $repository = $injector->getInstance(QueryRepository::class);
-        $mark = $injector->getInstance(UncacheableMarkInterface::class);
+        $mark = $injector->getInstance(UncacheableMarkScopeInterface::class);
         $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
         $pageUri = 'page://self/html/mutable-blog-posting';

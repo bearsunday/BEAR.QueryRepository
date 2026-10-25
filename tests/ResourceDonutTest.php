@@ -31,7 +31,7 @@ use const ENT_QUOTES;
 class ResourceDonutTest extends TestCase
 {
     private ResourceInterface $resource;
-    private UncacheableMarkInterface $mark;
+    private UncacheableMark $mark;
 
     protected function setUp(): void
     {
@@ -391,7 +391,7 @@ class ResourceDonutTest extends TestCase
         });
         $injector = new Injector($module, __DIR__ . '/tmp');
         $resource = $injector->getInstance(ResourceInterface::class);
-        $mark = $injector->getInstance(UncacheableMarkInterface::class);
+        $mark = $injector->getInstance(UncacheableMarkScopeInterface::class);
         $ro = $resource->newInstance('page://self/html/plain-donut-hole');
         $ro->body = ['value' => 'plain'];
 

@@ -9,7 +9,7 @@ use PHPUnit\Framework\TestCase;
 
 class HeaderSetterTest extends TestCase
 {
-    private function headerSetter(UncacheableMarkInterface $mark): HeaderSetter
+    private function headerSetter(UncacheableMarkScopeInterface $mark): HeaderSetter
     {
         return new HeaderSetter(new EtagSetter(), $mark);
     }

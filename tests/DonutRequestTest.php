@@ -68,9 +68,9 @@ class DonutRequestTest extends TestCase
         $throwingRequest = $resource->get->uri('app://self/throwing-hole');
         assert($throwingRequest instanceof AbstractRequest);
 
-        // The same instance ThrowingHole itself resolves via DI (UncacheableMarkInterface
+        // The same instance ThrowingHole itself resolves via DI (UncacheableMark
         // is Scope::SINGLETON): its own mark() call and this test's check share one state.
-        $mark = $injector->getInstance(UncacheableMarkInterface::class);
+        $mark = $injector->getInstance(UncacheableMarkScopeInterface::class);
         $donutRequest = new DonutRequest($throwingRequest, new DonutRenderer(), new SurrogateKeys(new Uri('app://self/foo')), $mark);
 
         $this->expectException(RuntimeException::class);
@@ -100,7 +100,7 @@ class DonutRequestTest extends TestCase
         $injector = new Injector($module, __DIR__ . '/tmp');
         /** @var Resource $resource */
         $resource = $injector->getInstance(ResourceInterface::class);
-        $mark = $injector->getInstance(UncacheableMarkInterface::class);
+        $mark = $injector->getInstance(UncacheableMarkScopeInterface::class);
 
         $request = $resource->get->uri('app://self/query-hole')->withQuery(['token' => 'public-9', 'visibility' => 'public']);
         assert($request instanceof AbstractRequest);
@@ -126,7 +126,7 @@ class DonutRequestTest extends TestCase
         $injector = new Injector($module, __DIR__ . '/tmp');
         /** @var Resource $resource */
         $resource = $injector->getInstance(ResourceInterface::class);
-        $mark = $injector->getInstance(UncacheableMarkInterface::class);
+        $mark = $injector->getInstance(UncacheableMarkScopeInterface::class);
 
         $request = $resource->get->uri('app://self/query-hole')->withQuery(['token' => 'secret-5', 'visibility' => 'private']);
         assert($request instanceof AbstractRequest);
@@ -165,7 +165,7 @@ class DonutRequestTest extends TestCase
         $injector = new Injector($module, __DIR__ . '/tmp');
         /** @var Resource $resource */
         $resource = $injector->getInstance(ResourceInterface::class);
-        $mark = $injector->getInstance(UncacheableMarkInterface::class);
+        $mark = $injector->getInstance(UncacheableMarkScopeInterface::class);
         $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
         // The first hole marks itself - attributed to its own (query-bearing) scope only.
