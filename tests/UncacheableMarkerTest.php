@@ -27,7 +27,7 @@ use Ray\Di\Scope;
  * interface resolved to `UncacheableMark` itself, so a caller could call `enterWrite()` on it
  * directly and forge a write-scope frame for its own direct `put()`).
  */
-class UncacheableMarkInterfaceProviderTest extends TestCase
+class UncacheableMarkerTest extends TestCase
 {
     private function newInjector(): Injector
     {
