@@ -9,6 +9,7 @@ use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\RepositoryModule\Annotation\EtagPool;
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\Resource\Module\ResourceModule;
+use BEAR\Resource\RenderInterface;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
 use FakeVendor\HelloWorld\Resource\Page\None;
@@ -321,6 +322,62 @@ class DevUnstorableGateModuleTest extends TestCase
             $this->fail('expected the genuine RuntimeException to surface');
         } catch (RuntimeException $e) {
             $this->assertSame('a genuine failure unrelated to the pending skip', $e->getMessage());
+        } finally {
+            restore_error_handler();
+        }
+
+        $observer = $injector->getInstance(UnstorableWriteObserverInterface::class);
+        $observer->raiseIfPending();
+        $this->addToAssertionCount(1);
+    }
+
+    public function testAGenuineDonutStoreFailureFromTheDegradedReadFallbackThatNowStoresSurfacesEvenWithAPendingDevGateSkipAndIsNotLeakedToTheNextRequest(): void
+    {
+        // #237 sends the donut degraded-read fallback through handleProceedResult(), i.e. a
+        // real store attempt, now wrapped in enterWrite()/leaveWrite() too (merge round
+        // addition). Unlike the test above (the resource's own onGet() throws, before any
+        // store is attempted), here onGet() returns normally and the STORE itself - a render
+        // failure inside putRecorded()/doPutDonut()/ResourceDonut::create() - fails
+        // genuinely, while a pending skip (an unrelated sibling, marked earlier in THIS same
+        // top-level request - DonutMarksSiblingThenRendersNormally's own onGet()) is already
+        // recorded. The real exception must still surface, not the pending skip.
+        $namespace = 'FakeVendor\HelloWorld';
+        $module = new QueryRepositoryModule(new ResourceModule($namespace));
+        $module->override(new class extends AbstractModule {
+            protected function configure(): void
+            {
+                $this->bind(AdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->to(ArrayAdapter::class);
+                $this->bind(AdapterInterface::class)->annotatedWith(EtagPool::class)->to(ArrayAdapter::class);
+                $this->bind(DonutRepository::class)->in(Scope::SINGLETON);
+                $this->bind(DonutRepositoryInterface::class)->to(FakeDonutReadFailsForOneUri::class)->in(Scope::SINGLETON);
+            }
+        });
+        $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
+        $module->override(new DevUnstorableGateModule());
+        // Applied LAST (after TwigModule, which also binds RenderInterface to TwigRenderer -
+        // Ray.Di's override() keeps the LATEST registration, so order matters here): pools
+        // are healthy; rendering the template this write stores is what fails.
+        $module->override(new class extends AbstractModule {
+            protected function configure(): void
+            {
+                $this->bind(RenderInterface::class)->to(FakeThrowingRenderer::class);
+            }
+        });
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $fakeDonutRepository = $injector->getInstance(DonutRepositoryInterface::class);
+        assert($fakeDonutRepository instanceof FakeDonutReadFailsForOneUri);
+
+        // The target: its own donutRepository->get() degrades, forcing the NEW fallback
+        // path. Its own onGet() marks a sibling first (pending, not suppressed), then
+        // returns normally - the render that follows (the store itself) throws genuinely.
+        $fakeDonutRepository->failingUri = 'page://self/html/donut-marks-sibling-then-renders-normally';
+        set_error_handler(static fn (): bool => true);
+        try {
+            $resource->get('page://self/html/donut-marks-sibling-then-renders-normally');
+            $this->fail('expected the genuine render failure to surface');
+        } catch (FakeTemplateNotFound $e) {
+            $this->assertSame('template not found: user.html.twig', $e->getMessage());
         } finally {
             restore_error_handler();
         }

@@ -15,6 +15,7 @@ use Madapaja\TwigModule\TwigModule;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
+use Ray\Di\Scope;
 use ReflectionClass;
 use RuntimeException;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
@@ -28,6 +29,8 @@ use function dirname;
 use function glob;
 use function is_string;
 use function is_subclass_of;
+use function restore_error_handler;
+use function set_error_handler;
 use function str_contains;
 use function time;
 
@@ -915,5 +918,99 @@ class DonutRepositoryTest extends TestCase
         $property = (new ReflectionClass(DonutRepository::class))->getProperty('writeObserver');
         $property->setAccessible(true);
         $this->assertSame($observer, $property->getValue($donutRepository));
+    }
+
+    public function testADegradedReadFallbackThatNowStoresIsNotBlockedByAnUnrelatedEarlierHoleMark(): void
+    {
+        // #237 sends the donut degraded-read fallback through handleProceedResult(), i.e. a
+        // real TEMPLATE store attempt (putRecorded() -> doPutDonut()) - merge round addition.
+        // That store is judged by reasonExcludingHoleMarks() (isMarkedForCurrentScope(),
+        // pre-#234, issue #222): a hole's own mark, from an EARLIER, already-closed request
+        // to an entirely different page, must not block THIS unrelated, non-marking page's
+        // own fallback template write - the mark is attributed to the hole's own owner slot,
+        // never this page's own (TOP_LEVEL) scope.
+        $namespace = 'FakeVendor\HelloWorld';
+        $module = new FakeEtagPoolModule(ModuleFactory::getInstance($namespace));
+        $module->override(new class extends AbstractModule {
+            protected function configure(): void
+            {
+                $this->bind(DonutRepository::class)->in(Scope::SINGLETON);
+                $this->bind(DonutRepositoryInterface::class)->to(FakeDonutReadFailsForOneUri::class)->in(Scope::SINGLETON);
+            }
+        });
+        $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
+        $fakeDonutRepository = $injector->getInstance(DonutRepositoryInterface::class);
+        assert($fakeDonutRepository instanceof FakeDonutReadFailsForOneUri);
+
+        // The unrelated, EARLIER mark: a different page's own marking hole (UnstorableValue,
+        // inside DonutCacheWithMarkingHoleAndCacheableSibling), fully closed
+        // (enterHole()/leaveHole()) before this test's own target page is ever touched.
+        $resource->get('page://self/html/donut-cache-with-marking-hole-and-cacheable-sibling');
+        $logger->flush();
+
+        // The target: a plain, never-marking #[DonutCache] page whose own donutRepository
+        // ->get() degrades, forcing the NEW fallback path (render + store via
+        // handleProceedResult()/putRecorded()).
+        $fakeDonutRepository->failingUri = 'page://self/html/blog-posting-donut';
+        set_error_handler(static fn (): bool => true); // the degraded-read warning still fires
+        try {
+            $ro = $resource->get('page://self/html/blog-posting-donut');
+        } finally {
+            restore_error_handler();
+        }
+
+        $this->assertSame(200, $ro->code);
+        $tree = $this->flushAndValidate($logger);
+        $this->assertNull(self::eventContextJsonOf($tree, 'put_skipped'), 'the unrelated, hole-scoped earlier mark must not block this page\'s own fallback template store');
+
+        // Proof it actually stored, not merely "didn't skip this once": stop degrading the
+        // read and confirm a later GET is a cache_hit against what the fallback's store
+        // (delegated to the real DonutRepository) actually wrote.
+        $logger->flush();
+        $fakeDonutRepository->failingUri = null;
+        $resource->get('page://self/html/blog-posting-donut');
+        $laterTree = $this->flushAndValidate($logger);
+        $this->assertContains('cache_hit', self::collectTypes($laterTree), 'the fallback\'s store must have actually persisted');
+    }
+
+    public function testADegradedReadFallbackThatNowStoresIsStillRefusedByAMarkInsideItsOwnSubtree(): void
+    {
+        // The other half of the same predicate (reasonExcludingHoleMarks(),
+        // isMarkedForCurrentScope()): RenderTimeMark marks its OWN (TOP_LEVEL) scope during
+        // its own template render - not inside any hole - the same scope this page's own
+        // fallback write checks, so its own write must still be skipped, not stored just
+        // because the path got here via a degraded read instead of a normal MISS.
+        $namespace = 'FakeVendor\HelloWorld';
+        $module = new FakeEtagPoolModule(ModuleFactory::getInstance($namespace));
+        $module->override(new class extends AbstractModule {
+            protected function configure(): void
+            {
+                $this->bind(DonutRepository::class)->in(Scope::SINGLETON);
+                $this->bind(DonutRepositoryInterface::class)->to(FakeDonutReadFailsForOneUri::class)->in(Scope::SINGLETON);
+            }
+        });
+        $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
+        $fakeDonutRepository = $injector->getInstance(DonutRepositoryInterface::class);
+        assert($fakeDonutRepository instanceof FakeDonutReadFailsForOneUri);
+        $fakeDonutRepository->failingUri = 'page://self/html/render-time-mark';
+
+        set_error_handler(static fn (): bool => true); // the degraded-read warning still fires
+        try {
+            $ro = $resource->get('page://self/html/render-time-mark');
+        } finally {
+            restore_error_handler();
+        }
+
+        $this->assertSame(200, $ro->code);
+        $tree = $this->flushAndValidate($logger);
+        $putSkipped = self::eventContextJsonOf($tree, 'put_skipped');
+        $this->assertNotNull($putSkipped, 'a mark inside this page\'s own write window (its own template render) must still refuse the fallback\'s store');
+        $this->assertStringContainsString('"reason":"unstorable"', $putSkipped);
     }
 }
