@@ -22,6 +22,15 @@ use Throwable;
  * command or a direct call has no interceptor, so it reaches the caller and the write is not
  * reported as done. The automatic write inside a GET is caught and degraded - that request
  * changed nothing, so nothing at an edge became stale by it.
+ *
+ * `ResourceDonut::create()`'s render also arrives here, which looks like the "renderer with a
+ * bug" case this class says it deliberately excludes - but it is not that case: by the time
+ * `ResourceObject::__toString()` returns, BEAR.Resource has already caught and discarded the
+ * real Throwable itself (an E_USER_WARNING and `''` are all that is left of it), so there is
+ * no longer a genuine exception left to let travel - only a reconstruction from that warning's
+ * text (`Exception\DonutRenderAborted`). Degrading is what lets the response stay servable
+ * without fabricating a 500 from a guessed cause; the original warning still surfaces
+ * unsuppressed, and the reconstruction is recorded in the semantic log either way.
  */
 final class CacheStoreFailure extends RuntimeException
 {

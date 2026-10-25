@@ -18,7 +18,6 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
-use ReflectionClassConstant;
 use RuntimeException;
 
 use function assert;
@@ -27,8 +26,6 @@ use function error_clear_last;
 use function error_get_last;
 use function htmlspecialchars;
 use function http_build_query;
-use function is_string;
-use function preg_match;
 
 use const E_USER_WARNING;
 use const ENT_QUOTES;
@@ -157,9 +154,10 @@ class ResourceDonutTest extends TestCase
      * A legacy `[le:URI]` placeholder for a hole with two REQUIRED query params, corrupted
      * the same way, fails the re-fetch with the same underlying cause as a pre-#232-fix
      * refresh() threw - still a ParameterException, not this fix's rawurldecode() turning it
-     * into a different, new failure - except that cause now arrives wrapped in a
-     * CacheStoreFailure instead of surfacing raw, the same conversion any re-fetch failure
-     * gets so the interceptor can refuse the store instead of caching nothing.
+     * into a different, new failure. Unlike before this PR, that cause no longer reaches the
+     * caller raw: it now arrives wrapped in a CacheStoreFailure, the same conversion any
+     * re-fetch failure gets, so `AbstractDonutCacheInterceptor`'s read path degrades to a
+     * fresh render instead of a 500 - an intentional behavior change (see CHANGELOG).
      */
     public function testRefreshOfALegacyMultiParamPlaceholderFailsTheSameWayAsBeforeThisFix(): void
     {
@@ -279,9 +277,12 @@ class ResourceDonutTest extends TestCase
      * into an E_USER_WARNING and an empty string - a hole's own onGet() propagates here
      * uncaught (`DonutRequest::__toString()` has no catch of its own). Storing that empty
      * string as the donut template would serve an empty page to every later visitor (since
-     * 1.17.0). This also pins BEAR.Resource's warning shape: if a future version changes it,
-     * the guard's regex stops matching and this test fails instead of silently going back to
-     * caching empty pages.
+     * 1.17.0).
+     *
+     * This also pins the guard's precision through the public API: a regex that matched too
+     * late in the trace would show up here as a reconstructed message polluted with stray
+     * `#0 `/`.php(` trace fragments, and a regex that stopped matching at all (BEAR.Resource's
+     * warning shape drifting) would show up as no exception being thrown.
      */
     public function testCreateRefusesToStoreTheTemplateWhenAHoleThrows(): void
     {
@@ -293,39 +294,23 @@ class ResourceDonutTest extends TestCase
         $ro->body = ['secret' => $throwingRequest];
 
         error_clear_last();
-        $this->expectException(CacheStoreFailure::class);
         try {
             ResourceDonut::create($ro, new DonutRenderer(), new SurrogateKeys($ro->uri), null, false, $this->mark);
-        } finally {
-            // The handler returns false on a match, so PHP's own handling of the warning
-            // still runs unsuppressed - error_get_last() is set by the engine regardless of
-            // what any handler returns, so this proves the original warning was not lost.
-            $last = error_get_last();
-            $this->assertNotNull($last, 'the swallowed render warning must still surface, not be suppressed');
-            $this->assertSame(E_USER_WARNING, $last['type']);
-            $this->assertStringContainsString('the hole blew up mid-render', $last['message']);
+            $this->fail('expected the hole throw to refuse the store');
+        } catch (CacheStoreFailure $e) {
+            $this->assertStringStartsWith('Twig\Error\RuntimeError: ', $e->getMessage());
+            $this->assertStringContainsString('the hole blew up mid-render', $e->getMessage());
+            $this->assertStringNotContainsString('#0 ', $e->getMessage());
+            $this->assertStringNotContainsString('.php(', $e->getMessage());
         }
-    }
 
-    /**
-     * Pins the guard's regex directly: anchored on `#0 `, the FIRST trace frame specifically,
-     * not just any frame number - a `.*` message group that merely required SOME `)\n#N `
-     * later in the string could still match past a deep-enough trace, swallowing part of it
-     * into "message" instead of stopping at the true header boundary.
-     */
-    public function testSwallowedRenderWarningRegexMatchesPreciselyAndRejectsUnrelatedWarnings(): void
-    {
-        $pattern = (new ReflectionClassConstant(ResourceDonut::class, 'SWALLOWED_RENDER_WARNING'))->getValue();
-        assert(is_string($pattern));
-
-        $vendorShaped = "RuntimeException(the hole blew up mid-render)\n#0 /app/Foo.php(12): bar()\n#1 /app/Baz.php(34): qux()\n#2 {main}";
-        $this->assertSame(1, preg_match($pattern, $vendorShaped, $match));
-        $this->assertSame('RuntimeException', $match['class']);
-        $this->assertSame('the hole blew up mid-render', $match['message']);
-
-        foreach (['Undefined array key 3', 'Array to string conversion', 'Deprecated: foo() is deprecated'] as $unrelated) {
-            $this->assertSame(0, preg_match($pattern, $unrelated), "must not misread: $unrelated");
-        }
+        // The handler returns false on a match, so PHP's own handling of the warning still
+        // runs unsuppressed - error_get_last() is set by the engine regardless of what any
+        // handler returns, so this proves the original warning was not lost.
+        $last = error_get_last();
+        $this->assertNotNull($last, 'the swallowed render warning must still surface, not be suppressed');
+        $this->assertSame(E_USER_WARNING, $last['type']);
+        $this->assertStringContainsString('the hole blew up mid-render', $last['message']);
     }
 
     /**
@@ -348,15 +333,17 @@ class ResourceDonutTest extends TestCase
         $ro->body = ['value' => 'plain'];
 
         error_clear_last();
-        $this->expectException(CacheStoreFailure::class);
         try {
             ResourceDonut::create($ro, new DonutRenderer(), new SurrogateKeys($ro->uri), null, false, $mark);
-        } finally {
-            $last = error_get_last();
-            $this->assertNotNull($last, 'the swallowed render warning must still surface, not be suppressed');
-            $this->assertSame(E_USER_WARNING, $last['type']);
-            $this->assertStringContainsString('template not found', $last['message']);
+            $this->fail('expected the page template throw to refuse the store');
+        } catch (CacheStoreFailure $e) {
+            $this->assertSame('BEAR\QueryRepository\FakeTemplateNotFound: template not found: user.html.twig', $e->getMessage());
         }
+
+        $last = error_get_last();
+        $this->assertNotNull($last, 'the swallowed render warning must still surface, not be suppressed');
+        $this->assertSame(E_USER_WARNING, $last['type']);
+        $this->assertStringContainsString('template not found', $last['message']);
     }
 
     /**

@@ -270,6 +270,11 @@ class GracefulLoggingTest extends TestCase
         $this->assertStringContainsString('"operation":"write"', $error);
         $this->assertStringContainsString('DonutRenderAborted', $error);
 
+        // Independent of what a later request happens to do: directly proves nothing was
+        // stored, rather than inferring it from a second request's cache_miss.
+        $resourceStorage = $injector->getInstance(ResourceStorageInterface::class);
+        $this->assertNull($resourceStorage->getDonut($first->uri), 'nothing was stored after the aborted render');
+
         // If the bug were present, this second request would be a cache HIT serving the
         // empty template the first request's write would otherwise have stored.
         set_error_handler(static fn (): bool => true);
