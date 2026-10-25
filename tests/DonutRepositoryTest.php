@@ -888,19 +888,59 @@ class DonutRepositoryTest extends TestCase
         $this->assertNotSame('private, no-store', $stockRo->headers[Header::CACHE_CONTROL] ?? null);
     }
 
-    public function testConstructorDefaultsWriteObserverSoAPre1180CallerPassingOnlyNineArgumentsStillConstructs(): void
+    public function testConstructorKeepsUriTagTheTenthParameterSoAPre1180PositionalCallerIsNotRetyped(): void
     {
-        // The constructor argument count went 9->10 adding $writeObserver (#234 dev gate),
-        // inserted before the already-defaulted $uriTag - a caller built against the released
-        // 9-argument signature, still omitting both trailing arguments, must not TypeError.
+        // CodeRabbit (PRRT_kwDOAbQZyc6v_cmH): $writeObserver was first inserted BEFORE
+        // $uriTag, pushing the released (upstream/1.x @ b34ee63) 10th parameter to 11th - a
+        // caller still positionally passing 10 args, the 10th being their own UriTagInterface
+        // (or relying on its own default), would have that argument silently retyped to
+        // $writeObserver (UnstorableWriteObserverInterface) instead - a TypeError on any real
+        // UriTagInterface instance. $writeObserver now comes AFTER $uriTag instead.
         $constructor = (new ReflectionClass(DonutRepository::class))->getConstructor();
         assert($constructor !== null);
         $parameters = $constructor->getParameters();
-        $writeObserverParam = $parameters[9];
+        $uriTagParam = $parameters[9];
+        $this->assertSame('uriTag', $uriTagParam->getName());
+        $this->assertTrue($uriTagParam->isOptional());
+        $this->assertInstanceOf(UriTag::class, $uriTagParam->getDefaultValue());
+
+        $writeObserverParam = $parameters[10];
         $this->assertSame('writeObserver', $writeObserverParam->getName());
         $this->assertTrue($writeObserverParam->isOptional(), 'a pre-1.18.0 9-argument caller must still construct');
-        $this->assertTrue($writeObserverParam->isDefaultValueAvailable());
         $this->assertInstanceOf(NullUnstorableWriteObserver::class, $writeObserverParam->getDefaultValue());
+    }
+
+    public function testConstructingDonutRepositoryPositionallyWithThePre1180TenArgumentShapeBindsTheTenthToUriTag(): void
+    {
+        // Real positional construction, not just a signature check: the released
+        // (upstream/1.x @ b34ee63) 9 required arguments PLUS a caller's own 10th positional
+        // argument - exactly the shape $uriTag already had before this PR (already optional,
+        // but a caller may still pass its own instance positionally rather than rely on the
+        // default). It must bind to $uriTag (identity-checked, not just type-checked), never
+        // silently retype into the new $writeObserver slot - the literal TypeError CodeRabbit
+        // flagged, since UriTagInterface is not assignable to UnstorableWriteObserverInterface.
+        $injector = $this->getInjector();
+        $myOwnUriTag = new UriTag();
+        $donutRepository = new DonutRepository(
+            $injector->getInstance(QueryRepositoryInterface::class),
+            $injector->getInstance(DonutHeaderSetter::class),
+            $injector->getInstance(ResourceStorageInterface::class),
+            $injector->getInstance(ResourceInterface::class),
+            $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class),
+            $injector->getInstance(DonutRendererInterface::class),
+            $injector->getInstance(UnstorableGateInterface::class),
+            $injector->getInstance(UncacheableMarkInterface::class),
+            $injector->getInstance(DonutChildExecutionsInterface::class),
+            $myOwnUriTag,
+        );
+
+        $uriTagProperty = (new ReflectionClass(DonutRepository::class))->getProperty('uriTag');
+        $uriTagProperty->setAccessible(true);
+        $this->assertSame($myOwnUriTag, $uriTagProperty->getValue($donutRepository), 'the 10th positional argument must bind to uriTag, by identity - not the new writeObserver slot');
+
+        $writeObserverProperty = (new ReflectionClass(DonutRepository::class))->getProperty('writeObserver');
+        $writeObserverProperty->setAccessible(true);
+        $this->assertInstanceOf(NullUnstorableWriteObserver::class, $writeObserverProperty->getValue($donutRepository), 'writeObserver still defaults, no 11th positional argument was given');
     }
 
     public function testDiActuallyWiresTheBoundObserverIntoDonutRepositoryNotJustThePhpDefault(): void

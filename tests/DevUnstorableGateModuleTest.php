@@ -334,13 +334,15 @@ class DevUnstorableGateModuleTest extends TestCase
     public function testAGenuineDonutStoreFailureFromTheDegradedReadFallbackThatNowStoresSurfacesEvenWithAPendingDevGateSkipAndIsNotLeakedToTheNextRequest(): void
     {
         // #237 sends the donut degraded-read fallback through handleProceedResult(), i.e. a
-        // real store attempt, now wrapped in enterWrite()/leaveWrite() too (merge round
-        // addition). Unlike the test above (the resource's own onGet() throws, before any
-        // store is attempted), here onGet() returns normally and the STORE itself - a render
-        // failure inside putRecorded()/doPutDonut()/ResourceDonut::create() - fails
-        // genuinely, while a pending skip (an unrelated sibling, marked earlier in THIS same
-        // top-level request - DonutMarksSiblingThenRendersNormally's own onGet()) is already
-        // recorded. The real exception must still surface, not the pending skip.
+        // real store attempt (AbstractDonutCacheInterceptor opens no write scope of its own -
+        // see UncacheableMarkInterface's own docblock on isCurrentWriteFor() for why identity,
+        // not a donut-side scope, is what keeps a nested direct put() safe now). Unlike the
+        // test above (the resource's own onGet() throws, before any store is attempted),
+        // here onGet() returns normally and the STORE itself - a render failure inside
+        // putRecorded()/doPutDonut()/ResourceDonut::create() - fails genuinely, while a
+        // pending skip (an unrelated sibling, marked earlier in THIS same top-level request -
+        // DonutMarksSiblingThenRendersNormally's own onGet()) is already recorded. The real
+        // exception must still surface, not the pending skip.
         $namespace = 'FakeVendor\HelloWorld';
         $module = new QueryRepositoryModule(new ResourceModule($namespace));
         $module->override(new class extends AbstractModule {
