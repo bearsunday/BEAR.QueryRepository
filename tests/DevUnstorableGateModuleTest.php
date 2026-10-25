@@ -200,8 +200,8 @@ class DevUnstorableGateModuleTest extends TestCase
     public function testADonutPageOnTheShortcutPathWithALegitimatelyMarkingHoleDoesNotThrowAndStillRefusesItsHeader(): void
     {
         // Fable's finding: AbstractDonutCacheInterceptor's "already answered" shortcut (an
-        // ETag the page set itself, DonutCacheShortcutPathWithMarkingHole) must reach the
-        // SAME dev-gate outcome as the normal write path
+        // ETag the page set itself, DonutCacheShortcutPathSelfEtag) must reach the SAME
+        // dev-gate outcome as the normal write path
         // (testCorrectDonutPageWithALegitimatelyMarkingHoleDoesNotThrowAndStoresItsTemplate
         // above) for a hole-only mark: doPutDonut() never reports a hole refusing its own
         // write (reasonExcludingHoleMarks() stays null - the TEMPLATE, placeholders only,
@@ -212,12 +212,19 @@ class DevUnstorableGateModuleTest extends TestCase
         // normal path never would have.
         //
         // A hole's own mark is only ever "hole-scoped and closed" via
-        // UncacheableMarkScopeInterface::enterHole()/leaveHole() (DonutRequest/
-        // ResourceDonut's own template-rendering pipeline, never a plain PHP-level #[Embed]
-        // access) - simulated directly here the same way
+        // UncacheableMarkScopeInterface::enterHole()/leaveHole() - opened SOLELY by
+        // DonutRequest inside ResourceDonut::create(), the normal WRITE path this shortcut
+        // specifically bypasses. No #[Embed] on DonutCacheShortcutPathSelfEtag itself could
+        // ever open one here (verified by execution: a plain PHP-level #[Embed] access
+        // inside onGet() is NOT hole-scoped either - it raises from the HOLE's OWN
+        // reportIfOutermost(), a different mechanism entirely, not from this shortcut's own
+        // refusal). Supplied synthetically here instead, standing in for the reachable
+        // scenario it represents: an EARLIER, separate hole elsewhere in the SAME request
+        // tree already marked and closed before this page's own shortcut-path refusal runs
+        // - the same #234 "unrelated-sibling-marked-and-closed-beforehand" shape
         // testADirectPutInsideOwnOnGetIsStoredWhenOnlyAnUnrelatedSiblingMarkedAndClosedBeforehand
-        // (DirectWriteScopeTest) does, so this test exercises the predicate split itself,
-        // not incidental #[Embed] timing.
+        // (DirectWriteScopeTest) already exercises for CacheInterceptor's own write-scope
+        // predicate.
         $injector = $this->getInjector();
         $resource = $injector->getInstance(ResourceInterface::class);
         $scope = $injector->getInstance(UncacheableMarkScopeInterface::class);
@@ -227,7 +234,7 @@ class DevUnstorableGateModuleTest extends TestCase
         $mark->mark('csrf-token-issued');
         $scope->leaveHole('app://self/some-hole');
 
-        $ro = $resource->get('page://self/html/donut-cache-shortcut-path-with-marking-hole');
+        $ro = $resource->get('page://self/html/donut-cache-shortcut-path-self-etag');
 
         $this->assertSame(200, $ro->code, 'no UnstorableResponseDetected - a hole refusing its own write is expected, not reported');
         $this->assertSame('private, no-store', $ro->headers[Header::CACHE_CONTROL] ?? null, 'the live response must still be refused - the hole-only split exempts only the DEV GATE, not the header');
@@ -247,6 +254,38 @@ class DevUnstorableGateModuleTest extends TestCase
         $ro = $resource->get('page://self/html/donut-cache-self-marking-validation-error');
 
         $this->assertSame(400, $ro->code, 'no UnstorableResponseDetected - an error-code response was never dev-gate-reportable before the ETag-shortcut cleanup existed, and still is not');
+    }
+
+    public function testADonutPageThatMarksItselfAndAnswersAValidationErrorLogsNoCodeForTheUnstorableReason(): void
+    {
+        // put_skipped's own schema contract: code is "the response status code when reason
+        // is error-code; null otherwise" (docs/schemas/context/put_skipped.json). The same
+        // page as the test above, but with a recording logger: the reason this write was
+        // skipped is 'unstorable' (the mark), not 'error-code' (merely incidental here), so
+        // code must stay null even though $ro->code is 400.
+        $module = new QueryRepositoryModule(new ResourceModule('FakeVendor\HelloWorld'));
+        $module->override(new class extends AbstractModule {
+            protected function configure(): void
+            {
+                $this->bind(AdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->to(ArrayAdapter::class);
+                $this->bind(AdapterInterface::class)->annotatedWith(EtagPool::class)->to(ArrayAdapter::class);
+                $this->bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)->toInstance(new Log\SafeSemanticLogger());
+            }
+        });
+        $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
+        $module->override(new DevUnstorableGateModule());
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
+
+        $ro = $resource->get('page://self/html/donut-cache-self-marking-validation-error');
+        $this->assertSame(400, $ro->code);
+
+        $tree = $this->flushAndValidate($logger);
+        $json = self::eventContextJsonOf($tree, 'put_skipped');
+        $this->assertNotNull($json);
+        $this->assertStringContainsString('"reason":"unstorable"', $json);
+        $this->assertStringContainsString('"code":null', $json, 'code must stay null for reason "unstorable", even though the response itself is 400 - only reason "error-code" carries a code');
     }
 
     public function testATopLevelCacheableResourceMarkingItselfThrowsExactlyOnceAfterRenderingWithoutCorruptingTheTemplate(): void

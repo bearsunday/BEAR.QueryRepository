@@ -199,8 +199,10 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
             $unstorable = $this->refuseIfUnstorable($ro, report: $hasEtag);
             // Record why this miss is not followed by a put; without it the log looks like a
             // lost write. 'unstorable' when the gate refused it, otherwise the original
-            // already-answered reason.
-            $this->logger->event(new PutSkippedContext((string) $ro->uri, $unstorable ?? ($hasEtag ? 'etag-present' : 'error-code'), $hasEtag ? null : $ro->code));
+            // already-answered reason - code stays null whenever the reason is 'unstorable',
+            // per put_skipped's own schema contract (code is the status code "when reason is
+            // error-code; null otherwise"), not just whenever an ETag happens to be present.
+            $this->logger->event(new PutSkippedContext((string) $ro->uri, $unstorable ?? ($hasEtag ? 'etag-present' : 'error-code'), $unstorable === null && ! $hasEtag ? $ro->code : null));
 
             return $ro;
         }
