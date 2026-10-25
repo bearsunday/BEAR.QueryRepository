@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - `LogFileWriter`: two sessions flushed in the same microsecond no longer overwrite each other. The timestamped filename now carries a random suffix, so both survive (#221).
 - A `#[DonutCache]` page embedding an `#[Embed]` hole whose URI carried two or more query parameters leaked a raw `[le:...]` placeholder to the client and could throw `ParameterException` on the next request - fixed by moving new placeholders to a `[le2:...]` marker (#232).
+- A `#[DonutCache]`/`#[CacheableResponse]` page whose render threw - a hole's own resource or the page's own template - no longer stores the empty template BEAR.Resource's `ResourceObject::__toString()` swallows that failure into; that empty template would otherwise be served to every later visitor (since 1.17.0).
 
 ## [1.17.0] - 2026-09-17
 

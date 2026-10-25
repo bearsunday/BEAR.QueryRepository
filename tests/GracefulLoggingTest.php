@@ -242,6 +242,80 @@ class GracefulLoggingTest extends TestCase
         $this->assertNotNull($close, 'the get scope still closes');
     }
 
+    /**
+     * A render that throws must never bake an empty donut template into the store - that
+     * would serve an empty page to every later visitor (since 1.17.0). The first request's
+     * write is refused and recorded; a second request is still a cache miss, not a hit
+     * reading the empty template the bug would have stored.
+     */
+    public function testDonutWriteIsRefusedNotStoredWhenAHoleThrowsDuringRender(): void
+    {
+        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
+
+        set_error_handler(static fn (): bool => true); // the swallowed-render warning and the degrade warning both fire
+        try {
+            $first = $resource->get('page://self/html/donut-cache-with-throwing-hole');
+            $this->assertSame(200, $first->code, 'the request still completes even though nothing is stored');
+        } finally {
+            restore_error_handler();
+        }
+
+        $tree = $this->flushAndValidate($logger);
+        $error = self::eventContextJsonOf($tree, 'cache_error');
+        $this->assertNotNull($error, 'the aborted render is recorded, not silently cached');
+        $this->assertStringContainsString('"operation":"write"', $error);
+        $this->assertStringContainsString('DonutRenderAborted', $error);
+
+        // If the bug were present, this second request would be a cache HIT serving the
+        // empty template the first request's write would otherwise have stored.
+        set_error_handler(static fn (): bool => true);
+        try {
+            $resource->get('page://self/html/donut-cache-with-throwing-hole');
+        } finally {
+            restore_error_handler();
+        }
+
+        $tree2 = $this->flushAndValidate($logger);
+        $this->assertNull(self::closeContextJsonOf($tree2, 'cache_hit'), 'a later request must not be served from a cached empty template');
+        $this->assertNotNull(self::closeContextJsonOf($tree2, 'cache_miss'), 'a later request is still a cache miss - nothing was ever stored');
+    }
+
+    /**
+     * The same guard refuses a store when the composing page's own template throws, outside
+     * any hole - `(string) $ro` in ResourceDonut::create() renders the page itself too.
+     */
+    public function testDonutWriteIsRefusedNotStoredWhenThePageTemplateItselfThrows(): void
+    {
+        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module->override(new class extends AbstractModule {
+            protected function configure(): void
+            {
+                $this->bind(RenderInterface::class)->to(FakeThrowingRenderer::class);
+            }
+        });
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
+
+        set_error_handler(static fn (): bool => true);
+        try {
+            $ro = $resource->get('page://self/html/plain-donut-hole');
+            $this->assertSame(200, $ro->code, 'the request still completes even though nothing is stored');
+        } finally {
+            restore_error_handler();
+        }
+
+        $tree = $this->flushAndValidate($logger);
+        $error = self::eventContextJsonOf($tree, 'cache_error');
+        $this->assertNotNull($error, 'the aborted render is recorded, not silently cached');
+        $this->assertStringContainsString('"operation":"write"', $error);
+        $this->assertStringContainsString('DonutRenderAborted', $error);
+    }
+
     public function testAValueEntryIsStoredWithoutRenderingTheResource(): void
     {
         // An app resource has no template under an html renderer, so any render attempt throws.
