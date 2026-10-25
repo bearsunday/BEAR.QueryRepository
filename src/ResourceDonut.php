@@ -93,9 +93,11 @@ final class ResourceDonut
                 $ro = $resource->get($uri);
                 $ro->toString();
             } catch (Throwable $e) {
-                // Unlike create()'s `(string) $ro`, this explicit toString() call does not
-                // swallow a Throwable into an E_USER_WARNING - it propagates directly, so no
-                // error-handler guard is needed, only this catch.
+                // $ro->toString() does not swallow a Throwable (same non-swallowing render
+                // create() itself now uses) - converted here, deliberately, to
+                // CacheStoreFailure: unlike create()'s own render, which lets the Throwable
+                // travel unwrapped, a HIT's re-fetch degrades instead, so the interceptor's
+                // read path falls back to a full fresh render (reviewed design, kept as-is).
                 throw CacheStoreFailure::from($e);
             } finally {
                 $mark->leaveHole($uri);

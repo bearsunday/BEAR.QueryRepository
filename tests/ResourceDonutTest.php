@@ -404,8 +404,9 @@ class ResourceDonutTest extends TestCase
     }
 
     /**
-     * The guard must not refuse a page that renders without error - only the specific
-     * swallowed-render warning shape triggers it.
+     * The render must not be disturbed when nothing throws - `$ro->toString()` behaves
+     * exactly like the magic cast it replaced for the success path, only diverging on a
+     * Throwable.
      */
     public function testCreateStillStoresTheTemplateWhenNothingThrows(): void
     {
@@ -419,11 +420,12 @@ class ResourceDonutTest extends TestCase
     }
 
     /**
-     * Unlike create()'s `(string) $ro`, refresh()'s per-hole `$ro->toString()` (and the
-     * `$resource->get($uri)` re-fetch that runs the hole's onGet()) does not swallow a
-     * Throwable - it propagates directly, so this is a plain try/catch, converted to the same
-     * CacheStoreFailure create() raises, so both paths degrade through the same interceptor
-     * code.
+     * refresh()'s per-hole `$ro->toString()` (and the `$resource->get($uri)` re-fetch that
+     * runs the hole's onGet()) does not swallow a Throwable either - it propagates directly,
+     * the same non-swallowing render create() itself now uses. Unlike create(), which lets
+     * it travel unwrapped, this is a plain try/catch converting it to CacheStoreFailure
+     * deliberately: a HIT's re-fetch degrades through the interceptor's read path instead,
+     * falling back to a full fresh render (the reviewed design both reviewers said to keep).
      */
     public function testRefreshRefusesToServeWhenAHoleThrows(): void
     {
