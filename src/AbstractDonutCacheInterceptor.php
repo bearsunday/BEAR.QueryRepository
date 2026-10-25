@@ -81,7 +81,22 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
 
                 $this->triggerWarning($e);
 
-                return $this->proceedTrackingThrew($invocation, $threw);
+                $this->mark->enterWrite();
+                try {
+                    /** @var ResourceObject $fresh */
+                    $fresh = $this->proceedTrackingThrew($invocation, $threw);
+
+                    // Same outcome a normal MISS reaches below: render (and, if the render and
+                    // the store both succeed, re-cache) via the full donut path - a degraded
+                    // read must not return $invocation->proceed()'s raw, un-rendered result
+                    // (an un-executed #[Embed] request, `view` still null) directly to the
+                    // caller, which would either show nothing or make a later `(string)` cast
+                    // execute a hole untracked by UncacheableMark/SurrogateKeys, or - for a
+                    // raw (non-donut-wrapped) AbstractRequest - trigger its own E_USER_ERROR.
+                    return $this->handleProceedResult($fresh, $threw);
+                } finally {
+                    $this->mark->leaveWrite();
+                }
             }
 
             $this->mark->enterWrite();
@@ -89,16 +104,7 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
                 /** @var ResourceObject $ro */
                 $ro = $this->proceedTrackingThrew($invocation, $threw);
 
-                // donut created in ResourceObject
-                if (isset($ro->headers[Header::ETAG]) || $ro->code >= Code::BAD_REQUEST) {
-                    // Record why this miss is not followed by a put; without it the log looks like a lost write.
-                    $hasEtag = isset($ro->headers[Header::ETAG]);
-                    $this->logger->event(new PutSkippedContext((string) $ro->uri, $hasEtag ? 'etag-present' : 'error-code', $hasEtag ? null : $ro->code));
-
-                    return $ro;
-                }
-
-                return $this->putRecorded($ro, $threw);
+                return $this->handleProceedResult($ro, $threw);
             } finally {
                 $this->mark->leaveWrite();
             }
@@ -154,6 +160,29 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
 
             throw $e;
         }
+    }
+
+    /**
+     * What runs on a fresh render, whether it is a normal MISS or a read-degrade fallback:
+     * an already-answered response (an ETag the resource set itself, an error code) is
+     * served as-is and the non-write recorded; anything else is rendered and stored through
+     * `putRecorded()`.
+     *
+     * @param bool $threw set by reference, forwarded to putRecorded() - see that method's own
+     *     docblock.
+     */
+    private function handleProceedResult(ResourceObject $ro, bool &$threw): ResourceObject
+    {
+        // donut created in ResourceObject
+        if (isset($ro->headers[Header::ETAG]) || $ro->code >= Code::BAD_REQUEST) {
+            // Record why this miss is not followed by a put; without it the log looks like a lost write.
+            $hasEtag = isset($ro->headers[Header::ETAG]);
+            $this->logger->event(new PutSkippedContext((string) $ro->uri, $hasEtag ? 'etag-present' : 'error-code', $hasEtag ? null : $ro->code));
+
+            return $ro;
+        }
+
+        return $this->putRecorded($ro, $threw);
     }
 
     /**

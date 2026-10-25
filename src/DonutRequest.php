@@ -44,8 +44,16 @@ final readonly class DonutRequest implements Stringable
             // AbstractRequest would double-execute a non-idempotent child, and for an
             // OnceRequest would still be correct, but there is no reason to prefer a
             // second call over the result already in hand).
+            //
+            // toString(), not (string) $executed: the magic __toString() swallows a
+            // Throwable from rendering into an E_USER_WARNING and '' - storing that empty
+            // placeholder content would make a #[CacheableResponse] view persist a hole
+            // that failed. toString() has no such catch, so the Throwable propagates
+            // through this __toString() (PHP 8 allows one to throw), through the
+            // template engine (Twig re-wraps it as a Twig\Error\RuntimeError), up to
+            // ResourceDonut::create()'s own non-swallowing render of the composing page.
             $executed = ($this->request)();
-            $view = (string) $executed;
+            $view = $executed->toString();
         } finally {
             $this->mark->leaveHole($uri);
         }
