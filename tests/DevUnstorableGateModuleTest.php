@@ -18,10 +18,13 @@ use Madapaja\TwigModule\TwigModule;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
+use Ray\Di\Scope;
+use ReflectionClass;
 use RuntimeException;
 use Symfony\Component\Cache\Adapter\AdapterInterface;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 
+use function assert;
 use function dirname;
 use function restore_error_handler;
 use function set_error_handler;
@@ -61,6 +64,27 @@ class DevUnstorableGateModuleTest extends TestCase
             $injector->getInstance(UnstorableWriteObserverInterface::class),
             $injector->getInstance(UnstorableWriteObserverInterface::class),
         );
+    }
+
+    public function testTheOverriddenObserverIsActuallyWiredIntoQueryRepositoryAndDonutRepositoryNotJustResolvableOnItsOwn(): void
+    {
+        // Stronger than the two tests above: proves DI actually threads the SAME overridden
+        // (ThrowingUnstorableWriteObserver) instance into QueryRepository's and
+        // DonutRepository's own private $writeObserver property (via Reflection) - not just
+        // that the interface resolves to it when asked directly.
+        $injector = $this->getInjector();
+        $observer = $injector->getInstance(UnstorableWriteObserverInterface::class);
+        $this->assertInstanceOf(ThrowingUnstorableWriteObserver::class, $observer);
+
+        $queryRepository = $injector->getInstance(QueryRepositoryInterface::class);
+        $queryRepositoryProperty = (new ReflectionClass(QueryRepository::class))->getProperty('writeObserver');
+        $queryRepositoryProperty->setAccessible(true);
+        $this->assertSame($observer, $queryRepositoryProperty->getValue($queryRepository));
+
+        $donutRepository = $injector->getInstance(DonutRepositoryInterface::class);
+        $donutRepositoryProperty = (new ReflectionClass(DonutRepository::class))->getProperty('writeObserver');
+        $donutRepositoryProperty->setAccessible(true);
+        $this->assertSame($observer, $donutRepositoryProperty->getValue($donutRepository));
     }
 
     public function testPlainInstallDoesNotSwapTheExistingBinding(): void
@@ -221,6 +245,86 @@ class DevUnstorableGateModuleTest extends TestCase
         // No leak: the pending skip from the sibling was cleared, not raised, when the real
         // exception left CacheInterceptor's own finally - a later request sharing this same
         // (SINGLETON) observer must start clean, not surface a stale UnstorableResponseDetected.
+        $observer = $injector->getInstance(UnstorableWriteObserverInterface::class);
+        $observer->raiseIfPending();
+        $this->addToAssertionCount(1);
+    }
+
+    public function testAGenuineResourceExceptionFromTheDegradedReadFallbackSurfacesEvenWithAPendingDevGateSkipAndIsNotLeakedToTheNextRequest(): void
+    {
+        // A DIFFERENT call site than the write-path proceed() the test above covers: the
+        // store's own read degraded to CacheStoreFailure, falling through to
+        // CacheInterceptor's warning+proceed() fallback. That fallback must be wrapped the
+        // same way, or a genuine exception travelling through THIS path gets replaced too.
+        $namespace = 'FakeVendor\HelloWorld';
+        $module = new QueryRepositoryModule(new ResourceModule($namespace));
+        $module->override(new class extends AbstractModule {
+            protected function configure(): void
+            {
+                $this->bind(AdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->to(ArrayAdapter::class);
+                $this->bind(AdapterInterface::class)->annotatedWith(EtagPool::class)->to(ArrayAdapter::class);
+                $this->bind(QueryRepository::class)->in(Scope::SINGLETON);
+                $this->bind(QueryRepositoryInterface::class)->to(FakeReadFailsForOneUri::class)->in(Scope::SINGLETON);
+            }
+        });
+        $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
+        $module->override(new DevUnstorableGateModule());
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $fakeRepository = $injector->getInstance(QueryRepositoryInterface::class);
+        assert($fakeRepository instanceof FakeReadFailsForOneUri);
+        $fakeRepository->failingUri = 'app://self/marks-sibling-then-genuinely-fails';
+
+        // The store-read degrading to a warning (triggerWarning()) is expected here - this
+        // test is about what happens AFTER that degrade, not the degrade itself.
+        set_error_handler(static fn (): bool => true);
+        try {
+            $resource->get('app://self/marks-sibling-then-genuinely-fails');
+            $this->fail('expected the genuine RuntimeException to surface');
+        } catch (RuntimeException $e) {
+            $this->assertSame('a genuine failure unrelated to the pending skip', $e->getMessage());
+        } finally {
+            restore_error_handler();
+        }
+
+        $observer = $injector->getInstance(UnstorableWriteObserverInterface::class);
+        $observer->raiseIfPending();
+        $this->addToAssertionCount(1);
+    }
+
+    public function testAGenuineDonutResourceExceptionFromTheDegradedReadFallbackSurfacesEvenWithAPendingDevGateSkipAndIsNotLeakedToTheNextRequest(): void
+    {
+        // The donut-interceptor twin of the test above: AbstractDonutCacheInterceptor's own
+        // degraded-read fallback (DonutRepositoryInterface::get() throwing CacheStoreFailure).
+        $namespace = 'FakeVendor\HelloWorld';
+        $module = new QueryRepositoryModule(new ResourceModule($namespace));
+        $module->override(new class extends AbstractModule {
+            protected function configure(): void
+            {
+                $this->bind(AdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->to(ArrayAdapter::class);
+                $this->bind(AdapterInterface::class)->annotatedWith(EtagPool::class)->to(ArrayAdapter::class);
+                $this->bind(DonutRepository::class)->in(Scope::SINGLETON);
+                $this->bind(DonutRepositoryInterface::class)->to(FakeDonutReadFailsForOneUri::class)->in(Scope::SINGLETON);
+            }
+        });
+        $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
+        $module->override(new DevUnstorableGateModule());
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $fakeRepository = $injector->getInstance(DonutRepositoryInterface::class);
+        assert($fakeRepository instanceof FakeDonutReadFailsForOneUri);
+        $fakeRepository->failingUri = 'page://self/html/donut-marks-sibling-then-genuinely-fails';
+
+        set_error_handler(static fn (): bool => true);
+        try {
+            $resource->get('page://self/html/donut-marks-sibling-then-genuinely-fails');
+            $this->fail('expected the genuine RuntimeException to surface');
+        } catch (RuntimeException $e) {
+            $this->assertSame('a genuine failure unrelated to the pending skip', $e->getMessage());
+        } finally {
+            restore_error_handler();
+        }
+
         $observer = $injector->getInstance(UnstorableWriteObserverInterface::class);
         $observer->raiseIfPending();
         $this->addToAssertionCount(1);

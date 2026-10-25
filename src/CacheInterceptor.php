@@ -87,7 +87,7 @@ final readonly class CacheInterceptor implements MethodInterceptor
 
                 $this->triggerWarning($e);
 
-                return $invocation->proceed();
+                return $this->proceedTrackingThrew($invocation, $threw);
             }
 
             if ($state instanceof ResourceState) {

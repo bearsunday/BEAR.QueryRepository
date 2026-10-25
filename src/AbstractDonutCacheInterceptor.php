@@ -81,7 +81,7 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
 
                 $this->triggerWarning($e);
 
-                return $invocation->proceed();
+                return $this->proceedTrackingThrew($invocation, $threw);
             }
 
             $this->mark->enterWrite();
