@@ -40,7 +40,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         private Expiry $expiry,
         private CacheDependencyInterface $cacheDependency,
         private UnstorableGateInterface $gate,
-        private UnstorableWriteObserverInterface $writeObserver,
+        private UnstorableWriteObserverInterface $writeObserver = new NullUnstorableWriteObserver(),
     ) {
     }
 
@@ -102,7 +102,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         // the store decision and the header decision can never disagree.
         $unstorable = $this->gate->reasonForOwnWrite($ro);
 
-        ($this->headerSetter)($ro, $ttl, $httpCache, $unstorable);
+        ($this->headerSetter)($ro, $ttl, $httpCache, unstorable: $unstorable);
 
         if ($unstorable !== null) {
             $this->logger->event(new PutSkippedContext((string) $ro->uri, $unstorable));

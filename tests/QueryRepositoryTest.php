@@ -22,6 +22,7 @@ use Psr\Cache\CacheItemPoolInterface;
 use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
 use Ray\PsrCacheModule\Annotation\Shared;
+use ReflectionClass;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
@@ -374,5 +375,40 @@ class QueryRepositoryTest extends TestCase
         $tree2 = $this->flushAndValidate($this->logger);
         $this->assertContains('cache_miss', self::collectTypes($tree2), 'the descendant, called synchronously right after the ancestor\'s own mark, must also be refused');
         $this->assertNotContains('cache_hit', self::collectTypes($tree2));
+    }
+
+    public function testConstructorDefaultsWriteObserverSoAPre1180CallerPassingOnlySixArgumentsStillConstructs(): void
+    {
+        // The constructor argument count went 6->7 adding $writeObserver (#234 dev gate): a
+        // caller that constructs this class directly (bypassing DI), built against the
+        // released 6-argument signature, must not TypeError on a missing 7th argument.
+        $constructor = (new ReflectionClass(Repository::class))->getConstructor();
+        assert($constructor !== null);
+        $parameters = $constructor->getParameters();
+        $writeObserverParam = $parameters[6];
+        $this->assertSame('writeObserver', $writeObserverParam->getName());
+        $this->assertTrue($writeObserverParam->isOptional(), 'a pre-1.18.0 6-argument caller must still construct');
+        $this->assertTrue($writeObserverParam->isDefaultValueAvailable());
+        $default = $writeObserverParam->getDefaultValue();
+        $this->assertInstanceOf(NullUnstorableWriteObserver::class, $default);
+    }
+
+    public function testDiActuallyWiresTheBoundObserverIntoQueryRepositoryNotJustThePhpDefault(): void
+    {
+        // Guards the DEFAULT above: a missing or shadowed UnstorableWriteObserverInterface
+        // binding must not silently fall through to this constructor default inside the
+        // package's own wiring - QueryRepositoryModule always binds one explicitly. Proven by
+        // identity (not merely "some NullUnstorableWriteObserver exists somewhere") between
+        // the instance DI actually injected into QueryRepository (via Reflection, the
+        // property is private) and the instance the same injector resolves directly.
+        $namespace = 'FakeVendor\HelloWorld';
+        $injector = new Injector(new FakeEtagPoolModule(ModuleFactory::getInstance($namespace)), __DIR__ . '/tmp');
+        $repository = $injector->getInstance(QueryRepositoryInterface::class);
+        assert($repository instanceof Repository);
+        $observer = $injector->getInstance(UnstorableWriteObserverInterface::class);
+
+        $property = (new ReflectionClass(Repository::class))->getProperty('writeObserver');
+        $property->setAccessible(true);
+        $this->assertSame($observer, $property->getValue($repository));
     }
 }

@@ -46,7 +46,9 @@ final readonly class HeaderSetter
      * DonutHeaderSetter's pass-through computes the any-owner reason() instead - the two call
      * sites deliberately use different predicates, so the decision is computed once by the
      * caller and handed in rather than recomputed here, which would risk the two disagreeing
-     * (Kimi review: the prototype left this on the any-owner check for every caller).
+     * (Kimi review: the prototype left this on the any-owner check for every caller). It is a
+     * trailing, named-only-in-practice parameter (BC: released 1.17.0 has `$time` 4th) - both
+     * internal call sites pass it as `unstorable: ...` rather than positionally.
      *
      * A producer that called UncacheableMarkInterface::mark() gets its Cache-Control/Pragma
      * replaced too, with ones that tell every cache, shared or private, not to keep the
@@ -58,7 +60,7 @@ final readonly class HeaderSetter
      * gate's no-store/private check either way: #[Cacheable] combined with
      * #[HttpCache(noStore: true)] still stores server-side while telling the client not to.
      */
-    public function __invoke(ResourceObject $ro, int|null $cacheControlMaxAge, HttpCache|null $httpCache, string|null $unstorable, int|null $time = null): void
+    public function __invoke(ResourceObject $ro, int|null $cacheControlMaxAge, HttpCache|null $httpCache, int|null $time = null, string|null $unstorable = null): void
     {
         if ($unstorable !== null) {
             $this->stripHeaders($ro, self::CDN_FACING_HEADERS);

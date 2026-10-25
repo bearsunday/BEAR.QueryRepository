@@ -24,7 +24,7 @@ class HeaderSetterTest extends TestCase
         $ro = new None();
         $ro->headers['cdn-cache-control'] = 'max-age=600';
 
-        ($this->headerSetter($mark))($ro, null, null, 'unstorable');
+        ($this->headerSetter($mark))($ro, null, null, unstorable: 'unstorable');
 
         $this->assertArrayNotHasKey('cdn-cache-control', $ro->headers);
         $this->assertSame('private, no-store', $ro->headers[Header::CACHE_CONTROL]);
@@ -42,7 +42,7 @@ class HeaderSetterTest extends TestCase
         $ro->headers[Header::CDN_CACHE_CONTROL] = 'max-age=600';
         $ro->headers['cdn-cache-control'] = 'max-age=600';
 
-        ($this->headerSetter($mark))($ro, null, null, 'unstorable');
+        ($this->headerSetter($mark))($ro, null, null, unstorable: 'unstorable');
 
         $this->assertArrayNotHasKey(Header::CDN_CACHE_CONTROL, $ro->headers);
         $this->assertArrayNotHasKey('cdn-cache-control', $ro->headers);
@@ -73,5 +73,24 @@ class HeaderSetterTest extends TestCase
 
         $this->assertArrayNotHasKey(Header::CACHE_CONTROL, $ro->headers, 'no second, canonically-cased header was added');
         $this->assertSame('max-age=30', $ro->headers['cache-control']);
+    }
+
+    public function testFourPositionalArgumentsStayBcWithThe1170ReleasedSignatureTimeNotUnstorable(): void
+    {
+        // Released 1.17.0 has $time as the 4th (and last) positional parameter. This PR adds
+        // $unstorable as a NEW, trailing, named-only-in-practice parameter - a caller still
+        // passing a timestamp positionally as the 4th argument (the only way 1.17.0 allowed)
+        // must keep getting $time, not bind it into the new $unstorable (string|null) slot,
+        // which would TypeError on any real int timestamp.
+        $mark = new UncacheableMark();
+        $ro = new None();
+
+        ($this->headerSetter($mark))($ro, null, null, 1700000000);
+
+        // Last-Modified is gmdate(RFC7231, $time) (EtagSetter) - proof $time was actually
+        // bound to the 4th parameter, not just that no TypeError was thrown.
+        $this->assertSame('Tue, 14 Nov 2023 22:13:20 GMT', $ro->headers[Header::LAST_MODIFIED]);
+        // $unstorable stayed at its default (null): the normal path ran, not strip-and-refuse.
+        $this->assertArrayNotHasKey(Header::CACHE_CONTROL, $ro->headers);
     }
 }

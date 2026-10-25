@@ -802,9 +802,15 @@ class DonutRepositoryTest extends TestCase
         // own URI directly hits the stored entry - it was NOT refused because of the
         // sibling's mark.
         $logger->flush();
-        $resource->get('app://self/innocent-cacheable-sibling');
+        $ro = $resource->get('app://self/innocent-cacheable-sibling');
         $laterTree = $this->flushAndValidate($logger);
         $this->assertContains('cache_hit', self::collectTypes($laterTree), 'the unrelated sibling\'s own entry was stored, not refused by the marking hole (#234)');
+        // HeaderSetter must agree with the store: a mutation to the any-owner predicate there
+        // (Kimi review) would still pass the cache_hit assertion above (the entry WAS stored)
+        // while the response header still read as refused - stored:true, private:no-store is
+        // the inconsistency #234's own HeaderSetter fix exists to prevent.
+        $this->assertArrayHasKey(Header::ETAG, $ro->headers, 'a stored #[Cacheable] entry carries a validator, not a private/no-store response');
+        $this->assertNotSame('private, no-store', $ro->headers[Header::CACHE_CONTROL] ?? null);
     }
 
     public function testACacheableViewEmbeddingAnIndependentlyDonutComposedMarkingHoleIsNotStoredCompoundLeak(): void
@@ -869,9 +875,45 @@ class DonutRepositoryTest extends TestCase
 
         // The real assertion: stock is now stored - no put_skipped on app://self/product/stock.
         $logger->flush();
-        $resource->get('app://self/product/stock', ['productCode' => 'sample-001']);
+        $stockRo = $resource->get('app://self/product/stock', ['productCode' => 'sample-001']);
         $laterTree = $this->flushAndValidate($logger);
         $this->assertContains('cache_hit', self::collectTypes($laterTree), 'app://self/product/stock must be stored, not refused by the form hole\'s mark (#234)');
         $this->assertNull(self::eventContextJsonOf($laterTree, 'put_skipped'), 'no put_skipped on app://self/product/stock');
+        // Same HeaderSetter-agreement guard as the sibling test above: a stored entry must not
+        // also read back as refused (private, no-store, no validator).
+        $this->assertArrayHasKey(Header::ETAG, $stockRo->headers, 'a stored #[Cacheable] entry carries a validator, not a private/no-store response');
+        $this->assertNotSame('private, no-store', $stockRo->headers[Header::CACHE_CONTROL] ?? null);
+    }
+
+    public function testConstructorDefaultsWriteObserverSoAPre1180CallerPassingOnlyNineArgumentsStillConstructs(): void
+    {
+        // The constructor argument count went 9->10 adding $writeObserver (#234 dev gate),
+        // inserted before the already-defaulted $uriTag - a caller built against the released
+        // 9-argument signature, still omitting both trailing arguments, must not TypeError.
+        $constructor = (new ReflectionClass(DonutRepository::class))->getConstructor();
+        assert($constructor !== null);
+        $parameters = $constructor->getParameters();
+        $writeObserverParam = $parameters[9];
+        $this->assertSame('writeObserver', $writeObserverParam->getName());
+        $this->assertTrue($writeObserverParam->isOptional(), 'a pre-1.18.0 9-argument caller must still construct');
+        $this->assertTrue($writeObserverParam->isDefaultValueAvailable());
+        $this->assertInstanceOf(NullUnstorableWriteObserver::class, $writeObserverParam->getDefaultValue());
+    }
+
+    public function testDiActuallyWiresTheBoundObserverIntoDonutRepositoryNotJustThePhpDefault(): void
+    {
+        // The donut-interceptor twin of QueryRepositoryTest's own copy of this guard: a
+        // missing or shadowed UnstorableWriteObserverInterface binding must not silently fall
+        // through to the constructor default - proven by identity between the instance DI
+        // actually injected into DonutRepository (private property, via Reflection) and the
+        // instance the same injector resolves directly.
+        $injector = $this->getInjector();
+        $donutRepository = $injector->getInstance(DonutRepositoryInterface::class);
+        assert($donutRepository instanceof DonutRepository);
+        $observer = $injector->getInstance(UnstorableWriteObserverInterface::class);
+
+        $property = (new ReflectionClass(DonutRepository::class))->getProperty('writeObserver');
+        $property->setAccessible(true);
+        $this->assertSame($observer, $property->getValue($donutRepository));
     }
 }

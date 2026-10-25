@@ -29,7 +29,7 @@ final readonly class DonutHeaderSetter
      */
     public function __invoke(ResourceObject $ro, int|null $cacheControlMaxAge, HttpCache|null $httpCache, int|null $time = null): void
     {
-        ($this->headerSetter)($ro, $cacheControlMaxAge, $httpCache, $this->gate->reason($ro), $time);
+        ($this->headerSetter)($ro, $cacheControlMaxAge, $httpCache, $time, unstorable: $this->gate->reason($ro));
     }
 
     /**
