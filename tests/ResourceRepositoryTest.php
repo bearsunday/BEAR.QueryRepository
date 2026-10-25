@@ -53,8 +53,8 @@ class ResourceRepositoryTest extends TestCase
             new Expiry(0, 0, 0),
             new CacheDependency(new UriTag()),
             new UnstorableGate($mark, new DeclaredCacheControl()),
-            $mark,
             new NullUnstorableWriteObserver(),
+            $mark,
         );
         $this->ro = new Index();
         $this->ro->uri = new Uri('page://self/user');
@@ -139,8 +139,8 @@ class ResourceRepositoryTest extends TestCase
             new Expiry(0, 0, 0),
             new CacheDependency(new UriTag()),
             new UnstorableGate($mark, new DeclaredCacheControl()),
-            $mark,
             new NullUnstorableWriteObserver(),
+            $mark,
         );
         $this->assertInstanceOf(Repository::class, $repository);
     }

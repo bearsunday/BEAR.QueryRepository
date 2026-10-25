@@ -387,18 +387,17 @@ class QueryRepositoryTest extends TestCase
         $constructor = (new ReflectionClass(Repository::class))->getConstructor();
         assert($constructor !== null);
         $parameters = $constructor->getParameters();
-        $markParam = $parameters[6];
+        $writeObserverParam = $parameters[6];
+        $this->assertSame('writeObserver', $writeObserverParam->getName());
+        $this->assertTrue($writeObserverParam->isOptional(), 'a pre-1.18.0 6-argument caller must still construct');
+        $this->assertTrue($writeObserverParam->isDefaultValueAvailable());
+        $this->assertInstanceOf(NullUnstorableWriteObserver::class, $writeObserverParam->getDefaultValue());
+
+        $markParam = $parameters[7];
         $this->assertSame('mark', $markParam->getName());
-        $this->assertTrue($markParam->isOptional(), 'a pre-1.18.0 6-argument caller must still construct');
+        $this->assertTrue($markParam->isOptional());
         $this->assertTrue($markParam->isDefaultValueAvailable());
         $this->assertInstanceOf(UncacheableMark::class, $markParam->getDefaultValue());
-
-        $writeObserverParam = $parameters[7];
-        $this->assertSame('writeObserver', $writeObserverParam->getName());
-        $this->assertTrue($writeObserverParam->isOptional());
-        $this->assertTrue($writeObserverParam->isDefaultValueAvailable());
-        $default = $writeObserverParam->getDefaultValue();
-        $this->assertInstanceOf(NullUnstorableWriteObserver::class, $default);
     }
 
     public function testDiActuallyWiresTheBoundObserverIntoQueryRepositoryNotJustThePhpDefault(): void

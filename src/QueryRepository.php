@@ -41,8 +41,8 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         private Expiry $expiry,
         private CacheDependencyInterface $cacheDependency,
         private UnstorableGateInterface $gate,
-        private UncacheableMarkScopeInterface $mark = new UncacheableMark(),
         private UnstorableWriteObserverInterface $writeObserver = new NullUnstorableWriteObserver(),
+        private UncacheableMarkScopeInterface $mark = new UncacheableMark(),
     ) {
     }
 
