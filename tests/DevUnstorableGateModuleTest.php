@@ -197,6 +197,58 @@ class DevUnstorableGateModuleTest extends TestCase
         $this->assertNotNull(self::eventContextJsonOf($tree, 'refresh_donut'), 'the template was actually saved - the second GET recomposes from it, not a fresh MISS');
     }
 
+    public function testADonutPageOnTheShortcutPathWithALegitimatelyMarkingHoleDoesNotThrowAndStillRefusesItsHeader(): void
+    {
+        // Fable's finding: AbstractDonutCacheInterceptor's "already answered" shortcut (an
+        // ETag the page set itself, DonutCacheShortcutPathWithMarkingHole) must reach the
+        // SAME dev-gate outcome as the normal write path
+        // (testCorrectDonutPageWithALegitimatelyMarkingHoleDoesNotThrowAndStoresItsTemplate
+        // above) for a hole-only mark: doPutDonut() never reports a hole refusing its own
+        // write (reasonExcludingHoleMarks() stays null - the TEMPLATE, placeholders only,
+        // is unaffected by a hole's own content), only reason() (any-owner) refuses the
+        // LIVE response header, because that response really does carry the hole's marked
+        // content. The old version of this shortcut's own refusal used reason() for BOTH,
+        // so a hole-only mark reaching it raised UnstorableResponseDetected where the
+        // normal path never would have.
+        //
+        // A hole's own mark is only ever "hole-scoped and closed" via
+        // UncacheableMarkScopeInterface::enterHole()/leaveHole() (DonutRequest/
+        // ResourceDonut's own template-rendering pipeline, never a plain PHP-level #[Embed]
+        // access) - simulated directly here the same way
+        // testADirectPutInsideOwnOnGetIsStoredWhenOnlyAnUnrelatedSiblingMarkedAndClosedBeforehand
+        // (DirectWriteScopeTest) does, so this test exercises the predicate split itself,
+        // not incidental #[Embed] timing.
+        $injector = $this->getInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $scope = $injector->getInstance(UncacheableMarkScopeInterface::class);
+        $mark = $injector->getInstance(UncacheableMarkInterface::class);
+
+        $scope->enterHole('app://self/some-hole');
+        $mark->mark('csrf-token-issued');
+        $scope->leaveHole('app://self/some-hole');
+
+        $ro = $resource->get('page://self/html/donut-cache-shortcut-path-with-marking-hole');
+
+        $this->assertSame(200, $ro->code, 'no UnstorableResponseDetected - a hole refusing its own write is expected, not reported');
+        $this->assertSame('private, no-store', $ro->headers[Header::CACHE_CONTROL] ?? null, 'the live response must still be refused - the hole-only split exempts only the DEV GATE, not the header');
+    }
+
+    public function testADonutPageThatMarksItselfAndAnswersAValidationErrorDoesNotThrow(): void
+    {
+        // CodeRabbit review (thread on cb96e49, AbstractDonutCacheInterceptor.php:188):
+        // handleProceedResult()'s shared ETag-present/error-code branch used to call
+        // refuseIfUnstorable() unconditionally, so a self-marking page that ALSO answers a
+        // non-200 newly reached the dev gate where it never did before that shortcut's own
+        // cleanup/refusal existed (an error-code response was never gate-checked at all).
+        // report: $hasEtag in handleProceedResult() keeps the error-code branch silent
+        // regardless of this page's own mark.
+        $resource = $this->getInjector()->getInstance(ResourceInterface::class);
+
+        $ro = $resource->get('page://self/html/donut-cache-self-marking-validation-error');
+
+        $this->assertSame(400, $ro->code, 'no UnstorableResponseDetected - an error-code response was never dev-gate-reportable before the ETag-shortcut cleanup existed, and still is not');
+    }
+
     public function testATopLevelCacheableResourceMarkingItselfThrowsExactlyOnceAfterRenderingWithoutCorruptingTheTemplate(): void
     {
         // The actual #222 misuse a developer needs to see: no hole to isolate the mark in
