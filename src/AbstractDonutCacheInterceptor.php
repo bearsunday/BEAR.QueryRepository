@@ -190,7 +190,6 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
      */
     private function handleProceedResult(ResourceObject $ro, bool &$threw): ResourceObject
     {
-        // donut created in ResourceObject
         if (isset($ro->headers[Header::ETAG]) || $ro->code >= Code::BAD_REQUEST) {
             $hasEtag = isset($ro->headers[Header::ETAG]);
             // An error-code response was never dev-gate-reportable before this shortcut

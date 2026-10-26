@@ -31,8 +31,6 @@ use const E_USER_WARNING;
  * Interceptor for TTL-based caching on CQRS queries with #[Cacheable]
  *
  * Bound to query methods (onGet) of classes marked with #[Cacheable].
- * Retrieves cached resource state if available, otherwise executes
- * the method and stores the result with configured TTL.
  *
  * @see \BEAR\RepositoryModule\Annotation\Cacheable
  * @see https://bearsunday.github.io/manuals/1.0/en/cache.html#cacheable
@@ -139,9 +137,8 @@ final readonly class CacheInterceptor implements MethodInterceptor
 
                 $this->repository->put($ro);
             } catch (Throwable $e) {
-                // The store refused the write: the response is already correct, so it is served
-                // and the failure is recorded. A render that throws, or a CDN purge that does, is
-                // not the store's failure and keeps its path.
+                // The store refused the write: the already-correct response is served and the
+                // failure recorded; a render/purge failure is not the store's and keeps propagating.
                 $this->logger->event(self::failure((string) $ro->uri, 'write', $e));
                 if (! $e instanceof CacheStoreFailure) {
                     $threw = true;

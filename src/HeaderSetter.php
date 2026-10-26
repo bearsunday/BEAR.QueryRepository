@@ -18,7 +18,7 @@ use function strtolower;
 final readonly class HeaderSetter
 {
     /**
-     * The CDN-facing headers unset on an unstorable response (issue #222), across every
+     * The CDN-facing headers unset on an unstorable response (#222), across every
      * flavor (default, Fastly, Akamai) - unset unconditionally, whether the gate tripped on
      * a mark or on a Cache-Control the response set itself, since this package never hands a
      * shared cache a lifetime for a response it is itself refusing to store.

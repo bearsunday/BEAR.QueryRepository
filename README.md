@@ -23,6 +23,19 @@
   - The mark is per-request state (`UncacheableMarkScopeInterface`, `Scope::SINGLETON`). A long-running worker (Swoole, RoadRunner) must build each request's own Injector/object graph to get a fresh instance, since `$module->override()` has no effect on an already-built `Injector` — the same requirement `ServerContextInterface` already has. `UncacheableMarkInterface` itself needs nothing done for it — never bind it to a stateful instance of its own.
   - This guard only stops *new* writes, so deploy a new `CacheVersionModule` version alongside it to start this release from a fresh cache namespace. `CacheVersionModule` only namespaces pools built through this package's own `Storage*Module`s or a `#[CacheNamespace]`-aware adapter; an app binding its own cache adapter directly must clear those pools instead.
 
+## Cache dependencies
+
+Declare a dependency with `#[Embed]` and never `unset()` or overwrite the slot - a cached `onGet()` must not fetch dependent data with `$resource->get()`. What a child becomes depends on how the page uses it:
+
+| Need | Use | Effect of a child purge |
+|---|---|---|
+| Per-user content (no shared cache) | `#[DonutCache]` hole (non-cacheable child) | that hole alone re-runs on every HIT |
+| Shared content that changes on an event | `#[CacheableResponse]` hole (cacheable child, never read in `onGet()`) | the shell is recomposed from the stored template; the page's own `onGet()` does not re-run |
+| A value the page's own `onGet()` reads | material (the child is tagged, whether or not it is also rendered as a hole) | the whole template is dropped; the next GET is a fresh miss |
+| Data that is merely stale after a while | `#[Cacheable]` with a TTL | expires on its own, no purge needed |
+
+A writer-side `#[Purge]`/`#[Refresh]` on the command that changes the data is the alternative to waiting on this chain.
+
 ## Documentation
 
 - [BEAR.Sunday cache manual](http://bearsunday.github.io/manuals/1.0/ja/cache.html)

@@ -9,13 +9,10 @@ use Override;
 use function is_string;
 
 /**
- * Server context implementation using $_SERVER superglobal
+ * The default ServerContextInterface for PHP-FPM (one request at a time per worker)
  *
- * This is the default implementation for traditional PHP-FPM environments
- * where each request runs in isolation and $_SERVER is safe to use.
- *
- * For concurrent request processing (Swoole, RoadRunner), use a request-scoped
- * implementation instead.
+ * $_SERVER is safe to read directly there; for concurrent processing (Swoole, RoadRunner),
+ * use a request-scoped implementation instead.
  */
 final class GlobalServerContext implements ServerContextInterface
 {

@@ -65,9 +65,7 @@ final readonly class EtagSetter implements EtagSetterInterface
     }
 
     /**
-     * Return crc32 encoded Etag
-     *
-     * Is crc32 enough for Etag ?
+     * crc32-encoded ETag
      *
      * @see https://cloud.google.com/storage/docs/hashes-etags
      */

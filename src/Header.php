@@ -9,11 +9,6 @@ use function strtolower;
 
 final class Header
 {
-    /**
-     * Purge Keys
-     *
-     * Tags for cache invalidation.
-     */
     public const SURROGATE_KEY = 'Surrogate-Key';
     public const ETAG = 'ETag';
     public const CDN_CACHE_CONTROL = 'CDN-Cache-Control';

@@ -6,26 +6,23 @@ namespace BEAR\QueryRepository;
 
 use Override;
 
-use function str_replace;
+use function strtr;
 
 final class DonutRenderer implements DonutRendererInterface
 {
-    /** @var list<string> */
-    private array $searches = [];
-
-    /** @var list<string> */
+    /** @var array<string, string> */
     private array $views = [];
 
     #[Override]
     public function setView(string $uri, string $view): void
     {
-        $this->searches[] = ResourceDonut::placeholder($uri);
-        $this->views[] = $view;
+        // One view per placeholder: in a long-running container the latest render of a hole must win.
+        $this->views[ResourceDonut::placeholder($uri)] = $view;
     }
 
     #[Override]
     public function render(string $template): string
     {
-        return str_replace($this->searches, $this->views, $template);
+        return strtr($template, $this->views);
     }
 }

@@ -18,7 +18,6 @@ use function assert;
  * Interceptor for HTTP Cache-Control header with #[HttpCache] or #[NoHttpCache]
  *
  * Bound to onGet methods of classes marked with #[HttpCache] or #[NoHttpCache].
- * Sets the Cache-Control header based on attribute configuration for HTTP caching.
  *
  * @see \BEAR\RepositoryModule\Annotation\HttpCache
  * @see \BEAR\RepositoryModule\Annotation\NoHttpCache
