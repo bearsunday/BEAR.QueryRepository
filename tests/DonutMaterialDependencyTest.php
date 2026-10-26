@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\CacheLog;
+use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceInterface;
+use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
 use FakeVendor\HelloWorld\Resource\Page\Html\MutableComment;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Madapaja\TwigModule\TwigModule;
+use Override;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 
@@ -17,6 +20,7 @@ use function array_filter;
 use function array_values;
 use function dirname;
 use function str_contains;
+use function str_replace;
 
 /**
  * A #[DonutCache] page's embedded child is tagged as a dependency ("material") when the
@@ -280,6 +284,59 @@ class DonutMaterialDependencyTest extends TestCase
 
         $this->assertStringContainsString('comment-b', (string) $second->view);
         $this->assertStringNotContainsString('comment-a', (string) $second->view, 'the second MISS must not replay the first MISS\'s stale hole view');
+    }
+
+    /**
+     * A DI-bound repository always gets the container's own CacheDependencyInterface
+     * binding, which never exercises the `?? new CacheDependency(...)` default - only a
+     * manually constructed repository does. That default must still honour the UriTag
+     * such a caller actually passed, not a bare `new UriTag()`.
+     */
+    public function testAManuallyConstructedRepositoryUsesItsOwnUriTagForTheDefaultCacheDependency(): void
+    {
+        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
+        $injector = new Injector($module, __DIR__ . '/tmp');
+
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $repository = new DonutRepository(
+            $injector->getInstance(QueryRepositoryInterface::class),
+            $injector->getInstance(DonutHeaderSetter::class),
+            $injector->getInstance(ResourceStorageInterface::class),
+            $resource,
+            $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class),
+            $injector->getInstance(DonutRendererInterface::class),
+            $injector->getInstance(UnstorableGateInterface::class),
+            $injector->getInstance(UncacheableMarkInterface::class),
+            new class implements UriTagInterface {
+                #[Override]
+                public function __invoke(AbstractUri $uri): string
+                {
+                    return 'customtag_' . str_replace(['/', '?', '&', ':'], '_', (string) $uri);
+                }
+
+                #[Override]
+                public function fromAssoc(string $uriTemplate, array $assoc): string
+                {
+                    return '';
+                }
+            },
+        );
+
+        // uri() (not newRequest(), unavailable before bear/resource 1.2x) is the same GET
+        // request #[Embed] itself builds; run once so its headers carry the material
+        // signal classifyMaterials() reads.
+        $childRequest = $resource->uri(self::CACHEABLE_MATERIAL_CHILD);
+        $childRequest();
+
+        $parent = new class extends ResourceObject {
+        };
+        $parent->uri = new Uri('page://self/dep/unit-manual-parent');
+        $parent->body = ['comment' => $childRequest];
+
+        $result = $repository->putDonut($parent, null);
+
+        $this->assertStringContainsString('customtag_page___self_html_comment', $result->headers[Header::SURROGATE_KEY] ?? '', "the default CacheDependency must tag the child with THIS repository's own UriTag, not a bare new UriTag()");
     }
 
     /**
