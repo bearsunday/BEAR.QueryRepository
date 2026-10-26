@@ -46,8 +46,8 @@ final class DonutCacheModule extends AbstractModule
         $this->bind(DonutHeaderSetter::class);
         $this->bind(CdnCacheControlHeaderSetterInterface::class)->to(CdnCacheControlHeaderSetter::class);
         $this->bind(DonutRepositoryInterface::class)->to(DonutRepository::class)->in(Scope::SINGLETON);
-        // BC: the legacy flat logger interface is kept bound (deprecated). Internal cache code
-        // now logs through SemanticLoggerInterface, so this instance receives no internal events.
+        // Kept bound for BC; internal cache code logs through SemanticLoggerInterface instead,
+        // so an injected RepositoryLoggerInterface instance never receives these events.
         /** @psalm-suppress DeprecatedClass, DeprecatedInterface */
         $this->bind(RepositoryLoggerInterface::class)->to(RepositoryLogger::class)->in(Scope::SINGLETON);
         $this->bind(PurgerInterface::class)->to(NullPurger::class);
@@ -81,7 +81,7 @@ final class DonutCacheModule extends AbstractModule
     /**
      * onPost writes too: a POST that changes state must refresh the donut it invalidates
      *
-     * @see \BEAR\QueryRepository\CacheableModule::installAopModule() same set on the value-cache side
+     * @see \BEAR\QueryRepository\CacheableModule::installAopModule()
      */
     private static function commandMethods(MatcherInterface $matcher): AbstractMatcher
     {
@@ -99,10 +99,9 @@ final class DonutCacheModule extends AbstractModule
 
     private function installAopMethodModule(): void
     {
-        // Ray.Aop merges overlapping bindings without deduplicating, so a class whose own
-        // declaration already governs the method is excluded. The two sets differ because
-        // #[DonutCache] governs onGet only: excluding it from the write bindings too would
-        // leave a #[RefreshCache] write on such a class with no interceptor at all.
+        // Ray.Aop merges without deduplicating, so a class whose own declaration governs a
+        // method is excluded; unifying the sets would leave a #[RefreshCache] write with no
+        // interceptor.
         $readNotDeclared = $this->matcher->logicalNot(
             $this->matcher->logicalOr(
                 $this->matcher->annotatedWith(CacheableResponse::class),

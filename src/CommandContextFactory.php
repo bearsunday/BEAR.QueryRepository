@@ -11,12 +11,9 @@ use Ray\Aop\MethodInvocation;
 /**
  * Builds the CommandContext that opens a write/command logging scope
  *
- * Captures the command method (e.g. onPut, onDelete) and its #[Refresh] /
- * #[Purge] annotations, so the cause of the invalidations that follow is
- * recorded as the open node, with the purges nested beneath it.
- *
- * Shared by CommandInterceptor, DonutCommandInterceptor and RefreshInterceptor
- * to avoid duplication.
+ * Captures the command method and its #[Refresh]/#[Purge] annotations so invalidations
+ * that follow are recorded nested under this open node. Shared by CommandInterceptor,
+ * DonutCommandInterceptor and RefreshInterceptor.
  */
 final class CommandContextFactory
 {

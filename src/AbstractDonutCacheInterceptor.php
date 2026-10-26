@@ -74,13 +74,8 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
                 /** @var ResourceObject $fresh */
                 $fresh = $invocation->proceed();
 
-                // Same outcome a normal MISS reaches below: render (and, if the render and
-                // the store both succeed, re-cache) via the full donut path - a degraded
-                // read must not return $invocation->proceed()'s raw, un-rendered result
-                // (an un-executed #[Embed] request, `view` still null) directly to the
-                // caller, which would either show nothing or make a later `(string)` cast
-                // execute a hole untracked by UncacheableMark/SurrogateKeys, or - for a
-                // raw (non-donut-wrapped) AbstractRequest - trigger its own E_USER_ERROR.
+                // Route through handleProceedResult(): the raw, un-rendered proceed() result
+                // must not reach the caller - a later cast could run an untracked hole.
                 return $this->handleProceedResult($fresh);
             }
 
@@ -102,14 +97,11 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
     }
 
     /**
-     * What runs on a fresh render, whether it is a normal MISS or a read-degrade fallback:
-     * an already-answered response (an ETag the resource set itself, an error code) is
-     * served as-is and the non-write recorded; anything else is rendered and stored through
-     * `putRecorded()`.
+     * Serves an already-answered response (own ETag, error code) as-is; anything else is
+     * rendered and stored via putRecorded().
      */
     private function handleProceedResult(ResourceObject $ro): ResourceObject
     {
-        // donut created in ResourceObject
         if (isset($ro->headers[Header::ETAG]) || $ro->code >= Code::BAD_REQUEST) {
             // Record why this miss is not followed by a put; without it the log looks like a lost write.
             $hasEtag = isset($ro->headers[Header::ETAG]);
@@ -124,10 +116,9 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
     /**
      * Run the donut write, degrading a store failure and recording either way
      *
-     * A store that refuses the entry leaves a page that was rendered correctly: it is served, and
-     * the failure is recorded rather than turned into a 500. What the store did not raise keeps
-     * travelling - a template that fails to render is not a slow page, it is a page that does not
-     * exist, and swallowing it would answer 200 with nothing in it.
+     * A refused store still serves the already-rendered page, recording the failure instead
+     * of a 500; anything else keeps propagating, since swallowing it would answer 200 with
+     * nothing in it.
      */
     private function putRecorded(ResourceObject $ro): ResourceObject
     {

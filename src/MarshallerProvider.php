@@ -11,15 +11,7 @@ use Symfony\Component\Cache\Marshaller\DefaultMarshaller;
 use Symfony\Component\Cache\Marshaller\DeflateMarshaller;
 use Symfony\Component\Cache\Marshaller\MarshallerInterface;
 
-/**
- * Provider for creating marshaller instances based on configuration options
- *
- * Supports the following marshaller types:
- * - 'default': Basic marshaller with optional igbinary support
- * - 'deflate': Compression-enabled marshaller (requires zlib extension)
- *
- * @implements ProviderInterface<MarshallerInterface|null>
- */
+/** @implements ProviderInterface<MarshallerInterface|null> */
 final readonly class MarshallerProvider implements ProviderInterface
 {
     /** @param array{enabled?: bool, type?: string, use_igbinary?: bool} $options Marshalling options */
@@ -35,11 +27,7 @@ final readonly class MarshallerProvider implements ProviderInterface
         return $this->createMarshaller($this->options);
     }
 
-    /**
-     * Create marshaller instance based on options
-     *
-     * @param array{enabled?: bool, type?: string, use_igbinary?: bool} $options
-     */
+    /** @param array{enabled?: bool, type?: string, use_igbinary?: bool} $options */
     private function createMarshaller(array $options): MarshallerInterface|null
     {
         if (empty($options) || ($options['enabled'] ?? false) !== true) {
