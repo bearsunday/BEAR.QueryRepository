@@ -52,8 +52,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         private UriTagInterface $uriTag = new UriTag(),
         CacheDependencyInterface|null $cacheDependency = null,
     ) {
-        // Built from the same $uriTag/$logger this repository uses, not a bare default:
-        // a caller with a custom UriTag must see materials tagged with that same tag.
+        // Same UriTag as templateKeys(), so a material's tag matches the format purge() emits.
         $this->cacheDependency = $cacheDependency ?? new CacheDependency($this->uriTag, $this->logger);
     }
 

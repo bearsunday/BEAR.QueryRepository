@@ -16,7 +16,7 @@ final class DonutRenderer implements DonutRendererInterface
     #[Override]
     public function setView(string $uri, string $view): void
     {
-        // Keyed, not appended: a later MISS in a long-running container must replace a stale hole view.
+        // One view per placeholder: in a long-running container the latest render of a hole must win.
         $this->views[ResourceDonut::placeholder($uri)] = $view;
     }
 
