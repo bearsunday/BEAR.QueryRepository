@@ -35,9 +35,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     private CacheDependencyInterface $cacheDependency;
 
     /**
-     * A new dependency is always appended, never inserted before an existing parameter: a
-     * direct (non-DI) caller's positional arguments must keep working across a minor
-     * version bump.
+     * Append new parameters only: direct (non-DI) callers pass them positionally.
      *
      * @SuppressWarnings("PHPMD.ExcessiveParameterList")
      */
