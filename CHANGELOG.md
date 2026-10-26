@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Requires `bear/resource` `^1.22.4`.
 - `KeepMutationsAndFailures` also keeps a session cut at the record limit (`semantic_logger_truncated`): a `command` past the limit leaves no other trace.
 - `ResourceDonut::refresh()`: a hole that throws while an already-cached `#[DonutCache]` page is recomposed (its own `onGet()` or its render) no longer lets that exception reach the caller directly from the refresh. It now degrades the same way a cache-store failure does and falls back to rendering the whole page fresh. A transient failure (the hole recovers on that fresh render) now answers 200 with the full body instead of an error - for example a corrupted legacy placeholder's `ParameterException`, previously an uncaught 500 straight from the refresh, now answers 200 on both this request and the next, since the fresh render re-stores the template with a correct `[le2:...]` placeholder. A hole that keeps throwing still fails the request - from the fresh render instead of from the refresh - exactly as the page would without the cache attribute at all.
+- `CacheDependency::depends()` no longer unsets the child's own `Surrogate-Key` header after copying it into the parent: a child that is both read by the parent and later rendered as a hole keeps its own key for its own independent cache entry.
 
 ### Fixed
 - `LogFileWriter`: two sessions flushed in the same microsecond no longer overwrite each other. The timestamped filename now carries a random suffix, so both survive (#221).
@@ -28,6 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A degraded cache read (a down cache pool, or - see above - a hole failing while a cached page is refreshed) now actually renders its fresh-render fallback instead of returning the un-rendered result of running `onGet()` alone: previously such a request answered 200 with an unresolved `#[Embed]` hole still in its body and no view, rather than the composed page.
 - An embedded child of a `#[DonutCache]`/`#[CacheableResponse]` page that `onGet()` already read into the body is no longer re-executed when the page renders it as a hole; both now come from the same single execution (#226).
 - `ResourceBodyEvaluator` no longer crashes materializing an embedded child whose `jsonSerialize()` does not answer the memoized `ResourceObject` (the shape `BEAR\Async\AsyncRequest` overrides it to): such a child is now left unmaterialized instead of asserting. Async support itself remains out of scope.
+- A `#[DonutCache]` page whose `onGet()` already reads an embedded child's value (a "material", as opposed to a pure hole the page never reads) now tags the stored template with that child's URI and its own `Surrogate-Key`. Purging the child now drops the template too, so the next GET is a fresh miss with the child's current value instead of staying indefinitely stale.
+- `DonutRenderer`: a second cache MISS of the same page in one long-running container (Swoole, RoadRunner) now renders that hole's fresh content; it previously could replay the first MISS's stale view.
 
 ## [1.17.0] - 2026-09-17
 

@@ -31,7 +31,6 @@ final readonly class CacheDependency implements CacheDependencyInterface
         $childTags = ($this->uriTag)($to->uri);
         if (isset($to->headers[Header::SURROGATE_KEY])) {
             $childTags .= sprintf(' %s', $to->headers[Header::SURROGATE_KEY]);
-            unset($to->headers[Header::SURROGATE_KEY]);
         }
 
         // Accumulate across embedded children, deduped: #[Refresh] re-puts the instance

@@ -18,6 +18,7 @@ use BEAR\QueryRepository\Log\Context\RefreshDonutContext;
 use BEAR\QueryRepository\Log\Context\SaveDonutContext;
 use BEAR\QueryRepository\Log\TopLevelAwareInterface;
 use BEAR\RepositoryModule\Annotation\CacheLog;
+use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
@@ -42,6 +43,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         private UnstorableGateInterface $gate,
         private UncacheableMarkInterface $mark,
         private UriTagInterface $uriTag = new UriTag(),
+        private CacheDependencyInterface $cacheDependency = new CacheDependency(new UriTag()),
     ) {
     }
 
@@ -192,6 +194,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
      */
     private function doPutDonut(ResourceObject $ro, int|null $donutTtl): void
     {
+        $this->classifyMaterials($ro);
         $this->logger->event(new PutDonutContext((string) $ro->uri, $donutTtl, null));
         $keys = new SurrogateKeys($ro->uri);
         $declaredKeys = $this->getHeaderKeys($ro);
@@ -217,6 +220,34 @@ final readonly class DonutRepository implements DonutRepositoryInterface
 
         // save donut
         $this->resourceStorage->saveDonut($ro->uri, $donut, $donutTtl, $templateKeys);
+    }
+
+    /**
+     * Tag a body child the parent's own onGet() already ran as a dependency, before the
+     * template keys below are computed from the header this writes.
+     *
+     * A material is a body `#[Embed]` child whose resourceObject already carries an ETag
+     * (set by a `#[Cacheable]`/`#[CacheableResponse]` child's own interceptor) or a
+     * Surrogate-Key (always set by a `#[DonutCache]` child's own write, or by a hand-set
+     * key): either header existing before create() runs is evidence the parent already
+     * read the child's data, as opposed to a hole, which create() executes later inside
+     * its own scope. The check only reads headers and never executes a child itself.
+     */
+    private function classifyMaterials(ResourceObject $ro): void
+    {
+        /** @var mixed $body */
+        foreach ((array) $ro->body as $body) {
+            if (! ($body instanceof AbstractRequest)) {
+                continue;
+            }
+
+            $child = $body->resourceObject;
+            if (! isset($child->headers[Header::ETAG]) && ! isset($child->headers[Header::SURROGATE_KEY])) {
+                continue;
+            }
+
+            $this->cacheDependency->depends($ro, $child);
+        }
     }
 
     /**
