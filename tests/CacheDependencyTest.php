@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\Resource\Module\HalModule;
 use BEAR\Resource\ResourceInterface;
+use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
 use Override;
 use PHPUnit\Framework\TestCase;
@@ -14,6 +15,8 @@ use Ray\Di\Injector;
 
 use function array_map;
 use function array_merge;
+use function array_unique;
+use function array_values;
 use function explode;
 
 class CacheDependencyTest extends TestCase
@@ -239,5 +242,37 @@ class CacheDependencyTest extends TestCase
         $childTag = (new UriTag())(new Uri('page://self/hal/child'));
 
         $this->assertStringContainsString($childTag, $parent->headers[Header::SURROGATE_KEY] ?? '');
+    }
+
+    /**
+     * depends() no longer unsets the child's own Surrogate-Key: a child that is both a
+     * material and a hole must keep its own key for its own independent cache entry
+     * (DonutMaterialDependencyTest covers that end to end). Repeated calls for the same
+     * child - #[Refresh] re-puts an instance that was already depended on - must not
+     * duplicate the parent's tags either.
+     */
+    public function testDependsLeavesTheChildsOwnKeyIntactAndDedupesTheParent(): void
+    {
+        $uriTag = new UriTag();
+        $dependency = new CacheDependency($uriTag);
+
+        $parent = new class extends ResourceObject {
+        };
+        $parent->uri = new Uri('page://self/dep/unit-parent');
+
+        $child = new class extends ResourceObject {
+        };
+        $child->uri = new Uri('page://self/dep/unit-child');
+        $child->headers[Header::SURROGATE_KEY] = 'unit-child-key';
+
+        $dependency->depends($parent, $child);
+        $dependency->depends($parent, $child);
+
+        $this->assertSame('unit-child-key', $child->headers[Header::SURROGATE_KEY], "depends() must not erase the child's own key");
+
+        $parentTags = explode(' ', $parent->headers[Header::SURROGATE_KEY]);
+        $this->assertContains($uriTag($child->uri), $parentTags);
+        $this->assertContains('unit-child-key', $parentTags);
+        $this->assertSame(array_values(array_unique($parentTags)), $parentTags, 'a repeated depends() call for the same child does not duplicate the parent tags');
     }
 }
