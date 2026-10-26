@@ -24,8 +24,6 @@ use BEAR\Resource\ResourceObject;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 
-use function array_key_exists;
-use function array_merge;
 use function array_unique;
 use function array_values;
 use function explode;
@@ -33,11 +31,6 @@ use function max;
 
 final readonly class DonutRepository implements DonutRepositoryInterface
 {
-    /**
-     * One dependency per collaborator, all constructor-injected.
-     *
-     * @SuppressWarnings("PHPMD.ExcessiveParameterList")
-     */
     public function __construct(
         private QueryRepositoryInterface $queryRepository,
         private DonutHeaderSetter $donutHeaderSetter,
@@ -48,7 +41,6 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         private DonutRendererInterface $renderer,
         private UnstorableGateInterface $gate,
         private UncacheableMarkInterface $mark,
-        private DonutChildExecutionsInterface $childExecutions,
         private UriTagInterface $uriTag = new UriTag(),
     ) {
     }
@@ -154,21 +146,8 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $keys = new SurrogateKeys($ro->uri);
         $keys->addTag($ro);
         $declaredKeys = $this->getHeaderKeys($ro);
-        // create() must run before unrenderedChildren(): it is what actually runs onGet()'s
-        // embeds and the page's own (string) $ro template render, so an OnceRequest's own
-        // generations() (issue #226) is not final until it returns.
-        $donut = ResourceDonut::create($ro, $this->renderer, $keys, $sMaxAge, true, $this->mark);
-        $unrenderedChildren = $this->unrenderedChildren($ro);
-        // The live response's own Surrogate-Key carries every unrendered child's tag too
-        // (issue #226 review): without this, purging such a child's tag invalidates the
-        // stored template but leaves the saved ETag/view entry - tagged from $keys alone -
-        // reachable, so a purge after this write still serves a cache_hit.
-        foreach ($unrenderedChildren as $childRo) {
-            $keys->addTag($childRo);
-        }
-
-        $templateKeys = $this->templateKeys($ro, $declaredKeys, $this->childTags($unrenderedChildren));
-        $donut = $donut->withStorageState($ttl, $templateKeys);
+        $templateKeys = $this->templateKeys($ro, $declaredKeys);
+        $donut = ResourceDonut::create($ro, $this->renderer, $keys, $sMaxAge, true, $this->mark)->withStorageState($ttl, $templateKeys);
         $donut->render($ro, $this->renderer);
         // Checked against the still-unmutated header, before setHeaders() below runs
         // headerSetter/setCdnCacheControl - the same point QueryRepository checks at (issue
@@ -216,20 +195,8 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $this->logger->event(new PutDonutContext((string) $ro->uri, $donutTtl, null));
         $keys = new SurrogateKeys($ro->uri);
         $declaredKeys = $this->getHeaderKeys($ro);
-        // create() must run before unrenderedChildren(): see doPutStatic()'s own comment above.
-        $donut = ResourceDonut::create($ro, $this->renderer, $keys, $donutTtl, false, $this->mark);
-        $unrenderedChildren = $this->unrenderedChildren($ro);
-        // Same reasoning as doPutStatic()'s own loop: this page's live CDN Surrogate-Key
-        // header (set below via $keys->setSurrogateHeader()) must carry an unrendered
-        // child's tag too, or a CDN-level purge by that tag cannot reach this response -
-        // even though a #[DonutCache] page never gets a server-side ETag/view entry of its
-        // own (only the template, tagged via $templateKeys below, is ever saved here).
-        foreach ($unrenderedChildren as $childRo) {
-            $keys->addTag($childRo);
-        }
-
-        $templateKeys = $this->templateKeys($ro, $declaredKeys, $this->childTags($unrenderedChildren));
-        $donut = $donut->withStorageState($donutTtl, $templateKeys);
+        $templateKeys = $this->templateKeys($ro, $declaredKeys);
+        $donut = ResourceDonut::create($ro, $this->renderer, $keys, $donutTtl, false, $this->mark)->withStorageState($donutTtl, $templateKeys);
         $donut->render($ro, $this->renderer);
         $templateUnstorable = $this->gate->reasonExcludingHoleMarks($ro);
         $responseUnstorable = $this->gate->reason($ro);
@@ -253,78 +220,16 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     }
 
     /**
-     * The tags a donut template is stored under: its own URI tag (what `purge($uri)` invalidates -
-     * an untagged template is reachable by no `invalidateTags()` call, issue #185), whatever the
-     * resource declared, plus (issue #226) whatever extra tags the caller found. The latter already
-     * excludes a child rendered as a hole - deliberately kept out so that child's own write drops
-     * only the rendered content and leaves the shell to be recomposed, not the whole template.
+     * The template's own URI tag (so `purge($uri)` reaches it, #185) and the declared keys. Children's
+     * tags are left out: a child's write drops only the content and the shell is recomposed.
      *
      * @param list<string> $declaredKeys
-     * @param list<string> $extraChildTags
      *
      * @return list<string>
      */
-    private function templateKeys(ResourceObject $ro, array $declaredKeys, array $extraChildTags = []): array
+    private function templateKeys(ResourceObject $ro, array $declaredKeys): array
     {
-        return array_values(array_unique([($this->uriTag)($ro->uri), ...$declaredKeys, ...$extraChildTags]));
-    }
-
-    /**
-     * This page's own embedded children that executed (any generation - see
-     * `OnceRequest::generations()`) but were never substituted into the template as a hole
-     * (issue #226) - read once from whatever `EmbedOnceInterceptor` registered for $ro,
-     * regardless of whether a child is still reachable through $ro->body by now (onGet()
-     * may have unset() it, or overwritten the slot with a plain value pulled out of it).
-     *
-     * A child re-executed mid-`onGet()` (a `withQuery()`/`addQuery()`/`link*()` call)
-     * answers more than one generation here: every one of them ran and none but possibly
-     * the last could ever have become a hole, so every one but a rendered last needs its own
-     * tag - purging an EARLIER generation's tag must invalidate the page precisely as much
-     * as purging the latest's.
-     *
-     * Never runs a child to find this out: `OnceRequest::generations()` answers purely from
-     * each wrapper's own memo, populated only by whatever already read it.
-     *
-     * `take()` is destructive (the registry answers empty on a second call for the same
-     * $ro), so this reads it exactly once and the caller must reuse the result for every
-     * purpose - both the live response's `SurrogateKeys` and the template's own tags.
-     *
-     * @return list<ResourceObject>
-     */
-    private function unrenderedChildren(ResourceObject $ro): array
-    {
-        $children = [];
-        foreach ($this->childExecutions->take($ro) as $once) {
-            foreach ($once->generations() as $generation) {
-                if ($generation['rendered']) {
-                    continue;
-                }
-
-                $children[] = $generation['resourceObject'];
-            }
-        }
-
-        return $children;
-    }
-
-    /**
-     * Flatten a list of children into their own URI tags and declared Surrogate-Keys
-     *
-     * @param list<ResourceObject> $children
-     *
-     * @return list<string>
-     */
-    private function childTags(array $children): array
-    {
-        $tags = [];
-        foreach ($children as $childRo) {
-            $tags[] = ($this->uriTag)($childRo->uri);
-            if (array_key_exists(Header::SURROGATE_KEY, $childRo->headers)) {
-                $tags = array_merge($tags, explode(' ', $childRo->headers[Header::SURROGATE_KEY]));
-            }
-        }
-
-        return array_values(array_unique($tags));
+        return array_values(array_unique([($this->uriTag)($ro->uri), ...$declaredKeys]));
     }
 
     /**

@@ -13,8 +13,7 @@ use BEAR\Resource\ResourceObject;
  * counter }}` in the template is the hole; both must come from the one execution.
  *
  * `$body`'s default `label` key is a plain value already sitting in the body before
- * `#[Embed]` adds `counter` to it - the shape EmbedOnceInterceptor::swap() must leave
- * alone (only an `AbstractRequest`/`Request` entry is a candidate to wrap).
+ * `#[Embed]` adds `counter` to it.
  */
 #[DonutCache]
 class CounterDonut extends ResourceObject

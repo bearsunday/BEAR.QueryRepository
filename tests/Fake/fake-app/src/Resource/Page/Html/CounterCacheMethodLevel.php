@@ -7,11 +7,7 @@ use BEAR\Resource\Annotation\Embed;
 use BEAR\Resource\ResourceObject;
 
 /**
- * Same shape as CounterDonut, but `#[CacheableResponse]` sits on the method (BlogPostingCache
- * is this shape too) rather than the class - proves DonutCacheModule::installAopMethodModule()'s
- * own EmbedOnceInterceptor binding (not just installAopClassModule()'s) actually engages: a
- * dead/unreached binding here would show up as Counter::$calls === 2, the same double
- * execution CounterDonut (class-level) is a counter-example for.
+ * CounterDonut with method-level #[CacheableResponse] (bound by installAopMethodModule())
  */
 class CounterCacheMethodLevel extends ResourceObject
 {
