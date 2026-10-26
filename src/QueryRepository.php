@@ -49,7 +49,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
     /**
      * {@inheritDoc}
      *
-     * CodeRabbit review: a direct (non-AOP) put() reached with NO cacheable GET interceptor
+     * A direct (non-AOP) put() reached with NO cacheable GET interceptor
      * currently active at all (a CLI script, a command handler, anything outside a GET flow -
      * `$mark->isInterceptorActive()` false) has no outermost `CacheInterceptor`/
      * `AbstractDonutCacheInterceptor` whose own `leaveInterceptor()` will ever reach depth
@@ -141,7 +141,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         // the store decision and the header decision can never disagree - likewise
         // isMarkReasonForOwnWrite(), the SAME own-write-scoped predicate, so headerSetter's
         // own "was it actually a mark, not just my own Cache-Control" check cannot disagree
-        // with reasonForOwnWrite() either (CodeRabbit review).
+        // with reasonForOwnWrite() either.
         $unstorable = $this->gate->reasonForOwnWrite($ro);
         $wasMarked = $this->gate->isMarkReasonForOwnWrite($ro);
 

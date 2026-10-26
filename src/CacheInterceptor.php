@@ -164,10 +164,8 @@ final readonly class CacheInterceptor implements MethodInterceptor
      * A direct (non-AOP) put() made from inside this resource's own onGet() - say, setting a
      * secret and only marking it unstorable afterward - relies on that outer write's own
      * pre-write cleanup (QueryRepository::doPut()'s unconditional deleteEtag()) to remove
-     * what the inner write already stored when the OUTER write is then refused; returning
-     * proceed()'s result directly here used to skip that outer write entirely, so the inner
-     * write's secret survived a degraded read where it would not have survived a normal miss
-     * (Kimi's finding).
+     * what the inner write already stored, whenever the OUTER write is then refused; skipping
+     * that outer write here would leave the inner write's secret cached.
      *
      * @return null always - the caller reads it as a MISS
      */

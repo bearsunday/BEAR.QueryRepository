@@ -70,9 +70,9 @@ final readonly class UnstorableGate implements UnstorableGateInterface
      * same reason isMarkReasonForOwnWrite() is: a caller already holding reason()'s own
      * 'unstorable'|null result (DonutHeaderSetter, passing it to HeaderSetter as $unstorable)
      * needs the SAME predicate, not HeaderSetter re-deriving its own, to tell a mark apart
-     * from a Cache-Control-only refusal (CodeRabbit review - see isMarkReasonForOwnWrite()'s
-     * own docblock for the own-write-scoped twin, and for why HeaderSetter itself no longer
-     * holds an UncacheableMarkScopeInterface of its own to derive either answer from).
+     * from a Cache-Control-only refusal - see isMarkReasonForOwnWrite()'s own docblock for
+     * the own-write-scoped twin; HeaderSetter itself holds no UncacheableMarkScopeInterface
+     * of its own, so it cannot derive either answer without being handed it.
      */
     #[Override]
     public function isMarkReason(ResourceObject $ro): bool
@@ -88,11 +88,10 @@ final readonly class UnstorableGate implements UnstorableGateInterface
      * holding THAT method's own 'unstorable'|null result (HeaderSetter, handed it by
      * QueryRepository::doPut() instead of recomputing its own answer) can also tell a mark
      * apart from a Cache-Control-only refusal, using the SAME predicate reasonForOwnWrite()
-     * used to decide 'unstorable' in the first place - CodeRabbit review: HeaderSetter's own
-     * any-owner isMarked() previously answered this for every caller, even the own-write-scoped
-     * one, wrongly overriding a #[Cacheable] resource's own Cache-Control header (e.g.
-     * `private, max-age=60`, no mark of its own) with `private, no-store` whenever an UNRELATED
-     * mark happened anywhere else in the request.
+     * used to decide 'unstorable' in the first place. Without this split, HeaderSetter's own
+     * any-owner isMarked() would wrongly override a #[Cacheable] resource's own Cache-Control
+     * header (e.g. `private, max-age=60`, no mark of its own) with `private, no-store`
+     * whenever an UNRELATED mark happens anywhere else in the request.
      */
     #[Override]
     public function isMarkReasonForOwnWrite(ResourceObject $ro): bool

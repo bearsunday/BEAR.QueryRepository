@@ -45,26 +45,22 @@ final readonly class HeaderSetter
      * passes its OWN-write-scoped UnstorableGateInterface::reasonForOwnWrite() result (#234);
      * DonutHeaderSetter's pass-through computes the any-owner reason() instead - the two call
      * sites deliberately use different predicates, so the decision is computed once by the
-     * caller and handed in rather than recomputed here, which would risk the two disagreeing
-     * (Kimi review: the prototype left this on the any-owner check for every caller). It is a
-     * trailing, named-only-in-practice parameter (BC: released 1.17.0 has `$time` 4th) - both
-     * internal call sites pass it as `unstorable: ...` rather than positionally.
+     * caller and handed in rather than recomputed here, which would risk the two disagreeing.
+     * It is a trailing, named-only-in-practice parameter (BC: released 1.17.0 has `$time`
+     * 4th) - both internal call sites pass it as `unstorable: ...` rather than positionally.
      *
      * $wasMarked is the SAME split, mandatory whenever $unstorable is non-null (loudly, a
-     * thrown LogicException, not a default - CodeRabbit review round 2: a nullable
-     * $wasMarked that silently fell back to an any-owner isMarked() this class asked on its
-     * OWN UncacheableMarkScopeInterface dependency was exactly how the bug below happened in
-     * the first place, and left that same drift possible for the next call site that forgets
-     * to pass it; this class holds no mark dependency of its own to drift back to). Read with
-     * the SAME predicate that computed $unstorable, or the two can disagree -
-     * QueryRepository::doPut() passes UnstorableGateInterface::isMarkReasonForOwnWrite()'s
-     * own-write-scoped answer; DonutHeaderSetter passes isMarkReason()'s any-owner one,
-     * matching its own any-owner reason() (CodeRabbit review round 1: without this split, a
-     * #[Cacheable] resource that set its own `private, max-age=60` Cache-Control - refused
-     * for THAT reason alone, no mark of its own - had that header wrongly replaced by
-     * `private, no-store` whenever an UNRELATED mark fired anywhere else in the request,
-     * because the any-owner isMarked() this class asked internally did not agree with the
-     * own-write-scoped reasonForOwnWrite() that decided $unstorable).
+     * thrown LogicException, not a default: this class holds no mark dependency of its own,
+     * so a nullable default could only fall back to guessing any-owner, risking disagreement
+     * with whichever predicate decided $unstorable). Read with the SAME predicate that
+     * computed $unstorable, or the two can disagree - QueryRepository::doPut() passes
+     * UnstorableGateInterface::isMarkReasonForOwnWrite()'s own-write-scoped answer;
+     * DonutHeaderSetter passes isMarkReason()'s any-owner one, matching its own any-owner
+     * reason(). Without this split, a #[Cacheable] resource that set its own `private,
+     * max-age=60` Cache-Control - refused for THAT reason alone, no mark of its own - would
+     * have that header wrongly replaced by `private, no-store` whenever an UNRELATED mark
+     * fired anywhere else in the request, since an any-owner isMarked() check would disagree
+     * with the own-write-scoped reasonForOwnWrite() that decided $unstorable.
      *
      * A producer that called UncacheableMarkInterface::mark() (app-facing) gets its Cache-Control/Pragma
      * replaced too, with ones that tell every cache, shared or private, not to keep the

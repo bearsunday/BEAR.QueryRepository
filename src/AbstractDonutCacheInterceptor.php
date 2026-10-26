@@ -179,11 +179,10 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
      *
      * An ETag already on $ro here is not always the resource's own, legitimate validator -
      * it can also be a side effect of a direct, non-AOP QueryRepository::put() call made
-     * from inside this page's own onGet(), left behind by that write's own headerSetter
-     * (Kimi's finding). refuseIfUnstorable() tells the two apart and is a no-op unless $ro
-     * is ALSO marked unstorable, so a resource's own legitimately pre-set ETag is never
-     * touched; when it IS marked, this applies the SAME cleanup/header-refusal
-     * putStatic()/putDonut() would, on the one exact path that used to skip both entirely.
+     * from inside this page's own onGet(), left behind by that write's own headerSetter.
+     * refuseIfUnstorable() tells the two apart and is a no-op unless $ro is ALSO marked
+     * unstorable, so a resource's own legitimately pre-set ETag is never touched; when it
+     * IS marked, this applies the SAME cleanup/header-refusal putStatic()/putDonut() would.
      *
      * @param bool $threw set by reference, forwarded to putRecorded() - see that method's own
      *     docblock.
@@ -192,9 +191,8 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
     {
         if (isset($ro->headers[Header::ETAG]) || $ro->code >= Code::BAD_REQUEST) {
             $hasEtag = isset($ro->headers[Header::ETAG]);
-            // An error-code response was never dev-gate-reportable before this shortcut
-            // existed (CodeRabbit review on cb96e49): report: $hasEtag preserves that - a
-            // top-level page marking itself and also answering 400 must not newly raise.
+            // report: only an ETag-shortcut refusal is dev-gate-reportable - a top-level page
+            // marking itself and separately answering an error code must not newly raise.
             $unstorable = $this->refuseIfUnstorable($ro, report: $hasEtag);
             // Record why this miss is not followed by a put; without it the log looks like a
             // lost write. 'unstorable' when the gate refused it, otherwise the original
@@ -216,29 +214,23 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
      *
      * Lives here, not on DonutRepositoryInterface: a new interface method would fatal every
      * third-party implementer (BC), and an instanceof-gated one would silently lose this
-     * refusal for a third-party implementer instead - the same silent-behaviour-loss failure
-     * mode, one level removed (Fable/Main review). $gate and $headerSetter are proper,
+     * refusal for a third-party implementer instead. $gate and $headerSetter are proper,
      * appended, DI-injectable constructor dependencies - Ray.Di resolves whatever an app
      * bound UnstorableGateInterface/EtagSetterInterface to, the same as every other
-     * collaborator on this class - not inlined, which would have silently ignored such a
-     * binding instead of asking for it. Cleanup goes through DonutRepositoryInterface's own
+     * collaborator on this class. Cleanup goes through DonutRepositoryInterface's own
      * purge() (already public, already implemented by every third-party implementer): the
      * SAME storage-layer invalidation doPutStatic()/doPutDonut()'s own invalidateTags()
-     * performs, via QueryRepository::purge() -> ResourceStorage::deleteEtag() -> the same
-     * uriTag-based invalidateTags() call, recorded as a purge rather than a pre-write
-     * cleanup - accurate here, since nothing rewrites after it on this path.
+     * performs, recorded as a purge rather than a pre-write cleanup - accurate here, since
+     * nothing rewrites after it on this path.
      *
      * Header refusal and cleanup always use reason() (any-owner, holes included) - the live
      * response really did carry marked content either way, regardless of whether $report is
-     * true. $report controls ONLY whether the dev gate is told at all (CodeRabbit review on
-     * cb96e49: an error-code response was never gate-checked before this shortcut existed -
-     * $report is false for it, preserving that, not just excluding hole marks). When $report
-     * is true (the ETag-shortcut case), this splits the SAME two predicates doPutDonut()
-     * does: a descendant hole refusing its OWN write is expected there, not a signal this
-     * page's own onGet()/render did anything wrong (Fable's finding) - CacheableResponse
-     * (putStatic) stores the whole rendered content instead, so a hole's own mark DOES
-     * count there, matching doPutStatic()'s own any-owner-only check (no
-     * reasonExcludingHoleMarks() split there either).
+     * true. $report controls ONLY whether the dev gate is told at all: false for an
+     * error-code response (no ETag-shortcut refusal there to report), true for the
+     * ETag-shortcut case, where it splits the SAME two predicates doPutDonut() does - a
+     * descendant hole refusing its OWN write is expected, not a signal this page's own
+     * onGet()/render did anything wrong, while putStatic()'s whole-content store counts a
+     * hole's mark too, matching its own any-owner-only check.
      *
      * @return 'unstorable'|null
      */
