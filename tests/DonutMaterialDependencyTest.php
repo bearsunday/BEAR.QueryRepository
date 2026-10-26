@@ -307,7 +307,7 @@ class DonutMaterialDependencyTest extends TestCase
             $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class),
             $injector->getInstance(DonutRendererInterface::class),
             $injector->getInstance(UnstorableGateInterface::class),
-            $injector->getInstance(UncacheableMarkInterface::class),
+            $injector->getInstance(UncacheableMarkScopeInterface::class),
             new class implements UriTagInterface {
                 #[Override]
                 public function __invoke(AbstractUri $uri): string
