@@ -20,7 +20,7 @@ use FakeVendor\HelloWorld\Resource\Page\None;
  * placeholder). With no write-scope frame of its own for that direct put(), the old
  * `wasMarkedSinceCurrentWrite()` stayed silent (nothing to compare against) and
  * `isMarkedForCurrentScope()` never saw the hole's own-owner mark either - the parent was
- * stored WITH the leaked secret. `UncacheableMarkInterface::isCurrentWriteFor()` fixes this:
+ * stored WITH the leaked secret. `UncacheableMarkScopeInterface::isCurrentWriteFor()` fixes this:
  * no frame matches the parent's own URI, so its write falls back to conservative, any-owner
  * `isMarked()` instead, which does catch it.
  */

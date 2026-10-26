@@ -55,7 +55,7 @@ final readonly class UnstorableGate implements UnstorableGateInterface
      * (a direct, non-AOP put(), or one nested inside a DIFFERENT resource's own write) falls
      * back to the conservative, any-owner isMarked() instead, which can only over-refuse,
      * never leak past a mark that write-scope tracking was never actually watching for THIS
-     * write (#234/#222, see UncacheableMarkInterface's own docblock on isCurrentWriteFor()).
+     * write (#234/#222, see UncacheableMarkScopeInterface's own docblock on isCurrentWriteFor()).
      */
     #[Override]
     public function reasonForOwnWrite(ResourceObject $ro): string|null
