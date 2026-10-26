@@ -6,7 +6,6 @@ namespace BEAR\QueryRepository;
 
 use Override;
 use Ray\Di\AbstractModule;
-use Ray\Di\Scope;
 
 /**
  * Reports a skipped unstorable write during development.
@@ -26,6 +25,6 @@ final class DevUnstorableGateModule extends AbstractModule
     #[Override]
     protected function configure(): void
     {
-        $this->bind(UnstorableWriteObserverInterface::class)->to(WarningUnstorableWriteObserver::class)->in(Scope::SINGLETON);
+        $this->bind(UnstorableWriteObserverInterface::class)->to(WarningUnstorableWriteObserver::class);
     }
 }
