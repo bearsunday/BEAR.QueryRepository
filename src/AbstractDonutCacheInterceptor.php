@@ -184,8 +184,8 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
      * unstorable, so a resource's own legitimately pre-set ETag is never touched; when it
      * IS marked, this applies the SAME cleanup/header-refusal putStatic()/putDonut() would.
      *
-     * @param bool $threw set by reference, forwarded to putRecorded() - see that method's own
-     *     docblock.
+     * @param bool $threw set by reference, forwarded to putRecorded() and refuseIfUnstorable()
+     *     - see those methods' own docblocks.
      */
     private function handleProceedResult(ResourceObject $ro, bool &$threw): ResourceObject
     {
@@ -193,7 +193,7 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
             $hasEtag = isset($ro->headers[Header::ETAG]);
             // report: only an ETag-shortcut refusal is dev-gate-reportable - a top-level page
             // marking itself and separately answering an error code must not newly raise.
-            $unstorable = $this->refuseIfUnstorable($ro, report: $hasEtag);
+            $unstorable = $this->refuseIfUnstorable($ro, report: $hasEtag, threw: $threw);
             // Record why this miss is not followed by a put; without it the log looks like a
             // lost write. 'unstorable' when the gate refused it, otherwise the original
             // already-answered reason - code stays null whenever the reason is 'unstorable',
@@ -232,9 +232,14 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
      * onGet()/render did anything wrong, while putStatic()'s whole-content store counts a
      * hole's mark too, matching its own any-owner-only check.
      *
+     * @param bool $threw set by reference so the caller's own finally (reportIfOutermost())
+     *     can tell a genuine rethrow here apart from a degraded CacheStoreFailure - never
+     *     raising a pending dev-gate skip in place of the exception this method is about to
+     *     let travel.
+     *
      * @return 'unstorable'|null
      */
-    private function refuseIfUnstorable(ResourceObject $ro, bool $report): string|null
+    private function refuseIfUnstorable(ResourceObject $ro, bool $report, bool &$threw): string|null
     {
         $unstorable = $this->gate->reason($ro);
         if ($unstorable === null) {
@@ -252,7 +257,22 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
             : null;
 
         ($this->headerSetter)($ro, null, null, unstorable: $unstorable, wasMarked: $this->gate->isMarkReason($ro));
-        $this->donutRepository->purge($ro->uri);
+        try {
+            $this->donutRepository->purge($ro->uri);
+        } catch (Throwable $e) {
+            // A pool outage degrades to a warning, same as putRecorded()'s own write failure:
+            // the response was already rendered and the header refusal already applied, so
+            // this already-answered response is still served - only the stale cache entry
+            // survives a beat longer. Anything else is a genuine defect and keeps travelling.
+            $this->logger->event(self::failure((string) $ro->uri, 'write', $e));
+            if (! $e instanceof CacheStoreFailure) {
+                $threw = true;
+
+                throw $e;
+            }
+
+            $this->triggerWarning($e);
+        }
 
         if ($reportable !== null) {
             $this->writeObserver->skipped($ro, $reportable);

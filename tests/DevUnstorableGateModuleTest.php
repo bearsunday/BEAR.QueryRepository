@@ -240,6 +240,65 @@ class DevUnstorableGateModuleTest extends TestCase
         $this->assertSame('private, no-store', $ro->headers[Header::CACHE_CONTROL] ?? null, 'the live response must still be refused - the hole-only split exempts only the DEV GATE, not the header');
     }
 
+    public function testRefuseIfUnstorablesPurgeDegradesAPoolOutageButLetsAGenuineFailurePropagate(): void
+    {
+        // Mirrors CacheInterceptor::writeFreshResult()'s own write-failure degrade: a pool
+        // outage on refuseIfUnstorable()'s purge() call must not turn an already-rendered,
+        // header-refused response into a 500 - the response is already correct, only the
+        // stale cache entry survives a beat longer. A non-CacheStoreFailure defect on that
+        // same purge is not this path's to swallow and keeps travelling, never replaced by
+        // the pending skip it also recorded.
+        $uri = 'page://self/html/donut-cache-shortcut-path-self-etag';
+        $module = new QueryRepositoryModule(new ResourceModule('FakeVendor\HelloWorld'));
+        $module->override(new class extends AbstractModule {
+            protected function configure(): void
+            {
+                $this->bind(AdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->to(ArrayAdapter::class);
+                $this->bind(AdapterInterface::class)->annotatedWith(EtagPool::class)->to(ArrayAdapter::class);
+                $this->bind(DonutRepository::class)->in(Scope::SINGLETON);
+                $this->bind(DonutRepositoryInterface::class)->to(FakePurgeFailsForOneUri::class)->in(Scope::SINGLETON);
+            }
+        });
+        $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
+        $module->override(new DevUnstorableGateModule());
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $scope = $injector->getInstance(UncacheableMarkScopeInterface::class);
+        $mark = $injector->getInstance(UncacheableMarkInterface::class);
+        $fakeDonutRepository = $injector->getInstance(DonutRepositoryInterface::class);
+        assert($fakeDonutRepository instanceof FakePurgeFailsForOneUri);
+        $fakeDonutRepository->failingUri = $uri;
+
+        $scope->enterHole('app://self/some-hole');
+        $mark->mark('csrf-token-issued');
+        $scope->leaveHole('app://self/some-hole');
+
+        $warnings = [];
+        set_error_handler(static function (int $errno, string $message) use (&$warnings): bool {
+            if ($errno === E_USER_WARNING) {
+                $warnings[] = $message;
+            }
+
+            return true;
+        });
+        try {
+            $ro = $resource->get($uri);
+        } finally {
+            restore_error_handler();
+        }
+
+        $this->assertSame(200, $ro->code, 'the pool outage on purge degrades - the already-rendered response is still returned, not a 500');
+        $this->assertSame('private, no-store', $ro->headers[Header::CACHE_CONTROL] ?? null, 'the header refusal already applied before the purge call is unaffected by its own later failure');
+        $this->assertNotEmpty($warnings, 'the pool outage triggers a warning, same as any other degraded write');
+
+        // A genuine (non-CacheStoreFailure) failure on that same purge is not this path's to
+        // swallow - it must propagate, not be replaced by the pending skip it also recorded.
+        $fakeDonutRepository->genuine = true;
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('purge genuinely failed for this uri, not a degradable pool outage');
+        $resource->get($uri);
+    }
+
     public function testADonutPageThatMarksItselfAndAnswersAValidationErrorDoesNotThrow(): void
     {
         // The marked-and-error-code case: handleProceedResult()'s shared ETag-present/error-code branch used to call
@@ -425,7 +484,7 @@ class DevUnstorableGateModuleTest extends TestCase
     {
         // #237 sends the donut degraded-read fallback through handleProceedResult(), i.e. a
         // real store attempt (AbstractDonutCacheInterceptor opens no write scope of its own -
-        // see UncacheableMarkInterface's own docblock on isCurrentWriteFor() for why identity,
+        // see UncacheableMarkScopeInterface's own docblock on isCurrentWriteFor() for why identity,
         // not a donut-side scope, is what keeps a nested direct put() safe now). Unlike the
         // test above (the resource's own onGet() throws, before any store is attempted),
         // here onGet() returns normally and the STORE itself - a render failure inside
