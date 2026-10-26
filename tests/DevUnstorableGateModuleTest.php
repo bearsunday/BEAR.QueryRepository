@@ -661,6 +661,86 @@ class DevUnstorableGateModuleTest extends TestCase
         $this->assertNotNull(self::closeContextJsonOf($tree, 'cache_miss'), 'the GET scope must have closed normally - the exception was deferred, not raised mid-render');
     }
 
+    public function testADirectPutThatThrowsAGenuineExceptionClearsAnEarlierPendingSkipInsteadOfReplacingIt(): void
+    {
+        // Symmetric to testADirectPutAtInterceptorDepthZeroWithTheDevGateRaisesOnceImmediately
+        // above: reportDirectPut(threw: true) must call clearPending(), never
+        // raiseIfPending() - raising would REPLACE the genuine exception already propagating
+        // with UnstorableResponseDetected instead of letting it travel, and a later,
+        // unrelated request sharing this same (SINGLETON) observer must not inherit the
+        // stale skip either.
+        $namespace = 'FakeVendor\HelloWorld';
+        $baseModule = new QueryRepositoryModule(new ResourceModule($namespace));
+        $baseModule->override(new class extends AbstractModule {
+            protected function configure(): void
+            {
+                $this->bind(AdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->to(ArrayAdapter::class);
+                $this->bind(AdapterInterface::class)->annotatedWith(EtagPool::class)->to(ArrayAdapter::class);
+            }
+        });
+        $baseModule->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
+        // The real storage, resolved once from an un-overridden injector: ResourceStorage's
+        // own #[Set(...)] provider bindings only resolve through this normal module setup,
+        // not through a fresh `->to(FakeDeleteEtagFailsForOneUri::class)` auto-wiring, which
+        // has no attribute-binding context of its own to inherit them from.
+        $realStorage = (new Injector($baseModule, __DIR__ . '/tmp'))->getInstance(ResourceStorageInterface::class);
+        $fakeStorage = new FakeDeleteEtagFailsForOneUri($realStorage);
+
+        $module = new QueryRepositoryModule(new ResourceModule($namespace));
+        $module->override(new class extends AbstractModule {
+            protected function configure(): void
+            {
+                $this->bind(AdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->to(ArrayAdapter::class);
+                $this->bind(AdapterInterface::class)->annotatedWith(EtagPool::class)->to(ArrayAdapter::class);
+            }
+        });
+        $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
+        $module->override(new class ($fakeStorage) extends AbstractModule {
+            public function __construct(private readonly ResourceStorageInterface $fakeStorage)
+            {
+            }
+
+            protected function configure(): void
+            {
+                $this->bind(ResourceStorageInterface::class)->toInstance($this->fakeStorage)->in(Scope::SINGLETON);
+            }
+        });
+        $module->override(new DevUnstorableGateModule());
+        $injector = new Injector($module, __DIR__ . '/tmp');
+
+        $repository = $injector->getInstance(QueryRepositoryInterface::class);
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $observer = $injector->getInstance(UnstorableWriteObserverInterface::class);
+        assert($observer instanceof ThrowingUnstorableWriteObserver);
+
+        // An earlier, unrelated pending skip - the exact effect a real skipped write leaves
+        // on this (SINGLETON) observer; the branch under test does not care how it got there.
+        $earlierRo = new None();
+        $earlierRo->uri = new Uri('app://self/an-earlier-pending-skip');
+        $observer->skipped($earlierRo, 'unstorable');
+
+        // Direct put #2: genuinely throws (not unstorable) - forces reportDirectPut(threw: true).
+        $fakeStorage->failingUri = 'app://self/direct-put-throws-genuinely';
+        $throwingRo = new None();
+        $throwingRo->uri = new Uri('app://self/direct-put-throws-genuinely');
+        $throwingRo->code = 200;
+        $throwingRo->body = ['value' => 'irrelevant'];
+
+        try {
+            $repository->put($throwingRo);
+            $this->fail('expected the genuine RuntimeException to propagate');
+        } catch (UnstorableResponseDetected $e) {
+            $this->fail('the genuine exception must propagate, not be replaced by the unrelated earlier pending skip: ' . $e->getMessage());
+        } catch (RuntimeException $e) {
+            $this->assertStringContainsString('deleteEtag genuinely failed', $e->getMessage());
+        }
+
+        // The earlier pending skip must be gone too - a later, unrelated, unmarked request
+        // sharing this same observer must not inherit it.
+        $ro = $resource->get('app://self/innocent-cacheable-sibling');
+        $this->assertSame(200, $ro->code, 'no stale UnstorableResponseDetected leaked from the earlier (now-cleared) pending skip');
+    }
+
     /** @return array{0: UnstorableResponseDetected|null, 1: list<string>} */
     private function getAndCaptureWarnings(ResourceInterface $resource, string $uri): array
     {
