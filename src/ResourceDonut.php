@@ -97,7 +97,7 @@ final class ResourceDonut
                 // create() itself now uses) - converted here, deliberately, to
                 // CacheStoreFailure: unlike create()'s own render, which lets the Throwable
                 // travel unwrapped, a HIT's re-fetch degrades instead, so the interceptor's
-                // read path falls back to a full fresh render (reviewed design, kept as-is).
+                // read path falls back to a full fresh render.
                 throw CacheStoreFailure::from($e);
             } finally {
                 $mark->leaveHole($uri);
@@ -237,7 +237,7 @@ final class ResourceDonut
      * same non-swallowing render, see DonutRequest::__toString()) - a clean, catchable
      * exception, actually BETTER than the no-attribute baseline for an embedded hole: an
      * un-donut-wrapped `#[Embed]` renders its child via the raw `AbstractRequest::__toString()`,
-     * which swallows into a fatal E_USER_ERROR instead (verified by execution, not assumed).
+     * which swallows into a fatal E_USER_ERROR instead.
      * Either way, the original Throwable - not a reconstruction - travels to the caller, and
      * nothing past this call ever stores or returns a template.
      */
