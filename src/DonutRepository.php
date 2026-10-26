@@ -32,6 +32,13 @@ use function max;
 
 final readonly class DonutRepository implements DonutRepositoryInterface
 {
+    /**
+     * A new dependency is always appended, never inserted before an existing parameter: a
+     * direct (non-DI) caller's positional arguments must keep working across a minor
+     * version bump.
+     *
+     * @SuppressWarnings("PHPMD.ExcessiveParameterList")
+     */
     public function __construct(
         private QueryRepositoryInterface $queryRepository,
         private DonutHeaderSetter $donutHeaderSetter,
@@ -144,6 +151,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
 
     private function doPutStatic(ResourceObject $ro, int|null $ttl, int|null $sMaxAge): void
     {
+        $this->classifyMaterials($ro);
         $this->logger->event(new PutDonutContext((string) $ro->uri, $ttl, $sMaxAge));
         $keys = new SurrogateKeys($ro->uri);
         $keys->addTag($ro);

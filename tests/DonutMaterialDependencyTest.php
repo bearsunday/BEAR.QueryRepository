@@ -45,6 +45,10 @@ class DonutMaterialDependencyTest extends TestCase
     private const PAGE_WITH_MUTABLE_HOLE = 'page://self/html/donut-cache-with-mutable-hole';
     private const MUTABLE_CHILD = 'page://self/html/mutable-comment';
 
+    private const PAGE_WITH_MUTABLE_MATERIAL = 'page://self/html/donut-cache-with-mutable-material';
+
+    private const PAGE_RESPONSE_WITH_MUTABLE_MATERIAL = 'page://self/html/cacheable-response-with-material';
+
     private ResourceInterface $resource;
     private QueryRepositoryInterface $queryRepository;
     private ResourceStorageInterface $storage;
@@ -107,6 +111,81 @@ class DonutMaterialDependencyTest extends TestCase
         $this->assertStringContainsString('"layer":"donut-view"', $close[1]);
         $this->assertNotSame([], self::eventContextsJsonOf($tree, 'put_donut', self::PAGE_WITH_CACHEABLE_MATERIAL), 'a fresh miss re-runs onGet() and re-composes the template, not just a hole-only refresh');
         $this->assertNotSame([], self::dependsOnEdgesFrom($tree, self::PAGE_WITH_CACHEABLE_MATERIAL), 'the re-composition reads the child again, so it is re-classified as a material too');
+    }
+
+    /**
+     * The log-shape proof above (cache_miss + put_donut + depends_on) does not by itself
+     * show the served content actually changed - a constant-valued child could pass it
+     * vacuously. This drives a mutable material end to end: the page's own view must
+     * carry the child's new value after the purge, not the one baked into the old
+     * template.
+     */
+    public function testPurgingTheMaterialChildServesFreshContentOnTheNextGet(): void
+    {
+        MutableComment::$comment = 'comment-a';
+        $first = $this->resource->get(self::PAGE_WITH_MUTABLE_MATERIAL);
+        $this->assertStringContainsString('comment-a', (string) $first->view);
+        $this->flushAndValidate($this->logger);
+
+        MutableComment::$comment = 'comment-b';
+        $purged = $this->queryRepository->purge(new Uri(self::MUTABLE_CHILD));
+        $this->assertTrue($purged);
+        $this->flushAndValidate($this->logger);
+
+        $second = $this->resource->get(self::PAGE_WITH_MUTABLE_MATERIAL);
+        $tree = $this->flushAndValidate($this->logger);
+
+        $this->assertStringContainsString('comment-b', (string) $second->view, 'the purge reached the material-tagged template, so the recomposed page carries the new value');
+        $this->assertStringNotContainsString('comment-a', (string) $second->view);
+
+        $close = self::scopeCloseOf($tree, 'get', self::PAGE_WITH_MUTABLE_MATERIAL);
+        $this->assertNotNull($close);
+        $this->assertSame('cache_miss', $close[0]);
+        $this->assertNotSame([], self::dependsOnEdgesFrom($tree, self::PAGE_WITH_MUTABLE_MATERIAL));
+    }
+
+    /**
+     * `#[CacheableResponse]` material classification mirrors `#[DonutCache]`: the child
+     * is both read in onGet() (a material) and rendered as the template's own hole.
+     */
+    public function testCacheableResponseMaterialTagsBothTheTemplateAndTheResponse(): void
+    {
+        $this->resource->get(self::PAGE_RESPONSE_WITH_MUTABLE_MATERIAL);
+        $tree = $this->flushAndValidate($this->logger);
+
+        $childUriTag = (new UriTag())(new Uri(self::MUTABLE_CHILD));
+        $saveDonut = self::eventContextsJsonOf($tree, 'save_donut', self::PAGE_RESPONSE_WITH_MUTABLE_MATERIAL);
+        $this->assertCount(1, $saveDonut);
+        $this->assertStringContainsString('"' . $childUriTag . '"', $saveDonut[0], "the child's URI tag reaches the stored template");
+
+        $saveEtag = self::eventContextsJsonOf($tree, 'save_etag', self::PAGE_RESPONSE_WITH_MUTABLE_MATERIAL);
+        $this->assertCount(1, $saveEtag);
+        $this->assertStringContainsString('"' . $childUriTag . '"', $saveEtag[0], "the child's URI tag reaches the response's own validator too");
+
+        $this->assertNotSame([], self::dependsOnEdgesFrom($tree, self::PAGE_RESPONSE_WITH_MUTABLE_MATERIAL));
+    }
+
+    public function testCacheableResponsePurgingTheMaterialChildServesFreshContentOnTheNextGet(): void
+    {
+        MutableComment::$comment = 'comment-a';
+        $first = $this->resource->get(self::PAGE_RESPONSE_WITH_MUTABLE_MATERIAL);
+        $this->assertStringContainsString('comment-a', (string) $first->view);
+        $this->flushAndValidate($this->logger);
+
+        MutableComment::$comment = 'comment-b';
+        $purged = $this->queryRepository->purge(new Uri(self::MUTABLE_CHILD));
+        $this->assertTrue($purged);
+        $this->flushAndValidate($this->logger);
+
+        $second = $this->resource->get(self::PAGE_RESPONSE_WITH_MUTABLE_MATERIAL);
+        $tree = $this->flushAndValidate($this->logger);
+
+        $this->assertStringContainsString('comment-b', (string) $second->view, "the material tag reached the template, so purging the child drops it and the next GET rebuilds with the child's fresh value");
+        $this->assertStringNotContainsString('comment-a', (string) $second->view);
+
+        $close = self::scopeCloseOf($tree, 'get', self::PAGE_RESPONSE_WITH_MUTABLE_MATERIAL);
+        $this->assertNotNull($close);
+        $this->assertSame('cache_miss', $close[0]);
     }
 
     public function testADonutCacheChildIsClassifiedThroughItsOwnSurrogateKeyNotAnEtag(): void

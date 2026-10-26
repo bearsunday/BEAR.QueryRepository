@@ -19,6 +19,19 @@
 - **Distributed Cache Support**: Works with server-side caches (e.g., Redis, APC), shared caches (e.g., CDNs), and client-side caches.
 - **Unstorable-Response Guard**: A producer of a per-user value (a CSRF token, etc.) can mark the current response unstorable via `UncacheableMarkInterface`, so it is never written to the shared cache ([#222](https://github.com/bearsunday/BEAR.QueryRepository/issues/222)); the mark is per-request state and must be rebound each request under a long-running worker (Swoole, RoadRunner). This guard only stops *new* writes — deploy a new `CacheVersionModule` version alongside it so this release starts from a fresh cache namespace: entries written by earlier versions may hold per-user content, and an earlier version reading this version's donut cache would otherwise show raw placeholders during a rolling deploy. `CacheVersionModule` only namespaces pools built through this package's own `Storage*Module`s or a `#[CacheNamespace]`-aware adapter; an app binding its own cache adapter directly must clear those pools instead.
 
+## Cache dependencies
+
+Declare a dependency with `#[Embed]` and never `unset()` or overwrite the slot - a cached `onGet()` must not fetch dependent data with `$resource->get()`. What a child becomes depends on how the page uses it:
+
+| Need | Use | Effect of a child purge |
+|---|---|---|
+| Per-user content (no shared cache) | `#[DonutCache]` hole (non-cacheable child) | that hole alone re-runs on every HIT |
+| Shared content that changes on an event | `#[CacheableResponse]` hole (cacheable child, never read in `onGet()`) | the shell is recomposed from the stored template; the page's own `onGet()` does not re-run |
+| A value the page's own `onGet()` reads | material (the child is tagged, whether or not it is also rendered as a hole) | the whole template is dropped; the next GET is a fresh miss |
+| Data that is merely stale after a while | `#[Cacheable]` with a TTL | expires on its own, no purge needed |
+
+A writer-side `#[Purge]`/`#[Refresh]` on the command that changes the data is the alternative to waiting on this chain.
+
 ## Documentation
 
 - [BEAR.Sunday cache manual](http://bearsunday.github.io/manuals/1.0/ja/cache.html)
