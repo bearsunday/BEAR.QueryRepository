@@ -809,7 +809,7 @@ class DonutRepositoryTest extends TestCase
         $laterTree = $this->flushAndValidate($logger);
         $this->assertContains('cache_hit', self::collectTypes($laterTree), 'the unrelated sibling\'s own entry was stored, not refused by the marking hole (#234)');
         // HeaderSetter must agree with the store: a mutation to the any-owner predicate there
-        // (Kimi review) would still pass the cache_hit assertion above (the entry WAS stored)
+        // would still pass the cache_hit assertion above (the entry WAS stored)
         // while the response header still read as refused - stored:true, private:no-store is
         // the inconsistency #234's own HeaderSetter fix exists to prevent.
         $this->assertArrayHasKey(Header::ETAG, $ro->headers, 'a stored #[Cacheable] entry carries a validator, not a private/no-store response');

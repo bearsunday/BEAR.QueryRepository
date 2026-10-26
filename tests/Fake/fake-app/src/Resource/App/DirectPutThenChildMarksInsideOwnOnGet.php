@@ -10,7 +10,7 @@ use BEAR\Resource\Annotation\Embed;
 use BEAR\Resource\ResourceObject;
 
 /**
- * Main's unverified ordering (a): onGet() calls put($this) directly (stored - nothing
+ * The nested-child-mark ordering: onGet() calls put($this) directly (stored - nothing
  * marked yet), THEN forces a NESTED CHILD resource (app://self/unstorable-value, an
  * #[Embed], lazy until cast/accessed) to execute and mark itself - not onGet() marking
  * directly, not a render-time mark. The child's mark happens inside the SAME write-scope

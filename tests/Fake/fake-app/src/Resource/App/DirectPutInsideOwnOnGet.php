@@ -10,7 +10,7 @@ use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\Resource\ResourceObject;
 
 /**
- * CodeRabbit review (thread on f728c8d): a direct, manual `QueryRepository::put($this)` call
+ * The self-mark-then-direct-put case: a direct, manual `QueryRepository::put($this)` call
  * made from WITHIN this resource's own `onGet()` - not CacheInterceptor's own post-proceed
  * write - is still reached while CacheInterceptor's own write-scope frame is open, tagged
  * with the pre-proceed `$ro` (the SAME instance as `$this` here, since `onGet()` returns
@@ -19,7 +19,7 @@ use BEAR\Resource\ResourceObject;
  * `$markSelf` marks this resource's own (TOP_LEVEL) scope before the direct put, inside the
  * SAME write window the frame opened around - exercising #234's own semantics for this path.
  *
- * `$markAfterPut` exercises Kimi's own ordering instead: the direct put() happens FIRST
+ * `$markAfterPut` exercises the put($this)-then-mark() leak ordering instead: the direct put() happens FIRST
  * (storing whatever secret is in the body at that point, since nothing is marked yet), THEN
  * mark() fires - CacheInterceptor's own OUTER write (after proceed() returns) is what
  * actually refuses and cleans up that already-stored secret, not the inner direct put()

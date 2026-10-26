@@ -311,7 +311,7 @@ class UnstorableGateTest extends TestCase
 
     public function testReasonForOwnWriteFallsBackToAnyOwnerWhenTheOpenFrameBelongsToADifferentInstanceSharingTheSameUri(): void
     {
-        // Object identity, not URI equality (Kimi/Fable review): a different INSTANCE at the
+        // Object identity, not URI equality: a different INSTANCE at the
         // same URI as the one enterWrite() opened the frame with must not be treated as
         // owning it. A mark made and closed in an UNRELATED hole scope BEFORE the write
         // opens is invisible to both halves of the scoped predicate

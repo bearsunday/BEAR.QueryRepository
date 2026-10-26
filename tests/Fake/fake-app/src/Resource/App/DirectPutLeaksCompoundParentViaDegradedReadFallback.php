@@ -12,7 +12,7 @@ use BEAR\Resource\Uri;
 use FakeVendor\HelloWorld\Resource\Page\None;
 
 /**
- * Kimi's leak scenario: a direct (non-AOP) `QueryRepository::put()` call, made from inside
+ * The compound-parent leak scenario: a direct (non-AOP) `QueryRepository::put()` call, made from inside
  * this resource's own `onGet()` while it is reached via `CacheInterceptor`'s own degraded-read
  * fallback (no write scope of its own - the fallback never calls `put()` for THIS resource
  * itself), for a SEPARATE "compound parent" object that embeds an independently

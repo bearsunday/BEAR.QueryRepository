@@ -320,8 +320,8 @@ class ResourceDonutTest extends TestCase
     }
 
     /**
-     * `app://self/throwing-hole` marks itself unstorable, THEN throws (Kimi LOW: document
-     * which surfaces). The render exception wins, not a dev-gate exception
+     * `app://self/throwing-hole` marks itself unstorable, THEN throws - this test documents
+     * which surfaces. The render exception wins, not a dev-gate exception
      * (`UnstorableResponseDetected`): the mark only ever affects a SUCCESSFUL render's
      * storability, checked by `UnstorableGateInterface::reason()` after `create()` returns -
      * which it never does here, so nothing ever reads the mark at all. The scope the mark
@@ -355,7 +355,7 @@ class ResourceDonutTest extends TestCase
 
     /**
      * An anonymous exception class (`new class extends RuntimeException {}`) must travel
-     * exactly like a named one - Kimi's MEDIUM: a class-name-matching guard would silently
+     * exactly like a named one: a class-name-matching guard would silently
      * miss this and still store the empty template. This design never inspects the class at
      * all, so there is nothing for an anonymous class to evade.
      */

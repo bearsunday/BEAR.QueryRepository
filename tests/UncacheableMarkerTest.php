@@ -22,10 +22,10 @@ use Ray\Di\Scope;
  * (`UncacheableMarker`, the app-facing binding's own concrete class, has no method but
  * `mark()`): an application's own resource, injected `UncacheableMarkInterface`, cannot call
  * `enterWrite()`/`isCurrentWriteFor()`/etc even if it tried - there is no such method on the
- * object it was handed, a fatal `Error`, not merely a static-analysis warning (security
- * review finding against an earlier, static-only draft of this split: the app-facing
- * interface resolved to `UncacheableMark` itself, so a caller could call `enterWrite()` on it
- * directly and forge a write-scope frame for its own direct `put()`).
+ * object it was handed, a fatal `Error`, not merely a static-analysis warning (the
+ * single-interface risk this split prevents: a caller could call `enterWrite()` directly on
+ * an app-facing instance that resolved straight to `UncacheableMark`, forging a write-scope
+ * frame for its own direct `put()`).
  */
 class UncacheableMarkerTest extends TestCase
 {

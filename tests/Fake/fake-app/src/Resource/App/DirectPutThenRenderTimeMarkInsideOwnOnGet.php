@@ -11,7 +11,7 @@ use BEAR\Resource\ResourceObject;
 use FakeVendor\HelloWorld\RenderTimeToken;
 
 /**
- * Main's unverified ordering (b): the FULL body (including the render-time-marking token)
+ * The render-time-mark ordering: the FULL body (including the render-time-marking token)
  * is set BEFORE the direct put($this) call - not onGet() marking directly, and not a mark
  * added after the put(). ResourceObject::toString() memoizes $this->view once rendered
  * (BEAR.Resource, unrelated to this package): whichever write renders FIRST determines the

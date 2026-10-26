@@ -10,8 +10,8 @@ use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 
 /**
- * The donut-interceptor twin of App\DirectPutThenChildMarksInsideOwnOnGet (Main's unverified
- * ordering (a)): onGet() calls put($this) directly (stored, nothing marked yet - the write's
+ * The donut-interceptor twin of App\DirectPutThenChildMarksInsideOwnOnGet (the
+ * nested-child-mark ordering): onGet() calls put($this) directly (stored, nothing marked yet - the write's
  * own headerSetter sets an ETag as a side effect, triggering AbstractDonutCacheInterceptor's
  * own "already answered" shortcut), THEN explicitly fetches a NESTED CHILD resource
  * (app://self/unstorable-value) that marks itself - not onGet() marking directly.

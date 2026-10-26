@@ -23,10 +23,10 @@ use function set_error_handler;
 /**
  * UncacheableMarkScopeInterface::isCurrentWriteFor() - a direct (non-AOP) QueryRepository::put()
  * call has no write-scope frame of its own, so a CacheInterceptor/AbstractDonutCacheInterceptor
- * write-scope frame belonging to a DIFFERENT resource must never be trusted for it (Kimi's
- * compound-leak finding), yet removing write-scope tracking altogether must not make it
+ * write-scope frame belonging to a DIFFERENT resource must never be trusted for it (the
+ * compound-leak case), yet removing write-scope tracking altogether must not make it
  * over-refuse the UNRELATED #[Cacheable] siblings normal #234 scoping still protects
- * (Fable's finding). Both resolve together: a write only trusts the scoped #234 predicate
+ * (the sibling-over-refusal case). Both resolve together: a write only trusts the scoped #234 predicate
  * (isMarkedForCurrentScope() || wasMarkedSinceCurrentWrite()) when the innermost open write
  * frame's own owner matches the resource actually being written; otherwise it falls back to
  * the conservative, any-owner isMarked() - pre-#234/1.17.0 behaviour, which can over-refuse
@@ -189,7 +189,7 @@ class DirectWriteScopeTest extends TestCase
 
     public function testADirectPutInsideOwnOnGetIsRefusedWhenThisResourcesOwnOnGetMarksItselfFirst(): void
     {
-        // CodeRabbit review (thread on f728c8d): a direct, manual put($this) call made from
+        // The self-mark-then-direct-put case: a direct, manual put($this) call made from
         // WITHIN this resource's own onGet() is still reached while CacheInterceptor's own
         // write-scope frame is open (tagged with the pre-proceed $ro - the SAME instance as
         // $this here, since onGet() returns $this), so isCurrentWriteFor($this) matches by
@@ -256,7 +256,7 @@ class DirectWriteScopeTest extends TestCase
         // it - neither isMarkedForCurrentScope() (different, closed scope) nor
         // wasMarkedSinceCurrentWrite() (already ticked before this write's own enterWrite())
         // catches it; no secret is involved, this is the conservative-but-not-over-refusing
-        // case CodeRabbit's own review asked be checked. Zero put_skipped for this URI proves
+        // case. Zero put_skipped for this URI proves
         // NEITHER write was refused, not just that something ended up stored.
         $uri = 'app://self/direct-put-inside-own-on-get';
         $injector = $this->newInjector();
@@ -281,7 +281,7 @@ class DirectWriteScopeTest extends TestCase
 
     public function testADirectPutThenMarkIsCleanedUpByCacheInterceptorsDegradedReadFallback(): void
     {
-        // Kimi's finding: onGet() sets a secret, calls put($this) directly - stored, nothing
+        // The put($this)-then-mark() leak: onGet() sets a secret, calls put($this) directly - stored, nothing
         // marked yet - THEN calls mark(). The normal path's OUTER write (CacheInterceptor's
         // own, after proceed() returns) is refused and its own pre-write cleanup
         // (QueryRepository::doPut()'s unconditional deleteEtag()) removes the secret the
@@ -350,8 +350,7 @@ class DirectWriteScopeTest extends TestCase
         // CacheInterceptor, AbstractDonutCacheInterceptor's degraded-read fallback already
         // calls handleProceedResult() - the SAME render+store call the normal miss path
         // uses - so this is run to PROVE by execution (not by reading the code) that no
-        // equivalent fix is needed here, and to guard the next review round against
-        // reopening this on the donut side.
+        // equivalent fix is needed here, and to guard against this reopening on the donut side.
         $uri = 'page://self/html/donut-direct-put-then-mark-inside-own-on-get?markAfterPut=1';
         $injector = $this->newInjector();
         $resource = $injector->getInstance(ResourceInterface::class);
@@ -404,7 +403,7 @@ class DirectWriteScopeTest extends TestCase
 
     public function testADirectPutThenANestedChildMarkIsCleanedUpOnCacheInterceptorsNormalPath(): void
     {
-        // Main's unverified ordering (a): put($this) then a NESTED CHILD resource marks -
+        // The nested-child-mark ordering: put($this) then a NESTED CHILD resource marks -
         // not onGet() marking directly. The child's mark happens inside the same
         // write-scope window CacheInterceptor's own enterWrite() opened before proceed(),
         // so wasMarkedSinceCurrentWrite() must catch it for the OUTER write the same way.
@@ -443,7 +442,7 @@ class DirectWriteScopeTest extends TestCase
 
     public function testADirectPutThenARenderTimeMarkIsRefusedOnCacheInterceptorsNormalPath(): void
     {
-        // Main's unverified ordering (b): the FULL body (the render-time-marking token
+        // The render-time-mark ordering: the FULL body (the render-time-marking token
         // included) is set BEFORE the direct put($this) call, not after. BEAR.Resource's
         // own ResourceObject::toString() memoizes $this->view once rendered - a LATER
         // render (the outer write's own) would see the SAME, already-memoized view instead
@@ -510,7 +509,7 @@ class DirectWriteScopeTest extends TestCase
 
     public function testADirectPutThenARenderTimeMarkNeverMarksOnDonutPagesNormalPath(): void
     {
-        // Main's unverified ordering (b), donut side, verified by execution: unlike
+        // The render-time-mark ordering, donut side, verified by execution: unlike
         // #[Cacheable] (CacheInterceptor), a direct put() on a #[DonutCache]-only resource
         // never renders at all (QueryRepository::doPut()'s $storesView check only
         // recognizes #[Cacheable]) - but its headerSetter still sets an ETag

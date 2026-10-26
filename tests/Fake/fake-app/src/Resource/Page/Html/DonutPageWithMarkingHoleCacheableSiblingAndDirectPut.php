@@ -9,7 +9,7 @@ use BEAR\Resource\Annotation\Embed;
 use BEAR\Resource\ResourceObject;
 
 /**
- * Fable's scenario: like DonutCacheWithMarkingHoleAndCacheableSibling (the literal #234
+ * The marking-hole-plus-direct-put case: like DonutCacheWithMarkingHoleAndCacheableSibling (the literal #234
  * repro - a marking hole, UnstorableValue, before an unrelated #[Cacheable] sibling,
  * InnocentCacheableSibling, that must still be stored), PLUS a direct (non-AOP)
  * `QueryRepository::put()` call made from App\DirectPutHole, embedded as a THIRD hole AFTER

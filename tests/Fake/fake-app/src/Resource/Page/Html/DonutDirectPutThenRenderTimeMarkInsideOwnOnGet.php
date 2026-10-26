@@ -11,14 +11,14 @@ use BEAR\Resource\ResourceObject;
 use FakeVendor\HelloWorld\RenderTimeToken;
 
 /**
- * Main's unverified ordering (b), donut side: onGet() calls put($this) directly, with a
+ * The render-time-mark ordering, donut side: onGet() calls put($this) directly, with a
  * render-time-marking token already in the body. Verified by execution (not by reading the
  * code) that this ordering is structurally unreachable for a #[DonutCache] page, the same
  * as App\DirectPutThenRenderTimeMarkInsideOwnOnGet is for #[Cacheable] but for a different
  * reason: QueryRepository::doPut()'s $storesView check only recognizes #[Cacheable]
  * (getCacheableAnnotation()), so the direct put()'s own render never runs for a
  * #[DonutCache]-only resource - but its headerSetter still sets an ETag unconditionally
- * (the SAME side effect the Kimi leak fix addresses), which reaches
+ * (the SAME side effect the put($this)-then-mark() leak fix addresses), which reaches
  * AbstractDonutCacheInterceptor's own "already answered" shortcut BEFORE putRecorded()/
  * doPutDonut() (the ONLY place that would ever stringify the token) could run. mark() is
  * never called either way: real observed result (both normal and degraded-read-fallback

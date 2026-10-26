@@ -371,7 +371,7 @@ class GracefulLoggingTest extends TestCase
     }
 
     /**
-     * Fable's CRITICAL finding against the previous (warning-regex) design: an app with a
+     * The warning-to-exception-converter case, against the previous (warning-regex) design: an app with a
      * warning->exception converter (Whoops, Symfony ErrorHandler, Sentry) turns ANY warning
      * during render into a real exception. This design never installs a handler of its own
      * and never inspects a warning, so that converted exception is just an ordinary Throwable

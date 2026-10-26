@@ -47,7 +47,7 @@ class HeaderSetterTest extends TestCase
 
     public function testWasMarkedFalseKeepsTheResponsesOwnCacheControlInstead(): void
     {
-        // The CodeRabbit-fixed half: a refusal caused only by the response's own
+        // The wasMarked=false half: a refusal caused only by the response's own
         // Cache-Control (no mark) must keep that header exactly, not replace it.
         $ro = new None();
         $ro->headers[Header::CACHE_CONTROL] = 'private';
@@ -60,7 +60,7 @@ class HeaderSetterTest extends TestCase
 
     public function testWasMarkedIsRequiredWheneverUnstorableIsGivenAndFailsLoudlyWhenOmitted(): void
     {
-        // CodeRabbit review round 2: a nullable $wasMarked silently falling back to this
+        // The fail-loud-when-omitted case: a nullable $wasMarked silently falling back to this
         // class's own isMarked() was exactly how the round-1 bug happened - no internal
         // predicate is left to fall back to; a forgotten caller must find out immediately,
         // not leak a wrong header in production.

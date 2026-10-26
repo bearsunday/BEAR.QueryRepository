@@ -58,7 +58,7 @@ class HandSetPrivateCacheControlTest extends TestCase
 
     public function testHandSetPrivateCacheControlKeepsItsOwnHeaderWhenAnUnrelatedMarkFiredElsewhereInTheRequest(): void
     {
-        // CodeRabbit review (thread on 5e54c1a): HeaderSetter's own "was it a mark" check
+        // The unrelated-mark-elsewhere case: HeaderSetter's own "was it a mark" check
         // must use the SAME own-write-scoped predicate reasonForOwnWrite() used to decide
         // $unstorable, not any-owner isMarked() - otherwise an UNRELATED mark elsewhere in
         // the same request (an unrelated hole's own mark, already closed before this

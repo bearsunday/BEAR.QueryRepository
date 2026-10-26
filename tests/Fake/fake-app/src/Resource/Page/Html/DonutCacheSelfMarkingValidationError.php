@@ -10,7 +10,7 @@ use BEAR\Resource\Code;
 use BEAR\Resource\ResourceObject;
 
 /**
- * CodeRabbit review (thread on cb96e49, AbstractDonutCacheInterceptor.php:188): a top-level
+ * The marked-and-error-code case: a top-level
  * #[DonutCache] form page that marks ITSELF (a CSRF token issued alongside the form) and
  * answers 400 for a validation error. handleProceedResult()'s own error-code branch - not
  * the ETag-shortcut one - must never report this to the dev gate: it never did before that

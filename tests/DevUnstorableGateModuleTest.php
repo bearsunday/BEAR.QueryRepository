@@ -199,7 +199,7 @@ class DevUnstorableGateModuleTest extends TestCase
 
     public function testADonutPageOnTheShortcutPathWithALegitimatelyMarkingHoleDoesNotThrowAndStillRefusesItsHeader(): void
     {
-        // Fable's finding: AbstractDonutCacheInterceptor's "already answered" shortcut (an
+        // The ETag-shortcut hole-only-mark case: AbstractDonutCacheInterceptor's "already answered" shortcut (an
         // ETag the page set itself, DonutCacheShortcutPathSelfEtag) must reach the SAME
         // dev-gate outcome as the normal write path
         // (testCorrectDonutPageWithALegitimatelyMarkingHoleDoesNotThrowAndStoresItsTemplate
@@ -242,8 +242,7 @@ class DevUnstorableGateModuleTest extends TestCase
 
     public function testADonutPageThatMarksItselfAndAnswersAValidationErrorDoesNotThrow(): void
     {
-        // CodeRabbit review (thread on cb96e49, AbstractDonutCacheInterceptor.php:188):
-        // handleProceedResult()'s shared ETag-present/error-code branch used to call
+        // The marked-and-error-code case: handleProceedResult()'s shared ETag-present/error-code branch used to call
         // refuseIfUnstorable() unconditionally, so a self-marking page that ALSO answers a
         // non-200 newly reached the dev gate where it never did before that shortcut's own
         // cleanup/refusal existed (an error-code response was never gate-checked at all).
@@ -564,7 +563,7 @@ class DevUnstorableGateModuleTest extends TestCase
 
     public function testADirectPutAtInterceptorDepthZeroWithTheDevGateRaisesOnceImmediately(): void
     {
-        // CodeRabbit review (outside-diff, QueryRepository.php:113): a direct put() reached
+        // The direct-put-at-interceptor-depth-zero case: a direct put() reached
         // with NO cacheable GET interceptor active at all (interceptorDepth 0 - a CLI script,
         // a command handler) has no outermost CacheInterceptor whose own leaveInterceptor()
         // will ever reach depth zero to report the pending skip doPut() just recorded. This

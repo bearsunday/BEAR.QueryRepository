@@ -9,7 +9,7 @@ use BEAR\RepositoryModule\Annotation\DonutCache;
 use BEAR\Resource\ResourceObject;
 
 /**
- * Fable's finding: presets its own ETag (AbstractDonutCacheInterceptor's "already answered"
+ * The ETag-shortcut case: presets its own ETag (AbstractDonutCacheInterceptor's "already answered"
  * shortcut, same as SelfEtag) - the twin of PlainDonutHole used for the CONTROL (normal
  * write path) side of the same test, so both reach AbstractDonutCacheInterceptor with an
  * otherwise-identical body/response, differing only in which path handles them.

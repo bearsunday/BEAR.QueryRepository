@@ -13,7 +13,7 @@ use BEAR\Resource\ResourceObject;
  * The donut-interceptor twin of App\DirectPutInsideOwnOnGet's own `$markAfterPut` scenario:
  * a direct (non-AOP) `QueryRepository::put($this)` call made from WITHIN this page's own
  * `onGet()`, storing whatever secret is in the body at that point (nothing marked yet, so it
- * legitimately succeeds), followed by `mark()` - exercising Kimi's own leak ordering for
+ * legitimately succeeds), followed by `mark()` - exercising the put($this)-then-mark() leak ordering for
  * AbstractDonutCacheInterceptor's own degraded-read fallback, not just CacheInterceptor's.
  */
 #[DonutCache]
