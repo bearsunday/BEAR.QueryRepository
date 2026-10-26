@@ -8,10 +8,12 @@ use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
 use FakeVendor\HelloWorld\Resource\Page\Html\BlogPostingDonut;
+use FakeVendor\HelloWorld\Resource\Page\None;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Madapaja\TwigModule\TwigModule;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
+use ReflectionClass;
 
 use function assert;
 use function dirname;
@@ -120,5 +122,27 @@ class DonutCacheInterceptorTest extends TestCase
 
         $this->assertNotContains('refresh_donut', $types, 'the purged template is gone, so nothing is recomposed from it');
         $this->assertContains('put_donut', $types, 'the page is built again and stored again');
+    }
+
+    public function testAManuallyConstructedInterceptorsDefaultGateSeesTheInstancesOwnMark(): void
+    {
+        // The #240 pattern (DonutRepository's own cacheDependency default): a manually
+        // constructed instance that supplies its own $mark but omits $gate must get a gate
+        // that reads THAT SAME mark, not a disconnected `new UncacheableMark()` of its own -
+        // or a mark made through this instance would never reach the gate's own decision.
+        $mark = new UncacheableMark();
+        $interceptor = new DonutCacheInterceptor(
+            $this->injector->getInstance(DonutRepositoryInterface::class),
+            mark: $mark,
+        );
+
+        $mark->mark('csrf-token-issued');
+
+        $gateProperty = (new ReflectionClass(AbstractDonutCacheInterceptor::class))->getProperty('gate');
+        $gateProperty->setAccessible(true);
+        $gate = $gateProperty->getValue($interceptor);
+        assert($gate instanceof UnstorableGateInterface);
+
+        $this->assertSame('unstorable', $gate->reason(new None()), 'the default gate must read the SAME mark instance this interceptor was constructed with');
     }
 }

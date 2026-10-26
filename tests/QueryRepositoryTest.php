@@ -418,4 +418,32 @@ class QueryRepositoryTest extends TestCase
         $property->setAccessible(true);
         $this->assertSame($observer, $property->getValue($repository));
     }
+
+    public function testAManuallyConstructedRepositorysDefaultGateSeesTheInstancesOwnMark(): void
+    {
+        // The #240 pattern (DonutRepository's own cacheDependency default): a manually
+        // constructed instance that supplies its own $mark but omits $gate must get a gate
+        // that reads THAT SAME mark, not a disconnected `new UncacheableMark()` of its own -
+        // or a mark made through this instance would never reach the gate's own decision.
+        $namespace = 'FakeVendor\HelloWorld';
+        $injector = new Injector(new FakeEtagPoolModule(ModuleFactory::getInstance($namespace)), __DIR__ . '/tmp');
+        $mark = new UncacheableMark();
+        $repository = new Repository(
+            $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class),
+            $injector->getInstance(HeaderSetter::class),
+            $injector->getInstance(ResourceStorageInterface::class),
+            $injector->getInstance(Expiry::class),
+            $injector->getInstance(CacheDependencyInterface::class),
+            mark: $mark,
+        );
+
+        $mark->mark('csrf-token-issued');
+
+        $gateProperty = (new ReflectionClass(Repository::class))->getProperty('gate');
+        $gateProperty->setAccessible(true);
+        $gate = $gateProperty->getValue($repository);
+        assert($gate instanceof UnstorableGateInterface);
+
+        $this->assertSame('unstorable', $gate->reason(new None()), 'the default gate must read the SAME mark instance this repository was constructed with');
+    }
 }

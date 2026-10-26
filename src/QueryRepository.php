@@ -33,6 +33,8 @@ use function time;
 
 final readonly class QueryRepository implements QueryRepositoryInterface
 {
+    private UnstorableGateInterface $gate;
+
     public function __construct(
         #[CacheLog]
         private SemanticLoggerInterface $logger,
@@ -40,10 +42,14 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         private ResourceStorageInterface $storage,
         private Expiry $expiry,
         private CacheDependencyInterface $cacheDependency,
-        private UnstorableGateInterface $gate,
+        UnstorableGateInterface|null $gate = null,
         private UnstorableWriteObserverInterface $writeObserver = new NullUnstorableWriteObserver(),
         private UncacheableMarkScopeInterface $mark = new UncacheableMark(),
     ) {
+        // A manually constructed instance supplying its own $mark but omitting $gate must get
+        // a gate that reads THAT SAME mark - never a disconnected `new UncacheableMark()` of
+        // its own, or a mark made through this instance would never reach the gate's decision.
+        $this->gate = $gate ?? new UnstorableGate($this->mark, new DeclaredCacheControl());
     }
 
     /**
