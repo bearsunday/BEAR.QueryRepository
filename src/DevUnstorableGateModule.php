@@ -26,8 +26,6 @@ final class DevUnstorableGateModule extends AbstractModule
     #[Override]
     protected function configure(): void
     {
-        $this->bind(UnstorableWriteObserverInterface::class)
-            ->to(ThrowingUnstorableWriteObserver::class)
-            ->in(Scope::SINGLETON);
+        $this->bind(UnstorableWriteObserverInterface::class)->to(WarningUnstorableWriteObserver::class)->in(Scope::SINGLETON);
     }
 }

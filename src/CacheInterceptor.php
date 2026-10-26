@@ -42,7 +42,6 @@ final readonly class CacheInterceptor implements MethodInterceptor
         #[CacheLog]
         private SemanticLoggerInterface $logger = new NullSemanticLogger(),
         private UncacheableMarkScopeInterface $mark = new UncacheableMark(),
-        private UnstorableWriteObserverInterface $writeObserver = new NullUnstorableWriteObserver(),
     ) {
     }
 
@@ -61,18 +60,11 @@ final readonly class CacheInterceptor implements MethodInterceptor
         $openId = $this->logger->open(new GetContext((string) $ro->uri));
         $start = hrtime(true);
         $hit = false;
-        // Set before ANY genuine (non-CacheStoreFailure) exception - from the resource's own
-        // proceed(), or from the store's put() - is rethrown below, so the outer finally never
-        // raises a pending dev-gate skip while that exception is already on its way out:
-        // raising there would REPLACE it instead of letting it travel (a store failure
-        // degrades to a warning and keeps going, so it never sets this).
-        $threw = false;
-        $this->mark->enterInterceptor();
         try {
             try {
                 $state = $this->repository->get($ro->uri);
             } catch (Throwable $e) {
-                $state = $this->degradeReadFailure($e, $ro, $threw);
+                $state = $this->degradeReadFailure($e, $ro);
             }
 
             if ($state instanceof ResourceState) {
@@ -82,7 +74,7 @@ final readonly class CacheInterceptor implements MethodInterceptor
                 return $ro;
             }
 
-            return $this->writeFreshResult($ro, $invocation, $threw);
+            return $this->writeFreshResult($ro, $invocation);
         } finally {
             $durationMs = round((hrtime(true) - $start) / 1_000_000, 3);
             // Psalm mis-tracks the $hit flag mutated inside try when read from finally.
@@ -91,11 +83,6 @@ final readonly class CacheInterceptor implements MethodInterceptor
                 $hit ? new CacheHitContext('resource', $durationMs) : new CacheMissContext('resource', $durationMs),
                 $openId,
             );
-            // #234 dev gate: report a pending skip once the OUTERMOST cacheable interceptor
-            // (depth back to zero) returns NORMALLY - $threw means a genuine exception is
-            // already propagating out of this same finally, so the skip is dropped without
-            // being raised instead (never silently lost: put_skipped already recorded it).
-            $this->reportIfOutermost($threw);
         }
     }
 
@@ -107,12 +94,12 @@ final readonly class CacheInterceptor implements MethodInterceptor
      *
      * @param MethodInvocation<object> $invocation
      */
-    private function writeFreshResult(ResourceObject $ro, MethodInvocation $invocation, bool &$threw): ResourceObject
+    private function writeFreshResult(ResourceObject $ro, MethodInvocation $invocation): ResourceObject
     {
         $this->mark->enterWrite($ro);
         try {
             /** @psalm-suppress MixedAssignment */
-            $ro = $this->proceedTrackingThrew($invocation, $threw);
+            $ro = $invocation->proceed();
 
             assert($ro instanceof ResourceObject);
             // proceed()'s return value is not always the same instance enterWrite()
@@ -137,8 +124,6 @@ final readonly class CacheInterceptor implements MethodInterceptor
                 // failure recorded; a render/purge failure is not the store's and keeps propagating.
                 $this->logger->event(self::failure((string) $ro->uri, 'write', $e));
                 if (! $e instanceof CacheStoreFailure) {
-                    $threw = true;
-
                     throw $e;
                 }
 
@@ -160,59 +145,16 @@ final readonly class CacheInterceptor implements MethodInterceptor
      *
      * @return null always - the caller reads it as a MISS
      */
-    private function degradeReadFailure(Throwable $e, ResourceObject $ro, bool &$threw): null
+    private function degradeReadFailure(Throwable $e, ResourceObject $ro): null
     {
-        // Recorded either way; the store's own failure is the only one this path swallows.
-        // Running the resource answers the request correctly, so a pool outage costs latency
-        // instead of a 500 - but a defect here that returned 200 would be a defect nobody
-        // sees, so anything else keeps travelling.
         $this->logger->event(self::failure((string) $ro->uri, 'read', $e));
         if (! $e instanceof CacheStoreFailure) {
-            $threw = true;
-
             throw $e;
         }
 
         $this->triggerWarning($e);
 
         return null;
-    }
-
-    /**
-     * $invocation->proceed(), with $threw set by reference if it throws - see invoke()'s own
-     * $threw comment for why.
-     *
-     * @param MethodInvocation<object> $invocation
-     */
-    private function proceedTrackingThrew(MethodInvocation $invocation, bool &$threw): mixed
-    {
-        try {
-            return $invocation->proceed();
-        } catch (Throwable $e) {
-            $threw = true;
-
-            throw $e;
-        }
-    }
-
-    /**
-     * #234 dev gate: report a pending skip once the OUTERMOST cacheable interceptor (depth
-     * back to zero) returns NORMALLY, never mid-render. See AbstractDonutCacheInterceptor's
-     * own copy of this check.
-     */
-    private function reportIfOutermost(bool $threw): void
-    {
-        if (! $this->mark->leaveInterceptor()) {
-            return;
-        }
-
-        if ($threw) {
-            $this->writeObserver->clearPending();
-
-            return;
-        }
-
-        $this->writeObserver->raiseIfPending();
     }
 
     /**

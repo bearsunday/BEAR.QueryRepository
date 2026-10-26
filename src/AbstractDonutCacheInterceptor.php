@@ -66,12 +66,6 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
         $openId = $this->logger->open(new GetContext((string) $ro->uri));
         $start = hrtime(true);
         $hit = false;
-        // $threw is set before any genuine exception is rethrown, so the outer finally never
-        // raises a pending dev-gate skip while it is in flight. This interceptor opens no
-        // write scope of its own, unlike CacheInterceptor: isCurrentWriteFor() keeps a nested
-        // direct put() any-owner instead of inheriting a scope it doesn't own.
-        $threw = false;
-        $this->mark->enterInterceptor();
         try {
             try {
                 $maybeRo = $this->donutRepository->get($ro);
@@ -84,15 +78,13 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
                 // when cache server is down: log it so a miss here is not read as a cold cache
                 $this->logger->event(self::failure((string) $ro->uri, 'read', $e));
                 if (! $e instanceof CacheStoreFailure) {
-                    $threw = true;
-
                     throw $e;
                 }
 
                 $this->triggerWarning($e);
 
                 /** @var ResourceObject $fresh */
-                $fresh = $this->proceedTrackingThrew($invocation, $threw);
+                $fresh = $invocation->proceed();
 
                 // Same outcome a normal MISS reaches below: render (and, if the render and
                 // the store both succeed, re-cache) via the full donut path - a degraded
@@ -101,13 +93,13 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
                 // caller, which would either show nothing or make a later `(string)` cast
                 // execute a hole untracked by UncacheableMark/SurrogateKeys, or - for a
                 // raw (non-donut-wrapped) AbstractRequest - trigger its own E_USER_ERROR.
-                return $this->handleProceedResult($fresh, $threw);
+                return $this->handleProceedResult($fresh);
             }
 
             /** @var ResourceObject $ro */
-            $ro = $this->proceedTrackingThrew($invocation, $threw);
+            $ro = $invocation->proceed();
 
-            return $this->handleProceedResult($ro, $threw);
+            return $this->handleProceedResult($ro);
         } finally {
             $durationMs = round((hrtime(true) - $start) / 1_000_000, 3);
             // Psalm mis-tracks the $hit flag mutated inside try when read from finally.
@@ -118,47 +110,6 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
                     : new CacheMissContext('donut-view', $durationMs),
                 $openId,
             );
-            // #234 dev gate: report a pending skip once the OUTERMOST cacheable interceptor
-            // (depth back to zero) returns NORMALLY - $threw means a genuine exception is
-            // already propagating out of this same finally, so the skip is dropped without
-            // being raised instead (never silently lost: put_skipped already recorded it).
-            $this->reportIfOutermost($threw);
-        }
-    }
-
-    /**
-     * #234 dev gate: report a pending skip once the OUTERMOST cacheable interceptor (depth
-     * back to zero) returns NORMALLY, never mid-render. See CacheInterceptor's own copy.
-     */
-    private function reportIfOutermost(bool $threw): void
-    {
-        if (! $this->mark->leaveInterceptor()) {
-            return;
-        }
-
-        if ($threw) {
-            $this->writeObserver->clearPending();
-
-            return;
-        }
-
-        $this->writeObserver->raiseIfPending();
-    }
-
-    /**
-     * $invocation->proceed(), with $threw set by reference if it throws - see CacheInterceptor's
-     * own copy of this check.
-     *
-     * @param MethodInvocation<object> $invocation
-     */
-    private function proceedTrackingThrew(MethodInvocation $invocation, bool &$threw): mixed
-    {
-        try {
-            return $invocation->proceed();
-        } catch (Throwable $e) {
-            $threw = true;
-
-            throw $e;
         }
     }
 
@@ -169,17 +120,14 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
      * side effect of a direct `put()` made from this page's own `onGet()`, not necessarily
      * its own validator - `refuseIfUnstorable()` tells the two apart and is a no-op unless
      * also marked.
-     *
-     * @param bool $threw set by reference, forwarded to putRecorded() and refuseIfUnstorable()
-     *     - see those methods' own docblocks.
      */
-    private function handleProceedResult(ResourceObject $ro, bool &$threw): ResourceObject
+    private function handleProceedResult(ResourceObject $ro): ResourceObject
     {
         if (isset($ro->headers[Header::ETAG]) || $ro->code >= Code::BAD_REQUEST) {
             $hasEtag = isset($ro->headers[Header::ETAG]);
             // report: only an ETag-shortcut refusal is dev-gate-reportable - a top-level page
             // marking itself and separately answering an error code must not newly raise.
-            $unstorable = $this->refuseIfUnstorable($ro, report: $hasEtag, threw: $threw);
+            $unstorable = $this->refuseIfUnstorable($ro, report: $hasEtag);
             // Record why this miss is not followed by a put; without it the log looks like a
             // lost write. 'unstorable' when the gate refused it, otherwise the original
             // already-answered reason - code stays null whenever the reason is 'unstorable',
@@ -190,7 +138,7 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
             return $ro;
         }
 
-        return $this->putRecorded($ro, $threw);
+        return $this->putRecorded($ro);
     }
 
     /**
@@ -199,12 +147,9 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
      * response carries hole content. `$report` is true only on the ETag path, where the
      * template-scoped predicate decides what the dev gate hears.
      *
-     * @param bool $threw set by reference so the caller's own finally can tell a genuine
-     *     rethrow here apart from a degraded CacheStoreFailure.
-     *
      * @return 'unstorable'|null
      */
-    private function refuseIfUnstorable(ResourceObject $ro, bool $report, bool &$threw): string|null
+    private function refuseIfUnstorable(ResourceObject $ro, bool $report): string|null
     {
         $unstorable = $this->gate->reason($ro);
         if ($unstorable === null) {
@@ -231,8 +176,6 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
             // survives a beat longer. Anything else is a genuine defect and keeps travelling.
             $this->logger->event(self::failure((string) $ro->uri, 'write', $e));
             if (! $e instanceof CacheStoreFailure) {
-                $threw = true;
-
                 throw $e;
             }
 
@@ -250,11 +193,8 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
      * Runs the donut write, degrading a store failure and recording either way. A refused
      * store still serves the already-rendered page; anything else (a render failure) keeps
      * propagating, since swallowing it would answer 200 with nothing in it.
-     *
-     * @param bool $threw set by reference, so the caller's own finally can tell a genuine
-     *     rethrow apart from a degraded CacheStoreFailure.
      */
-    private function putRecorded(ResourceObject $ro, bool &$threw): ResourceObject
+    private function putRecorded(ResourceObject $ro): ResourceObject
     {
         try {
             return static::IS_ENTIRE_CONTENT_CACHEABLE ? // phpcs:ignore - not "self"
@@ -263,8 +203,6 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
         } catch (Throwable $e) {
             $this->logger->event(self::failure((string) $ro->uri, 'write', $e));
             if (! $e instanceof CacheStoreFailure) {
-                $threw = true;
-
                 throw $e;
             }
 

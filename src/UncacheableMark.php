@@ -35,7 +35,6 @@ final class UncacheableMark implements UncacheableMarkScopeInterface
 
     /** @var list<int> the tick snapshotted at each currently open enterWrite() */
     private array $writeSnapshots = [];
-    private int $interceptorDepth = 0;
 
     #[Override]
     public function mark(string $reason): void
@@ -144,26 +143,6 @@ final class UncacheableMark implements UncacheableMarkScopeInterface
         }
 
         return $this->writeOwners[array_key_last($this->writeOwners)] === $ro;
-    }
-
-    #[Override]
-    public function enterInterceptor(): void
-    {
-        $this->interceptorDepth++;
-    }
-
-    #[Override]
-    public function leaveInterceptor(): bool
-    {
-        $this->interceptorDepth--;
-
-        return $this->interceptorDepth === 0;
-    }
-
-    #[Override]
-    public function isInterceptorActive(): bool
-    {
-        return $this->interceptorDepth > 0;
     }
 
     private function currentOwner(): string

@@ -20,14 +20,4 @@ final class NullUnstorableWriteObserver implements UnstorableWriteObserverInterf
     public function skipped(ResourceObject $ro, string $reason): void
     {
     }
-
-    #[Override]
-    public function raiseIfPending(): void
-    {
-    }
-
-    #[Override]
-    public function clearPending(): void
-    {
-    }
 }

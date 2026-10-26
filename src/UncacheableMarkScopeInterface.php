@@ -60,18 +60,4 @@ interface UncacheableMarkScopeInterface
      * only safe answer - it can only over-refuse, never leak.
      */
     public function isCurrentWriteFor(ResourceObject $ro): bool;
-
-    /** Enter one more nested cacheable GET interceptor (CacheInterceptor/AbstractDonutCacheInterceptor) */
-    public function enterInterceptor(): void;
-
-    /** Leave one nested cacheable GET interceptor; true when this was the outermost one (depth back to zero) */
-    public function leaveInterceptor(): bool;
-
-    /**
-     * Is any cacheable GET interceptor currently active (depth > 0)? A direct, non-AOP
-     * `QueryRepository::put()` call reached with none active must report its own pending
-     * dev-gate skip, since no interceptor's own `leaveInterceptor()` will ever reach depth
-     * zero to report it instead.
-     */
-    public function isInterceptorActive(): bool;
 }

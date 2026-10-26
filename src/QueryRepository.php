@@ -23,7 +23,6 @@ use BEAR\Resource\ResourceObject;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 use ReflectionClass;
-use Throwable;
 
 use function is_array;
 use function max;
@@ -52,57 +51,24 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         $this->gate = $gate ?? new UnstorableGate($this->mark, new DeclaredCacheControl());
     }
 
-    /**
-     * {@inheritDoc}
-     *
-     * Reports its own pending dev-gate skip when reached with no cacheable GET interceptor
-     * active (a CLI script, a command handler), since no outermost interceptor would ever
-     * report it otherwise - raised after normal completion, cleared when a genuine
-     * exception is already propagating. A put() reached with an interceptor active (a
-     * direct put() from inside a resource's own `onGet()`) defers to that interceptor's own
-     * outermost completion instead.
-     */
     #[Override]
     public function put(ResourceObject $ro)
     {
-        $reportDirectly = ! $this->mark->isInterceptorActive();
-        $threw = false;
-        try {
-            // A top-level put is a direct (non-AOP) cache write: root it in a manual_store
-            // scope so it stands out from a write the framework drove, and so its outcome has
-            // a close to ride on. A put nested inside a request GET or a write command keeps
-            // emitting its save events under that scope, unchanged.
-            if ($this->logger instanceof TopLevelAwareInterface && $this->logger->isTopLevel()) {
-                $openId = $this->logger->open(new ManualStoreContext((string) $ro->uri));
-                $stored = false;
-                try {
-                    return $stored = $this->doPut($ro);
-                } finally {
-                    $this->logger->close(new ManualStoreResultContext($stored), $openId);
-                }
-            }
-
-            return $this->doPut($ro);
-        } catch (Throwable $e) {
-            $threw = true;
-
-            throw $e;
-        } finally {
-            if ($reportDirectly) {
-                $this->reportDirectPut($threw);
+        // A top-level put is a direct (non-AOP) cache write: root it in a manual_store
+        // scope so it stands out from a write the framework drove, and so its outcome has
+        // a close to ride on. A put nested inside a request GET or a write command keeps
+        // emitting its save events under that scope, unchanged.
+        if ($this->logger instanceof TopLevelAwareInterface && $this->logger->isTopLevel()) {
+            $openId = $this->logger->open(new ManualStoreContext((string) $ro->uri));
+            $stored = false;
+            try {
+                return $stored = $this->doPut($ro);
+            } finally {
+                $this->logger->close(new ManualStoreResultContext($stored), $openId);
             }
         }
-    }
 
-    private function reportDirectPut(bool $threw): void
-    {
-        if ($threw) {
-            $this->writeObserver->clearPending();
-
-            return;
-        }
-
-        $this->writeObserver->raiseIfPending();
+        return $this->doPut($ro);
     }
 
     private function doPut(ResourceObject $ro): bool
