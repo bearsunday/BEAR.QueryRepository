@@ -33,13 +33,9 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
     protected const IS_ENTIRE_CONTENT_CACHEABLE = false;
 
     /**
-     * Not promoted/defaulted like the other constructor dependencies below: a disconnected
-     * `new UnstorableGate(new UncacheableMark(), ...)` default would never share state with
-     * $mark, permanently unable to see any mark a BC/manually-constructed caller's own
-     * request ever makes. Computed in the constructor body instead, after $mark is already
-     * assigned, so the default (only reached when $gate is omitted) is always the SAME
-     * mark instance this class uses everywhere else - correct for a manual caller too, not
-     * just a DI-wired one.
+     * Not promoted or defaulted: the default gate must reuse this instance's own `$mark`,
+     * never a disconnected one, so a manually constructed caller's own marks stay visible to
+     * it. Built in the constructor body, after `$mark` is assigned.
      */
     private readonly UnstorableGateInterface $gate;
 
@@ -70,15 +66,10 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
         $openId = $this->logger->open(new GetContext((string) $ro->uri));
         $start = hrtime(true);
         $hit = false;
-        // See CacheInterceptor's own copy of this flag and comment: set before ANY genuine
-        // (non-CacheStoreFailure) exception - from the resource's own proceed(), or from the
-        // store's putRecorded() - is rethrown below, so the outer finally never raises a
-        // pending dev-gate skip while that exception is already on its way out. No write
-        // scope of its own (unlike CacheInterceptor): donutRepository->putStatic()/putDonut()
-        // never read wasMarkedSinceCurrentWrite() (any-owner isMarked()/isMarkedForCurrentScope()
-        // only), and a borrowed scope here would let a direct, non-AOP QueryRepository::put()
-        // nested inside this page's own rendering wrongly inherit it - isCurrentWriteFor()
-        // (UncacheableMarkScopeInterface) is what keeps that write safely any-owner instead.
+        // $threw is set before any genuine exception is rethrown, so the outer finally never
+        // raises a pending dev-gate skip while it is in flight. This interceptor opens no
+        // write scope of its own, unlike CacheInterceptor: isCurrentWriteFor() keeps a nested
+        // direct put() any-owner instead of inheriting a scope it doesn't own.
         $threw = false;
         $this->mark->enterInterceptor();
         try {
@@ -172,17 +163,12 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
     }
 
     /**
-     * What runs on a fresh render, whether it is a normal MISS or a read-degrade fallback:
-     * an already-answered response (an ETag the resource set itself, an error code) is
-     * served as-is and the non-write recorded; anything else is rendered and stored through
-     * `putRecorded()`.
-     *
-     * An ETag already on $ro here is not always the resource's own, legitimate validator -
-     * it can also be a side effect of a direct, non-AOP QueryRepository::put() call made
-     * from inside this page's own onGet(), left behind by that write's own headerSetter.
-     * refuseIfUnstorable() tells the two apart and is a no-op unless $ro is ALSO marked
-     * unstorable, so a resource's own legitimately pre-set ETag is never touched; when it
-     * IS marked, this applies the SAME cleanup/header-refusal putStatic()/putDonut() would.
+     * Runs on a fresh render, whether a normal MISS or a read-degrade fallback: an
+     * already-answered response (own ETag, or an error code) is served as-is and recorded;
+     * anything else is rendered and stored through `putRecorded()`. An ETag here may be a
+     * side effect of a direct `put()` made from this page's own `onGet()`, not necessarily
+     * its own validator - `refuseIfUnstorable()` tells the two apart and is a no-op unless
+     * also marked.
      *
      * @param bool $threw set by reference, forwarded to putRecorded() and refuseIfUnstorable()
      *     - see those methods' own docblocks.
@@ -208,34 +194,13 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
     }
 
     /**
-     * Clean up and refuse the response header the SAME way putStatic()/putDonut()'s own
-     * cleanup+refusal would, for a $ro that is NOT going through either of them at all - a
-     * no-op unless $ro turns out to be marked unstorable.
+     * Refuses and purges a response that bypasses the put path (an ETag already set, or an
+     * error code) when it is unstorable. Uses the any-owner `reason()` because the live
+     * response carries hole content. `$report` is true only on the ETag path, where the
+     * template-scoped predicate decides what the dev gate hears.
      *
-     * Lives here, not on DonutRepositoryInterface: a new interface method would fatal every
-     * third-party implementer (BC), and an instanceof-gated one would silently lose this
-     * refusal for a third-party implementer instead. $gate and $headerSetter are proper,
-     * appended, DI-injectable constructor dependencies - Ray.Di resolves whatever an app
-     * bound UnstorableGateInterface/EtagSetterInterface to, the same as every other
-     * collaborator on this class. Cleanup goes through DonutRepositoryInterface's own
-     * purge() (already public, already implemented by every third-party implementer): the
-     * SAME storage-layer invalidation doPutStatic()/doPutDonut()'s own invalidateTags()
-     * performs, recorded as a purge rather than a pre-write cleanup - accurate here, since
-     * nothing rewrites after it on this path.
-     *
-     * Header refusal and cleanup always use reason() (any-owner, holes included) - the live
-     * response really did carry marked content either way, regardless of whether $report is
-     * true. $report controls ONLY whether the dev gate is told at all: false for an
-     * error-code response (no ETag-shortcut refusal there to report), true for the
-     * ETag-shortcut case, where it splits the SAME two predicates doPutDonut() does - a
-     * descendant hole refusing its OWN write is expected, not a signal this page's own
-     * onGet()/render did anything wrong, while putStatic()'s whole-content store counts a
-     * hole's mark too, matching its own any-owner-only check.
-     *
-     * @param bool $threw set by reference so the caller's own finally (reportIfOutermost())
-     *     can tell a genuine rethrow here apart from a degraded CacheStoreFailure - never
-     *     raising a pending dev-gate skip in place of the exception this method is about to
-     *     let travel.
+     * @param bool $threw set by reference so the caller's own finally can tell a genuine
+     *     rethrow here apart from a degraded CacheStoreFailure.
      *
      * @return 'unstorable'|null
      */
@@ -282,16 +247,12 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
     }
 
     /**
-     * Run the donut write, degrading a store failure and recording either way
+     * Runs the donut write, degrading a store failure and recording either way. A refused
+     * store still serves the already-rendered page; anything else (a render failure) keeps
+     * propagating, since swallowing it would answer 200 with nothing in it.
      *
-     * A store that refuses the entry leaves a page that was rendered correctly: it is served, and
-     * the failure is recorded rather than turned into a 500. What the store did not raise keeps
-     * travelling - a template that fails to render is not a slow page, it is a page that does not
-     * exist, and swallowing it would answer 200 with nothing in it.
-     *
-     * @param bool $threw set by reference so the caller's own finally (reportIfOutermost()) can
-     *     tell a genuine rethrow here apart from a degraded CacheStoreFailure - never raising a
-     *     pending dev-gate skip in place of the exception this method is about to let travel.
+     * @param bool $threw set by reference, so the caller's own finally can tell a genuine
+     *     rethrow apart from a degraded CacheStoreFailure.
      */
     private function putRecorded(ResourceObject $ro, bool &$threw): ResourceObject
     {

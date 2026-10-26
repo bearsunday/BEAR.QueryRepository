@@ -37,40 +37,10 @@ final readonly class HeaderSetter
     }
 
     /**
-     * Set the validator and Cache-Control max-age, or - when $unstorable is non-null - strip
-     * every CDN-facing header under any casing (RFC 7230 §3.2: $ro->headers is a plain PHP
-     * array, not an HTTP-aware collection).
-     *
-     * $unstorable is the caller's own reason() check (issue #222): QueryRepository::doPut()
-     * passes its OWN-write-scoped UnstorableGateInterface::reasonForOwnWrite() result (#234);
-     * DonutHeaderSetter's pass-through computes the any-owner reason() instead - the two call
-     * sites deliberately use different predicates, so the decision is computed once by the
-     * caller and handed in rather than recomputed here, which would risk the two disagreeing.
-     * It is a trailing, named-only-in-practice parameter (BC: released 1.17.0 has `$time`
-     * 4th) - both internal call sites pass it as `unstorable: ...` rather than positionally.
-     *
-     * $wasMarked is the SAME split, mandatory whenever $unstorable is non-null (loudly, a
-     * thrown LogicException, not a default: this class holds no mark dependency of its own,
-     * so a nullable default could only fall back to guessing any-owner, risking disagreement
-     * with whichever predicate decided $unstorable). Read with the SAME predicate that
-     * computed $unstorable, or the two can disagree - QueryRepository::doPut() passes
-     * UnstorableGateInterface::isMarkReasonForOwnWrite()'s own-write-scoped answer;
-     * DonutHeaderSetter passes isMarkReason()'s any-owner one, matching its own any-owner
-     * reason(). Without this split, a #[Cacheable] resource that set its own `private,
-     * max-age=60` Cache-Control - refused for THAT reason alone, no mark of its own - would
-     * have that header wrongly replaced by `private, no-store` whenever an UNRELATED mark
-     * fired anywhere else in the request, since an any-owner isMarked() check would disagree
-     * with the own-write-scoped reasonForOwnWrite() that decided $unstorable.
-     *
-     * A producer that called UncacheableMarkInterface::mark() (app-facing) gets its Cache-Control/Pragma
-     * replaced too, with ones that tell every cache, shared or private, not to keep the
-     * response - the response was never meant to carry a cache directive of its own. A
-     * response refused only because it already set its own Cache-Control to `private`/
-     * `no-store` - no mark - keeps exactly the header the developer wrote: the gate decides
-     * whether THIS package stores it server-side, not what the client is told. A
-     * Cache-Control value #[HttpCache] or #[NoHttpCache] itself declared is exempt from the
-     * gate's no-store/private check either way: #[Cacheable] combined with
-     * #[HttpCache(noStore: true)] still stores server-side while telling the client not to.
+     * Sets the validator and Cache-Control max-age. When `$unstorable` is given, strips the
+     * CDN-facing headers; `$wasMarked` must come from the same predicate that decided
+     * `$unstorable`, or an unrelated mark could override a resource's own `private` header.
+     * A declared `#[HttpCache]` value is exempt.
      */
     public function __invoke(ResourceObject $ro, int|null $cacheControlMaxAge, HttpCache|null $httpCache, int|null $time = null, string|null $unstorable = null, bool|null $wasMarked = null): void
     {

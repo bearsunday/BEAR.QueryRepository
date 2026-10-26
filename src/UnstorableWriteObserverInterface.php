@@ -7,8 +7,8 @@ namespace BEAR\QueryRepository;
 use BEAR\Resource\ResourceObject;
 
 /**
- * Observes a write the package skipped because the response was unstorable (#222/#234) -
- * see CHANGELOG/README for the design rationale.
+ * Observes a write the package skipped because the response was unstorable - see
+ * CHANGELOG/README for the design rationale.
  *
  * The package default (NullUnstorableWriteObserver) does nothing; `DevUnstorableGateModule`
  * overrides it with `ThrowingUnstorableWriteObserver`, which surfaces a skip as a thrown

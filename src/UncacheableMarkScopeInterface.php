@@ -11,11 +11,10 @@ use BEAR\Resource\ResourceObject;
  * `UncacheableMarkInterface::mark()`'s refusal decisions - see CHANGELOG/README for the
  * design rationale.
  *
- * `UncacheableMark` is the sole implementation and declares ONLY this interface.
+ * `UncacheableMark` is the sole implementation and declares only this interface.
  * Application code depends on `UncacheableMarkInterface` instead, resolved to
- * `UncacheableMarker`, whose only method is `mark()`: it can never reach a method below,
- * even by mistake, so it can never forge its own write-scope frame to bypass a mark's
- * refusal.
+ * `UncacheableMarker`, whose only method is `mark()`, so it can never forge its own
+ * write-scope frame to bypass a mark's refusal.
  */
 interface UncacheableMarkScopeInterface
 {

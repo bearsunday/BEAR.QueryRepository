@@ -5,38 +5,13 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 /**
- * A request-scoped mark that a per-user value made this response unstorable
+ * Marks the current response unstorable; call it where the per-user value is produced, not
+ * where it is rendered. Every resource whose own output carries that value must call it
+ * itself - a mark covers only the marking resource and whatever embeds it, never an
+ * unrelated sibling. Only `mark()` is app-facing: the scope mechanics live on
+ * `UncacheableMarkScopeInterface`, so application code cannot forge a write frame.
  *
  * @see https://github.com/bearsunday/BEAR.QueryRepository/issues/222
- *
- * A producer of a per-user value - a CSRF token issuer, or anything else that must never be
- * written to the shared resource cache - calls mark() at the point it produces that value, the
- * same way ASP.NET Core, Django, Symfony, Spring and Rails mark their response; every resource
- * whose OWN output carries that value must call mark() itself, even when it got the value
- * indirectly (a shared service, or a value another resource already marked) - a mark covers
- * only the marking resource and whatever embeds it, never an unrelated sibling that reads the
- * same value. The service carries no knowledge of what marked it or why; it only answers
- * whether this request was.
- *
- * This is the app-facing surface: the only method an application's own resource classes ever
- * need. The package's own write-scope mechanics (the hole stack, the write-scope stack, the
- * interceptor-depth counter - what decides whose write a mark actually refuses) live on
- * `UncacheableMarkScopeInterface` instead, a SEPARATE, package-internal interface
- * `UncacheableMark` implements - never this one. This interface itself is resolved to
- * `UncacheableMarker`, a thin wrapper whose only method is `mark()` (delegating to an
- * injected `UncacheableMarkScopeInterface`) - keeping the internal methods off this interface
- * is enforced at RUNTIME, not just by static analysis: application code holding an
- * `UncacheableMarkInterface` has no `enterWrite()` to call even if it tried - there is no such
- * method on the object it was handed, a fatal `Error`. A single do-everything interface would
- * let application code call `enterWrite($myOwnRo)` on the very instance it was handed for
- * `mark()`, forging a write-scope frame for its own direct `put()` and making an UNRELATED
- * mark()'s refusal look scoped away from it - storing a marked secret that should have been
- * refused.
- *
- * `mark()` must be called at the point the value is actually produced, not deferred to
- * wherever it is later rendered or stringified: a value already placed in a response's own
- * body/properties before `mark()` runs can reach a direct, non-AOP `put()` call made before
- * that later point and be stored as-is, `mark()` never having run yet to stop it.
  */
 interface UncacheableMarkInterface
 {

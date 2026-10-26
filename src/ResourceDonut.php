@@ -28,19 +28,11 @@ use function time;
  */
 final class ResourceDonut
 {
-    // `le2` placeholders (written by this version onward) carry a rawurlencode()'d URI:
-    // percent-encoding leaves no '&', '<', '>', '"' or '\'' for an HTML renderer's default
-    // autoescaping to mangle, so the same placeholder text round-trips unchanged whether
-    // it is echoed raw, through Twig's default `{{ hole }}` escaping, or by a non-HTML
-    // renderer (issue #232). A legacy `le` placeholder (written before this version) is
-    // never decoded - its URI is used exactly as refresh() always used it, which stays
-    // correct for 0/1 query params (and still broken for 2+, as it already was: that
-    // entry was already corrupted and self-heals once it expires and is rewritten).
-    // Decoding it here too would be wrong, not merely redundant: a legacy query VALUE
-    // that itself needed percent-encoding (a literal '&', '=', '+', '/', non-ASCII bytes)
-    // would be stripped of that encoding before BEAR\Resource\Uri ever parses it, either
-    // corrupting the value (parse_str re-splits it on the now-literal '&'/'=') or failing
-    // URL validation outright (a raw non-ASCII byte is not a valid URL character).
+    // `le2` placeholders (written from this version on) carry a rawurlencode()'d URI, so the
+    // same text round-trips through HTML escaping and non-HTML renderers alike (#232). A
+    // legacy `le` placeholder is never decoded - used exactly as refresh() always used it -
+    // since decoding a legacy value that itself needed percent-encoding would corrupt it or
+    // fail URL validation.
     private const FORMAT = '[le2:%s]';
 
     private const URI_REGEX = '/\[le(2)?:([^\]]+)]/';
@@ -227,19 +219,12 @@ final class ResourceDonut
     }
 
     /**
-     * `(string) $ro` here would call the page's own `ResourceObject::__toString()`, which
-     * swallows a render Throwable into an E_USER_WARNING and `''` - storing that would bake
-     * an empty page into the cache for every later visitor (since 1.17.0). `toString()` is
-     * the same render with no such catch (vendor/bear/resource), the same method
-     * `BEAR\Sunday\...\HttpResponder::getOutput()` already renders a response with - so a
-     * failure in the PAGE's own template propagates exactly as it would for a page with no
-     * cache attribute at all. A HOLE's failure travels too (DonutRequest wraps it with the
-     * same non-swallowing render, see DonutRequest::__toString()) - a clean, catchable
-     * exception, actually BETTER than the no-attribute baseline for an embedded hole: an
-     * un-donut-wrapped `#[Embed]` renders its child via the raw `AbstractRequest::__toString()`,
-     * which swallows into a fatal E_USER_ERROR instead.
-     * Either way, the original Throwable - not a reconstruction - travels to the caller, and
-     * nothing past this call ever stores or returns a template.
+     * `$ro->toString()` is used instead of `(string) $ro`, which would swallow a render
+     * failure into an empty page via `ResourceObject::__toString()`'s own warning catch. A
+     * page's own template failure propagates exactly as it would without the cache
+     * attribute; a hole's failure (wrapped by `DonutRequest::__toString()`) travels as a
+     * clean, catchable exception too, and nothing past this call ever stores or returns a
+     * template.
      */
     public static function create(ResourceObject $ro, DonutRendererInterface $storage, SurrogateKeys $etags, int|null $ttl, bool $isCacheble, UncacheableMarkScopeInterface $mark): self
     {

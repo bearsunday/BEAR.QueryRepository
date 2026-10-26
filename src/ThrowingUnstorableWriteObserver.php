@@ -11,22 +11,12 @@ use Override;
 /**
  * {@inheritDoc}
  *
- * Bound by `DevUnstorableGateModule` (Scope::SINGLETON - pending state must be shared across
- * every injection point in one request/container, the same reason `UncacheableMark` is).
- *
- * Replaces the old `ThrowingUnstorableGate`, which threw from inside a hole's own render:
- * `ResourceObject::__toString()` degrades that to an `E_USER_WARNING` and an empty string, so
- * the developer never actually saw the exception, only a silently empty template. skipped()
- * suppresses a hole legitimately refusing its OWN write
- * (`UncacheableMarkScopeInterface::isMarkedForCurrentScope()` true while `isNested()` is also true
- * - e.g. a CSRF form hole) - expected, not worth reporting - and otherwise records only the
- * FIRST skip of the request (sticky, mirroring `UncacheableMark::mark()`'s own
- * sticky-once-set behaviour); later skips in the same request do not overwrite it.
- * raiseIfPending() throws for that recorded skip, then clears it via clearPending(), so a
- * later, unrelated request sharing this same (SINGLETON) instance starts clean. clearPending()
- * is also called directly - without raising - by the interceptor's own finally when a genuine
- * exception is already propagating: raising there would replace that exception, which the
- * interceptor must never do (see UnstorableWriteObserverInterface's own docblock).
+ * Bound by `DevUnstorableGateModule` (`Scope::SINGLETON` - pending state must be shared
+ * across every injection point in one request/container). `skipped()` suppresses a hole
+ * legitimately refusing its own write and otherwise records only the first skip of the
+ * request (sticky); `raiseIfPending()` throws for it and clears, so a later request sharing
+ * this instance starts clean. `clearPending()` is also called directly, without raising,
+ * when a genuine exception is already propagating - raising there would replace it.
  */
 final class ThrowingUnstorableWriteObserver implements UnstorableWriteObserverInterface
 {

@@ -100,14 +100,10 @@ final readonly class CacheInterceptor implements MethodInterceptor
     }
 
     /**
-     * Run proceed() for a MISS - normal or degraded, same shape either way - and the write
-     * it triggers: non-200 purges instead, a 200 is put(). A store failure on the write
-     * degrades to a warning, the same as a read failure does; anything else keeps travelling.
-     *
-     * Opens its own write-scope frame around proceed() so isCurrentWriteFor() matches THIS
-     * resource's own write for both a normal miss and a degraded read alike - a direct
-     * (non-AOP) put() made from inside onGet() is scoped the same way regardless of which
-     * path reached it.
+     * Runs proceed() for a MISS and the write it triggers: non-200 purges instead, a 200 is
+     * put(), and a store failure degrades to a warning. Opens its own write-scope frame
+     * around proceed() so isCurrentWriteFor() matches this resource's own write, scoping a
+     * direct put() made from inside onGet() the same way.
      *
      * @param MethodInvocation<object> $invocation
      */
@@ -156,16 +152,11 @@ final readonly class CacheInterceptor implements MethodInterceptor
     }
 
     /**
-     * A genuine read failure keeps travelling; a store outage (CacheStoreFailure) degrades to
-     * a warning and this resource's own read is treated as a MISS - not an early return of
-     * proceed()'s raw result, so the SAME write path a normal miss takes below still runs for
-     * this resource's own result.
-     *
-     * A direct (non-AOP) put() made from inside this resource's own onGet() - say, setting a
-     * secret and only marking it unstorable afterward - relies on that outer write's own
-     * pre-write cleanup (QueryRepository::doPut()'s unconditional deleteEtag()) to remove
-     * what the inner write already stored, whenever the OUTER write is then refused; skipping
-     * that outer write here would leave the inner write's secret cached.
+     * A genuine read failure keeps travelling; a store outage degrades to a warning and this
+     * read is treated as a MISS, so the same write path a normal miss takes still runs. A
+     * direct put() made from this resource's own onGet() relies on that outer write's own
+     * pre-write cleanup to remove what it already stored - skipping that write here would
+     * leave the secret cached.
      *
      * @return null always - the caller reads it as a MISS
      */

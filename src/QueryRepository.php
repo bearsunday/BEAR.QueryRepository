@@ -47,27 +47,20 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         private UncacheableMarkScopeInterface $mark = new UncacheableMark(),
     ) {
         // A manually constructed instance supplying its own $mark but omitting $gate must get
-        // a gate that reads THAT SAME mark - never a disconnected `new UncacheableMark()` of
-        // its own, or a mark made through this instance would never reach the gate's decision.
+        // a gate that reads that mark - never a disconnected `new UncacheableMark()` of its
+        // own, or a mark made through this instance would never reach the gate's decision.
         $this->gate = $gate ?? new UnstorableGate($this->mark, new DeclaredCacheControl());
     }
 
     /**
      * {@inheritDoc}
      *
-     * A direct (non-AOP) put() reached with NO cacheable GET interceptor
-     * currently active at all (a CLI script, a command handler, anything outside a GET flow -
-     * `$mark->isInterceptorActive()` false) has no outermost `CacheInterceptor`/
-     * `AbstractDonutCacheInterceptor` whose own `leaveInterceptor()` will ever reach depth
-     * zero to report a pending dev-gate skip `doPut()` recorded - left unhandled, that skip
-     * stays pending in the (SINGLETON) observer until a LATER, unrelated request's own
-     * interceptor happens to reach depth zero first, inheriting a stale
-     * `UnstorableResponseDetected` that was never its own. This put() reports its own skip
-     * instead, the same way `CacheInterceptor::reportIfOutermost()` does for the AOP path:
-     * raise after normal completion, clear (never raise) when a genuine exception is already
-     * propagating. A put() reached WITH an interceptor active (interceptorDepth > 0 - a
-     * direct put() made from inside a resource's own `onGet()`, say) defers to that
-     * interceptor's own outermost completion, unchanged.
+     * Reports its own pending dev-gate skip when reached with no cacheable GET interceptor
+     * active (a CLI script, a command handler), since no outermost interceptor would ever
+     * report it otherwise - raised after normal completion, cleared when a genuine
+     * exception is already propagating. A put() reached with an interceptor active (a
+     * direct put() from inside a resource's own `onGet()`) defers to that interceptor's own
+     * outermost completion instead.
      */
     #[Override]
     public function put(ResourceObject $ro)
@@ -138,16 +131,11 @@ final readonly class QueryRepository implements QueryRepositoryInterface
             $this->logger->event($this->cachePolicy($ro, $cacheable, $ttl));
         }
 
-        // Checked before headerSetter runs, against the still-unmutated header: only a
-        // Cache-Control set dynamically (by the method or during rendering above) or a mark
-        // made during that rendering trips the gate - #[HttpCache]/#[NoHttpCache]'s own
-        // declared value is exempt (issue #222). Own-write-scoped, not any-owner (#234): an
-        // unrelated sibling resource's own mark elsewhere in the request tree must not refuse
-        // THIS write. headerSetter is handed the SAME result rather than recomputing it, so
-        // the store decision and the header decision can never disagree - likewise
-        // isMarkReasonForOwnWrite(), the SAME own-write-scoped predicate, so headerSetter's
-        // own "was it actually a mark, not just my own Cache-Control" check cannot disagree
-        // with reasonForOwnWrite() either.
+        // Checked before headerSetter runs, against the still-unmutated header: a
+        // Cache-Control set dynamically or a mark made during rendering trips the gate,
+        // scoped to this write so an unrelated sibling's own mark does not refuse it.
+        // headerSetter is handed the same result and predicate rather than recomputing
+        // them, so the store and header decisions can never disagree.
         $unstorable = $this->gate->reasonForOwnWrite($ro);
         $wasMarked = $this->gate->isMarkReasonForOwnWrite($ro);
 

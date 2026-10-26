@@ -113,12 +113,9 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     }
 
     /**
-     * Run a donut write, rooting it in a manual_store scope only when top-level
-     *
-     * A direct (non-AOP) call roots its own scope so every event it emits nests under one
-     * scope instead of scattering at the session root; a nested call emits into the
-     * caller's scope instead. The close reports `stored` once the write (a void call)
-     * completes.
+     * Runs a donut write, rooting it in a manual_store scope only when top-level: a direct
+     * (non-AOP) call roots its own scope so events nest under one, while a nested call
+     * emits into the caller's. The close reports `stored` once the write completes.
      *
      * @param callable(): void $write
      */

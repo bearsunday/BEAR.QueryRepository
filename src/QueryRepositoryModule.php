@@ -34,7 +34,6 @@ use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
  *  SemanticLoggerInterface (null by default - install Dev/ProdQueryRepositoryLogModule to record)
  *  MatchQueryInterface
  *  UriTag
- *  MatchQueryInterface
  *  UncacheableMarkInterface (app-facing, wraps) / UncacheableMarkScopeInterface (package-internal, the state)
  *  UnstorableGateInterface
  *  UnstorableWriteObserverInterface (no-op by default - install/override DevUnstorableGateModule to report)
@@ -82,12 +81,12 @@ final class QueryRepositoryModule extends AbstractModule
         $this->bind(ResourceStorageSaver::class);
         // Server context for thread safety (Swoole, RoadRunner, etc.)
         $this->bind(ServerContextInterface::class)->to(GlobalServerContext::class)->in(Scope::SINGLETON);
-        // One mark per request (see UncacheableMark); issue #222. UncacheableMarkScopeInterface
+        // One mark per request (see UncacheableMark). UncacheableMarkScopeInterface
         // (package-internal) is the primary, singleton-scoped binding; UncacheableMarkInterface
         // (app-facing: mark() only) resolves to UncacheableMarker, a thin wrapper around it -
-        // UncacheableMark itself implements ONLY the internal interface, so binding the
-        // app-facing one straight to it (the natural mistake this split exists to prevent)
-        // fails loudly at DI construction instead of silently leaking the internal surface.
+        // UncacheableMark implements only the internal interface, so binding the app-facing
+        // one straight to it fails loudly at DI construction instead of silently leaking the
+        // internal surface.
         $this->bind(UncacheableMarkScopeInterface::class)->to(UncacheableMark::class)->in(Scope::SINGLETON);
         $this->bind(UncacheableMarkInterface::class)->to(UncacheableMarker::class);
         $this->bind(UnstorableGateInterface::class)->to(UnstorableGate::class);

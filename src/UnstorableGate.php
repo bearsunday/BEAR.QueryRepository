@@ -13,14 +13,10 @@ use function strtolower;
 /**
  * {@inheritDoc}
  *
- * Three conditions make a response unstorable (issue #222): a producer called
- * UncacheableMarkInterface::mark() during this request, Cache-Control already contains
- * no-store, or it contains private (header name and directives matched case-insensitively,
- * RFC 7230 §3.2/RFC 9111 §5.2) - private because this package is a shared cache in the sense
- * of RFC 9111: whatever it stores is served to every later visitor. `isPrivate`/`noStore`
- * applied by `#[HttpCache]` or `#[NoHttpCache]` is unaffected: a header that still reads
- * exactly what DeclaredCacheControl computes for this resource is exempt from the
- * no-store/private check.
+ * Three conditions make a response unstorable: a producer called `mark()` during this
+ * request, or `Cache-Control` already contains `no-store` or `private` (matched
+ * case-insensitively, RFC 7230 §3.2). A value declared by `#[HttpCache]`/`#[NoHttpCache]`
+ * is exempt from that check.
  */
 final readonly class UnstorableGate implements UnstorableGateInterface
 {
@@ -49,13 +45,9 @@ final readonly class UnstorableGate implements UnstorableGateInterface
     /**
      * {@inheritDoc}
      *
-     * Only trusts the own-write-scoped predicate (isMarkedForCurrentScope() ||
-     * wasMarkedSinceCurrentWrite()) when the innermost open write actually belongs to $ro, by
-     * object identity (CacheInterceptor's own opened scope, isCurrentWriteFor()) - otherwise
-     * (a direct, non-AOP put(), or one nested inside a DIFFERENT resource's own write) falls
-     * back to the conservative, any-owner isMarked() instead, which can only over-refuse,
-     * never leak past a mark that write-scope tracking was never actually watching for THIS
-     * write (#234/#222, see UncacheableMarkScopeInterface's own docblock on isCurrentWriteFor()).
+     * Only trusts the own-write-scoped predicate when the innermost open write belongs to
+     * $ro by object identity; otherwise falls back to the conservative, any-owner
+     * isMarked(), which can only over-refuse, never leak past an untracked mark.
      */
     #[Override]
     public function reasonForOwnWrite(ResourceObject $ro): string|null
@@ -66,13 +58,10 @@ final readonly class UnstorableGate implements UnstorableGateInterface
     /**
      * {@inheritDoc}
      *
-     * The exact same any-owner predicate reason() itself trusts - exposed separately, for the
-     * same reason isMarkReasonForOwnWrite() is: a caller already holding reason()'s own
-     * 'unstorable'|null result (DonutHeaderSetter, passing it to HeaderSetter as $unstorable)
-     * needs the SAME predicate, not HeaderSetter re-deriving its own, to tell a mark apart
-     * from a Cache-Control-only refusal - see isMarkReasonForOwnWrite()'s own docblock for
-     * the own-write-scoped twin; HeaderSetter itself holds no UncacheableMarkScopeInterface
-     * of its own, so it cannot derive either answer without being handed it.
+     * The same any-owner predicate reason() trusts, exposed separately so a caller already
+     * holding reason()'s result (DonutHeaderSetter) can tell a mark apart from a
+     * Cache-Control-only refusal without HeaderSetter re-deriving it - HeaderSetter holds
+     * no UncacheableMarkScopeInterface of its own.
      */
     #[Override]
     public function isMarkReason(ResourceObject $ro): bool
@@ -83,15 +72,12 @@ final readonly class UnstorableGate implements UnstorableGateInterface
     /**
      * {@inheritDoc}
      *
-     * The exact same own-write-scoped-or-any-owner-fallback predicate reasonForOwnWrite()
-     * itself trusts (see that method's own docblock) - exposed separately so a caller already
-     * holding THAT method's own 'unstorable'|null result (HeaderSetter, handed it by
-     * QueryRepository::doPut() instead of recomputing its own answer) can also tell a mark
-     * apart from a Cache-Control-only refusal, using the SAME predicate reasonForOwnWrite()
-     * used to decide 'unstorable' in the first place. Without this split, HeaderSetter's own
-     * any-owner isMarked() would wrongly override a #[Cacheable] resource's own Cache-Control
-     * header (e.g. `private, max-age=60`, no mark of its own) with `private, no-store`
-     * whenever an UNRELATED mark happens anywhere else in the request.
+     * The same predicate reasonForOwnWrite() trusts, exposed separately so a caller already
+     * holding that result (HeaderSetter, handed it by QueryRepository::doPut()) can tell a
+     * mark apart from a Cache-Control-only refusal too. Without this split, HeaderSetter's
+     * own any-owner isMarked() would wrongly override a #[Cacheable] resource's own
+     * Cache-Control header with `private, no-store` whenever an unrelated mark fires
+     * elsewhere in the request.
      */
     #[Override]
     public function isMarkReasonForOwnWrite(ResourceObject $ro): bool
