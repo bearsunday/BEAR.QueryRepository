@@ -9,7 +9,7 @@ use Override;
 use function is_string;
 
 /**
- * The default ServerContextInterface for PHP-FPM (one request per process)
+ * The default ServerContextInterface for PHP-FPM (one request at a time per worker)
  *
  * $_SERVER is safe to read directly there; for concurrent processing (Swoole, RoadRunner),
  * use a request-scoped implementation instead.
