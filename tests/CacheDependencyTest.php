@@ -8,6 +8,7 @@ use BEAR\Resource\Module\HalModule;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
+use Koriym\SemanticLogger\SemanticLogger;
 use Override;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\AbstractModule;
@@ -17,10 +18,15 @@ use function array_map;
 use function array_merge;
 use function array_unique;
 use function array_values;
+use function assert;
 use function explode;
+use function is_array;
+use function json_decode;
 
 class CacheDependencyTest extends TestCase
 {
+    use SemanticLogTreeTrait;
+
     private ResourceInterface $resource;
     private QueryRepositoryInterface $repository;
     private ResourceStorageInterface $storage;
@@ -274,5 +280,35 @@ class CacheDependencyTest extends TestCase
         $this->assertContains($uriTag($child->uri), $parentTags);
         $this->assertContains('unit-child-key', $parentTags);
         $this->assertSame(array_values(array_unique($parentTags)), $parentTags, 'a repeated depends() call for the same child does not duplicate the parent tags');
+    }
+
+    /**
+     * A #[DonutCache] child declares no key of its own, so its Surrogate-Key equals its
+     * own URI tag - the one case where the logged edge's childTags must still be deduped.
+     */
+    public function testDependsOnChildTagsHaveNoDuplicateWhenTheChildsOwnKeyEqualsItsUriTag(): void
+    {
+        $uriTag = new UriTag();
+        $logger = new SemanticLogger();
+        $dependency = new CacheDependency($uriTag, $logger);
+
+        $parent = new class extends ResourceObject {
+        };
+        $parent->uri = new Uri('page://self/dep/unit-dup-parent');
+
+        $child = new class extends ResourceObject {
+        };
+        $child->uri = new Uri('page://self/dep/unit-dup-child');
+        $child->headers[Header::SURROGATE_KEY] = $uriTag($child->uri);
+
+        $dependency->depends($parent, $child);
+
+        $tree = $this->flushAndValidate($logger);
+        $edges = self::eventContextsJsonOf($tree, 'depends_on');
+        $this->assertCount(1, $edges);
+        $context = json_decode($edges[0], true);
+        assert(is_array($context));
+        $childTags = $context['childTags'];
+        $this->assertSame([$uriTag($child->uri)], $childTags);
     }
 }

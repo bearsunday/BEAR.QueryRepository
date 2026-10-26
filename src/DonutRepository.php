@@ -32,6 +32,8 @@ use function max;
 
 final readonly class DonutRepository implements DonutRepositoryInterface
 {
+    private CacheDependencyInterface $cacheDependency;
+
     /**
      * A new dependency is always appended, never inserted before an existing parameter: a
      * direct (non-DI) caller's positional arguments must keep working across a minor
@@ -50,8 +52,11 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         private UnstorableGateInterface $gate,
         private UncacheableMarkInterface $mark,
         private UriTagInterface $uriTag = new UriTag(),
-        private CacheDependencyInterface $cacheDependency = new CacheDependency(new UriTag()),
+        CacheDependencyInterface|null $cacheDependency = null,
     ) {
+        // Built from the same $uriTag/$logger this repository uses, not a bare default:
+        // a caller with a custom UriTag must see materials tagged with that same tag.
+        $this->cacheDependency = $cacheDependency ?? new CacheDependency($this->uriTag, $this->logger);
     }
 
     #[Override]

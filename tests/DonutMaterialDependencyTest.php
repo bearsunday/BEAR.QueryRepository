@@ -49,6 +49,10 @@ class DonutMaterialDependencyTest extends TestCase
 
     private const PAGE_RESPONSE_WITH_MUTABLE_MATERIAL = 'page://self/html/cacheable-response-with-material';
 
+    private const PAGE_WITH_PLAIN_ETAG_MATERIAL = 'page://self/html/donut-cache-with-plain-etag-material';
+    private const PLAIN_ETAG_MATERIAL_CHILD = 'page://self/html/plain-cacheable-child';
+    private const PLAIN_ETAG_MATERIAL_CHILD_URI_TAG = '_html_plain-cacheable-child_';
+
     private ResourceInterface $resource;
     private QueryRepositoryInterface $queryRepository;
     private ResourceStorageInterface $storage;
@@ -202,6 +206,26 @@ class DonutMaterialDependencyTest extends TestCase
         $saveDonut = self::eventContextsJsonOf($tree, 'save_donut', self::PAGE_WITH_DONUT_MATERIAL);
         $this->assertCount(1, $saveDonut);
         $this->assertStringContainsString('"' . self::DONUT_MATERIAL_CHILD_URI_TAG . '"', $saveDonut[0], "the child's URI tag reaches the stored template");
+    }
+
+    /**
+     * Every other material fixture's child also carries a Surrogate-Key, so a mutant that
+     * classifies through Surrogate-Key alone (ignoring the ETag branch) would stay green
+     * against them. This child declares no key of its own - only its own interceptor's
+     * ETag ever reaches its headers - pinning the ETag side of classifyMaterials().
+     */
+    public function testAPlainCacheableChildWithNoSurrogateKeyIsClassifiedThroughItsEtag(): void
+    {
+        $this->resource->get(self::PAGE_WITH_PLAIN_ETAG_MATERIAL);
+        $tree = $this->flushAndValidate($this->logger);
+
+        $edges = self::dependsOnEdgesFrom($tree, self::PAGE_WITH_PLAIN_ETAG_MATERIAL);
+        $this->assertCount(1, $edges, 'the child carries only an ETag, no Surrogate-Key - it must still be classified as a material');
+        $this->assertStringContainsString('"child":"' . self::PLAIN_ETAG_MATERIAL_CHILD . '"', $edges[0]);
+
+        $saveDonut = self::eventContextsJsonOf($tree, 'save_donut', self::PAGE_WITH_PLAIN_ETAG_MATERIAL);
+        $this->assertCount(1, $saveDonut);
+        $this->assertStringContainsString('"' . self::PLAIN_ETAG_MATERIAL_CHILD_URI_TAG . '"', $saveDonut[0], "the child's URI tag reaches the stored template");
     }
 
     /**
