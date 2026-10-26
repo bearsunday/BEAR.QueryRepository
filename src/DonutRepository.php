@@ -231,15 +231,10 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     }
 
     /**
-     * Tag a body child the parent's own onGet() already ran as a dependency, before the
-     * template keys below are computed from the header this writes.
+     * Register body children the page's onGet() already ran as dependencies, before the template keys read the header
      *
-     * A material is a body `#[Embed]` child whose resourceObject already carries an ETag
-     * (set by a `#[Cacheable]`/`#[CacheableResponse]` child's own interceptor) or a
-     * Surrogate-Key (always set by a `#[DonutCache]` child's own write, or by a hand-set
-     * key): either header existing before create() runs is evidence the parent already
-     * read the child's data, as opposed to a hole, which create() executes later inside
-     * its own scope. The check only reads headers and never executes a child itself.
+     * A child carrying an ETag or Surrogate-Key already ran during onGet() (a material); a hole has not run yet.
+     * Headers only: running a child here would execute a hole outside its hole scope (#222/#234).
      */
     private function classifyMaterials(ResourceObject $ro): void
     {
@@ -259,8 +254,8 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     }
 
     /**
-     * The template's own URI tag (so `purge($uri)` reaches it, #185) and the declared keys. Children's
-     * tags are left out: a child's write drops only the content and the shell is recomposed.
+     * The template's own URI tag (so `purge($uri)` reaches it, #185) and the declared keys, which include material
+     * children's tags (classifyMaterials()). Holes are left out: their write drops only the content and the shell is recomposed.
      *
      * @param list<string> $declaredKeys
      *

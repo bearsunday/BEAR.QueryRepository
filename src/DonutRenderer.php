@@ -16,10 +16,7 @@ final class DonutRenderer implements DonutRendererInterface
     #[Override]
     public function setView(string $uri, string $view): void
     {
-        // Keyed by placeholder, not appended: a second MISS of the same page in one
-        // long-running container (Swoole/RoadRunner) re-renders the same hole, and the
-        // fresh view must replace the stale one instead of piling up behind it (strtr()
-        // below only ever sees the latest entry for a given placeholder).
+        // Keyed, not appended: a later MISS in a long-running container must replace a stale hole view.
         $this->views[ResourceDonut::placeholder($uri)] = $view;
     }
 
