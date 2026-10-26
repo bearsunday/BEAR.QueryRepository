@@ -90,8 +90,8 @@ class UncacheableMarkerTest extends TestCase
         // - DonutRepositoryTest::testRefreshSkipsSavingContentAndCdnHeaderWhenMarkedUnstorable
         //   (ResourceDonut::refresh()'s own mark() call, mid-recomposition, still skips the
         //   save and strips the CDN header);
-        // - DevUnstorableGateModuleTest::testATopLevelCacheableResourceMarkingItselfThrowsExactlyOnceAfterRenderingWithoutCorruptingTheTemplate
-        //   (ThrowingUnstorableWriteObserver reports the skip exactly once, from a resource
+        // - DevUnstorableGateModuleTest::testATopLevelCacheableResourceMarkingItselfRaisesExactlyOneWarningNamingTheUriAndReasonAfterRendering
+        //   (WarningUnstorableWriteObserver reports the skip exactly once, from a resource
         //   marking itself through the very same UncacheableMarkInterface injection this test
         //   file exercises).
         // Both run, both green, in the SAME phpunit invocation this file's own suite runs in -

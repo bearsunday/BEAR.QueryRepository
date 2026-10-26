@@ -8,9 +8,8 @@ use FakeVendor\HelloWorld\Resource\Page\None;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Direct unit coverage for the #234/dev-gate mechanics UncacheableMark gained: the write-scope
- * stack (enterWrite()/leaveWrite()/wasMarkedSinceCurrentWrite()), isNested(), and the
- * cacheable-interceptor nesting depth (enterInterceptor()/leaveInterceptor()).
+ * Direct unit coverage for the #234 write-scope mechanics UncacheableMark gained: the
+ * write-scope stack (enterWrite()/leaveWrite()/wasMarkedSinceCurrentWrite()) and isNested().
  *
  * @see UnstorableGateTest for the OR'd predicate (reasonForOwnWrite()) these back
  */
@@ -145,16 +144,5 @@ class UncacheableMarkTest extends TestCase
 
         $mark->setWriteOwner(new None());
         $this->assertFalse($mark->isCurrentWriteFor(new None()), 'nothing to rebind - still no frame open, never throws');
-    }
-
-    public function testEnterInterceptorLeaveInterceptorTracksDepthAndReportsOutermostOnly(): void
-    {
-        $mark = new UncacheableMark();
-
-        $mark->enterInterceptor(); // outermost
-        $mark->enterInterceptor(); // nested embed
-
-        $this->assertFalse($mark->leaveInterceptor(), 'the nested one is not the outermost - depth is still 1');
-        $this->assertTrue($mark->leaveInterceptor(), 'depth is back to zero - this was the outermost');
     }
 }

@@ -321,9 +321,9 @@ class ResourceDonutTest extends TestCase
 
     /**
      * `app://self/throwing-hole` marks itself unstorable, THEN throws - this test documents
-     * which surfaces. The render exception wins, not a dev-gate exception
-     * (`UnstorableResponseDetected`): the mark only ever affects a SUCCESSFUL render's
-     * storability, checked by `UnstorableGateInterface::reason()` after `create()` returns -
+     * which surfaces. The render exception wins, not a dev-gate warning: the mark only
+     * ever affects a SUCCESSFUL render's storability, checked by
+     * `UnstorableGateInterface::reason()` after `create()` returns -
      * which it never does here, so nothing ever reads the mark at all. The scope the mark
      * was filed under is still left correctly despite the throw (DonutRequest::__toString()'s
      * own finally), confirmed the same way DonutRequestTest's own throw test does.
@@ -341,8 +341,8 @@ class ResourceDonutTest extends TestCase
             ResourceDonut::create($ro, new DonutRenderer(), new SurrogateKeys($ro->uri), null, false, $this->mark);
             $this->fail('expected the render exception to travel, not any dev-gate exception');
         } catch (TwigError $e) {
-            // Not UnstorableResponseDetected or any other gate-related exception: the mark
-            // ThrowingHole made before throwing is simply never read.
+            // No dev-gate warning either: the mark ThrowingHole made before throwing is
+            // simply never read.
             $this->assertInstanceOf(RuntimeException::class, $e->getPrevious());
             $this->assertSame('the hole blew up mid-render', $e->getPrevious()->getMessage());
         }
