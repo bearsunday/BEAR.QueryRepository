@@ -419,6 +419,37 @@ class QueryRepositoryTest extends TestCase
         $this->assertSame($observer, $property->getValue($repository));
     }
 
+    public function testDiActuallyWiresTheBoundGateIntoQueryRepositoryNotJustThePhpDefault(): void
+    {
+        // Guards the new default (testAManuallyConstructedRepositorysDefaultGateSeesTheInstancesOwnMark
+        // below): a missing or shadowed UnstorableGateInterface binding must not silently
+        // fall through to the new constructor default instead of failing loudly. Proven with
+        // an explicit bound instance - UnstorableGateInterface is not itself singleton-scoped
+        // (unlike writeObserver above), so two separate getInstance() calls would not be
+        // identical even when correctly wired; toInstance() sidesteps that and still proves
+        // the binding, not the default, is what QueryRepository actually received.
+        $namespace = 'FakeVendor\HelloWorld';
+        $module = new FakeEtagPoolModule(ModuleFactory::getInstance($namespace));
+        $boundGate = new UnstorableGate(new UncacheableMark(), new DeclaredCacheControl());
+        $module->override(new class ($boundGate) extends AbstractModule {
+            public function __construct(private readonly UnstorableGateInterface $boundGate)
+            {
+            }
+
+            protected function configure(): void
+            {
+                $this->bind(UnstorableGateInterface::class)->toInstance($this->boundGate);
+            }
+        });
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        $repository = $injector->getInstance(QueryRepositoryInterface::class);
+        assert($repository instanceof Repository);
+
+        $property = (new ReflectionClass(Repository::class))->getProperty('gate');
+        $property->setAccessible(true);
+        $this->assertSame($boundGate, $property->getValue($repository));
+    }
+
     public function testAManuallyConstructedRepositorysDefaultGateSeesTheInstancesOwnMark(): void
     {
         // The #240 pattern (DonutRepository's own cacheDependency default): a manually
