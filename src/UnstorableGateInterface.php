@@ -62,24 +62,17 @@ interface UnstorableGateInterface
     public function reasonForOwnWrite(ResourceObject $ro): string|null;
 
     /**
-     * Whether reason()'s own any-owner predicate answered 'unstorable' specifically because
-     * of a mark, not a Cache-Control value the response set itself - the donut-path twin of
-     * isMarkReasonForOwnWrite() below, same reason: a caller already holding reason()'s own
-     * 'unstorable'|null result (DonutHeaderSetter, passing it to HeaderSetter as $unstorable)
-     * needs the SAME predicate `HeaderSetter` itself no longer derives on its own.
+     * Whether reason() answered 'unstorable' because of a mark rather than the response's own Cache-Control
+     *
+     * Callers pass this to HeaderSetter with reason()'s result, so the header decision uses the same predicate as the store decision.
      */
     public function isMarkReason(ResourceObject $ro): bool;
 
     /**
-     * Whether reasonForOwnWrite()'s own-write-scoped-or-any-owner-fallback predicate (see
-     * that method's own docblock) answered 'unstorable' specifically because of a mark, not a
-     * Cache-Control value the response set itself - the exact distinction `HeaderSetter`
-     * needs to decide whether to replace the developer's own Cache-Control with
-     * `private, no-store` (a mark reason) or keep it as written (a Cache-Control-only
-     * reason). Passed in by `QueryRepository::doPut()` rather than `HeaderSetter` re-deriving
-     * its own, possibly differently-scoped answer (the bug this method fixes: `HeaderSetter`
-     * previously asked its own any-owner `isMarked()` regardless of caller, wrongly
-     * overriding an own-write-scoped refusal that was never actually caused by a mark).
+     * Whether reasonForOwnWrite() answered 'unstorable' because of a mark rather than the response's own Cache-Control
+     *
+     * HeaderSetter replaces the Cache-Control with `private, no-store` only for a mark; it must get this from the
+     * same predicate that decided the refusal, or an unrelated mark would override a resource's own header.
      */
     public function isMarkReasonForOwnWrite(ResourceObject $ro): bool;
 }
