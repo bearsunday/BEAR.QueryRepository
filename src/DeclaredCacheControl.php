@@ -20,12 +20,14 @@ use function strtolower;
  * client-facing directive, not a per-request value. A runtime `private`/`no-store` outside
  * that declared value is refused, since this package is a shared cache: whatever it stores
  * is served to every later visitor.
+ *
+ * @internal
  */
 final readonly class DeclaredCacheControl
 {
     private const REASON = 'unstorable';
 
-    public function __invoke(ResourceObject $ro): string|null
+    private function declared(ResourceObject $ro): string|null
     {
         $class = new ReflectionClass($ro);
         $attributes = $class->getAttributes(HttpCache::class);
@@ -51,7 +53,7 @@ final readonly class DeclaredCacheControl
     {
         $name = Header::findKey($ro->headers, Header::CACHE_CONTROL);
         $cacheControl = $name === null ? '' : $ro->headers[$name];
-        if ($cacheControl === '' || $cacheControl === $this($ro)) {
+        if ($cacheControl === '' || $cacheControl === $this->declared($ro)) {
             return null;
         }
 
