@@ -14,6 +14,7 @@ use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
 use ErrorException;
 use FakeVendor\HelloWorld\Resource\App\FlakyHole;
+use FakeVendor\HelloWorld\Resource\App\ThrowingOnStringifyValue;
 use FakeVendor\HelloWorld\Resource\Page\Index;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Madapaja\TwigModule\TwigModule;
@@ -469,6 +470,45 @@ class GracefulLoggingTest extends TestCase
         $third = $resource->get('page://self/html/donut-cache-with-flaky-hole');
         $this->assertSame(200, $third->code);
         $this->assertStringContainsString('healthy', (string) $third->view, 'a later request reads the re-stored, healed template directly - no further degrade needed');
+    }
+
+    /**
+     * HIT refresh, transient hole TEMPLATE failure (not onGet()): `ResourceDonut::refresh()`'s
+     * own re-fetch runs `$ro->toString()` on the re-fetched hole; `$ro->toString()` does not
+     * swallow a Throwable the way `(string) $ro` would, so a render failure here degrades and
+     * falls back to a fresh render, exactly like the onGet() failure above, instead of being
+     * swallowed into an empty hole embedded in the served page.
+     */
+    public function testHitRefreshFallsBackToAFreshRenderWhenAHolesTemplateTransientlyFails(): void
+    {
+        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
+
+        ThrowingOnStringifyValue::$failCount = 0;
+        $first = $resource->get('page://self/html/donut-cache-with-template-fails-on-refresh-hole');
+        $this->assertSame(200, $first->code);
+        $this->assertStringContainsString('healthy', (string) $first->view);
+        $logger->flush();
+
+        ThrowingOnStringifyValue::$failCount = 1;
+        set_error_handler(static fn (): bool => true); // the fallback degrade still warns
+        try {
+            $second = $resource->get('page://self/html/donut-cache-with-template-fails-on-refresh-hole');
+        } finally {
+            restore_error_handler();
+        }
+
+        $this->assertSame(200, $second->code);
+        $this->assertStringContainsString(
+            'healthy',
+            (string) $second->view,
+            'the fresh render\'s full body - not an empty hole served because the refresh swallowed the template failure',
+        );
+        $tree = $this->flushAndValidate($logger);
+        $this->assertNotNull(self::eventContextJsonOf($tree, 'cache_error'), 'the refresh failure is recorded, not silently absorbed');
     }
 
     /**
