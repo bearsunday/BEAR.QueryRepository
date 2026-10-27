@@ -39,7 +39,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         private ResourceStorageInterface $storage,
         private Expiry $expiry,
         private CacheDependencyInterface $cacheDependency,
-        private UnstorableGateInterface $gate,
+        private DeclaredCacheControl $declaredCacheControl = new DeclaredCacheControl(),
     ) {
     }
 
@@ -92,12 +92,9 @@ final readonly class QueryRepository implements QueryRepositoryInterface
             $this->logger->event($this->cachePolicy($ro, $cacheable, $ttl));
         }
 
-        // Checked before headerSetter runs, against the still-unmutated header: only a
-        // Cache-Control set dynamically (by the method or during rendering above) or a mark
-        // made during that rendering trips the gate - #[HttpCache]/#[NoHttpCache]'s own
-        // declared value is exempt (issue #222). headerSetter makes the identical check on
-        // this same unmutated state to decide what it writes, so the two never disagree.
-        $unstorable = $this->gate->reason($ro);
+        // Checked against the still-unmutated header, before headerSetter runs the identical
+        // check - a dynamically set Cache-Control trips this; #[HttpCache]'s own value is exempt.
+        $unstorable = $this->declaredCacheControl->reason($ro);
 
         ($this->headerSetter)($ro, $ttl, $httpCache);
 

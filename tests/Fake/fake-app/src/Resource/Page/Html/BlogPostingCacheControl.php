@@ -12,6 +12,8 @@ use Koriym\HttpConstants\RequestHeader;
 #[CacheableResponse]
 class BlogPostingCacheControl extends ResourceObject
 {
+    public static int $calls = 0;
+
     public $headers = [
         RequestHeader::CACHE_CONTROL => CacheControl::NO_STORE
     ];
@@ -26,6 +28,7 @@ class BlogPostingCacheControl extends ResourceObject
     #[Embed(rel: "comment", src: "page://self/html/comment")]
     public function onGet()
     {
+        self::$calls++;
         $this->body['article'] = '1';
 
         $this->repository->putStatic($this, 100, 10);

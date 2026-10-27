@@ -281,25 +281,21 @@ class QueryRepositoryTest extends TestCase
         $this->assertLessThanOrEqual(FakeLegacyStateStorage::RESIDENCE + 1, $age);
     }
 
-    public function testUnstorableMarkSkipsStoreAndOrdinaryResponsesStillStore(): void
+    public function testRuntimePrivateResponseSkipsStoreAndOrdinaryResponsesStillStore(): void
     {
-        // Ordinary (unmarked) responses store and hit normally - checked first, since the
-        // mark is per-request state (here: one shared container for the whole test) that
-        // cannot be unset once a later call sets it.
+        // Ordinary (no runtime Cache-Control) responses store and hit normally.
         $ordinary = $this->resource->get('app://self/unstorable-value', ['unstorable' => false]);
-        $this->assertArrayNotHasKey(Header::PRAGMA, $ordinary->headers);
-        $this->assertNotSame('private, no-store', $ordinary->headers[Header::CACHE_CONTROL]);
+        $this->assertNotSame('private', $ordinary->headers[Header::CACHE_CONTROL] ?? null);
         $this->logger->flush();
         $this->resource->get('app://self/unstorable-value', ['unstorable' => false]);
         $treeOrdinary = $this->flushAndValidate($this->logger);
         $this->assertContains('cache_hit', self::collectTypes($treeOrdinary));
 
-        // A producer (a CSRF token issuer) marks this request's response unstorable: the
-        // write is skipped, the live response is still served, and its headers tell every
-        // cache - shared or private - not to keep it (issue #222).
+        // The resource sets its own Cache-Control to private at runtime (e.g. a CSRF
+        // token issuer): the write is skipped, the live response is still served, and its
+        // own header is kept exactly, not overwritten.
         $ro = $this->resource->get('app://self/unstorable-value');
-        $this->assertSame('private, no-store', $ro->headers[Header::CACHE_CONTROL]);
-        $this->assertSame('no-cache', $ro->headers[Header::PRAGMA]);
+        $this->assertSame('private', $ro->headers[Header::CACHE_CONTROL]);
         $this->assertArrayNotHasKey(Header::ETAG, $ro->headers);
 
         $tree = $this->flushAndValidate($this->logger);
@@ -307,7 +303,7 @@ class QueryRepositoryTest extends TestCase
         $this->assertNotNull($putSkipped);
         $this->assertStringContainsString('"reason":"unstorable"', $putSkipped);
 
-        // Nothing was stored: a second GET of the same (still marked) request misses again.
+        // Nothing was stored: a second GET of the same request misses again.
         $this->logger->flush();
         $this->resource->get('app://self/unstorable-value');
         $tree2 = $this->flushAndValidate($this->logger);
@@ -319,11 +315,9 @@ class QueryRepositoryTest extends TestCase
     {
         // #[NoHttpCache] declares its own Cache-Control (private, no-store, no-cache,
         // must-revalidate) - a header that equals the declared value is the attribute
-        // speaking, not a per-request value, and must not trip the gate (issue #222
-        // regression guard: 1.x stored this).
+        // speaking, not a per-request value, and must not trip the unstorable check.
         $ro = $this->resource->get('app://self/cacheable-no-http-cache');
         $this->assertStringContainsString('max-age=10', $ro->headers[Header::CACHE_CONTROL]);
-        $this->assertArrayNotHasKey(Header::PRAGMA, $ro->headers, 'the gate must not override #[NoHttpCache]\'s own headers');
 
         $this->logger->flush();
         $this->resource->get('app://self/cacheable-no-http-cache');

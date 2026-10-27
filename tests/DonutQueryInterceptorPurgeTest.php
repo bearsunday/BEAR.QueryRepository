@@ -65,7 +65,6 @@ class DonutQueryInterceptorPurgeTest extends TestCase
     protected function tearDown(): void
     {
         MutableComment::$comment = 'comment-a';
-        MutableComment::$markUnstorable = false;
         // Every emitted log entry must conform to the published schema (drift detection)
         $this->flushAndValidate($this->logger);
     }
@@ -165,53 +164,6 @@ class DonutQueryInterceptorPurgeTest extends TestCase
         $a2 = $this->resource->get($pageUri);
         $this->assertNotSame($aLastModified, $a2->headers[Header::LAST_MODIFIED], 'A→B→A does not revive the old A time');
         $this->assertNotSame($bLastModified, $a2->headers[Header::LAST_MODIFIED], 'B→A advances Last-Modified');
-    }
-
-    /**
-     * Pins DonutRepository::refreshDonut()'s leak guard: the `return $ro;` inside the
-     * marked branch of the refresh that stops a marked, changed recomposition from
-     * reaching saveView(). Mutating that line away (removing the early return) lets the
-     * marked content fall through to recordContentState()/saveView() and be persisted.
-     */
-    public function testRefreshDoesNotPersistContentMarkedUnstorableDuringTheRefresh(): void
-    {
-        // Own pools: the mark this test sets is a per-injector singleton (UncacheableMark)
-        // and never unsets itself - it must not leak into the shared static injector the
-        // other test methods in this class reuse.
-        $injector = self::newInjector();
-        $resource = $injector->getInstance(ResourceInterface::class);
-        $repository = $injector->getInstance(QueryRepository::class);
-        $mark = $injector->getInstance(UncacheableMarkInterface::class);
-        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
-
-        $pageUri = 'page://self/html/mutable-blog-posting';
-        $commentUri = new Uri('page://self/html/mutable-comment');
-        MutableComment::$comment = 'comment-a';
-        MutableComment::$markUnstorable = false;
-        $resource->get($pageUri);
-        $logger->flush(); // drain the initial put: this test is about the refresh that follows
-
-        // The hole both changes content and marks the recomposition unstorable - e.g. it
-        // issues a CSRF token while also returning fresh data - exactly the scenario the
-        // unprotected `return $ro;` in refreshDonut()'s marked branch guards against:
-        // removing it lets this changed, marked content fall through to saveView().
-        MutableComment::$comment = 'comment-b-secret';
-        MutableComment::$markUnstorable = true;
-        $purged = $repository->purge($commentUri);
-        assert($purged);
-
-        $marked = $resource->get($pageUri);
-        $this->assertTrue($mark->isMarked(), 'sanity: the hole did mark this recomposition');
-        $this->assertStringContainsString('comment-b-secret', (string) $marked->view, 'sanity: the recomposition did pick up the changed, marked content');
-        $this->assertSame('private, no-store', $marked->headers[Header::CACHE_CONTROL]);
-
-        // DonutRepository::get() consults exactly this state for EVERY later visitor,
-        // marked or not - if it now exists and carries the marked content, that content
-        // leaked into the shared cache for whoever requests this page next.
-        $state = $repository->get(new Uri($pageUri));
-        $this->assertNull($state, 'content recomposed while marked unstorable must not be persisted for a later visitor');
-
-        $this->flushAndValidate($logger);
     }
 
     private function isStateCached(): bool

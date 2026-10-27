@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\ExpireAtKeyNotExists;
 use BEAR\Resource\ResourceInterface;
+use FakeVendor\HelloWorld\Resource\App\HttpCacheControlWithCacheable;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 
@@ -68,8 +69,14 @@ class GetInterceptorTest extends TestCase
 
     public function testHttpCacheWithCacheble(): void
     {
+        HttpCacheControlWithCacheable::$calls = 0;
         $ro = $this->resource->get('app://self/http-cache-control-with-cacheable');
         $this->assertSame('private, max-age=10', $ro->headers['Cache-Control']);
+
+        // #[HttpCache(isPrivate: true)]'s own declared value is exempt from the runtime-private
+        // check: a second GET is served from the server-side store, not a fresh onGet() call.
+        $this->resource->get('app://self/http-cache-control-with-cacheable');
+        $this->assertSame(1, HttpCacheControlWithCacheable::$calls, 'the server-side store must still hold this declared-private value');
     }
 
     public function testHttpCacheOverrideMaxAge(): void
