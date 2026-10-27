@@ -13,16 +13,13 @@ use function str_contains;
 use function strtolower;
 
 /**
- * The Cache-Control value `#[HttpCache]` or `#[NoHttpCache]` declares for a resource, and
- * whether a response's own code overrode it to something unstorable
+ * The Cache-Control value `#[HttpCache]`/`#[NoHttpCache]` declares for a resource, and whether
+ * a response's own code overrode it to something unstorable
  *
- * Mirrors `HttpCacheInterceptor`'s precedence, so `__invoke()` always matches what was written
- * to the header. This package is a shared cache in the sense of RFC 9111: whatever it stores
- * is served to every later visitor, so reason() refuses a write whose Cache-Control reads
- * private or no-store (matched case-insensitively, RFC 7230 §3.2/RFC 9111 §5.2) and was not
- * set by that same declaration - the attribute's own client-facing directive is exempt,
- * since `#[Cacheable]` combined with `#[HttpCache(noStore: true)]` still stores server-side
- * while telling the client not to.
+ * A declared value is exempt from `reason()`'s check - it is the attribute's own
+ * client-facing directive, not a per-request value. A runtime `private`/`no-store` outside
+ * that declared value is refused, since this package is a shared cache: whatever it stores
+ * is served to every later visitor.
  */
 final readonly class DeclaredCacheControl
 {
