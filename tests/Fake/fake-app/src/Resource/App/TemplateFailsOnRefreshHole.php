@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace FakeVendor\HelloWorld\Resource\App;
 
 use BEAR\Resource\ResourceObject;
+use FakeVendor\HelloWorld\ThrowingOnStringifyValue;
 
 /**
  * A hole whose `onGet()` always succeeds; its own template render is what fails, controlled

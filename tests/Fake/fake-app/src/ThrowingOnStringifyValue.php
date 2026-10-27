@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FakeVendor\HelloWorld\Resource\App;
+namespace FakeVendor\HelloWorld;
 
 use RuntimeException;
 use Stringable;
