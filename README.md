@@ -23,7 +23,7 @@
 
 Declare a dependency with `#[Embed]` and never `unset()` or overwrite the slot - a cached `onGet()` must not fetch dependent data with `$resource->get()`. What a child becomes depends on how the page uses it:
 
-A `#[Cacheable]`/`#[CacheableResponse]`/`#[DonutCache]` response is shared with every visitor, so a per-user value belongs in a non-cacheable `#[DonutCache]` hole, not in the cached response itself.
+A `#[Cacheable]`/`#[CacheableResponse]`/`#[DonutCache]` response is shared with every visitor, so a per-user value belongs in a non-cacheable `#[DonutCache]` hole, not in the cached response itself. QR inspects only the response's own header, so a per-user value that reaches the cached output any other way - a child's value read into the body in `onGet()`, a value received through `#[ResourceParam]`, or a value generated in the template (e.g. a Twig function) - is stored and served to every later visitor. In particular, do not receive a per-user value with `#[ResourceParam]` (e.g. `app://self/login#nickname`) in a cached resource - put it in a non-cacheable `#[DonutCache]` hole instead.
 
 | Need | Use | Effect of a child purge |
 |---|---|---|
