@@ -11,7 +11,10 @@ use Symfony\Component\Cache\Marshaller\DefaultMarshaller;
 use Symfony\Component\Cache\Marshaller\DeflateMarshaller;
 use Symfony\Component\Cache\Marshaller\MarshallerInterface;
 
-/** @implements ProviderInterface<MarshallerInterface|null> */
+/**
+ * @implements ProviderInterface<MarshallerInterface|null>
+ * @internal
+ */
 final readonly class MarshallerProvider implements ProviderInterface
 {
     /** @param array{enabled?: bool, type?: string, use_igbinary?: bool} $options Marshalling options */

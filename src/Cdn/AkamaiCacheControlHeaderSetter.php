@@ -11,6 +11,7 @@ use Override;
 
 use function sprintf;
 
+/** @internal */
 final class AkamaiCacheControlHeaderSetter implements CdnCacheControlHeaderSetterInterface
 {
     public const CDN_CACHE_CONTROL_HEADER = 'Akamai-Cache-Control';

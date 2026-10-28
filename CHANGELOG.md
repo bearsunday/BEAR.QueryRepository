@@ -9,14 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Deploy this version with a new `CacheVersionModule` version (an app that binds its own cache adapter rather than this package's `Storage*Module`s must clear its pools instead): entries written by earlier versions may hold per-user content, and an earlier version reading this version's donut cache shows raw `[le2:...]` placeholders during a rolling deploy.
-- A `#[Cacheable]`/`#[CacheableResponse]`/`#[DonutCache]` response whose own code sets `Cache-Control` to `private` or `no-store` is not stored server-side; this includes a `$headers` property default such as `[ResponseHeader::CACHE_CONTROL => CacheControl::NO_STORE]`. To keep server-side caching with a client-facing `no-store`, declare `#[HttpCache(noStore: true)]` instead, which is still stored.
+- A `#[Cacheable]`/`#[CacheableResponse]`/`#[DonutCache]` response whose own code, including a `$headers` property default, sets `Cache-Control` to `private` or `no-store` is not stored server-side. To keep server-side caching with a client-facing `no-store`, declare `#[HttpCache(noStore: true)]` instead.
 - `ResourceDonut::FORMAT` is no longer public; use `ResourceDonut::placeholder()`.
 - Requires `koriym/semantic-logger` `^0.11`. Written logs use its `log` document shape, and diagnostic `kind` is now `code`.
 - Requires `bear/resource` `^1.22.4`.
 - `ResourceDonut::refresh()`: a hole that throws while an already-cached `#[DonutCache]` page is recomposed now degrades to a fresh render instead of failing the request directly from the refresh, the same way a cache-store failure already does. A hole that keeps throwing still fails the request, now from the fresh render instead of the refresh.
 - `CacheDependency::depends()` no longer unsets the child's own `Surrogate-Key` header after copying it into the parent: a child that is both read by the parent and later rendered as a hole keeps its own key for its own independent cache entry.
+- `KeepMutationsAndFailures` no longer keeps a session only because it contains a `semantic_logger_error` diagnostic; a session is kept for a mutation, a failed effect or the sample.
+- Interceptors and other implementation classes that applications do not construct are now marked `@internal`; reference the attributes, interfaces and modules instead.
 
 ### Fixed
+- A cached response whose `Cache-Control` contains `no-store` (e.g. `#[HttpCache(noStore: true)]` or `#[NoHttpCache]`) no longer gets a `max-age` appended, so the client header is not a contradictory `no-store, max-age=…` (#243).
 - `LogFileWriter`: two sessions flushed in the same microsecond no longer overwrite each other. The timestamped filename now carries a random suffix, so both survive (#221).
 - A `#[DonutCache]` page embedding an `#[Embed]` hole whose URI carried two or more query parameters leaked a raw `[le:...]` placeholder to the client and could throw `ParameterException` on the next request - fixed by moving new placeholders to a `[le2:...]` marker (#232).
 - An exception while rendering a `#[DonutCache]`/`#[CacheableResponse]` page - a hole's own resource or the page's own template - no longer stores an empty template that is served to every later visitor; the failure now surfaces to the caller instead of being swallowed into an empty page.

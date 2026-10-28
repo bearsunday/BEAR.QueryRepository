@@ -12,6 +12,7 @@ use function sprintf;
 /**
  * @see https://www.ietf.org/archive/id/draft-cdn-control-header-01.html
  * @see https://blog.cloudflare.com/cdn-cache-control/
+ * @internal
  */
 final class CdnCacheControlHeaderSetter implements CdnCacheControlHeaderSetterInterface
 {

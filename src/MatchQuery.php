@@ -11,6 +11,7 @@ use ReflectionMethod;
 
 use function sprintf;
 
+/** @internal */
 final class MatchQuery implements MatchQueryInterface
 {
     /**

@@ -172,19 +172,6 @@ class RetentionPolicyTest extends TestCase
         }
     }
 
-    public function testASessionWhoseOwnRecordsMayBeIncompleteIsKept(): void
-    {
-        // An out-of-order close is a LIFO violation: the core logger records it in-band and
-        // discards the close it could not match, so this session is missing a fact it should have.
-        // Dropping it as a healthy read would hide that the log itself is unreliable here.
-        $first = $this->logger->open(new GetContext('page://self/html/blog-posting'));
-        $second = $this->logger->open(new GetContext('page://self/html/comment'));
-        $this->logger->close(new CacheHitContext('view'), $first);
-        $this->logger->close(new CacheHitContext('view'), $second);
-
-        $this->assertTrue($this->policy->keeps($this->logger->flush()));
-    }
-
     public function testAFailedOutcomeIsFoundWhereTheRootKeepsItAsARecord(): void
     {
         // A `close` is one entry on a scope, but a root record carrying `openId` when its

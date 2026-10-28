@@ -30,6 +30,7 @@ use function sprintf;
 use function strtotime;
 use function time;
 
+/** @internal */
 final readonly class QueryRepository implements QueryRepositoryInterface
 {
     public function __construct(

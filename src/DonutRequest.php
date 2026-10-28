@@ -14,6 +14,8 @@ use function assert;
 
 /**
  * Runs an embedded hole while a donut template renders
+ *
+ * @internal
  */
 final readonly class DonutRequest implements Stringable
 {

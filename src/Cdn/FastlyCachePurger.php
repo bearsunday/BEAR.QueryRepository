@@ -8,6 +8,7 @@ use BEAR\FastlyModule\FastlyCachePurgerInterface;
 use BEAR\QueryRepository\PurgerInterface;
 use Override;
 
+/** @internal */
 final readonly class FastlyCachePurger implements PurgerInterface
 {
     public function __construct(private FastlyCachePurgerInterface $fastlyCachePurger)

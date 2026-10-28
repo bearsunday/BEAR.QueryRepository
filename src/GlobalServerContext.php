@@ -13,6 +13,8 @@ use function is_string;
  *
  * $_SERVER is safe to read directly there; for concurrent processing (Swoole, RoadRunner),
  * use a request-scoped implementation instead.
+ *
+ * @internal
  */
 final class GlobalServerContext implements ServerContextInterface
 {

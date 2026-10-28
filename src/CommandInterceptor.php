@@ -25,6 +25,7 @@ use Ray\Aop\MethodInvocation;
  * @see \BEAR\RepositoryModule\Annotation\Purge
  * @see \BEAR\RepositoryModule\Annotation\Refresh
  * @see https://bearsunday.github.io/manuals/1.0/en/cache.html#tag-based-cache-invalidation
+ * @internal
  */
 final readonly class CommandInterceptor implements MethodInterceptor
 {

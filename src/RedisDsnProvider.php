@@ -16,7 +16,10 @@ use Relay\Cluster as RelayCluster;
 use Relay\Relay;
 use Symfony\Component\Cache\Adapter\RedisAdapter;
 
-/** @implements ProviderInterface<Redis|RedisArray|RedisCluster|ClientInterface|Relay|RelayCluster> */
+/**
+ * @implements ProviderInterface<Redis|RedisArray|RedisCluster|ClientInterface|Relay|RelayCluster>
+ * @internal
+ */
 final readonly class RedisDsnProvider implements ProviderInterface
 {
     /**

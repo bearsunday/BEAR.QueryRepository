@@ -317,7 +317,7 @@ class QueryRepositoryTest extends TestCase
         // must-revalidate) - a header that equals the declared value is the attribute
         // speaking, not a per-request value, and must not trip the unstorable check.
         $ro = $this->resource->get('app://self/cacheable-no-http-cache');
-        $this->assertStringContainsString('max-age=10', $ro->headers[Header::CACHE_CONTROL]);
+        $this->assertSame('private, no-store, no-cache, must-revalidate', $ro->headers[Header::CACHE_CONTROL], 'no lifetime is appended beside no-store (#243)');
 
         $this->logger->flush();
         $this->resource->get('app://self/cacheable-no-http-cache');

@@ -11,6 +11,7 @@ namespace BEAR\QueryRepository;
  *
  * @see \BEAR\RepositoryModule\Annotation\DonutCache
  * @see https://bearsunday.github.io/manuals/1.0/en/cache.html#donut-cache
+ * @internal
  */
 final class DonutCacheInterceptor extends AbstractDonutCacheInterceptor
 {

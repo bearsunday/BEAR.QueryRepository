@@ -10,6 +10,7 @@ use Override;
 
 use function sprintf;
 
+/** @internal */
 final class FastlyCacheControlHeaderSetter implements CdnCacheControlHeaderSetterInterface
 {
     public const CDN_CACHE_CONTROL_HEADER = 'Surrogate-Control';

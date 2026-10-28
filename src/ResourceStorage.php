@@ -48,6 +48,7 @@ use function trim;
  *     etagProvider: ProviderInterface<TagAwareAdapterInterface>,
  *     serverContext: ServerContextInterface
  * }
+ * @internal
  */
 final class ResourceStorage implements ResourceStorageInterface, ScopedValidatorInterface
 {

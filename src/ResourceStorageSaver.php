@@ -9,6 +9,7 @@ use Symfony\Component\Cache\CacheItem;
 
 use function assert;
 
+/** @internal */
 final class ResourceStorageSaver
 {
     /** @param list<string> $tags */

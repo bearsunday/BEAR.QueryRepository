@@ -23,6 +23,8 @@ use function str_contains;
  * `symfony/cache` adapters do not throw: they log the backend failure and answer as if the entry
  * were absent. Given to the pools, this turns that report into a `pool_error` event, so a store
  * that is down is visible where every other cache decision already is.
+ *
+ * @internal
  */
 final class PoolErrorLogger extends AbstractLogger
 {

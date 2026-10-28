@@ -14,6 +14,7 @@ use function sprintf;
 use function str_contains;
 use function strtolower;
 
+/** @internal */
 final readonly class HeaderSetter
 {
     /**
@@ -81,8 +82,17 @@ final readonly class HeaderSetter
             return;
         }
 
-        if (str_contains($ro->headers[$existingName], 'max-age')) {
-            return;
+        // no-store forbids keeping the response at all, so a lifetime beside it is contradictory;
+        // every case variant of the key is a Cache-Control the client receives
+        foreach ($ro->headers as $name => $value) {
+            if (strtolower($name) !== strtolower(Header::CACHE_CONTROL)) {
+                continue;
+            }
+
+            $lower = strtolower($value);
+            if (str_contains($lower, 'max-age') || str_contains($lower, 'no-store')) {
+                return;
+            }
         }
 
         $ro->headers[$existingName] .= ', ' . $setMaxAge;

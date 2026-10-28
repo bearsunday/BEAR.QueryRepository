@@ -7,7 +7,10 @@ namespace BEAR\QueryRepository;
 use Override;
 use Ray\Di\ProviderInterface;
 
-/** @implements ProviderInterface<array<CommandInterface>> */
+/**
+ * @implements ProviderInterface<array<CommandInterface>>
+ * @internal
+ */
 final readonly class CommandsProvider implements ProviderInterface
 {
     public function __construct(
