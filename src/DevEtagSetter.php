@@ -10,6 +10,7 @@ use Override;
 
 use function gmdate;
 
+/** @internal */
 final readonly class DevEtagSetter implements EtagSetterInterface
 {
     /**

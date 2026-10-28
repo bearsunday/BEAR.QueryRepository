@@ -14,6 +14,7 @@ use function sprintf;
 use function str_contains;
 use function strtolower;
 
+/** @internal */
 final readonly class HeaderSetter
 {
     /**

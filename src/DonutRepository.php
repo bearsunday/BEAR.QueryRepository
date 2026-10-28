@@ -30,6 +30,7 @@ use function array_values;
 use function explode;
 use function max;
 
+/** @internal */
 final readonly class DonutRepository implements DonutRepositoryInterface
 {
     private CacheDependencyInterface $cacheDependency;

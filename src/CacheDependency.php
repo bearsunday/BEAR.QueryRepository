@@ -17,6 +17,7 @@ use function explode;
 use function implode;
 use function sprintf;
 
+/** @internal */
 final readonly class CacheDependency implements CacheDependencyInterface
 {
     public function __construct(
