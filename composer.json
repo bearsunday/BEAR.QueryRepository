@@ -25,7 +25,6 @@
         "ray/di": "^2.20",
         "ray/psr-cache-module": "^1.5.1",
         "symfony/cache": "^5.3 || ^6.0 || ^7.3",
-        "symfony/cache-contracts": "^2.4 || ^3.0",
         "symfony/polyfill-php83": "^v1.32.0"
     },
     "require-dev": {
@@ -40,12 +39,16 @@
     },
     "suggest": {
         "ext-redis": "Required for Redis cache storage backend",
-        "ext-memcached": "Required for Memcached cache storage backend"
+        "ext-memcached": "Required for Memcached cache storage backend",
+        "bear/fastly-module": "Required for FastlyModule (Fastly CDN purge)",
+        "mobiledetect/mobiledetectlib": "Required for MobileEtagModule (device-aware ETags)",
+        "predis/predis": "Redis client for StorageRedisDsnModule without ext-redis",
+        "relay/relay": "Redis client for StorageRedisDsnModule without ext-redis"
     },
     "autoload": {
         "psr-4": {
             "BEAR\\QueryRepository\\": ["src/", "src-deprecated/"],
-            "BEAR\\RepositoryModule\\Annotation\\": ["src-annotation/",  "src-annotation-deprecated"]
+            "BEAR\\RepositoryModule\\Annotation\\": ["src-annotation/",  "src-annotation-deprecated/"]
         }
     },
     "autoload-dev": {
