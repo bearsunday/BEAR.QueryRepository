@@ -35,7 +35,7 @@ vendor/bin/stree var/log/query-repository/latest.json   # 直前に走ったリ�
 | `etag` | 表現の entity-tag。**キーではなく検証子** | `ETag` レスポンスヘッダ |
 | `layer` | どのストアが照会に答えたか。どのプールに書いたかではない | —(ログ固有の軸) |
 | donut / donut-view | 穴のあるキャッシュ可能な外殻 / 再合成されたページ | `#[CacheableResponse]`、`#[DonutCache]` |
-| `sMaxAge` | その書き込みが CDN に要求した共有キャッシュの寿命 | `DonutRepositoryInterface::put($ro, ttl: …, sMaxAge: …)` |
+| `sMaxAge` | その書き込みが CDN に要求した共有キャッシュの寿命 | `DonutRepositoryInterface::putStatic($ro, ttl: …, sMaxAge: …)` |
 | スコープ / イベント / close | ツリーの 3 種類のノード。次節で説明 | —(ログ固有の区別) |
 
 `roPool` と `etagPool` は**プールの名前**、`layer` は**照会に答えたストア**です —
@@ -95,7 +95,7 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 | `put_donut` | `uri`, `requestedTtl`, `sMaxAge` | donut の書き込みを要求した。要求時の lifetime つき |
 | `refresh_donut` | `uri` | キャッシュ済み donut をそのまま返さず再合成した |
 | `cdn_headers` | `uri`, `headers`, `surrogateKeys` | 応答に実際に付いた CDN 向けヘッダ |
-| `depends_on` | `parent`, `child`, `childTags` | 依存の辺 1 本。子のタグが親に加わった。記録するのは `#[Cacheable]` の put だけ |
+| `depends_on` | `parent`, `child`, `childTags` | 依存の辺 1 本。子のタグが親に加わった。`#[Cacheable]` の put のほか、donut ページの書き込みでも `onGet()` で既に実行された子（material）なら記録する。穴はまだ実行されていないので記録しない |
 | `pre_write_cleanup` | `uri` | 書き込み側が、上書きするエントリを消す直前 |
 | `invalidate` | `tags`, `roPool`, `etagPool`, `cdn`, `durationMs` | タグを無効化した。対象ごとの結果つき |
 | `purge` | `uri` | URI 指定の破棄を要求した |
@@ -119,7 +119,7 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 | `reason` (`put_skipped`) | `etag-present` \| `error-code` \| `not-cacheable` \| `unstorable` | 書き込みが起きなかった理由。`etag-present` = リソースが既に ETag を持っていたので donut 層は手を出さなかった、`not-cacheable` = テンプレートから再描画された donut ページ(ページとしては保存しない)、`error-code` は応答の `code` を伴い閾値は経路で違う: `#[Cacheable]` は 200 以外すべて(`203` もここに出る)、donut は 4xx 以上、`unstorable` = このリクエスト中に producer がマークしたか、`Cache-Control` が既に `no-store`/`private` を含んでいた — code や type が許す場合でも書き込みは拒否される |
 | `result` (`manual_*`) | `stored`/`purged`/`invalidated` \| `failed` | 直接呼び出しの結果 |
 | `requestedTtl` | 秒 | このパッケージがストアに要求した保持時間。`31536000` は `never` の慣習値、`0`/`null` は「期限を要求しなかった」— バックエンドが上書きし得る(下の規則) |
-| `sMaxAge` (`put_donut`) | 秒 | その書き込みが要求した共有キャッシュ(CDN)の寿命 — `DonutRepositoryInterface::put($ro, ttl: …, sMaxAge: …)` に渡すのと同じ引数で、エントリ自身の `requestedTtl` とは別物。`null` は未要求で、`putDonut` は常に `null` を記録する |
+| `sMaxAge` (`put_donut`) | 秒 | その書き込みが要求した共有キャッシュ(CDN)の寿命 — `DonutRepositoryInterface::putStatic($ro, ttl: …, sMaxAge: …)` に渡すのと同じ引数で、エントリ自身の `requestedTtl` とは別物。`null` は未要求で、`putDonut` は常に `null` を記録する |
 | `code` (`put_skipped`) | HTTP ステータス | `reason` が `error-code` のときだけ入る。他の理由では `null` |
 
 ## 読解規則
@@ -141,6 +141,8 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 どの原因かを示しません:
 
 - **何も保存されていなかった** — コールド。正常な状態で、自然に治ります(次のリクエストは hit)
+- **期限切れ、または追い出されていた** — ログ上はコールドと区別できません。ストアは「なぜ無かったか」を
+  報告しないからです。単独の `cache_miss` は「いま無い」であって「一度も保存していない」ではありません
 - **ストアが読めなかった** — 同じスコープに `cache_error{operation: read}` が出ます。
   読み取りが throw し、フレームワークはリソースを走らせて応答を作りました。これが本ページでの
   **縮退**の意味です — キャッシュが無いものとして振る舞った
@@ -179,16 +181,20 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 突き合わせます。交差しないタグは、その書き込みがそのエントリを残したことを意味します — これが
 内側から見た「stale を配信している」状態です。
 
-**子のタグがどのエントリに載るかは、親の宣言で決まります。** `#[Cacheable]` の親は `depends_on` の辺を
-記録し、子のタグを自分の `save_value`/`save_view` と `save_etag` に載せます。だから子を purge すると
-親のエントリも一緒に消え、次の read は `cache_miss` で閉じます。`#[CacheableResponse]` の親は
-`depends_on` を出しません — donut の書き込みは `put()` を通らないからです。子のタグは `save_etag` と
-`save_donut_view` に載り、`save_donut` には載りません。殻は子より長く生きて再合成の土台になるからです。
-子を purge した後もこの親は `cache_hit{layer: donut-view}` で閉じ、中に `refresh_donut` と新しい
-`save_etag`/`save_donut_view` があります。この hit が健全な形で、stale は `refresh_donut` の無い
-`cache_hit` です。`#[DonutCache]` の親は子のタグをどこにも保存しません — `cdn_headers.surrogateKeys`
-まで届いて、そこで終わりです。2 回目からの read は毎回、`refresh_donut` のあとに
-`put_skipped{reason: not-cacheable}` が続きます。子を purge して変わるのは、入れ子の `get` だけです。
+**子のタグがどのエントリに載るかは、親がその子をどう使うかで決まります。** `#[Cacheable]` の親は
+`depends_on` の辺を記録し、子のタグを自分の `save_value`/`save_view` と `save_etag` に載せます。
+だから子を purge すると親のエントリも一緒に消え、次の read は `cache_miss` で閉じます。donut の親
+（`#[CacheableResponse]`／`#[DonutCache]`）は、子の使われ方で 2 つを区別します。*material* —
+ページの `onGet()` が既に実行した子 — は辺を記録し、タグをテンプレートとビューの両方に載せます。
+だから purge すると両方が落ち、次の read は `cache_miss` で閉じます。*穴（hole）* — テンプレートが
+実行する子で、書き込みの前には走っていない — は辺を記録せず、タグはビューにだけ載ります。だから
+purge するとビューが落ち、次の read は `cache_hit{layer: donut-view}` の中に `refresh_donut` と
+新しい `save_donut_view` を持ちます。これが健全な形で、stale は `refresh_donut` の無い `cache_hit`
+です。
+
+穴が追跡されるのは、レンダラが実行する埋め込みリクエストである間だけです。ページが別の手段で子を
+取得して埋め込んでいる場合、その子について何も書かれないので、purge しても保存済みのページは
+保持している合成結果を配信し続けます。
 
 **エントリが期限切れになる設計かどうかは、TTL ではなく `cache_policy.expiry` を読みます。**
 `expiry: "never"` は「無効化が届くまで」という意図です。解決した数値は保険であり、アプリが `Expiry` を
