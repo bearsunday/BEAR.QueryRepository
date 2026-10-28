@@ -30,9 +30,8 @@ use function random_int;
  *    decide the tags, TTLs and CDN keys every later read repeats.
  *  - effects that did not happen: `saved: false`, `invalidate` with `roPool`/`etagPool`/`cdn`
  *    `failed`, a `manual_*` result of `failed`, and `cache_error{operation: write}` - a store or
- *    an invalidation that was aborted. `semantic_logger_error` and `semantic_logger_truncated`
- *    join them because they mean the records themselves may be incomplete: past the record
- *    limit a mutation leaves no record, only the truncation point.
+ *    an invalidation that was aborted. `semantic_logger_error` joins them because it means the
+ *    records themselves may be incomplete.
  *  - a sample, when a rate is configured.
  *
  * Deliberately not kept: `cache_error{operation: read}` (availability, monitored elsewhere -
@@ -177,7 +176,7 @@ final class KeepMutationsAndFailures implements RetentionPolicyInterface
      */
     private function isMissingEffect(array $node, mixed $type): bool
     {
-        if ($type === 'semantic_logger_error' || $type === 'semantic_logger_truncated') {
+        if ($type === 'semantic_logger_error') {
             return true; // the records themselves may be incomplete
         }
 

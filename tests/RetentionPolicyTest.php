@@ -20,9 +20,7 @@ use BEAR\QueryRepository\Log\Context\SaveValueContext;
 use BEAR\QueryRepository\Log\KeepMutationsAndFailures;
 use BEAR\QueryRepository\Log\SafeSemanticLogger;
 use Koriym\SemanticLogger\CloseEntry;
-use Koriym\SemanticLogger\EventEntry;
 use Koriym\SemanticLogger\LogJson;
-use Koriym\SemanticLogger\OpenEntry;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use PHPUnit\Framework\TestCase;
 
@@ -185,17 +183,6 @@ class RetentionPolicyTest extends TestCase
         $this->logger->close(new CacheHitContext('view'), $second);
 
         $this->assertTrue($this->policy->keeps($this->logger->flush()));
-    }
-
-    public function testASessionCutAtTheRecordLimitIsKept(): void
-    {
-        // Past the limit the core logger records nothing more, so a command opened after it
-        // leaves no record at all; the root truncation point is the only trace of it.
-        $open = new OpenEntry('get_1', 'get', 'https://example.com/get.json', ['uri' => 'page://self/html/blog-posting'], null);
-        $close = new CloseEntry('cache_hit_1', 'cache_hit', 'https://example.com/hit.json', ['source' => 'view'], 'get_1');
-        $truncated = new EventEntry('semantic_logger_truncated_1', 'semantic_logger_truncated', 'https://example.com/t.json', ['limit' => 2, 'dropped' => 2, 'firstDroppedType' => 'command'], null);
-
-        $this->assertTrue($this->policy->keeps(new LogJson('', [$open, $close, $truncated])));
     }
 
     public function testAFailedOutcomeIsFoundWhereTheRootKeepsItAsARecord(): void
