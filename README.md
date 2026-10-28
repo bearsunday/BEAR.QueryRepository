@@ -17,11 +17,14 @@
 - **CDN Integration**: Seamlessly integrates with modern CDNs (e.g., Fastly, Akamai) for shared cache management.
 - **Conditional Requests with ETag Support**: Reduces network overhead by leveraging `ETag` and `304 Not Modified` responses.
 - **Distributed Cache Support**: Works with server-side caches (e.g., Redis, APC), shared caches (e.g., CDNs), and client-side caches.
-- **Unstorable-Response Guard**: A producer of a per-user value (a CSRF token, etc.) can mark the current response unstorable via `UncacheableMarkInterface`, so it is never written to the shared cache ([#222](https://github.com/bearsunday/BEAR.QueryRepository/issues/222)); the mark is per-request state and must be rebound each request under a long-running worker (Swoole, RoadRunner). This guard only stops *new* writes — deploy a new `CacheVersionModule` version alongside it so this release starts from a fresh cache namespace: entries written by earlier versions may hold per-user content, and an earlier version reading this version's donut cache would otherwise show raw placeholders during a rolling deploy. `CacheVersionModule` only namespaces pools built through this package's own `Storage*Module`s or a `#[CacheNamespace]`-aware adapter; an app binding its own cache adapter directly must clear those pools instead.
+- **Runtime-Private Response Guard**: A `#[Cacheable]`/`#[CacheableResponse]`/`#[DonutCache]` resource whose own code sets `Cache-Control` to `private` or `no-store` at runtime is not written to the shared cache; its header is kept and CDN headers are removed. A value declared by `#[HttpCache]`/`#[NoHttpCache]` is still stored. The guard reads only the response's own header (see [Cache dependencies](#cache-dependencies)).
+  - Deploy this version with a new `CacheVersionModule` version: entries written by earlier versions may hold per-user content, and a rolling deploy would otherwise show raw placeholders. An app that binds its own cache adapter directly must clear those pools instead.
 
 ## Cache dependencies
 
 Declare a dependency with `#[Embed]` and never `unset()` or overwrite the slot - a cached `onGet()` must not fetch dependent data with `$resource->get()`. What a child becomes depends on how the page uses it:
+
+A `#[Cacheable]`/`#[CacheableResponse]`/`#[DonutCache]` response is shared with every visitor, so a per-user value belongs in a non-cacheable `#[DonutCache]` hole, not in the cached response itself. QR inspects only the response's own header, so a per-user value that reaches the cached output any other way - a child's value read into the body in `onGet()`, a value received through `#[ResourceParam]`, or a value generated in the template (e.g. a Twig function) - is stored and served to every later visitor. In particular, do not receive a per-user value with `#[ResourceParam]` (e.g. `app://self/login#nickname`) in a cached resource - put it in a non-cacheable `#[DonutCache]` hole instead.
 
 | Need | Use | Effect of a child purge |
 |---|---|---|

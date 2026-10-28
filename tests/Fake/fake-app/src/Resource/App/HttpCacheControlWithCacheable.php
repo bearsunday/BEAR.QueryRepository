@@ -13,8 +13,12 @@ use BEAR\Resource\ResourceObject;
 #[Cacheable(expirySecond: 10), HttpCache(isPrivate: true)]
 class HttpCacheControlWithCacheable extends ResourceObject
 {
+    public static int $calls = 0;
+
     public function onGet() : ResourceObject
     {
+        self::$calls++;
+
         return $this;
     }
 }

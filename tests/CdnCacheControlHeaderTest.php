@@ -136,33 +136,33 @@ class CdnCacheControlHeaderTest extends TestCase
         $injector = new Injector($module, __DIR__ . '/tmp');
         $resource = $injector->getInstance(ResourceInterface::class);
 
-        // The resource, asked not to mark itself, gets the CDN header - checked first,
-        // since the mark is per-request state (here: one shared container for the whole
-        // test) that cannot be unset once a later call sets it.
+        // The resource, asked not to set a runtime Cache-Control, gets the CDN header -
+        // checked first, since the request fixture is one shared container for the whole
+        // test.
         $ordinary = $resource->get('page://self/html/unstorable-donut', ['unstorable' => false]);
         $this->assertArrayHasKey(Header::CDN_CACHE_CONTROL, $ordinary->headers);
         $this->assertSame('max-age=10, stale-while-revalidate=10', $ordinary->headers[Header::CDN_CACHE_CONTROL]);
 
-        // A producer marks this request's response unstorable (issue #222): no
+        // The resource sets its own Cache-Control to private at runtime: no
         // CDN-Cache-Control is emitted, and Cache-Control tells the CDN not to keep it.
         $ro = $resource->get('page://self/html/unstorable-donut');
         $this->assertArrayNotHasKey(Header::CDN_CACHE_CONTROL, $ro->headers);
-        $this->assertSame('private, no-store', $ro->headers[Header::CACHE_CONTROL]);
+        $this->assertSame('private', $ro->headers[Header::CACHE_CONTROL]);
     }
 
     public function testCdnHeadersSetDirectlyDoNotSurviveAnUnstorableRefusal(): void
     {
         // The resource sets CDN-Cache-Control and Surrogate-Control directly in onGet(),
-        // bypassing CdnCacheControlHeaderSetterInterface entirely, and marks itself
-        // unstorable: HeaderSetter must strip every CDN-facing header it manages, not just
-        // skip adding one, or a CDN reading Cache-Control: no-store alongside a surviving
-        // CDN-Cache-Control could still cache this response at the edge (issue #222).
+        // bypassing CdnCacheControlHeaderSetterInterface entirely, and sets its own
+        // Cache-Control to private: HeaderSetter must strip every CDN-facing header it
+        // manages, not just skip adding one, or a CDN reading a surviving CDN-Cache-Control
+        // could still cache this response at the edge.
         $module = $this->getModule();
         $injector = new Injector($module, __DIR__ . '/tmp');
         $resource = $injector->getInstance(ResourceInterface::class);
 
         $ro = $resource->get('page://self/html/unstorable-with-manual-cdn-header');
-        $this->assertSame('private, no-store', $ro->headers[Header::CACHE_CONTROL]);
+        $this->assertSame('private', $ro->headers[Header::CACHE_CONTROL]);
         $this->assertArrayNotHasKey(Header::CDN_CACHE_CONTROL, $ro->headers);
         $this->assertArrayNotHasKey('Surrogate-Control', $ro->headers);
     }

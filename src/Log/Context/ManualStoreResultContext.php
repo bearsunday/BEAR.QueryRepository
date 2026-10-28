@@ -11,7 +11,7 @@ use Override;
 /**
  * Close of a manual_store scope: whether the resource was stored.
  *
- * `false`/"failed" also covers a write UnstorableGateInterface refused outright (issue #222):
+ * `false`/"failed" also covers a write `DeclaredCacheControl::reason()` refused outright:
  * no save_value/save_view was even attempted, and the nested put_skipped{reason} in the same
  * scope names which - the same "coarse close, precise nested event" split the package already
  * uses for a failed save_etag not flipping this result.

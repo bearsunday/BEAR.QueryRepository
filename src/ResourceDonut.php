@@ -75,32 +75,20 @@ final class ResourceDonut
     ) {
     }
 
-    public function refresh(ResourceInterface $resource, ResourceObject $ro, UncacheableMarkInterface $mark): ResourceObject
+    public function refresh(ResourceInterface $resource, ResourceObject $ro): ResourceObject
     {
         $etags = new SurrogateKeys($ro->uri);
-        $refreshView =  preg_replace_callback(self::URI_REGEX, static function (array $matches) use ($resource, $etags, $mark): string {
+        $refreshView =  preg_replace_callback(self::URI_REGEX, static function (array $matches) use ($resource, $etags): string {
             // Group 1 is "2" for a new `le2` match (its URI, group 2, is rawurlencode()'d),
             // or "" for a legacy `le` match (group 2 is its URI, used verbatim).
             $uri = $matches[1] === '2' ? rawurldecode($matches[2]) : $matches[2];
-            // Scoped the same way DonutRequest::__toString() scopes the MISS path: a mark
-            // made while this hole re-runs (onGet() or its own template render) must be
-            // attributed to the hole's own owner slot, not TOP_LEVEL - otherwise an
-            // unrelated sibling hole marking itself here is misread as "the page itself
-            // marked", and a nested #[DonutCache] hole's OWN template write is wrongly
-            // refused by reasonExcludingHoleMarks() for a mark that was never its own.
-            $mark->enterHole($uri);
             try {
                 $ro = $resource->get($uri);
                 $ro->toString();
             } catch (Throwable $e) {
-                // $ro->toString() does not swallow a Throwable (same non-swallowing render
-                // create() itself now uses) - converted here, deliberately, to
-                // CacheStoreFailure: unlike create()'s own render, which lets the Throwable
-                // travel unwrapped, a HIT's re-fetch degrades instead, so the interceptor's
-                // read path falls back to a full fresh render (reviewed design, kept as-is).
+                // toString() lets a render failure travel uncaught; wrapped here so a HIT's
+                // re-fetch degrades to a fresh render instead of surfacing a broken response.
                 throw CacheStoreFailure::from($e);
-            } finally {
-                $mark->leaveHole($uri);
             }
 
             if (array_key_exists(Header::SURROGATE_KEY, $ro->headers)) {
@@ -227,21 +215,10 @@ final class ResourceDonut
     }
 
     /**
-     * `(string) $ro` here would call the page's own `ResourceObject::__toString()`, which
-     * swallows a render Throwable into an E_USER_WARNING and `''` - storing that would bake
-     * an empty page into the cache for every later visitor (since 1.17.0). `toString()` is
-     * the same render with no such catch (vendor/bear/resource), the same method
-     * `BEAR\Sunday\...\HttpResponder::getOutput()` already renders a response with - so a
-     * failure in the PAGE's own template propagates exactly as it would for a page with no
-     * cache attribute at all. A HOLE's failure travels too (DonutRequest wraps it with the
-     * same non-swallowing render, see DonutRequest::__toString()) - a clean, catchable
-     * exception, actually BETTER than the no-attribute baseline for an embedded hole: an
-     * un-donut-wrapped `#[Embed]` renders its child via the raw `AbstractRequest::__toString()`,
-     * which swallows into a fatal E_USER_ERROR instead (verified by execution, not assumed).
-     * Either way, the original Throwable - not a reconstruction - travels to the caller, and
-     * nothing past this call ever stores or returns a template.
+     * Renders via `toString()`, not `(string) $ro`, which swallows a render failure into
+     * an `E_USER_WARNING` and `''` - that would store an empty template for every later visitor.
      */
-    public static function create(ResourceObject $ro, DonutRendererInterface $storage, SurrogateKeys $etags, int|null $ttl, bool $isCacheble, UncacheableMarkInterface $mark): self
+    public static function create(ResourceObject $ro, DonutRendererInterface $storage, SurrogateKeys $etags, int|null $ttl, bool $isCacheble): self
     {
         // A resource with nothing to return leaves its body null - a 204 typically does, while
         // an #[Embed] would have made it an array - and a null body holds no embedded request
@@ -251,7 +228,7 @@ final class ResourceDonut
             /** @var mixed $maybeRequest */
             foreach ($ro->body as &$maybeRequest) {
                 if ($maybeRequest instanceof AbstractRequest) {
-                    $maybeRequest = new DonutRequest($maybeRequest, $storage, $etags, $mark);
+                    $maybeRequest = new DonutRequest($maybeRequest, $storage, $etags);
                 }
             }
 

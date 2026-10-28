@@ -73,7 +73,6 @@ class DonutMaterialDependencyTest extends TestCase
         $this->logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
         MutableComment::$comment = 'comment-a';
-        MutableComment::$markUnstorable = false;
 
         parent::setUp();
     }
@@ -81,7 +80,6 @@ class DonutMaterialDependencyTest extends TestCase
     protected function tearDown(): void
     {
         MutableComment::$comment = 'comment-a';
-        MutableComment::$markUnstorable = false;
 
         parent::tearDown();
     }
@@ -301,13 +299,12 @@ class DonutMaterialDependencyTest extends TestCase
         $resource = $injector->getInstance(ResourceInterface::class);
         $repository = new DonutRepository(
             $injector->getInstance(QueryRepositoryInterface::class),
-            $injector->getInstance(DonutHeaderSetter::class),
+            $injector->getInstance(HeaderSetter::class),
             $injector->getInstance(ResourceStorageInterface::class),
             $resource,
+            $injector->getInstance(CdnCacheControlHeaderSetterInterface::class),
             $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class),
             $injector->getInstance(DonutRendererInterface::class),
-            $injector->getInstance(UnstorableGateInterface::class),
-            $injector->getInstance(UncacheableMarkInterface::class),
             new class implements UriTagInterface {
                 #[Override]
                 public function __invoke(AbstractUri $uri): string

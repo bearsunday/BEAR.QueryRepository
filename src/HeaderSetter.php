@@ -17,10 +17,9 @@ use function strtolower;
 final readonly class HeaderSetter
 {
     /**
-     * The CDN-facing headers unset on an unstorable response (#222), across every
-     * flavor (default, Fastly, Akamai) - unset unconditionally, whether the gate tripped on
-     * a mark or on a Cache-Control the response set itself, since this package never hands a
-     * shared cache a lifetime for a response it is itself refusing to store.
+     * The CDN-facing headers unset on an unstorable response, across every flavor (default,
+     * Fastly, Akamai) - unset unconditionally, since this package never hands a shared cache
+     * a lifetime for a response it is itself refusing to store.
      */
     private const CDN_FACING_HEADERS = [
         Header::CDN_CACHE_CONTROL,
@@ -32,29 +31,23 @@ final readonly class HeaderSetter
 
     public function __construct(
         private EtagSetterInterface $etagSetter,
-        private UnstorableGateInterface $gate,
-        private UncacheableMarkInterface $mark,
+        private DeclaredCacheControl $declaredCacheControl = new DeclaredCacheControl(),
     ) {
     }
 
     /**
      * Set the validator and Cache-Control max-age, or strip every CDN-facing header when
-     * the gate says this response is unstorable for this request (#222)
+     * the response's own Cache-Control already reads private or no-store outside what
+     * #[HttpCache]/#[NoHttpCache] declares
      *
-     * A mark additionally replaces Cache-Control/Pragma with no-store directives, since the
-     * response was never meant to carry a cache directive of its own; without a mark, a
-     * developer-set private/no-store Cache-Control is left as-is. A value #[HttpCache] or
-     * #[NoHttpCache] declared is exempt from this check either way.
+     * The developer-set private/no-store Cache-Control header itself is left as-is; only the
+     * CDN-facing headers are stripped. A value #[HttpCache] or #[NoHttpCache] declared is
+     * exempt from this check.
      */
     public function __invoke(ResourceObject $ro, int|null $cacheControlMaxAge, HttpCache|null $httpCache, int|null $time = null): void
     {
-        if ($this->gate->reason($ro) !== null) {
+        if ($this->declaredCacheControl->reason($ro) !== null) {
             $this->stripHeaders($ro, self::CDN_FACING_HEADERS);
-            if ($this->mark->isMarked()) {
-                $this->stripHeaders($ro, [Header::CACHE_CONTROL, Header::PRAGMA]);
-                $ro->headers[Header::CACHE_CONTROL] = 'private, no-store';
-                $ro->headers[Header::PRAGMA] = 'no-cache';
-            }
 
             return;
         }
