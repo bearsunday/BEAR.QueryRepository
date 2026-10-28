@@ -16,8 +16,6 @@ use function is_array;
  *
  * A body may still hold embedded requests when it reaches the storage boundary, so they
  * are materialized here — as copies, and without running a child that already ran.
- *
- * @internal
  */
 final class ResourceBodyEvaluator
 {
