@@ -1,47 +1,27 @@
 # BEAR.QueryRepository
 
-[![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/bearsunday/BEAR.QueryRepository/badges/quality-score.png?b=1.x)](https://scrutinizer-ci.com/g/bearsunday/BEAR.QueryRepository/?branch=1.x)
-[![codecov](https://codecov.io/gh/bearsunday/BEAR.QueryRepository/branch/1.x/graph/badge.svg?token=eh3c9AF4Mr)](https://codecov.io/gh/koriym/BEAR.QueryRepository)
-[![Type Coverage](https://shepherd.dev/github/bearsunday/BEAR.QueryRepository/coverage.svg)](https://shepherd.dev/github/bearsunday/BEAR.QueryRepository)
-[![Coding Standards](https://github.com/bearsunday/BEAR.QueryRepository/actions/workflows/coding-standards.yml/badge.svg)](https://github.com/bearsunday/BEAR.QueryRepository/actions/workflows/coding-standards.yml)
-[![Static Analysis](https://github.com/bearsunday/BEAR.QueryRepository/actions/workflows/static-analysis.yml/badge.svg)](https://github.com/bearsunday/BEAR.QueryRepository/actions/workflows/static-analysis.yml)
 [![Continuous Integration](https://github.com/bearsunday/BEAR.QueryRepository/actions/workflows/continuous-integration.yml/badge.svg)](https://github.com/bearsunday/BEAR.QueryRepository/actions/workflows/continuous-integration.yml)
+[![codecov](https://codecov.io/gh/bearsunday/BEAR.QueryRepository/branch/1.x/graph/badge.svg?token=eh3c9AF4Mr)](https://codecov.io/gh/koriym/BEAR.QueryRepository)
 
-**BEAR.QueryRepository** is a distributed caching framework for BEAR.Resource applications, inspired by [CQRS](http://martinfowler.com/bliki/CQRS.html). It segregates reads and writes into separate repositories to optimize performance and resource utilization.
+**The repository of the query side, not a cache: writes keep it current, rather than letting it expire.**
 
-## Key Features
+A [CQRS](http://martinfowler.com/bliki/CQRS.html)-style read side for BEAR.Sunday: the result of each GET is kept as a read model, and the commands that change it refresh or purge it. A resource declares this with attributes and AOP does the rest - storing, answering conditional requests, and invalidating. By default an entry lives until a write invalidates it; a TTL is available for data that may simply go stale.
 
-- **Event-Driven Cache Invalidation**: Automatically invalidates cache when data changes, ensuring consistency.
-- **Dependency Resolution**: Resolves dependencies between resources and updates related caches automatically.
-- **Donut Caching**: Combines dynamic and static content for efficient partial caching.
-- **CDN Integration**: Seamlessly integrates with modern CDNs (e.g., Fastly, Akamai) for shared cache management.
-- **Conditional Requests with ETag Support**: Reduces network overhead by leveraging `ETag` and `304 Not Modified` responses.
-- **Distributed Cache Support**: Works with server-side caches (e.g., Redis, APC), shared caches (e.g., CDNs), and client-side caches.
-- **Runtime-Private Response Guard**: A `#[Cacheable]`/`#[CacheableResponse]`/`#[DonutCache]` resource whose own code sets `Cache-Control` to `private` or `no-store` at runtime is not written to the shared cache; its header is kept and CDN headers are removed. A value declared by `#[HttpCache]`/`#[NoHttpCache]` is still stored. The guard reads only the response's own header (see [Cache dependencies](#cache-dependencies)).
-  - Deploy this version with a new `CacheVersionModule` version: entries written by earlier versions may hold per-user content, and a rolling deploy would otherwise show raw placeholders. An app that binds its own cache adapter directly must clear those pools instead.
+- **The resource graph is the dependency graph**: a cached child taken in with `#[Embed]` becomes a dependency of the parent.
+- **Writes invalidate**: a command (`onPut`, `onPatch`, ...) invalidates what it changes with `#[Purge]`, `#[Refresh]` or `#[RefreshCache]`, rather than waiting for expiry.
+- **One tag crosses every layer**: the origin cache, the ETag pool behind `304 Not Modified`, and the CDN's `Surrogate-Key` are invalidated by the same tags.
+- **Three uses of a child**: a per-user hole (`#[DonutCache]`), a hole rebuilt on events (`#[CacheableResponse]`), and material the page reads.
+- **Verifiable**: the semantic log records each store, hit, dependency and invalidation.
 
-## Cache dependencies
+A cache attribute declares the response shared with every visitor: put per-user values in a non-cacheable `#[DonutCache]` hole.
 
-Declare a dependency with `#[Embed]` and never `unset()` or overwrite the slot - a cached `onGet()` must not fetch dependent data with `$resource->get()`. What a child becomes depends on how the page uses it:
-
-A `#[Cacheable]`/`#[CacheableResponse]`/`#[DonutCache]` response is shared with every visitor, so a per-user value belongs in a non-cacheable `#[DonutCache]` hole, not in the cached response itself. QR inspects only the response's own header, so a per-user value that reaches the cached output any other way - a child's value read into the body in `onGet()`, a value received through `#[ResourceParam]`, or a value generated in the template (e.g. a Twig function) - is stored and served to every later visitor. In particular, do not receive a per-user value with `#[ResourceParam]` (e.g. `app://self/login#nickname`) in a cached resource - put it in a non-cacheable `#[DonutCache]` hole instead.
-
-| Need | Use | Effect of a child purge |
-|---|---|---|
-| Per-user content (no shared cache) | `#[DonutCache]` hole (non-cacheable child) | that hole alone re-runs on every HIT |
-| Shared content that changes on an event | `#[CacheableResponse]` hole (cacheable child, never read in `onGet()`) | the shell is recomposed from the stored template; the page's own `onGet()` does not re-run |
-| A value the page's own `onGet()` reads | material: a cached child (one carrying an ETag or `Surrogate-Key`) is tagged, whether or not it is also rendered as a hole | the whole template is dropped; the next GET is a fresh miss |
-| Data that is merely stale after a while | `#[Cacheable]` with a TTL | expires on its own, no purge needed |
-
-A child that is not itself cached carries neither header, so reading it in `onGet()` adds no dependency: purging its URI leaves the page as stored. Give such a child a cache attribute to make it a dependency.
-
-A writer-side `#[Purge]`/`#[Refresh]` on the command that changes the data is the alternative to waiting on this chain.
+<img src="https://user-images.githubusercontent.com/529021/137062427-c733c832-0631-4a43-a6ee-4204e6be007c.png" alt="Client, CDN and origin caches, refreshed and purged by writes" width="480">
 
 ## Documentation
 
-- [BEAR.Sunday cache manual](http://bearsunday.github.io/manuals/1.0/ja/cache.html)
-- [LLM Documentation](https://bearsunday.github.io/BEAR.QueryRepository/llms-full.txt)
-- [Why the QueryRepository Log Records Everything](docs/why-the-log-records-everything.md) — design rationale, the cost measurements, and why recording is off by default
-- [Reading the Log](docs/reading-the-log.md) — every word the log can contain, and how to read a session
-- [What the Cache Log Proves — and What It Does Not](docs/what-the-log-proves.md) — the questions the log answers, the mechanisms that keep the answers honest, and the declared boundaries
-- Agent skills: [bear-cache-log](https://github.com/bearsunday/BEAR.Skills/blob/1.x/skills/bear-cache-log/SKILL.md) (install, read and verify one session against the published schemas) and [bear-cache-gate](https://github.com/bearsunday/BEAR.Skills/blob/1.x/skills/bear-cache-gate/SKILL.md) (install a persistent oracle that proves store/hit/invalidation/cost per flow) — both via `/plugin install bear-skills`. For broader single-request tracing beyond caching, see [bear-observe](https://github.com/bearsunday/BEAR.EventSourcing/blob/1.x/skills/bear-observe/SKILL.md).
+- Cache manual: [English](https://bearsunday.github.io/manuals/1.0/en/cache.html) / [日本語](https://bearsunday.github.io/manuals/1.0/ja/cache.html)
+- Reading the Log ([en](docs/reading-the-log.md) / [ja](docs/reading-the-log.ja.md)): every word the log can contain, and how to read a session
+- Why the Log Records Everything ([en](docs/why-the-log-records-everything.md) / [ja](docs/why-the-log-records-everything.ja.md)): the design rationale, the cost measurements, and why recording is off by default
+- What the Log Proves ([en](docs/what-the-log-proves.md) / [ja](docs/what-the-log-proves.ja.md)): the questions the log answers, and its declared boundaries
+- [LLM documentation](https://bearsunday.github.io/BEAR.QueryRepository/llms-full.txt)
+- Agent skills, via `/plugin install bear-skills`: [bear-cache-log](https://github.com/bearsunday/BEAR.Skills/blob/1.x/skills/bear-cache-log/SKILL.md) and [bear-cache-gate](https://github.com/bearsunday/BEAR.Skills/blob/1.x/skills/bear-cache-gate/SKILL.md)
