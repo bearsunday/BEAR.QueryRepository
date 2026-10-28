@@ -30,8 +30,10 @@ A `#[Cacheable]`/`#[CacheableResponse]`/`#[DonutCache]` response is shared with 
 |---|---|---|
 | Per-user content (no shared cache) | `#[DonutCache]` hole (non-cacheable child) | that hole alone re-runs on every HIT |
 | Shared content that changes on an event | `#[CacheableResponse]` hole (cacheable child, never read in `onGet()`) | the shell is recomposed from the stored template; the page's own `onGet()` does not re-run |
-| A value the page's own `onGet()` reads | material (the child is tagged, whether or not it is also rendered as a hole) | the whole template is dropped; the next GET is a fresh miss |
+| A value the page's own `onGet()` reads | material: a cached child (one carrying an ETag or `Surrogate-Key`) is tagged, whether or not it is also rendered as a hole | the whole template is dropped; the next GET is a fresh miss |
 | Data that is merely stale after a while | `#[Cacheable]` with a TTL | expires on its own, no purge needed |
+
+A child that is not itself cached carries neither header, so reading it in `onGet()` adds no dependency: purging its URI leaves the page as stored. Give such a child a cache attribute, or tag the page with `Surrogate-Key` yourself.
 
 A writer-side `#[Purge]`/`#[Refresh]` on the command that changes the data is the alternative to waiting on this chain.
 
