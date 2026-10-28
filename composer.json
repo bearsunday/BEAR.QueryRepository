@@ -24,7 +24,7 @@
         "ray/aop": "^2.19.1",
         "ray/di": "^2.20",
         "ray/psr-cache-module": "^1.6",
-        "symfony/cache": "^5.3 || ^6.0 || ^7.3 || ^8.0",
+        "symfony/cache": "^6.0 || ^7.3 || ^8.0",
         "symfony/polyfill-php83": "^v1.32.0"
     },
     "require-dev": {
@@ -43,7 +43,7 @@
         "bear/fastly-module": "Required for FastlyModule (Fastly CDN purge)",
         "mobiledetect/mobiledetectlib": "Required for MobileEtagModule (device-aware ETags)",
         "predis/predis": "Redis client for StorageRedisDsnModule without ext-redis",
-        "relay/relay": "Redis client for StorageRedisDsnModule without ext-redis"
+        "ext-relay": "Redis client for StorageRedisDsnModule without ext-redis"
     },
     "autoload": {
         "psr-4": {
