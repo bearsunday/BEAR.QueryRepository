@@ -19,6 +19,7 @@ use function call_user_func_array;
 use function is_callable;
 use function str_starts_with;
 
+/** @internal */
 final readonly class RefreshSameCommand implements CommandInterface
 {
     public function __construct(

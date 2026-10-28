@@ -9,7 +9,10 @@ use BEAR\Resource\ResourceObject;
 
 use function time;
 
-/** @psalm-suppress MissingConstructor */
+/**
+ * @psalm-suppress MissingConstructor
+ * @internal
+ */
 final class ResourceState
 {
     /** @var int  */

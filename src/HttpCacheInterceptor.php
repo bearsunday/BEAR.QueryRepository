@@ -22,6 +22,7 @@ use function assert;
  * @see \BEAR\RepositoryModule\Annotation\HttpCache
  * @see \BEAR\RepositoryModule\Annotation\NoHttpCache
  * @see https://bearsunday.github.io/manuals/1.0/en/cache.html
+ * @internal
  */
 final class HttpCacheInterceptor implements MethodInterceptor
 {

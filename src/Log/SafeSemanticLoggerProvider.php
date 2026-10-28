@@ -20,6 +20,7 @@ use Ray\Di\ProviderInterface;
  * and a module that turns recording on also decides where the session goes.
  *
  * @implements ProviderInterface<SemanticLoggerInterface>
+ * @internal
  */
 final class SafeSemanticLoggerProvider implements ProviderInterface
 {

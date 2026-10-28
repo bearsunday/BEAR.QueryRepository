@@ -14,6 +14,8 @@ use Ray\Aop\MethodInvocation;
  * Captures the command method and its #[Refresh]/#[Purge] annotations so invalidations
  * that follow are recorded nested under this open node. Shared by CommandInterceptor,
  * DonutCommandInterceptor and RefreshInterceptor.
+ *
+ * @internal
  */
 final class CommandContextFactory
 {

@@ -28,6 +28,7 @@ use function trigger_error;
 
 use const E_USER_WARNING;
 
+/** @internal */
 abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
 {
     protected const IS_ENTIRE_CONTENT_CACHEABLE = false;

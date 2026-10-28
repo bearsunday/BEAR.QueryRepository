@@ -11,6 +11,7 @@ namespace BEAR\QueryRepository;
  *
  * @see \BEAR\RepositoryModule\Annotation\CacheableResponse
  * @see https://bearsunday.github.io/manuals/1.0/en/cache.html#event-driven-content
+ * @internal
  */
 final class DonutCacheableResponseInterceptor extends AbstractDonutCacheInterceptor
 {

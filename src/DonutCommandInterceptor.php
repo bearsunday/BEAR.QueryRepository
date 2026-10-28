@@ -31,6 +31,7 @@ use function str_starts_with;
  * @see \BEAR\RepositoryModule\Annotation\CacheableResponse
  * @see \BEAR\RepositoryModule\Annotation\DonutCache
  * @see https://bearsunday.github.io/manuals/1.0/en/cache.html#event-driven-content
+ * @internal
  */
 final readonly class DonutCommandInterceptor implements MethodInterceptor
 {

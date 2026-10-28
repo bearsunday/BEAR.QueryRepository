@@ -34,6 +34,7 @@ use const E_USER_WARNING;
  *
  * @see \BEAR\RepositoryModule\Annotation\Cacheable
  * @see https://bearsunday.github.io/manuals/1.0/en/cache.html#cacheable
+ * @internal
  */
 final readonly class CacheInterceptor implements MethodInterceptor
 {

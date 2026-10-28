@@ -8,6 +8,7 @@ use Override;
 
 use function strtr;
 
+/** @internal */
 final class DonutRenderer implements DonutRendererInterface
 {
     /** @var array<string, string> */

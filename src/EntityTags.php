@@ -18,6 +18,8 @@ use function trim;
  * half-reading a validator risks answering about content nobody asked for. A token with a
  * PSR-6 reserved character or `*` is dropped rather than looked up, since no setter could
  * have issued one.
+ *
+ * @internal
  */
 final class EntityTags
 {

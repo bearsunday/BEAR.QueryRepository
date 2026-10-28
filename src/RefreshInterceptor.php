@@ -27,6 +27,7 @@ use Ray\Aop\MethodInvocation;
  * @see \BEAR\RepositoryModule\Annotation\Purge
  * @see \BEAR\RepositoryModule\Annotation\Refresh
  * @see https://bearsunday.github.io/manuals/1.0/en/cache.html#event-driven-content
+ * @internal
  */
 final readonly class RefreshInterceptor implements MethodInterceptor
 {

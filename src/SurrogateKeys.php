@@ -13,6 +13,7 @@ use function array_unique;
 use function explode;
 use function implode;
 
+/** @internal */
 final class SurrogateKeys
 {
     /** @var list<string> */
