@@ -82,10 +82,17 @@ final readonly class HeaderSetter
             return;
         }
 
-        // no-store forbids keeping the response at all, so a lifetime beside it is contradictory
-        $existing = strtolower($ro->headers[$existingName]);
-        if (str_contains($existing, 'max-age') || str_contains($existing, 'no-store')) {
-            return;
+        // no-store forbids keeping the response at all, so a lifetime beside it is contradictory;
+        // every case variant of the key is a Cache-Control the client receives
+        foreach ($ro->headers as $name => $value) {
+            if (strtolower($name) !== strtolower(Header::CACHE_CONTROL)) {
+                continue;
+            }
+
+            $lower = strtolower($value);
+            if (str_contains($lower, 'max-age') || str_contains($lower, 'no-store')) {
+                return;
+            }
         }
 
         $ro->headers[$existingName] .= ', ' . $setMaxAge;

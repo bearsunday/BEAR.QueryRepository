@@ -83,4 +83,17 @@ class HeaderSetterTest extends TestCase
 
         $this->assertSame('no-store', $ro->headers[Header::CACHE_CONTROL]);
     }
+
+    public function testSetCacheControlMaxAgeChecksEveryCacheControlKeyForNoStore(): void
+    {
+        // An app-set lowercase 'cache-control' can sit beside the declared 'Cache-Control:
+        // no-store'; whichever key comes first, no lifetime may be added to either.
+        $ro = new CacheableResponseNoStore();
+        $ro->headers = ['cache-control' => 'public', Header::CACHE_CONTROL => 'no-store'];
+
+        ($this->headerSetter())($ro, 60, null);
+
+        $this->assertSame('public', $ro->headers['cache-control']);
+        $this->assertSame('no-store', $ro->headers[Header::CACHE_CONTROL]);
+    }
 }
