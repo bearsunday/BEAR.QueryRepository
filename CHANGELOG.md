@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Deploy this version with a new `CacheVersionModule` version (an app that binds its own cache adapter rather than this package's `Storage*Module`s must clear its pools instead): entries written by earlier versions may hold per-user content, and an earlier version reading this version's donut cache shows raw `[le2:...]` placeholders during a rolling deploy.
-- A `#[Cacheable]`/`#[CacheableResponse]`/`#[DonutCache]` response whose own code sets `Cache-Control` to `private` or `no-store` is not stored server-side; this includes a `$headers` property default such as `[ResponseHeader::CACHE_CONTROL => CacheControl::NO_STORE]`. To keep server-side caching with a client-facing `no-store`, declare `#[HttpCache(noStore: true)]` instead, which is still stored.
+- A `#[Cacheable]`/`#[CacheableResponse]`/`#[DonutCache]` response whose own code, including a `$headers` property default, sets `Cache-Control` to `private` or `no-store` is not stored server-side. To keep server-side caching with a client-facing `no-store`, declare `#[HttpCache(noStore: true)]` instead.
 - `ResourceDonut::FORMAT` is no longer public; use `ResourceDonut::placeholder()`.
 - Requires `koriym/semantic-logger` `^0.11`. Written logs use its `log` document shape, and diagnostic `kind` is now `code`.
 - Requires `bear/resource` `^1.22.4`.
