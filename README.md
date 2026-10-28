@@ -3,9 +3,9 @@
 [![Continuous Integration](https://github.com/bearsunday/BEAR.QueryRepository/actions/workflows/continuous-integration.yml/badge.svg)](https://github.com/bearsunday/BEAR.QueryRepository/actions/workflows/continuous-integration.yml)
 [![codecov](https://codecov.io/gh/bearsunday/BEAR.QueryRepository/branch/1.x/graph/badge.svg?token=eh3c9AF4Mr)](https://codecov.io/gh/bearsunday/BEAR.QueryRepository)
 
-**The repository of the query side, not a cache: writes keep it current, rather than letting it expire.**
+**The repository of the query side: a read model that writes keep current, not a cache left to expire.**
 
-A [CQRS](http://martinfowler.com/bliki/CQRS.html)-style read side for BEAR.Sunday: the result of each GET is kept as a read model, and the commands that change it refresh or purge it. A resource declares this with attributes and AOP does the rest - storing, answering conditional requests, and invalidating. By default an entry lives until a write invalidates it; a TTL is available for data that may simply go stale.
+A [CQRS](http://martinfowler.com/bliki/CQRS.html)-style read side for BEAR.Sunday: the results of cacheable GETs are kept as read models. On a miss, `onGet` builds one on demand; the commands that change it refresh or purge it. A resource declares this with attributes and AOP does the rest - storing, answering conditional requests, and invalidating. By default an entry lives until a write invalidates it; a TTL is available for data that may simply go stale.
 
 - **The resource graph is the dependency graph**: a cached child taken in with `#[Embed]` becomes a dependency of the parent.
 - **Writes invalidate**: a command (`onPut`, `onPatch`, ...) invalidates what it changes with `#[Purge]`, `#[Refresh]` or `#[RefreshCache]`, rather than waiting for expiry.
