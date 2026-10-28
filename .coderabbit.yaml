@@ -1,0 +1,3 @@
+# Reviews run on demand: mention @coderabbitai review when a PR needs one.
+reviews:
+  review_status: false
