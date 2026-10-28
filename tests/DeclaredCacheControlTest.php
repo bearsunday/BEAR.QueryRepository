@@ -77,4 +77,17 @@ class DeclaredCacheControlTest extends TestCase
 
         $this->assertNull($declaredCacheControl->reason($ro));
     }
+
+    public function testEveryCaseVariantOfTheCacheControlKeyIsChecked(): void
+    {
+        // Two components writing differently-cased keys leave two Cache-Control entries in
+        // the plain array; a private one must be refused whichever key comes first.
+        $declaredCacheControl = new DeclaredCacheControl();
+        $ro = new None();
+        $ro->headers = ['Cache-Control' => 'public', 'cache-control' => 'private'];
+        $this->assertSame('unstorable', $declaredCacheControl->reason($ro));
+
+        $ro->headers = ['cache-control' => 'private', 'Cache-Control' => 'public'];
+        $this->assertSame('unstorable', $declaredCacheControl->reason($ro));
+    }
 }

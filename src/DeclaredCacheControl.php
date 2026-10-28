@@ -51,15 +51,16 @@ final readonly class DeclaredCacheControl
      */
     public function reason(ResourceObject $ro): string|null
     {
-        $name = Header::findKey($ro->headers, Header::CACHE_CONTROL);
-        $cacheControl = $name === null ? '' : $ro->headers[$name];
-        if ($cacheControl === '' || $cacheControl === $this->declared($ro)) {
-            return null;
-        }
+        $declared = $this->declared($ro);
+        foreach ($ro->headers as $name => $cacheControl) {
+            if (strtolower($name) !== strtolower(Header::CACHE_CONTROL) || $cacheControl === $declared) {
+                continue;
+            }
 
-        $lower = strtolower($cacheControl);
-        if (str_contains($lower, 'no-store') || str_contains($lower, 'private')) {
-            return self::REASON;
+            $lower = strtolower($cacheControl);
+            if (str_contains($lower, 'no-store') || str_contains($lower, 'private')) {
+                return self::REASON;
+            }
         }
 
         return null;
