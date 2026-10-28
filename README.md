@@ -33,7 +33,7 @@ A `#[Cacheable]`/`#[CacheableResponse]`/`#[DonutCache]` response is shared with 
 | A value the page's own `onGet()` reads | material: a cached child (one carrying an ETag or `Surrogate-Key`) is tagged, whether or not it is also rendered as a hole | the whole template is dropped; the next GET is a fresh miss |
 | Data that is merely stale after a while | `#[Cacheable]` with a TTL | expires on its own, no purge needed |
 
-A child that is not itself cached carries neither header, so reading it in `onGet()` adds no dependency: purging its URI leaves the page as stored. Give such a child a cache attribute, or tag the page with `Surrogate-Key` yourself.
+A child that is not itself cached carries neither header, so reading it in `onGet()` adds no dependency: purging its URI leaves the page as stored. Give such a child a cache attribute to make it a dependency.
 
 A writer-side `#[Purge]`/`#[Refresh]` on the command that changes the data is the alternative to waiting on this chain.
 
