@@ -21,6 +21,7 @@ jobs:
   phpunit:
     name: PHPUnit (${{ matrix.os }} - PHP ${{ matrix.php-version }} - ${{ matrix.dependencies }})
     runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.experimental || false }}
     timeout-minutes: 20
     strategy:
       fail-fast: false
@@ -51,6 +52,15 @@ jobs:
           - os: ubuntu-latest
             php-version: "8.5"
             dependencies: highest
+          # 8.6 is not GA yet: report it without failing the pipeline
+          - os: ubuntu-latest
+            php-version: "8.6"
+            dependencies: lowest
+            experimental: true
+          - os: ubuntu-latest
+            php-version: "8.6"
+            dependencies: highest
+            experimental: true
           # Windows: Latest PHP only for CI speed
           - os: windows-latest
             php-version: "8.5"
@@ -157,7 +167,7 @@ jobs:
           coverage: pcov
           ini-values: zend.assertions=1
           tools: composer
-          extensions: ${{ matrix.php-version != '8.5' && 'redis, memcached' || '' }}
+          extensions: ${{ matrix.php-version != '8.5' && matrix.php-version != '8.6' && 'redis, memcached' || '' }}
 
       - name: Cache Composer dependencies
         uses: actions/cache@v4
@@ -170,7 +180,7 @@ jobs:
       - name: Install dependencies
         run: |
           composer config platform --unset
-          composer update ${{ matrix.dependencies == 'lowest' && '--prefer-lowest' || '' }} ${{ env.COMPOSER_FLAGS }} ${{ matrix.php-version == '8.5' && '--ignore-platform-req=ext-redis --ignore-platform-req=ext-memcached' || '' }}
+          composer update ${{ matrix.dependencies == 'lowest' && '--prefer-lowest' || '' }} ${{ env.COMPOSER_FLAGS }} ${{ (matrix.php-version == '8.5' || matrix.php-version == '8.6') && '--ignore-platform-req=ext-redis --ignore-platform-req=ext-memcached' || '' }}
 
       - name: Run PHPUnit tests
         run: ./vendor/bin/phpunit ${{ (matrix.os == 'ubuntu-latest' && matrix.php-version == '8.4' && matrix.dependencies == 'highest') && '--coverage-clover=coverage.xml' || '' }}
