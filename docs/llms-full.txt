@@ -133,24 +133,24 @@ new AkamaiModule($host, $clientToken, $clientSecret, $accessToken);
 
 ## Cache Dependencies
 
-Resources automatically track dependencies. When resource A embeds resource B, invalidating B also invalidates A.
+A child taken in with `#[Embed]` becomes a dependency of its parent when the child is itself cached, i.e. it carries an ETag or a `Surrogate-Key`: invalidating the child then invalidates the parent. A child without a cache attribute carries neither header and adds no dependency, so purging its URI leaves the parent as stored; give such a child a cache attribute. A value fetched eagerly in `onGet()` (`$this->resource->get(...)`) is not an embedded request and is not tracked.
 
 ```php
 #[Cacheable]
 class BlogPost extends ResourceObject
 {
+    #[Embed(rel: 'comments', src: 'app://self/comments{?id}')]
     public function onGet(int $id): static
     {
-        $this->body = [
-            'post' => $this->getPost($id),
-            'comments' => $this->resource->get('app://self/comments', ['post_id' => $id]),
-        ];
+        $this->body['post'] = $this->getPost($id);
         return $this;
     }
 }
 ```
 
-When comments are updated, BlogPost cache is automatically invalidated via surrogate keys.
+With `app://self/comments` itself `#[Cacheable]`, updating the comments invalidates the BlogPost entry through its surrogate keys.
+
+On a `#[CacheableResponse]`/`#[DonutCache]` page the same rule applies to a child whose value `onGet()` reads: the whole template is dropped on purge. A child the page only renders as a hole is recomposed instead.
 
 ## Donut Caching
 

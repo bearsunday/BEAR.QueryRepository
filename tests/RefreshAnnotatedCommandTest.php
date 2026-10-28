@@ -60,7 +60,9 @@ class RefreshAnnotatedCommandTest extends TestCase
     {
         $this->resource->get('app://self/user/profile', ['user_id' => 1]);
         $this->logger->events = [];
-        $this->purger->tags = [];
+        // A method call, not an assignment: PHPStan would keep the property narrowed to
+        // array{} across put(), which it cannot see appending to it.
+        $this->purger->reset();
 
         $this->resource->put('app://self/user', ['id' => 1, 'name' => 'x', 'age' => 5]);
 

@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.18.0] - 2026-10-28
 
 ### Changed
 - Deploy this version with a new `CacheVersionModule` version (an app that binds its own cache adapter rather than this package's `Storage*Module`s must clear its pools instead): entries written by earlier versions may hold per-user content, and an earlier version reading this version's donut cache shows raw `[le2:...]` placeholders during a rolling deploy.
@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `ResourceDonut::FORMAT` is no longer public; use `ResourceDonut::placeholder()`.
 - Requires `koriym/semantic-logger` `^0.11`. Written logs use its `log` document shape, and diagnostic `kind` is now `code`.
 - Requires `bear/resource` `^1.22.4`.
+- Allows `symfony/cache` 8 (PHP 8.4 or later), and requires `ray/psr-cache-module` `^1.6`, which supports it.
 - `ResourceDonut::refresh()`: a hole that throws while an already-cached `#[DonutCache]` page is recomposed now degrades to a fresh render instead of failing the request directly from the refresh, the same way a cache-store failure already does. A hole that keeps throwing still fails the request, now from the fresh render instead of the refresh.
 - `CacheDependency::depends()` no longer unsets the child's own `Surrogate-Key` header after copying it into the parent: a child that is both read by the parent and later rendered as a hole keeps its own key for its own independent cache entry.
 - `KeepMutationsAndFailures` no longer keeps a session only because it contains a `semantic_logger_error` diagnostic; a session is kept for a mutation, a failed effect or the sample.

@@ -23,9 +23,8 @@
         "psr/log": "^1.1 || ^2.0 || ^3.0",
         "ray/aop": "^2.19.1",
         "ray/di": "^2.20",
-        "ray/psr-cache-module": "^1.5.1",
-        "symfony/cache": "^5.3 || ^6.0 || ^7.3",
-        "symfony/cache-contracts": "^2.4 || ^3.0",
+        "ray/psr-cache-module": "^1.6",
+        "symfony/cache": "^6.0 || ^7.3 || ^8.0",
         "symfony/polyfill-php83": "^v1.32.0"
     },
     "require-dev": {
@@ -35,17 +34,19 @@
         "mobiledetect/mobiledetectlib": "^3.74 || ^4.8",
         "phpunit/phpunit": "^11.0",
         "predis/predis": "^2.4",
-        "symfony/process": "^6.1 || ^7.1",
+        "symfony/process": "^6.1 || ^7.1 || ^8.0",
         "twig/twig": "^3.4.3"
     },
     "suggest": {
         "ext-redis": "Required for Redis cache storage backend",
-        "ext-memcached": "Required for Memcached cache storage backend"
+        "ext-memcached": "Required for Memcached cache storage backend",
+        "bear/fastly-module": "Required for FastlyModule (Fastly CDN purge)",
+        "mobiledetect/mobiledetectlib": "Required for MobileEtagModule (device-aware ETags)"
     },
     "autoload": {
         "psr-4": {
             "BEAR\\QueryRepository\\": ["src/", "src-deprecated/"],
-            "BEAR\\RepositoryModule\\Annotation\\": ["src-annotation/",  "src-annotation-deprecated"]
+            "BEAR\\RepositoryModule\\Annotation\\": ["src-annotation/",  "src-annotation-deprecated/"]
         }
     },
     "autoload-dev": {
