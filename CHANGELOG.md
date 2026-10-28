@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Requires `bear/resource` `^1.22.4`.
 - `ResourceDonut::refresh()`: a hole that throws while an already-cached `#[DonutCache]` page is recomposed now degrades to a fresh render instead of failing the request directly from the refresh, the same way a cache-store failure already does. A hole that keeps throwing still fails the request, now from the fresh render instead of the refresh.
 - `CacheDependency::depends()` no longer unsets the child's own `Surrogate-Key` header after copying it into the parent: a child that is both read by the parent and later rendered as a hole keeps its own key for its own independent cache entry.
+- `KeepMutationsAndFailures` no longer keeps a session only because it contains a `semantic_logger_error` diagnostic; a session is kept for a mutation, a failed effect or the sample.
+- Interceptors and other implementation classes that applications do not construct are now marked `@internal`; reference the attributes, interfaces and modules instead.
 
 ### Fixed
 - A cached response whose `Cache-Control` contains `no-store` (e.g. `#[HttpCache(noStore: true)]` or `#[NoHttpCache]`) no longer gets a `max-age` appended, so the client header is not a contradictory `no-store, max-age=…` (#243).
