@@ -16,4 +16,9 @@ final class FakeCountingPurger implements PurgerInterface
     {
         $this->tags[] = $tag;
     }
+
+    public function reset(): void
+    {
+        $this->tags = [];
+    }
 }
