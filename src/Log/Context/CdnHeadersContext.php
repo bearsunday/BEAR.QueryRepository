@@ -16,8 +16,9 @@ use stdClass;
  * effect, not the request: the bound setter's default when the caller asked for no
  * sMaxAge, the resource's own value when it set one, and nothing when nothing gives
  * the CDN a lifetime - which is how an un-cacheable donut page is meant to stay off
- * the CDN, and how a response whose own Cache-Control is private/no-store is too:
- * every CDN-facing header is stripped, so this records none. What the CDN then does
+ * the CDN, and how a response DeclaredCacheControl::reason() refuses (its own code set
+ * private/no-store) is too: every CDN-facing header is stripped, so this records none.
+ * A no-store declared by #[HttpCache] is not refused. What the CDN then does
  * is outside this record.
  *
  * `headers` holds the literal name => value pairs of every CDN-facing header this
