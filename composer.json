@@ -41,9 +41,7 @@
         "ext-redis": "Required for Redis cache storage backend",
         "ext-memcached": "Required for Memcached cache storage backend",
         "bear/fastly-module": "Required for FastlyModule (Fastly CDN purge)",
-        "mobiledetect/mobiledetectlib": "Required for MobileEtagModule (device-aware ETags)",
-        "predis/predis": "Redis client for StorageRedisDsnModule without ext-redis",
-        "ext-relay": "Redis client for StorageRedisDsnModule without ext-redis"
+        "mobiledetect/mobiledetectlib": "Required for MobileEtagModule (device-aware ETags)"
     },
     "autoload": {
         "psr-4": {
