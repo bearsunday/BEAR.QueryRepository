@@ -81,7 +81,9 @@ final readonly class HeaderSetter
             return;
         }
 
-        if (str_contains($ro->headers[$existingName], 'max-age')) {
+        // no-store forbids keeping the response at all, so a lifetime beside it is contradictory
+        $existing = strtolower($ro->headers[$existingName]);
+        if (str_contains($existing, 'max-age') || str_contains($existing, 'no-store')) {
             return;
         }
 

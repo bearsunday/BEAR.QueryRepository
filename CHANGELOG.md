@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `CacheDependency::depends()` no longer unsets the child's own `Surrogate-Key` header after copying it into the parent: a child that is both read by the parent and later rendered as a hole keeps its own key for its own independent cache entry.
 
 ### Fixed
+- A cached response whose `Cache-Control` contains `no-store` (e.g. `#[HttpCache(noStore: true)]` or `#[NoHttpCache]`) no longer gets a `max-age` appended, so the client header is not a contradictory `no-store, max-age=…` (#243).
 - `LogFileWriter`: two sessions flushed in the same microsecond no longer overwrite each other. The timestamped filename now carries a random suffix, so both survive (#221).
 - A `#[DonutCache]` page embedding an `#[Embed]` hole whose URI carried two or more query parameters leaked a raw `[le:...]` placeholder to the client and could throw `ParameterException` on the next request - fixed by moving new placeholders to a `[le2:...]` marker (#232).
 - An exception while rendering a `#[DonutCache]`/`#[CacheableResponse]` page - a hole's own resource or the page's own template - no longer stores an empty template that is served to every later visitor; the failure now surfaces to the caller instead of being swallowed into an empty page.

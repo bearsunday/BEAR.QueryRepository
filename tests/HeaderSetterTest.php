@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use FakeVendor\HelloWorld\Resource\Page\Html\CacheableResponseNoStore;
 use FakeVendor\HelloWorld\Resource\Page\None;
 use PHPUnit\Framework\TestCase;
 
@@ -69,5 +70,17 @@ class HeaderSetterTest extends TestCase
 
         $this->assertArrayNotHasKey(Header::CACHE_CONTROL, $ro->headers, 'no second, canonically-cased header was added');
         $this->assertSame('max-age=30', $ro->headers['cache-control']);
+    }
+
+    public function testSetCacheControlMaxAgeDoesNotAppendALifetimeToNoStore(): void
+    {
+        // A declared #[HttpCache(noStore: true)] is still stored server-side, but the client
+        // header must not pair no-store with a lifetime (#243).
+        $ro = new CacheableResponseNoStore();
+        $ro->headers[Header::CACHE_CONTROL] = 'no-store';
+
+        ($this->headerSetter())($ro, 31536000, null);
+
+        $this->assertSame('no-store', $ro->headers[Header::CACHE_CONTROL]);
     }
 }
