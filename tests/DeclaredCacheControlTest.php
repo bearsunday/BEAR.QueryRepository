@@ -87,7 +87,8 @@ class DeclaredCacheControlTest extends TestCase
         $ro->headers = ['Cache-Control' => 'public', 'cache-control' => 'private'];
         $this->assertSame('unstorable', $declaredCacheControl->reason($ro));
 
-        $ro->headers = ['cache-control' => 'private', 'Cache-Control' => 'public'];
-        $this->assertSame('unstorable', $declaredCacheControl->reason($ro));
+        $reversed = new None();
+        $reversed->headers = ['cache-control' => 'private', 'Cache-Control' => 'public'];
+        $this->assertSame('unstorable', $declaredCacheControl->reason($reversed));
     }
 }
