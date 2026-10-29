@@ -17,6 +17,7 @@ use FakeVendor\HelloWorld\Resource\App\NullView;
 use FakeVendor\HelloWorld\Resource\App\User\Profile;
 use FakeVendor\HelloWorld\Resource\Page\None;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
+use Override;
 use PHPUnit\Framework\TestCase;
 use Psr\Cache\CacheItemPoolInterface;
 use Ray\Di\AbstractModule;
@@ -309,6 +310,53 @@ class QueryRepositoryTest extends TestCase
         $tree2 = $this->flushAndValidate($this->logger);
         $this->assertContains('cache_miss', self::collectTypes($tree2));
         $this->assertNotContains('cache_hit', self::collectTypes($tree2));
+    }
+
+    public function testRepeatedUnstorableGetDoesNotPurge(): void
+    {
+        $purger = new FakeCountingPurger();
+        $resource = $this->injectorWithPurger($purger)->getInstance(ResourceInterface::class);
+
+        for ($i = 0; $i < 3; $i++) {
+            $resource->get('app://self/unstorable-value');
+        }
+
+        $this->assertSame([], $purger->tags);
+    }
+
+    public function testUnstorablePutStillDropsAnEarlierEntry(): void
+    {
+        $purger = new FakeCountingPurger();
+        $injector = $this->injectorWithPurger($purger);
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $repository = $injector->getInstance(QueryRepositoryInterface::class);
+        $uri = 'app://self/unstorable-value?unstorable=0';
+        $ro = $resource->get($uri);
+        $this->assertNotNull($repository->get(new Uri($uri)));
+        $purger->reset();
+
+        $ro->headers[Header::CACHE_CONTROL] = 'private';
+        $this->assertFalse($repository->put($ro));
+        $this->assertNull($repository->get(new Uri($uri)));
+        $this->assertNotSame([], $purger->tags);
+    }
+
+    private function injectorWithPurger(PurgerInterface $purger): Injector
+    {
+        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module->override(new class ($purger) extends AbstractModule {
+            public function __construct(private readonly PurgerInterface $purger)
+            {
+            }
+
+            #[Override]
+            protected function configure(): void
+            {
+                $this->bind(PurgerInterface::class)->toInstance($this->purger);
+            }
+        });
+
+        return new Injector($module, __DIR__ . '/tmp');
     }
 
     public function testCacheableWithNoHttpCacheStillStores(): void

@@ -69,11 +69,9 @@ final readonly class QueryRepository implements QueryRepositoryInterface
 
     private function doPut(ResourceObject $ro): bool
     {
-        // The writer knows its own purpose: this deleteEtag clears the entry about to be
-        // rewritten below. The marker records that, so readers never have to infer
-        // cleanup-vs-invalidation from tag correlation.
-        $this->logger->event(new PreWriteCleanupContext((string) $ro->uri));
-        $this->storage->deleteEtag($ro->uri);
+        // Before headerSetter mutates the header
+        $unstorable = $this->declaredCacheControl->reason($ro);
+        $this->cleanUpBeforeWrite($ro, $unstorable);
         if ($ro->code === 200) {
             $this->setCacheDependency($ro);
         }
@@ -92,10 +90,6 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         if ($cacheable instanceof Cacheable) {
             $this->logger->event($this->cachePolicy($ro, $cacheable, $ttl));
         }
-
-        // Checked against the still-unmutated header, before headerSetter runs the identical
-        // check - a dynamically set Cache-Control trips this; #[HttpCache]'s own value is exempt.
-        $unstorable = $this->declaredCacheControl->reason($ro);
 
         ($this->headerSetter)($ro, $ttl, $httpCache);
 
@@ -116,6 +110,19 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         }
 
         return $this->storage->saveValue($ro, $ttl);
+    }
+
+    private function cleanUpBeforeWrite(ResourceObject $ro, string|null $unstorable): void
+    {
+        if ($unstorable !== null && $this->storage->get($ro->uri) === null) {
+            return;
+        }
+
+        // The writer knows its own purpose: this deleteEtag clears the entry about to be
+        // rewritten below. The marker records that, so readers never have to infer
+        // cleanup-vs-invalidation from tag correlation.
+        $this->logger->event(new PreWriteCleanupContext((string) $ro->uri));
+        $this->storage->deleteEtag($ro->uri);
     }
 
     /**
