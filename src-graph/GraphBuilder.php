@@ -23,6 +23,7 @@ use function file_get_contents;
 use function getcwd;
 use function preg_match;
 use function sprintf;
+use function str_replace;
 use function str_starts_with;
 use function strlen;
 use function substr;
@@ -49,7 +50,7 @@ final class GraphBuilder
         private readonly UriConverter $uriConverter = new UriConverter(),
         string|null $cwd = null,
     ) {
-        $this->cwd = $cwd ?? (string) getcwd();
+        $this->cwd = str_replace('\\', '/', $cwd ?? (string) getcwd());
     }
 
     /**
@@ -226,6 +227,8 @@ final class GraphBuilder
 
     private function source(string $file, int $line): string
     {
+        // Forward slashes on every OS, so a source reads and matches the same on Windows.
+        $file = str_replace('\\', '/', $file);
         $relative = str_starts_with($file, $this->cwd . '/') ? substr($file, strlen($this->cwd) + 1) : $file;
 
         return "{$relative}:{$line}";

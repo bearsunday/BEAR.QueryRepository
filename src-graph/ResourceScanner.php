@@ -17,6 +17,7 @@ use function ksort;
 use function preg_match;
 use function realpath;
 use function str_ends_with;
+use function str_replace;
 use function usort;
 
 /**
@@ -38,6 +39,7 @@ final class ResourceScanner
         /** @var SplFileInfo $file */
         foreach ($files as $file) {
             $path = $file->getPathname();
+            $reported = str_replace('\\', '/', $path);
             if (! str_ends_with($path, '.php')) {
                 continue;
             }
@@ -48,14 +50,15 @@ final class ResourceScanner
             }
 
             if (! class_exists($class)) {
-                $this->skipped[] = ['file' => $path, 'reason' => "{$class} is not autoloadable"];
+                $this->skipped[] = ['file' => $reported, 'reason' => "{$class} is not autoloadable"];
                 continue;
             }
 
             $ref = new ReflectionClass($class);
             if ($ref->getFileName() !== realpath($path)) {
                 // The autoloader resolves this class to another file: this one is never loaded.
-                $this->skipped[] = ['file' => $path, 'reason' => "{$class} is loaded from {$ref->getFileName()}"];
+                $loaded = str_replace('\\', '/', (string) $ref->getFileName());
+                $this->skipped[] = ['file' => $reported, 'reason' => "{$class} is loaded from {$loaded}"];
                 continue;
             }
 
