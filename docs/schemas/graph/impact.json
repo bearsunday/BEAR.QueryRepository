@@ -1,0 +1,23 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/graph/impact.json",
+    "title": "qr-graph impact line",
+    "description": "One URI the invalidation reaches through the declared graph, breadth-first, each reached once by its shortest path. Follow `by` back to the start to explain the line.",
+    "type": "object",
+    "required": ["uri", "via", "by", "depth", "cached", "source"],
+    "properties": {
+        "uri": {"type": "string"},
+        "via": {
+            "description": "`target`: the URI asked about. `refresh`/`purge`: a target of the write method asked about. `embed`: embeds `by`.",
+            "enum": ["target", "refresh", "purge", "embed"]
+        },
+        "by": {"type": ["string", "null"]},
+        "depth": {"type": "integer", "minimum": 0},
+        "cached": {
+            "description": "Whether the resource declares a cache at all. A child's tags reach its parent only from a child that ran with an ETag or Surrogate-Key, so an `embed` line whose `by` is not cached is a dependency the cache does not track (for a donut page, a hole rendered per request).",
+            "type": "boolean"
+        },
+        "source": {"description": "file:line; null for a URI no scanned resource serves.", "type": ["string", "null"]}
+    },
+    "additionalProperties": false
+}

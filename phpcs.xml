@@ -17,6 +17,7 @@
     <!-- Directories to be checked -->
     <file>src</file>
     <file>src-annotation</file>
+    <file>src-graph</file>
     <file>tests</file>
     <exclude-pattern>*/tests/tmp/*</exclude-pattern>
 
