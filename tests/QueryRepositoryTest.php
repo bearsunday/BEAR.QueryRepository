@@ -311,6 +311,35 @@ class QueryRepositoryTest extends TestCase
         $this->assertNotContains('cache_hit', self::collectTypes($tree2));
     }
 
+    public function testRepeatedUnstorableGetDoesNotInvalidateOrPurge(): void
+    {
+        // Nothing is stored for an unstorable response, so every GET of it is a miss that
+        // reaches put(). With no earlier entry there is nothing to clean up: each GET must not
+        // invalidate the pools and purge the CDN.
+        $this->resource->get('app://self/unstorable-value');
+        $this->logger->flush();
+        $this->resource->get('app://self/unstorable-value');
+        $tree = $this->flushAndValidate($this->logger);
+
+        $types = self::collectTypes($tree);
+        $this->assertContains('put_skipped', $types);
+        $this->assertNotContains('pre_write_cleanup', $types);
+        $this->assertNotContains('invalidate', $types);
+    }
+
+    public function testUnstorablePutStillDropsAnEarlierEntry(): void
+    {
+        // An entry stored while the response was storable must not outlive a later write of
+        // the same URI that turns out unstorable.
+        $uri = 'app://self/unstorable-value?unstorable=0';
+        $ro = $this->resource->get($uri);
+        $this->assertNotNull($this->repository->get(new Uri($uri)));
+
+        $ro->headers[Header::CACHE_CONTROL] = 'private';
+        $this->assertFalse($this->repository->put($ro));
+        $this->assertNull($this->repository->get(new Uri($uri)));
+    }
+
     public function testCacheableWithNoHttpCacheStillStores(): void
     {
         // #[NoHttpCache] declares its own Cache-Control (private, no-store, no-cache,

@@ -186,6 +186,48 @@ class DonutRepositoryTest extends TestCase
         $this->assertNotNull(self::eventContextJsonOf($tree2, 'cache_miss'));
     }
 
+    public function testRepeatedUnstorableDonutGetDoesNotInvalidateOrPurge(): void
+    {
+        // Nothing is stored for an unstorable page, so every GET of it is a miss that reaches
+        // the donut write. With no earlier view or template there is nothing to clean up: each
+        // GET must not invalidate the pools and purge the CDN - for #[CacheableResponse] and
+        // #[DonutCache] alike.
+        $injector = $this->getInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
+
+        foreach (['page://self/html/unstorable-donut', 'page://self/html/unstorable-donut-cache-template'] as $uri) {
+            $resource->get($uri);
+            $logger->flush();
+            $resource->get($uri);
+            $types = self::collectTypes($this->flushAndValidate($logger));
+
+            $this->assertContains('put_skipped', $types, $uri);
+            $this->assertNotContains('pre_write_cleanup', $types, $uri);
+            $this->assertNotContains('invalidate', $types, $uri);
+        }
+    }
+
+    public function testUnstorableDonutWriteStillDropsAnEarlierEntry(): void
+    {
+        // A view and template stored while the page was storable must not outlive a later
+        // write of the same URI that turns out unstorable.
+        $injector = $this->getInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $storage = $injector->getInstance(ResourceStorageInterface::class);
+        $donutRepository = $injector->getInstance(DonutRepositoryInterface::class);
+        $uri = new Uri('page://self/html/unstorable-donut?unstorable=0');
+
+        $ro = $resource->get((string) $uri);
+        $this->assertNotNull($storage->get($uri));
+        $this->assertNotNull($storage->getDonut($uri));
+
+        $ro->headers[Header::CACHE_CONTROL] = 'private';
+        $donutRepository->putStatic($ro);
+        $this->assertNull($storage->get($uri));
+        $this->assertNull($storage->getDonut($uri));
+    }
+
     public function testDonutCacheWithAMultiParamEmbedRendersAndRefreshesBothQueryParams(): void
     {
         // End-to-end through the real #[Embed] pipeline (URI-template expansion, not a
