@@ -12,6 +12,7 @@ use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Madapaja\TwigModule\TwigModule;
+use Override;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
@@ -57,11 +58,24 @@ class DonutRepositoryTest extends TestCase
         parent::setUp();
     }
 
-    private function getInjector(): Injector
+    private function getInjector(PurgerInterface|null $purger = null): Injector
     {
         $namespace = 'FakeVendor\HelloWorld';
         $module = new FakeEtagPoolModule(ModuleFactory::getInstance($namespace));
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
+        if ($purger !== null) {
+            $module->override(new class ($purger) extends AbstractModule {
+                public function __construct(private readonly PurgerInterface $purger)
+                {
+                }
+
+                #[Override]
+                protected function configure(): void
+                {
+                    $this->bind(PurgerInterface::class)->toInstance($this->purger);
+                }
+            });
+        }
 
         return new Injector($module, __DIR__ . '/tmp');
     }
@@ -186,25 +200,20 @@ class DonutRepositoryTest extends TestCase
         $this->assertNotNull(self::eventContextJsonOf($tree2, 'cache_miss'));
     }
 
-    public function testRepeatedUnstorableDonutGetDoesNotInvalidateOrPurge(): void
+    public function testRepeatedUnstorableDonutGetDoesNotPurge(): void
     {
         // Nothing is stored for an unstorable page, so every GET of it is a miss that reaches
-        // the donut write. With no earlier view or template there is nothing to clean up: each
-        // GET must not invalidate the pools and purge the CDN - for #[CacheableResponse] and
-        // #[DonutCache] alike.
-        $injector = $this->getInjector();
-        $resource = $injector->getInstance(ResourceInterface::class);
-        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
-
+        // the donut write. With no earlier view or template there is nothing to clean up: no
+        // GET may purge - for #[CacheableResponse] and #[DonutCache] alike.
         foreach (['page://self/html/unstorable-donut', 'page://self/html/unstorable-donut-cache-template'] as $uri) {
-            $resource->get($uri);
-            $logger->flush();
-            $resource->get($uri);
-            $types = self::collectTypes($this->flushAndValidate($logger));
+            $purger = new FakeCountingPurger();
+            $resource = $this->getInjector($purger)->getInstance(ResourceInterface::class);
 
-            $this->assertContains('put_skipped', $types, $uri);
-            $this->assertNotContains('pre_write_cleanup', $types, $uri);
-            $this->assertNotContains('invalidate', $types, $uri);
+            for ($i = 0; $i < 3; $i++) {
+                $resource->get($uri);
+            }
+
+            $this->assertSame([], $purger->tags, $uri);
         }
     }
 
@@ -212,7 +221,8 @@ class DonutRepositoryTest extends TestCase
     {
         // A view and template stored while the page was storable must not outlive a later
         // write of the same URI that turns out unstorable.
-        $injector = $this->getInjector();
+        $purger = new FakeCountingPurger();
+        $injector = $this->getInjector($purger);
         $resource = $injector->getInstance(ResourceInterface::class);
         $storage = $injector->getInstance(ResourceStorageInterface::class);
         $donutRepository = $injector->getInstance(DonutRepositoryInterface::class);
@@ -221,11 +231,13 @@ class DonutRepositoryTest extends TestCase
         $ro = $resource->get((string) $uri);
         $this->assertNotNull($storage->get($uri));
         $this->assertNotNull($storage->getDonut($uri));
+        $purger->reset();
 
         $ro->headers[Header::CACHE_CONTROL] = 'private';
         $donutRepository->putStatic($ro);
         $this->assertNull($storage->get($uri));
         $this->assertNull($storage->getDonut($uri));
+        $this->assertNotSame([], $purger->tags);
     }
 
     public function testDonutCacheWithAMultiParamEmbedRendersAndRefreshesBothQueryParams(): void

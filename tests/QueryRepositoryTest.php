@@ -17,6 +17,7 @@ use FakeVendor\HelloWorld\Resource\App\NullView;
 use FakeVendor\HelloWorld\Resource\App\User\Profile;
 use FakeVendor\HelloWorld\Resource\Page\None;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
+use Override;
 use PHPUnit\Framework\TestCase;
 use Psr\Cache\CacheItemPoolInterface;
 use Ray\Di\AbstractModule;
@@ -311,33 +312,55 @@ class QueryRepositoryTest extends TestCase
         $this->assertNotContains('cache_hit', self::collectTypes($tree2));
     }
 
-    public function testRepeatedUnstorableGetDoesNotInvalidateOrPurge(): void
+    public function testRepeatedUnstorableGetDoesNotPurge(): void
     {
         // Nothing is stored for an unstorable response, so every GET of it is a miss that
-        // reaches put(). With no earlier entry there is nothing to clean up: each GET must not
-        // invalidate the pools and purge the CDN.
-        $this->resource->get('app://self/unstorable-value');
-        $this->logger->flush();
-        $this->resource->get('app://self/unstorable-value');
-        $tree = $this->flushAndValidate($this->logger);
+        // reaches put(). With no earlier entry there is nothing to clean up: no GET may purge.
+        $purger = new FakeCountingPurger();
+        $resource = $this->injectorWithPurger($purger)->getInstance(ResourceInterface::class);
 
-        $types = self::collectTypes($tree);
-        $this->assertContains('put_skipped', $types);
-        $this->assertNotContains('pre_write_cleanup', $types);
-        $this->assertNotContains('invalidate', $types);
+        for ($i = 0; $i < 3; $i++) {
+            $resource->get('app://self/unstorable-value');
+        }
+
+        $this->assertSame([], $purger->tags);
     }
 
     public function testUnstorablePutStillDropsAnEarlierEntry(): void
     {
         // An entry stored while the response was storable must not outlive a later write of
         // the same URI that turns out unstorable.
+        $purger = new FakeCountingPurger();
+        $injector = $this->injectorWithPurger($purger);
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $repository = $injector->getInstance(QueryRepositoryInterface::class);
         $uri = 'app://self/unstorable-value?unstorable=0';
-        $ro = $this->resource->get($uri);
-        $this->assertNotNull($this->repository->get(new Uri($uri)));
+        $ro = $resource->get($uri);
+        $this->assertNotNull($repository->get(new Uri($uri)));
+        $purger->reset();
 
         $ro->headers[Header::CACHE_CONTROL] = 'private';
-        $this->assertFalse($this->repository->put($ro));
-        $this->assertNull($this->repository->get(new Uri($uri)));
+        $this->assertFalse($repository->put($ro));
+        $this->assertNull($repository->get(new Uri($uri)));
+        $this->assertNotSame([], $purger->tags);
+    }
+
+    private function injectorWithPurger(PurgerInterface $purger): Injector
+    {
+        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module->override(new class ($purger) extends AbstractModule {
+            public function __construct(private readonly PurgerInterface $purger)
+            {
+            }
+
+            #[Override]
+            protected function configure(): void
+            {
+                $this->bind(PurgerInterface::class)->toInstance($this->purger);
+            }
+        });
+
+        return new Injector($module, __DIR__ . '/tmp');
     }
 
     public function testCacheableWithNoHttpCacheStillStores(): void
