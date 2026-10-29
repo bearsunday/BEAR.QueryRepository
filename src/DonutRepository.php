@@ -195,15 +195,6 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $this->resourceStorage->saveDonut($ro->uri, $donut, $donutTtl, $templateKeys);
     }
 
-    /**
-     * Drop what an earlier write left under this URI before it is written again
-     *
-     * An unstorable response is never written, so every GET of it misses and lands here: it is
-     * cleaned up only when an earlier write actually left a view or a template, or each of those
-     * GETs would invalidate both pools and purge the CDN for nothing.
-     *
-     * @param 'unstorable'|null $unstorable
-     */
     private function cleanUpBeforeWrite(ResourceObject $ro, string|null $unstorable): void
     {
         if ($unstorable !== null && $this->resourceStorage->get($ro->uri) === null && $this->resourceStorage->getDonut($ro->uri) === null) {

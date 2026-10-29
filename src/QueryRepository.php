@@ -69,8 +69,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
 
     private function doPut(ResourceObject $ro): bool
     {
-        // Checked against the still-unmutated header, before headerSetter runs the identical
-        // check - a dynamically set Cache-Control trips this; #[HttpCache]'s own value is exempt.
+        // Before headerSetter mutates the header
         $unstorable = $this->declaredCacheControl->reason($ro);
         $this->cleanUpBeforeWrite($ro, $unstorable);
         if ($ro->code === 200) {
@@ -113,15 +112,6 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         return $this->storage->saveValue($ro, $ttl);
     }
 
-    /**
-     * Drop what an earlier write left under this URI before it is written again
-     *
-     * An unstorable response is never written, so every GET of it misses and lands here: it is
-     * cleaned up only when an earlier write actually left an entry, or each of those GETs would
-     * invalidate both pools and purge the CDN for nothing.
-     *
-     * @param 'unstorable'|null $unstorable
-     */
     private function cleanUpBeforeWrite(ResourceObject $ro, string|null $unstorable): void
     {
         if ($unstorable !== null && $this->storage->get($ro->uri) === null) {

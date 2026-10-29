@@ -202,9 +202,6 @@ class DonutRepositoryTest extends TestCase
 
     public function testRepeatedUnstorableDonutGetDoesNotPurge(): void
     {
-        // Nothing is stored for an unstorable page, so every GET of it is a miss that reaches
-        // the donut write. With no earlier view or template there is nothing to clean up: no
-        // GET may purge - for #[CacheableResponse] and #[DonutCache] alike.
         foreach (['page://self/html/unstorable-donut', 'page://self/html/unstorable-donut-cache-template'] as $uri) {
             $purger = new FakeCountingPurger();
             $resource = $this->getInjector($purger)->getInstance(ResourceInterface::class);
@@ -219,8 +216,6 @@ class DonutRepositoryTest extends TestCase
 
     public function testUnstorableDonutWriteStillDropsAnEarlierEntry(): void
     {
-        // A view and template stored while the page was storable must not outlive a later
-        // write of the same URI that turns out unstorable.
         $purger = new FakeCountingPurger();
         $injector = $this->getInjector($purger);
         $resource = $injector->getInstance(ResourceInterface::class);

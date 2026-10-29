@@ -314,8 +314,6 @@ class QueryRepositoryTest extends TestCase
 
     public function testRepeatedUnstorableGetDoesNotPurge(): void
     {
-        // Nothing is stored for an unstorable response, so every GET of it is a miss that
-        // reaches put(). With no earlier entry there is nothing to clean up: no GET may purge.
         $purger = new FakeCountingPurger();
         $resource = $this->injectorWithPurger($purger)->getInstance(ResourceInterface::class);
 
@@ -328,8 +326,6 @@ class QueryRepositoryTest extends TestCase
 
     public function testUnstorablePutStillDropsAnEarlierEntry(): void
     {
-        // An entry stored while the response was storable must not outlive a later write of
-        // the same URI that turns out unstorable.
         $purger = new FakeCountingPurger();
         $injector = $this->injectorWithPurger($purger);
         $resource = $injector->getInstance(ResourceInterface::class);
