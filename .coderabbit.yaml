@@ -1,9 +1,9 @@
-# Every pull request is reviewed automatically, drafts included (agents open PRs as drafts),
-# and on the 1.x maintenance branches as well as the default branch.
+# Every pull request is reviewed automatically once it is ready for review (a draft is reviewed
+# when it is marked ready), on the 1.x maintenance branches as well as the default branch.
 reviews:
   review_status: false
   auto_review:
     enabled: true
-    drafts: true
+    drafts: false
     base_branches:
       - '1\..*'
