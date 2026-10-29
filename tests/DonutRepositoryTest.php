@@ -12,6 +12,7 @@ use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Madapaja\TwigModule\TwigModule;
+use Override;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
@@ -57,11 +58,24 @@ class DonutRepositoryTest extends TestCase
         parent::setUp();
     }
 
-    private function getInjector(): Injector
+    private function getInjector(PurgerInterface|null $purger = null): Injector
     {
         $namespace = 'FakeVendor\HelloWorld';
         $module = new FakeEtagPoolModule(ModuleFactory::getInstance($namespace));
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
+        if ($purger !== null) {
+            $module->override(new class ($purger) extends AbstractModule {
+                public function __construct(private readonly PurgerInterface $purger)
+                {
+                }
+
+                #[Override]
+                protected function configure(): void
+                {
+                    $this->bind(PurgerInterface::class)->toInstance($this->purger);
+                }
+            });
+        }
 
         return new Injector($module, __DIR__ . '/tmp');
     }
@@ -184,6 +198,41 @@ class DonutRepositoryTest extends TestCase
         $tree2 = $this->flushAndValidate($logger);
         $this->assertNull(self::eventContextJsonOf($tree2, 'refresh_donut'));
         $this->assertNotNull(self::eventContextJsonOf($tree2, 'cache_miss'));
+    }
+
+    public function testRepeatedUnstorableDonutGetDoesNotPurge(): void
+    {
+        foreach (['page://self/html/unstorable-donut', 'page://self/html/unstorable-donut-cache-template'] as $uri) {
+            $purger = new FakeCountingPurger();
+            $resource = $this->getInjector($purger)->getInstance(ResourceInterface::class);
+
+            for ($i = 0; $i < 3; $i++) {
+                $resource->get($uri);
+            }
+
+            $this->assertSame([], $purger->tags, $uri);
+        }
+    }
+
+    public function testUnstorableDonutWriteStillDropsAnEarlierEntry(): void
+    {
+        $purger = new FakeCountingPurger();
+        $injector = $this->getInjector($purger);
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $storage = $injector->getInstance(ResourceStorageInterface::class);
+        $donutRepository = $injector->getInstance(DonutRepositoryInterface::class);
+        $uri = new Uri('page://self/html/unstorable-donut?unstorable=0');
+
+        $ro = $resource->get((string) $uri);
+        $this->assertNotNull($storage->get($uri));
+        $this->assertNotNull($storage->getDonut($uri));
+        $purger->reset();
+
+        $ro->headers[Header::CACHE_CONTROL] = 'private';
+        $donutRepository->putStatic($ro);
+        $this->assertNull($storage->get($uri));
+        $this->assertNull($storage->getDonut($uri));
+        $this->assertNotSame([], $purger->tags);
     }
 
     public function testDonutCacheWithAMultiParamEmbedRendersAndRefreshesBothQueryParams(): void

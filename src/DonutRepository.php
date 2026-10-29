@@ -156,8 +156,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $unstorable = $this->declaredCacheControl->reason($ro);
         $surrogateKeys = $this->setHeaders($keys, $ro, $sMaxAge);
         $this->logCdnHeaders($ro);
-        $this->logger->event(new PreWriteCleanupContext((string) $ro->uri));
-        $this->resourceStorage->invalidateTags([($this->uriTag)($ro->uri)]);
+        $this->cleanUpBeforeWrite($ro, $unstorable);
         if ($unstorable !== null) {
             $this->logger->event(new PutSkippedContext((string) $ro->uri, $unstorable));
 
@@ -186,8 +185,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         }
 
         $this->logCdnHeaders($ro);
-        $this->logger->event(new PreWriteCleanupContext((string) $ro->uri));
-        $this->resourceStorage->invalidateTags([($this->uriTag)($ro->uri)]);
+        $this->cleanUpBeforeWrite($ro, $unstorable);
         if ($unstorable !== null) {
             $this->logger->event(new PutSkippedContext((string) $ro->uri, $unstorable));
 
@@ -195,6 +193,16 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         }
 
         $this->resourceStorage->saveDonut($ro->uri, $donut, $donutTtl, $templateKeys);
+    }
+
+    private function cleanUpBeforeWrite(ResourceObject $ro, string|null $unstorable): void
+    {
+        if ($unstorable !== null && $this->resourceStorage->get($ro->uri) === null && $this->resourceStorage->getDonut($ro->uri) === null) {
+            return;
+        }
+
+        $this->logger->event(new PreWriteCleanupContext((string) $ro->uri));
+        $this->resourceStorage->invalidateTags([($this->uriTag)($ro->uri)]);
     }
 
     /**

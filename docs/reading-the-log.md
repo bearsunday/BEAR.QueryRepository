@@ -35,7 +35,7 @@ meet in an entry can be traced to the thing it names in your application.
 | `etag` | the entity-tag of a representation: a validator, not a key | the `ETag` response header |
 | `layer` | which store answered a lookup, not which pool was written | — (a log-only axis) |
 | donut / donut-view | the cacheable shell with holes / the recomposed page | `#[CacheableResponse]`, `#[DonutCache]` |
-| `sMaxAge` | the shared-cache lifetime a write asked the CDN for | `DonutRepositoryInterface::put($ro, ttl: …, sMaxAge: …)` |
+| `sMaxAge` | the shared-cache lifetime a write asked the CDN for | `DonutRepositoryInterface::putStatic($ro, ttl: …, sMaxAge: …)` |
 | a scope, an event, a close | the three node kinds of the tree, described next | — (a log-only distinction) |
 
 `roPool` and `etagPool` name **pools**; `layer` names **the store that answered a lookup**. A
@@ -97,7 +97,7 @@ operation inside a GET or a command is an ordinary event there instead.
 | `put_donut` | `uri`, `requestedTtl`, `sMaxAge` | a donut write was requested, with the lifetime asked for |
 | `refresh_donut` | `uri` | a cached donut was recomposed rather than served as-is |
 | `cdn_headers` | `uri`, `headers`, `surrogateKeys` | the CDN-facing headers the response actually carried |
-| `depends_on` | `parent`, `child`, `childTags` | one dependency edge: the child's tags were added to the parent. Only a `#[Cacheable]` put records one |
+| `depends_on` | `parent`, `child`, `childTags` | one dependency edge: the child's tags were added to the parent. A `#[Cacheable]` put records one, and so does a donut page write for a child that already ran in `onGet()`; a hole has not run yet and records none |
 | `pre_write_cleanup` | `uri` | the writer is about to clear the entry it will rewrite |
 | `invalidate` | `tags`, `roPool`, `etagPool`, `cdn`, `durationMs` | tags were invalidated, with a result per target |
 | `purge` | `uri` | a URI-targeted bust was requested |
@@ -121,7 +121,7 @@ Every outcome is a self-describing word, never a bare boolean — except `saved`
 | `reason` (`put_skipped`) | `etag-present` \| `error-code` \| `not-cacheable` \| `unstorable` | why no write happened. `etag-present` = the resource already carried an ETag, so the donut layer left it alone; `not-cacheable` = a donut page re-rendered from its template, which is never stored as a page; `error-code` carries the response `code`, and the threshold differs by path: `#[Cacheable]` skips any non-200 (a `203` appears here), a donut skips 4xx and above; `unstorable` = a producer marked the response during this request, or its `Cache-Control` already says `no-store`/`private` — the write is refused even though the code and type would otherwise allow it |
 | `result` (`manual_*`) | `stored`/`purged`/`invalidated` \| `failed` | the direct call's outcome |
 | `requestedTtl` | seconds | what this package asked the store to keep. `31536000` is the `never` convention; `0`/`null` = it asked for no expiry, which a backend may override (see the rule below) |
-| `sMaxAge` (`put_donut`) | seconds | the shared-cache (CDN) lifetime the write asked for — the same argument as `DonutRepositoryInterface::put($ro, ttl: …, sMaxAge: …)`, and not the entry's own `requestedTtl`. `null` = none requested, and `putDonut` always records `null` |
+| `sMaxAge` (`put_donut`) | seconds | the shared-cache (CDN) lifetime the write asked for — the same argument as `DonutRepositoryInterface::putStatic($ro, ttl: …, sMaxAge: …)`, and not the entry's own `requestedTtl`. `null` = none requested, and `putDonut` always records `null` |
 | `code` (`put_skipped`) | HTTP status | present only when `reason` is `error-code`; `null` for the other reasons |
 
 ## Reading rules
@@ -143,6 +143,9 @@ is given one, so a `cdn_headers` for a stored non-200 lists the purge keys and n
 The miss itself does not say which:
 
 - **nothing had been stored** — cold, which is normal and self-healing: the next request hits.
+- **the entry had expired or been evicted** — indistinguishable from cold in the log: the store
+  does not say why it had nothing to return. A lone `cache_miss` therefore means "not there now",
+  not "never stored".
 - **the store could not be read** — a `cache_error{operation: read}` in the same scope says so.
   The read threw and the framework ran the resource to build the response instead, which is what
   *degraded* means here: it behaved as if there were no cache.
@@ -185,18 +188,20 @@ correlation. Any `invalidate` without the marker is a real invalidation.
 `tags` of a later `invalidate`. Tags that do not meet mean the write left that entry standing —
 which is what serving stale looks like from the inside.
 
-**Which entry carries a child's tags is decided by the parent's declaration.** A `#[Cacheable]`
+**Which entry carries a child's tags is decided by how the parent uses the child.** A `#[Cacheable]`
 parent records a `depends_on` edge and puts the child's tags on its `save_value`/`save_view` and
 `save_etag`, so purging the child takes the parent's entry with it and the next read closes
-`cache_miss`. A `#[CacheableResponse]` parent records no `depends_on` — the donut writer never
-calls `put()` — and puts the child's tags on `save_etag` and `save_donut_view` but deliberately not
-on `save_donut`, the shell that has to outlive the child. After the child is purged that parent
-still closes `cache_hit{layer: donut-view}`, with a `refresh_donut` and a fresh
-`save_etag`/`save_donut_view` inside: that is the healthy shape, and stale is a `cache_hit` with no
-`refresh_donut` in it. A `#[DonutCache]` parent stores no child tag anywhere — they reach
-`cdn_headers.surrogateKeys` and stop there — so every read after the first is `refresh_donut`
-then `put_skipped{reason: not-cacheable}`, and purging the child changes only the child's own
-nested `get`.
+`cache_miss`. A donut parent (`#[CacheableResponse]` or `#[DonutCache]`) tells two uses of a child
+apart. A *material* — one the page's `onGet()` already ran — records the edge and puts its tags on
+the template and the view, so purging it drops both and the next read closes `cache_miss`. A *hole*
+— run by the template, not before the write — records no edge and puts its tags on the view only,
+so purging it drops the view and the next read closes `cache_hit{layer: donut-view}` with a
+`refresh_donut` inside and a fresh `save_donut_view` beside it. That is the healthy shape; stale is
+a `cache_hit` with no `refresh_donut` in it.
+
+The hole is tracked only while it is an embedded request the renderer runs. A page that fetches and
+inlines a child by other means writes nothing for it, so purging that child leaves the stored page
+serving the composition it holds.
 
 **Read `cache_policy.expiry`, not a TTL, to learn whether an entry is meant to expire.**
 `expiry: "never"` means until invalidation; the number it resolves to is a backstop and depends on

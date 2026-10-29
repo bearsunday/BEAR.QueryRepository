@@ -10,14 +10,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - `vendor/bin/qr-graph`: prints the cache graph the attributes declare (`dump` as JSONL, `impact` for what an invalidation or a write reaches, `dot` for Graphviz), without running the application. A development tool under its own namespace `BEAR\QueryRepositoryGraph`, planned to move to a separate package. See [docs/graph.md](docs/graph.md).
 
-## [1.18.0] - 2026-10-28
+## [1.18.0] - 2026-10-29
 
 ### Changed
 - Deploy this version with a new `CacheVersionModule` version (an app that binds its own cache adapter rather than this package's `Storage*Module`s must clear its pools instead): entries written by earlier versions may hold per-user content, and an earlier version reading this version's donut cache shows raw `[le2:...]` placeholders during a rolling deploy.
 - A `#[Cacheable]`/`#[CacheableResponse]`/`#[DonutCache]` response whose own code, including a `$headers` property default, sets `Cache-Control` to `private` or `no-store` is not stored server-side. To keep server-side caching with a client-facing `no-store`, declare `#[HttpCache(noStore: true)]` instead.
+- Writing such an unstorable response invalidates the pools and purges the CDN only when an earlier write left an entry for its URI, not on every GET.
 - `ResourceDonut::FORMAT` is no longer public; use `ResourceDonut::placeholder()`.
 - Requires `koriym/semantic-logger` `^0.11`. Written logs use its `log` document shape, and diagnostic `kind` is now `code`.
 - Requires `bear/resource` `^1.22.4`.
+- Requires `psr/log` `^2.0 || ^3.0`: 1.17.0 declared `psr/log` 1.x but `PoolErrorLogger` failed to load under it. Applications on `psr/log` 1.x stay on 1.17.1, which fixes that.
 - Allows `symfony/cache` 8 (PHP 8.4 or later), and requires `ray/psr-cache-module` `^1.6`, which supports it.
 - `ResourceDonut::refresh()`: a hole that throws while an already-cached `#[DonutCache]` page is recomposed now degrades to a fresh render instead of failing the request directly from the refresh, the same way a cache-store failure already does. A hole that keeps throwing still fails the request, now from the fresh render instead of the refresh.
 - `CacheDependency::depends()` no longer unsets the child's own `Surrogate-Key` header after copying it into the parent: a child that is both read by the parent and later rendered as a hole keeps its own key for its own independent cache entry.
@@ -34,6 +36,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `ResourceBodyEvaluator` no longer crashes materializing an embedded child whose `jsonSerialize()` does not answer the memoized `ResourceObject` (the shape `BEAR\Async\AsyncRequest` overrides it to): such a child is now left unmaterialized instead of asserting. Async support itself remains out of scope.
 - A `#[DonutCache]`/`#[CacheableResponse]` page whose `onGet()` reads an embedded child's value now carries that child's tags, so purging the child also drops the page's stored template instead of leaving it stale. A hole the page only renders still just recomposes on purge.
 - `DonutRenderer`: a second cache MISS of the same page in one long-running container (Swoole, RoadRunner) now renders that hole's fresh content; it previously could replay the first MISS's stale view.
+
+## [1.17.1] - 2026-10-29
+
+### Fixed
+- `PoolErrorLogger`, which `StorageRedisDsnModule` and `StorageMemcachedModule` bind, no longer fails to load with a fatal error under `psr/log` 1.x, which 1.17.0 declares as supported.
 
 ## [1.17.0] - 2026-09-17
 
