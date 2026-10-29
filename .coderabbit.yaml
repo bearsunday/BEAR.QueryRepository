@@ -1,3 +1,9 @@
-# Reviews run on demand: mention @coderabbitai review when a PR needs one.
+# Every pull request is reviewed automatically, drafts included (agents open PRs as drafts),
+# and on the 1.x maintenance branches as well as the default branch.
 reviews:
   review_status: false
+  auto_review:
+    enabled: true
+    drafts: true
+    base_branches:
+      - '1\..*'
