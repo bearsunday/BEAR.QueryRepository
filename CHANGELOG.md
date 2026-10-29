@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.18.0] - 2026-10-28
+## [1.18.0] - 2026-10-29
 
 ### Changed
 - Deploy this version with a new `CacheVersionModule` version (an app that binds its own cache adapter rather than this package's `Storage*Module`s must clear its pools instead): entries written by earlier versions may hold per-user content, and an earlier version reading this version's donut cache shows raw `[le2:...]` placeholders during a rolling deploy.
@@ -30,6 +30,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `ResourceBodyEvaluator` no longer crashes materializing an embedded child whose `jsonSerialize()` does not answer the memoized `ResourceObject` (the shape `BEAR\Async\AsyncRequest` overrides it to): such a child is now left unmaterialized instead of asserting. Async support itself remains out of scope.
 - A `#[DonutCache]`/`#[CacheableResponse]` page whose `onGet()` reads an embedded child's value now carries that child's tags, so purging the child also drops the page's stored template instead of leaving it stale. A hole the page only renders still just recomposes on purge.
 - `DonutRenderer`: a second cache MISS of the same page in one long-running container (Swoole, RoadRunner) now renders that hole's fresh content; it previously could replay the first MISS's stale view.
+
+## [1.17.1] - 2026-10-29
+
+### Fixed
+- `PoolErrorLogger`, which `StorageRedisDsnModule` and `StorageMemcachedModule` bind, no longer fails to load with a fatal error under `psr/log` 1.x, which 1.17.0 declares as supported.
 
 ## [1.17.0] - 2026-09-17
 
