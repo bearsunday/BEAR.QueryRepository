@@ -167,7 +167,8 @@ jobs:
           coverage: pcov
           ini-values: zend.assertions=1
           tools: composer
-          extensions: ${{ matrix.php-version != '8.6' && 'redis, memcached' || '' }}
+          # Windows runs the 2016 Redis 3.0 port; the Redis suite is exercised on Ubuntu and macOS
+          extensions: ${{ matrix.os != 'windows-latest' && matrix.php-version != '8.6' && 'redis, memcached' || '' }}
 
       - name: Cache Composer dependencies
         uses: actions/cache@v4
@@ -180,7 +181,7 @@ jobs:
       - name: Install dependencies
         run: |
           composer config platform --unset
-          composer update ${{ matrix.dependencies == 'lowest' && '--prefer-lowest' || '' }} ${{ env.COMPOSER_FLAGS }} ${{ matrix.php-version == '8.6' && '--ignore-platform-req=ext-redis --ignore-platform-req=ext-memcached' || '' }}
+          composer update ${{ matrix.dependencies == 'lowest' && '--prefer-lowest' || '' }} ${{ env.COMPOSER_FLAGS }} ${{ (matrix.php-version == '8.6' || matrix.os == 'windows-latest') && '--ignore-platform-req=ext-redis --ignore-platform-req=ext-memcached' || '' }}
 
       - name: Run PHPUnit tests
         run: ./vendor/bin/phpunit ${{ (matrix.os == 'ubuntu-latest' && matrix.php-version == '8.4' && matrix.dependencies == 'highest') && '--coverage-clover=coverage.xml' || '' }}
