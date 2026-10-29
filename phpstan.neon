@@ -13,6 +13,7 @@ parameters:
   level: max
   paths:
     - src
+    - src-graph
     - tests
   excludePaths:
     - */tests/tmp/*

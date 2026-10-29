@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- `vendor/bin/qr-graph`: prints the cache graph the attributes declare (`dump` as JSONL, `impact` for what an invalidation or a write reaches, `dot` for Graphviz), without running the application. A development tool under its own namespace `BEAR\QueryRepositoryGraph`, planned to move to a separate package. See [docs/graph.md](docs/graph.md).
+
 ## [1.18.0] - 2026-10-28
 
 ### Changed

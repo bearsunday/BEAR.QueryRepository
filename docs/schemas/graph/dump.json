@@ -1,0 +1,121 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/graph/dump.json",
+    "title": "qr-graph dump line",
+    "description": "One line of `qr-graph dump`: the first line is `meta`, every other line is one resource and the cache declarations it makes. Edges start at the resource that declares them, so a line carries no `from`.",
+    "oneOf": [
+        {"$ref": "#/$defs/meta"},
+        {"$ref": "#/$defs/resource"}
+    ],
+    "$defs": {
+        "meta": {
+            "type": "object",
+            "required": ["meta"],
+            "properties": {
+                "meta": {
+                    "type": "object",
+                    "required": ["version", "namespaces", "dir"],
+                    "properties": {
+                        "version": {"const": 1},
+                        "namespaces": {
+                            "description": "URI host => PHP namespace. `page://self/html/blog-posting` is `{namespaces.self}\\Resource\\Page\\Html\\BlogPosting`.",
+                            "type": "object",
+                            "additionalProperties": {"type": "string"}
+                        },
+                        "dir": {"description": "The directory that was scanned.", "type": "string"}
+                    },
+                    "additionalProperties": false
+                }
+            },
+            "additionalProperties": false
+        },
+        "resource": {
+            "type": "object",
+            "required": ["uri", "source"],
+            "properties": {
+                "uri": {"$ref": "#/$defs/uri"},
+                "source": {"$ref": "#/$defs/source"},
+                "cacheable": {
+                    "description": "#[Cacheable] as declared.",
+                    "type": "object",
+                    "required": ["expiry", "expirySecond", "expiryAt", "update", "type"],
+                    "properties": {
+                        "expiry": {"type": "string"},
+                        "expirySecond": {"type": "integer"},
+                        "expiryAt": {"type": "string"},
+                        "update": {"type": "boolean"},
+                        "type": {"enum": ["value", "view"]}
+                    },
+                    "additionalProperties": false
+                },
+                "donutCache": {"description": "#[DonutCache] on the class.", "const": true},
+                "cacheableResponse": {"description": "#[CacheableResponse] on the class.", "const": true},
+                "httpCache": {"description": "The Cache-Control value #[HttpCache] or #[NoHttpCache] declares.", "type": "string"},
+                "methods": {
+                    "description": "Only methods that declare something the cache acts on, keyed by name, in declaration order.",
+                    "type": "object",
+                    "additionalProperties": {"$ref": "#/$defs/method"}
+                },
+                "dynamic": {
+                    "description": "Source-text hints that the declarations may not tell the whole story: `surrogate-key` (the class source mentions a Surrogate-Key, which code can set), `resource-request` (it mentions ResourceInject/ResourceInterface, so it can request resources outside #[Embed]). A hint is a reason to read the source; its absence proves nothing.",
+                    "type": "array",
+                    "items": {"enum": ["surrogate-key", "resource-request"]}
+                }
+            },
+            "additionalProperties": false
+        },
+        "method": {
+            "type": "object",
+            "required": ["source"],
+            "properties": {
+                "source": {"$ref": "#/$defs/source"},
+                "cacheableResponse": {"description": "#[CacheableResponse] on the method.", "const": true},
+                "embed": {
+                    "description": "#[Embed]: this resource depends on `uri`; invalidating `uri` invalidates this resource once the child's tags are on it.",
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "required": ["rel", "uri"],
+                        "properties": {
+                            "rel": {"type": "string"},
+                            "uri": {"$ref": "#/$defs/uri"},
+                            "template": {"$ref": "#/$defs/template"}
+                        },
+                        "additionalProperties": false
+                    }
+                },
+                "refresh": {
+                    "description": "Purged then re-generated after a successful write: #[Refresh], and the resource's own onGet (`implicit`).",
+                    "type": "array",
+                    "items": {"$ref": "#/$defs/target"}
+                },
+                "purge": {
+                    "description": "#[Purge]: purged after a successful write.",
+                    "type": "array",
+                    "items": {"$ref": "#/$defs/target"}
+                }
+            },
+            "additionalProperties": false
+        },
+        "target": {
+            "type": "object",
+            "required": ["uri"],
+            "properties": {
+                "uri": {"$ref": "#/$defs/uri"},
+                "template": {"$ref": "#/$defs/template"},
+                "implicit": {
+                    "description": "No #[Refresh] is written: the attribute named here makes this write refresh its own resource.",
+                    "enum": ["Cacheable", "CacheableResponse", "RefreshCache"]
+                }
+            },
+            "additionalProperties": false
+        },
+        "uri": {
+            "description": "scheme://host/path without query: exact-matchable against every other `uri`.",
+            "type": "string",
+            "pattern": "^[a-z]+://[^?#]+$"
+        },
+        "template": {"description": "The URI as declared, when it carries a query or template part.", "type": "string"},
+        "source": {"description": "file:line, relative to the working directory.", "type": "string", "pattern": ":[0-9]+$"}
+    }
+}
