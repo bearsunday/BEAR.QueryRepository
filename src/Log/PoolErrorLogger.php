@@ -37,11 +37,14 @@ final class PoolErrorLogger extends AbstractLogger
     /**
      * {@inheritDoc}
      *
-     * @param mixed   $level
-     * @param mixed[] $context
+     * `$message` is untyped so the class also loads under psr/log 1.x, whose `log()` declares no types.
+     *
+     * @param mixed             $level
+     * @param string|Stringable $message
+     * @param mixed[]           $context
      */
     #[Override]
-    public function log($level, string|Stringable $message, array $context = []): void
+    public function log($level, $message, array $context = []): void
     {
         if (! is_string($level) || ! in_array($level, self::FAILED, true)) {
             return;
