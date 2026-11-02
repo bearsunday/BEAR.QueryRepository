@@ -11,9 +11,11 @@ use BEAR\Resource\ResourceObject;
 use Throwable;
 
 use function array_key_exists;
+use function array_unique;
 use function assert;
 use function explode;
 use function hash;
+use function implode;
 use function is_iterable;
 use function max;
 use function preg_replace_callback;
@@ -103,6 +105,15 @@ final class ResourceDonut
         // isset() also guards entries serialized before this property existed
         if (isset($this->code)) {
             $ro->code = $this->code;
+        }
+
+        // $this->headers predates setHeaders() adding the group tag at the entry's original
+        // save, so restore the stored tags here too, or a refresh drops it from the ETag
+        // validator and the recomposed response.
+        $storedTags = $this->getStorageTags();
+        if ($storedTags !== []) {
+            $existing = isset($ro->headers[Header::SURROGATE_KEY]) ? explode(' ', $ro->headers[Header::SURROGATE_KEY]) : [];
+            $ro->headers[Header::SURROGATE_KEY] = implode(' ', array_unique([...$existing, ...$storedTags]));
         }
 
         $etags->setSurrogateHeader($ro);

@@ -10,10 +10,14 @@ use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
+use ReflectionMethod;
+use ReflectionProperty;
+use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 
 use function assert;
 use function is_array;
 use function is_float;
+use function is_string;
 
 /**
  * A GET's query-variant cache entries (`?page=2`) must be reachable by a purge aimed at the
@@ -213,6 +217,37 @@ class QueryVariantPurgeTest extends TestCase
         $this->assertTrue($this->storage->hasEtagFor($etag, $uri), 'precondition: validator registered');
 
         $this->repository->purge(new Uri('app://self/optional-param?id=1'));
+
+        $this->assertFalse($this->storage->hasEtagFor($etag, $uri));
+    }
+
+    /** A #[CacheableResponse] page's own value entry can expire independently of its donut
+     *  template; the next GET re-saves the value via ResourceDonut::refresh(), whose
+     *  recomposition keys must still carry the group tag, or a bare-URI purge stops reaching
+     *  a refreshed entry's ETag validator even though it still reaches a never-refreshed one. */
+    public function testDonutRefreshKeepsTheGroupTagOnTheEtagValidator(): void
+    {
+        assert($this->storage instanceof ScopedValidatorInterface);
+        $uri = new Uri('page://self/html/paged-static-donut');
+        $this->resource->get((string) $uri); // the interceptor's own putStatic() warms both pools
+
+        // Drop just the value/etag entry, leaving the donut template behind, by reaching into
+        // ResourceStorage's internal pool directly - no public API removes only one of the two.
+        $roPool = (new ReflectionProperty($this->storage, 'roPool'))->getValue($this->storage);
+        assert($roPool instanceof TagAwareAdapterInterface);
+        $getUriKey = new ReflectionMethod($this->storage, 'getUriKey');
+        $getUriKey->setAccessible(true);
+        $key = $getUriKey->invoke($this->storage, $uri, 'ro-');
+        assert(is_string($key));
+        $roPool->deleteItem($key);
+        $this->assertNull($this->repository->get($uri), 'precondition: value entry gone');
+        $this->assertNotNull($this->storage->getDonut($uri), 'precondition: donut template still present');
+
+        $refreshed = $this->resource->get((string) $uri);
+        $etag = $refreshed->headers['ETag'];
+        $this->assertTrue($this->storage->hasEtagFor($etag, $uri), 'precondition: refreshed validator registered');
+
+        $this->storage->invalidateTags(['grp-_html_paged-static-donut_']);
 
         $this->assertFalse($this->storage->hasEtagFor($etag, $uri));
     }

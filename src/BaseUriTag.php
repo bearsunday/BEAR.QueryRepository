@@ -24,10 +24,8 @@ use function method_exists;
 final class BaseUriTag implements BaseUriTagInterface
 {
     /**
-     * Namespaced so this never equals a resource's own plain UriTag: the bare/required-only
-     * form's base tag would otherwise be byte-identical to that same URI's own full-query tag,
-     * which cleanUpBeforeWrite() invalidates on every write - evicting every sibling variant on
-     * the first write to the bare form instead of just its own entry.
+     * Namespaced so this can never collide with a resource's own plain UriTag output, which
+     * cleanUpBeforeWrite() invalidates on every write.
      *
      * @see QueryRepository::GROUP_TAG_PREFIX
      */
