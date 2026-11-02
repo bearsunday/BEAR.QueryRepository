@@ -16,6 +16,7 @@ use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
+use ReflectionMethod;
 
 use function assert;
 use function call_user_func_array;
@@ -80,10 +81,33 @@ final readonly class DonutCommandInterceptor implements MethodInterceptor
     {
         $getQuery = ($this->matchQuery)($ro);
         $delUri = clone $ro->uri;
-        $delUri->query = $getQuery;
+        // #255: default-valued params dropped regardless of presence, matching BaseUriTag's
+        // rule - so this purge reaches the shared base tag every query variant's cache entry
+        // carries, not just the one variant $getQuery happened to match.
+        $delUri->query = $this->baseQuery($ro, $getQuery);
 
         $this->repository->purge($delUri);
         $this->refresh($getQuery, $ro);
+    }
+
+    /**
+     * @param array<string, mixed> $getQuery
+     *
+     * @return array<string, mixed>
+     */
+    private function baseQuery(ResourceObject $ro, array $getQuery): array
+    {
+        $baseQuery = [];
+        foreach ((new ReflectionMethod($ro, 'onGet'))->getParameters() as $parameter) {
+            if ($parameter->isDefaultValueAvailable() || ! isset($getQuery[$parameter->name])) {
+                continue;
+            }
+
+            /** @psalm-suppress MixedAssignment */
+            $baseQuery[$parameter->name] = $getQuery[$parameter->name];
+        }
+
+        return $baseQuery;
     }
 
     /** @param array<string, mixed> $getQuery */

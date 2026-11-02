@@ -46,7 +46,8 @@ use function trim;
  *     saver: ResourceStorageSaver,
  *     roProvider:ProviderInterface<TagAwareAdapterInterface>,
  *     etagProvider: ProviderInterface<TagAwareAdapterInterface>,
- *     serverContext: ServerContextInterface
+ *     serverContext: ServerContextInterface,
+ *     baseUriTag?: BaseUriTagInterface,
  * }
  * @internal
  */
@@ -75,6 +76,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
     private ProviderInterface $etagPoolProvider;
     private TagAwareAdapterInterface $roPool;
     private TagAwareAdapterInterface $etagPool;
+    private BaseUriTagInterface $baseUriTag;
 
     /**
      * @param ProviderInterface<TagAwareAdapterInterface> $roPoolProvider
@@ -92,8 +94,11 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         #[Set(TagAwareAdapterInterface::class, EtagPool::class)]
         ProviderInterface $etagPoolProvider,
         private ResourceBodyEvaluator $evaluateBody = new ResourceBodyEvaluator(),
-        private BaseUriTagInterface $baseUriTag = new BaseUriTag(),
+        BaseUriTagInterface|null $baseUriTag = null,
     ) {
+        // Same UriTag as $this->uriTag, so a custom binding's tag format stays consistent
+        // between what getTags() stores and what deleteEtag()/invalidateTags() target.
+        $this->baseUriTag = $baseUriTag ?? new BaseUriTag($this->uriTag);
         $this->initializePools($roPoolProvider, $etagPoolProvider);
     }
 
@@ -427,6 +432,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
             'roProvider' => $this->roPoolProvider,
             'etagProvider' => $this->etagPoolProvider,
             'serverContext' => $this->serverContext,
+            'baseUriTag' => $this->baseUriTag,
         ];
     }
 
@@ -445,7 +451,9 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         // Stateless, so rebuilt rather than carried: left out of the payload it stays
         // uninitialized, and the first save after a compiled-injector restore throws.
         $this->evaluateBody = new ResourceBodyEvaluator();
-        $this->baseUriTag = new BaseUriTag($this->uriTag);
+        // An injected non-default implementation round-trips via the payload; a payload from
+        // before this key existed falls back to the default built from the restored uriTag.
+        $this->baseUriTag = $data['baseUriTag'] ?? new BaseUriTag($this->uriTag);
         $this->initializePools($data['roProvider'], $data['etagProvider']);
     }
 }

@@ -34,6 +34,8 @@ use function trim;
 /** @internal */
 final readonly class QueryRepository implements QueryRepositoryInterface
 {
+    private BaseUriTagInterface $baseUriTag;
+
     public function __construct(
         #[CacheLog]
         private SemanticLoggerInterface $logger,
@@ -42,8 +44,12 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         private Expiry $expiry,
         private CacheDependencyInterface $cacheDependency,
         private DeclaredCacheControl $declaredCacheControl = new DeclaredCacheControl(),
-        private BaseUriTagInterface $baseUriTag = new BaseUriTag(),
+        private UriTagInterface $uriTag = new UriTag(),
+        BaseUriTagInterface|null $baseUriTag = null,
     ) {
+        // Same UriTag as $uriTag, so a custom binding's tag format stays consistent with what
+        // ResourceStorage::getTags() stores and deleteEtag()/invalidateTags() target.
+        $this->baseUriTag = $baseUriTag ?? new BaseUriTag($this->uriTag);
     }
 
     /**

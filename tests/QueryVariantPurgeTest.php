@@ -112,6 +112,39 @@ class QueryVariantPurgeTest extends TestCase
         $this->assertNotSame($page2, (string) $this->resource->get('page://self/paged-list?page=2'));
     }
 
+    /** PagedList::onPost has no #[Purge]/#[Refresh]; DonutCommandInterceptor's MatchQuery-driven
+     *  auto-purge is the only invalidation path. Posting straight to `?page=2` (the write's own
+     *  URI carries the defaulted param) must still invalidate every page variant, not only the
+     *  one it matched (#255 / CodeRabbit). */
+    public function testDonutAutoPurgeFromWriteUriCarryingDefaultedParamReachesOtherVariants(): void
+    {
+        $bare = (string) $this->resource->get('page://self/paged-list');
+        $page1 = (string) $this->resource->get('page://self/paged-list?page=1');
+        $this->assertSame($bare, (string) $this->resource->get('page://self/paged-list'), 'precondition: warm cache');
+        $this->assertSame($page1, (string) $this->resource->get('page://self/paged-list?page=1'), 'precondition: warm cache');
+
+        $this->resource->post('page://self/paged-list?page=2', ['title' => 'new']);
+
+        $this->assertNotSame($bare, (string) $this->resource->get('page://self/paged-list'));
+        $this->assertNotSame($page1, (string) $this->resource->get('page://self/paged-list?page=1'));
+    }
+
+    /** PagedValue::onPut has no #[Purge]/#[Refresh]; RefreshSameCommand's MatchQuery-driven
+     *  auto-purge is the only invalidation path. Same scenario as above for a plain
+     *  #[Cacheable] value resource (not a donut page). */
+    public function testValueAutoPurgeFromWriteUriCarryingDefaultedParamReachesOtherVariants(): void
+    {
+        $bare = $this->time('app://self/paged-value');
+        $page1 = $this->time('app://self/paged-value?page=1');
+        $this->assertSame($bare, $this->time('app://self/paged-value'), 'precondition: warm cache');
+        $this->assertSame($page1, $this->time('app://self/paged-value?page=1'), 'precondition: warm cache');
+
+        $this->resource->put('app://self/paged-value?page=2');
+
+        $this->assertNotSame($bare, $this->time('app://self/paged-value'));
+        $this->assertNotSame($page1, $this->time('app://self/paged-value?page=1'));
+    }
+
     /** The etagPool computes its own tag list (ResourceStorage::saveEtag), independent of
      *  getTags(); a bare purge must invalidate its If-None-Match validator too, or a
      *  conditional GET keeps returning 304 for a body the roPool already dropped. */
