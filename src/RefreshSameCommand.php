@@ -58,9 +58,8 @@ final readonly class RefreshSameCommand implements CommandInterface
         }
 
         $delUri = clone $ro->uri;
-        // #255: default-valued params dropped regardless of presence, matching BaseUriTag's
-        // rule - so this purge reaches the shared base tag every query variant's cache entry
-        // carries, not just the one variant $getQuery happened to match.
+        // Same coarsening rule as BaseUriTag, so this reaches every variant's shared tag,
+        // not just the one $getQuery matched.
         $delUri->query = $this->baseQuery($ro, $getQuery);
 
         // delete data in repository
