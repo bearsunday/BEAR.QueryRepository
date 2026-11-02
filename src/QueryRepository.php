@@ -50,7 +50,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         private UriTagInterface $uriTag = new UriTag(),
         BaseUriTagInterface|null $baseUriTag = null,
     ) {
-        // Built from $uriTag so a custom UriTagInterface applies to the group tag too.
+        // The default BaseUriTag shares this UriTagInterface.
         $this->baseUriTag = $baseUriTag ?? new BaseUriTag($this->uriTag);
     }
 
