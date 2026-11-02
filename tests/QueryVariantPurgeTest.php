@@ -251,4 +251,21 @@ class QueryVariantPurgeTest extends TestCase
 
         $this->assertFalse($this->storage->hasEtagFor($etag, $uri));
     }
+
+    /** The donut's SurrogateKeys (not just getTags()/templateKeys()) must carry the group tag
+     *  too: it alone builds the etagPool's $surrogateKeys string on the never-refreshed, first
+     *  save path (doPutStatic -> setHeaders -> saveView -> saveEtag), so an initially-saved
+     *  entry's validator needs it independently of the roPool/template paths. */
+    public function testDonutInitialSaveTagsTheEtagValidatorWithTheGroupTag(): void
+    {
+        assert($this->storage instanceof ScopedValidatorInterface);
+        $uri = new Uri('page://self/html/paged-static-donut');
+        $ro = $this->resource->get((string) $uri);
+        $etag = $ro->headers['ETag'];
+        $this->assertTrue($this->storage->hasEtagFor($etag, $uri), 'precondition: validator registered');
+
+        $this->storage->invalidateTags(['grp-_html_paged-static-donut_']);
+
+        $this->assertFalse($this->storage->hasEtagFor($etag, $uri));
+    }
 }
