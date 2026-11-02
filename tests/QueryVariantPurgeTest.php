@@ -145,6 +145,24 @@ class QueryVariantPurgeTest extends TestCase
         $this->assertNotSame($page1, $this->time('app://self/paged-value?page=1'));
     }
 
+    /** PagedResponseWithId::onPut has no #[Purge]/#[Refresh]. The write's own URI carries both
+     *  the required `id` and the defaulted `page`: auto-purge must drop `page` (coarsen) while
+     *  keeping `id` (isolate) - a different id's cache must survive untouched. */
+    public function testDonutAutoPurgeKeepsRequiredParamWhileDroppingDefaultedOne(): void
+    {
+        $id1Bare = (string) $this->resource->get('page://self/paged-response-with-id?id=1');
+        $id1Page2 = (string) $this->resource->get('page://self/paged-response-with-id?id=1&page=2');
+        $id2Page2 = (string) $this->resource->get('page://self/paged-response-with-id?id=2&page=2');
+        $this->assertSame($id1Bare, (string) $this->resource->get('page://self/paged-response-with-id?id=1'), 'precondition: warm cache');
+        $this->assertSame($id1Page2, (string) $this->resource->get('page://self/paged-response-with-id?id=1&page=2'), 'precondition: warm cache');
+
+        $this->resource->put('page://self/paged-response-with-id?id=1&page=2');
+
+        $this->assertNotSame($id1Bare, (string) $this->resource->get('page://self/paged-response-with-id?id=1'));
+        $this->assertNotSame($id1Page2, (string) $this->resource->get('page://self/paged-response-with-id?id=1&page=2'));
+        $this->assertSame($id2Page2, (string) $this->resource->get('page://self/paged-response-with-id?id=2&page=2'), 'a different id must not be purged');
+    }
+
     /** The etagPool computes its own tag list (ResourceStorage::saveEtag), independent of
      *  getTags(); a bare purge must invalidate its If-None-Match validator too, or a
      *  conditional GET keeps returning 304 for a body the roPool already dropped. */
