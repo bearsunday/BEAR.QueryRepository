@@ -268,4 +268,14 @@ class QueryVariantPurgeTest extends TestCase
 
         $this->assertFalse($this->storage->hasEtagFor($etag, $uri));
     }
+
+    /** doPutDonut() (the dynamic #[DonutCache] flavor, template-only) builds its own
+     *  SurrogateKeys for the CDN-facing Surrogate-Key response header independently of
+     *  templateKeys()'s roPool storage tags, so it needs the group tag added separately too. */
+    public function testDynamicDonutCarriesTheGroupTagInItsCdnHeader(): void
+    {
+        $ro = $this->resource->get('page://self/html/blog-posting-donut?id=5');
+
+        $this->assertStringContainsString('grp-_html_blog-posting-donut_', $ro->headers['Surrogate-Key']);
+    }
 }
