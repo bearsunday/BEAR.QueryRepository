@@ -25,6 +25,12 @@ final class SurrogateKeys
         $this->surrogateKeys = [($this->uriTag)($uri)];
     }
 
+    /** #255: inject a precomputed tag (BaseUriTag's output) directly, bypassing UriTag. */
+    public function addRawTag(string $tag): void
+    {
+        $this->surrogateKeys[] = $tag;
+    }
+
     /**
      * Add etag of embedded resource
      */

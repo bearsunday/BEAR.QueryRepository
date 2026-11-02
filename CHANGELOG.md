@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- A cache entry for a GET with an extra query (`?page=2`, or a query `onGet()` does not declare at all) is now also tagged with the coarser tag that `#[Purge]`'s own URI and `MatchQuery`-based auto-purge target, so a purge aimed at the bare/required-only URI reaches every query variant instead of leaving them stale - this covers the roPool body, the etagPool's If-None-Match validator, and the CDN `Surrogate-Key` header alike (#255). Trade-off: every query variant now shares that coarser tag, so a write purges all of them together - editing `?page=1` also drops the still-unchanged `?page=2` entry, not just its own.
+
 ## [1.18.0] - 2026-10-29
 
 ### Changed

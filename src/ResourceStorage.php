@@ -92,6 +92,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         #[Set(TagAwareAdapterInterface::class, EtagPool::class)]
         ProviderInterface $etagPoolProvider,
         private ResourceBodyEvaluator $evaluateBody = new ResourceBodyEvaluator(),
+        private BaseUriTagInterface $baseUriTag = new BaseUriTag(),
     ) {
         $this->initializePools($roPoolProvider, $etagPoolProvider);
     }
@@ -338,8 +339,13 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         // as a tag produced one non-volatile tag Set per content version that, under a
         // volatile-* eviction policy, is never reclaimed - leaking memory without being read.
         $surrogateKeys ??= isset($ro->headers[Header::SURROGATE_KEY]) ? explode(' ', $ro->headers[Header::SURROGATE_KEY]) : [];
+        // #255: the base tag drops onGet()'s default-valued/unset query params, matching what
+        // #[Purge]/#[Refresh] and MatchQuery-based auto-purge target, so a query-variant entry
+        // (?page=2) is reachable by a purge aimed at the bare URI.
+        $baseTag = ($this->baseUriTag)($ro);
+        $baseTags = $baseTag === null ? [] : [$baseTag];
         /** @var list<string> $uniqueTags */
-        $uniqueTags = array_values(array_unique([($this->uriTag)($ro->uri), ...$surrogateKeys]));
+        $uniqueTags = array_values(array_unique([($this->uriTag)($ro->uri), ...$baseTags, ...$surrogateKeys]));
 
         return $uniqueTags;
     }
@@ -441,6 +447,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         // Stateless, so rebuilt rather than carried: left out of the payload it stays
         // uninitialized, and the first save after a compiled-injector restore throws.
         $this->evaluateBody = new ResourceBodyEvaluator();
+        $this->baseUriTag = new BaseUriTag($this->uriTag);
         $this->initializePools($data['roProvider'], $data['etagProvider']);
     }
 }

@@ -34,6 +34,7 @@ use function max;
 final readonly class DonutRepository implements DonutRepositoryInterface
 {
     private CacheDependencyInterface $cacheDependency;
+    private BaseUriTagInterface $baseUriTag;
 
     /**
      * Append new parameters only: direct (non-DI) callers pass them positionally.
@@ -52,9 +53,12 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         private UriTagInterface $uriTag = new UriTag(),
         CacheDependencyInterface|null $cacheDependency = null,
         private DeclaredCacheControl $declaredCacheControl = new DeclaredCacheControl(),
+        BaseUriTagInterface|null $baseUriTag = null,
     ) {
         // Same UriTag as templateKeys(), so a material's tag matches the format purge() emits.
         $this->cacheDependency = $cacheDependency ?? new CacheDependency($this->uriTag, $this->logger);
+        // Same UriTag as $this->uriTag, so a custom binding's tag format stays consistent.
+        $this->baseUriTag = $baseUriTag ?? new BaseUriTag($this->uriTag);
     }
 
     #[Override]
@@ -148,6 +152,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $this->logger->event(new PutDonutContext((string) $ro->uri, $ttl, $sMaxAge));
         $keys = new SurrogateKeys($ro->uri);
         $keys->addTag($ro);
+        $this->addBaseTag($keys, $ro);
         $declaredKeys = $this->getHeaderKeys($ro);
         $templateKeys = $this->templateKeys($ro, $declaredKeys);
         $donut = ResourceDonut::create($ro, $this->renderer, $keys, $sMaxAge, true)->withStorageState($ttl, $templateKeys);
@@ -174,6 +179,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $this->classifyMaterials($ro);
         $this->logger->event(new PutDonutContext((string) $ro->uri, $donutTtl, null));
         $keys = new SurrogateKeys($ro->uri);
+        $this->addBaseTag($keys, $ro);
         $declaredKeys = $this->getHeaderKeys($ro);
         $templateKeys = $this->templateKeys($ro, $declaredKeys);
         $donut = ResourceDonut::create($ro, $this->renderer, $keys, $donutTtl, false)->withStorageState($donutTtl, $templateKeys);
@@ -238,7 +244,22 @@ final readonly class DonutRepository implements DonutRepositoryInterface
      */
     private function templateKeys(ResourceObject $ro, array $declaredKeys): array
     {
-        return array_values(array_unique([($this->uriTag)($ro->uri), ...$declaredKeys]));
+        $baseTag = ($this->baseUriTag)($ro);
+        $baseTags = $baseTag === null ? [] : [$baseTag];
+
+        return array_values(array_unique([($this->uriTag)($ro->uri), ...$baseTags, ...$declaredKeys]));
+    }
+
+    /**
+     * #255: a coarser tag (see BaseUriTag) on the same SurrogateKeys instance that feeds both
+     * the Surrogate-Key header templateKeys() mirrors for roPool/etagPool storage.
+     */
+    private function addBaseTag(SurrogateKeys $keys, ResourceObject $ro): void
+    {
+        $baseTag = ($this->baseUriTag)($ro);
+        if ($baseTag !== null) {
+            $keys->addRawTag($baseTag);
+        }
     }
 
     /**
