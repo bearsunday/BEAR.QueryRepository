@@ -34,6 +34,9 @@ use function trim;
 /** @internal */
 final readonly class QueryRepository implements QueryRepositoryInterface
 {
+    /** @see BaseUriTag::GROUP_TAG_PREFIX */
+    private const GROUP_TAG_PREFIX = 'grp-';
+
     private BaseUriTagInterface $baseUriTag;
 
     public function __construct(
@@ -206,6 +209,10 @@ final readonly class QueryRepository implements QueryRepositoryInterface
     #[Override]
     public function purge(AbstractUri $uri)
     {
+        // Also invalidates the group tag BaseUriTag attaches to every query variant's entry, so
+        // a purge aimed at a bare/required-only URI reaches them too, not just $uri's own entry.
+        $tags = [($this->uriTag)($uri), self::GROUP_TAG_PREFIX . ($this->uriTag)($uri)];
+
         // A top-level purge is an application-initiated (manual) cache bust: wrap it in a
         // manual_purge scope so it stands out from automatic invalidation. A purge nested
         // inside a request GET or a write command stays an ordinary purge event there.
@@ -213,7 +220,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
             $openId = $this->logger->open(new ManualPurgeContext((string) $uri));
             $purged = false;
             try {
-                return $purged = $this->storage->deleteEtag($uri);
+                return $purged = $this->storage->invalidateTags($tags);
             } finally {
                 $this->logger->close(new ManualPurgeResultContext($purged), $openId);
             }
@@ -221,7 +228,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
 
         $this->logger->event(new PurgeContext((string) $uri));
 
-        return $this->storage->deleteEtag($uri);
+        return $this->storage->invalidateTags($tags);
     }
 
     private function getHttpCacheAnnotation(ResourceObject $ro): HttpCache|null

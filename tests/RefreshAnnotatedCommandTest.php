@@ -17,6 +17,8 @@ use Ray\Di\Injector;
 
 use function array_filter;
 use function array_values;
+use function explode;
+use function in_array;
 
 class RefreshAnnotatedCommandTest extends TestCase
 {
@@ -73,7 +75,7 @@ class RefreshAnnotatedCommandTest extends TestCase
 
         $profileTagPurges = array_values(array_filter(
             $this->purger->tags,
-            static fn (string $tag): bool => $tag === '_user_profile_user_id=1',
+            static fn (string $tag): bool => in_array('_user_profile_user_id=1', explode(' ', $tag), true),
         ));
         $this->assertCount(2, $profileTagPurges, 'the explicit purge plus the GET\'s own pre-write cleanup');
 

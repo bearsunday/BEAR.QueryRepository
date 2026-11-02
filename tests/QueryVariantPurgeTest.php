@@ -163,6 +163,44 @@ class QueryVariantPurgeTest extends TestCase
         $this->assertSame($id2Page2, (string) $this->resource->get('page://self/paged-response-with-id?id=2&page=2'), 'a different id must not be purged');
     }
 
+    /** A bare/required-only URI's own full-query tag is the same string BaseUriTag gives every
+     *  sibling variant (that is the mechanism #255 relies on). Storing the bare entry for the
+     *  first time (an ordinary cache miss, not a write/purge) must not evict a sibling variant
+     *  that was already cached - only an intentional purge/write should reach other variants. */
+    public function testBareColdMissStoreDoesNotEvictSiblingVariant(): void
+    {
+        $page2 = $this->time('app://self/optional-param?id=1&page=2');
+        $this->assertSame($page2, $this->time('app://self/optional-param?id=1&page=2'), 'precondition: warm cache');
+
+        $this->time('app://self/optional-param?id=1'); // first-ever fetch of the bare URI
+
+        $this->assertSame($page2, $this->time('app://self/optional-param?id=1&page=2'));
+    }
+
+    /** Donut flavour of the above. */
+    public function testBareDonutColdMissStoreDoesNotEvictSiblingVariant(): void
+    {
+        $page2 = (string) $this->resource->get('page://self/paged-list?page=2');
+        $this->assertSame($page2, (string) $this->resource->get('page://self/paged-list?page=2'), 'precondition: warm cache');
+
+        $this->resource->get('page://self/paged-list'); // first-ever fetch of the bare URI
+
+        $this->assertSame($page2, (string) $this->resource->get('page://self/paged-list?page=2'));
+    }
+
+    /** etagPool flavour: the bare URI's first fetch must not kill a sibling's If-None-Match
+     *  validator either. */
+    public function testBareColdMissStoreDoesNotEvictSiblingVariantEtag(): void
+    {
+        assert($this->storage instanceof ScopedValidatorInterface);
+        $uri = new Uri('app://self/optional-param?id=1&page=2');
+        $etag = $this->resource->get('app://self/optional-param?id=1&page=2')->headers['ETag'];
+
+        $this->resource->get('app://self/optional-param?id=1'); // first-ever fetch of the bare URI
+
+        $this->assertTrue($this->storage->hasEtagFor($etag, $uri));
+    }
+
     /** The etagPool computes its own tag list (ResourceStorage::saveEtag), independent of
      *  getTags(); a bare purge must invalidate its If-None-Match validator too, or a
      *  conditional GET keeps returning 304 for a body the roPool already dropped. */

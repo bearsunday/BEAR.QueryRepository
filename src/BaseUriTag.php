@@ -23,6 +23,16 @@ use function method_exists;
  */
 final class BaseUriTag implements BaseUriTagInterface
 {
+    /**
+     * Namespaced so this never equals a resource's own plain UriTag: the bare/required-only
+     * form's base tag would otherwise be byte-identical to that same URI's own full-query tag,
+     * which cleanUpBeforeWrite() invalidates on every write - evicting every sibling variant on
+     * the first write to the bare form instead of just its own entry.
+     *
+     * @see QueryRepository::GROUP_TAG_PREFIX
+     */
+    private const GROUP_TAG_PREFIX = 'grp-';
+
     public function __construct(private readonly UriTagInterface $uriTag = new UriTag())
     {
     }
@@ -31,7 +41,7 @@ final class BaseUriTag implements BaseUriTagInterface
     public function __invoke(ResourceObject $ro): string
     {
         if (! method_exists($ro, 'onGet')) {
-            return ($this->uriTag)($ro->uri);
+            return self::GROUP_TAG_PREFIX . ($this->uriTag)($ro->uri);
         }
 
         $query = $ro->uri->query;
@@ -48,6 +58,6 @@ final class BaseUriTag implements BaseUriTagInterface
         $baseUri = clone $ro->uri;
         $baseUri->query = $baseQuery;
 
-        return ($this->uriTag)($baseUri);
+        return self::GROUP_TAG_PREFIX . ($this->uriTag)($baseUri);
     }
 }
