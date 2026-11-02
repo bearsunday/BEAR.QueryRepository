@@ -50,8 +50,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         private UriTagInterface $uriTag = new UriTag(),
         BaseUriTagInterface|null $baseUriTag = null,
     ) {
-        // Same UriTag as $uriTag, so a custom binding's tag format stays consistent with what
-        // ResourceStorage::getTags() stores and deleteEtag()/invalidateTags() target.
+        // Built from $uriTag so a custom UriTagInterface applies to the group tag too.
         $this->baseUriTag = $baseUriTag ?? new BaseUriTag($this->uriTag);
     }
 
@@ -113,8 +112,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         if (isset($ro->headers[Header::ETAG])) {
             $etag = $ro->headers[Header::ETAG];
             $surrogateKeys = $ro->headers[Header::SURROGATE_KEY] ?? '';
-            // saveEtag() builds its own tag list, independent of getTags() - add the base tag
-            // here too, or a bare-URI purge leaves a stale If-None-Match validator behind.
+            // saveEtag() takes its own tag list rather than getTags(), so the group tag is added here.
             $surrogateKeys = trim($surrogateKeys . ' ' . ($this->baseUriTag)($ro));
 
             $this->storage->saveEtag($ro->uri, $etag, $surrogateKeys, $ttl);
@@ -209,8 +207,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
     #[Override]
     public function purge(AbstractUri $uri)
     {
-        // Also invalidates the group tag BaseUriTag attaches to every query variant's entry, so
-        // a purge aimed at a bare/required-only URI reaches them too, not just $uri's own entry.
+        // The URI's own tag plus the group tag shared by its query variants (see BaseUriTag).
         $tags = [($this->uriTag)($uri), self::GROUP_TAG_PREFIX . ($this->uriTag)($uri)];
 
         // A top-level purge is an application-initiated (manual) cache bust: wrap it in a

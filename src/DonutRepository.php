@@ -57,7 +57,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     ) {
         // Same UriTag as templateKeys(), so a material's tag matches the format purge() emits.
         $this->cacheDependency = $cacheDependency ?? new CacheDependency($this->uriTag, $this->logger);
-        // Same UriTag as $this->uriTag, so a custom binding's tag format stays consistent.
+        // Built from $this->uriTag so a custom UriTagInterface applies to the group tag too.
         $this->baseUriTag = $baseUriTag ?? new BaseUriTag($this->uriTag);
     }
 

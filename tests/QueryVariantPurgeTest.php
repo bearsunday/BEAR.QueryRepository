@@ -89,7 +89,7 @@ class QueryVariantPurgeTest extends TestCase
         $this->assertNotSame($page2, $this->time('app://self/optional-param?id=1&page=2'));
     }
 
-    /** A query onGet() does not declare at all (not merely defaulted) must drop too. */
+    /** Auto-purge also reaches a query that onGet() does not declare at all. */
     public function testAutoPurgeReachesQueryNotInOnGetSignature(): void
     {
         $plain = $this->time('app://self/user?id=1');
@@ -116,10 +116,8 @@ class QueryVariantPurgeTest extends TestCase
         $this->assertNotSame($page2, (string) $this->resource->get('page://self/paged-list?page=2'));
     }
 
-    /** PagedList::onPost has no #[Purge]/#[Refresh]; DonutCommandInterceptor's MatchQuery-driven
-     *  auto-purge is the only invalidation path. Posting straight to `?page=2` (the write's own
-     *  URI carries the defaulted param) must still invalidate every page variant, not only the
-     *  one it matched (#255). */
+    /** PagedList::onPost has no #[Purge]/#[Refresh], so DonutCommandInterceptor's auto-purge is the only
+     *  invalidation: a write to `?page=2` reaches every page variant. */
     public function testDonutAutoPurgeFromWriteUriCarryingDefaultedParamReachesOtherVariants(): void
     {
         $bare = (string) $this->resource->get('page://self/paged-list');
@@ -133,9 +131,8 @@ class QueryVariantPurgeTest extends TestCase
         $this->assertNotSame($page1, (string) $this->resource->get('page://self/paged-list?page=1'));
     }
 
-    /** PagedValue::onPut has no #[Purge]/#[Refresh]; RefreshSameCommand's MatchQuery-driven
-     *  auto-purge is the only invalidation path. Same scenario as above for a plain
-     *  #[Cacheable] value resource (not a donut page). */
+    /** Same for a plain #[Cacheable] value resource: PagedValue::onPut has no #[Purge]/#[Refresh], so
+     *  RefreshSameCommand's auto-purge is the only invalidation. */
     public function testValueAutoPurgeFromWriteUriCarryingDefaultedParamReachesOtherVariants(): void
     {
         $bare = $this->time('app://self/paged-value');
@@ -149,9 +146,8 @@ class QueryVariantPurgeTest extends TestCase
         $this->assertNotSame($page1, $this->time('app://self/paged-value?page=1'));
     }
 
-    /** PagedResponseWithId::onPut has no #[Purge]/#[Refresh]. The write's own URI carries both
-     *  the required `id` and the defaulted `page`: auto-purge must drop `page` (coarsen) while
-     *  keeping `id` (isolate) - a different id's cache must survive untouched. */
+    /** The write's URI carries the required `id` and the defaulted `page`: auto-purge drops `page` and
+     *  keeps `id`, so another id's cache survives. */
     public function testDonutAutoPurgeKeepsRequiredParamWhileDroppingDefaultedOne(): void
     {
         $id1Bare = (string) $this->resource->get('page://self/paged-response-with-id?id=1');
@@ -167,10 +163,8 @@ class QueryVariantPurgeTest extends TestCase
         $this->assertSame($id2Page2, (string) $this->resource->get('page://self/paged-response-with-id?id=2&page=2'), 'a different id must not be purged');
     }
 
-    /** A bare/required-only URI's own full-query tag is the same string BaseUriTag gives every
-     *  sibling variant (that is the mechanism #255 relies on). Storing the bare entry for the
-     *  first time (an ordinary cache miss, not a write/purge) must not evict a sibling variant
-     *  that was already cached - only an intentional purge/write should reach other variants. */
+    /** Storing the bare URI on a cache miss (no write, no purge) must not evict an already-cached
+     *  sibling variant. */
     public function testBareColdMissStoreDoesNotEvictSiblingVariant(): void
     {
         $page2 = $this->time('app://self/optional-param?id=1&page=2');
@@ -192,8 +186,7 @@ class QueryVariantPurgeTest extends TestCase
         $this->assertSame($page2, (string) $this->resource->get('page://self/paged-list?page=2'));
     }
 
-    /** etagPool flavour: the bare URI's first fetch must not kill a sibling's If-None-Match
-     *  validator either. */
+    /** etagPool flavour: the bare URI's first fetch keeps the sibling's If-None-Match validator. */
     public function testBareColdMissStoreDoesNotEvictSiblingVariantEtag(): void
     {
         assert($this->storage instanceof ScopedValidatorInterface);
@@ -205,9 +198,8 @@ class QueryVariantPurgeTest extends TestCase
         $this->assertTrue($this->storage->hasEtagFor($etag, $uri));
     }
 
-    /** The etagPool computes its own tag list (ResourceStorage::saveEtag), independent of
-     *  getTags(); a bare purge must invalidate its If-None-Match validator too, or a
-     *  conditional GET keeps returning 304 for a body the roPool already dropped. */
+    /** A bare purge also invalidates the variant's If-None-Match validator; the etagPool builds its tag
+     *  list apart from getTags(). */
     public function testBarePurgeInvalidatesQueryVariantEtag(): void
     {
         assert($this->storage instanceof ScopedValidatorInterface);
@@ -221,10 +213,8 @@ class QueryVariantPurgeTest extends TestCase
         $this->assertFalse($this->storage->hasEtagFor($etag, $uri));
     }
 
-    /** A #[CacheableResponse] page's own value entry can expire independently of its donut
-     *  template; the next GET re-saves the value via ResourceDonut::refresh(), whose
-     *  recomposition keys must still carry the group tag, or a bare-URI purge stops reaching
-     *  a refreshed entry's ETag validator even though it still reaches a never-refreshed one. */
+    /** After ResourceDonut::refresh() re-saves a page's value (its template survived), the ETag validator
+     *  still carries the group tag. */
     public function testDonutRefreshKeepsTheGroupTagOnTheEtagValidator(): void
     {
         assert($this->storage instanceof ScopedValidatorInterface);
@@ -252,10 +242,8 @@ class QueryVariantPurgeTest extends TestCase
         $this->assertFalse($this->storage->hasEtagFor($etag, $uri));
     }
 
-    /** The donut's SurrogateKeys (not just getTags()/templateKeys()) must carry the group tag
-     *  too: it alone builds the etagPool's $surrogateKeys string on the never-refreshed, first
-     *  save path (doPutStatic -> setHeaders -> saveView -> saveEtag), so an initially-saved
-     *  entry's validator needs it independently of the roPool/template paths. */
+    /** On the first, never-refreshed save, doPutStatic()'s SurrogateKeys is what tags the etagPool entry,
+     *  so it must carry the group tag itself. */
     public function testDonutInitialSaveTagsTheEtagValidatorWithTheGroupTag(): void
     {
         assert($this->storage instanceof ScopedValidatorInterface);
@@ -269,9 +257,8 @@ class QueryVariantPurgeTest extends TestCase
         $this->assertFalse($this->storage->hasEtagFor($etag, $uri));
     }
 
-    /** doPutDonut() (the dynamic #[DonutCache] flavor, template-only) builds its own
-     *  SurrogateKeys for the CDN-facing Surrogate-Key response header independently of
-     *  templateKeys()'s roPool storage tags, so it needs the group tag added separately too. */
+    /** doPutDonut() (dynamic #[DonutCache], template-only) builds the CDN Surrogate-Key header from its own
+     *  SurrogateKeys, separate from templateKeys(), so it carries the group tag itself. */
     public function testDynamicDonutCarriesTheGroupTagInItsCdnHeader(): void
     {
         $ro = $this->resource->get('page://self/html/blog-posting-donut?id=5');

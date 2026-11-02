@@ -9,11 +9,7 @@ namespace FakeVendor\HelloWorld\Resource\Page;
 use BEAR\RepositoryModule\Annotation\CacheableResponse;
 use BEAR\Resource\ResourceObject;
 
-/**
- * A #[CacheableResponse] page with both a required and a default-valued onGet() parameter, and
- * NO #[Purge]/#[Refresh] on its write method: exercises DonutCommandInterceptor's auto-purge
- * keeping the required param while dropping the defaulted one (#255).
- */
+/** A #[CacheableResponse] page with a required and a default-valued onGet() parameter; onPut has no #[Purge]/#[Refresh]. */
 #[CacheableResponse]
 class PagedResponseWithId extends ResourceObject
 {

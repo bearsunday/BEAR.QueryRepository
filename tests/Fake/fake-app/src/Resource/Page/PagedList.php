@@ -9,10 +9,7 @@ namespace FakeVendor\HelloWorld\Resource\Page;
 use BEAR\RepositoryModule\Annotation\CacheableResponse;
 use BEAR\Resource\ResourceObject;
 
-/**
- * A #[CacheableResponse] page with a default-valued onGet() parameter (#255): onPost's
- * auto-purge targets the bare URI, and ?page=2's stored view/validator must still be reachable.
- */
+/** A #[CacheableResponse] page with a default-valued onGet() parameter; onPost has no #[Purge]/#[Refresh]. */
 #[CacheableResponse]
 class PagedList extends ResourceObject
 {

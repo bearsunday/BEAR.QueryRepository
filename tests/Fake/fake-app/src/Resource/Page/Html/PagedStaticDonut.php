@@ -9,7 +9,7 @@ namespace FakeVendor\HelloWorld\Resource\Page\Html;
 use BEAR\RepositoryModule\Annotation\CacheableResponse;
 use BEAR\Resource\ResourceObject;
 
-/** A #[CacheableResponse] page with a default-valued onGet() param, for refresh-path repro only. */
+/** A #[CacheableResponse] page whose only onGet() parameter has a default. */
 #[CacheableResponse]
 class PagedStaticDonut extends ResourceObject
 {

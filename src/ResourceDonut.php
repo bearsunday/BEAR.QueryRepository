@@ -107,9 +107,7 @@ final class ResourceDonut
             $ro->code = $this->code;
         }
 
-        // $this->headers predates setHeaders() adding the group tag at the entry's original
-        // save, so restore the stored tags here too, or a refresh drops it from the ETag
-        // validator and the recomposed response.
+        // $this->headers predates the group tag; restore the stored tags.
         $storedTags = $this->getStorageTags();
         if ($storedTags !== []) {
             $existing = isset($ro->headers[Header::SURROGATE_KEY]) ? explode(' ', $ro->headers[Header::SURROGATE_KEY]) : [];

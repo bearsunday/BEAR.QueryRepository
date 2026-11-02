@@ -58,8 +58,7 @@ final readonly class RefreshSameCommand implements CommandInterface
         }
 
         $delUri = clone $ro->uri;
-        // Same coarsening rule as BaseUriTag, so this reaches every variant's shared tag,
-        // not just the one $getQuery matched.
+        // Coarsened like BaseUriTag (keep the two in sync); the refresh below still uses the exact $getQuery.
         $delUri->query = $this->baseQuery($ro, $getQuery);
 
         // delete data in repository

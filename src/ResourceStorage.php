@@ -96,8 +96,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         private ResourceBodyEvaluator $evaluateBody = new ResourceBodyEvaluator(),
         BaseUriTagInterface|null $baseUriTag = null,
     ) {
-        // Same UriTag as $this->uriTag, so a custom binding's tag format stays consistent
-        // between what getTags() stores and what deleteEtag()/invalidateTags() target.
+        // Built from $this->uriTag so a custom UriTagInterface applies to the group tag too.
         $this->baseUriTag = $baseUriTag ?? new BaseUriTag($this->uriTag);
         $this->initializePools($roPoolProvider, $etagPoolProvider);
     }

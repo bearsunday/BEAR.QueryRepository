@@ -9,12 +9,7 @@ namespace FakeVendor\HelloWorld\Resource\App;
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\Resource\ResourceObject;
 
-/**
- * A #[Cacheable] value resource with a default-valued onGet() parameter and NO #[Purge]/
- * #[Refresh] on its write method, so RefreshSameCommand's MatchQuery-driven auto-purge is the
- * only invalidation path exercised (#255: a write whose own URI carries `page` must still
- * invalidate every page variant, not only the one it matched).
- */
+/** A #[Cacheable] value resource with a default-valued onGet() parameter; onPut has no #[Purge]/#[Refresh]. */
 #[Cacheable]
 class PagedValue extends ResourceObject
 {
