@@ -34,7 +34,6 @@ use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
  *  SemanticLoggerInterface (null by default - install Dev/ProdQueryRepositoryLogModule to record)
  *  MatchQueryInterface
  *  UriTag
- *  BaseUriTagInterface
  *  DeclaredCacheControl
  *
  *  The following module are installed.

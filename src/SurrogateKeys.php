@@ -19,16 +19,10 @@ final class SurrogateKeys
     private array $surrogateKeys;
     private readonly UriTagInterface $uriTag;
 
-    public function __construct(AbstractUri $uri)
+    public function __construct(AbstractUri $uri, string|null $baseTag = null)
     {
         $this->uriTag = new UriTag();
-        $this->surrogateKeys = [($this->uriTag)($uri)];
-    }
-
-    /** #255: inject a precomputed tag (BaseUriTag's output) directly, bypassing UriTag. */
-    public function addRawTag(string $tag): void
-    {
-        $this->surrogateKeys[] = $tag;
+        $this->surrogateKeys = $baseTag === null ? [($this->uriTag)($uri)] : [($this->uriTag)($uri), $baseTag];
     }
 
     /**

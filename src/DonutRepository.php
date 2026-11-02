@@ -150,9 +150,8 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     {
         $this->classifyMaterials($ro);
         $this->logger->event(new PutDonutContext((string) $ro->uri, $ttl, $sMaxAge));
-        $keys = new SurrogateKeys($ro->uri);
+        $keys = new SurrogateKeys($ro->uri, ($this->baseUriTag)($ro)); // #255
         $keys->addTag($ro);
-        $keys->addRawTag(($this->baseUriTag)($ro)); // #255
         $declaredKeys = $this->getHeaderKeys($ro);
         $templateKeys = $this->templateKeys($ro, $declaredKeys);
         $donut = ResourceDonut::create($ro, $this->renderer, $keys, $sMaxAge, true)->withStorageState($ttl, $templateKeys);
@@ -178,8 +177,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     {
         $this->classifyMaterials($ro);
         $this->logger->event(new PutDonutContext((string) $ro->uri, $donutTtl, null));
-        $keys = new SurrogateKeys($ro->uri);
-        $keys->addRawTag(($this->baseUriTag)($ro)); // #255
+        $keys = new SurrogateKeys($ro->uri, ($this->baseUriTag)($ro)); // #255
         $declaredKeys = $this->getHeaderKeys($ro);
         $templateKeys = $this->templateKeys($ro, $declaredKeys);
         $donut = ResourceDonut::create($ro, $this->renderer, $keys, $donutTtl, false)->withStorageState($donutTtl, $templateKeys);

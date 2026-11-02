@@ -13,6 +13,8 @@ use function method_exists;
 /**
  * {@inheritDoc}
  *
+ * @internal see BaseUriTagInterface
+ *
  * Mirrors MatchQuery's view of onGet(): a parameter with a default is dropped from the base
  * query regardless of whether the request supplied it, and a parameter onGet() does not declare
  * is dropped too. `onGet(int $page = 1)` turns `?page=2` into the same base tag as no query at
