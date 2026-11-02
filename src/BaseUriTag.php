@@ -15,17 +15,13 @@ use function method_exists;
  *
  * @internal
  *
- * Unlike MatchQuery (which keeps a parameter whenever the request supplied it, default or not),
- * this drops every default-valued onGet() parameter regardless of whether it was supplied, so
- * `onGet(int $page = 1)` turns `?page=2` into the same base tag as no query at all;
- * `onGet(int $userId, int $page = 1)` keeps $userId, so users stay isolated while only the page
- * variants collapse.
+ * Drops every default-valued onGet() parameter, supplied or not (MatchQuery keeps the supplied ones);
+ * required parameters stay: `onGet(int $userId, int $page = 1)` maps `?userId=1&page=2` to `?userId=1`.
  */
 final class BaseUriTag implements BaseUriTagInterface
 {
     /**
-     * Namespaced so this can never collide with a resource's own plain UriTag output, which
-     * cleanUpBeforeWrite() invalidates on every write.
+     * Keeps the group tag distinct from a resource's own UriTag, which cleanUpBeforeWrite() invalidates.
      *
      * @see QueryRepository::GROUP_TAG_PREFIX
      */
