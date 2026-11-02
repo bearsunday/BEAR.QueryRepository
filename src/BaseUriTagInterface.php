@@ -15,6 +15,6 @@ use BEAR\Resource\ResourceObject;
  */
 interface BaseUriTagInterface
 {
-    /** Null when $ro has no onGet() (not cacheable) */
-    public function __invoke(ResourceObject $ro): string|null;
+    /** The GET's own URI tag when $ro has no onGet() (not cacheable) */
+    public function __invoke(ResourceObject $ro): string;
 }

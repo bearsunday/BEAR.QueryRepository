@@ -26,10 +26,10 @@ final class BaseUriTag implements BaseUriTagInterface
     }
 
     #[Override]
-    public function __invoke(ResourceObject $ro): string|null
+    public function __invoke(ResourceObject $ro): string
     {
         if (! method_exists($ro, 'onGet')) {
-            return null;
+            return ($this->uriTag)($ro->uri);
         }
 
         $query = $ro->uri->query;

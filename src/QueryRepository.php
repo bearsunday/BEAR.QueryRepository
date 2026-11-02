@@ -107,10 +107,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
             // #255: the etagPool's validator is scoped by saveEtag()'s own tag list, which
             // ResourceStorage::getTags() (the roPool's body entry) never feeds - without this,
             // a bare-URI purge invalidates the body but leaves a stale If-None-Match validator.
-            $baseTag = ($this->baseUriTag)($ro);
-            if ($baseTag !== null) {
-                $surrogateKeys = trim($surrogateKeys . ' ' . $baseTag);
-            }
+            $surrogateKeys = trim($surrogateKeys . ' ' . ($this->baseUriTag)($ro));
 
             $this->storage->saveEtag($ro->uri, $etag, $surrogateKeys, $ttl);
         }

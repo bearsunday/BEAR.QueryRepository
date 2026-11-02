@@ -342,10 +342,8 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         // #255: the base tag drops onGet()'s default-valued/unset query params, matching what
         // #[Purge]/#[Refresh] and MatchQuery-based auto-purge target, so a query-variant entry
         // (?page=2) is reachable by a purge aimed at the bare URI.
-        $baseTag = ($this->baseUriTag)($ro);
-        $baseTags = $baseTag === null ? [] : [$baseTag];
         /** @var list<string> $uniqueTags */
-        $uniqueTags = array_values(array_unique([($this->uriTag)($ro->uri), ...$baseTags, ...$surrogateKeys]));
+        $uniqueTags = array_values(array_unique([($this->uriTag)($ro->uri), ($this->baseUriTag)($ro), ...$surrogateKeys]));
 
         return $uniqueTags;
     }
