@@ -112,7 +112,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         if (isset($ro->headers[Header::ETAG])) {
             $etag = $ro->headers[Header::ETAG];
             $surrogateKeys = $ro->headers[Header::SURROGATE_KEY] ?? '';
-            // saveEtag() takes its own tag list rather than getTags(), so the group tag is added here.
+            // saveEtag() takes a tag list of its own, not getTags()'s.
             $surrogateKeys = trim($surrogateKeys . ' ' . ($this->baseUriTag)($ro));
 
             $this->storage->saveEtag($ro->uri, $etag, $surrogateKeys, $ttl);
