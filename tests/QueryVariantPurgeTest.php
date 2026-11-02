@@ -115,7 +115,7 @@ class QueryVariantPurgeTest extends TestCase
     /** PagedList::onPost has no #[Purge]/#[Refresh]; DonutCommandInterceptor's MatchQuery-driven
      *  auto-purge is the only invalidation path. Posting straight to `?page=2` (the write's own
      *  URI carries the defaulted param) must still invalidate every page variant, not only the
-     *  one it matched (#255 / CodeRabbit). */
+     *  one it matched (#255). */
     public function testDonutAutoPurgeFromWriteUriCarryingDefaultedParamReachesOtherVariants(): void
     {
         $bare = (string) $this->resource->get('page://self/paged-list');
