@@ -13,13 +13,13 @@ use function method_exists;
 /**
  * {@inheritDoc}
  *
- * @internal see BaseUriTagInterface
+ * @internal
  *
- * Mirrors MatchQuery's view of onGet(): a parameter with a default is dropped from the base
- * query regardless of whether the request supplied it, and a parameter onGet() does not declare
- * is dropped too. `onGet(int $page = 1)` turns `?page=2` into the same base tag as no query at
- * all; `onGet(int $userId, int $page = 1)` keeps $userId, so users stay isolated while only the
- * page variants collapse.
+ * Unlike MatchQuery (which keeps a parameter whenever the request supplied it, default or not),
+ * this drops every default-valued onGet() parameter regardless of whether it was supplied, so
+ * `onGet(int $page = 1)` turns `?page=2` into the same base tag as no query at all;
+ * `onGet(int $userId, int $page = 1)` keeps $userId, so users stay isolated while only the page
+ * variants collapse.
  */
 final class BaseUriTag implements BaseUriTagInterface
 {
