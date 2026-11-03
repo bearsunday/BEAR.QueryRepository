@@ -8,6 +8,7 @@ use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
+use FakeVendor\HelloWorld\Resource\App\PagedErrorOnBare;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 use ReflectionMethod;
@@ -264,5 +265,21 @@ class QueryVariantPurgeTest extends TestCase
         $ro = $this->resource->get('page://self/html/blog-posting-donut?id=5');
 
         $this->assertStringContainsString('grp-_html_blog-posting-donut_', $ro->headers['Surrogate-Key']);
+    }
+
+    /** An error response drops only its own URI's entry; siblings sharing its group tag stay cached. */
+    public function testErrorOnBareUriKeepsQueryVariantsCached(): void
+    {
+        $page2 = $this->time('app://self/paged-error-on-bare?page=2');
+        $this->assertSame($page2, $this->time('app://self/paged-error-on-bare?page=2'), 'precondition: warm cache');
+
+        PagedErrorOnBare::$fail = true;
+        try {
+            $this->assertSame(503, $this->resource->get('app://self/paged-error-on-bare')->code);
+        } finally {
+            PagedErrorOnBare::$fail = false;
+        }
+
+        $this->assertSame($page2, $this->time('app://self/paged-error-on-bare?page=2'));
     }
 }
