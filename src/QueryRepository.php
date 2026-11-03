@@ -37,8 +37,6 @@ final readonly class QueryRepository implements QueryRepositoryInterface
     /** @see BaseUriTag::GROUP_TAG_PREFIX */
     private const GROUP_TAG_PREFIX = 'grp-';
 
-    private BaseUriTagInterface $baseUriTag;
-
     public function __construct(
         #[CacheLog]
         private SemanticLoggerInterface $logger,
@@ -46,12 +44,10 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         private ResourceStorageInterface $storage,
         private Expiry $expiry,
         private CacheDependencyInterface $cacheDependency,
+        private BaseUriTagInterface $baseUriTag,
         private DeclaredCacheControl $declaredCacheControl = new DeclaredCacheControl(),
         private UriTagInterface $uriTag = new UriTag(),
-        BaseUriTagInterface|null $baseUriTag = null,
     ) {
-        // The default BaseUriTag shares this UriTagInterface.
-        $this->baseUriTag = $baseUriTag ?? new BaseUriTag($this->uriTag);
     }
 
     /**

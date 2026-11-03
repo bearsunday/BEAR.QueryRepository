@@ -76,7 +76,6 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
     private ProviderInterface $etagPoolProvider;
     private TagAwareAdapterInterface $roPool;
     private TagAwareAdapterInterface $etagPool;
-    private BaseUriTagInterface $baseUriTag;
 
     /**
      * @param ProviderInterface<TagAwareAdapterInterface> $roPoolProvider
@@ -93,11 +92,9 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         ProviderInterface $roPoolProvider,
         #[Set(TagAwareAdapterInterface::class, EtagPool::class)]
         ProviderInterface $etagPoolProvider,
+        private BaseUriTagInterface $baseUriTag,
         private ResourceBodyEvaluator $evaluateBody = new ResourceBodyEvaluator(),
-        BaseUriTagInterface|null $baseUriTag = null,
     ) {
-        // The default BaseUriTag shares this UriTagInterface.
-        $this->baseUriTag = $baseUriTag ?? new BaseUriTag($this->uriTag);
         $this->initializePools($roPoolProvider, $etagPoolProvider);
     }
 

@@ -297,6 +297,19 @@ class DonutMaterialDependencyTest extends TestCase
         $injector = new Injector($module, __DIR__ . '/tmp');
 
         $resource = $injector->getInstance(ResourceInterface::class);
+        $uriTag = new class implements UriTagInterface {
+            #[Override]
+            public function __invoke(AbstractUri $uri): string
+            {
+                return 'customtag_' . str_replace(['/', '?', '&', ':'], '_', (string) $uri);
+            }
+
+            #[Override]
+            public function fromAssoc(string $uriTemplate, array $assoc): string
+            {
+                return '';
+            }
+        };
         $repository = new DonutRepository(
             $injector->getInstance(QueryRepositoryInterface::class),
             $injector->getInstance(HeaderSetter::class),
@@ -305,19 +318,8 @@ class DonutMaterialDependencyTest extends TestCase
             $injector->getInstance(CdnCacheControlHeaderSetterInterface::class),
             $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class),
             $injector->getInstance(DonutRendererInterface::class),
-            new class implements UriTagInterface {
-                #[Override]
-                public function __invoke(AbstractUri $uri): string
-                {
-                    return 'customtag_' . str_replace(['/', '?', '&', ':'], '_', (string) $uri);
-                }
-
-                #[Override]
-                public function fromAssoc(string $uriTemplate, array $assoc): string
-                {
-                    return '';
-                }
-            },
+            new BaseUriTag($uriTag),
+            $uriTag,
         );
 
         // uri() (not newRequest(), unavailable before bear/resource 1.2x) is the same GET

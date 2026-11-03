@@ -34,13 +34,8 @@ use function max;
 final readonly class DonutRepository implements DonutRepositoryInterface
 {
     private CacheDependencyInterface $cacheDependency;
-    private BaseUriTagInterface $baseUriTag;
 
-    /**
-     * Append new parameters only: direct (non-DI) callers pass them positionally.
-     *
-     * @SuppressWarnings("PHPMD.ExcessiveParameterList")
-     */
+    /** @SuppressWarnings("PHPMD.ExcessiveParameterList") */
     public function __construct(
         private QueryRepositoryInterface $queryRepository,
         private HeaderSetter $headerSetter,
@@ -50,15 +45,13 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         #[CacheLog]
         private SemanticLoggerInterface $logger,
         private DonutRendererInterface $renderer,
+        private BaseUriTagInterface $baseUriTag,
         private UriTagInterface $uriTag = new UriTag(),
         CacheDependencyInterface|null $cacheDependency = null,
         private DeclaredCacheControl $declaredCacheControl = new DeclaredCacheControl(),
-        BaseUriTagInterface|null $baseUriTag = null,
     ) {
         // Same UriTag as templateKeys(), so a material's tag matches the format purge() emits.
         $this->cacheDependency = $cacheDependency ?? new CacheDependency($this->uriTag, $this->logger);
-        // The default BaseUriTag shares this UriTagInterface.
-        $this->baseUriTag = $baseUriTag ?? new BaseUriTag($this->uriTag);
     }
 
     #[Override]
