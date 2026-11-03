@@ -107,7 +107,7 @@ final class ResourceDonut
             $ro->code = $this->code;
         }
 
-        // $this->headers predates the group tag; restore the stored tags.
+        // $this->headers lacks the group tag; add the stored tags.
         $storedTags = $this->getStorageTags();
         if ($storedTags !== []) {
             $existing = isset($ro->headers[Header::SURROGATE_KEY]) ? explode(' ', $ro->headers[Header::SURROGATE_KEY]) : [];

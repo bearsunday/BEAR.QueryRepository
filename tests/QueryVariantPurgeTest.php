@@ -267,11 +267,16 @@ class QueryVariantPurgeTest extends TestCase
         $this->assertStringContainsString('grp-_html_blog-posting-donut_', $ro->headers['Surrogate-Key']);
     }
 
-    /** An error response drops only its own URI's entry; siblings sharing its group tag stay cached. */
+    /** An error response invalidates its own URI's tag (e.g. a parent embedding it) but not the group tag. */
     public function testErrorOnBareUriKeepsQueryVariantsCached(): void
     {
         $page2 = $this->time('app://self/paged-error-on-bare?page=2');
         $this->assertSame($page2, $this->time('app://self/paged-error-on-bare?page=2'), 'precondition: warm cache');
+        $roPool = (new ReflectionProperty($this->storage, 'roPool'))->getValue($this->storage);
+        assert($roPool instanceof TagAwareAdapterInterface);
+        $dependent = $roPool->getItem('dependent-on-bare');
+        $dependent->set(true)->tag((new UriTag())(new Uri('app://self/paged-error-on-bare')));
+        $this->assertTrue($roPool->save($dependent), 'precondition: dependent entry stored');
 
         PagedErrorOnBare::$fail = true;
         try {
@@ -280,6 +285,7 @@ class QueryVariantPurgeTest extends TestCase
             PagedErrorOnBare::$fail = false;
         }
 
+        $this->assertFalse($roPool->hasItem('dependent-on-bare'));
         $this->assertSame($page2, $this->time('app://self/paged-error-on-bare?page=2'));
     }
 }
