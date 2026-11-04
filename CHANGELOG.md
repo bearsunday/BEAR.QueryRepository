@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- A cached parent's write (a `#[Cacheable]` put or a donut page write) logs `dependency_skipped` for each top-level embedded child it leaves out of its dependencies, so a parent with no `depends_on` says why; `docs/reading-the-log.md` explains the `reason`. A child moved into a nested array, replaced or unset is not seen and not logged.
+
 ### Changed
 - **Behaviour change**: a `#[Cacheable]` parent takes an embedded child that carries a `Surrogate-Key` but no ETag as a dependency, as a donut page already did. A `#[DonutCache]` child (which never gets an ETag) or a non-cached child naming its data with its own `Surrogate-Key` now invalidates the parent; before, a change to it left the parent stale until the parent's TTL. The parent's `Surrogate-Key` carries those tags, so the parent is invalidated more often.
 

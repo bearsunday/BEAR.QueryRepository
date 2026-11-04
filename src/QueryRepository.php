@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\ExpireAtKeyNotExists;
 use BEAR\QueryRepository\Log\Context\CachePolicyContext;
+use BEAR\QueryRepository\Log\Context\DependencySkippedContext;
 use BEAR\QueryRepository\Log\Context\ManualPurgeContext;
 use BEAR\QueryRepository\Log\Context\ManualPurgeResultContext;
 use BEAR\QueryRepository\Log\Context\ManualStoreContext;
@@ -162,6 +163,8 @@ final readonly class QueryRepository implements QueryRepositoryInterface
             (string) $body;
             $child = $body->resourceObject;
             if (! isset($child->headers[Header::ETAG]) && ! isset($child->headers[Header::SURROGATE_KEY])) {
+                $this->logger->event(DependencySkippedContext::of($ro, $child));
+
                 continue;
             }
 

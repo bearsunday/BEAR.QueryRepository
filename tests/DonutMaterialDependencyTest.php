@@ -50,6 +50,7 @@ class DonutMaterialDependencyTest extends TestCase
     private const MUTABLE_CHILD = 'page://self/html/mutable-comment';
 
     private const PAGE_WITH_MUTABLE_MATERIAL = 'page://self/html/donut-cache-with-mutable-material';
+    private const PAGE_READING_UNTAGGED_CHILD = 'page://self/html/counter-donut';
 
     private const PAGE_RESPONSE_WITH_MUTABLE_MATERIAL = 'page://self/html/cacheable-response-with-material';
 
@@ -97,6 +98,32 @@ class DonutMaterialDependencyTest extends TestCase
         $edges = self::dependsOnEdgesFrom($tree, self::PAGE_WITH_CACHEABLE_MATERIAL);
         $this->assertCount(1, $edges, 'reading the embedded child in onGet() makes it a material, so depends() runs for it');
         $this->assertStringContainsString('"child":"' . self::CACHEABLE_MATERIAL_CHILD . '"', $edges[0]);
+        $this->assertSame([], self::skippedChildrenOf($tree, self::PAGE_WITH_CACHEABLE_MATERIAL), 'a material is an edge, never also reported as skipped');
+    }
+
+    public function testAHoleSaysWhyThePageHasNoDependsOnEdge(): void
+    {
+        $this->resource->get(self::PAGE_WITH_MUTABLE_HOLE);
+        $tree = $this->flushAndValidate($this->logger);
+
+        $this->assertSame([], self::dependsOnEdgesFrom($tree, self::PAGE_WITH_MUTABLE_HOLE));
+        $this->assertSame(
+            ['{"parent":"' . self::PAGE_WITH_MUTABLE_HOLE . '","child":"' . self::MUTABLE_CHILD . '","reason":"no_body"}'],
+            self::skippedChildrenOf($tree, self::PAGE_WITH_MUTABLE_HOLE),
+        );
+    }
+
+    public function testAChildReadWithoutATagIsSkippedAsRunNotAsAHole(): void
+    {
+        $this->resource->get(self::PAGE_READING_UNTAGGED_CHILD);
+        $tree = $this->flushAndValidate($this->logger);
+
+        $this->assertSame([], self::dependsOnEdgesFrom($tree, self::PAGE_READING_UNTAGGED_CHILD));
+        $this->assertSame(
+            ['{"parent":"' . self::PAGE_READING_UNTAGGED_CHILD . '","child":"app://self/counter","reason":"no_etag_or_surrogate_key"}'],
+            self::skippedChildrenOf($tree, self::PAGE_READING_UNTAGGED_CHILD),
+            'the page read the child, so it ran - it carries no tag, which is what leaves the page without the edge',
+        );
     }
 
     public function testPurgingTheMaterialChildMakesTheNextGetAFreshMiss(): void

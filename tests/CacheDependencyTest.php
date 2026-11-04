@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Log\Context\DependencySkippedContext;
+use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\Module\HalModule;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
 use Koriym\SemanticLogger\SemanticLogger;
+use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\AbstractModule;
@@ -31,6 +34,7 @@ class CacheDependencyTest extends TestCase
     private QueryRepositoryInterface $repository;
     private ResourceStorageInterface $storage;
     private FakeCountingPurger $purger;
+    private SemanticLoggerInterface $logger;
 
     protected function setUp(): void
     {
@@ -53,6 +57,7 @@ class CacheDependencyTest extends TestCase
         $this->repository = $injector->getInstance(QueryRepositoryInterface::class);
         $this->resource = $injector->getInstance(ResourceInterface::class);
         $this->storage = $injector->getInstance(ResourceStorageInterface::class);
+        $this->logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
         parent::setUp();
     }
@@ -79,6 +84,17 @@ class CacheDependencyTest extends TestCase
         $this->storage->invalidateTags(['keyed-non-cacheable-child-data']);
 
         $this->assertNull($this->repository->get(new Uri('page://self/dep/parent-of-keyed-children')));
+    }
+
+    public function testAChildWithNeitherKeyIsLoggedAsSkipped(): void
+    {
+        $this->resource->get('page://self/dep/parent-of-non-cacheable');
+        $tree = $this->flushAndValidate($this->logger);
+
+        $skipped = self::skippedChildrenOf($tree, 'page://self/dep/parent-of-non-cacheable');
+        $this->assertCount(1, $skipped);
+        $this->assertStringContainsString('"child":"page://self/dep/non-cacheable-child"', $skipped[0]);
+        $this->assertStringContainsString('"reason":"' . DependencySkippedContext::NO_ETAG_OR_SURROGATE_KEY . '"', $skipped[0]);
     }
 
     public function testDestroyByChild(): void
