@@ -152,6 +152,55 @@ With `app://self/comments` itself `#[Cacheable]`, updating the comments invalida
 
 On a `#[CacheableResponse]`/`#[DonutCache]` page the same rule applies to a child whose value `onGet()` reads: the whole template is dropped on purge. A child the page only renders as a hole is recomposed instead.
 
+A child a cached parent embeds is safe in one of two shapes:
+
+- **A tagged data dependency**: the parent reads the child, and the child carries tags - it is cached, or names its data with its own `Surrogate-Key` - so a change to it invalidates the parent. A child passes on only the tags it carries: a non-cached child in between passes nothing on from the children below it.
+- **A hole**: on a `#[CacheableResponse]`/`#[DonutCache]` page, a child the page only renders. It is never part of the stored template, so per-user or per-request values belong here.
+
+An untagged data dependency - a child the parent reads or stores that carries no tag - is the one shape that goes stale: the parent's cache holds the child's data, while a change to the child never reaches the parent before the parent's own TTL. Caching the parent caches such a child too, even though the child declares no cache. While it stays at the top level of the body, the log records it as `dependency_skipped` (reason `no_etag_or_surrogate_key`, or `no_body` when its run left a null body); make the child cacheable or render it as a hole.
+
+Dependencies and holes are found where `#[Embed]` puts a child: at the top level of the body. A request the page moves into a nested array, replaces or `unset()`s before the write is not seen. On a `#[CacheableResponse]`/`#[DonutCache]` page a nested request does not become a hole either: when the template prints it, it runs and its output is written into the stored template, its tags reach no one, and nothing is logged. The page then shows that child's old content until the page's own TTL, and a per-user child nested this way puts one visitor's content into the template every visitor shares.
+
+A list whose length, order or queries come from data (blocks an editor arranges, say) cannot be written as `#[Embed]` on the page, which is static. Build it in a child resource instead, embed that child, and let the child list the block requests at the top level of its own body - the child's write is read the same way:
+
+```php
+// The page embeds the composed list and prints it whole: (string) $this->contents
+#[CacheableResponse]
+class Channel extends ResourceObject
+{
+    #[Embed(rel: 'contents', src: 'app://self/channel/blocks{?slug}')]
+    public function onGet(string $slug): static
+    {
+        return $this;
+    }
+}
+```
+
+```php
+// app://self/channel/blocks
+#[Cacheable]
+class Blocks extends ResourceObject
+{
+    #[Embed(rel: 'whatsNew', src: 'app://self/block/whats-new')]
+    #[Embed(rel: 'feature', src: 'app://self/block/feature')]
+    public function onGet(string $slug): static
+    {
+        // requests at the top level, order in plain data; the prototypes are not kept
+        $this->body = [
+            'layout' => [['key' => 'whats_new_0', 'type' => 'whatsNew'], ['key' => 'feature_1', 'type' => 'feature']],
+            'whats_new_0' => (clone $this['whatsNew'])->withQuery(['slug' => $slug, 'limit' => 5]),
+            'feature_1' => (clone $this['feature'])->withQuery(['slug' => $slug, 'limit' => 3]),
+        ];
+
+        return $this;
+    }
+}
+```
+
+Make the composing child `#[Cacheable]`, and the blocks cacheable too so their tags reach it; all of them are shared by every visitor, so a per-user block stays out of the list and becomes a hole on a `#[DonutCache]` page. Clones of one prototype share a single resource object, so on a donut child running one clone makes its unrun siblings look run; a `#[Cacheable]` child runs each top-level request right before reading its keys.
+
+On a donut page a top-level embedded request becomes a hole that can only be printed, not iterated: print the child whole and iterate `layout` in the child's own template.
+
 ## Donut Caching
 
 Combines static outer content with dynamic inner content.
