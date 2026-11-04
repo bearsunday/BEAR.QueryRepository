@@ -133,7 +133,7 @@ new AkamaiModule($host, $clientToken, $clientSecret, $accessToken);
 
 ## Cache Dependencies
 
-A child taken in with `#[Embed]` becomes a dependency of its parent when the child is itself cached, i.e. it carries an ETag or a `Surrogate-Key`: invalidating the child then invalidates the parent. A child without a cache attribute carries neither header and adds no dependency, so purging its URI leaves the parent as stored; give such a child a cache attribute. A value fetched eagerly in `onGet()` (`$this->resource->get(...)`) is not an embedded request and is not tracked.
+A child taken in with `#[Embed]` becomes a dependency of its parent when the child carries an ETag or a `Surrogate-Key`, which a cache attribute on the child gives it: invalidating the child then invalidates the parent. A `#[Cacheable]` parent and a donut page apply the same test. A child carrying neither header adds no dependency, so purging its URI leaves the parent as stored. A value fetched eagerly in `onGet()` (`$this->resource->get(...)`) is not an embedded request and is not tracked.
 
 ```php
 #[Cacheable]

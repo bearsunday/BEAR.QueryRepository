@@ -154,17 +154,18 @@ final readonly class QueryRepository implements QueryRepositoryInterface
                 continue;
             }
 
-            // Materialize the child while HAL still has the Request in body: the ETag read
-            // below is set on the child resource by its own interceptor, so it only exists
-            // once the child has run. AbstractRequest::__toString() memoizes the result,
+            // Materialize the child while HAL still has the Request in body: the keys read
+            // below are set on the child resource by its own interceptor or onGet(), so they
+            // only exist once the child has run. AbstractRequest::__toString() memoizes the result,
             // so the renderer reads this same run - but only readers that consult the memo
             // do (see ResourceStorage::materialize(); __invoke() re-executes).
             (string) $body;
-            if (! isset($body->resourceObject->headers[Header::ETAG])) {
+            $child = $body->resourceObject;
+            if (! isset($child->headers[Header::ETAG]) && ! isset($child->headers[Header::SURROGATE_KEY])) {
                 continue;
             }
 
-            $this->cacheDependency->depends($ro, $body->resourceObject);
+            $this->cacheDependency->depends($ro, $child);
         }
     }
 
