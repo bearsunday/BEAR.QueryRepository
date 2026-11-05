@@ -34,7 +34,7 @@ final readonly class CacheDependency implements CacheDependencyInterface
     #[Override]
     public function depends(ResourceObject $from, ResourceObject $to): void
     {
-        // The group tag too, so a purge of the child's bare URI reaches a parent that embeds one of its variants (#257).
+        // The group tag too, so a purge of the child's bare URI reaches a parent that embeds one of its variants.
         $childTags = sprintf('%s %s', ($this->uriTag)($to->uri), ($this->baseUriTag)($to));
         if (isset($to->headers[Header::SURROGATE_KEY])) {
             $childTags .= sprintf(' %s', $to->headers[Header::SURROGATE_KEY]);
