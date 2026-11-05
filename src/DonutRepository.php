@@ -36,11 +36,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
 {
     private CacheDependencyInterface $cacheDependency;
 
-    /**
-     * Append new parameters only: direct (non-DI) callers pass them positionally.
-     *
-     * @SuppressWarnings("PHPMD.ExcessiveParameterList")
-     */
+    /** @SuppressWarnings("PHPMD.ExcessiveParameterList") */
     public function __construct(
         private QueryRepositoryInterface $queryRepository,
         private HeaderSetter $headerSetter,
@@ -50,12 +46,13 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         #[CacheLog]
         private SemanticLoggerInterface $logger,
         private DonutRendererInterface $renderer,
+        private BaseUriTagInterface $baseUriTag,
         private UriTagInterface $uriTag = new UriTag(),
         CacheDependencyInterface|null $cacheDependency = null,
         private DeclaredCacheControl $declaredCacheControl = new DeclaredCacheControl(),
     ) {
         // Same UriTag as templateKeys(), so a material's tag matches the format purge() emits.
-        $this->cacheDependency = $cacheDependency ?? new CacheDependency($this->uriTag, $this->logger);
+        $this->cacheDependency = $cacheDependency ?? new CacheDependency($this->uriTag, $this->logger, $this->baseUriTag);
     }
 
     #[Override]
@@ -147,7 +144,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     {
         $this->classifyMaterials($ro);
         $this->logger->event(new PutDonutContext((string) $ro->uri, $ttl, $sMaxAge));
-        $keys = new SurrogateKeys($ro->uri);
+        $keys = new SurrogateKeys($ro->uri, ($this->baseUriTag)($ro));
         $keys->addTag($ro);
         $declaredKeys = $this->getHeaderKeys($ro);
         $templateKeys = $this->templateKeys($ro, $declaredKeys);
@@ -174,7 +171,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     {
         $this->classifyMaterials($ro);
         $this->logger->event(new PutDonutContext((string) $ro->uri, $donutTtl, null));
-        $keys = new SurrogateKeys($ro->uri);
+        $keys = new SurrogateKeys($ro->uri, ($this->baseUriTag)($ro));
         $declaredKeys = $this->getHeaderKeys($ro);
         $templateKeys = $this->templateKeys($ro, $declaredKeys);
         $donut = ResourceDonut::create($ro, $this->renderer, $keys, $donutTtl, false)->withStorageState($donutTtl, $templateKeys);
@@ -242,7 +239,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
      */
     private function templateKeys(ResourceObject $ro, array $declaredKeys): array
     {
-        return array_values(array_unique([($this->uriTag)($ro->uri), ...$declaredKeys]));
+        return array_values(array_unique([($this->uriTag)($ro->uri), ($this->baseUriTag)($ro), ...$declaredKeys]));
     }
 
     /**

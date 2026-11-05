@@ -19,6 +19,7 @@ use Ray\Di\Injector;
 use function array_filter;
 use function array_values;
 use function dirname;
+use function explode;
 use function str_contains;
 use function str_replace;
 
@@ -319,33 +320,7 @@ class DonutMaterialDependencyTest extends TestCase
      */
     public function testAManuallyConstructedRepositoryUsesItsOwnUriTagForTheDefaultCacheDependency(): void
     {
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
-        $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
-        $injector = new Injector($module, __DIR__ . '/tmp');
-
-        $resource = $injector->getInstance(ResourceInterface::class);
-        $repository = new DonutRepository(
-            $injector->getInstance(QueryRepositoryInterface::class),
-            $injector->getInstance(HeaderSetter::class),
-            $injector->getInstance(ResourceStorageInterface::class),
-            $resource,
-            $injector->getInstance(CdnCacheControlHeaderSetterInterface::class),
-            $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class),
-            $injector->getInstance(DonutRendererInterface::class),
-            new class implements UriTagInterface {
-                #[Override]
-                public function __invoke(AbstractUri $uri): string
-                {
-                    return 'customtag_' . str_replace(['/', '?', '&', ':'], '_', (string) $uri);
-                }
-
-                #[Override]
-                public function fromAssoc(string $uriTemplate, array $assoc): string
-                {
-                    return '';
-                }
-            },
-        );
+        [$resource, $repository] = $this->manuallyConstructedRepository();
 
         // uri() (not newRequest(), unavailable before bear/resource 1.2x) is the same GET
         // request #[Embed] itself builds; run once so its headers carry the material
@@ -360,7 +335,86 @@ class DonutMaterialDependencyTest extends TestCase
 
         $result = $repository->putDonut($parent, null);
 
-        $this->assertStringContainsString('customtag_page___self_html_comment', $result->headers[Header::SURROGATE_KEY] ?? '', "the default CacheDependency must tag the child with THIS repository's own UriTag, not a bare new UriTag()");
+        $this->assertContains('customtag_page___self_html_comment', explode(' ', $result->headers[Header::SURROGATE_KEY] ?? ''), "the default CacheDependency must tag the child with THIS repository's own UriTag, not a bare new UriTag()");
+    }
+
+    /** The hole's group tag reaches the view, so a purge of the hole's bare URI recomposes the page. */
+    public function testBarePurgeReachesAPageRenderingAQueryVariantAsAHole(): void
+    {
+        $page = (string) $this->resource->get('page://self/html/variant-hole-parent');
+        $this->assertSame($page, (string) $this->resource->get('page://self/html/variant-hole-parent'), 'precondition: warm cache');
+
+        $this->queryRepository->purge(new Uri('app://self/optional-param?id=1'));
+
+        $this->assertNotSame($page, (string) $this->resource->get('page://self/html/variant-hole-parent'));
+    }
+
+    /** A recomposed page keeps its hole's tags, as the first write does, so the hole can be purged again. */
+    public function testPurgeOfAHoleReachesThePageAgainAfterItWasRecomposed(): void
+    {
+        $first = (string) $this->resource->get('page://self/html/variant-hole-parent');
+        $this->queryRepository->purge(new Uri('app://self/optional-param?id=1&page=2'));
+        $recomposed = (string) $this->resource->get('page://self/html/variant-hole-parent');
+        $this->assertNotSame($first, $recomposed, 'precondition: the first purge recomposes the page');
+
+        $this->queryRepository->purge(new Uri('app://self/optional-param?id=1&page=2'));
+
+        $this->assertNotSame($recomposed, (string) $this->resource->get('page://self/html/variant-hole-parent'));
+    }
+
+    /** With a custom UriTag, a static donut page's CDN header carries the group tag in that format, the one purge() invalidates. */
+    public function testAStaticDonutPageCarriesTheGroupTagInTheCustomUriTagFormat(): void
+    {
+        [, $repository] = $this->manuallyConstructedRepository();
+        $page = new class extends ResourceObject {
+            public function onGet(int $page = 1): static
+            {
+                return $this;
+            }
+        };
+        $page->uri = new Uri('page://self/dep/unit-paged?page=2');
+        $page->body = [];
+
+        $result = $repository->putStatic($page);
+
+        $this->assertContains('grp-customtag_page___self_dep_unit-paged', explode(' ', $result->headers[Header::SURROGATE_KEY] ?? ''));
+    }
+
+    /** @return array{ResourceInterface, DonutRepository} */
+    private function manuallyConstructedRepository(): array
+    {
+        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $uriTag = new class implements UriTagInterface {
+            #[Override]
+            public function __invoke(AbstractUri $uri): string
+            {
+                return 'customtag_' . str_replace(['/', '?', '&', ':'], '_', (string) $uri);
+            }
+
+            #[Override]
+            public function fromAssoc(string $uriTemplate, array $assoc): string
+            {
+                return '';
+            }
+        };
+
+        return [
+            $resource,
+            new DonutRepository(
+                $injector->getInstance(QueryRepositoryInterface::class),
+                $injector->getInstance(HeaderSetter::class),
+                $injector->getInstance(ResourceStorageInterface::class),
+                $resource,
+                $injector->getInstance(CdnCacheControlHeaderSetterInterface::class),
+                $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class),
+                $injector->getInstance(DonutRendererInterface::class),
+                new BaseUriTag($uriTag),
+                $uriTag,
+            ),
+        ];
     }
 
     /**

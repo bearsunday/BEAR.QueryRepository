@@ -10,10 +10,11 @@ use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use Throwable;
 
-use function array_key_exists;
+use function array_unique;
 use function assert;
 use function explode;
 use function hash;
+use function implode;
 use function is_iterable;
 use function max;
 use function preg_replace_callback;
@@ -91,9 +92,7 @@ final class ResourceDonut
                 throw CacheStoreFailure::from($e);
             }
 
-            if (array_key_exists(Header::SURROGATE_KEY, $ro->headers)) {
-                $etags->addTag($ro);
-            }
+            $etags->addTag($ro);
 
             return (string) $ro->view;
         }, $this->template);
@@ -103,6 +102,13 @@ final class ResourceDonut
         // isset() also guards entries serialized before this property existed
         if (isset($this->code)) {
             $ro->code = $this->code;
+        }
+
+        // $this->headers lacks the group tag; add the stored tags.
+        $storedTags = $this->getStorageTags();
+        if ($storedTags !== []) {
+            $existing = isset($ro->headers[Header::SURROGATE_KEY]) ? explode(' ', $ro->headers[Header::SURROGATE_KEY]) : [];
+            $ro->headers[Header::SURROGATE_KEY] = implode(' ', array_unique([...$existing, ...$storedTags]));
         }
 
         $etags->setSurrogateHeader($ro);

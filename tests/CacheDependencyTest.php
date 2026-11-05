@@ -349,6 +349,6 @@ class CacheDependencyTest extends TestCase
         $context = json_decode($edges[0], true);
         assert(is_array($context));
         $childTags = $context['childTags'];
-        $this->assertSame([$uriTag($child->uri)], $childTags);
+        $this->assertSame([$uriTag($child->uri), (new BaseUriTag($uriTag))($child)], $childTags);
     }
 }
