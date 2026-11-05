@@ -37,8 +37,10 @@ The first line is `meta`; every other line is a resource and the declarations it
 - `uri` is `scheme://host/path` without query, exact-matchable everywhere it appears; `template` keeps the
   declaration as written. The PHP class is not repeated: it follows from `uri` and `meta.namespaces`.
 - `source` is `file:line`, to open the declaration.
-- `implicit` marks a refresh nobody wrote: a write method of a `#[Cacheable]`/`#[CacheableResponse]` class,
-  or one marked `#[RefreshCache]`, refreshes its own resource.
+- `implicit` marks a refresh nobody wrote: a write method of a `#[Cacheable]` class, a `#[CacheableResponse]`
+  class or method, or a method marked `#[RefreshCache]`, refreshes its own resource. A `#[DonutCache]` write
+  method refreshes itself only when it also carries `#[RefreshCache]`; without it, the method declares nothing
+  implicit here even though the class is cached.
 - `dynamic` lists source-text hints that the declarations may not be the whole story (the class source
   mentions a `surrogate-key`, or `ResourceInject`/`ResourceInterface` for a `resource-request` outside `#[Embed]`). A hint is a reason to read the source; its absence proves nothing.
 
