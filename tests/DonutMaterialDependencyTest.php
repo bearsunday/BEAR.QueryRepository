@@ -308,7 +308,7 @@ class DonutMaterialDependencyTest extends TestCase
 
         $result = $repository->putDonut($parent, null);
 
-        $this->assertStringContainsString('customtag_page___self_html_comment', $result->headers[Header::SURROGATE_KEY] ?? '', "the default CacheDependency must tag the child with THIS repository's own UriTag, not a bare new UriTag()");
+        $this->assertContains('customtag_page___self_html_comment', explode(' ', $result->headers[Header::SURROGATE_KEY] ?? ''), "the default CacheDependency must tag the child with THIS repository's own UriTag, not a bare new UriTag()");
     }
 
     /** The hole's group tag reaches the view, so a purge of the hole's bare URI recomposes the page. */
