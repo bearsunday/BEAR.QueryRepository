@@ -47,7 +47,7 @@ use function trim;
  *     roProvider:ProviderInterface<TagAwareAdapterInterface>,
  *     etagProvider: ProviderInterface<TagAwareAdapterInterface>,
  *     serverContext: ServerContextInterface,
- *     baseUriTag?: BaseUriTagInterface,
+ *     baseUriTag: BaseUriTagInterface,
  * }
  * @internal
  */
@@ -445,8 +445,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         // Stateless, so rebuilt rather than carried: left out of the payload it stays
         // uninitialized, and the first save after a compiled-injector restore throws.
         $this->evaluateBody = new ResourceBodyEvaluator();
-        // Falls back to the default (built from the restored uriTag) when a payload lacks it.
-        $this->baseUriTag = $data['baseUriTag'] ?? new BaseUriTag($this->uriTag);
+        $this->baseUriTag = $data['baseUriTag'];
         $this->initializePools($data['roProvider'], $data['etagProvider']);
     }
 }
