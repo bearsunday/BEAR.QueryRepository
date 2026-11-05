@@ -14,6 +14,7 @@ use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 use Ray\Aop\MethodInvocation;
 use ReflectionException;
+use ReflectionMethod;
 
 use function call_user_func_array;
 use function is_callable;
@@ -57,7 +58,8 @@ final readonly class RefreshSameCommand implements CommandInterface
         }
 
         $delUri = clone $ro->uri;
-        $delUri->query = $getQuery;
+        // Default-valued parameters dropped, as BaseUriTag drops them; the refresh below still uses the exact $getQuery.
+        $delUri->query = $this->baseQuery($ro, $getQuery);
 
         // delete data in repository
         $this->repository->purge($delUri);
@@ -70,6 +72,26 @@ final readonly class RefreshSameCommand implements CommandInterface
             // default instead of shifting the positional order.
             call_user_func_array($get, $getQuery);
         }
+    }
+
+    /**
+     * @param array<string, mixed> $getQuery
+     *
+     * @return array<string, mixed>
+     */
+    private function baseQuery(ResourceObject $ro, array $getQuery): array
+    {
+        $baseQuery = [];
+        foreach ((new ReflectionMethod($ro, 'onGet'))->getParameters() as $parameter) {
+            if ($parameter->isDefaultValueAvailable() || ! isset($getQuery[$parameter->name])) {
+                continue;
+            }
+
+            /** @psalm-suppress MixedAssignment */
+            $baseQuery[$parameter->name] = $getQuery[$parameter->name];
+        }
+
+        return $baseQuery;
     }
 
     /**
