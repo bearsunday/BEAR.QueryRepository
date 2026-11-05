@@ -15,11 +15,44 @@ use function random_int;
 /**
  * Keeps the sessions nothing else can account for, drops the rest
  *
- * The line is not failure-vs-success, it is who else knows: a read failure already reaches the
- * application's own warning channel, and a rule-based `put_skipped` is a decision stable with the
- * code. `put_skipped{reason: unserializable}` is kept regardless, since a body `serialize()`
- * refused is a defect, not a rule, and dropping it would defeat `SkipBodySerializationError`'s
- * point of making that defect visible in production.
+ * The line is not failure-vs-success, it is who else knows. A read that fails already reaches the
+ * application's own warning channel - both interceptors call `trigger_error()` before degrading -
+ * and that channel covers every cause, not just the outage a pool's monitoring would see. The
+ * semantic record of it adds a URI and repeats on every request, so keeping those sessions floods
+ * the collector during the incident it is supposed to explain, with a fact already reported. A
+ * cache that silently did nothing has no other witness at all - `$pool->save()` returning false
+ * is discarded by the interceptor, and an invalidation that failed to land shows up later as
+ * stale content with no error attached to it.
+ *
+ * So three kinds of session are kept:
+ *
+ *  - mutations: a `command` scope, a direct `manual_*` call, or a real tag invalidation. Writes
+ *    decide the tags, TTLs and CDN keys every later read repeats.
+ *  - effects that did not happen: `saved: false`, `invalidate` with `roPool`/`etagPool`/`cdn`
+ *    `failed`, a `manual_*` result of `failed`, `cache_error{operation: write}` - a store or
+ *    an invalidation that was aborted - and `put_skipped{reason: unserializable}`, a body
+ *    `serialize()` refused, which is a defect rather than a rule.
+ *  - a sample, when a rate is configured.
+ *
+ * Deliberately not kept: `cache_error{operation: read}` (availability, monitored elsewhere -
+ * separating a degraded miss from a cold one is a development-time reading) and every other
+ * `put_skipped`, which records a store that was never attempted because a rule forbade it - a
+ * response code the path will not cache (`#[Cacheable]` skips any non-200, a donut skips 4xx and
+ * above), a validator already set, or a page served from its template. Those are decisions, stable
+ * for as long as the code and the configuration are, and found once in development rather than per
+ * request in production.
+ * `saved: false` is the opposite: the store was attempted and the pool refused it. It can repeat
+ * per write under a capacity problem, and that is the signal, not noise - a host that needs a
+ * ceiling decorates `LogWriterInterface`.
+ *
+ * A real invalidation is told from pre-write cleanup by the marker the writer records at the
+ * source: an `invalidate` is cleanup iff the event immediately before it in the same scope
+ * is a `pre_write_cleanup`. Nothing is inferred from tag correlation.
+ *
+ * The session is read as the decoded public tree - the shape the published schemas describe.
+ * A record's `log` (`PublicRecord.log`) interleaves its nested events and opens in record order
+ * and degrades to a bare map, so the walk narrows every value it reads and suppresses the mixed
+ * reads per method.
  */
 final class KeepMutationsAndFailures implements RetentionPolicyInterface
 {
@@ -48,7 +81,7 @@ final class KeepMutationsAndFailures implements RetentionPolicyInterface
     /**
      * @param array<mixed, mixed> $node
      *
-     * @psalm-suppress MixedAssignment reading the session as the decoded public tree
+     * @psalm-suppress MixedAssignment reading a decoded tree: see the class note
      */
     private function isNotable(array $node): bool
     {
@@ -71,7 +104,7 @@ final class KeepMutationsAndFailures implements RetentionPolicyInterface
     /**
      * @param array<mixed, mixed> $node
      *
-     * @psalm-suppress MixedAssignment reading the session as the decoded public tree
+     * @psalm-suppress MixedAssignment reading a decoded tree: see the class note
      */
     private function childIsNotable(array $node): bool
     {
@@ -99,7 +132,7 @@ final class KeepMutationsAndFailures implements RetentionPolicyInterface
      *
      * @param array<mixed, mixed> $node
      *
-     * @psalm-suppress MixedAssignment reading the session as the decoded public tree
+     * @psalm-suppress MixedAssignment reading a decoded tree: see the class note
      */
     private function hasRealInvalidation(array $node): bool
     {
@@ -160,8 +193,6 @@ final class KeepMutationsAndFailures implements RetentionPolicyInterface
             }
         }
 
-        // Every other put_skipped reason is a rule the code enforces on purpose; this one is a
-        // body serialize() refused at runtime - a defect, the same kind of fact as a write that threw.
         if ($type === 'put_skipped' && ($context['reason'] ?? null) === 'unserializable') {
             return true;
         }
