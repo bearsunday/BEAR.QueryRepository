@@ -81,7 +81,7 @@ final readonly class DonutCommandInterceptor implements MethodInterceptor
     {
         $getQuery = ($this->matchQuery)($ro);
         $delUri = clone $ro->uri;
-        // Coarsened like BaseUriTag (keep the two in sync); the refresh below still uses the exact $getQuery.
+        // Default-valued parameters dropped, as BaseUriTag drops them; the refresh below still uses the exact $getQuery.
         $delUri->query = $this->baseQuery($ro, $getQuery);
 
         $this->repository->purge($delUri);

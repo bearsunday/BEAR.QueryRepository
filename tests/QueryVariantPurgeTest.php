@@ -243,8 +243,7 @@ class QueryVariantPurgeTest extends TestCase
         $this->assertFalse($this->storage->hasEtagFor($etag, $uri));
     }
 
-    /** On the first, never-refreshed save, doPutStatic()'s SurrogateKeys is what tags the etagPool entry,
-     *  so it must carry the group tag itself. */
+    /** On the first, never-refreshed save, doPutStatic()'s SurrogateKeys tags the etagPool entry with the page's group tag. */
     public function testDonutInitialSaveTagsTheEtagValidatorWithTheGroupTag(): void
     {
         assert($this->storage instanceof ScopedValidatorInterface);
