@@ -99,6 +99,15 @@ use BEAR\RepositoryModule\Annotation\Purge;
 public function onDelete(int $id): static { ... }
 ```
 
+### Purging query variants
+
+A purge reaches every query variant of the URI it names. Each cache entry also carries a group tag: its URI with every default-valued `onGet()` parameter, and any query `onGet()` does not declare, dropped. `purge()`, `#[Purge]` and `#[Refresh]` invalidate the named URI's own tag and its group tag, so purging `app://self/articles` drops `?page=2`. A parent that embeds a variant carries the variant's group tag as well and is dropped with it.
+
+- A write method of a `#[Cacheable]`, `#[CacheableResponse]` or `#[DonutCache]` resource purges its own URI with default-valued parameters dropped, so it reaches every variant even when the write request supplies one.
+- A purge URI that spells out a default-valued parameter (`app://self/articles?page=1`) is not coarsened and reaches only that URI's entries.
+- A required key keeps the spelling the request used. A purge reaches a GET's entries only when it spells each required key the same way: `?user_id=1` reaches `?user_id=1&page=2`, `?userId=1` does not. The automatic purge after a write uses the parameter name (`userId`).
+- A non-200 GET response invalidates only its own URI's tag; cached variants stay.
+
 ## Modules
 
 ### StorageRedisDsnModule
