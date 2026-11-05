@@ -248,7 +248,7 @@ class ResourceDonutTest extends TestCase
             $donut->refresh($throwingResource, $ro);
             $this->fail('expected the re-fetch to throw');
         } catch (RuntimeException $e) {
-            $this->assertSame('pool outage', $e->getMessage());
+            $this->assertSame('pool outage', $e->getPrevious()?->getMessage());
         }
     }
 
@@ -384,7 +384,7 @@ class ResourceDonutTest extends TestCase
             $donut->refresh($this->resource, $ro);
             $this->fail('expected the hole throw to be refused as a CacheStoreException');
         } catch (CacheStoreException $e) {
-            $this->assertStringContainsString('the hole blew up mid-render', $e->getMessage());
+            $this->assertStringContainsString('the hole blew up mid-render', (string) $e->getPrevious()?->getMessage());
         }
     }
 }

@@ -89,7 +89,7 @@ final class ResourceDonut
             } catch (Throwable $e) {
                 // toString() lets a render failure travel uncaught; wrapped here so a HIT's
                 // re-fetch degrades to a fresh render instead of surfacing a broken response.
-                throw CacheStoreException::from($e);
+                throw new CacheStoreException(previous: $e);
             }
 
             $etags->addTag($ro);

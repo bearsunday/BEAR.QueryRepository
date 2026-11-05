@@ -215,7 +215,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
             // has no catch, so this reaches the caller and the write is not reported as done. The
             // automatic write inside a GET does catch it, and degrades - that request changed
             // nothing, so nothing at the edge became stale by it.
-            throw CacheStoreException::from($purgerError);
+            throw new CacheStoreException(previous: $purgerError);
         }
 
         return $roOk && $etagOk;
@@ -412,7 +412,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         try {
             return $io();
         } catch (Throwable $e) {
-            throw CacheStoreException::from($e);
+            throw new CacheStoreException(previous: $e);
         }
     }
 

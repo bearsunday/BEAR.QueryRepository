@@ -143,7 +143,8 @@ final readonly class CacheInterceptor implements MethodInterceptor
      */
     private function triggerWarning(Throwable $e): void
     {
-        $message = sprintf('%s: %s in %s:%s', $e::class, $e->getMessage(), $e->getFile(), $e->getLine());
+        $cause = $e->getPrevious() ?? $e;
+        $message = sprintf('%s: %s in %s:%s', $cause::class, $cause->getMessage(), $cause->getFile(), $cause->getLine());
         trigger_error($message, E_USER_WARNING);
     }
 }

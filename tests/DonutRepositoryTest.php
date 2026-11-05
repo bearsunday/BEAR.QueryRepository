@@ -523,7 +523,7 @@ class DonutRepositoryTest extends TestCase
             $donutRepository->putStatic($page, null, null);
             $this->fail('expected the pool outage to surface from a direct donut write');
         } catch (RuntimeException $e) {
-            $this->assertStringContainsString('cache server down', $e->getMessage());
+            $this->assertStringContainsString('cache server down', (string) $e->getPrevious()?->getMessage());
         }
 
         $tree = $this->flushAndValidate($logger);

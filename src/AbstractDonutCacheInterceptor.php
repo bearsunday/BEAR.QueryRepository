@@ -153,6 +153,7 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
 
     private function triggerWarning(Throwable $e): void
     {
-        trigger_error(sprintf('%s: %s in %s:%s', $e::class, $e->getMessage(), $e->getFile(), $e->getLine()), E_USER_WARNING);
+        $cause = $e->getPrevious() ?? $e;
+        trigger_error(sprintf('%s: %s in %s:%s', $cause::class, $cause->getMessage(), $cause->getFile(), $cause->getLine()), E_USER_WARNING);
     }
 }

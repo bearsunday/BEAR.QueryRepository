@@ -207,7 +207,7 @@ class GracefulLoggingTest extends TestCase
             $repository->put($ro);
             $this->fail('expected the pool outage to surface from a direct write');
         } catch (RuntimeException $e) {
-            $this->assertStringContainsString('cache server down', $e->getMessage());
+            $this->assertStringContainsString('cache server down', (string) $e->getPrevious()?->getMessage());
         }
 
         $tree = $this->flushAndValidate($logger);
