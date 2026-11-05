@@ -29,10 +29,14 @@ use function max;
 use function sprintf;
 use function strtotime;
 use function time;
+use function trim;
 
 /** @internal */
 final readonly class QueryRepository implements QueryRepositoryInterface
 {
+    /** @see BaseUriTag::GROUP_TAG_PREFIX */
+    private const GROUP_TAG_PREFIX = 'grp-';
+
     public function __construct(
         #[CacheLog]
         private SemanticLoggerInterface $logger,
@@ -40,7 +44,9 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         private ResourceStorageInterface $storage,
         private Expiry $expiry,
         private CacheDependencyInterface $cacheDependency,
+        private BaseUriTagInterface $baseUriTag,
         private DeclaredCacheControl $declaredCacheControl = new DeclaredCacheControl(),
+        private UriTagInterface $uriTag = new UriTag(),
     ) {
     }
 
@@ -102,6 +108,9 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         if (isset($ro->headers[Header::ETAG])) {
             $etag = $ro->headers[Header::ETAG];
             $surrogateKeys = $ro->headers[Header::SURROGATE_KEY] ?? '';
+            // saveEtag() takes a tag list of its own, not getTags()'s.
+            $surrogateKeys = trim($surrogateKeys . ' ' . ($this->baseUriTag)($ro));
+
             $this->storage->saveEtag($ro->uri, $etag, $surrogateKeys, $ttl);
         }
 
@@ -194,6 +203,9 @@ final readonly class QueryRepository implements QueryRepositoryInterface
     #[Override]
     public function purge(AbstractUri $uri)
     {
+        // The URI's own tag plus the group tag shared by its query variants (see BaseUriTag).
+        $tags = [($this->uriTag)($uri), self::GROUP_TAG_PREFIX . ($this->uriTag)($uri)];
+
         // A top-level purge is an application-initiated (manual) cache bust: wrap it in a
         // manual_purge scope so it stands out from automatic invalidation. A purge nested
         // inside a request GET or a write command stays an ordinary purge event there.
@@ -201,7 +213,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
             $openId = $this->logger->open(new ManualPurgeContext((string) $uri));
             $purged = false;
             try {
-                return $purged = $this->storage->deleteEtag($uri);
+                return $purged = $this->storage->invalidateTags($tags);
             } finally {
                 $this->logger->close(new ManualPurgeResultContext($purged), $openId);
             }
@@ -209,7 +221,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
 
         $this->logger->event(new PurgeContext((string) $uri));
 
-        return $this->storage->deleteEtag($uri);
+        return $this->storage->invalidateTags($tags);
     }
 
     private function getHttpCacheAnnotation(ResourceObject $ro): HttpCache|null

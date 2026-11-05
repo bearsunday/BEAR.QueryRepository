@@ -34,7 +34,7 @@ use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
  *  SemanticLoggerInterface (null by default - install Dev/ProdQueryRepositoryLogModule to record)
  *  MatchQueryInterface
  *  UriTag
- *  MatchQueryInterface
+ *  BaseUriTagInterface
  *  DeclaredCacheControl
  *
  *  The following module are installed.
@@ -73,6 +73,7 @@ final class QueryRepositoryModule extends AbstractModule
         $this->bind(EtagSetterInterface::class)->to(EtagSetter::class);
         $this->bind(NamedParameterInterface::class)->to(NamedParameter::class);
         $this->bind(ResourceStorageInterface::class)->to(ResourceStorage::class)->in(Scope::SINGLETON);
+        $this->bind(BaseUriTagInterface::class)->to(BaseUriTag::class);
         $this->bind(MatchQueryInterface::class)->to(MatchQuery::class);
         $this->bind(RefreshAnnotatedCommand::class);
         $this->bind(RefreshSameCommand::class);

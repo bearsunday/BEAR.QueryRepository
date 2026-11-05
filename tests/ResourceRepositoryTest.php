@@ -48,9 +48,11 @@ class ResourceRepositoryTest extends TestCase
                 new GlobalServerContext(),
                 $tagAwareAdapterProvider,
                 $tagAwareAdapterProvider,
+                new BaseUriTag(new UriTag()),
             ),
             new Expiry(0, 0, 0),
             new CacheDependency(new UriTag()),
+            new BaseUriTag(new UriTag()),
         );
         $this->ro = new Index();
         $this->ro->uri = new Uri('page://self/user');
@@ -130,9 +132,11 @@ class ResourceRepositoryTest extends TestCase
                 new GlobalServerContext(),
                 $tagAwareAdapterProvider,
                 $tagAwareAdapterProvider,
+                new BaseUriTag(new UriTag()),
             ),
             new Expiry(0, 0, 0),
             new CacheDependency(new UriTag()),
+            new BaseUriTag(new UriTag()),
         );
         $this->assertInstanceOf(Repository::class, $repository);
     }

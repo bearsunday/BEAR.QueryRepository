@@ -46,7 +46,8 @@ use function trim;
  *     saver: ResourceStorageSaver,
  *     roProvider:ProviderInterface<TagAwareAdapterInterface>,
  *     etagProvider: ProviderInterface<TagAwareAdapterInterface>,
- *     serverContext: ServerContextInterface
+ *     serverContext: ServerContextInterface,
+ *     baseUriTag: BaseUriTagInterface,
  * }
  * @internal
  */
@@ -91,6 +92,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         ProviderInterface $roPoolProvider,
         #[Set(TagAwareAdapterInterface::class, EtagPool::class)]
         ProviderInterface $etagPoolProvider,
+        private BaseUriTagInterface $baseUriTag,
         private ResourceBodyEvaluator $evaluateBody = new ResourceBodyEvaluator(),
     ) {
         $this->initializePools($roPoolProvider, $etagPoolProvider);
@@ -338,8 +340,9 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         // as a tag produced one non-volatile tag Set per content version that, under a
         // volatile-* eviction policy, is never reclaimed - leaking memory without being read.
         $surrogateKeys ??= isset($ro->headers[Header::SURROGATE_KEY]) ? explode(' ', $ro->headers[Header::SURROGATE_KEY]) : [];
+        // Reachable by a purge aimed at the bare URI (see BaseUriTag).
         /** @var list<string> $uniqueTags */
-        $uniqueTags = array_values(array_unique([($this->uriTag)($ro->uri), ...$surrogateKeys]));
+        $uniqueTags = array_values(array_unique([($this->uriTag)($ro->uri), ($this->baseUriTag)($ro), ...$surrogateKeys]));
 
         return $uniqueTags;
     }
@@ -423,6 +426,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
             'roProvider' => $this->roPoolProvider,
             'etagProvider' => $this->etagPoolProvider,
             'serverContext' => $this->serverContext,
+            'baseUriTag' => $this->baseUriTag,
         ];
     }
 
@@ -441,6 +445,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         // Stateless, so rebuilt rather than carried: left out of the payload it stays
         // uninitialized, and the first save after a compiled-injector restore throws.
         $this->evaluateBody = new ResourceBodyEvaluator();
+        $this->baseUriTag = $data['baseUriTag'];
         $this->initializePools($data['roProvider'], $data['etagProvider']);
     }
 }

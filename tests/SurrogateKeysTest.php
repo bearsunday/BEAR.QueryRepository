@@ -56,7 +56,7 @@ class SurrogateKeysTest extends TestCase
         };
         $ro->uri = $uri;
         $etags->setSurrogateHeader($ro);
-        $this->assertSame('_foo_ _foo1_ a b _foo2_', $ro->headers[Header::SURROGATE_KEY]);
+        $this->assertSame('_foo_ _foo1_ grp-_foo1_ a b _foo2_ grp-_foo2_', $ro->headers[Header::SURROGATE_KEY]);
 
         $ro = $this->resource->get('page://self/html/page-surrogate-key');
         $this->assertStringContainsString('page-tag', $ro->headers[Header::SURROGATE_KEY]);
@@ -71,7 +71,7 @@ class SurrogateKeysTest extends TestCase
         $foo->uri = $uri;
         $etags->addTag($foo);
         $etags->setSurrogateHeader($foo);
-        $this->assertSame('_foo_', $foo->headers[Header::SURROGATE_KEY]);
+        $this->assertSame('_foo_ grp-_foo_', $foo->headers[Header::SURROGATE_KEY]);
     }
 
     public function testSetSurrogateHeaderDeduplicatesWithManualKeys(): void
@@ -90,6 +90,6 @@ class SurrogateKeysTest extends TestCase
         };
         $ro->uri = $uri;
         $etags->setSurrogateHeader($ro);
-        $this->assertSame('shared-tag _foo_ _foo1_', $ro->headers[Header::SURROGATE_KEY]);
+        $this->assertSame('shared-tag _foo_ _foo1_ grp-_foo1_', $ro->headers[Header::SURROGATE_KEY]);
     }
 }

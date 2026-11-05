@@ -7,6 +7,7 @@
 namespace FakeVendor\HelloWorld\Resource\App;
 
 use BEAR\RepositoryModule\Annotation\Cacheable;
+use BEAR\RepositoryModule\Annotation\Purge;
 use BEAR\Resource\ResourceObject;
 
 #[Cacheable]
@@ -24,6 +25,7 @@ class OptionalParam extends ResourceObject
         return $this;
     }
 
+    #[Purge(uri: 'app://self/optional-param?id={id}')]
     public function onPut(int $id)
     {
         return $this;

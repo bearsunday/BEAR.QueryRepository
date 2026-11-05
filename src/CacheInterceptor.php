@@ -9,6 +9,7 @@ use BEAR\QueryRepository\Log\Context\CacheErrorContext;
 use BEAR\QueryRepository\Log\Context\CacheHitContext;
 use BEAR\QueryRepository\Log\Context\CacheMissContext;
 use BEAR\QueryRepository\Log\Context\GetContext;
+use BEAR\QueryRepository\Log\Context\PurgeContext;
 use BEAR\QueryRepository\Log\Context\PutSkippedContext;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\ResourceObject;
@@ -40,6 +41,8 @@ final readonly class CacheInterceptor implements MethodInterceptor
 {
     public function __construct(
         private QueryRepositoryInterface $repository,
+        private ResourceStorageInterface $storage,
+        private UriTagInterface $uriTag,
         #[CacheLog]
         private SemanticLoggerInterface $logger = new NullSemanticLogger(),
     ) {
@@ -91,7 +94,9 @@ final readonly class CacheInterceptor implements MethodInterceptor
                     // Record the actual non-200 code; without it the purge below reads
                     // as if a 203 and a 404 were the same thing.
                     $this->logger->event(new PutSkippedContext((string) $ro->uri, 'error-code', $ro->code));
-                    $this->repository->purge($ro->uri);
+                    // Only this URI's own tag: purge() would also evict its query variants.
+                    $this->logger->event(new PurgeContext((string) $ro->uri));
+                    $this->storage->invalidateTags([($this->uriTag)($ro->uri)]);
 
                     return $ro;
                 }

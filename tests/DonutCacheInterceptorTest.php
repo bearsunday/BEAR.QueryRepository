@@ -59,11 +59,12 @@ class DonutCacheInterceptorTest extends TestCase
         $this->assertSame('blog-posting:1<comment>comment01</comment>', $view);
 
         // save_donut records the tags the template entry is stored under: its own URI tag (what
-        // purge($uri) invalidates), plus any declared Surrogate-Key.
+        // purge($uri) invalidates), its group tag (what a bare-URI purge also reaches), plus any
+        // declared Surrogate-Key.
         $tree = $this->flushAndValidate($this->logger);
         $saveDonut = self::eventContextJsonOf($tree, 'save_donut');
         $this->assertNotNull($saveDonut);
-        $this->assertStringContainsString('"tags":["_html_blog-posting-donut_"]', $saveDonut);
+        $this->assertStringContainsString('"tags":["_html_blog-posting-donut_","grp-_html_blog-posting-donut_"]', $saveDonut);
 
         return $blogPosting->headers[Header::SURROGATE_KEY];
     }
