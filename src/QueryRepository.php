@@ -98,7 +98,13 @@ final readonly class QueryRepository implements QueryRepositoryInterface
             $this->logger->event($this->cachePolicy($ro, $cacheable, $ttl));
         }
 
-        ($this->headerSetter)($ro, $ttl, $httpCache);
+        $unserializableClass = ($this->headerSetter)($ro, $ttl, $httpCache);
+
+        if ($unserializableClass !== null) {
+            $this->logger->event(new PutSkippedContext((string) $ro->uri, 'unserializable', null, $unserializableClass));
+
+            return false;
+        }
 
         if ($unstorable !== null) {
             $this->logger->event(new PutSkippedContext((string) $ro->uri, $unstorable));

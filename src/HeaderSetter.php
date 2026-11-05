@@ -8,10 +8,17 @@ use BEAR\QueryRepository\Cdn\AkamaiCacheControlHeaderSetter;
 use BEAR\QueryRepository\Cdn\FastlyCacheControlHeaderSetter;
 use BEAR\RepositoryModule\Annotation\HttpCache;
 use BEAR\Resource\ResourceObject;
+use Throwable;
 
 use function array_keys;
+use function array_map;
+use function explode;
+use function implode;
+use function in_array;
+use function preg_match;
 use function sprintf;
 use function str_contains;
+use function str_starts_with;
 use function strtolower;
 
 /** @internal */
@@ -33,31 +40,53 @@ final readonly class HeaderSetter
     public function __construct(
         private EtagSetterInterface $etagSetter,
         private DeclaredCacheControl $declaredCacheControl = new DeclaredCacheControl(),
+        private BodySerializationErrorHandlerInterface $bodySerializationErrorHandler = new ThrowBodySerializationError(),
     ) {
     }
 
     /**
-     * Set the validator and Cache-Control max-age, or strip every CDN-facing header when
-     * the response's own Cache-Control already reads private or no-store outside what
-     * #[HttpCache]/#[NoHttpCache] declares
+     * Set the validator and Cache-Control max-age, strip every CDN-facing header when the
+     * response's own Cache-Control already reads private or no-store outside what
+     * #[HttpCache]/#[NoHttpCache] declares, or hand an unserializable body to the configured
+     * handler
      *
      * The developer-set private/no-store Cache-Control header itself is left as-is; only the
      * CDN-facing headers are stripped. A value #[HttpCache] or #[NoHttpCache] declared is
      * exempt from this check.
+     *
+     * @return string|null the class serialize() refused, when the handler returned instead of
+     *     throwing (the response goes out uncached); null otherwise
      */
-    public function __invoke(ResourceObject $ro, int|null $cacheControlMaxAge, HttpCache|null $httpCache, int|null $time = null): void
+    public function __invoke(ResourceObject $ro, int|null $cacheControlMaxAge, HttpCache|null $httpCache, int|null $time = null): string|null
     {
         if ($this->declaredCacheControl->reason($ro) !== null) {
             $this->stripHeaders($ro, self::CDN_FACING_HEADERS);
 
-            return;
+            return null;
         }
 
-        ($this->etagSetter)($ro, $time, $httpCache);
+        try {
+            ($this->etagSetter)($ro, $time, $httpCache);
+        } catch (Throwable $e) {
+            // serialize() raises this exact built-in class ("Serialization of 'X' is not
+            // allowed") for a value it refuses; a subclass is a different failure (an embedded
+            // request ResourceBodyEvaluator ran, say) and keeps propagating unhandled.
+            if ($e::class !== 'Exception') {
+                throw $e;
+            }
+
+            ($this->bodySerializationErrorHandler)($ro, $e);
+            $this->stripHeaders($ro, self::CDN_FACING_HEADERS);
+            $this->makeCacheControlPrivate($ro);
+
+            return self::failingClass($e);
+        }
 
         if ($cacheControlMaxAge !== null && $cacheControlMaxAge > 0) {
             $this->setCacheControlMaxAge($ro, $cacheControlMaxAge);
         }
+
+        return null;
     }
 
     /** @param list<string> $canonicalNames */
@@ -96,5 +125,41 @@ final readonly class HeaderSetter
         }
 
         $ro->headers[$existingName] .= ', ' . $setMaxAge;
+    }
+
+    /**
+     * Drop s-maxage and public, add private, keep every other directive (including max-age) -
+     * the last word on Cache-Control for a response a shared cache must not keep. Nothing
+     * modifies the header after this call: #[HttpCache] already wrote it, from
+     * HttpCacheInterceptor running inside the proceed() CacheInterceptor calls before this
+     * class runs from QueryRepository::doPut().
+     */
+    private function makeCacheControlPrivate(ResourceObject $ro): void
+    {
+        $existingName = Header::findKey($ro->headers, Header::CACHE_CONTROL);
+        $directives = $existingName === null ? [] : array_map('trim', explode(',', $ro->headers[$existingName]));
+        $kept = [];
+        foreach ($directives as $directive) {
+            $lower = strtolower($directive);
+            if ($lower === '' || $lower === 'public' || str_starts_with($lower, 's-maxage')) {
+                continue;
+            }
+
+            $kept[] = $directive;
+        }
+
+        if (! in_array('private', array_map('strtolower', $kept), true)) {
+            $kept[] = 'private';
+        }
+
+        $ro->headers[$existingName ?? Header::CACHE_CONTROL] = implode(', ', $kept);
+    }
+
+    /** The class named in serialize()'s "Serialization of 'X' is not allowed" */
+    private static function failingClass(Throwable $e): string
+    {
+        return preg_match("/^Serialization of '(.+)' is not allowed$/", $e->getMessage(), $matches) === 1
+            ? $matches[1]
+            : $e::class;
     }
 }

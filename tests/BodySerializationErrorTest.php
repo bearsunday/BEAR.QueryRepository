@@ -1,0 +1,170 @@
+<?php
+
+declare(strict_types=1);
+
+namespace BEAR\QueryRepository;
+
+use BEAR\QueryRepository\Exception\BodySerializationFailure;
+use BEAR\QueryRepository\Log\Context\PutSkippedContext;
+use BEAR\RepositoryModule\Annotation\CacheLog;
+use BEAR\Resource\ResourceInterface;
+use BEAR\Resource\ResourceObject;
+use Koriym\SemanticLogger\SemanticLoggerInterface;
+use Override;
+use PHPUnit\Framework\TestCase;
+use Ray\Di\AbstractModule;
+use Ray\Di\Injector;
+use Throwable;
+
+use function array_filter;
+use function array_values;
+
+/**
+ * Owner-approved coverage for issue #259: a #[Cacheable] body serialize() refuses is routed
+ * through BodySerializationErrorHandlerInterface rather than failing every request (1.17+) or
+ * being dropped silently (1.16 and earlier).
+ */
+class BodySerializationErrorTest extends TestCase
+{
+    private const URI = 'app://self/unserializable-value';
+
+    private function resourceFor(AbstractModule $module): ResourceInterface
+    {
+        return (new Injector($module, __DIR__ . '/tmp'))->getInstance(ResourceInterface::class);
+    }
+
+    public function testQueryRepositoryModuleBindsThrowBodySerializationErrorByDefault(): void
+    {
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
+        $handler = (new Injector($module, __DIR__ . '/tmp'))->getInstance(BodySerializationErrorHandlerInterface::class);
+
+        $this->assertInstanceOf(ThrowBodySerializationError::class, $handler);
+    }
+
+    public function testProdQueryRepositoryModuleBindsSkipBodySerializationError(): void
+    {
+        $handler = (new Injector(new ProdQueryRepositoryModule()))->getInstance(BodySerializationErrorHandlerInterface::class);
+
+        $this->assertInstanceOf(SkipBodySerializationError::class, $handler);
+    }
+
+    public function testDefaultBindingThrowsBodySerializationFailureWithUriAndOriginalMessage(): void
+    {
+        $resource = $this->resourceFor(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+
+        try {
+            $resource->get(self::URI);
+            $this->fail('expected BodySerializationFailure');
+        } catch (BodySerializationFailure $e) {
+            $this->assertStringContainsString(self::URI, $e->getMessage());
+            $this->assertStringContainsString('Closure', $e->getMessage(), "serialize()'s own message names the failing class");
+            $previous = $e->getPrevious();
+            $this->assertNotNull($previous);
+            $this->assertSame('Exception', $previous::class, 'the exact built-in class serialize() throws, not a subclass');
+        }
+    }
+
+    public function testMobileEtagSetterRoutesTheSameFailureThroughTheHandler(): void
+    {
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
+        $module->override(new MobileEtagModule());
+        $resource = $this->resourceFor($module);
+
+        $this->expectException(BodySerializationFailure::class);
+        $resource->get(self::URI);
+    }
+
+    public function testSkipBindingServesTheResponseUncachedWithPutSkippedLogged(): void
+    {
+        $logger = new RecordingSemanticLogger();
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
+        $module->override(new class ($logger) extends AbstractModule {
+            public function __construct(private readonly SemanticLoggerInterface $logger)
+            {
+            }
+
+            #[Override]
+            protected function configure(): void
+            {
+                $this->bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)->toInstance($this->logger);
+                $this->bind(BodySerializationErrorHandlerInterface::class)->to(SkipBodySerializationError::class);
+            }
+        });
+        $resource = $this->resourceFor($module);
+
+        $ro = $resource->get(self::URI);
+
+        $this->assertSame(200, $ro->code);
+        $this->assertArrayNotHasKey(Header::ETAG, $ro->headers);
+        $this->assertArrayNotHasKey(Header::SURROGATE_KEY, $ro->headers);
+        $this->assertArrayNotHasKey(Header::CDN_CACHE_CONTROL, $ro->headers);
+
+        $cacheControl = $ro->headers[Header::CACHE_CONTROL];
+        $this->assertStringNotContainsString('s-maxage', $cacheControl);
+        $this->assertStringNotContainsString('public', $cacheControl);
+        $this->assertStringContainsString('private', $cacheControl);
+        // HttpCacheInterceptor writes #[HttpCache(maxAge: 60, sMaxAge: 600)] into Cache-Control
+        // from inside the proceed() that CacheInterceptor's own repository->put() call (and so
+        // HeaderSetter) follows - keeping max-age here proves the rewrite above runs after that
+        // write and is the last word on the header, not an untouched attribute default.
+        $this->assertStringContainsString('max-age=60', $cacheControl);
+
+        $putSkipped = array_values(array_filter($logger->events, static fn ($event): bool => $event instanceof PutSkippedContext));
+        $this->assertCount(1, $putSkipped);
+        $this->assertSame(self::URI, $putSkipped[0]->uri);
+        $this->assertSame('unserializable', $putSkipped[0]->reason);
+        $this->assertSame('Closure', $putSkipped[0]->class);
+
+        // Not stored server-side: a second GET re-runs onGet() instead of answering a pool hit.
+        $second = $resource->get(self::URI);
+        $this->assertArrayNotHasKey('Age', $second->headers, 'a cache hit would carry Age; onGet() ran again instead');
+    }
+
+    public function testACustomHandlerThatReturnsGetsTheSkipSafetyBehaviourForFree(): void
+    {
+        $reporter = new class implements BodySerializationErrorHandlerInterface {
+            public ResourceObject|null $ro = null;
+            public Throwable|null $e = null;
+
+            #[Override]
+            public function __invoke(ResourceObject $ro, Throwable $e): void
+            {
+                // Stands in for reporting to an external service (Sentry, Datadog, ...): records
+                // the call and returns without throwing, like SkipBodySerializationError.
+                $this->ro = $ro;
+                $this->e = $e;
+            }
+        };
+
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
+        $module->override(new class ($reporter) extends AbstractModule {
+            public function __construct(private readonly BodySerializationErrorHandlerInterface $handler)
+            {
+            }
+
+            #[Override]
+            protected function configure(): void
+            {
+                $this->bind(BodySerializationErrorHandlerInterface::class)->toInstance($this->handler);
+            }
+        });
+        $resource = $this->resourceFor($module);
+
+        $ro = $resource->get(self::URI);
+
+        $this->assertNotNull($reporter->ro);
+        $this->assertSame(self::URI, (string) $reporter->ro->uri, 'the handler receives the ResourceObject');
+        $this->assertNotNull($reporter->e);
+        $this->assertSame('Exception', $reporter->e::class, 'the exact built-in class serialize() throws');
+        $this->assertStringContainsString("Serialization of 'Closure' is not allowed", $reporter->e->getMessage(), 'the handler receives the serialize() exception');
+
+        // The handler itself did none of this - HeaderSetter applies it unconditionally
+        // whenever the handler returns, for every implementation.
+        $this->assertSame(200, $ro->code);
+        $this->assertArrayNotHasKey(Header::ETAG, $ro->headers);
+        $this->assertArrayNotHasKey(Header::SURROGATE_KEY, $ro->headers);
+        $cacheControl = $ro->headers[Header::CACHE_CONTROL];
+        $this->assertStringNotContainsString('s-maxage', $cacheControl);
+        $this->assertStringContainsString('private', $cacheControl);
+    }
+}

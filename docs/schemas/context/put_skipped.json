@@ -2,7 +2,7 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/put_skipped.json",
     "title": "put_skipped",
-    "description": "Event: a miss was not followed by a put. Records the fact that no store happened and why (reason); whether skipping the put is correct is for the reader to judge from the recorded reason and code.",
+    "description": "Event: a miss was not followed by a put. Records the fact that no store happened and why (reason); whether skipping the put is correct is for the reader to judge from the recorded reason, code and class.",
     "type": "object",
     "required": [
         "uri",
@@ -13,15 +13,19 @@
             "type": "string"
         },
         "reason": {
-            "description": "why no store happened: the response already carries an ETag (etag-present), is an error response (error-code), the entry kind is not whole-content cacheable (not-cacheable: a donut page served from its template plus inner caches is never stored as a rendered page), or the response's own Cache-Control already contains no-store or private, outside what #[HttpCache]/#[NoHttpCache] declares (unstorable)",
+            "description": "why no store happened: the response already carries an ETag (etag-present), is an error response (error-code), the entry kind is not whole-content cacheable (not-cacheable: a donut page served from its template plus inner caches is never stored as a rendered page), the response's own Cache-Control already contains no-store or private, outside what #[HttpCache]/#[NoHttpCache] declares (unstorable), or its body held a value serialize() refuses, such as a closure or a PDO connection (unserializable)",
             "type": "string",
-            "enum": ["etag-present", "error-code", "not-cacheable", "unstorable"]
+            "enum": ["etag-present", "error-code", "not-cacheable", "unstorable", "unserializable"]
         },
         "code": {
             "description": "the response status code when reason is error-code; null otherwise",
             "type": ["integer", "null"],
             "minimum": 100,
             "maximum": 599
+        },
+        "class": {
+            "description": "the class serialize() refused, when reason is unserializable; null otherwise",
+            "type": ["string", "null"]
         }
     },
     "additionalProperties": false
