@@ -39,7 +39,7 @@ surrogate key を追加せずに上書きしていた）。失われた子を pu
 しなければならない依存グラフは、目に見える形そのものです。
 
 **コンテキストはどれも 1 つの決定点です。** 語彙 — `cache_hit`、`cache_miss`、
-`depends_on`、5 種の `save_*`、`invalidate`、`purge`、`put_skipped`、
+`depends_on`、`dependency_skipped`、5 種の `save_*`、`invalidate`、`purge`、`put_skipped`、
 `cache_error`、`pre_write_cleanup`、`manual_*` スコープ群 — は冗長さでは
 ありません。このパッケージが持つ境界でキャッシュサブシステムが下す決定の列挙です
 （沈黙させている決定は [what-the-log-proves.ja.md](what-the-log-proves.ja.md) に一覧があります）。save

@@ -20,7 +20,8 @@ use Ray\Di\Scope;
 /**
  * Records every session and writes it where a reader can open it
  *
- * Install in development. Each request leaves one file, so the tree that explains what the
+ * Install in development. Each process leaves one file when it shuts down: one request under PHP-FPM, while a
+ * CLI script that makes several requests writes them all into that one file. The tree that explains what the
  * cache just did is a single command away:
  *
  *   vendor/bin/stree var/log/query-repository/latest.json

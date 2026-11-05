@@ -9,6 +9,7 @@ use BEAR\QueryRepository\Cdn\FastlyCacheControlHeaderSetter;
 use BEAR\QueryRepository\Log\Context\CacheHitContext;
 use BEAR\QueryRepository\Log\Context\CacheMissContext;
 use BEAR\QueryRepository\Log\Context\CdnHeadersContext;
+use BEAR\QueryRepository\Log\Context\DependencySkippedContext;
 use BEAR\QueryRepository\Log\Context\ManualStoreContext;
 use BEAR\QueryRepository\Log\Context\ManualStoreResultContext;
 use BEAR\QueryRepository\Log\Context\PreWriteCleanupContext;
@@ -206,7 +207,8 @@ final readonly class DonutRepository implements DonutRepositoryInterface
      * Register body children the page's onGet() already ran as dependencies, before the template keys read the header
      *
      * A child carrying an ETag or Surrogate-Key already ran during onGet() (a material); a hole has not run yet.
-     * Headers only: running a child here would execute a hole outside its hole scope.
+     * Headers only: running a child here would execute a hole outside its hole scope. A child left out is logged
+     * as `dependency_skipped` with what its body shows: none yet (a hole, or a run that left none), or one without a tag.
      */
     private function classifyMaterials(ResourceObject $ro): void
     {
@@ -218,6 +220,8 @@ final readonly class DonutRepository implements DonutRepositoryInterface
 
             $child = $body->resourceObject;
             if (! isset($child->headers[Header::ETAG]) && ! isset($child->headers[Header::SURROGATE_KEY])) {
+                $this->logger->event(DependencySkippedContext::of($ro, $child));
+
                 continue;
             }
 
