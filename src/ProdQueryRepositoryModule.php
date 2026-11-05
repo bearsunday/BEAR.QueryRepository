@@ -25,8 +25,6 @@ final class ProdQueryRepositoryModule extends AbstractModule
         $this->bind(AdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->toProvider(LocalCacheProvider::class);
         // Boost the performance of symfony/cache
         $this->bind()->annotatedWith(KnownTagTtl::class)->toInstance(0.15);
-        // A body serialize() refuses lets the response out uncached instead of failing the
-        // request; see QueryRepositoryModule for the development policy.
         $this->bind(BodySerializationErrorHandlerInterface::class)->to(SkipBodySerializationError::class);
     }
 }

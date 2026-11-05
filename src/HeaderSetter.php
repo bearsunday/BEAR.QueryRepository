@@ -130,12 +130,7 @@ final readonly class HeaderSetter
         $ro->headers[$existingName] .= ', ' . $setMaxAge;
     }
 
-    /**
-     * Drop s-maxage and public, add private, keep every other directive (including max-age) -
-     * the last word on Cache-Control for a response a shared cache must not keep. Every case
-     * variant of the key present is rewritten to the same merged value, the way
-     * DeclaredCacheControl inspects all of them rather than one canonical name.
-     */
+    /** Drop s-maxage and public, add private and keep the other directives, in every case variant of the header */
     private function makeCacheControlPrivate(ResourceObject $ro): void
     {
         [$names, $directives] = $this->cacheControlDirectives($ro);

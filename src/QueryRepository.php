@@ -97,8 +97,6 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         }
 
         $unserializableClass = ($this->headerSetter)($ro, $ttl, $httpCache);
-        // Before any write: cleanUpBeforeWrite() must see the unserializable skip too, or it
-        // would purge an unserializable response on every request even though nothing is stored.
         $skipReason = self::skipReason($unstorable, $unserializableClass);
         $this->cleanUpBeforeWrite($ro, $skipReason);
 

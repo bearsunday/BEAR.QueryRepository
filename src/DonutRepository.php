@@ -154,8 +154,6 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $unstorable = $this->declaredCacheControl->reason($ro);
         [$surrogateKeys, $unserializableClass] = $this->setHeaders($keys, $ro, $sMaxAge);
         $this->logCdnHeaders($ro);
-        // cleanUpBeforeWrite() must see the unserializable skip too, or it would purge the page
-        // on every request; $unserializableClass is null whenever $unstorable is set.
         $skipReason = $unstorable ?? ($unserializableClass !== null ? 'unserializable' : null);
         $this->cleanUpBeforeWrite($ro, $skipReason);
         if ($skipReason !== null) {
@@ -290,8 +288,6 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $lastModified = $donut->getUnchangedLastModified((string) $ro->view);
         $unserializableClass = ($this->headerSetter)($ro, $donut->ttl, null, $lastModified);
         if ($unserializableClass !== null) {
-            // headerSetter already stripped the CDN-facing headers and rewrote Cache-Control;
-            // setCdnCacheControl() must not run after that, or it would re-add what was stripped.
             $this->logCdnHeaders($ro);
             $this->logger->event(new PutSkippedContext((string) $ro->uri, 'unserializable', null, $unserializableClass));
 
