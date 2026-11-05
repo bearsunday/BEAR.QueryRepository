@@ -481,11 +481,10 @@ echo sprintf(
 
 $report($logger->flush(), 'K. unstorable response');
 
-// -------------------------------------------- L. unserializable body (issue #259)
+// -------------------------------------------- L. unserializable body
 // A #[Cacheable] resource whose body holds a value serialize() refuses (a closure here;
 // a PDO connection or an HTTP client in production) is routed through
-// BodySerializationErrorHandlerInterface instead of failing every request from
-// EtagSetter (1.17+) or being dropped silently (1.16 and earlier).
+// BodySerializationErrorHandlerInterface by EtagSetter.
 $injector = $newInjector(null, twig: true);
 $resource = $injector->getInstance(ResourceInterface::class);
 $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);

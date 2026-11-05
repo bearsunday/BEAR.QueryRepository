@@ -125,4 +125,15 @@ class HeaderSetterTest extends TestCase
             $this->assertSame($ro->headers[$first], $ro->headers[$second], 'both case variants end up with the same rewritten value');
         }
     }
+
+    public function testMakeCacheControlPrivateKeepsAnExtensionDirectiveThatOnlyStartsWithSMaxage(): void
+    {
+        $ro = new None();
+        $ro->headers[Header::CACHE_CONTROL] = 'public, s-maxage-tenant=600, s-maxage=600, max-age=60';
+        $ro->body = ['handler' => static fn () => null];
+
+        ($this->headerSetterWithSkip())($ro, null, null);
+
+        $this->assertSame('s-maxage-tenant=600, max-age=60, private', $ro->headers[Header::CACHE_CONTROL]);
+    }
 }

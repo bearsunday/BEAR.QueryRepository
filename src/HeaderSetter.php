@@ -179,7 +179,7 @@ final readonly class HeaderSetter
         $kept = [];
         foreach ($directives as $directive) {
             $lower = strtolower($directive);
-            if ($lower === '' || $lower === 'public' || str_starts_with($lower, 's-maxage')) {
+            if ($lower === '' || $lower === 'public' || $lower === 's-maxage' || str_starts_with($lower, 's-maxage=')) {
                 continue;
             }
 
