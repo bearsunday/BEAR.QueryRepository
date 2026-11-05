@@ -324,6 +324,34 @@ class QueryRepositoryTest extends TestCase
         $this->assertSame([], $purger->tags);
     }
 
+    public function testRepeatedUnserializableGetDoesNotPurge(): void
+    {
+        // Skip's own pre-write cleanup must see the unserializable skip the same way it
+        // already sees `unstorable`, or a body serialize() refuses would purge on every
+        // request even though nothing was ever stored for it (#259 follow-up).
+        $purger = new FakeCountingPurger();
+        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module->override(new class ($purger) extends AbstractModule {
+            public function __construct(private readonly PurgerInterface $purger)
+            {
+            }
+
+            #[Override]
+            protected function configure(): void
+            {
+                $this->bind(PurgerInterface::class)->toInstance($this->purger);
+                $this->bind(BodySerializationErrorHandlerInterface::class)->to(SkipBodySerializationError::class);
+            }
+        });
+        $resource = (new Injector($module, __DIR__ . '/tmp'))->getInstance(ResourceInterface::class);
+
+        for ($i = 0; $i < 5; $i++) {
+            $resource->get('app://self/unserializable-value');
+        }
+
+        $this->assertSame([], $purger->tags);
+    }
+
     public function testUnstorablePutStillDropsAnEarlierEntry(): void
     {
         $purger = new FakeCountingPurger();

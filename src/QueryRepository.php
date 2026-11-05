@@ -76,9 +76,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
 
     private function doPut(ResourceObject $ro): bool
     {
-        // Before headerSetter mutates the header
         $unstorable = $this->declaredCacheControl->reason($ro);
-        $this->cleanUpBeforeWrite($ro, $unstorable);
         if ($ro->code === 200) {
             $this->setCacheDependency($ro);
         }
@@ -99,15 +97,13 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         }
 
         $unserializableClass = ($this->headerSetter)($ro, $ttl, $httpCache);
+        // Before any write: cleanUpBeforeWrite() must see the unserializable skip too, or it
+        // would purge an unserializable response on every request even though nothing is stored.
+        $skipReason = self::skipReason($unstorable, $unserializableClass);
+        $this->cleanUpBeforeWrite($ro, $skipReason);
 
-        if ($unserializableClass !== null) {
-            $this->logger->event(new PutSkippedContext((string) $ro->uri, 'unserializable', null, $unserializableClass));
-
-            return false;
-        }
-
-        if ($unstorable !== null) {
-            $this->logger->event(new PutSkippedContext((string) $ro->uri, $unstorable));
+        if ($skipReason !== null) {
+            $this->logger->event(new PutSkippedContext((string) $ro->uri, $skipReason, null, $skipReason === 'unserializable' ? $unserializableClass : null));
 
             return false;
         }
@@ -128,9 +124,25 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         return $this->storage->saveValue($ro, $ttl);
     }
 
-    private function cleanUpBeforeWrite(ResourceObject $ro, string|null $unstorable): void
+    /**
+     * Either reason the write about to run must not happen, favoring the declared one.
+     *
+     * @param 'unstorable'|null $unstorable
+     *
+     * @return 'unstorable'|'unserializable'|null
+     */
+    private static function skipReason(string|null $unstorable, string|null $unserializableClass): string|null
     {
-        if ($unstorable !== null && $this->storage->get($ro->uri) === null) {
+        if ($unstorable !== null) {
+            return $unstorable;
+        }
+
+        return $unserializableClass !== null ? 'unserializable' : null;
+    }
+
+    private function cleanUpBeforeWrite(ResourceObject $ro, string|null $skipReason): void
+    {
+        if ($skipReason !== null && $this->storage->get($ro->uri) === null) {
             return;
         }
 

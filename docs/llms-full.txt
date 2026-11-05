@@ -140,6 +140,10 @@ new FastlyModule($apiKey, $serviceId);
 new AkamaiModule($host, $clientToken, $clientSecret, $accessToken);
 ```
 
+### BodySerializationErrorHandlerInterface
+
+`QueryRepositoryModule` binds the default `ThrowBodySerializationError`, which fails the request when a `#[Cacheable]` body holds a value `serialize()` refuses. `ProdQueryRepositoryModule` binds `SkipBodySerializationError` instead, which lets the response go out uncached (`put_skipped{reason: unserializable}`) rather than fail. An application rebinds `BodySerializationErrorHandlerInterface` to its own implementation (report to Sentry and return, say) to get the same uncached-response safety net with its own side effect.
+
 ## Cache Dependencies
 
 A child taken in with `#[Embed]` becomes a dependency of its parent when the child carries an ETag or a `Surrogate-Key`, which a cache attribute on the child gives it: invalidating the child then invalidates the parent. A `#[Cacheable]` parent and a donut page apply the same test. A child carrying neither header adds no dependency, so purging its URI leaves the parent as stored. A value fetched eagerly in `onGet()` (`$this->resource->get(...)`) is not an embedded request and is not tracked.

@@ -7,6 +7,9 @@ namespace BEAR\QueryRepository;
 use BEAR\QueryRepository\Exception\BodySerializationFailure;
 use BEAR\QueryRepository\Log\Context\PutSkippedContext;
 use BEAR\RepositoryModule\Annotation\CacheLog;
+use BEAR\RepositoryModule\Annotation\EtagPool;
+use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
+use BEAR\Resource\Module\ResourceModule;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
@@ -15,17 +18,20 @@ use Override;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
+use RuntimeException;
+use Symfony\Component\Cache\Adapter\AdapterInterface;
+use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Throwable;
 
 use function array_filter;
 use function array_values;
 use function dirname;
+use function restore_error_handler;
+use function set_error_handler;
 
-/**
- * Owner-approved coverage for issue #259: a #[Cacheable] body serialize() refuses is routed
- * through BodySerializationErrorHandlerInterface rather than failing every request (1.17+) or
- * being dropped silently (1.16 and earlier).
- */
+use const E_USER_WARNING;
+
+/** Coverage for a #[Cacheable] body serialize() refuses, routed through BodySerializationErrorHandlerInterface. */
 class BodySerializationErrorTest extends TestCase
 {
     private const URI = 'app://self/unserializable-value';
@@ -35,19 +41,54 @@ class BodySerializationErrorTest extends TestCase
         return (new Injector($module, __DIR__ . '/tmp'))->getInstance(ResourceInterface::class);
     }
 
-    public function testQueryRepositoryModuleBindsThrowBodySerializationErrorByDefault(): void
+    /** A production-shaped module: Skip bound, so a misclassified failure would be swallowed. */
+    private function moduleWithSkip(): AbstractModule
     {
         $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
-        $handler = (new Injector($module, __DIR__ . '/tmp'))->getInstance(BodySerializationErrorHandlerInterface::class);
+        $module->override(new class extends AbstractModule {
+            #[Override]
+            protected function configure(): void
+            {
+                $this->bind(BodySerializationErrorHandlerInterface::class)->to(SkipBodySerializationError::class);
+            }
+        });
 
-        $this->assertInstanceOf(ThrowBodySerializationError::class, $handler);
+        return $module;
     }
 
-    public function testProdQueryRepositoryModuleBindsSkipBodySerializationError(): void
+    public function testProductionModuleCompositionAnswersAnUnserializableBodyUncachedWithPutSkipped(): void
     {
-        $handler = (new Injector(new ProdQueryRepositoryModule()))->getInstance(BodySerializationErrorHandlerInterface::class);
+        // Through the real module composition an application installs - QueryRepositoryModule
+        // wrapped by ProdQueryRepositoryModule, which binds SkipBodySerializationError over the
+        // Throw default - not a toInstance() override of the interface alone.
+        $logger = new RecordingSemanticLogger();
+        $namespace = 'FakeVendor\HelloWorld';
+        $module = new ProdQueryRepositoryModule(new QueryRepositoryModule(new ResourceModule($namespace)));
+        $module->override(new class ($logger) extends AbstractModule {
+            public function __construct(private readonly SemanticLoggerInterface $logger)
+            {
+            }
 
-        $this->assertInstanceOf(SkipBodySerializationError::class, $handler);
+            #[Override]
+            protected function configure(): void
+            {
+                // Swap the production pools (APCu/file-backed) and logger for fast, inspectable
+                // test doubles; BodySerializationErrorHandlerInterface is left to the real modules.
+                $this->bind(AdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->to(ArrayAdapter::class);
+                $this->bind(AdapterInterface::class)->annotatedWith(EtagPool::class)->to(ArrayAdapter::class);
+                $this->bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)->toInstance($this->logger);
+            }
+        });
+        $resource = $this->resourceFor($module);
+
+        $ro = $resource->get(self::URI);
+
+        $this->assertSame(200, $ro->code);
+        $this->assertArrayNotHasKey(Header::ETAG, $ro->headers);
+
+        $putSkipped = array_values(array_filter($logger->events, static fn ($event): bool => $event instanceof PutSkippedContext));
+        $this->assertCount(1, $putSkipped);
+        $this->assertSame('unserializable', $putSkipped[0]->reason);
     }
 
     public function testDefaultBindingThrowsBodySerializationFailureWithUriAndOriginalMessage(): void
@@ -212,5 +253,76 @@ class BodySerializationErrorTest extends TestCase
         $cacheControl = $ro->headers[Header::CACHE_CONTROL];
         $this->assertStringNotContainsString('s-maxage', $cacheControl);
         $this->assertStringContainsString('private', $cacheControl);
+    }
+
+    public function testSerializeThrowingAPlainExceptionPropagatesEvenUnderSkip(): void
+    {
+        // __serialize() throwing the exact same built-in Exception class serialize() itself
+        // raises for a refusal must not be misread as one: only the "Serialization of 'X' is
+        // not allowed" wording identifies the real refusal.
+        $resource = $this->resourceFor($this->moduleWithSkip());
+
+        try {
+            $resource->get('app://self/serialize-throws-plain-exception');
+            $this->fail("expected the object's __serialize() exception to propagate");
+        } catch (Throwable $e) {
+            $this->assertSame('Exception', $e::class);
+            $this->assertSame('__serialize failure, not a serialization refusal', $e->getMessage());
+        }
+    }
+
+    public function testSleepThrowingAPlainExceptionPropagatesEvenUnderSkip(): void
+    {
+        $resource = $this->resourceFor($this->moduleWithSkip());
+
+        try {
+            $resource->get('app://self/sleep-throws-plain-exception');
+            $this->fail("expected the object's __sleep() exception to propagate");
+        } catch (Throwable $e) {
+            $this->assertSame('Exception', $e::class);
+            $this->assertSame('__sleep failure, not a serialization refusal', $e->getMessage());
+        }
+    }
+
+    public function testSerializeThrowingASubclassPropagatesEvenUnderSkip(): void
+    {
+        $resource = $this->resourceFor($this->moduleWithSkip());
+
+        try {
+            $resource->get('app://self/serialize-throws-runtime-exception');
+            $this->fail("expected the object's RuntimeException to propagate");
+        } catch (Throwable $e) {
+            $this->assertSame(RuntimeException::class, $e::class);
+        }
+    }
+
+    public function testAGrandchildOnGetPlainExceptionPropagatesEvenUnderSkip(): void
+    {
+        // The grandchild is a lazy, un-run Request nested inside the child's body. Its first
+        // run, forced by setCacheDependency() stringifying the child, is swallowed by
+        // ResourceObject::__toString()'s own safety net (trigger_error, returns ''), so
+        // evaluateBody() runs it again inside EtagSetter's call; that second throw is the one
+        // that must reach HeaderSetter without being mistaken for a refusal.
+        $resource = $this->resourceFor($this->moduleWithSkip());
+
+        $warnings = [];
+        set_error_handler(static function (int $errno, string $message) use (&$warnings): bool {
+            $warnings[] = $message;
+
+            return true;
+        }, E_USER_WARNING);
+
+        try {
+            $resource->get('app://self/plain-exception-parent');
+            $this->fail("expected the grandchild's onGet() exception to propagate");
+        } catch (Throwable $e) {
+            $this->assertSame('Exception', $e::class);
+            $this->assertSame('grand boom', $e->getMessage());
+        } finally {
+            restore_error_handler();
+        }
+
+        $this->assertCount(1, $warnings, "the grandchild's first, swallowed attempt");
+        $this->assertStringContainsString('grand boom', $warnings[0]);
     }
 }

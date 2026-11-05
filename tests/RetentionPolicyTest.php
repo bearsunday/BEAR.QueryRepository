@@ -163,7 +163,7 @@ class RetentionPolicyTest extends TestCase
         // Every skip reason records a store that was never attempted because a rule forbade it:
         // a response code the path will not cache (`#[Cacheable]` skips any non-200, donut 4xx up),
         // a validator already set, a page served from its template. Decisions, not runtime failures.
-        foreach (['error-code', 'not-cacheable', 'etag-present'] as $reason) {
+        foreach (['error-code', 'not-cacheable', 'etag-present', 'unstorable'] as $reason) {
             $open = $this->logger->open(new GetContext('page://self/html/blog-posting'));
             $this->logger->event(new PutSkippedContext('page://self/html/blog-posting', $reason, $reason === 'error-code' ? 400 : null));
             $this->logger->close(new CacheMissContext('view'), $open);

@@ -154,15 +154,12 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $unstorable = $this->declaredCacheControl->reason($ro);
         [$surrogateKeys, $unserializableClass] = $this->setHeaders($keys, $ro, $sMaxAge);
         $this->logCdnHeaders($ro);
-        $this->cleanUpBeforeWrite($ro, $unstorable);
-        if ($unserializableClass !== null) {
-            $this->logger->event(new PutSkippedContext((string) $ro->uri, 'unserializable', null, $unserializableClass));
-
-            return;
-        }
-
-        if ($unstorable !== null) {
-            $this->logger->event(new PutSkippedContext((string) $ro->uri, $unstorable));
+        // cleanUpBeforeWrite() must see the unserializable skip too, or it would purge the page
+        // on every request; $unserializableClass is null whenever $unstorable is set.
+        $skipReason = $unstorable ?? ($unserializableClass !== null ? 'unserializable' : null);
+        $this->cleanUpBeforeWrite($ro, $skipReason);
+        if ($skipReason !== null) {
+            $this->logger->event(new PutSkippedContext((string) $ro->uri, $skipReason, null, $unserializableClass));
 
             return;
         }

@@ -20,6 +20,7 @@ use function sprintf;
 use function str_contains;
 use function str_starts_with;
 use function strtolower;
+use function trim;
 
 /** @internal */
 final readonly class HeaderSetter
@@ -36,6 +37,9 @@ final readonly class HeaderSetter
         Header::SURROGATE_KEY,
         AkamaiCacheControlHeaderSetter::PURGE_KEYS,
     ];
+
+    /** The exact wording serialize() raises for a value it refuses; capture group: the class */
+    private const SERIALIZATION_REFUSAL = "/^Serialization of '(.+)' is not allowed$/";
 
     public function __construct(
         private EtagSetterInterface $etagSetter,
@@ -68,9 +72,9 @@ final readonly class HeaderSetter
         try {
             ($this->etagSetter)($ro, $time, $httpCache);
         } catch (Throwable $e) {
-            // serialize() raises this exact built-in class for a value it refuses; a subclass
-            // (say, from an embedded request) is a different failure and keeps propagating.
-            if ($e::class !== 'Exception') {
+            // Only this exact class with this exact wording is serialize()'s own refusal;
+            // any other Exception (__serialize()/__sleep(), an embedded onGet()) keeps propagating.
+            if ($e::class !== 'Exception' || preg_match(self::SERIALIZATION_REFUSAL, $e->getMessage(), $matches) !== 1) {
                 throw $e;
             }
 
@@ -78,7 +82,7 @@ final readonly class HeaderSetter
             $this->stripHeaders($ro, self::CDN_FACING_HEADERS);
             $this->makeCacheControlPrivate($ro);
 
-            return self::failingClass($e);
+            return $matches[1];
         }
 
         if ($cacheControlMaxAge !== null && $cacheControlMaxAge > 0) {
@@ -128,15 +132,50 @@ final readonly class HeaderSetter
 
     /**
      * Drop s-maxage and public, add private, keep every other directive (including max-age) -
-     * the last word on Cache-Control for a response a shared cache must not keep. Nothing
-     * modifies the header after this call: #[HttpCache] already wrote it, from
-     * HttpCacheInterceptor running inside the proceed() CacheInterceptor calls before this
-     * class runs from QueryRepository::doPut().
+     * the last word on Cache-Control for a response a shared cache must not keep. Every case
+     * variant of the key present is rewritten to the same merged value, the way
+     * DeclaredCacheControl inspects all of them rather than one canonical name.
      */
     private function makeCacheControlPrivate(ResourceObject $ro): void
     {
-        $existingName = Header::findKey($ro->headers, Header::CACHE_CONTROL);
-        $directives = $existingName === null ? [] : array_map('trim', explode(',', $ro->headers[$existingName]));
+        [$names, $directives] = $this->cacheControlDirectives($ro);
+        $value = implode(', ', $this->withoutSharedCacheDirectives($directives));
+        foreach ($names === [] ? [Header::CACHE_CONTROL] : $names as $name) {
+            $ro->headers[$name] = $value;
+        }
+    }
+
+    /**
+     * Every Cache-Control key present, case variant by case variant, and every directive
+     * across all of them
+     *
+     * @return array{0: list<string>, 1: list<string>}
+     */
+    private function cacheControlDirectives(ResourceObject $ro): array
+    {
+        $names = [];
+        $directives = [];
+        foreach (array_keys($ro->headers) as $name) {
+            if (strtolower($name) !== strtolower(Header::CACHE_CONTROL)) {
+                continue;
+            }
+
+            $names[] = $name;
+            foreach (explode(',', $ro->headers[$name]) as $directive) {
+                $directives[] = trim($directive);
+            }
+        }
+
+        return [$names, $directives];
+    }
+
+    /**
+     * @param list<string> $directives
+     *
+     * @return list<string>
+     */
+    private function withoutSharedCacheDirectives(array $directives): array
+    {
         $kept = [];
         foreach ($directives as $directive) {
             $lower = strtolower($directive);
@@ -151,14 +190,6 @@ final readonly class HeaderSetter
             $kept[] = 'private';
         }
 
-        $ro->headers[$existingName ?? Header::CACHE_CONTROL] = implode(', ', $kept);
-    }
-
-    /** The class named in serialize()'s "Serialization of 'X' is not allowed" */
-    private static function failingClass(Throwable $e): string
-    {
-        return preg_match("/^Serialization of '(.+)' is not allowed$/", $e->getMessage(), $matches) === 1
-            ? $matches[1]
-            : $e::class;
+        return $kept;
     }
 }

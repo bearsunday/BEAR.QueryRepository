@@ -9,13 +9,7 @@ use BEAR\Resource\ResourceObject;
 use Override;
 use Throwable;
 
-/**
- * Default BodySerializationErrorHandlerInterface: fails the request
- *
- * Bound by QueryRepositoryModule. A body that cannot be serialized is a programming error
- * meant to be found while developing, where a 500 leads straight to the object that has to
- * become serializable; see SkipBodySerializationError for the production policy.
- */
+/** Default BodySerializationErrorHandlerInterface, bound by QueryRepositoryModule: fails the request. */
 final class ThrowBodySerializationError implements BodySerializationErrorHandlerInterface
 {
     #[Override]
