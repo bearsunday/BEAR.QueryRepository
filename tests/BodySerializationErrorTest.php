@@ -24,10 +24,13 @@ use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Throwable;
 
 use function array_filter;
+use function array_slice;
 use function array_values;
+use function count;
 use function dirname;
 use function restore_error_handler;
 use function set_error_handler;
+use function usleep;
 
 use const E_USER_WARNING;
 
@@ -205,6 +208,48 @@ class BodySerializationErrorTest extends TestCase
         // recomposing from a saved one.
         $second = $resource->get('page://self/html/unserializable-donut');
         $this->assertArrayNotHasKey('Age', $second->headers, 'a cache hit would carry Age; the template was never saved');
+    }
+
+    public function testARefreshUnderMobileEtagAndSkipDoesNotStoreTheRecomposedView(): void
+    {
+        $logger = new RecordingSemanticLogger();
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
+        $module->override(new MobileEtagModule());
+        $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
+        $module->override(new class ($logger) extends AbstractModule {
+            public function __construct(private readonly SemanticLoggerInterface $logger)
+            {
+            }
+
+            #[Override]
+            protected function configure(): void
+            {
+                $this->bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)->toInstance($this->logger);
+                $this->bind(BodySerializationErrorHandlerInterface::class)->to(SkipSerializationError::class);
+            }
+        });
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $donutRepository = $injector->getInstance(DonutRepositoryInterface::class);
+        $uri = 'page://self/html/unserializable-donut';
+
+        $stored = $resource->newInstance($uri);
+        $stored->body = ['name' => 'stored'];
+        $donutRepository->putStatic($stored, 60, 1);
+        usleep(1_100_000); // the view expires, the template stays
+        $eventsBefore = count($logger->events);
+
+        $refreshing = $resource->newInstance($uri);
+        $refreshing->body = ['handler' => static fn () => null];
+        $ro = $donutRepository->get($refreshing);
+
+        $this->assertNotNull($ro);
+        $this->assertArrayNotHasKey(Header::ETAG, $ro->headers);
+        $this->assertArrayNotHasKey(Header::CDN_CACHE_CONTROL, $ro->headers);
+        $putSkipped = array_values(array_filter(array_slice($logger->events, $eventsBefore), static fn ($event): bool => $event instanceof PutSkippedContext));
+        $this->assertCount(1, $putSkipped);
+        $this->assertSame('unserializable', $putSkipped[0]->reason);
+        $this->assertNull($injector->getInstance(QueryRepositoryInterface::class)->get($refreshing->uri), 'the recomposed view is not stored');
     }
 
     public function testACustomHandlerThatReturnsGetsTheSkipSafetyBehaviourForFree(): void
