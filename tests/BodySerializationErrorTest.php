@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\QueryRepository\Exception\BodySerializationFailure;
+use BEAR\QueryRepository\Exception\BodySerializationNotAllowedException;
 use BEAR\QueryRepository\Log\Context\PutSkippedContext;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\RepositoryModule\Annotation\EtagPool;
@@ -94,19 +94,19 @@ class BodySerializationErrorTest extends TestCase
         $this->assertSame('unserializable', $putSkipped[0]->reason);
     }
 
-    public function testDefaultBindingThrowsBodySerializationFailureWithUriAndOriginalMessage(): void
+    public function testDefaultBindingThrowsWithTheUriAndChainsSerializesException(): void
     {
         $resource = $this->resourceFor(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
 
         try {
             $resource->get(self::URI);
-            $this->fail('expected BodySerializationFailure');
-        } catch (BodySerializationFailure $e) {
-            $this->assertStringContainsString(self::URI, $e->getMessage());
-            $this->assertStringContainsString('Closure', $e->getMessage(), "serialize()'s own message names the failing class");
+            $this->fail('expected BodySerializationNotAllowedException');
+        } catch (BodySerializationNotAllowedException $e) {
+            $this->assertSame(self::URI, $e->getMessage());
             $previous = $e->getPrevious();
             $this->assertNotNull($previous);
-            $this->assertSame('Exception', $previous::class, 'the exact built-in class serialize() throws, not a subclass');
+            $this->assertSame('Exception', $previous::class);
+            $this->assertSame("Serialization of 'Closure' is not allowed", $previous->getMessage());
         }
     }
 
@@ -116,7 +116,7 @@ class BodySerializationErrorTest extends TestCase
         $module->override(new MobileEtagModule());
         $resource = $this->resourceFor($module);
 
-        $this->expectException(BodySerializationFailure::class);
+        $this->expectException(BodySerializationNotAllowedException::class);
         $resource->get(self::URI);
     }
 

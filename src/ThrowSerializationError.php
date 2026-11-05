@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\QueryRepository\Exception\BodySerializationFailure;
+use BEAR\QueryRepository\Exception\BodySerializationNotAllowedException;
 use BEAR\Resource\ResourceObject;
 use Override;
 use Throwable;
@@ -15,6 +15,6 @@ final class ThrowSerializationError implements BodySerializationErrorHandlerInte
     #[Override]
     public function __invoke(ResourceObject $ro, Throwable $e): void
     {
-        throw BodySerializationFailure::from($ro, $e);
+        throw new BodySerializationNotAllowedException((string) $ro->uri, 0, $e);
     }
 }

@@ -56,7 +56,7 @@ use BEAR\QueryRepository\FakeEtagPoolModule;
 use BEAR\QueryRepository\FakeRefusingPool;
 use BEAR\QueryRepository\FakeThrowingPurger;
 use BEAR\QueryRepository\BodySerializationErrorHandlerInterface;
-use BEAR\QueryRepository\Exception\BodySerializationFailure;
+use BEAR\QueryRepository\Exception\BodySerializationNotAllowedException;
 use BEAR\QueryRepository\SkipSerializationError;
 use BEAR\QueryRepository\ModuleFactory;
 use BEAR\QueryRepository\PurgerInterface;
@@ -492,7 +492,7 @@ $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class
 try {
     $resource->get('app://self/unserializable-value');
     echo 'L1 (unreachable: the default policy always throws)' . PHP_EOL;
-} catch (BodySerializationFailure $e) {
+} catch (BodySerializationNotAllowedException $e) {
     echo sprintf('L1 GET with the default Throw policy -> request failed: %s', $e->getMessage()) . PHP_EOL;
 }
 
