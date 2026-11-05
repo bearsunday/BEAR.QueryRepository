@@ -64,7 +64,7 @@ final readonly class CliHttpCache implements HttpCacheInterface, UriScopedHttpCa
             $cause = $e->getPrevious() ?? $e;
             $this->logger->event(new CacheErrorContext($this->requestUri($server), 'read', $cause->getMessage(), $cause::class));
             $this->logger->close(new CacheMissContext('etag', round((hrtime(true) - $start) / 1_000_000, 3)), $openId);
-            $this->triggerWarning($cause);
+            $this->triggerWarning($e);
 
             return false;
         }
@@ -104,7 +104,7 @@ final readonly class CliHttpCache implements HttpCacheInterface, UriScopedHttpCa
             $cause = $e->getPrevious() ?? $e;
             $this->logger->event(new CacheErrorContext((string) $uri, 'read', $cause->getMessage(), $cause::class));
             $this->logger->close(new CacheMissContext('etag', round((hrtime(true) - $start) / 1_000_000, 3)), $openId);
-            $this->triggerWarning($cause);
+            $this->triggerWarning($e);
 
             return false;
         }

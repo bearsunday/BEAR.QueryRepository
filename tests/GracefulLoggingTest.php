@@ -114,10 +114,10 @@ class GracefulLoggingTest extends TestCase
         $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
         // The cache pool is down: the read falls back to a live GET with a warning, not an exception.
-        $warningCaught = false;
-        set_error_handler(static function (int $errno) use (&$warningCaught): bool {
+        $warning = null;
+        set_error_handler(static function (int $errno, string $message) use (&$warning): bool {
             if ($errno === E_USER_WARNING) {
-                $warningCaught = true;
+                $warning = $message;
 
                 return true; // swallow the cache-down warning
             }
@@ -130,7 +130,7 @@ class GracefulLoggingTest extends TestCase
             restore_error_handler();
         }
 
-        $this->assertTrue($warningCaught, 'the cache-down fallback warns (E_USER_WARNING) instead of throwing');
+        $this->assertStringStartsWith('RuntimeException: cache server down', (string) $warning, 'the cache-down fallback warns (E_USER_WARNING) instead of throwing, naming the store error');
         $this->assertSame(200, $ro->code);
 
         $tree = $this->flushAndValidate($logger);

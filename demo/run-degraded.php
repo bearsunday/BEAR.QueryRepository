@@ -294,7 +294,7 @@ try {
 } catch (RuntimeException $e) {
     // Fail-closed: local pools are invalidated first and the outcome is logged as
     // cdn=failed, then the exception propagates so the write is not reported as done.
-    echo sprintf('C2 purge propagated the CDN failure: %s', $e->getMessage()) . PHP_EOL;
+    echo sprintf('C2 purge propagated the CDN failure: %s', $e->getPrevious()?->getMessage()) . PHP_EOL;
 }
 
 $report($logger->flush(), 'C2. CDN purge failed (fail-closed)');
