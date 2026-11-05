@@ -97,11 +97,11 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         }
 
         $unserializableClass = ($this->headerSetter)($ro, $ttl, $httpCache);
-        $skipReason = self::skipReason($unstorable, $unserializableClass);
+        $skipReason = $unstorable ?? ($unserializableClass !== null ? 'unserializable' : null);
         $this->cleanUpBeforeWrite($ro, $skipReason);
 
         if ($skipReason !== null) {
-            $this->logger->event(new PutSkippedContext((string) $ro->uri, $skipReason, null, $skipReason === 'unserializable' ? $unserializableClass : null));
+            $this->logger->event(new PutSkippedContext((string) $ro->uri, $skipReason, null, $unserializableClass));
 
             return false;
         }
@@ -120,22 +120,6 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         }
 
         return $this->storage->saveValue($ro, $ttl);
-    }
-
-    /**
-     * Either reason the write about to run must not happen, favoring the declared one.
-     *
-     * @param 'unstorable'|null $unstorable
-     *
-     * @return 'unstorable'|'unserializable'|null
-     */
-    private static function skipReason(string|null $unstorable, string|null $unserializableClass): string|null
-    {
-        if ($unstorable !== null) {
-            return $unstorable;
-        }
-
-        return $unserializableClass !== null ? 'unserializable' : null;
     }
 
     private function cleanUpBeforeWrite(ResourceObject $ro, string|null $skipReason): void
