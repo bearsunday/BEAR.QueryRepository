@@ -20,17 +20,22 @@ use function sprintf;
 /** @internal */
 final readonly class CacheDependency implements CacheDependencyInterface
 {
+    private BaseUriTagInterface $baseUriTag;
+
     public function __construct(
         private UriTagInterface $uriTag,
         #[CacheLog]
         private SemanticLoggerInterface $logger = new NullSemanticLogger(),
+        BaseUriTagInterface|null $baseUriTag = null,
     ) {
+        $this->baseUriTag = $baseUriTag ?? new BaseUriTag($uriTag);
     }
 
     #[Override]
     public function depends(ResourceObject $from, ResourceObject $to): void
     {
-        $childTags = ($this->uriTag)($to->uri);
+        // The group tag too, so a purge of the child's bare URI reaches a parent that embeds one of its variants (#257).
+        $childTags = sprintf('%s %s', ($this->uriTag)($to->uri), ($this->baseUriTag)($to));
         if (isset($to->headers[Header::SURROGATE_KEY])) {
             $childTags .= sprintf(' %s', $to->headers[Header::SURROGATE_KEY]);
         }

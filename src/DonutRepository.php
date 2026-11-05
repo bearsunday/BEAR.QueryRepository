@@ -51,7 +51,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         private DeclaredCacheControl $declaredCacheControl = new DeclaredCacheControl(),
     ) {
         // Same UriTag as templateKeys(), so a material's tag matches the format purge() emits.
-        $this->cacheDependency = $cacheDependency ?? new CacheDependency($this->uriTag, $this->logger);
+        $this->cacheDependency = $cacheDependency ?? new CacheDependency($this->uriTag, $this->logger, $this->baseUriTag);
     }
 
     #[Override]

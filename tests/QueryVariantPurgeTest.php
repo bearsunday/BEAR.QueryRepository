@@ -288,4 +288,59 @@ class QueryVariantPurgeTest extends TestCase
         $this->assertFalse($roPool->hasItem('dependent-on-bare'));
         $this->assertSame($page2, $this->time('app://self/paged-error-on-bare?page=2'));
     }
+
+    /** A parent depends on its child's group, so a bare purge of the child reaches a parent that embeds a variant. */
+    public function testBarePurgeReachesACacheableParentEmbeddingAQueryVariant(): void
+    {
+        $parent = $this->time('page://self/variant-parent');
+        $this->assertSame($parent, $this->time('page://self/variant-parent'), 'precondition: warm cache');
+
+        $this->repository->purge(new Uri('app://self/optional-param?id=1'));
+
+        $this->assertNotSame($parent, $this->time('page://self/variant-parent'));
+    }
+
+    public function testBarePurgeReachesADonutPageReadingAQueryVariant(): void
+    {
+        $page = (string) $this->resource->get('page://self/html/variant-donut-parent');
+        $this->assertSame($page, (string) $this->resource->get('page://self/html/variant-donut-parent'), 'precondition: warm cache');
+
+        $this->repository->purge(new Uri('app://self/optional-param?id=1'));
+
+        $this->assertNotSame($page, (string) $this->resource->get('page://self/html/variant-donut-parent'));
+    }
+
+    public function testWriteToTheChildReachesAParentEmbeddingAnotherQueryVariant(): void
+    {
+        $parent = $this->time('page://self/paged-value-parent');
+        $this->assertSame($parent, $this->time('page://self/paged-value-parent'), 'precondition: warm cache');
+
+        $this->resource->put('app://self/paged-value', ['page' => 1]);
+
+        $this->assertNotSame($parent, $this->time('page://self/paged-value-parent'));
+    }
+
+    /** A purge URI that spells a default value is not coarsened: it reaches that entry only. */
+    public function testPurgeSpellingADefaultValueReachesThatVariantOnly(): void
+    {
+        $page1 = $this->time('app://self/optional-param?id=1&page=1');
+        $page2 = $this->time('app://self/optional-param?id=1&page=2');
+
+        $this->repository->purge(new Uri('app://self/optional-param?id=1&page=1'));
+
+        $this->assertNotSame($page1, $this->time('app://self/optional-param?id=1&page=1'));
+        $this->assertSame($page2, $this->time('app://self/optional-param?id=1&page=2'));
+    }
+
+    /** BEAR.Resource binds `?user_id=` to `$userId`; the group keeps the required key as the request spelled it. */
+    public function testBarePurgeWithSnakeCaseKeysReachesThatUsersVariantsOnly(): void
+    {
+        $user1 = $this->time('app://self/snake-query-param?user_id=1&page=2');
+        $user2 = $this->time('app://self/snake-query-param?user_id=2&page=2');
+
+        $this->repository->purge(new Uri('app://self/snake-query-param?user_id=1'));
+
+        $this->assertNotSame($user1, $this->time('app://self/snake-query-param?user_id=1&page=2'));
+        $this->assertSame($user2, $this->time('app://self/snake-query-param?user_id=2&page=2'));
+    }
 }
