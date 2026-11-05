@@ -175,7 +175,7 @@ class RetentionPolicyTest extends TestCase
     public function testUnserializablePutSkippedIsKeptAsAnIncident(): void
     {
         // Unlike the other skip reasons, `unserializable` is not a rule the code enforces on
-        // purpose - the body held a value serialize() refused, a defect SkipBodySerializationError
+        // purpose - the body held a value serialize() refused, a defect SkipSerializationError
         // means to make visible in production. Dropping it the same way as the others would
         // silently defeat that purpose.
         $open = $this->logger->open(new GetContext('app://self/unserializable-value'));

@@ -57,7 +57,7 @@ use BEAR\QueryRepository\FakeRefusingPool;
 use BEAR\QueryRepository\FakeThrowingPurger;
 use BEAR\QueryRepository\BodySerializationErrorHandlerInterface;
 use BEAR\QueryRepository\Exception\BodySerializationFailure;
-use BEAR\QueryRepository\SkipBodySerializationError;
+use BEAR\QueryRepository\SkipSerializationError;
 use BEAR\QueryRepository\ModuleFactory;
 use BEAR\QueryRepository\PurgerInterface;
 use BEAR\QueryRepository\QueryRepositoryInterface;
@@ -501,7 +501,7 @@ $report($logger->flush(), 'L1. unserializable body, default Throw policy');
 $injector = $newInjector(new class extends AbstractModule {
     protected function configure(): void
     {
-        $this->bind(BodySerializationErrorHandlerInterface::class)->to(SkipBodySerializationError::class);
+        $this->bind(BodySerializationErrorHandlerInterface::class)->to(SkipSerializationError::class);
     }
 }, twig: true);
 $resource = $injector->getInstance(ResourceInterface::class);

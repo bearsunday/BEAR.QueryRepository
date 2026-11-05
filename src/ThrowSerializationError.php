@@ -10,7 +10,7 @@ use Override;
 use Throwable;
 
 /** Default BodySerializationErrorHandlerInterface, bound by QueryRepositoryModule: fails the request. */
-final class ThrowBodySerializationError implements BodySerializationErrorHandlerInterface
+final class ThrowSerializationError implements BodySerializationErrorHandlerInterface
 {
     #[Override]
     public function __invoke(ResourceObject $ro, Throwable $e): void

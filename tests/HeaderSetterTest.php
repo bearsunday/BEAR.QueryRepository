@@ -17,7 +17,7 @@ class HeaderSetterTest extends TestCase
 
     private function headerSetterWithSkip(): HeaderSetter
     {
-        return new HeaderSetter(new EtagSetter(), bodySerializationErrorHandler: new SkipBodySerializationError());
+        return new HeaderSetter(new EtagSetter(), bodySerializationErrorHandler: new SkipSerializationError());
     }
 
     public function testStripHeadersMatchesALowercaseCdnCacheControlHeaderName(): void

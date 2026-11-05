@@ -49,7 +49,7 @@ class BodySerializationErrorTest extends TestCase
             #[Override]
             protected function configure(): void
             {
-                $this->bind(BodySerializationErrorHandlerInterface::class)->to(SkipBodySerializationError::class);
+                $this->bind(BodySerializationErrorHandlerInterface::class)->to(SkipSerializationError::class);
             }
         });
 
@@ -59,7 +59,7 @@ class BodySerializationErrorTest extends TestCase
     public function testProductionModuleCompositionAnswersAnUnserializableBodyUncachedWithPutSkipped(): void
     {
         // Through the real module composition an application installs - QueryRepositoryModule
-        // wrapped by ProdQueryRepositoryModule, which binds SkipBodySerializationError over the
+        // wrapped by ProdQueryRepositoryModule, which binds SkipSerializationError over the
         // Throw default - not a toInstance() override of the interface alone.
         $logger = new RecordingSemanticLogger();
         $namespace = 'FakeVendor\HelloWorld';
@@ -130,7 +130,7 @@ class BodySerializationErrorTest extends TestCase
             protected function configure(): void
             {
                 $this->bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)->toInstance($this->logger);
-                $this->bind(BodySerializationErrorHandlerInterface::class)->to(SkipBodySerializationError::class);
+                $this->bind(BodySerializationErrorHandlerInterface::class)->to(SkipSerializationError::class);
             }
         });
         $resource = $this->resourceFor($module);
@@ -185,7 +185,7 @@ class BodySerializationErrorTest extends TestCase
             protected function configure(): void
             {
                 $this->bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)->toInstance($this->logger);
-                $this->bind(BodySerializationErrorHandlerInterface::class)->to(SkipBodySerializationError::class);
+                $this->bind(BodySerializationErrorHandlerInterface::class)->to(SkipSerializationError::class);
             }
         });
         $resource = $this->resourceFor($module);
@@ -217,7 +217,7 @@ class BodySerializationErrorTest extends TestCase
             public function __invoke(ResourceObject $ro, Throwable $e): void
             {
                 // Stands in for reporting to an external service (Sentry, Datadog, ...): records
-                // the call and returns without throwing, like SkipBodySerializationError.
+                // the call and returns without throwing, like SkipSerializationError.
                 $this->ro = $ro;
                 $this->e = $e;
             }

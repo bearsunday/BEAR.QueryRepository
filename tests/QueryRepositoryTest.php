@@ -340,7 +340,7 @@ class QueryRepositoryTest extends TestCase
             protected function configure(): void
             {
                 $this->bind(PurgerInterface::class)->toInstance($this->purger);
-                $this->bind(BodySerializationErrorHandlerInterface::class)->to(SkipBodySerializationError::class);
+                $this->bind(BodySerializationErrorHandlerInterface::class)->to(SkipSerializationError::class);
             }
         });
         $resource = (new Injector($module, __DIR__ . '/tmp'))->getInstance(ResourceInterface::class);

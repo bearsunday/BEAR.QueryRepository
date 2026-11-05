@@ -10,7 +10,7 @@ use Throwable;
 use function sprintf;
 
 /**
- * A put-time body serialize() refusal, thrown by ThrowBodySerializationError
+ * A put-time body serialize() refusal, thrown by ThrowSerializationError
  *
  * Not a CacheStoreFailure, which CacheInterceptor degrades to a warning.
  */

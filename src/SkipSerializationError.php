@@ -9,7 +9,7 @@ use Override;
 use Throwable;
 
 /** Production BodySerializationErrorHandlerInterface, bound by ProdQueryRepositoryModule: lets the response go out uncached. */
-final class SkipBodySerializationError implements BodySerializationErrorHandlerInterface
+final class SkipSerializationError implements BodySerializationErrorHandlerInterface
 {
     #[Override]
     public function __invoke(ResourceObject $ro, Throwable $e): void

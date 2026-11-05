@@ -44,7 +44,7 @@ final readonly class HeaderSetter
     public function __construct(
         private EtagSetterInterface $etagSetter,
         private DeclaredCacheControl $declaredCacheControl = new DeclaredCacheControl(),
-        private BodySerializationErrorHandlerInterface $bodySerializationErrorHandler = new ThrowBodySerializationError(),
+        private BodySerializationErrorHandlerInterface $bodySerializationErrorHandler = new ThrowSerializationError(),
     ) {
     }
 
