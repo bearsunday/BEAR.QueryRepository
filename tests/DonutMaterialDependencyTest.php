@@ -338,6 +338,30 @@ class DonutMaterialDependencyTest extends TestCase
         $this->assertStringContainsString('customtag_page___self_html_comment', $result->headers[Header::SURROGATE_KEY] ?? '', "the default CacheDependency must tag the child with THIS repository's own UriTag, not a bare new UriTag()");
     }
 
+    /** The hole's group tag reaches the view, so a purge of the hole's bare URI recomposes the page. */
+    public function testBarePurgeReachesAPageRenderingAQueryVariantAsAHole(): void
+    {
+        $page = (string) $this->resource->get('page://self/html/variant-hole-parent');
+        $this->assertSame($page, (string) $this->resource->get('page://self/html/variant-hole-parent'), 'precondition: warm cache');
+
+        $this->queryRepository->purge(new Uri('app://self/optional-param?id=1'));
+
+        $this->assertNotSame($page, (string) $this->resource->get('page://self/html/variant-hole-parent'));
+    }
+
+    /** A recomposed page keeps its hole's tags, as the first write does, so the hole can be purged again. */
+    public function testPurgeOfAHoleReachesThePageAgainAfterItWasRecomposed(): void
+    {
+        $first = (string) $this->resource->get('page://self/html/variant-hole-parent');
+        $this->queryRepository->purge(new Uri('app://self/optional-param?id=1&page=2'));
+        $recomposed = (string) $this->resource->get('page://self/html/variant-hole-parent');
+        $this->assertNotSame($first, $recomposed, 'precondition: the first purge recomposes the page');
+
+        $this->queryRepository->purge(new Uri('app://self/optional-param?id=1&page=2'));
+
+        $this->assertNotSame($recomposed, (string) $this->resource->get('page://self/html/variant-hole-parent'));
+    }
+
     /**
      * @param array<string, mixed> $tree
      *

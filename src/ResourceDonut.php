@@ -10,7 +10,6 @@ use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use Throwable;
 
-use function array_key_exists;
 use function array_unique;
 use function assert;
 use function explode;
@@ -93,9 +92,7 @@ final class ResourceDonut
                 throw CacheStoreFailure::from($e);
             }
 
-            if (array_key_exists(Header::SURROGATE_KEY, $ro->headers)) {
-                $etags->addTag($ro);
-            }
+            $etags->addTag($ro);
 
             return (string) $ro->view;
         }, $this->template);

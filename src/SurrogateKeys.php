@@ -18,19 +18,22 @@ final class SurrogateKeys
     /** @var list<string> */
     private array $surrogateKeys;
     private readonly UriTagInterface $uriTag;
+    private readonly BaseUriTagInterface $baseUriTag;
 
     public function __construct(AbstractUri $uri, string|null $baseTag = null)
     {
         $this->uriTag = new UriTag();
+        $this->baseUriTag = new BaseUriTag($this->uriTag);
         $this->surrogateKeys = $baseTag === null ? [($this->uriTag)($uri)] : [($this->uriTag)($uri), $baseTag];
     }
 
     /**
-     * Add etag of embedded resource
+     * Add the tags of an embedded resource, including its group tag so that a purge of its bare URI reaches the page
      */
     public function addTag(ResourceObject $ro): void
     {
         $this->surrogateKeys[] = ($this->uriTag)($ro->uri);
+        $this->surrogateKeys[] = ($this->baseUriTag)($ro);
         if (array_key_exists(Header::SURROGATE_KEY, $ro->headers)) {
             $this->surrogateKeys = array_merge($this->surrogateKeys, explode(' ', $ro->headers[Header::SURROGATE_KEY]));
         }
