@@ -16,6 +16,7 @@ use ReflectionProperty;
 use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 
 use function assert;
+use function explode;
 use function is_array;
 use function is_float;
 use function is_string;
@@ -263,7 +264,7 @@ class QueryVariantPurgeTest extends TestCase
     {
         $ro = $this->resource->get('page://self/html/blog-posting-donut?id=5');
 
-        $this->assertStringContainsString('grp-_html_blog-posting-donut_', $ro->headers['Surrogate-Key']);
+        $this->assertContains('grp-_html_blog-posting-donut_', explode(' ', $ro->headers['Surrogate-Key']));
     }
 
     /** An error response invalidates its own URI's tag (e.g. a parent embedding it) but not the group tag. */
