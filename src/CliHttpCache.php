@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\QueryRepository\Exception\CacheStoreFailure;
+use BEAR\QueryRepository\Exception\CacheStoreException;
 use BEAR\QueryRepository\Log\Context\CacheErrorContext;
 use BEAR\QueryRepository\Log\Context\CacheHitContext;
 use BEAR\QueryRepository\Log\Context\CacheMissContext;
@@ -58,7 +58,7 @@ final readonly class CliHttpCache implements HttpCacheInterface, UriScopedHttpCa
         $start = hrtime(true);
         try {
             $hit = $this->storage->hasEtag($etag);
-        } catch (CacheStoreFailure $e) {
+        } catch (CacheStoreException $e) {
             // An unreadable validator does not match: serve the request in full rather than
             // fail it.
             $cause = $e->getPrevious() ?? $e;
@@ -99,7 +99,7 @@ final readonly class CliHttpCache implements HttpCacheInterface, UriScopedHttpCa
         $start = hrtime(true);
         try {
             $hit = $this->storage->hasEtagFor($ifNoneMatch, $uri);
-        } catch (CacheStoreFailure $e) {
+        } catch (CacheStoreException $e) {
             // The same decision as the unscoped answer, against the URI that was asked for.
             $cause = $e->getPrevious() ?? $e;
             $this->logger->event(new CacheErrorContext((string) $uri, 'read', $cause->getMessage(), $cause::class));

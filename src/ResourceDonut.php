@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\QueryRepository\Exception\CacheStoreFailure;
+use BEAR\QueryRepository\Exception\CacheStoreException;
 use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
@@ -89,7 +89,7 @@ final class ResourceDonut
             } catch (Throwable $e) {
                 // toString() lets a render failure travel uncaught; wrapped here so a HIT's
                 // re-fetch degrades to a fresh render instead of surfacing a broken response.
-                throw CacheStoreFailure::from($e);
+                throw CacheStoreException::from($e);
             }
 
             $etags->addTag($ro);

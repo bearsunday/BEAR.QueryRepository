@@ -426,7 +426,7 @@ class GracefulLoggingTest extends TestCase
 
     /**
      * HIT refresh, transient hole failure: `ResourceDonut::refresh()`'s own re-fetch hits a
-     * hole that fails once, degrades (the reviewed-and-kept CacheStoreFailure conversion),
+     * hole that fails once, degrades (the reviewed-and-kept CacheStoreException conversion),
      * and falls back to a full fresh render - which succeeds because the failure already
      * consumed itself. The response must be the fresh render's FULL body, not empty/partial.
      */

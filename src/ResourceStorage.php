@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\QueryRepository\Exception\CacheStoreFailure;
+use BEAR\QueryRepository\Exception\CacheStoreException;
 use BEAR\QueryRepository\Log\Context\InvalidateContext;
 use BEAR\QueryRepository\Log\Context\ManualInvalidateContext;
 use BEAR\QueryRepository\Log\Context\ManualInvalidateResultContext;
@@ -215,7 +215,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
             // has no catch, so this reaches the caller and the write is not reported as done. The
             // automatic write inside a GET does catch it, and degrades - that request changed
             // nothing, so nothing at the edge became stale by it.
-            throw CacheStoreFailure::from($purgerError);
+            throw CacheStoreException::from($purgerError);
         }
 
         return $roOk && $etagOk;
@@ -396,7 +396,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
      * An interceptor degrades rather than failing a request whose response is already correct, but
      * `catch (Throwable)` there swallowed everything a write touches - a renderer with a bug, a
      * logic error introduced later. Wrapping here is what lets the catch be narrow: what the pool
-     * raises arrives as CacheStoreFailure, and everything else keeps travelling.
+     * raises arrives as CacheStoreException, and everything else keeps travelling.
      *
      * The CDN purge in invalidateTags() is raised by hand instead: its outcome is logged and the
      * local pools invalidated before it leaves, which a wrapper around the call cannot order.
@@ -412,7 +412,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         try {
             return $io();
         } catch (Throwable $e) {
-            throw CacheStoreFailure::from($e);
+            throw CacheStoreException::from($e);
         }
     }
 

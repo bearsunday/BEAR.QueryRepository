@@ -31,7 +31,7 @@ use Throwable;
  * transient. `create()`'s own render does NOT use this type - a render failure there
  * propagates unwrapped, matching a page with no cache attribute (see its docblock).
  */
-final class CacheStoreFailure extends RuntimeException
+final class CacheStoreException extends RuntimeException
 {
     public static function from(Throwable $e): self
     {

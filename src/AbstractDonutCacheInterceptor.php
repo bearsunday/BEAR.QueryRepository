@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\QueryRepository\Exception\CacheStoreFailure;
+use BEAR\QueryRepository\Exception\CacheStoreException;
 use BEAR\QueryRepository\Log\Context\CacheErrorContext;
 use BEAR\QueryRepository\Log\Context\CacheHitContext;
 use BEAR\QueryRepository\Log\Context\CacheMissContext;
@@ -66,7 +66,7 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
             } catch (Throwable $e) {
                 // when cache server is down: log it so a miss here is not read as a cold cache
                 $this->logger->event(self::failure((string) $ro->uri, 'read', $e));
-                if (! $e instanceof CacheStoreFailure) {
+                if (! $e instanceof CacheStoreException) {
                     throw $e;
                 }
 
@@ -129,7 +129,7 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
                 $this->donutRepository->putDonut($ro, null);
         } catch (Throwable $e) {
             $this->logger->event(self::failure((string) $ro->uri, 'write', $e));
-            if (! $e instanceof CacheStoreFailure) {
+            if (! $e instanceof CacheStoreException) {
                 throw $e;
             }
 
@@ -146,7 +146,7 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
      */
     private static function failure(string $uri, string $operation, Throwable $e): CacheErrorContext
     {
-        $cause = $e instanceof CacheStoreFailure ? $e->getPrevious() ?? $e : $e;
+        $cause = $e instanceof CacheStoreException ? $e->getPrevious() ?? $e : $e;
 
         return new CacheErrorContext($uri, $operation, $cause->getMessage(), $cause::class);
     }

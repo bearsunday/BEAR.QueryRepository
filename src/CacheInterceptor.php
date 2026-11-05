@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\QueryRepository\Exception\CacheStoreFailure;
+use BEAR\QueryRepository\Exception\CacheStoreException;
 use BEAR\QueryRepository\Log\Context\CacheErrorContext;
 use BEAR\QueryRepository\Log\Context\CacheHitContext;
 use BEAR\QueryRepository\Log\Context\CacheMissContext;
@@ -70,7 +70,7 @@ final readonly class CacheInterceptor implements MethodInterceptor
                 // A pool outage is swallowed and recorded, since the resource still answers
                 // correctly; anything else propagates, since a silent 200 would be invisible.
                 $this->logger->event(self::failure((string) $ro->uri, 'read', $e));
-                if (! $e instanceof CacheStoreFailure) {
+                if (! $e instanceof CacheStoreException) {
                     throw $e;
                 }
 
@@ -106,7 +106,7 @@ final readonly class CacheInterceptor implements MethodInterceptor
                 // The store refused the write: the already-correct response is served and the
                 // failure recorded; a render/purge failure is not the store's and keeps propagating.
                 $this->logger->event(self::failure((string) $ro->uri, 'write', $e));
-                if (! $e instanceof CacheStoreFailure) {
+                if (! $e instanceof CacheStoreException) {
                     throw $e;
                 }
 
@@ -132,7 +132,7 @@ final readonly class CacheInterceptor implements MethodInterceptor
      */
     private static function failure(string $uri, string $operation, Throwable $e): CacheErrorContext
     {
-        $cause = $e instanceof CacheStoreFailure ? $e->getPrevious() ?? $e : $e;
+        $cause = $e instanceof CacheStoreException ? $e->getPrevious() ?? $e : $e;
 
         return new CacheErrorContext($uri, $operation, $cause->getMessage(), $cause::class);
     }

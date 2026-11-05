@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\QueryRepository\Exception\CacheStoreFailure;
+use BEAR\QueryRepository\Exception\CacheStoreException;
 use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\Exception\ParameterException;
 use BEAR\Resource\Method;
@@ -150,7 +150,7 @@ class ResourceDonutTest extends TestCase
      * A legacy `[le:URI]` placeholder for a hole with two REQUIRED query params, corrupted
      * the same way, fails the re-fetch with the same underlying cause as a pre-#232-fix
      * refresh() threw - still a ParameterException, not this fix's rawurldecode() turning it
-     * into a different, new failure. That cause arrives wrapped in a CacheStoreFailure, the
+     * into a different, new failure. That cause arrives wrapped in a CacheStoreException, the
      * same conversion any re-fetch failure gets, so `AbstractDonutCacheInterceptor`'s read
      * path degrades to a fresh render instead of a 500.
      */
@@ -162,13 +162,13 @@ class ResourceDonutTest extends TestCase
         try {
             $donut->refresh($this->resource, $ro);
             $this->fail('expected the malformed legacy placeholder to fail the re-fetch');
-        } catch (CacheStoreFailure $e) {
+        } catch (CacheStoreException $e) {
             $this->assertInstanceOf(ParameterException::class, $e->getPrevious());
         }
     }
 
     /**
-     * A re-fetch failure is wrapped into CacheStoreFailure (a RuntimeException subtype),
+     * A re-fetch failure is wrapped into CacheStoreException (a RuntimeException subtype),
      * so a plain pool outage or a broken onGet() degrades the refresh instead of leaving a
      * raw, uncategorized exception for the interceptor's read path to handle.
      */
@@ -370,7 +370,7 @@ class ResourceDonutTest extends TestCase
      * refresh()'s per-hole `$ro->toString()` (and the `$resource->get($uri)` re-fetch that
      * runs the hole's onGet()) does not swallow a Throwable either - it propagates directly,
      * the same non-swallowing render create() itself uses. Unlike create(), which lets it
-     * travel unwrapped, this is a plain try/catch converting it to CacheStoreFailure: a
+     * travel unwrapped, this is a plain try/catch converting it to CacheStoreException: a
      * HIT's re-fetch degrades through the interceptor's read path instead, falling back to
      * a full fresh render.
      */
@@ -382,8 +382,8 @@ class ResourceDonutTest extends TestCase
 
         try {
             $donut->refresh($this->resource, $ro);
-            $this->fail('expected the hole throw to be refused as a CacheStoreFailure');
-        } catch (CacheStoreFailure $e) {
+            $this->fail('expected the hole throw to be refused as a CacheStoreException');
+        } catch (CacheStoreException $e) {
             $this->assertStringContainsString('the hole blew up mid-render', $e->getMessage());
         }
     }
