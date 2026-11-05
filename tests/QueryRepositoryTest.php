@@ -312,6 +312,18 @@ class QueryRepositoryTest extends TestCase
         $this->assertNotContains('cache_hit', self::collectTypes($tree2));
     }
 
+    public function testAPrivateCacheControlSetWhileRenderingAViewEntryIsNotStored(): void
+    {
+        $ro = $this->resource->get('app://self/rendered-private-view');
+        $this->assertSame('private', $ro->headers[Header::CACHE_CONTROL]);
+
+        $tree = $this->flushAndValidate($this->logger);
+        $putSkipped = self::eventContextJsonOf($tree, 'put_skipped');
+        $this->assertNotNull($putSkipped);
+        $this->assertStringContainsString('"reason":"unstorable"', $putSkipped);
+        $this->assertNull($this->repository->get(new Uri('app://self/rendered-private-view')));
+    }
+
     public function testRepeatedUnstorableGetDoesNotPurge(): void
     {
         $purger = new FakeCountingPurger();

@@ -150,7 +150,8 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $templateKeys = $this->templateKeys($ro, $declaredKeys);
         $donut = ResourceDonut::create($ro, $this->renderer, $keys, $sMaxAge, true)->withStorageState($ttl, $templateKeys);
         $donut->render($ro, $this->renderer);
-        // Checked against the unmutated response, before setHeaders() mutates it.
+        // Checked on the rendered response before setHeaders() mutates it; HeaderSetter checks the
+        // same state and returns null for an unstorable response, so the class is null then.
         $unstorable = $this->declaredCacheControl->reason($ro);
         [$surrogateKeys, $unserializableClass] = $this->setHeaders($keys, $ro, $sMaxAge);
         $this->logCdnHeaders($ro);

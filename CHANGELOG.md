@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - What a purge URI reaches depends on how it is spelled. One that spells out a default-valued parameter (`#[Purge(uri: 'app://self/articles?page=1')]`) is not coarsened and invalidates only that exact URI's tag; write it without the parameter to reach every variant. A required key keeps the spelling the request used (`?user_id=1`, which BEAR.Resource binds to `$userId`), so a purge URI aimed at a GET reaches its entries only when it spells each required key the way that GET did: `purge('?user_id=1')` reaches entries stored by `?user_id=1&page=2`, `purge('?userId=1')` does not. The automatic purge after a write names the key as the parameter does (`userId`), so it does not reach entries a GET stored with the snake_case key.
 - A non-200 response from a `#[Cacheable]` GET still invalidates only its own URI's tag, so an error on the bare URI leaves the cached query variants in place.
 - A recomposed donut page kept the tags only of its holes that carry a `Surrogate-Key` header, so a hole cached by its ETag alone, such as a plain `#[Cacheable]` child, could be purged once but not again. A recomposed page now keeps every hole's tags, as the first write does.
+- A `#[Cacheable(type: 'view')]` response whose rendering sets `Cache-Control` to `private` or `no-store` was stored, because the check ran before rendering; it is now checked on the rendered response and not stored.
 
 ## [1.18.0] - 2026-10-29
 

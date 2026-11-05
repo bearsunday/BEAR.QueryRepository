@@ -76,7 +76,6 @@ final readonly class QueryRepository implements QueryRepositoryInterface
 
     private function doPut(ResourceObject $ro): bool
     {
-        $unstorable = $this->declaredCacheControl->reason($ro);
         if ($ro->code === 200) {
             $this->setCacheDependency($ro);
         }
@@ -96,6 +95,8 @@ final readonly class QueryRepository implements QueryRepositoryInterface
             $this->logger->event($this->cachePolicy($ro, $cacheable, $ttl));
         }
 
+        // HeaderSetter checks the same state and returns null for an unstorable response, so the class is null then
+        $unstorable = $this->declaredCacheControl->reason($ro);
         $unserializableClass = ($this->headerSetter)($ro, $ttl, $httpCache);
         $skipReason = $unstorable ?? ($unserializableClass !== null ? 'unserializable' : null);
         $this->cleanUpBeforeWrite($ro, $skipReason);
