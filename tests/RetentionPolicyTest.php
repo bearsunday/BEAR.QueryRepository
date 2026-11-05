@@ -172,6 +172,19 @@ class RetentionPolicyTest extends TestCase
         }
     }
 
+    public function testUnserializablePutSkippedIsKeptAsAnIncident(): void
+    {
+        // Unlike the other skip reasons, `unserializable` is not a rule the code enforces on
+        // purpose - the body held a value serialize() refused, a defect SkipBodySerializationError
+        // means to make visible in production. Dropping it the same way as the others would
+        // silently defeat that purpose.
+        $open = $this->logger->open(new GetContext('app://self/unserializable-value'));
+        $this->logger->event(new PutSkippedContext('app://self/unserializable-value', 'unserializable', null, 'Closure'));
+        $this->logger->close(new CacheMissContext('resource'), $open);
+
+        $this->assertTrue($this->policy->keeps($this->logger->flush()));
+    }
+
     public function testAFailedOutcomeIsFoundWhereTheRootKeepsItAsARecord(): void
     {
         // A `close` is one entry on a scope, but a root record carrying `openId` when its

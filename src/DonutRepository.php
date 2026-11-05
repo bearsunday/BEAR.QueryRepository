@@ -152,9 +152,15 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $donut->render($ro, $this->renderer);
         // Checked against the unmutated response, before setHeaders() mutates it.
         $unstorable = $this->declaredCacheControl->reason($ro);
-        $surrogateKeys = $this->setHeaders($keys, $ro, $sMaxAge);
+        [$surrogateKeys, $unserializableClass] = $this->setHeaders($keys, $ro, $sMaxAge);
         $this->logCdnHeaders($ro);
         $this->cleanUpBeforeWrite($ro, $unstorable);
+        if ($unserializableClass !== null) {
+            $this->logger->event(new PutSkippedContext((string) $ro->uri, 'unserializable', null, $unserializableClass));
+
+            return;
+        }
+
         if ($unstorable !== null) {
             $this->logger->event(new PutSkippedContext((string) $ro->uri, $unstorable));
 
@@ -285,7 +291,16 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         // When the recomposed content is byte-identical to the recorded one, carry over
         // the original Last-Modified instead of advancing it to the recomposition time
         $lastModified = $donut->getUnchangedLastModified((string) $ro->view);
-        ($this->headerSetter)($ro, $donut->ttl, null, $lastModified);
+        $unserializableClass = ($this->headerSetter)($ro, $donut->ttl, null, $lastModified);
+        if ($unserializableClass !== null) {
+            // headerSetter already stripped the CDN-facing headers and rewrote Cache-Control;
+            // setCdnCacheControl() must not run after that, or it would re-add what was stripped.
+            $this->logCdnHeaders($ro);
+            $this->logger->event(new PutSkippedContext((string) $ro->uri, 'unserializable', null, $unserializableClass));
+
+            return $ro;
+        }
+
         $this->setCdnCacheControl($ro, $donut->ttl);
         $this->logCdnHeaders($ro);
         if ($lastModified === null) {
@@ -383,15 +398,21 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         return $this->resourceStorage->saveDonutView($ro, $ttl, $tags);
     }
 
-    /** @return string The Surrogate-Key header as composed, before the CDN setter runs */
-    private function setHeaders(SurrogateKeys $keys, ResourceObject $ro, int|null $sMaxAge): string
+    /**
+     * Set the page's own headers (validator, CDN lifetime), and report the body's serializability
+     *
+     * @return array{0: string, 1: string|null} the Surrogate-Key header as composed, before the
+     *     CDN setter runs; and the class serialize() refused, when HeaderSetter's handler
+     *     returned instead of throwing (the caller must not store), or null otherwise
+     */
+    private function setHeaders(SurrogateKeys $keys, ResourceObject $ro, int|null $sMaxAge): array
     {
         $keys->setSurrogateHeader($ro);
         $surrogateKeys = $ro->headers[Header::SURROGATE_KEY] ?? '';
         $this->setCdnCacheControl($ro, $sMaxAge);
-        ($this->headerSetter)($ro, 0, null);
+        $unserializableClass = ($this->headerSetter)($ro, 0, null);
 
-        return $surrogateKeys;
+        return [$surrogateKeys, $unserializableClass];
     }
 
     /**

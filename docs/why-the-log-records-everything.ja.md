@@ -54,8 +54,9 @@ surrogate key を追加せずに上書きしていた）。失われた子を pu
 プールが、成功した保存に見えることはもうありません。put が続かない miss は
 理由付きの `put_skipped` を出します（`etag-present`、実際のレスポンスコードを
 伴う `error-code`、`not-cacheable`、このリクエストで unstorable とマークされた
-応答の `unstorable`）— 保存の不在は記録された決定であり、謎
-ではありません。無効化はターゲットごとの結果（`roPool`/`etagPool`:
+応答の `unstorable`、body が `serialize()` に拒まれた `unserializable`）—
+保存の不在は記録された決定であり、謎ではありません。`unserializable` だけは、
+他を落とす保持ポリシーの下でも残る例外です。規則ではなく欠陥だからです。無効化はターゲットごとの結果（`roPool`/`etagPool`:
 `invalidated`|`failed`、`cdn`: `purged`|`failed`|`skipped`）と所要時間を
 報告します。失敗した書き込みでも command スコープは開かれ、その 4xx とともに
 閉じられます — purge が*正しくスキップされた*ことを記録するのです。

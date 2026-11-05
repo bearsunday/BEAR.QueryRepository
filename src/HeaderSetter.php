@@ -68,9 +68,8 @@ final readonly class HeaderSetter
         try {
             ($this->etagSetter)($ro, $time, $httpCache);
         } catch (Throwable $e) {
-            // serialize() raises this exact built-in class ("Serialization of 'X' is not
-            // allowed") for a value it refuses; a subclass is a different failure (an embedded
-            // request ResourceBodyEvaluator ran, say) and keeps propagating unhandled.
+            // serialize() raises this exact built-in class for a value it refuses; a subclass
+            // (say, from an embedded request) is a different failure and keeps propagating.
             if ($e::class !== 'Exception') {
                 throw $e;
             }

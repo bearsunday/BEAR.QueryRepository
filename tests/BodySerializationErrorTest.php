@@ -10,6 +10,7 @@ use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
+use Madapaja\TwigModule\TwigModule;
 use Override;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\AbstractModule;
@@ -18,6 +19,7 @@ use Throwable;
 
 use function array_filter;
 use function array_values;
+use function dirname;
 
 /**
  * Owner-approved coverage for issue #259: a #[Cacheable] body serialize() refuses is routed
@@ -118,6 +120,50 @@ class BodySerializationErrorTest extends TestCase
         // Not stored server-side: a second GET re-runs onGet() instead of answering a pool hit.
         $second = $resource->get(self::URI);
         $this->assertArrayNotHasKey('Age', $second->headers, 'a cache hit would carry Age; onGet() ran again instead');
+    }
+
+    public function testDonutPageUnderMobileEtagAndSkipIsNotStoredDespiteARenderedView(): void
+    {
+        // MobileEtagSetter serializes the body unconditionally, even once the view is already
+        // a rendered string (unlike EtagSetter's `$ro->view ?? ...` fallback), so a
+        // #[CacheableResponse] page can hit this failure too (issue #259). DonutRepository's
+        // doPutStatic()/setHeaders() must consume HeaderSetter's skip signal itself, not just
+        // QueryRepository::doPut() - otherwise the page would still get stored despite the strip.
+        $logger = new RecordingSemanticLogger();
+        $namespace = 'FakeVendor\HelloWorld';
+        $templates = dirname(__DIR__) . '/tests/Fake/fake-app/var/templates';
+        $module = ModuleFactory::getInstance($namespace);
+        $module->override(new MobileEtagModule());
+        $module->override(new TwigModule([$templates]));
+        $module->override(new class ($logger) extends AbstractModule {
+            public function __construct(private readonly SemanticLoggerInterface $logger)
+            {
+            }
+
+            #[Override]
+            protected function configure(): void
+            {
+                $this->bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)->toInstance($this->logger);
+                $this->bind(BodySerializationErrorHandlerInterface::class)->to(SkipBodySerializationError::class);
+            }
+        });
+        $resource = $this->resourceFor($module);
+
+        $ro = $resource->get('page://self/html/unserializable-donut');
+
+        $this->assertSame(200, $ro->code);
+        $this->assertArrayNotHasKey(Header::ETAG, $ro->headers);
+        $this->assertArrayNotHasKey(Header::SURROGATE_KEY, $ro->headers);
+        $this->assertArrayNotHasKey(Header::CDN_CACHE_CONTROL, $ro->headers);
+
+        $putSkipped = array_values(array_filter($logger->events, static fn ($event): bool => $event instanceof PutSkippedContext));
+        $this->assertCount(1, $putSkipped);
+        $this->assertSame('unserializable', $putSkipped[0]->reason);
+
+        // Not stored server-side: a second GET misses the donut template (no Age) instead of
+        // recomposing from a saved one.
+        $second = $resource->get('page://self/html/unserializable-donut');
+        $this->assertArrayNotHasKey('Age', $second->headers, 'a cache hit would carry Age; the template was never saved');
     }
 
     public function testACustomHandlerThatReturnsGetsTheSkipSafetyBehaviourForFree(): void

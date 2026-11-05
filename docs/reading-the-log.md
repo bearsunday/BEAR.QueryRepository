@@ -105,7 +105,7 @@ operation inside a GET or a command is an ordinary event there instead.
 | `pre_write_cleanup` | `uri` | the writer is about to clear the entry it will rewrite |
 | `invalidate` | `tags`, `roPool`, `etagPool`, `cdn`, `durationMs` | tags were invalidated, with a result per target |
 | `purge` | `uri` | a URI-targeted bust was requested |
-| `put_skipped` | `uri`, `reason`, `code` | a miss was **not** followed by a write, and why |
+| `put_skipped` | `uri`, `reason`, `code`, `class` | a miss was **not** followed by a write, and why |
 | `cache_hit` / `cache_miss` | `layer`, `durationMs` | an inner lookup, always `layer: donut` — whether the donut template was there. `durationMs` is null here: an event has no scope to measure |
 | `cache_error` | `uri`, `operation`, `error`, `exceptionClass` | the cache path threw |
 | `pool_error` | `key`, `operation`, `error`, `exceptionClass` | the backend refused an operation and the adapter swallowed it |

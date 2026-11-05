@@ -29,12 +29,15 @@ use function random_int;
  *  - mutations: a `command` scope, a direct `manual_*` call, or a real tag invalidation. Writes
  *    decide the tags, TTLs and CDN keys every later read repeats.
  *  - effects that did not happen: `saved: false`, `invalidate` with `roPool`/`etagPool`/`cdn`
- *    `failed`, a `manual_*` result of `failed`, and `cache_error{operation: write}` - a store or
- *    an invalidation that was aborted.
+ *    `failed`, a `manual_*` result of `failed`, `cache_error{operation: write}` - a store or an
+ *    invalidation that was aborted - and `put_skipped{reason: unserializable}`, whose body held a
+ *    value `serialize()` refused: unlike the other skip reasons this is a defect, not a rule, and
+ *    without this exception `SkipBodySerializationError`'s whole point - making an otherwise
+ *    silent drop visible in production - would itself go unrecorded under this policy.
  *  - a sample, when a rate is configured.
  *
  * Deliberately not kept: `cache_error{operation: read}` (availability, monitored elsewhere -
- * separating a degraded miss from a cold one is a development-time reading) and every
+ * separating a degraded miss from a cold one is a development-time reading) and every other
  * `put_skipped`, which records a store that was never attempted because a rule forbade it - a
  * response code the path will not cache (`#[Cacheable]` skips any non-200, a donut skips 4xx and
  * above), a validator already set, or a page served from its template. Those are decisions, stable
@@ -190,6 +193,12 @@ final class KeepMutationsAndFailures implements RetentionPolicyInterface
             if (($context[$target] ?? null) === 'failed') {
                 return true;
             }
+        }
+
+        // Every other put_skipped reason is a rule the code enforces on purpose; this one is a
+        // body serialize() refused at runtime - a defect, the same kind of fact as a write that threw.
+        if ($type === 'put_skipped' && ($context['reason'] ?? null) === 'unserializable') {
+            return true;
         }
 
         // A read that threw is availability, and its monitoring saw it first; a write that threw
