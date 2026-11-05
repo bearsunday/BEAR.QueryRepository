@@ -53,6 +53,11 @@ This demo executes the following scenarios:
    - Donut is found, but needs refresh
    - Only Comment is regenerated, donut structure reused
 
+5. Access counter-donut, a page whose onGet() reads an untagged child
+   - The child ran but carries no ETag or Surrogate-Key
+   - dependency_skipped says so (reason: no_etag_or_surrogate_key), unlike
+     blog-posting's comment, a hole with no body yet (reason: no_body)
+
 Every donut write and refresh also records what it told the CDN (cdn_headers):
 the literal CDN-Cache-Control the response carries - including the setter's
 default of 10 that no put_donut field reveals - and the Surrogate-Key list a
@@ -77,6 +82,7 @@ $resource->get('page://self/html/blog-posting');     // 1. Initial access
 $resource->get('page://self/html/blog-posting');     // 2. Re-access (cache-hit)
 $repository->purge(new Uri('page://self/html/comment')); // 3. Manual purge of comment (top-level)
 $resource->get('page://self/html/blog-posting');     // 4. Access after invalidation
+$resource->get('page://self/html/counter-donut');    // 5. A page that reads an untagged child
 
 $log = $logger->flush();
 

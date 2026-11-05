@@ -40,7 +40,7 @@ the resulting invalidations nested beneath — cause and effect in one subtree.
 The dependency graph you must trust is the shape you see.
 
 **Every context is one decision point.** The vocabulary — `cache_hit`,
-`cache_miss`, `depends_on`, five `save_*` kinds, `invalidate`, `purge`,
+`cache_miss`, `depends_on`, `dependency_skipped`, five `save_*` kinds, `invalidate`, `purge`,
 `put_skipped`, `cache_error`, `pre_write_cleanup`, the `manual_*` scopes
 — is not verbosity. It enumerates the decisions the cache
 subsystem makes at the boundaries this package owns; the decisions it leaves

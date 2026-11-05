@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Log\Context\DependencySkippedContext;
+use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\Module\HalModule;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
 use Koriym\SemanticLogger\SemanticLogger;
+use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\AbstractModule;
@@ -31,6 +34,7 @@ class CacheDependencyTest extends TestCase
     private QueryRepositoryInterface $repository;
     private ResourceStorageInterface $storage;
     private FakeCountingPurger $purger;
+    private SemanticLoggerInterface $logger;
 
     protected function setUp(): void
     {
@@ -53,8 +57,44 @@ class CacheDependencyTest extends TestCase
         $this->repository = $injector->getInstance(QueryRepositoryInterface::class);
         $this->resource = $injector->getInstance(ResourceInterface::class);
         $this->storage = $injector->getInstance(ResourceStorageInterface::class);
+        $this->logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
         parent::setUp();
+    }
+
+    /**
+     * A #[DonutCache] child never gets an ETag and a non-cached child may name its data with a
+     * Surrogate-Key of its own: a #[Cacheable] parent takes either key as the child's, as a donut page does.
+     */
+    public function testPurgingAChildThatCarriesOnlyASurrogateKeyInvalidatesTheParent(): void
+    {
+        $this->resource->get('page://self/dep/parent-of-keyed-children');
+        $this->assertInstanceOf(ResourceState::class, $this->repository->get(new Uri('page://self/dep/parent-of-keyed-children')));
+
+        $this->repository->purge(new Uri('page://self/dep/donut-cache-child'));
+
+        $this->assertNull($this->repository->get(new Uri('page://self/dep/parent-of-keyed-children')));
+    }
+
+    public function testInvalidatingTheKeyANonCachedChildNamesInvalidatesTheParent(): void
+    {
+        $this->resource->get('page://self/dep/parent-of-keyed-children');
+        $this->assertInstanceOf(ResourceState::class, $this->repository->get(new Uri('page://self/dep/parent-of-keyed-children')));
+
+        $this->storage->invalidateTags(['keyed-non-cacheable-child-data']);
+
+        $this->assertNull($this->repository->get(new Uri('page://self/dep/parent-of-keyed-children')));
+    }
+
+    public function testAChildWithNeitherKeyIsLoggedAsSkipped(): void
+    {
+        $this->resource->get('page://self/dep/parent-of-non-cacheable');
+        $tree = $this->flushAndValidate($this->logger);
+
+        $skipped = self::skippedChildrenOf($tree, 'page://self/dep/parent-of-non-cacheable');
+        $this->assertCount(1, $skipped);
+        $this->assertStringContainsString('"child":"page://self/dep/non-cacheable-child"', $skipped[0]);
+        $this->assertStringContainsString('"reason":"' . DependencySkippedContext::NO_ETAG_OR_SURROGATE_KEY . '"', $skipped[0]);
     }
 
     public function testDestroyByChild(): void
@@ -198,7 +238,7 @@ class CacheDependencyTest extends TestCase
     }
 
     /**
-     * Non-Cacheable child has no ETag header, so setCacheDependency must
+     * Non-Cacheable child carries neither an ETag nor a Surrogate-Key, so setCacheDependency must
      * continue past it without registering a (parent, child) dependency. The
      * parent's cached state still gets a Surrogate-Key (its own URI tag),
      * but the child's URI tag must NOT appear in it.
@@ -216,7 +256,7 @@ class CacheDependencyTest extends TestCase
     }
 
     /**
-     * A child without an ETag must not end the walk over its siblings
+     * A child without an ETag or Surrogate-Key must not end the walk over its siblings
      *
      * ParentOfMixed embeds the non-cacheable child first. If skipping it stopped the walk,
      * the cacheable sibling behind it would never register as a dependency and its purge

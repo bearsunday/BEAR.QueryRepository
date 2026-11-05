@@ -8,6 +8,8 @@ use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Koriym\SemanticLogger\SemanticLogValidator;
 use RuntimeException;
 
+use function array_filter;
+use function array_values;
 use function dirname;
 use function file_put_contents;
 use function is_array;
@@ -16,6 +18,7 @@ use function json_encode;
 use function max;
 use function ob_get_clean;
 use function ob_start;
+use function str_contains;
 use function sys_get_temp_dir;
 use function tempnam;
 use function unlink;
@@ -459,5 +462,19 @@ trait SemanticLogTreeTrait
     private static function isPoint(array $node): bool
     {
         return ! isset($node['log']) && ! isset($node['close']) && ! isset($node['openId']);
+    }
+
+    /**
+     * `dependency_skipped` contexts recorded for `$parent`
+     *
+     * @param array<string, mixed> $tree
+     *
+     * @return list<string>
+     */
+    private static function skippedChildrenOf(array $tree, string $parent): array
+    {
+        $skipped = self::eventContextsJsonOf($tree, 'dependency_skipped');
+
+        return array_values(array_filter($skipped, static fn (string $json): bool => str_contains($json, '"parent":"' . $parent . '"')));
     }
 }

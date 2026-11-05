@@ -34,7 +34,10 @@ meet in an entry can be traced to the thing it names in your application.
 | a URI tag | one resource's URI as a tag, which is also the surrogate key its parents carry | `($this->uriTag)(new Uri('app://self/foo'))` |
 | `etag` | the entity-tag of a representation: a validator, not a key | the `ETag` response header |
 | `layer` | which store answered a lookup, not which pool was written | — (a log-only axis) |
-| donut / donut-view | the cacheable shell with holes / the recomposed page | `#[CacheableResponse]`, `#[DonutCache]` |
+| donut / donut-view | the donut template: the cacheable shell with holes / the view: the recomposed page | `#[CacheableResponse]`, `#[DonutCache]` |
+| child | a resource another resource takes in with `#[Embed]`; its request sits at the top level of the parent's body | `#[Embed(rel: …, src: …)]` |
+| hole | a child the donut template only prints: rendered into the view, never stored in the template | a child `onGet()` does not read |
+| data dependency | a child whose value `onGet()` reads; the value is written into the template, so the child's tags must reach the parent | `$this['rel']->body` in `onGet()` |
 | `sMaxAge` | the shared-cache lifetime a write asked the CDN for | `DonutRepositoryInterface::putStatic($ro, ttl: …, sMaxAge: …)` |
 | a scope, an event, a close | the three node kinds of the tree, described next | — (a log-only distinction) |
 
@@ -97,7 +100,8 @@ operation inside a GET or a command is an ordinary event there instead.
 | `put_donut` | `uri`, `requestedTtl`, `sMaxAge` | a donut write was requested, with the lifetime asked for |
 | `refresh_donut` | `uri` | a cached donut was recomposed rather than served as-is |
 | `cdn_headers` | `uri`, `headers`, `surrogateKeys` | the CDN-facing headers the response actually carried |
-| `depends_on` | `parent`, `child`, `childTags` | one dependency edge: the child's tags were added to the parent. A `#[Cacheable]` put records one, and so does a donut page write for a child that already ran in `onGet()`; a hole has not run yet and records none |
+| `depends_on` | `parent`, `child`, `childTags` | one dependency edge: the child's tags were added to the parent. A `#[Cacheable]` put records one for each child that carries tags, and so does a donut page write for a data dependency (a child whose `onGet()` reads it) that carries tags; a hole has not run yet and records `dependency_skipped` instead |
+| `dependency_skipped` | `parent`, `child`, `reason` | a cached parent's write (a `#[Cacheable]` put or a donut page write) left an embedded request at the top level of the body out of its dependencies: the child's tags are not added to the stored value or donut template. A hole's tags still reach a `#[CacheableResponse]` view when the hole renders. A request in a nested array is not seen and records nothing |
 | `pre_write_cleanup` | `uri` | the writer is about to clear the entry it will rewrite |
 | `invalidate` | `tags`, `roPool`, `etagPool`, `cdn`, `durationMs` | tags were invalidated, with a result per target |
 | `purge` | `uri` | a URI-targeted bust was requested |
@@ -119,6 +123,7 @@ Every outcome is a self-describing word, never a bare boolean — except `saved`
 | `cdn` | `purged` \| `failed` \| `skipped` | `skipped` = no purger configured (`NullPurger`), not "nothing to do" |
 | `operation` | `read` \| `write` | which side of the cache threw |
 | `reason` (`put_skipped`) | `etag-present` \| `error-code` \| `not-cacheable` \| `unstorable` | why no write happened. `etag-present` = the resource already carried an ETag, so the donut layer left it alone; `not-cacheable` = a donut page re-rendered from its template, which is never stored as a page; `error-code` carries the response `code`, and the threshold differs by path: `#[Cacheable]` skips any non-200 (a `203` appears here), a donut skips 4xx and above; `unstorable` = a producer marked the response during this request, or its `Cache-Control` already says `no-store`/`private` — the write is refused even though the code and type would otherwise allow it |
+| `reason` (`dependency_skipped`) | `no_body` \| `no_etag_or_surrogate_key` | what the child's body showed at write time; it carried neither header that marks a dependency. `no_body` = the body was null: on a donut page usually a hole the renderer runs later, the healthy shape (a 204 that ran reads the same). `no_etag_or_surrogate_key` = the body was set but the child carried no tag: usually a data dependency, whose change then never reaches the parent's stored entry - make the child cacheable or render it as a hole. A hole whose class declares a default `$body` reads the same, so check whether `onGet()` reads the child. A `#[Cacheable]` put runs every top-level embedded request first, so there the child is always stored with the parent |
 | `result` (`manual_*`) | `stored`/`purged`/`invalidated` \| `failed` | the direct call's outcome |
 | `requestedTtl` | seconds | what this package asked the store to keep. `31536000` is the `never` convention; `0`/`null` = it asked for no expiry, which a backend may override (see the rule below) |
 | `sMaxAge` (`put_donut`) | seconds | the shared-cache (CDN) lifetime the write asked for — the same argument as `DonutRepositoryInterface::putStatic($ro, ttl: …, sMaxAge: …)`, and not the entry's own `requestedTtl`. `null` = none requested, and `putDonut` always records `null` |
@@ -192,7 +197,7 @@ which is what serving stale looks like from the inside.
 parent records a `depends_on` edge and puts the child's tags on its `save_value`/`save_view` and
 `save_etag`, so purging the child takes the parent's entry with it and the next read closes
 `cache_miss`. A donut parent (`#[CacheableResponse]` or `#[DonutCache]`) tells two uses of a child
-apart. A *material* — one the page's `onGet()` already ran — records the edge and puts its tags on
+apart. A *data dependency* that carries tags — one the page's `onGet()` already read — records the edge and puts its tags on
 the template and the view, so purging it drops both and the next read closes `cache_miss`. A *hole*
 — run by the template, not before the write — records no edge and puts its tags on the view only,
 so purging it drops the view and the next read closes `cache_hit{layer: donut-view}` with a

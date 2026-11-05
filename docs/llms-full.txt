@@ -142,7 +142,7 @@ new AkamaiModule($host, $clientToken, $clientSecret, $accessToken);
 
 ## Cache Dependencies
 
-A child taken in with `#[Embed]` becomes a dependency of its parent when the child is itself cached, i.e. it carries an ETag or a `Surrogate-Key`: invalidating the child then invalidates the parent. A child without a cache attribute carries neither header and adds no dependency, so purging its URI leaves the parent as stored; give such a child a cache attribute. A value fetched eagerly in `onGet()` (`$this->resource->get(...)`) is not an embedded request and is not tracked.
+A child taken in with `#[Embed]` becomes a dependency of its parent when the child carries an ETag or a `Surrogate-Key`, which a cache attribute on the child gives it: invalidating the child then invalidates the parent. A `#[Cacheable]` parent and a donut page apply the same test. A child carrying neither header adds no dependency, so purging its URI leaves the parent as stored. A value fetched eagerly in `onGet()` (`$this->resource->get(...)`) is not an embedded request and is not tracked.
 
 ```php
 #[Cacheable]
@@ -160,6 +160,55 @@ class BlogPost extends ResourceObject
 With `app://self/comments` itself `#[Cacheable]`, updating the comments invalidates the BlogPost entry through its surrogate keys.
 
 On a `#[CacheableResponse]`/`#[DonutCache]` page the same rule applies to a child whose value `onGet()` reads: the whole template is dropped on purge. A child the page only renders as a hole is recomposed instead.
+
+A child a cached parent embeds is safe in one of two shapes:
+
+- **A tagged data dependency**: the parent reads the child, and the child carries tags - it is cached, or names its data with its own `Surrogate-Key` - so a change to it invalidates the parent. A child passes on only the tags it carries: a non-cached child in between passes nothing on from the children below it.
+- **A hole**: on a `#[CacheableResponse]`/`#[DonutCache]` page, a child the page only renders. It is never part of the stored template, so per-user or per-request values belong here.
+
+An untagged data dependency - a child the parent reads or stores that carries no tag - is the one shape that goes stale: the parent's cache holds the child's data, while a change to the child never reaches the parent before the parent's own TTL. Caching the parent caches such a child too, even though the child declares no cache. While it stays at the top level of the body, the log records it as `dependency_skipped` (reason `no_etag_or_surrogate_key`, or `no_body` when its run left a null body); make the child cacheable or render it as a hole.
+
+Dependencies and holes are found where `#[Embed]` puts a child: at the top level of the body. A request the page moves into a nested array, replaces or `unset()`s before the write is not seen. On a `#[CacheableResponse]`/`#[DonutCache]` page a nested request does not become a hole either: when the template prints it, it runs and its output is written into the stored template, its tags reach no one, and nothing is logged. The page then shows that child's old content until the page's own TTL, and a per-user child nested this way puts one visitor's content into the template every visitor shares.
+
+A list whose length, order or queries come from data (blocks an editor arranges, say) cannot be written as `#[Embed]` on the page, which is static. Build it in a child resource instead, embed that child, and let the child list the block requests at the top level of its own body - the child's write is read the same way:
+
+```php
+// The page embeds the composed list and prints it whole: (string) $this->contents
+#[CacheableResponse]
+class Channel extends ResourceObject
+{
+    #[Embed(rel: 'contents', src: 'app://self/channel/blocks{?slug}')]
+    public function onGet(string $slug): static
+    {
+        return $this;
+    }
+}
+```
+
+```php
+// app://self/channel/blocks
+#[Cacheable]
+class Blocks extends ResourceObject
+{
+    #[Embed(rel: 'whatsNew', src: 'app://self/block/whats-new')]
+    #[Embed(rel: 'feature', src: 'app://self/block/feature')]
+    public function onGet(string $slug): static
+    {
+        // requests at the top level, order in plain data; the prototypes are not kept
+        $this->body = [
+            'layout' => [['key' => 'whats_new_0', 'type' => 'whatsNew'], ['key' => 'feature_1', 'type' => 'feature']],
+            'whats_new_0' => (clone $this['whatsNew'])->withQuery(['slug' => $slug, 'limit' => 5]),
+            'feature_1' => (clone $this['feature'])->withQuery(['slug' => $slug, 'limit' => 3]),
+        ];
+
+        return $this;
+    }
+}
+```
+
+Make the composing child `#[Cacheable]`, and the blocks cacheable too so their tags reach it; all of them are shared by every visitor, so a per-user block stays out of the list and becomes a hole on a `#[DonutCache]` page. Clones of one prototype share a single resource object, so on a donut child running one clone makes its unrun siblings look run; a `#[Cacheable]` child runs each top-level request right before reading its keys.
+
+On a donut page a top-level embedded request becomes a hole that can only be printed, not iterated: print the child whole and iterate `layout` in the child's own template.
 
 ## Donut Caching
 
@@ -195,7 +244,8 @@ Cache operations are logged as an open/event/close tree (Koriym.SemanticLogger) 
 | `get` | open | A resource/donut GET scope; embedded child GETs nest under it |
 | `cache_hit` / `cache_miss` (`layer`) | close/event | Lookup outcome (`layer`: `resource` / `donut` / `donut-view` / `etag`) |
 | `command` (`method`/`annotations`/`source`) | open | A write scope; `source` names the producing interceptor, `annotations` its `#[Refresh]`/`#[Purge]` attributes (empty on the CacheableResponse path by design) |
-| `depends_on` (`parent`/`child`/`childTags`) | event | Parent registered a dependency on a child's tags. Written by `QueryRepository::put()` only, so a `#[Cacheable]` parent records it (its child tags land on `save_value`/`save_view` and `save_etag`) and a donut parent never does: a `#[CacheableResponse]` parent's child tags show up on `save_etag`/`save_donut_view` (never on `save_donut`), a `#[DonutCache]` parent's only in `cdn_headers.surrogateKeys` |
+| `depends_on` (`parent`/`child`/`childTags`) | event | Parent registered a dependency on a child's tags. A `#[Cacheable]` parent records it on put for each child that carries tags (their tags land on `save_value`/`save_view` and `save_etag`); a donut page write records it for a data dependency that carries tags — a child whose `onGet()` reads it — whose tags land on `save_donut` too. A hole records `dependency_skipped` instead: its tags reach `save_etag`/`save_donut_view` (`#[CacheableResponse]`) or only `cdn_headers.surrogateKeys` (`#[DonutCache]`), never `save_donut` |
+| `dependency_skipped` (`parent`/`child`/`reason`) | event | A cached parent's write (a `#[Cacheable]` put or a donut page write) left a top-level embedded child out of its dependencies: the child carried neither an ETag nor a Surrogate-Key. `reason` is what its body showed: `no_body` (null; on a donut page usually a hole) or `no_etag_or_surrogate_key` (set but untagged; usually a data dependency, though a hole whose class declares a default `$body` reads the same). `docs/reading-the-log.md` explains each |
 | `save_value` / `save_view` / `save_etag` / `save_donut` / `save_donut_view` | event | What was stored, with `tags`, `requestedTtl` (seconds until expiry; 0/null = no expiry set), and the `saved` outcome |
 | `pre_write_cleanup` (`uri`) | event | Marker recorded by a writer right before it clears the entry it is about to rewrite; the `invalidate` immediately following it in the same scope is pre-write cleanup, not a real invalidation |
 | `invalidate` (`tags`/`roPool`/`etagPool`/`cdn`/`durationMs`) | event | Tag invalidation outcome; `cdn` is tri-state: `purged` (a configured purger ran), `failed` (the purge threw — fail-closed, after the local pools were invalidated), `skipped` (NullPurger, no CDN configured). Pre-write cleanup vs real invalidation is recorded at the source via the `pre_write_cleanup` marker — see below |
@@ -213,7 +263,7 @@ A donut refresh is not marked in any response header — only in the log (`refre
 ### Turning the log on, and where a session goes
 
 - Off by default (`QueryRepositoryModule`): `SemanticLoggerInterface` annotated with `#[CacheLog]` → `Koriym\SemanticLogger\NullSemanticLogger`. The qualifier is why installing this package cannot decide an application's own `SemanticLoggerInterface` binding; resolve the cache log with `getInstance(SemanticLoggerInterface::class, CacheLog::class)`. Nothing is recorded, nothing accumulates, no flush is owed — the same rule the package already applies to its cache engine (`NullAdapter`). A measured healthy read carries no information (0 failure entries out of 28-95 per session in the four demos), while a recorded session costs ~1.4 KB per request until something flushes it, so recording is something an app asks for.
-- Development: `new DevQueryRepositoryLogModule($appDir . '/var/log/query-repository', module: new QueryRepositoryModule())`. Every session is written whole, one file per request, plus a fixed `latest.json` — `vendor/bin/stree var/log/query-repository/latest.json` renders the request that just ran. Note the wrapping: a module's `install()` cannot replace a binding the installer already holds (`Container::merge()` keeps existing keys), which is why the log module takes the module it turns recording on for, exactly as `DevEtagModule` does.
+- Development: `new DevQueryRepositoryLogModule($appDir . '/var/log/query-repository', module: new QueryRepositoryModule())`. Every session is written whole, one file per process — one request under PHP-FPM, every request of a CLI script that makes several — plus a fixed `latest.json` — `vendor/bin/stree var/log/query-repository/latest.json` renders the session that just ran. Note the wrapping: a module's `install()` cannot replace a binding the installer already holds (`Container::merge()` keeps existing keys), which is why the log module takes the module it turns recording on for, exactly as `DevEtagModule` does.
 - Production: `new ProdQueryRepositoryLogModule('php://stdout', sampleRate: 1000, module: new QueryRepositoryModule())`. The session is buffered and judged at flush (`RetentionPolicyInterface`), and the line is who else knows rather than success-vs-failure: mutations (a `command` scope, a `manual_*` call, or an `invalidate` that is not marker-preceded pre-write cleanup), effects that were intended and did not happen (`saved: false`, `invalidate` with `roPool`/`etagPool`/`cdn` `failed`, a `manual_*` result of `failed`, `cache_error{operation: write}` - a store or an invalidation abandoned), and an optional sample. Healthy reads are dropped, and so are two things that look like incidents but are accounted for elsewhere: `cache_error{operation: read}` is already reported by the application's own warning channel - both interceptors `trigger_error()` before degrading, for every cause and not only the outage a pool's monitoring would see - and it repeats on every request while the incident lasts (so the separation of a degraded miss from a cold one is a development-time reading), and every `put_skipped` records a store that was never attempted because a rule forbade it - a response code the path will not cache (`#[Cacheable]` skips any non-200, a donut skips 4xx and above), a validator already set, or a page served from its template - which is a decision, stable while the code and the configuration are, rather than a runtime failure. `saved: false` can still repeat per write under a capacity problem: that is the signal, and a host that needs a ceiling decorates `LogWriterInterface`. This buys forensics, not monitoring — hit rates belong to metrics. An app that wants full recording for one request implements `RetentionPolicyInterface` and overrides the binding, since only the app knows what authorizes it.
 - A written session is application-log material, not an artefact: it records resource URIs **with their query strings** (`AbstractUri::__toString()` appends them, so `page://self/reset?token=…` is written in full), the client's raw `If-None-Match`, `$_SERVER['REQUEST_URI']` on the `HttpCache` path, cache/surrogate tags, CDN header values, and `cache_error.error` - the verbatim `getMessage()` of whatever the read/write path threw, which for an HTTP CDN purger can carry the purge endpoint and its credentials. No response body is recorded by any context. `LogFileWriter` therefore creates its directory 0700 and its files 0600, and a host that must scrub decorates `LogWriterInterface` rather than waiting for a redaction option: the seam is one class (`final class Scrubbed implements LogWriterInterface { public function __construct(private LogWriterInterface $inner) {} }`). The same seam rate-limits: during a cache-pool outage every request emits `cache_error`, so retention rises from `1/sampleRate` to 100% - a decorator that caps kept sessions per interval keeps an incident from flooding the collector it exists to inform.
 - Destinations are `LogWriterInterface` implementations, so a session's payload stays a tree rather than a string: `LogFileWriter` (one whole session per file — what `stree` reads), `LogStreamWriter` (one JSON line per session to a stream or file), `PolicyLogWriter` (the retention decorator) and `PsrLogWriter`, which hands the tree to the app's PSR-3 logger under the `log` context key. PSR-3 is an adapter and not the interface for two reasons: it carries strings, so a `LineFormatter` would flatten the tree the schemas describe, and its severity would act as a second filter able to drop what the content-based retention policy chose to keep (the level is configuration on the adapter, never derived).
@@ -223,7 +273,7 @@ A donut refresh is not marked in any response header — only in the log (`refre
 
 ### Verifying the event-driven cache from logs
 
-- Event-driven entries appear with their configured TTL in seconds (`requestedTtl` = seconds until expiry; the `never` convention = 31536000 = 1 year, effectively indefinite). `0`/`null` also mean no expiry is set. Such entries live until an `invalidate` event with a matching tag — correlate `save_*` `tags` with `invalidate` `tags` to confirm a write busted its dependents. Which `save_*` carries a child's tags is decided by the parent's declaration: `#[Cacheable]` puts them on `save_value`/`save_view` and `save_etag`, records a `depends_on` edge as well, and the parent closes `cache_miss` once the child is purged; a donut parent separates two uses: a material (already run in `onGet()`) records `depends_on` and tags the template and the view, so purging it makes the next read a `cache_miss`; a hole (run by the template, not before the write) records no edge and tags the view only, so purging it still closes `cache_hit{layer: donut-view}` with a `refresh_donut` inside - a page that inlines a child by other means is not tracked at all — a hit with no `refresh_donut` is the stale shape; `#[DonutCache]` stores no child tag at all (they reach only `cdn_headers.surrogateKeys`) and every read after the first is `refresh_donut` + `put_skipped{not-cacheable}`.
+- Event-driven entries appear with their configured TTL in seconds (`requestedTtl` = seconds until expiry; the `never` convention = 31536000 = 1 year, effectively indefinite). `0`/`null` also mean no expiry is set. Such entries live until an `invalidate` event with a matching tag — correlate `save_*` `tags` with `invalidate` `tags` to confirm a write busted its dependents. Which `save_*` carries a child's tags is decided by the parent's declaration: `#[Cacheable]` puts them on `save_value`/`save_view` and `save_etag`, records a `depends_on` edge as well, and the parent closes `cache_miss` once the child is purged; a donut parent separates two uses: a data dependency (a child `onGet()` read) records `depends_on` and tags the template and the view, so purging it makes the next read a `cache_miss`; a hole (run by the template, not before the write) records `dependency_skipped` instead of an edge and tags the view only, so purging it still closes `cache_hit{layer: donut-view}` with a `refresh_donut` inside - a page that inlines a child by other means is not tracked at all — a hit with no `refresh_donut` is the stale shape; `#[DonutCache]` stores no child tag at all (they reach only `cdn_headers.surrogateKeys`) and every read after the first is `refresh_donut` + `put_skipped{not-cacheable}`.
 - A `get` scope with no events and a `cache_hit` close was served from cache; nesting mirrors the embed structure of resources; `manual_*` scopes mark non-AOP entry points — a direct `put()`, `purge()`, `invalidateTags()` or donut write (`putStatic()`/`putDonut()`), the whole write rooted in one `manual_store` scope.
 - A miss scope without `save_*` events means no put happened — look for a `put_skipped` event recording why (`reason`: `etag-present`, `error-code` with the actual response `code`, or `not-cacheable` for donut pages served from their template plus inner caches). A non-200 GET yields `put_skipped{error-code, code}` + `purge` + `invalidate` (for commands, a 4xx `command_result` with no invalidation events).
 - An `invalidate` is pre-write cleanup iff the event immediately preceding it in the same scope's event stream is a `pre_write_cleanup` marker — the writer records the purpose at the source (`QueryRepository::doPut()` and `DonutRepository::putStatic()`/`putDonut()` emit the marker right before clearing the entry they are about to rewrite), so nothing is inferred from tag correlation and no case is undecidable. Any `invalidate` without the marker is a real invalidation (a `#[Refresh]` command shows both shapes: the purge's invalidate has no marker, the re-put's deleteEtag is marker-preceded). The cleanup uses the resource's own URI tag — which is also its parents' surrogate key — so a child refill visibly purges the parent entry, by design.
