@@ -38,8 +38,8 @@ final readonly class HeaderSetter
         AkamaiCacheControlHeaderSetter::PURGE_KEYS,
     ];
 
-    /** The exact wording serialize() raises for a value it refuses; capture group: the class */
-    private const SERIALIZATION_REFUSAL = "/^Serialization of '(.+)' is not allowed$/";
+    /** serialize()'s refusal of a value, which DOM classes follow with a clause; capture group: the class */
+    private const SERIALIZATION_REFUSAL = "/^Serialization of '([^']+)' is not allowed\\b/";
 
     public function __construct(
         private EtagSetterInterface $etagSetter,
@@ -72,8 +72,8 @@ final readonly class HeaderSetter
         try {
             ($this->etagSetter)($ro, $time, $httpCache);
         } catch (Throwable $e) {
-            // Only this exact class with this exact wording is serialize()'s own refusal;
-            // any other Exception (__serialize()/__sleep(), an embedded onGet()) keeps propagating.
+            // serialize()'s own refusal is this class with this wording; any other Exception
+            // (__serialize()/__sleep(), an embedded onGet()) keeps propagating.
             if ($e::class !== 'Exception' || preg_match(self::SERIALIZATION_REFUSAL, $e->getMessage(), $matches) !== 1) {
                 throw $e;
             }

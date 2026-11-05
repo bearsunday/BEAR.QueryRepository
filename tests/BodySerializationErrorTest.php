@@ -257,9 +257,8 @@ class BodySerializationErrorTest extends TestCase
 
     public function testSerializeThrowingAPlainExceptionPropagatesEvenUnderSkip(): void
     {
-        // __serialize() throwing the exact same built-in Exception class serialize() itself
-        // raises for a refusal must not be misread as one: only the "Serialization of 'X' is
-        // not allowed" wording identifies the real refusal.
+        // __serialize() throwing the same built-in Exception class serialize() raises for a
+        // refusal is not a refusal: only the "Serialization of 'X' is not allowed" wording is.
         $resource = $this->resourceFor($this->moduleWithSkip());
 
         try {
@@ -269,6 +268,31 @@ class BodySerializationErrorTest extends TestCase
             $this->assertSame('Exception', $e::class);
             $this->assertSame('__serialize failure, not a serialization refusal', $e->getMessage());
         }
+    }
+
+    public function testADomRefusalWithItsTrailingClauseIsHandledUnderSkip(): void
+    {
+        $logger = new RecordingSemanticLogger();
+        $module = $this->moduleWithSkip();
+        $module->override(new class ($logger) extends AbstractModule {
+            public function __construct(private readonly SemanticLoggerInterface $logger)
+            {
+            }
+
+            #[Override]
+            protected function configure(): void
+            {
+                $this->bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)->toInstance($this->logger);
+            }
+        });
+
+        $ro = $this->resourceFor($module)->get('app://self/unserializable-dom-value');
+
+        $this->assertSame(200, $ro->code);
+        $this->assertArrayNotHasKey(Header::ETAG, $ro->headers);
+        $putSkipped = array_values(array_filter($logger->events, static fn ($event): bool => $event instanceof PutSkippedContext));
+        $this->assertCount(1, $putSkipped);
+        $this->assertSame('DOMDocument', $putSkipped[0]->class);
     }
 
     public function testSleepThrowingAPlainExceptionPropagatesEvenUnderSkip(): void
