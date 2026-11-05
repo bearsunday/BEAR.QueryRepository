@@ -7,7 +7,7 @@ namespace FakeVendor\HelloWorld\Resource\App;
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\Resource\ResourceObject;
 
-/** Requested with snake_case keys (`?user_id=1`), which BEAR.Resource binds to the camelCase parameters. */
+/** Requested with camelCase (`?userId=1`) or snake_case (`?user_id=1`) keys; BEAR.Resource binds both to `$userId`. */
 #[Cacheable]
 class SnakeQueryParam extends ResourceObject
 {

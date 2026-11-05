@@ -343,4 +343,17 @@ class QueryVariantPurgeTest extends TestCase
         $this->assertNotSame($user1, $this->time('app://self/snake-query-param?user_id=1&page=2'));
         $this->assertSame($user2, $this->time('app://self/snake-query-param?user_id=2&page=2'));
     }
+
+    /** A camelCase key (`?userId=`) stays camelCase in the group. */
+    public function testBarePurgeWithCamelCaseKeysReachesThatUsersVariantsOnly(): void
+    {
+        $user1 = $this->time('app://self/snake-query-param?userId=1&page=2');
+        $user2 = $this->time('app://self/snake-query-param?userId=2&page=2');
+        $this->assertSame($user1, $this->time('app://self/snake-query-param?userId=1&page=2'), 'precondition: warm cache');
+
+        $this->repository->purge(new Uri('app://self/snake-query-param?userId=1'));
+
+        $this->assertNotSame($user1, $this->time('app://self/snake-query-param?userId=1&page=2'));
+        $this->assertSame($user2, $this->time('app://self/snake-query-param?userId=2&page=2'));
+    }
 }
