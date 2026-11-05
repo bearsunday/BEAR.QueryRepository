@@ -10,13 +10,9 @@ use Throwable;
 use function sprintf;
 
 /**
- * A #[Cacheable] resource's body held a value serialize() refuses (a closure, a PDO
- * connection, an HTTP client), raised by the default BodySerializationErrorHandlerInterface
+ * A put-time body serialize() refusal, thrown by ThrowBodySerializationError
  *
- * Deliberately not a CacheStoreFailure: that type is caught and degraded by CacheInterceptor,
- * which would turn this into a silent per-request drop instead of the fail-fast ThrowBodySerializationError
- * promises. The original message - serialize()'s own, naming the class it refused - is kept
- * verbatim and the previous exception chained.
+ * Not a CacheStoreFailure, which CacheInterceptor degrades to a warning.
  */
 final class BodySerializationFailure extends RuntimeException
 {
