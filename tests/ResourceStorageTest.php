@@ -103,6 +103,20 @@ class ResourceStorageTest extends TestCase
         $this->assertTrue($storage->saveValue($this->ro, 60));
     }
 
+    public function testADoubleSpacedSurrogateKeyStoresTheEntryAndItsEtagUnderEveryKey(): void
+    {
+        $this->ro->headers[Header::SURROGATE_KEY] = 'a  b';
+
+        $this->assertTrue($this->storage->saveValue($this->ro, 60));
+        $this->storage->saveEtag($this->ro->uri, '"1"', 'a  b', 60);
+        $this->assertTrue($this->storage->hasEtag('"1"'));
+
+        $this->storage->invalidateTags(['b']);
+
+        $this->assertNull($this->storage->get($this->ro->uri));
+        $this->assertFalse($this->storage->hasEtag('"1"'));
+    }
+
     public function testInvalidateTagsWithNullPurgerLogsCdnSkipped(): void
     {
         $logger = new RecordingSemanticLogger();

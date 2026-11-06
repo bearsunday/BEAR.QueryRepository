@@ -341,15 +341,21 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         // as a tag produced one non-volatile tag Set per content version that, under a
         // volatile-* eviction policy, is never reclaimed - leaking memory without being read.
         $surrogateKeys ??= isset($ro->headers[Header::SURROGATE_KEY]) ? explode(' ', $ro->headers[Header::SURROGATE_KEY]) : [];
-        // Reachable by a purge aimed at the bare URI (see BaseUriTag). An empty key - an empty or
-        // double-spaced key string splits into one - is not a tag the pool accepts.
-        /** @var list<string> $uniqueTags */
-        $uniqueTags = array_values(array_unique(array_filter(
-            [($this->uriTag)($ro->uri), ($this->baseUriTag)($ro), ...$surrogateKeys],
-            static fn (string $tag): bool => $tag !== '',
-        )));
 
-        return $uniqueTags;
+        // Reachable by a purge aimed at the bare URI (see BaseUriTag).
+        return $this->uniqueTags([($this->uriTag)($ro->uri), ($this->baseUriTag)($ro), ...$surrogateKeys]);
+    }
+
+    /**
+     * An empty key - an empty or double-spaced key string splits into one - is not a tag the pool accepts
+     *
+     * @param list<string> $tags
+     *
+     * @return list<string>
+     */
+    private function uniqueTags(array $tags): array
+    {
+        return array_values(array_unique(array_filter($tags, static fn (string $tag): bool => $tag !== '')));
     }
 
     private function getUriKey(AbstractUri $uri, string $type): string
@@ -384,10 +390,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
     public function saveEtag(AbstractUri $uri, string $etag, string $surrogateKeys, int|null $ttl): void
     {
         $ttl = $ttl === null ? null : max(0, $ttl);
-        $tags = $surrogateKeys !== '' ? explode(' ', $surrogateKeys) : [];
-        $tags[] = ($this->uriTag)($uri);
-        /** @var list<string> $uniqueTags */
-        $uniqueTags = array_values(array_unique($tags));
+        $uniqueTags = $this->uniqueTags([...explode(' ', $surrogateKeys), ($this->uriTag)($uri)]);
         // The header value is a quoted entity-tag; the pool key is the bare opaque-tag. The entry's
         // value is the URI tag it was issued for - the field used to be the constant 'etag', which
         // is why a validator from any resource satisfied any request.
