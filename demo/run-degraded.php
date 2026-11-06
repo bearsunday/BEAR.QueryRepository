@@ -19,8 +19,9 @@ declare(strict_types=1);
  *   B. Cache server down ......... cache_error{read}, request still served live
  *   C. CDN purge outcomes ........ invalidate{cdn: purged} and {cdn: failed},
  *                                  the failure propagating fail-closed
- *   D. Write-refusing pool ....... save_value / save_etag saved=false,
- *                                  manual_store_result{failed}
+ *   D. Write-refusing pool ....... save_value / save_view saved=false and no
+ *                                  save_etag, manual_store_result{failed}
+ *   D2. ETag pool refuses ........ save_value stored, save_etag saved=false
  *   E. Donut writes refused ...... save_donut / save_donut_view saved=false
  *   F. Invalidation refused ...... invalidate{roPool: failed, etagPool: failed}
  *   G. Other command producers ... command{source: DonutCommandInterceptor} and
@@ -114,8 +115,10 @@ A. Recorded refusals
 B. Cache server down                         -> cache_error{read}, served live anyway
 C. CDN purge, both outcomes                  -> invalidate{cdn: purged} / {cdn: failed},
                                                 the failure propagating fail-closed
-D. Pool refuses writes                       -> save_value/save_etag saved=false,
+D. Pool refuses writes                       -> save_value/save_view saved=false, no save_etag
+                                                (an ETag is kept only with its entry),
                                                 manual_store_result{failed}
+D2. ETag pool alone refuses writes           -> save_value stored, save_etag saved=false
 E. Pool refuses writes, donut page           -> save_donut/save_donut_view saved=false
 F. Pool refuses invalidation                 -> invalidate{roPool: failed, etagPool: failed}
 G. The other command producers               -> command{source: DonutCommandInterceptor},
@@ -330,6 +333,22 @@ $stored = $repository->put($value);
 echo sprintf('D  direct put() against the same pool -> manual_store_result: %s', $stored ? 'stored' : 'failed') . PHP_EOL;
 
 $report($logger->flush(), 'D. write-refusing pool');
+
+// ------------------------------------------- D2. the ETag pool alone refuses writes
+$injector = $newInjector(new class extends AbstractModule {
+    protected function configure(): void
+    {
+        $etagPool = new FakeRefusingPool(new TagAwareAdapter(new ArrayAdapter()));
+        $this->bind(TagAwareAdapterInterface::class)->annotatedWith(EtagPool::class)->toInstance($etagPool);
+    }
+});
+$resource = $injector->getInstance(ResourceInterface::class);
+$logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
+
+$resource->get('app://self/value');
+echo 'D2 GET a value-type resource, only the ETag pool refusing -> save_value stored, save_etag saved=false' . PHP_EOL;
+
+$report($logger->flush(), 'D2. ETag pool refuses writes');
 
 // -------------------------------------------- E. pool refuses writes, donut page
 $injector = $newInjector($refusingModule(refuseSave: true, refuseInvalidation: false), twig: true);

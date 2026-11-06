@@ -142,7 +142,7 @@ template, a response marked `unstorable` for this request, or a body `serialize(
 **A donut write of a non-200 has no `save_etag`, and its `cdn_headers` carries no lifetime.**
 The donut threshold lets 2xx and 3xx through, and a validator is issued for 200 only, so a stored
 `204` or `301` has none to save - `save_donut_view` and `save_donut` appear without the
-`save_etag` that precedes them for a 200. The same rule holds the CDN lifetime back: only a 200
+`save_etag` that follows the view for a 200. The same rule holds the CDN lifetime back: only a 200
 is given one, so a `cdn_headers` for a stored non-200 lists the purge keys and no
 `CDN-Cache-Control`. Neither absence is a failed write.
 
@@ -272,8 +272,8 @@ command {"method": "onPut", "annotations": [], "source": "CommandInterceptor"}
   get {"uri": "page://self/dep/level-three"}
     pre_write_cleanup {"uri": "page://self/dep/level-three"}
     invalidate {"tags": ["_dep_level-three_"], "roPool": "invalidated", "etagPool": "invalidated", "cdn": "skipped"}
-    save_etag {"uri": "page://self/dep/level-three", "tags": ["_dep_level-three_"], "requestedTtl": 31536000, "saved": true}
     save_value {"uri": "page://self/dep/level-three", "tags": ["_dep_level-three_"], "requestedTtl": 31536000, "saved": true}
+    save_etag {"uri": "page://self/dep/level-three", "tags": ["_dep_level-three_"], "requestedTtl": 31536000, "saved": true}
     cache_miss {"layer": "resource"}
   purge {"uri": "page://self/dep/level-three"}
   invalidate {"tags": ["_dep_level-three_"], "roPool": "invalidated", "etagPool": "invalidated", "cdn": "skipped"}
@@ -288,7 +288,8 @@ Read it in order:
    the class says which attribute, the uri says its target, and `{?id}` is the URI template whose
    parameters come from the command's own arguments.
 2. The nested `get` is that refresh, and it is a scope of its own: the resource really ran
-   (`cache_miss{layer: resource}`) and was stored (`saved: true` twice - body and validator).
+   (`cache_miss{layer: resource}`) and was stored (`saved: true` twice - the body, then the
+   validator, which is saved only once the body is).
 3. The **inner** `invalidate` follows a `pre_write_cleanup` for the same URI: that is the writer
    clearing the entry it is about to rewrite, not a bust.
 4. The **outer** `invalidate` has no marker before it, so it is a real invalidation. Its tag is
