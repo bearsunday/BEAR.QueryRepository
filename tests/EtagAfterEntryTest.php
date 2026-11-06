@@ -10,6 +10,7 @@ use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
+use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
 use Madapaja\TwigModule\TwigModule;
 use Override;
 use PHPUnit\Framework\TestCase;
@@ -21,13 +22,12 @@ use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 
 use function dirname;
 
-/** An ETag is kept only when the entry it validates is stored (#261) */
+/** A conditional request is answered 304 only for a response the pool holds (#261) */
 class EtagAfterEntryTest extends TestCase
 {
-    /** @return array{ResourceInterface, ResourceStorageInterface} */
-    private function app(bool $refuseEntries): array
+    private function app(bool $refuseEntries): Injector
     {
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
         if ($refuseEntries) {
             // The ETag pool falls back to the entry pool when unbound; a pool of its own keeps
@@ -43,54 +43,54 @@ class EtagAfterEntryTest extends TestCase
             });
         }
 
-        $injector = new Injector($module, __DIR__ . '/tmp');
-
-        return [$injector->getInstance(ResourceInterface::class), $injector->getInstance(ResourceStorageInterface::class)];
+        return new Injector($module, __DIR__ . '/tmp');
     }
 
-    private function etagOf(ResourceObject $ro): string
+    /** Would a client revalidating with this response's ETag be answered 304? */
+    private function answers304(Injector $injector, ResourceObject $ro): bool
     {
         $this->assertArrayHasKey(Header::ETAG, $ro->headers);
 
-        return $ro->headers[Header::ETAG];
+        return $injector->getInstance(HttpCacheInterface::class)->isNotModified([Header::HTTP_IF_NONE_MATCH => $ro->headers[Header::ETAG]]);
     }
 
-    public function testAValueEntryThePoolRefusesLeavesNoEtag(): void
+    public function testAValueEntryThePoolRefusesIsNotAnswered304(): void
     {
-        [$resource, $storage] = $this->app(refuseEntries: true);
+        $injector = $this->app(refuseEntries: true);
 
-        $ro = $resource->get('app://self/user', ['id' => 1]);
+        $ro = $injector->getInstance(ResourceInterface::class)->get('app://self/user', ['id' => 1]);
 
-        $this->assertFalse($storage->hasEtag($this->etagOf($ro)), 'a conditional request would be answered 304 for an uncached response');
+        $this->assertFalse($this->answers304($injector, $ro));
     }
 
-    public function testAViewEntryWhoseBodyTheMarshallerRefusesLeavesNoEtag(): void
+    public function testAViewEntryWhoseBodyTheMarshallerRefusesIsNotAnswered304(): void
     {
-        [$resource, $storage] = $this->app(refuseEntries: false);
+        $injector = $this->app(refuseEntries: false);
 
-        $ro = $resource->get('app://self/unserializable-view');
+        $ro = $injector->getInstance(ResourceInterface::class)->get('app://self/unserializable-view');
 
-        $this->assertFalse($storage->hasEtag($this->etagOf($ro)));
+        $this->assertFalse($this->answers304($injector, $ro));
     }
 
-    public function testADonutPageViewThePoolRefusesLeavesNoEtag(): void
+    public function testADonutPageViewThePoolRefusesIsNotAnswered304(): void
     {
-        [$resource, $storage] = $this->app(refuseEntries: true);
+        $injector = $this->app(refuseEntries: true);
 
-        $ro = $resource->get('page://self/html/blog-posting', ['id' => 0]);
+        $ro = $injector->getInstance(ResourceInterface::class)->get('page://self/html/blog-posting', ['id' => 0]);
 
-        $this->assertFalse($storage->hasEtag($this->etagOf($ro)));
+        $this->assertFalse($this->answers304($injector, $ro));
     }
 
-    public function testAStoredEntryKeepsItsEtag(): void
+    public function testAStoredEntryIsAnswered304(): void
     {
-        [$resource, $storage] = $this->app(refuseEntries: false);
+        $injector = $this->app(refuseEntries: false);
+        $resource = $injector->getInstance(ResourceInterface::class);
 
         $value = $resource->get('app://self/user', ['id' => 1]);
         $page = $resource->get('page://self/html/blog-posting', ['id' => 0]);
 
-        $this->assertTrue($storage->hasEtag($this->etagOf($value)));
-        $this->assertTrue($storage->hasEtag($this->etagOf($page)));
+        $this->assertTrue($this->answers304($injector, $value));
+        $this->assertTrue($this->answers304($injector, $page));
     }
 
     public function testAnEntryWithoutAValidatorIsStoredWithoutOne(): void

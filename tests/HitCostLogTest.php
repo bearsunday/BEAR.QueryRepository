@@ -76,8 +76,8 @@ class HitCostLogTest extends TestCase
     public function testTheHitSkipsTheWorkTheMissDoes(): void
     {
         // "Cheaper" is not a number, it is a shape: a miss writes the pool, each write step
-        // its own point under the scope (pre_write_cleanup, invalidate, cache_policy, save_etag,
-        // save_value); a hit is one pool read with nothing inside it. That asymmetry is what a
+        // its own point under the scope (cache_policy, pre_write_cleanup, invalidate, save_value,
+        // save_etag); a hit is one pool read with nothing inside it. That asymmetry is what a
         // cache buys, and unlike two wall-clock readings it
         // does not depend on how busy the machine happens to be at the moment of the assertion.
         $this->resource->get('app://self/user', ['id' => 1]);

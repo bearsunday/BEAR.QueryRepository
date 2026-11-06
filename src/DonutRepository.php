@@ -26,7 +26,6 @@ use BEAR\Resource\ResourceObject;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 
-use function array_filter;
 use function array_unique;
 use function array_values;
 use function explode;
@@ -384,8 +383,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
      */
     private function saveView(ResourceObject $ro, int|null $ttl, string $surrogateKeys): bool
     {
-        $tags = array_values(array_filter(explode(' ', $surrogateKeys), static fn (string $tag): bool => $tag !== ''));
-        $saved = $this->resourceStorage->saveDonutView($ro, $ttl, $tags);
+        $saved = $this->resourceStorage->saveDonutView($ro, $ttl, explode(' ', $surrogateKeys));
         // A validator without its view would answer a conditional request 304 for a page the pool does not hold
         if ($saved && isset($ro->headers[Header::ETAG])) {
             $this->resourceStorage->saveEtag($ro->uri, $ro->headers[Header::ETAG], $surrogateKeys, $ttl);

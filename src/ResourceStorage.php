@@ -26,6 +26,7 @@ use Ray\Di\ProviderInterface;
 use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 use Throwable;
 
+use function array_filter;
 use function array_unique;
 use function array_values;
 use function assert;
@@ -340,9 +341,13 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         // as a tag produced one non-volatile tag Set per content version that, under a
         // volatile-* eviction policy, is never reclaimed - leaking memory without being read.
         $surrogateKeys ??= isset($ro->headers[Header::SURROGATE_KEY]) ? explode(' ', $ro->headers[Header::SURROGATE_KEY]) : [];
-        // Reachable by a purge aimed at the bare URI (see BaseUriTag).
+        // Reachable by a purge aimed at the bare URI (see BaseUriTag). An empty key - an empty or
+        // double-spaced key string splits into one - is not a tag the pool accepts.
         /** @var list<string> $uniqueTags */
-        $uniqueTags = array_values(array_unique([($this->uriTag)($ro->uri), ($this->baseUriTag)($ro), ...$surrogateKeys]));
+        $uniqueTags = array_values(array_unique(array_filter(
+            [($this->uriTag)($ro->uri), ($this->baseUriTag)($ro), ...$surrogateKeys],
+            static fn (string $tag): bool => $tag !== '',
+        )));
 
         return $uniqueTags;
     }

@@ -167,14 +167,14 @@ get uri=page://self/dep/level-one
 │   ├── pre_write_cleanup uri=.../level-two [event]
 │   ├── invalidate tags=[_dep_level-two_] [event]        (marker-preceded: cleanup)
 │   ├── get uri=page://self/dep/level-three
-│   │   ├── pre_write_cleanup → invalidate → save_etag → save_value [events]
+│   │   ├── pre_write_cleanup → invalidate → save_value → save_etag [events]
 │   │   └── (close) cache_miss layer=resource
 │   ├── depends_on parent=.../level-two child=.../level-three [event]
-│   ├── save_etag → save_value [events]
+│   ├── save_value → save_etag [events]
 │   └── (close) cache_miss layer=resource
 ├── depends_on parent=.../level-one child=.../level-two childTags=[_dep_level-two_, _dep_level-three_] [event]
-├── save_etag uri=.../level-one tags=[...] saved=true [event]
 ├── save_value uri=.../level-one tags=[..., _dep_level-three_] ttl=31536000 saved=true [event]
+├── save_etag uri=.../level-one tags=[...] saved=true [event]
 └── (close) cache_miss layer=resource
 ```
 
