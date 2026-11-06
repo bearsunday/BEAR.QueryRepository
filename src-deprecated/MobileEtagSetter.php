@@ -14,7 +14,10 @@ use function gmdate;
 use function serialize;
 use function time;
 
-/** @internal */
+/**
+ * @deprecated See {@see MobileEtagModule}
+ * @internal
+ */
 final readonly class MobileEtagSetter implements EtagSetterInterface
 {
     public function __construct(
