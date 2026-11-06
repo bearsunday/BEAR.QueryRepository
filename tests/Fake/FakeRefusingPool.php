@@ -9,6 +9,8 @@ use RuntimeException;
 use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 use Symfony\Component\Cache\CacheItem;
 
+use function str_starts_with;
+
 /**
  * A pool that reads normally but refuses one kind of write.
  *
@@ -18,7 +20,8 @@ use Symfony\Component\Cache\CacheItem;
  * save() reports success, which is the very kind of silent lie this log exposes.)
  *
  * `throwOnSave` models the loud sibling: a server that is gone rather than full, so the
- * write raises instead of reporting failure.
+ * write raises instead of reporting failure. `refusedKeyPrefix` narrows the refusal to the
+ * keys it starts, e.g. `ro-` to refuse a page view while its donut template is stored.
  */
 final class FakeRefusingPool implements TagAwareAdapterInterface
 {
@@ -27,6 +30,7 @@ final class FakeRefusingPool implements TagAwareAdapterInterface
         private readonly bool $refuseSave = true,
         private readonly bool $refuseInvalidation = false,
         private readonly bool $throwOnSave = false,
+        private readonly string $refusedKeyPrefix = '',
     ) {
     }
 
@@ -36,17 +40,23 @@ final class FakeRefusingPool implements TagAwareAdapterInterface
             throw new RuntimeException('cache server down');
         }
 
-        return $this->refuseSave ? false : $this->pool->save($item);
+        return $this->refuses($item) ? false : $this->pool->save($item);
     }
 
     public function saveDeferred(CacheItemInterface $item): bool
     {
-        return $this->refuseSave ? false : $this->pool->saveDeferred($item);
+        return $this->refuses($item) ? false : $this->pool->saveDeferred($item);
+    }
+
+    private function refuses(CacheItemInterface $item): bool
+    {
+        return $this->refuseSave && str_starts_with($item->getKey(), $this->refusedKeyPrefix);
     }
 
     public function commit(): bool
     {
-        return $this->refuseSave ? false : $this->pool->commit();
+        // A refused deferred item was never queued, so with a prefix the rest commits
+        return $this->refuseSave && $this->refusedKeyPrefix === '' ? false : $this->pool->commit();
     }
 
     /** @param array<string> $tags */

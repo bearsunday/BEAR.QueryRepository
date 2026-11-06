@@ -139,8 +139,8 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 
 **非200のdonut書き込みには `save_etag` が無く、`cdn_headers` に寿命も入りません。** donutの
 閾値は2xxと3xxを通しますが、検証子は200にしか作られないため、保存された `204` や `301` には
-保存すべきETagがありません。200では `save_etag` に続いて出る `save_donut_view` と `save_donut` が、
-非200ではその `save_etag` 抜きで並びます。CDNの寿命も同じ規則で、与えられるのは200だけです。
+保存すべきETagがありません。200では `save_donut_view` の直後に `save_etag` が出ますが、非200では
+それが無く、`save_donut_view` と `save_donut` だけが並びます。CDNの寿命も同じ規則で、与えられるのは200だけです。
 保存された非200の `cdn_headers` にはパージキーだけが載り、`CDN-Cache-Control` は載りません。
 どちらの欠落も書き込みの失敗ではありません。
 
@@ -262,8 +262,8 @@ command {"method": "onPut", "annotations": [], "source": "CommandInterceptor"}
   get {"uri": "page://self/dep/level-three"}
     pre_write_cleanup {"uri": "page://self/dep/level-three"}
     invalidate {"tags": ["_dep_level-three_"], "roPool": "invalidated", "etagPool": "invalidated", "cdn": "skipped"}
-    save_etag {"uri": "page://self/dep/level-three", "tags": ["_dep_level-three_"], "requestedTtl": 31536000, "saved": true}
     save_value {"uri": "page://self/dep/level-three", "tags": ["_dep_level-three_"], "requestedTtl": 31536000, "saved": true}
+    save_etag {"uri": "page://self/dep/level-three", "tags": ["_dep_level-three_"], "requestedTtl": 31536000, "saved": true}
     cache_miss {"layer": "resource"}
   purge {"uri": "page://self/dep/level-three"}
   invalidate {"tags": ["_dep_level-three_"], "roPool": "invalidated", "etagPool": "invalidated", "cdn": "skipped"}
@@ -278,7 +278,8 @@ command {"method": "onPut", "annotations": [], "source": "CommandInterceptor"}
    `{"class": "…\\Annotation\\Refresh", "uri": "app://self/refresh-dest{?id}"}` の形になる —
    class がどの属性か、uri がその対象で、`{?id}` はコマンド自身の引数から埋まる URI テンプレート。
 2. 入れ子の `get` がその refresh で、それ自体が 1 つのスコープ。リソースは実際に走り
-   (`cache_miss{layer: resource}`)、保存された(`saved: true` が 2 つ — body と検証子)。
+   (`cache_miss{layer: resource}`)、保存された(`saved: true` が 2 つ — body、続いて検証子。
+   検証子は body を保存できたときだけ保存される)。
 3. **内側**の `invalidate` は同じ URI の `pre_write_cleanup` の直後にある。これは書き手が
    これから書き換えるエントリを消しているだけで、破棄ではない。
 4. **外側**の `invalidate` には直前のマーカーが無いので、本物の無効化。そのタグは子の URI タグであり、

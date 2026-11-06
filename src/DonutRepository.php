@@ -374,7 +374,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     }
 
     /**
-     * Save the page state, and its validator when it has one
+     * Save the page state, and its validator when it has one and the state is stored
      *
      * A 3xx/204 arrives here with no ETag (only 200 gets one), but the entry is keyed and
      * invalidated by its URI tag, never by ETag, so that's fine. Surrogate keys arrive as a
@@ -383,13 +383,13 @@ final readonly class DonutRepository implements DonutRepositoryInterface
      */
     private function saveView(ResourceObject $ro, int|null $ttl, string $surrogateKeys): bool
     {
-        if (isset($ro->headers[Header::ETAG])) {
+        $saved = $this->resourceStorage->saveDonutView($ro, $ttl, explode(' ', $surrogateKeys));
+        // A validator without its view would answer a conditional request 304 for a page the pool does not hold
+        if ($saved && isset($ro->headers[Header::ETAG])) {
             $this->resourceStorage->saveEtag($ro->uri, $ro->headers[Header::ETAG], $surrogateKeys, $ttl);
         }
 
-        $tags = $surrogateKeys === '' ? [] : explode(' ', $surrogateKeys);
-
-        return $this->resourceStorage->saveDonutView($ro, $ttl, $tags);
+        return $saved;
     }
 
     /**

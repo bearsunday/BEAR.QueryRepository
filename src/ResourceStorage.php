@@ -26,6 +26,7 @@ use Ray\Di\ProviderInterface;
 use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 use Throwable;
 
+use function array_filter;
 use function array_unique;
 use function array_values;
 use function assert;
@@ -308,6 +309,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         // template entry TTL (putStatic passes $ttl, putDonut passes $donutTtl), never a CDN s-maxage.
         $sMaxAge = $sMaxAge === null ? null : max(0, $sMaxAge);
         $key = $this->getUriKey($uri, self::KEY_DONUT);
+        $headerKeys = $this->uniqueTags($headerKeys);
         $saved = $this->guard(fn (): bool => ($this->saver)($key, $donut, $this->roPool, $headerKeys, $sMaxAge));
         // saved=false is logged, not asserted: a quiet store failure must stay observable
         // in the log (an assert here would throw AFTER the event, contradicting it).
@@ -340,11 +342,21 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         // as a tag produced one non-volatile tag Set per content version that, under a
         // volatile-* eviction policy, is never reclaimed - leaking memory without being read.
         $surrogateKeys ??= isset($ro->headers[Header::SURROGATE_KEY]) ? explode(' ', $ro->headers[Header::SURROGATE_KEY]) : [];
-        // Reachable by a purge aimed at the bare URI (see BaseUriTag).
-        /** @var list<string> $uniqueTags */
-        $uniqueTags = array_values(array_unique([($this->uriTag)($ro->uri), ($this->baseUriTag)($ro), ...$surrogateKeys]));
 
-        return $uniqueTags;
+        // Reachable by a purge aimed at the bare URI (see BaseUriTag).
+        return $this->uniqueTags([($this->uriTag)($ro->uri), ($this->baseUriTag)($ro), ...$surrogateKeys]);
+    }
+
+    /**
+     * An empty key - an empty or double-spaced key string splits into one - is not a tag the pool accepts
+     *
+     * @param list<string> $tags
+     *
+     * @return list<string>
+     */
+    private function uniqueTags(array $tags): array
+    {
+        return array_values(array_unique(array_filter($tags, static fn (string $tag): bool => $tag !== '')));
     }
 
     private function getUriKey(AbstractUri $uri, string $type): string
@@ -379,10 +391,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
     public function saveEtag(AbstractUri $uri, string $etag, string $surrogateKeys, int|null $ttl): void
     {
         $ttl = $ttl === null ? null : max(0, $ttl);
-        $tags = $surrogateKeys !== '' ? explode(' ', $surrogateKeys) : [];
-        $tags[] = ($this->uriTag)($uri);
-        /** @var list<string> $uniqueTags */
-        $uniqueTags = array_values(array_unique($tags));
+        $uniqueTags = $this->uniqueTags([...explode(' ', $surrogateKeys), ($this->uriTag)($uri)]);
         // The header value is a quoted entity-tag; the pool key is the bare opaque-tag. The entry's
         // value is the URI tag it was issued for - the field used to be the constant 'etag', which
         // is why a validator from any resource satisfied any request.
