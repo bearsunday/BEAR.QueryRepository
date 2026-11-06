@@ -116,7 +116,7 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 | フィールド | 値 | 読み方 |
 |---|---|---|
 | `layer` | `resource` \| `donut` \| `donut-view` \| `etag` | どのストアに尋ねたか。`resource` = `#[Cacheable]` の値/ビューストア、`donut` = donut テンプレート(イベントとしてのみ出る)、`donut-view` = 再合成された donut ページ、`etag` = 条件付きリクエストが引く ETag プール |
-| `saved` | `true` \| `false` | **`false` = プールが書き込みを拒否した。** これを記録するものは他に無い |
+| `saved` | `true` \| `false` | **`false` = プールが書き込みを拒否した。** これを記録するものは他に無い。`true` = プールが受け取った、であって残ったではない。ストアを束縛していないときの `NullAdapter` はすべての書き込みを受け取って何も残さないので、read は毎回 miss になる |
 | `roPool` / `etagPool` | `invalidated` \| `failed` | プールごとの無効化結果 |
 | `cdn` | `purged` \| `failed` \| `skipped` | `skipped` は purger 未設定 (`NullPurger`)。「やることが無かった」ではない |
 | `operation` | `read` \| `write` | キャッシュのどちら側が throw したか |
