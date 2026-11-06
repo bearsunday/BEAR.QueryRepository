@@ -118,7 +118,7 @@ Every outcome is a self-describing word, never a bare boolean — except `saved`
 | Field | Values | Reading |
 |---|---|---|
 | `layer` | `resource` \| `donut` \| `donut-view` \| `etag` | which store was asked. `resource` = the `#[Cacheable]` value/view store; `donut` = the donut template (only ever an event); `donut-view` = the recomposed donut page; `etag` = the ETag pool behind a conditional request |
-| `saved` | `true` \| `false` | **`false` = the pool refused the write.** Nothing else in the system records this |
+| `saved` | `true` \| `false` | **`false` = the pool refused the write.** Nothing else in the system records this. `true` = the pool accepted it, not that it is kept: `NullAdapter`, the store when none is bound, accepts every write and keeps nothing, so every read is a miss |
 | `roPool` / `etagPool` | `invalidated` \| `failed` | per-pool invalidation result |
 | `cdn` | `purged` \| `failed` \| `skipped` | `skipped` = no purger configured (`NullPurger`), not "nothing to do" |
 | `operation` | `read` \| `write` | which side of the cache threw |
