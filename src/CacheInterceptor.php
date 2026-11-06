@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Exception\BodySerializationNotAllowedException;
 use BEAR\QueryRepository\Exception\CacheStoreException;
 use BEAR\QueryRepository\Log\Context\CacheErrorContext;
 use BEAR\QueryRepository\Log\Context\CacheHitContext;
@@ -132,6 +133,10 @@ final readonly class CacheInterceptor implements MethodInterceptor
      */
     private static function failure(string $uri, string $operation, Throwable $e): CacheErrorContext
     {
+        if ($e instanceof BodySerializationNotAllowedException) {
+            return new CacheErrorContext($uri, $operation, ($e->getPrevious() ?? $e)->getMessage(), $e::class);
+        }
+
         $cause = $e instanceof CacheStoreException ? $e->getPrevious() ?? $e : $e;
 
         return new CacheErrorContext($uri, $operation, $cause->getMessage(), $cause::class);

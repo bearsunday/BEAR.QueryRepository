@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\BodySerializationNotAllowedException;
+use BEAR\QueryRepository\Log\Context\CacheErrorContext;
 use BEAR\QueryRepository\Log\Context\PutSkippedContext;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\RepositoryModule\Annotation\EtagPool;
@@ -108,6 +109,34 @@ class BodySerializationErrorTest extends TestCase
             $this->assertSame('Exception', $previous::class);
             $this->assertSame("Serialization of 'Closure' is not allowed", $previous->getMessage());
         }
+    }
+
+    public function testTheThrowPolicysCacheErrorNamesTheExceptionAndTheRefusedValue(): void
+    {
+        $logger = new RecordingSemanticLogger();
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
+        $module->override(new class ($logger) extends AbstractModule {
+            public function __construct(private readonly SemanticLoggerInterface $logger)
+            {
+            }
+
+            #[Override]
+            protected function configure(): void
+            {
+                $this->bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)->toInstance($this->logger);
+            }
+        });
+
+        try {
+            $this->resourceFor($module)->get(self::URI);
+            $this->fail('expected BodySerializationNotAllowedException');
+        } catch (BodySerializationNotAllowedException) {
+        }
+
+        $errors = array_values(array_filter($logger->events, static fn ($event): bool => $event instanceof CacheErrorContext));
+        $this->assertCount(1, $errors);
+        $this->assertSame(BodySerializationNotAllowedException::class, $errors[0]->exceptionClass);
+        $this->assertSame("Serialization of 'Closure' is not allowed", $errors[0]->error);
     }
 
     public function testMobileEtagSetterRoutesTheSameFailureThroughTheHandler(): void
