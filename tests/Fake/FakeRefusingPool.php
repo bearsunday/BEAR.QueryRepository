@@ -55,7 +55,8 @@ final class FakeRefusingPool implements TagAwareAdapterInterface
 
     public function commit(): bool
     {
-        return $this->refuseSave ? false : $this->pool->commit();
+        // A refused deferred item was never queued, so with a prefix the rest commits
+        return $this->refuseSave && $this->refusedKeyPrefix === '' ? false : $this->pool->commit();
     }
 
     /** @param array<string> $tags */
