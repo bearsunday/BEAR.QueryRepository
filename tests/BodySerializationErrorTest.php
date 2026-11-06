@@ -10,10 +10,12 @@ use BEAR\QueryRepository\Log\Context\PutSkippedContext;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\RepositoryModule\Annotation\EtagPool;
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
+use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\Module\ResourceModule;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
+use LogicException;
 use Madapaja\TwigModule\TwigModule;
 use Override;
 use PHPUnit\Framework\TestCase;
@@ -421,6 +423,63 @@ class BodySerializationErrorTest extends TestCase
             $this->fail("expected the object's RuntimeException to propagate");
         } catch (Throwable $e) {
             $this->assertSame(RuntimeException::class, $e::class);
+        }
+    }
+
+    public function testABodyHoldingARequestIsServedUncachedUnderSkip(): void
+    {
+        $logger = new RecordingSemanticLogger();
+        $module = $this->moduleWithSkip();
+        $module->override(new class ($logger) extends AbstractModule {
+            public function __construct(private readonly SemanticLoggerInterface $logger)
+            {
+                parent::__construct();
+            }
+
+            #[Override]
+            protected function configure(): void
+            {
+                $this->bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)->toInstance($this->logger);
+            }
+        });
+        $resource = $this->resourceFor($module);
+
+        $ro = $resource->get('app://self/resource-client-in-body');
+
+        $this->assertSame(200, $ro->code);
+        $this->assertArrayNotHasKey(Header::ETAG, $ro->headers);
+        $putSkipped = array_values(array_filter($logger->events, static fn ($event): bool => $event instanceof PutSkippedContext));
+        $this->assertCount(1, $putSkipped);
+        $this->assertSame('unserializable', $putSkipped[0]->reason);
+        $this->assertSame(AbstractRequest::class, $putSkipped[0]->class);
+
+        $second = $resource->get('app://self/resource-client-in-body');
+        $this->assertArrayNotHasKey('Age', $second->headers, 'a cache hit would carry Age; onGet() ran again instead');
+    }
+
+    public function testABodyHoldingARequestFailsWithTheUriUnderThrow(): void
+    {
+        $resource = $this->resourceFor(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+
+        try {
+            $resource->get('app://self/resource-client-in-body');
+            $this->fail('expected BodySerializationNotAllowedException');
+        } catch (BodySerializationNotAllowedException $e) {
+            $this->assertSame('app://self/resource-client-in-body', $e->getMessage());
+            $this->assertInstanceOf(LogicException::class, $e->getPrevious());
+        }
+    }
+
+    public function testAnotherObjectsLogicExceptionPropagatesEvenUnderSkip(): void
+    {
+        $resource = $this->resourceFor($this->moduleWithSkip());
+
+        try {
+            $resource->get('app://self/serialize-throws-logic-exception');
+            $this->fail("expected the object's __serialize() exception to propagate");
+        } catch (Throwable $e) {
+            $this->assertSame(LogicException::class, $e::class);
+            $this->assertSame('a real failure, not a request refusing to serialize', $e->getMessage());
         }
     }
 

@@ -7,7 +7,9 @@ namespace BEAR\QueryRepository;
 use BEAR\QueryRepository\Cdn\AkamaiCacheControlHeaderSetter;
 use BEAR\QueryRepository\Cdn\FastlyCacheControlHeaderSetter;
 use BEAR\RepositoryModule\Annotation\HttpCache;
+use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\ResourceObject;
+use LogicException;
 use Throwable;
 
 use function array_keys;
@@ -15,6 +17,7 @@ use function array_map;
 use function explode;
 use function implode;
 use function in_array;
+use function is_a;
 use function preg_match;
 use function sprintf;
 use function str_contains;
@@ -71,6 +74,13 @@ final readonly class HeaderSetter
 
         try {
             ($this->etagSetter)($ro, $time, $httpCache);
+        } catch (LogicException $e) {
+            // A request's own __serialize() refusal; any other LogicException keeps propagating
+            if (! $this->isRequestRefusal($e)) {
+                throw $e;
+            }
+
+            return $this->handOver($ro, $e, AbstractRequest::class);
         } catch (Throwable $e) {
             // serialize()'s own refusal is this class with this wording; any other Exception
             // (__serialize()/__sleep(), an embedded onGet()) keeps propagating.
@@ -78,11 +88,7 @@ final readonly class HeaderSetter
                 throw $e;
             }
 
-            ($this->bodySerializationErrorHandler)($ro, $e);
-            $this->stripHeaders($ro, self::CDN_FACING_HEADERS);
-            $this->makeCacheControlPrivate($ro);
-
-            return $matches[1];
+            return $this->handOver($ro, $e, $matches[1]);
         }
 
         if ($cacheControlMaxAge !== null && $cacheControlMaxAge > 0) {
@@ -90,6 +96,26 @@ final readonly class HeaderSetter
         }
 
         return null;
+    }
+
+    /** Did a request's own __serialize() throw $e? */
+    private function isRequestRefusal(LogicException $e): bool
+    {
+        $frame = $e->getTrace()[0] ?? [];
+
+        return $e::class === LogicException::class
+            && ($frame['function'] ?? null) === '__serialize'
+            && is_a($frame['class'] ?? '', AbstractRequest::class, true);
+    }
+
+    /** Let the handler decide, then send the response out uncached; returns the refused class */
+    private function handOver(ResourceObject $ro, Throwable $e, string $refused): string
+    {
+        ($this->bodySerializationErrorHandler)($ro, $e);
+        $this->stripHeaders($ro, self::CDN_FACING_HEADERS);
+        $this->makeCacheControlPrivate($ro);
+
+        return $refused;
     }
 
     /** @param list<string> $canonicalNames */
