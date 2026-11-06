@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.19.0] - 2026-11-06
 
 ### Added
 - A put whose body holds a value `serialize()` refuses (a closure, a PDO connection, an HTTP client, a DOM node) - a `#[Cacheable]` entry, or under `MobileEtagModule` also a `#[CacheableResponse]` page - now runs through `BodySerializationErrorHandlerInterface` instead of failing every request from `EtagSetter`/`MobileEtagSetter`: `QueryRepositoryModule` binds the default `ThrowSerializationError`, which fails the request with a `BEAR\QueryRepository\Exception\BodySerializationNotAllowedException` whose message is the URI, `serialize()`'s own exception chained; `ProdQueryRepositoryModule` binds `SkipSerializationError` instead, so the response goes out uncached (CDN-facing headers stripped, `Cache-Control` loses `s-maxage`/`public` and gains `private`, nothing stored, no pre-write purge unless an entry was stored before) and a `put_skipped{reason: unserializable}` event records the URI and the failing class. An application can bind its own handler, e.g. one that reports and returns (#259).
