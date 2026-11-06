@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- A body that holds a request - typically through a service that keeps the resource client, which keeps the last request it made - failed the request with `LogicException: AbstractRequest::__serialize not supported` even under `SkipSerializationError`, since only `serialize()`'s own refusal reached `BodySerializationErrorHandlerInterface` (#267). A request's refusal now reaches the handler as well: `SkipSerializationError` serves the response uncached with `put_skipped{reason: unserializable, class: BEAR\Resource\AbstractRequest}`, and `ThrowSerializationError` fails it with `BodySerializationNotAllowedException` naming the URI. Any other exception thrown while serializing still propagates.
+
 ## [1.19.0] - 2026-11-06
 
 ### Added
