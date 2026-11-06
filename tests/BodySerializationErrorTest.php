@@ -239,6 +239,36 @@ class BodySerializationErrorTest extends TestCase
         $this->assertArrayNotHasKey('Age', $second->headers, 'a cache hit would carry Age; the template was never saved');
     }
 
+    public function testTheDonutPathsCacheErrorUnderThrowNamesTheExceptionAndTheRefusedValue(): void
+    {
+        $logger = new RecordingSemanticLogger();
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
+        $module->override(new MobileEtagModule());
+        $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
+        $module->override(new class ($logger) extends AbstractModule {
+            public function __construct(private readonly SemanticLoggerInterface $logger)
+            {
+            }
+
+            #[Override]
+            protected function configure(): void
+            {
+                $this->bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)->toInstance($this->logger);
+            }
+        });
+
+        try {
+            $this->resourceFor($module)->get('page://self/html/unserializable-donut');
+            $this->fail('expected BodySerializationNotAllowedException');
+        } catch (BodySerializationNotAllowedException) {
+        }
+
+        $errors = array_values(array_filter($logger->events, static fn ($event): bool => $event instanceof CacheErrorContext));
+        $this->assertCount(1, $errors);
+        $this->assertSame(BodySerializationNotAllowedException::class, $errors[0]->exceptionClass);
+        $this->assertSame("Serialization of 'Closure' is not allowed", $errors[0]->error);
+    }
+
     public function testARefreshUnderMobileEtagAndSkipDoesNotStoreTheRecomposedView(): void
     {
         $logger = new RecordingSemanticLogger();
