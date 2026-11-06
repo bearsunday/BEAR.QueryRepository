@@ -29,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A recomposed donut page kept the tags only of its holes that carry a `Surrogate-Key` header, so a hole cached by its ETag alone, such as a plain `#[Cacheable]` child, could be purged once but not again. A recomposed page now keeps every hole's tags, as the first write does.
 - A `#[Cacheable(type: 'view')]` response whose rendering sets `Cache-Control` to `private` or `no-store` was stored, because the check ran before rendering; it is now checked on the rendered response and not stored.
 - An ETag was stored even when the entry it validates was not - a pool that refused the write, or a body its marshaller refused - so a conditional request was answered 304 for a response the pool did not hold (#261). The entry (`save_value`, `save_view` or a donut page's `save_donut_view`) is now saved first and its ETag only once it is stored, so in the log `save_etag` follows the entry's save and is absent after a `saved: false`.
-- A `Surrogate-Key` with a doubled, leading or trailing space split into an empty tag, which the pool rejects, so the entry or its ETag was not stored and the write degraded to a warning. Empty keys are now dropped, and the entry and its ETag are stored under the remaining keys.
+- A `Surrogate-Key` with a doubled, leading or trailing space split into an empty tag, which the pool rejects, so the entry, its ETag or a donut page's template was not stored: a direct write threw, and under an interceptor the write degraded to a warning. Empty keys are now dropped, and each is stored under the remaining keys.
 
 ## [1.18.0] - 2026-10-29
 
