@@ -11,6 +11,7 @@ use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
 use FakeVendor\HelloWorld\Resource\App\Code;
 use FakeVendor\HelloWorld\Resource\App\RefreshDest;
 use FakeVendor\HelloWorld\Resource\App\TypedParam;
+use FakeVendor\HelloWorld\Resource\App\User;
 use FakeVendor\HelloWorld\Resource\App\User\Profile;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
@@ -31,6 +32,7 @@ class BehaviorTest extends TestCase
         // Code counts its own executions and other test classes fetch it too, so the
         // absolute counts below only hold from a known starting point
         Code::$i = 0;
+        User::$data = User::DATA;
 
         parent::setUp();
     }

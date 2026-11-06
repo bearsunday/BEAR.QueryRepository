@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- **Behaviour change**: the refresh after a write (`RefreshSameCommand`/`DonutCommandInterceptor`) is a GET on a new resource instance, no longer `onGet()` re-run on the written object. The write's response keeps its own code, headers, body and query; a client that read the refreshed representation from it must GET it. A `#[Refresh]`/`#[Purge]` URI template expands from the write's own body and query. State a write leaves on the resource object is not seen by the refresh; keep written data in storage.
+- Rebuild the injector when deploying: both classes take new required `FactoryInterface` and `InvokerInterface` dependencies.
+- Deploy with a new `CacheVersionModule` version, or clear your own pools: entries refreshed by an earlier version can hold the write's state.
+
+### Fixed
+- A `201` or `204` write now refreshes its `#[Cacheable]` entry; it was left empty (`put_skipped{error-code}`).
+- A `#[CacheableResponse]` page written with a `201` no longer stores and serves the write's code, `Location` header and body.
+- A successful DELETE whose refresh GET answers 404 keeps its own code.
+- A write response no longer carries the refreshed GET's validators (`ETag`/`Last-Modified`/`Cache-Control`), and a refreshed entry no longer carries write-only body keys or the write's URI method.
+
 ## [1.19.0] - 2026-11-06
 
 ### Added

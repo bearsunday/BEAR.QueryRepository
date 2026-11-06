@@ -16,18 +16,18 @@ use BEAR\Resource\ResourceObject;
 #[Cacheable]
 class User extends ResourceObject
 {
-    /** @var array<int, array<string, string>> */
-    protected $data = [];
+    public const DATA = [1 => ['name' => 'bear', 'age' => '3']];
 
-    public function __construct()
-    {
-        $this->data[1]['name'] = 'bear';
-        $this->data[1]['age'] = '3';
-    }
+    /**
+     * Static, so the new instance the refresh after a write creates sees the write
+     *
+     * @var array<int, array<string, string>>
+     */
+    public static $data = self::DATA;
 
     public function onGet($id)
     {
-        $this['name'] = isset($this->data[$id]) ? $this->data[$id]['name'] : '';
+        $this['name'] = isset(self::$data[$id]) ? self::$data[$id]['name'] : '';
         $this['time'] = \microtime(true);
 
         return $this;
@@ -41,7 +41,7 @@ class User extends ResourceObject
             return $this;
         }
 
-        $this->data[$id]['name'] = $name;
+        self::$data[$id]['name'] = $name;
 
         return $this;
     }
@@ -51,8 +51,8 @@ class User extends ResourceObject
     #[FakeAnnotation]
     public function onPut($id, $name, $age)
     {
-        $this->data[$id]['name'] = $name;
-        $this->data[$id]['age'] = $age;
+        self::$data[$id]['name'] = $name;
+        self::$data[$id]['age'] = $age;
         $this['id'] = $id;
 
         return $this;
@@ -60,7 +60,7 @@ class User extends ResourceObject
 
     public function onDelete($id)
     {
-        unset($this->data[$id]);
+        unset(self::$data[$id]);
 
         return $this;
     }

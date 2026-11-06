@@ -9,6 +9,7 @@ use BEAR\QueryRepository\Log\Context\SaveValueContext;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
+use FakeVendor\HelloWorld\Resource\App\User;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 use PHPUnit\Framework\TestCase;
@@ -54,6 +55,7 @@ class RefreshAnnotatedCommandTest extends TestCase
         $injector = new Injector($module, __DIR__ . '/tmp');
         $this->resource = $injector->getInstance(ResourceInterface::class);
         $this->repository = $injector->getInstance(QueryRepositoryInterface::class);
+        User::$data = User::DATA;
 
         parent::setUp();
     }

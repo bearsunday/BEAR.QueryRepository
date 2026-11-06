@@ -1,7 +1,6 @@
 <?php
 
-// Not strict_types: call_user_func_array() below is compiled as a direct call and takes this
-// file's typing mode, and a string query value must still coerce into a typed onGet parameter.
+declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
@@ -10,6 +9,9 @@ use BEAR\QueryRepository\Log\Context\CacheErrorContext;
 use BEAR\QueryRepository\Log\Context\CommandResultContext;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\Code;
+use BEAR\Resource\FactoryInterface;
+use BEAR\Resource\InvokerInterface;
+use BEAR\Resource\Request;
 use BEAR\Resource\ResourceObject;
 use Koriym\SemanticLogger\NullSemanticLogger;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
@@ -19,8 +21,6 @@ use Ray\Aop\MethodInvocation;
 use ReflectionMethod;
 
 use function assert;
-use function call_user_func_array;
-use function is_callable;
 use function str_starts_with;
 
 /**
@@ -41,6 +41,8 @@ final readonly class DonutCommandInterceptor implements MethodInterceptor
     public function __construct(
         private DonutRepositoryInterface $repository,
         private MatchQueryInterface $matchQuery,
+        private FactoryInterface $factory,
+        private InvokerInterface $invoker,
         #[CacheLog]
         private SemanticLoggerInterface $logger = new NullSemanticLogger(),
     ) {
@@ -85,7 +87,9 @@ final readonly class DonutCommandInterceptor implements MethodInterceptor
         $delUri->query = $this->baseQuery($ro, $getQuery);
 
         $this->repository->purge($delUri);
-        $this->refresh($getQuery, $ro);
+        // Read to rebuild the cache entry
+        $get = $this->factory->newInstance("{$ro->uri->scheme}://{$ro->uri->host}{$ro->uri->path}");
+        (new Request($this->invoker, $get))($getQuery);
     }
 
     /**
@@ -106,17 +110,5 @@ final readonly class DonutCommandInterceptor implements MethodInterceptor
         }
 
         return $baseQuery;
-    }
-
-    /** @param array<string, mixed> $getQuery */
-    private function refresh(array $getQuery, ResourceObject $ro): void
-    {
-        $ro->uri->query = $getQuery;
-        $get = [$ro, 'onGet'];
-        if (is_callable($get)) {
-            // String keys are named arguments: a parameter MatchQuery omitted keeps its
-            // default instead of shifting the positional order.
-            call_user_func_array($get, $getQuery);
-        }
     }
 }

@@ -14,6 +14,8 @@ use BEAR\Resource\Uri;
 use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
 use FakeVendor\HelloWorld\Resource\App\ControlExpiry;
 use FakeVendor\HelloWorld\Resource\App\NullView;
+use FakeVendor\HelloWorld\Resource\App\SometimesSameResponse;
+use FakeVendor\HelloWorld\Resource\App\User;
 use FakeVendor\HelloWorld\Resource\App\User\Profile;
 use FakeVendor\HelloWorld\Resource\Page\None;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
@@ -54,6 +56,8 @@ class QueryRepositoryTest extends TestCase
         $this->resource = $injector->getInstance(ResourceInterface::class);
         $this->httpCache = $injector->getInstance(HttpCacheInterface::class);
         $this->logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
+        SometimesSameResponse::$data = SometimesSameResponse::DATA;
+        User::$data = User::DATA;
 
         parent::setUp();
     }
