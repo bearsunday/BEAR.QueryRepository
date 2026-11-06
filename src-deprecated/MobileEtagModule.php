@@ -13,11 +13,8 @@ use Ray\Di\Scope;
 use function class_exists;
 
 /**
- * Provides EtagSetterInterface
- *
- * The following bindings are provided:
- *
- * EtagSetterInterface
+ * @deprecated The device prefix changes only the ETag; the cached state stays shared across devices.
+ *             To cache per device, set X_VARY so ResourceStorage keys each state by the request value.
  */
 final class MobileEtagModule extends AbstractModule
 {

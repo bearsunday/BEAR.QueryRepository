@@ -21,6 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Behaviour change**: a `#[Cacheable]` parent takes a top-level embedded child that carries a `Surrogate-Key` but no ETag as a dependency, as a donut page already did. A `#[DonutCache]` child (which never gets an ETag) or a non-cached child naming its data with its own `Surrogate-Key` now invalidates the parent; before, a change to it left the parent stale until the parent's TTL. The parent's `Surrogate-Key` carries those tags, so the parent is invalidated more often.
 - `Exception\CacheStoreFailure` is renamed to `Exception\CacheStoreException`. It no longer copies its cause's message; the cause is the previous exception, and the degrade warning names the cause.
 
+### Deprecated
+- `MobileEtagModule`: it varies only the ETag, and a cached state keeps the ETag of the device that stored it. To cache per device, use `X_VARY`.
+
 ### Fixed
 - A purge aimed at a GET's bare or required-only URI now also reaches its query variants (`?page=2`, or a query `onGet()` does not declare at all), which it used to leave stale (#255). Each cache entry is additionally tagged with a group tag - its URI with every default-valued `onGet()` parameter dropped - and `purge()` invalidates that tag too. This covers `#[Cacheable]` value entries and `#[CacheableResponse]`/`#[DonutCache]` pages, their If-None-Match validators and, for the donut pages, the CDN `Surrogate-Key` header, including after `ResourceDonut::refresh()`.
 - A parent that embeds a query variant carries the child's group tag as well, in its CDN `Surrogate-Key` header too, so a bare purge of the child reaches the parent (#257): a `#[Cacheable]` parent or a data dependency of a donut page drops the parent's entry, and a hole recomposes the page.
