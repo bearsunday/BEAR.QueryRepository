@@ -7,6 +7,7 @@ namespace BEAR\QueryRepository;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
+use FakeVendor\HelloWorld\Resource\App\User;
 use FakeVendor\HelloWorld\Resource\Page\None;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Koriym\SemanticLogger\SemanticLogValidator;
@@ -49,6 +50,7 @@ class SemanticLogSchemaTest extends TestCase
         $this->logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
         $this->repository = $injector->getInstance(QueryRepositoryInterface::class);
         $this->storage = $injector->getInstance(ResourceStorageInterface::class);
+        User::$data = User::DATA;
 
         parent::setUp();
     }

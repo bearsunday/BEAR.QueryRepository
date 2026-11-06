@@ -13,18 +13,15 @@ use function error_log;
 class User extends ResourceObject
 {
     public static $i = 0;
-    private $data = [];
 
-    public function __construct()
-    {
-        $this->data[1]['name'] = 'bear';
-    }
+    /** Static, so the new instance the refresh after a write creates sees the write */
+    private static $data = [1 => ['name' => 'bear']];
 
     public function onGet($id)
     {
         error_log('*** onGet() method invoked ***');
         $this->body = [
-            'name' => isset($this->data[$id]) ? $this->data[$id]['name'] : '',
+            'name' => isset(self::$data[$id]) ? self::$data[$id]['name'] : '',
             'update' => self::$i++,
         ];
 
@@ -34,7 +31,7 @@ class User extends ResourceObject
     public function onPatch($id, $name)
     {
         error_log('*** onPatch() method invoked ***');
-        $this->data[$id]['name'] = $name;
+        self::$data[$id]['name'] = $name;
 
         return $this;
     }

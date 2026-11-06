@@ -15,7 +15,7 @@ purge(LevelThree) → LevelOne invalidated
 
 **Test:** `CacheDependencyTest::testDestroyByGrandChild` (manual purge) and
 `CacheDependencyTest::testWriteToGrandChildCascadesInvalidation` (the same cascade
-driven by a write command; the written leaf is refreshed in place, only its parents stay cold)
+driven by a write command; the written leaf is refreshed right away by the command's GET, only its parents stay cold)
 
 ### Parent-Child Dependencies
 
