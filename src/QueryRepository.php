@@ -107,20 +107,26 @@ final readonly class QueryRepository implements QueryRepositoryInterface
             return false;
         }
 
-        if (isset($ro->headers[Header::ETAG])) {
-            $etag = $ro->headers[Header::ETAG];
-            $surrogateKeys = $ro->headers[Header::SURROGATE_KEY] ?? '';
-            // saveEtag() takes a tag list of its own, not getTags()'s.
-            $surrogateKeys = trim($surrogateKeys . ' ' . ($this->baseUriTag)($ro));
-
-            $this->storage->saveEtag($ro->uri, $etag, $surrogateKeys, $ttl);
+        $saved = $storesView ? $this->storage->saveView($ro, $ttl) : $this->storage->saveValue($ro, $ttl);
+        // A validator without its entry would answer a conditional request 304 for a response the pool does not hold
+        if ($saved) {
+            $this->saveEtag($ro, $ttl);
         }
 
-        if ($storesView) {
-            return $this->storage->saveView($ro, $ttl);
+        return $saved;
+    }
+
+    private function saveEtag(ResourceObject $ro, int $ttl): void
+    {
+        if (! isset($ro->headers[Header::ETAG])) {
+            return;
         }
 
-        return $this->storage->saveValue($ro, $ttl);
+        $surrogateKeys = $ro->headers[Header::SURROGATE_KEY] ?? '';
+        // saveEtag() takes a tag list of its own, not getTags()'s.
+        $surrogateKeys = trim($surrogateKeys . ' ' . ($this->baseUriTag)($ro));
+
+        $this->storage->saveEtag($ro->uri, $ro->headers[Header::ETAG], $surrogateKeys, $ttl);
     }
 
     private function cleanUpBeforeWrite(ResourceObject $ro, string|null $skipReason): void
