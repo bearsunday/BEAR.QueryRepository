@@ -76,9 +76,6 @@ final readonly class QueryRepository implements QueryRepositoryInterface
 
     private function doPut(ResourceObject $ro): bool
     {
-        // Before headerSetter mutates the header
-        $unstorable = $this->declaredCacheControl->reason($ro);
-        $this->cleanUpBeforeWrite($ro, $unstorable);
         if ($ro->code === 200) {
             $this->setCacheDependency($ro);
         }
@@ -98,10 +95,14 @@ final readonly class QueryRepository implements QueryRepositoryInterface
             $this->logger->event($this->cachePolicy($ro, $cacheable, $ttl));
         }
 
-        ($this->headerSetter)($ro, $ttl, $httpCache);
+        // HeaderSetter checks the same state and returns null for an unstorable response, so the class is null then
+        $unstorable = $this->declaredCacheControl->reason($ro);
+        $unserializableClass = ($this->headerSetter)($ro, $ttl, $httpCache);
+        $skipReason = $unstorable ?? ($unserializableClass !== null ? 'unserializable' : null);
+        $this->cleanUpBeforeWrite($ro, $skipReason);
 
-        if ($unstorable !== null) {
-            $this->logger->event(new PutSkippedContext((string) $ro->uri, $unstorable));
+        if ($skipReason !== null) {
+            $this->logger->event(new PutSkippedContext((string) $ro->uri, $skipReason, null, $unserializableClass));
 
             return false;
         }
@@ -122,9 +123,9 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         return $this->storage->saveValue($ro, $ttl);
     }
 
-    private function cleanUpBeforeWrite(ResourceObject $ro, string|null $unstorable): void
+    private function cleanUpBeforeWrite(ResourceObject $ro, string|null $skipReason): void
     {
-        if ($unstorable !== null && $this->storage->get($ro->uri) === null) {
+        if ($skipReason !== null && $this->storage->get($ro->uri) === null) {
             return;
         }
 

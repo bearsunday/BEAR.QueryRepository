@@ -103,7 +103,7 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 | `pre_write_cleanup` | `uri` | 書き込み側が、上書きするエントリを消す直前 |
 | `invalidate` | `tags`, `roPool`, `etagPool`, `cdn`, `durationMs` | タグを無効化した。対象ごとの結果つき |
 | `purge` | `uri` | URI 指定の破棄を要求した |
-| `put_skipped` | `uri`, `reason`, `code` | miss の後に書き込みを**しなかった**ことと、その理由 |
+| `put_skipped` | `uri`, `reason`, `code`, `class` | miss の後に書き込みを**しなかった**ことと、その理由 |
 | `cache_hit` / `cache_miss` | `layer`, `durationMs` | 内側の照会。close context では `resource`、`donut-view`、`etag` のいずれかで `durationMs` が入る。`layer: donut` の inner event では `durationMs` は null — donut テンプレートがあったかの判定だけ |
 | `cache_error` | `uri`, `operation`, `error`, `exceptionClass` | キャッシュ経路が throw した |
 | `pool_error` | `key`, `operation`, `error`, `exceptionClass` | バックエンドが操作を拒み、アダプタが握り潰した |
@@ -120,12 +120,13 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 | `roPool` / `etagPool` | `invalidated` \| `failed` | プールごとの無効化結果 |
 | `cdn` | `purged` \| `failed` \| `skipped` | `skipped` は purger 未設定 (`NullPurger`)。「やることが無かった」ではない |
 | `operation` | `read` \| `write` | キャッシュのどちら側が throw したか |
-| `reason` (`put_skipped`) | `etag-present` \| `error-code` \| `not-cacheable` \| `unstorable` | 書き込みが起きなかった理由。`etag-present` = リソースが既に ETag を持っていたので donut 層は手を出さなかった、`not-cacheable` = テンプレートから再描画された donut ページ(ページとしては保存しない)、`error-code` は応答の `code` を伴い閾値は経路で違う: `#[Cacheable]` は 200 以外すべて(`203` もここに出る)、donut は 4xx 以上、`unstorable` = このリクエスト中に producer がマークしたか、`Cache-Control` が既に `no-store`/`private` を含んでいた — code や type が許す場合でも書き込みは拒否される |
+| `reason` (`put_skipped`) | `etag-present` \| `error-code` \| `not-cacheable` \| `unstorable` \| `unserializable` | 書き込みが起きなかった理由。`etag-present` = リソースが既に ETag を持っていたので donut 層は手を出さなかった、`not-cacheable` = テンプレートから再描画された donut ページ(ページとしては保存しない)、`error-code` は応答の `code` を伴い閾値は経路で違う: `#[Cacheable]` は 200 以外すべて(`203` もここに出る)、donut は 4xx 以上、`unstorable` = このリクエスト中に producer がマークしたか、`Cache-Control` が `#[HttpCache]`/`#[NoHttpCache]` の宣言値とは別の `no-store`/`private` を含んでいた(宣言値そのものは数えない) — code や type が許す場合でも書き込みは拒否される、`unserializable` = body が `serialize()` の拒む値(クロージャ、PDO接続、HTTPクライアントなど)を保持していた。失敗した値のクラスは `class` に入る |
 | `reason` (`dependency_skipped`) | `no_body` \| `no_etag_or_surrogate_key` | 書き込みの時点で子の body に見えた事実。どちらの子も、依存を示すヘッダ(ETag、Surrogate-Key)を持っていなかった。`no_body` = body が null だった。donut ページでは多くはレンダラが後で実行する穴で、健全な形(実行された 204 の子も同じに見える)。`no_etag_or_surrogate_key` = body はあるが、タグが無かった。多くはデータ依存で、その子の変更は親の保存内容に届かない。子をキャッシュさせるか、穴にする。クラスが `$body` の初期値を宣言している穴も同じに見えるので、`onGet()` がその子を読んでいるかを確かめる。`#[Cacheable]` の put は最上位の埋め込みリクエストをすべて先に実行するので、そこでは子は必ず親と一緒に保存される |
 | `result` (`manual_*`) | `stored`/`purged`/`invalidated` \| `failed` | 直接呼び出しの結果 |
 | `requestedTtl` | 秒 | このパッケージがストアに要求した保持時間。`31536000` は `never` の慣習値、`0`/`null` は「期限を要求しなかった」— バックエンドが上書きし得る(下の規則) |
 | `sMaxAge` (`put_donut`) | 秒 | その書き込みが要求した共有キャッシュ(CDN)の寿命 — `DonutRepositoryInterface::putStatic($ro, ttl: …, sMaxAge: …)` に渡すのと同じ引数で、エントリ自身の `requestedTtl` とは別物。`null` は未要求で、`putDonut` は常に `null` を記録する |
 | `code` (`put_skipped`) | HTTP ステータス | `reason` が `error-code` のときだけ入る。他の理由では `null` |
+| `class` (`put_skipped`) | 失敗した値のクラス名 | `reason` が `unserializable` のときだけ入る。他の理由では `null` |
 
 ## 読解規則
 
@@ -133,7 +134,8 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 
 **miss の後に書き込みが無いときは、`put_skipped` にその理由が書かれています。** 保存を禁じる
 規則が働いたからです。その経路がキャッシュしない応答コード、既に立っている検証子、テンプレートから
-返した donut ページ、このリクエストで `unstorable` とマークされた応答 — どれだったかがイベントに入っています。
+返した donut ページ、このリクエストで `unstorable` とマークされた応答、`serialize()` が拒んだ body
+(`unserializable`、失敗したクラス付き) — どれだったかがイベントに入っています。
 
 **非200のdonut書き込みには `save_etag` が無く、`cdn_headers` に寿命も入りません。** donutの
 閾値は2xxと3xxを通しますが、検証子は200にしか作られないため、保存された `204` や `301` には

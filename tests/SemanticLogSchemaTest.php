@@ -251,7 +251,7 @@ class SemanticLogSchemaTest extends TestCase
             $repository->purge(new Uri('page://self/user'));
             $this->fail('Expected the purger failure to propagate (fail-closed)');
         } catch (RuntimeException $e) {
-            $this->assertStringContainsString('purge failed', $e->getMessage());
+            $this->assertStringContainsString('purge failed', (string) $e->getPrevious()?->getMessage());
         }
 
         // The flushed tree is still well-formed: the manual_purge scope is closed with the
@@ -285,7 +285,7 @@ class SemanticLogSchemaTest extends TestCase
             $storage->invalidateTags(['_test_tag_']);
             $this->fail('Expected the purger failure to propagate (fail-closed)');
         } catch (RuntimeException $e) {
-            $this->assertStringContainsString('purge failed', $e->getMessage());
+            $this->assertStringContainsString('purge failed', (string) $e->getPrevious()?->getMessage());
         }
 
         $tree = $this->flushAndValidate($logger);

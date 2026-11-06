@@ -312,6 +312,18 @@ class QueryRepositoryTest extends TestCase
         $this->assertNotContains('cache_hit', self::collectTypes($tree2));
     }
 
+    public function testAPrivateCacheControlSetWhileRenderingAViewEntryIsNotStored(): void
+    {
+        $ro = $this->resource->get('app://self/rendered-private-view');
+        $this->assertSame('private', $ro->headers[Header::CACHE_CONTROL]);
+
+        $tree = $this->flushAndValidate($this->logger);
+        $putSkipped = self::eventContextJsonOf($tree, 'put_skipped');
+        $this->assertNotNull($putSkipped);
+        $this->assertStringContainsString('"reason":"unstorable"', $putSkipped);
+        $this->assertNull($this->repository->get(new Uri('app://self/rendered-private-view')));
+    }
+
     public function testRepeatedUnstorableGetDoesNotPurge(): void
     {
         $purger = new FakeCountingPurger();
@@ -319,6 +331,34 @@ class QueryRepositoryTest extends TestCase
 
         for ($i = 0; $i < 3; $i++) {
             $resource->get('app://self/unstorable-value');
+        }
+
+        $this->assertSame([], $purger->tags);
+    }
+
+    public function testRepeatedUnserializableGetDoesNotPurge(): void
+    {
+        // Skip's own pre-write cleanup must see the unserializable skip the same way it
+        // already sees `unstorable`, or a body serialize() refuses would purge on every
+        // request even though nothing was ever stored for it (#259 follow-up).
+        $purger = new FakeCountingPurger();
+        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module->override(new class ($purger) extends AbstractModule {
+            public function __construct(private readonly PurgerInterface $purger)
+            {
+            }
+
+            #[Override]
+            protected function configure(): void
+            {
+                $this->bind(PurgerInterface::class)->toInstance($this->purger);
+                $this->bind(BodySerializationErrorHandlerInterface::class)->to(SkipSerializationError::class);
+            }
+        });
+        $resource = (new Injector($module, __DIR__ . '/tmp'))->getInstance(ResourceInterface::class);
+
+        for ($i = 0; $i < 5; $i++) {
+            $resource->get('app://self/unserializable-value');
         }
 
         $this->assertSame([], $purger->tags);

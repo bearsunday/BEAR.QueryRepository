@@ -114,10 +114,10 @@ class GracefulLoggingTest extends TestCase
         $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
         // The cache pool is down: the read falls back to a live GET with a warning, not an exception.
-        $warningCaught = false;
-        set_error_handler(static function (int $errno) use (&$warningCaught): bool {
+        $warning = null;
+        set_error_handler(static function (int $errno, string $message) use (&$warning): bool {
             if ($errno === E_USER_WARNING) {
-                $warningCaught = true;
+                $warning = $message;
 
                 return true; // swallow the cache-down warning
             }
@@ -130,7 +130,7 @@ class GracefulLoggingTest extends TestCase
             restore_error_handler();
         }
 
-        $this->assertTrue($warningCaught, 'the cache-down fallback warns (E_USER_WARNING) instead of throwing');
+        $this->assertStringStartsWith('RuntimeException: cache server down', (string) $warning, 'the cache-down fallback warns (E_USER_WARNING) instead of throwing, naming the store error');
         $this->assertSame(200, $ro->code);
 
         $tree = $this->flushAndValidate($logger);
@@ -207,7 +207,7 @@ class GracefulLoggingTest extends TestCase
             $repository->put($ro);
             $this->fail('expected the pool outage to surface from a direct write');
         } catch (RuntimeException $e) {
-            $this->assertStringContainsString('cache server down', $e->getMessage());
+            $this->assertStringContainsString('cache server down', (string) $e->getPrevious()?->getMessage());
         }
 
         $tree = $this->flushAndValidate($logger);
@@ -426,7 +426,7 @@ class GracefulLoggingTest extends TestCase
 
     /**
      * HIT refresh, transient hole failure: `ResourceDonut::refresh()`'s own re-fetch hits a
-     * hole that fails once, degrades (the reviewed-and-kept CacheStoreFailure conversion),
+     * hole that fails once, degrades (the reviewed-and-kept CacheStoreException conversion),
      * and falls back to a full fresh render - which succeeds because the failure already
      * consumed itself. The response must be the fresh render's FULL body, not empty/partial.
      */

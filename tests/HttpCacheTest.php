@@ -10,9 +10,13 @@ use BEAR\QueryRepository\Log\Context\CacheMissContext;
 use BEAR\QueryRepository\Log\Context\ConditionalRequestContext;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
+use LogicException;
+use Override;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
+use RuntimeException;
 use Symfony\Component\Cache\Adapter\TagAwareAdapter;
+use Symfony\Component\Cache\CacheItem;
 
 use function assert;
 use function restore_error_handler;
@@ -123,15 +127,30 @@ class HttpCacheTest extends TestCase
         // match, so the request is answered in full rather than failed (issue #190). The scope
         // still closes - an unclosed one would surface as an unclosed_at_flush diagnostic - and
         // records the outage as the established idiom reads it: cache_error + cache_miss.
-        $storage = ResourceStorageTest::getResourceStorageInstance(etagPool: new TagAwareAdapter(new FakeErrorCache()));
+        $storage = ResourceStorageTest::getResourceStorageInstance(etagPool: new TagAwareAdapter(new class extends FakeErrorCache {
+            #[Override]
+            public function getItem($key): CacheItem
+            {
+                throw new RuntimeException('cache server down', 0, new LogicException('driver detail'));
+            }
+
+            /** @inheritDoc */
+            #[Override]
+            public function getItems(array $keys = []): iterable
+            {
+                throw new RuntimeException('cache server down', 0, new LogicException('driver detail'));
+            }
+        }));
 
         foreach ([HttpCache::class, CliHttpCache::class] as $class) {
             $logger = new RecordingSemanticLogger();
             $httpCache = new $class($storage, $logger);
 
-            $warned = false;
-            set_error_handler(static function (int $errno) use (&$warned): bool {
-                $warned = $warned || $errno === E_USER_WARNING;
+            $warning = null;
+            set_error_handler(static function (int $errno, string $message) use (&$warning): bool {
+                if ($errno === E_USER_WARNING) {
+                    $warning = $message;
+                }
 
                 return true;
             });
@@ -142,7 +161,7 @@ class HttpCacheTest extends TestCase
             }
 
             $this->assertFalse($notModified, $class . ': an unreadable validator cannot match');
-            $this->assertTrue($warned, $class . ': the outage reaches the warning channel');
+            $this->assertStringStartsWith('RuntimeException: cache server down', (string) $warning, $class . ': the warning names the store error, not the wrapper or a deeper cause');
             $this->assertCount(1, $logger->opens, $class);
             $this->assertCount(1, $logger->closes, $class . ': the scope is closed');
         }

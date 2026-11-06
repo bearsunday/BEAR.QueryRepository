@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\QueryRepository\Exception\CacheStoreFailure;
+use BEAR\QueryRepository\Exception\BodySerializationNotAllowedException;
+use BEAR\QueryRepository\Exception\CacheStoreException;
 use BEAR\QueryRepository\Log\Context\CacheErrorContext;
 use BEAR\QueryRepository\Log\Context\CacheHitContext;
 use BEAR\QueryRepository\Log\Context\CacheMissContext;
@@ -66,7 +67,7 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
             } catch (Throwable $e) {
                 // when cache server is down: log it so a miss here is not read as a cold cache
                 $this->logger->event(self::failure((string) $ro->uri, 'read', $e));
-                if (! $e instanceof CacheStoreFailure) {
+                if (! $e instanceof CacheStoreException) {
                     throw $e;
                 }
 
@@ -129,7 +130,7 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
                 $this->donutRepository->putDonut($ro, null);
         } catch (Throwable $e) {
             $this->logger->event(self::failure((string) $ro->uri, 'write', $e));
-            if (! $e instanceof CacheStoreFailure) {
+            if (! $e instanceof CacheStoreException) {
                 throw $e;
             }
 
@@ -146,13 +147,18 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
      */
     private static function failure(string $uri, string $operation, Throwable $e): CacheErrorContext
     {
-        $cause = $e instanceof CacheStoreFailure ? $e->getPrevious() ?? $e : $e;
+        if ($e instanceof BodySerializationNotAllowedException) {
+            return new CacheErrorContext($uri, $operation, ($e->getPrevious() ?? $e)->getMessage(), $e::class);
+        }
+
+        $cause = $e instanceof CacheStoreException ? $e->getPrevious() ?? $e : $e;
 
         return new CacheErrorContext($uri, $operation, $cause->getMessage(), $cause::class);
     }
 
     private function triggerWarning(Throwable $e): void
     {
-        trigger_error(sprintf('%s: %s in %s:%s', $e::class, $e->getMessage(), $e->getFile(), $e->getLine()), E_USER_WARNING);
+        $cause = $e->getPrevious() ?? $e;
+        trigger_error(sprintf('%s: %s in %s:%s', $cause::class, $cause->getMessage(), $cause->getFile(), $cause->getLine()), E_USER_WARNING);
     }
 }

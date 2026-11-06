@@ -56,8 +56,11 @@ didn't. A store records its `saved` outcome — a pool that rejects a write no
 longer looks like a successful save. A miss not followed by a put emits
 `put_skipped` with the reason (`etag-present`, `error-code` with the actual
 response code, `not-cacheable`, `unstorable` for a response marked unstorable
-for this request) — an absent save is a recorded decision, not
-a mystery. Invalidation reports per-target outcomes (`roPool`/`etagPool`:
+for this request, `unserializable` for a body `serialize()` refused) — an
+absent save is a recorded decision, not a mystery. The retention policy keeps or
+drops whole sessions: a `put_skipped{reason: unserializable}` keeps its session,
+since it is a defect rather than a rule the code enforced on purpose, while the
+other skip reasons do not keep a session on their own. Invalidation reports per-target outcomes (`roPool`/`etagPool`:
 `invalidated`|`failed`; `cdn`: `purged`|`failed`|`skipped`) plus its
 duration. A failed write still opens a command scope, closed with its 4xx —
 recording that the purge was *correctly skipped*.

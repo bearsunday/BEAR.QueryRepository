@@ -214,6 +214,36 @@ class DonutRepositoryTest extends TestCase
         }
     }
 
+    public function testRepeatedUnserializableDonutGetDoesNotPurge(): void
+    {
+        // Mirrors testRepeatedUnstorableDonutGetDoesNotPurge for the unserializable skip
+        // (#259 follow-up): doPutStatic()'s own pre-write cleanup must see it too, or a
+        // #[CacheableResponse] page whose body serialize() refuses would purge every request.
+        $purger = new FakeCountingPurger();
+        $namespace = 'FakeVendor\HelloWorld';
+        $module = new MobileEtagModule(new FakeEtagPoolModule(ModuleFactory::getInstance($namespace)));
+        $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
+        $module->override(new class ($purger) extends AbstractModule {
+            public function __construct(private readonly PurgerInterface $purger)
+            {
+            }
+
+            #[Override]
+            protected function configure(): void
+            {
+                $this->bind(PurgerInterface::class)->toInstance($this->purger);
+                $this->bind(BodySerializationErrorHandlerInterface::class)->to(SkipSerializationError::class);
+            }
+        });
+        $resource = (new Injector($module, __DIR__ . '/tmp'))->getInstance(ResourceInterface::class);
+
+        for ($i = 0; $i < 5; $i++) {
+            $resource->get('page://self/html/unserializable-donut');
+        }
+
+        $this->assertSame([], $purger->tags);
+    }
+
     public function testUnstorableDonutWriteStillDropsAnEarlierEntry(): void
     {
         $purger = new FakeCountingPurger();
@@ -493,7 +523,7 @@ class DonutRepositoryTest extends TestCase
             $donutRepository->putStatic($page, null, null);
             $this->fail('expected the pool outage to surface from a direct donut write');
         } catch (RuntimeException $e) {
-            $this->assertStringContainsString('cache server down', $e->getMessage());
+            $this->assertStringContainsString('cache server down', (string) $e->getPrevious()?->getMessage());
         }
 
         $tree = $this->flushAndValidate($logger);

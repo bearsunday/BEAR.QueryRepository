@@ -157,7 +157,7 @@ class ResourceStorageTest extends TestCase
             $storage->invalidateTags(['_user_']);
             $this->fail('Expected the purger failure to propagate (fail-closed)');
         } catch (RuntimeException $e) {
-            $this->assertStringContainsString('purge failed', $e->getMessage());
+            $this->assertStringContainsString('purge failed', (string) $e->getPrevious()?->getMessage());
         }
 
         $context = $logger->events[0];

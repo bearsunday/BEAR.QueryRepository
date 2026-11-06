@@ -25,5 +25,6 @@ final class ProdQueryRepositoryModule extends AbstractModule
         $this->bind(AdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->toProvider(LocalCacheProvider::class);
         // Boost the performance of symfony/cache
         $this->bind()->annotatedWith(KnownTagTtl::class)->toInstance(0.15);
+        $this->bind(BodySerializationErrorHandlerInterface::class)->to(SkipSerializationError::class);
     }
 }
