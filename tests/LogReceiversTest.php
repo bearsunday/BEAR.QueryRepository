@@ -94,6 +94,16 @@ final class LogReceiversTest extends TestCase
         $this->assertStringContainsString('the event store is down', $diagnostic);
     }
 
+    public function testALoggerThatCannotFlushIsReportedAndNoWriterIsCalled(): void
+    {
+        $sink = $this->sink(FakeFirstReceiver::class);
+
+        $diagnostic = $this->diagnosticsOf(static fn () => $sink->flush(new FakeUnflushableLogger()));
+
+        $this->assertSame([], FakeSessionRecord::$received);
+        $this->assertStringContainsString('the session cannot be flushed', $diagnostic);
+    }
+
     public function testReceiversCrossTheSerializationBoundary(): void
     {
         $restored = unserialize(serialize($this->sink(FakeFirstReceiver::class)));
