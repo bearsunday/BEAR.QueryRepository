@@ -63,7 +63,7 @@ final class ProdQueryRepositoryLogModule extends AbstractModule
         $this->bind(LogWriterInterface::class)->annotatedWith(LogDestination::class)->toInstance(new LogStreamWriter($this->stream));
         $this->bind(LogWriterInterface::class)->toConstructor(PolicyLogWriter::class, ['writer' => LogDestination::class]);
         $this->bind(LogSinkInterface::class)->to(ShutdownFlush::class)->in(Scope::SINGLETON);
-        // ShutdownFlush injects this set; without QueryRepositoryModule nothing else declares it
+        // ShutdownFlush injects this set, which must exist even when an app adds no writer
         MultiBinder::newInstance($this, LogWriterInterface::class);
         $this->bind(SessionStoreInterface::class)->to(ProcessSession::class)->in(Scope::SINGLETON);
         $this->bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)->toProvider(SafeSemanticLoggerProvider::class)->in(Scope::SINGLETON);
