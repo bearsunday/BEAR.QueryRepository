@@ -19,6 +19,7 @@ use BEAR\RepositoryModule\Annotation\LogDestination;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 use Ray\Di\AbstractModule;
+use Ray\Di\MultiBinder;
 use Ray\Di\Scope;
 
 /**
@@ -62,6 +63,8 @@ final class ProdQueryRepositoryLogModule extends AbstractModule
         $this->bind(LogWriterInterface::class)->annotatedWith(LogDestination::class)->toInstance(new LogStreamWriter($this->stream));
         $this->bind(LogWriterInterface::class)->toConstructor(PolicyLogWriter::class, ['writer' => LogDestination::class]);
         $this->bind(LogSinkInterface::class)->to(ShutdownFlush::class)->in(Scope::SINGLETON);
+        // ShutdownFlush injects this set, which must exist even when an app adds no writer
+        MultiBinder::newInstance($this, LogWriterInterface::class);
         $this->bind(SessionStoreInterface::class)->to(ProcessSession::class)->in(Scope::SINGLETON);
         $this->bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)->toProvider(SafeSemanticLoggerProvider::class)->in(Scope::SINGLETON);
     }
