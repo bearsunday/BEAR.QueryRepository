@@ -38,10 +38,7 @@ final class ShutdownFlush implements LogSinkInterface
     /** @var list<LogWriterInterface> */
     private array $receivers = [];
 
-    /**
-     * @param Map<LogWriterInterface>|null $receivers writers added with
-     *     `MultiBinder::newInstance($module, LogWriterInterface::class)`; each gets the session after $writer
-     */
+    /** @param Map<LogWriterInterface>|null $receivers */
     public function __construct(
         private LogWriterInterface $writer,
         private ConcurrentRuntimeInterface $runtime = new HostRuntime(),

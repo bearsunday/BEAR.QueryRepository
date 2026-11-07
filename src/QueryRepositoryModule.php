@@ -59,8 +59,7 @@ final class QueryRepositoryModule extends AbstractModule
         // Null cache log default: the log costs nothing and imposes no flush duty until an
         // app installs DevQueryRepositoryLogModule or ProdQueryRepositoryLogModule.
         $this->bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)->to(NullSemanticLogger::class)->in(Scope::SINGLETON);
-        // Declared empty: the log sink injects this set, and an app that adds no writer must
-        // still get an empty Map rather than SetNotBound.
+        // ShutdownFlush injects this set, which must exist even when an app adds no writer
         MultiBinder::newInstance($this, LogWriterInterface::class);
         // When null is bound, the same adapter as the one assigned to the ResourceObjectPool is used.
         $this->bind(AdapterInterface::class)->annotatedWith(TagsPool::class)->toInstance(null);

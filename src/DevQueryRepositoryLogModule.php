@@ -43,7 +43,7 @@ final class DevQueryRepositoryLogModule extends AbstractModule
     {
         $this->bind(LogWriterInterface::class)->toInstance(new LogFileWriter($this->logDir, $this->keep));
         $this->bind(LogSinkInterface::class)->to(ShutdownFlush::class)->in(Scope::SINGLETON);
-        // The sink injects this set; declared here as well so the module works without QueryRepositoryModule
+        // ShutdownFlush injects this set; without QueryRepositoryModule nothing else declares it
         MultiBinder::newInstance($this, LogWriterInterface::class);
         $this->bind(SessionStoreInterface::class)->to(ProcessSession::class)->in(Scope::SINGLETON);
         // Shared session: open() at an interceptor and event() at storage resolve to one logger
