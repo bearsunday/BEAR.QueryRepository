@@ -323,6 +323,18 @@ command {"method": "onPut", "annotations": [], "source": "CommandInterceptor"}
 `LogWriterInterface` を decorate します — それがその seam であり、プール障害時(全リクエストが
 `cache_error` を出し、保持率が上がる)への答えでもあります。
 
+decorate は束縛された writer に届く内容を変えます。セッションを別の出力先にも渡すには、代わりに
+`LogWriterInterface` の集合に writer を足します。sink は 1 回だけ flush し、同じセッションを束縛された
+writer、足した writer の順に渡します。例外を投げた writer は `error_log()` に報告され、残りの writer
+にはセッションが届きます。足した writer にはすべてのセッションがそのまま
+届きます(保持ポリシーと decorate は束縛された writer にしか掛かりません)。マスキングや間引きは足した
+writer が自分で行います。
+
+```php
+MultiBinder::newInstance($this, LogWriterInterface::class)->addBinding()->to(EventStoreWriter::class);
+$this->bind(EventStoreWriter::class); // コンパイル済みの injector は束縛されたクラスしか組み立てない (ray-di/Ray.Compiler#148)
+```
+
 ## 参照
 
 - 保証とその境界: [what-the-log-proves.ja.md](what-the-log-proves.ja.md)

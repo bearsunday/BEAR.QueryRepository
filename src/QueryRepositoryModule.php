@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Log\LogWriterInterface;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\RepositoryModule\Annotation\EtagPool;
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
@@ -14,6 +15,7 @@ use Koriym\SemanticLogger\NullSemanticLogger;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 use Ray\Di\AbstractModule;
+use Ray\Di\MultiBinder;
 use Ray\Di\Scope;
 use Symfony\Component\Cache\Adapter\AdapterInterface;
 use Symfony\Component\Cache\Adapter\NullAdapter;
@@ -32,6 +34,7 @@ use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
  *  NamedParameterInterface
  *  ResourceStorageInterface
  *  SemanticLoggerInterface (null by default - install Dev/ProdQueryRepositoryLogModule to record)
+ *  LogWriterInterface set (empty - writers an app adds to receive each flushed session)
  *  MatchQueryInterface
  *  UriTag
  *  BaseUriTagInterface
@@ -56,6 +59,9 @@ final class QueryRepositoryModule extends AbstractModule
         // Null cache log default: the log costs nothing and imposes no flush duty until an
         // app installs DevQueryRepositoryLogModule or ProdQueryRepositoryLogModule.
         $this->bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)->to(NullSemanticLogger::class)->in(Scope::SINGLETON);
+        // Declared empty: the log sink injects this set, and an app that adds no writer must
+        // still get an empty Map rather than SetNotBound.
+        MultiBinder::newInstance($this, LogWriterInterface::class);
         // When null is bound, the same adapter as the one assigned to the ResourceObjectPool is used.
         $this->bind(AdapterInterface::class)->annotatedWith(TagsPool::class)->toInstance(null);
         // TagAwareAdapterInterface is injected into ResourceStorage

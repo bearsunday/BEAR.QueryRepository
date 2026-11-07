@@ -334,6 +334,18 @@ tags, CDN header values and raw exception text. Treat a written session as an ap
 `LogWriterInterface` — that is the seam, and it is also the answer to a pool outage, during which
 every request emits `cache_error` and retention rises to 100%.
 
+Decorating changes what the bound writer gets. To hand each session to one more destination, add a
+writer to the `LogWriterInterface` set instead: the sink flushes once and passes the same session to
+the bound writer, then to each added writer in the order added; a writer that throws is reported to
+`error_log()` and the rest still get the session. An added writer gets every session unfiltered —
+the retention policy and any decorator apply to the bound writer only — so it scrubs and samples for
+itself.
+
+```php
+MultiBinder::newInstance($this, LogWriterInterface::class)->addBinding()->to(EventStoreWriter::class);
+$this->bind(EventStoreWriter::class); // a compiled injector builds only bound classes (ray-di/Ray.Compiler#148)
+```
+
 ## Pointers
 
 - Guarantees and boundaries: [what-the-log-proves.md](what-the-log-proves.md)
