@@ -13,6 +13,7 @@ use BEAR\QueryRepository\Log\SafeSemanticLogger;
 use BEAR\QueryRepository\Log\ShutdownFlush;
 use FilesystemIterator;
 use Override;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Ray\Compiler\CompiledInjector;
 use Ray\Compiler\Compiler;
@@ -138,6 +139,23 @@ final class LogReceiversTest extends TestCase
         $sink->flush($this->session());
 
         $this->assertSame([FakePrimaryWriter::class, FakeFirstReceiver::class], array_column(FakeSessionRecord::$received, 0));
+    }
+
+    /** @return array<string, array{AbstractModule}> */
+    public static function logModulesAlone(): array
+    {
+        return [
+            'dev' => [new DevQueryRepositoryLogModule(sys_get_temp_dir() . '/qr-receivers-unused')],
+            'prod' => [new ProdQueryRepositoryLogModule(sys_get_temp_dir() . '/qr-receivers-unused.jsonl')],
+        ];
+    }
+
+    #[DataProvider('logModulesAlone')]
+    public function testALogModuleWorksWithoutQueryRepositoryModule(AbstractModule $logModule): void
+    {
+        $sink = (new Injector($logModule, __DIR__ . '/tmp'))->getInstance(LogSinkInterface::class);
+
+        $this->assertInstanceOf(ShutdownFlush::class, $sink);
     }
 
     /** @param class-string<LogWriterInterface> ...$receivers */
