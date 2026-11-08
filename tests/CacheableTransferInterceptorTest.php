@@ -61,4 +61,20 @@ class CacheableTransferInterceptorTest extends TestCase
 
         $this->assertSame('max-age=5', $this->transferredCacheControl($ro));
     }
+
+    public function testACdnOnlyDirectiveStillGetsTheClientLifetime(): void
+    {
+        $ro = $this->resource->newInstance('app://self/control-none');
+        $ro->headers[Header::CACHE_CONTROL] = 'public, s-maxage=600';
+
+        $this->assertSame('public, s-maxage=600, max-age=60', $this->transferredCacheControl($ro));
+    }
+
+    public function testAnErrorResponseGetsNoClientLifetime(): void
+    {
+        $ro = $this->resource->newInstance('app://self/control-none');
+        $ro->code = 404;
+
+        $this->assertNull($this->transferredCacheControl($ro));
+    }
 }

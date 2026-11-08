@@ -10,6 +10,7 @@ use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
+use FakeVendor\HelloWorld\Resource\Page\Html\ClosureBodyDonut;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Madapaja\TwigModule\TwigModule;
 use Override;
@@ -212,6 +213,20 @@ class DonutRepositoryTest extends TestCase
 
             $this->assertSame([], $purger->tags, $uri);
         }
+    }
+
+    public function testAClosureInADonutPageBodyIsNotStoredSoItNeitherFailsNorPurgesAgain(): void
+    {
+        $purger = new FakeCountingPurger();
+        $resource = $this->getInjector($purger)->getInstance(ResourceInterface::class);
+        ClosureBodyDonut::$calls = 0;
+
+        for ($i = 0; $i < 3; $i++) {
+            $resource->get('page://self/html/closure-body-donut');
+        }
+
+        $this->assertSame(1, ClosureBodyDonut::$calls, 'the page stores its rendered view, so later requests are served from it');
+        $this->assertCount(1, $purger->tags, 'only the first write cleans up before storing');
     }
 
     public function testUnstorableDonutWriteStillDropsAnEarlierEntry(): void
