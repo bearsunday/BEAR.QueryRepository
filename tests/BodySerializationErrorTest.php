@@ -18,6 +18,7 @@ use Koriym\SemanticLogger\SemanticLoggerInterface;
 use LogicException;
 use Madapaja\TwigModule\TwigModule;
 use Override;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
@@ -426,7 +427,17 @@ class BodySerializationErrorTest extends TestCase
         }
     }
 
-    public function testABodyHoldingARequestIsServedUncachedUnderSkip(): void
+    /** @return array<string, array{string}> */
+    public static function requestsBelowTheTopLevel(): array
+    {
+        return [
+            'held by a service that keeps the resource client' => ['app://self/resource-client-in-body'],
+            'moved into a nested array (#267)' => ['page://self/dep/parent-of-nested-child'],
+        ];
+    }
+
+    #[DataProvider('requestsBelowTheTopLevel')]
+    public function testARequestBelowTheTopLevelIsServedUncachedUnderSkip(string $uri): void
     {
         $logger = new RecordingSemanticLogger();
         $module = $this->moduleWithSkip();
@@ -444,7 +455,7 @@ class BodySerializationErrorTest extends TestCase
         });
         $resource = $this->resourceFor($module);
 
-        $ro = $resource->get('app://self/resource-client-in-body');
+        $ro = $resource->get($uri);
 
         $this->assertSame(200, $ro->code);
         $this->assertArrayNotHasKey(Header::ETAG, $ro->headers);
@@ -453,19 +464,20 @@ class BodySerializationErrorTest extends TestCase
         $this->assertSame('unserializable', $putSkipped[0]->reason);
         $this->assertSame(AbstractRequest::class, $putSkipped[0]->class);
 
-        $second = $resource->get('app://self/resource-client-in-body');
+        $second = $resource->get($uri);
         $this->assertArrayNotHasKey('Age', $second->headers, 'a cache hit would carry Age; onGet() ran again instead');
     }
 
-    public function testABodyHoldingARequestFailsWithTheUriUnderThrow(): void
+    #[DataProvider('requestsBelowTheTopLevel')]
+    public function testARequestBelowTheTopLevelFailsWithTheUriUnderThrow(string $uri): void
     {
         $resource = $this->resourceFor(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
 
         try {
-            $resource->get('app://self/resource-client-in-body');
+            $resource->get($uri);
             $this->fail('expected BodySerializationNotAllowedException');
         } catch (BodySerializationNotAllowedException $e) {
-            $this->assertSame('app://self/resource-client-in-body', $e->getMessage());
+            $this->assertSame($uri, $e->getMessage());
             $this->assertInstanceOf(LogicException::class, $e->getPrevious());
         }
     }
