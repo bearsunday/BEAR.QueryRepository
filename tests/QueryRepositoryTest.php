@@ -106,7 +106,6 @@ class QueryRepositoryTest extends TestCase
         $this->assertTrue(Profile::$requested);
     }
 
-    /** @covers \BEAR\QueryRepository\QueryRepository::getExpiryTime() */
     public function testNoAnnotationLifeTime(): void
     {
         $ro = new None(); // no annotation

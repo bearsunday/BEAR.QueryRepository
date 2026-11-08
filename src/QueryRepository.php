@@ -88,10 +88,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
             $ro->toString();
         }
 
-        $ttl = $cacheable instanceof Cacheable ? (new CacheableExpiry($this->expiry))->seconds($ro, $cacheable) : 0;
-        if ($cacheable instanceof Cacheable) {
-            $this->logger->event($this->cachePolicy($ro, $cacheable, $ttl));
-        }
+        $ttl = $this->lifetime($ro, $cacheable);
 
         $unstorable = $this->declaredCacheControl->reason($ro);
         if ($unstorable === null) {
@@ -118,6 +115,19 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         }
 
         return $saved;
+    }
+
+    /** The seconds a #[Cacheable] entry lives, recorded with the declaration that decided them */
+    private function lifetime(ResourceObject $ro, Cacheable|null $cacheable): int
+    {
+        if ($cacheable === null) {
+            return 0;
+        }
+
+        $ttl = (new CacheableExpiry($this->expiry))->seconds($ro, $cacheable);
+        $this->logger->event($this->cachePolicy($ro, $cacheable, $ttl));
+
+        return $ttl;
     }
 
     private function saveEtag(ResourceObject $ro, int $ttl): void
