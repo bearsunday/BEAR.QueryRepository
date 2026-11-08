@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\ExpireAtKeyNotExists;
 use BEAR\Resource\ResourceInterface;
+use BEAR\Resource\ResourceObject;
 use FakeVendor\HelloWorld\Resource\App\HttpCacheControlWithCacheable;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
@@ -35,18 +36,24 @@ class GetInterceptorTest extends TestCase
         $this->assertSame($expect, $user['time']);
     }
 
+    private function transferredCacheControl(ResourceObject $ro): string|null
+    {
+        $responder = new FakeRecordingResponder();
+        $ro->transfer($responder, []);
+
+        return $responder->headers['Cache-Control'] ?? null;
+    }
+
     public function testCacheControlHeaderNone(): void
     {
         $user = $this->resource->get('app://self/control-none');
-        $this->assertArrayHasKey('Cache-Control', $user->headers);
-        $this->assertSame('max-age=60', $user->headers['Cache-Control']);
+        $this->assertSame('max-age=60', $this->transferredCacheControl($user));
     }
 
     public function testCacheControlHeaderExpiry(): void
     {
         $user = $this->resource->get('app://self/control-expiry');
-        $this->assertArrayHasKey('Cache-Control', $user->headers);
-        $this->assertStringContainsString('public, max-age=3', $user->headers['Cache-Control']); // 30 sec (but may 30+x sec for slow CI)
+        $this->assertStringContainsString('public, max-age=3', (string) $this->transferredCacheControl($user)); // 30 sec (but may 30+x sec for slow CI)
     }
 
     public function testCacheControlHeaderExpiryError(): void
@@ -71,7 +78,7 @@ class GetInterceptorTest extends TestCase
     {
         HttpCacheControlWithCacheable::$calls = 0;
         $ro = $this->resource->get('app://self/http-cache-control-with-cacheable');
-        $this->assertSame('private, max-age=10', $ro->headers['Cache-Control']);
+        $this->assertSame('private, max-age=10', $this->transferredCacheControl($ro));
 
         // #[HttpCache(isPrivate: true)]'s own declared value is exempt from the runtime-private
         // check: a second GET is served from the server-side store, not a fresh onGet() call.

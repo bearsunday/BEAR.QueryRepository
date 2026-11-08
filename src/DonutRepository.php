@@ -150,15 +150,13 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $templateKeys = $this->templateKeys($ro, $declaredKeys);
         $donut = ResourceDonut::create($ro, $this->renderer, $keys, $sMaxAge, true)->withStorageState($ttl, $templateKeys);
         $donut->render($ro, $this->renderer);
-        // Checked on the rendered response before setHeaders() mutates it; HeaderSetter checks the
-        // same state and returns null for an unstorable response, so the class is null then.
+        // Checked on the rendered response before setHeaders() mutates it
         $unstorable = $this->declaredCacheControl->reason($ro);
-        [$surrogateKeys, $unserializableClass] = $this->setHeaders($keys, $ro, $sMaxAge);
+        $surrogateKeys = $this->setHeaders($keys, $ro, $sMaxAge);
         $this->logCdnHeaders($ro);
-        $skipReason = $unstorable ?? ($unserializableClass !== null ? 'unserializable' : null);
-        $this->cleanUpBeforeWrite($ro, $skipReason);
-        if ($skipReason !== null) {
-            $this->logger->event(new PutSkippedContext((string) $ro->uri, $skipReason, null, $unserializableClass));
+        $this->cleanUpBeforeWrite($ro, $unstorable);
+        if ($unstorable !== null) {
+            $this->logger->event(new PutSkippedContext((string) $ro->uri, $unstorable));
 
             return;
         }
@@ -287,13 +285,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         // When the recomposed content is byte-identical to the recorded one, carry over
         // the original Last-Modified instead of advancing it to the recomposition time
         $lastModified = $donut->getUnchangedLastModified((string) $ro->view);
-        $unserializableClass = ($this->headerSetter)($ro, $donut->ttl, null, $lastModified);
-        if ($unserializableClass !== null) {
-            $this->logCdnHeaders($ro);
-            $this->logger->event(new PutSkippedContext((string) $ro->uri, 'unserializable', null, $unserializableClass));
-
-            return $ro;
-        }
+        ($this->headerSetter)($ro, $donut->ttl, null, $lastModified);
 
         $this->setCdnCacheControl($ro, $donut->ttl);
         $this->logCdnHeaders($ro);
@@ -393,20 +385,18 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     }
 
     /**
-     * Set the page's own headers (validator, CDN lifetime), and report the body's serializability
+     * Set the page's own headers (validator, CDN lifetime)
      *
-     * @return array{0: string, 1: string|null} the Surrogate-Key header as composed, before the
-     *     CDN setter runs; and the class serialize() refused, when HeaderSetter's handler
-     *     returned instead of throwing (the caller must not store), or null otherwise
+     * @return string the Surrogate-Key header as composed, before the CDN setter runs
      */
-    private function setHeaders(SurrogateKeys $keys, ResourceObject $ro, int|null $sMaxAge): array
+    private function setHeaders(SurrogateKeys $keys, ResourceObject $ro, int|null $sMaxAge): string
     {
         $keys->setSurrogateHeader($ro);
         $surrogateKeys = $ro->headers[Header::SURROGATE_KEY] ?? '';
         $this->setCdnCacheControl($ro, $sMaxAge);
-        $unserializableClass = ($this->headerSetter)($ro, 0, null);
+        ($this->headerSetter)($ro, 0, null);
 
-        return [$surrogateKeys, $unserializableClass];
+        return $surrogateKeys;
     }
 
     /**
