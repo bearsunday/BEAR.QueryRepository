@@ -11,6 +11,7 @@ use BEAR\QueryRepository\Log\LogSinkInterface;
 use BEAR\QueryRepository\Log\LogWriterInterface;
 use BEAR\QueryRepository\Log\SafeSemanticLogger;
 use BEAR\QueryRepository\Log\ShutdownFlush;
+use BEAR\QueryRepository\Log\ShutdownFlushProvider;
 use FilesystemIterator;
 use Override;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -168,6 +169,24 @@ final class LogReceiversTest extends TestCase
         $this->assertInstanceOf(ShutdownFlush::class, $sink);
     }
 
+    public function testAnAppThatBindsShutdownFlushItselfNeedsNoWriterSet(): void
+    {
+        $module = new class extends AbstractModule {
+            #[Override]
+            protected function configure(): void
+            {
+                $this->bind(LogWriterInterface::class)->to(FakePrimaryWriter::class);
+                $this->bind(LogSinkInterface::class)->to(ShutdownFlush::class);
+            }
+        };
+        $sink = (new Injector($module, __DIR__ . '/tmp'))->getInstance(LogSinkInterface::class);
+        $this->assertInstanceOf(ShutdownFlush::class, $sink);
+
+        $sink->flush($this->session());
+
+        $this->assertSame([FakePrimaryWriter::class], array_column(FakeSessionRecord::$received, 0));
+    }
+
     /** @param class-string<LogWriterInterface> ...$receivers */
     private function sink(string ...$receivers): ShutdownFlush
     {
@@ -191,7 +210,7 @@ final class LogReceiversTest extends TestCase
             protected function configure(): void
             {
                 $this->bind(LogWriterInterface::class)->to(FakePrimaryWriter::class);
-                $this->bind(ShutdownFlush::class)->in(Scope::SINGLETON);
+                $this->bind(ShutdownFlush::class)->toProvider(ShutdownFlushProvider::class)->in(Scope::SINGLETON);
                 $binder = MultiBinder::newInstance($this, LogWriterInterface::class);
                 foreach ($this->receivers as $receiver) {
                     $binder->addBinding()->to($receiver);

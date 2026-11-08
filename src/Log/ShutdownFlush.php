@@ -6,8 +6,6 @@ namespace BEAR\QueryRepository\Log;
 
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
-use Ray\Di\Di\Set;
-use Ray\Di\MultiBinding\Map;
 use Throwable;
 
 use function assert;
@@ -38,15 +36,14 @@ final class ShutdownFlush implements LogSinkInterface
     /** @var list<LogWriterInterface> */
     private array $receivers = [];
 
-    /** @param Map<LogWriterInterface>|null $receivers */
+    /** @param iterable<LogWriterInterface> $receivers writers after the bound one; the log modules pass the LogWriterInterface set */
     public function __construct(
         private LogWriterInterface $writer,
         private ConcurrentRuntimeInterface $runtime = new HostRuntime(),
-        #[Set(LogWriterInterface::class)]
-        Map|null $receivers = null,
+        iterable $receivers = [],
     ) {
         // Built now so no Map, and the injector it holds, is serialized
-        foreach ($receivers ?? [] as $receiver) {
+        foreach ($receivers as $receiver) {
             $this->receivers[] = $receiver;
         }
     }
