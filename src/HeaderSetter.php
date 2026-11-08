@@ -7,6 +7,8 @@ namespace BEAR\QueryRepository;
 use BEAR\QueryRepository\Cdn\AkamaiCacheControlHeaderSetter;
 use BEAR\QueryRepository\Cdn\FastlyCacheControlHeaderSetter;
 use BEAR\RepositoryModule\Annotation\HttpCache;
+use BEAR\Resource\AbstractRequest;
+use BEAR\Resource\Exception\RequestNotSerializableException;
 use BEAR\Resource\ResourceObject;
 use Throwable;
 
@@ -72,9 +74,13 @@ final readonly class HeaderSetter
         try {
             ($this->etagSetter)($ro, $time, $httpCache);
         } catch (Throwable $e) {
-            // serialize()'s own refusal is this class with this wording; any other Exception
-            // (__serialize()/__sleep(), an embedded onGet()) keeps propagating.
-            if ($e::class !== 'Exception' || preg_match(self::SERIALIZATION_REFUSAL, $e->getMessage(), $matches) !== 1) {
+            // serialize()'s own refusal is this class with this wording, and a request refuses with its
+            // own type; any other exception (__serialize()/__sleep(), an embedded onGet()) keeps propagating.
+            if ($e instanceof RequestNotSerializableException) {
+                $refused = AbstractRequest::class;
+            } elseif ($e::class === 'Exception' && preg_match(self::SERIALIZATION_REFUSAL, $e->getMessage(), $matches) === 1) {
+                $refused = $matches[1];
+            } else {
                 throw $e;
             }
 
@@ -82,7 +88,7 @@ final readonly class HeaderSetter
             $this->stripHeaders($ro, self::CDN_FACING_HEADERS);
             $this->makeCacheControlPrivate($ro);
 
-            return $matches[1];
+            return $refused;
         }
 
         if ($cacheControlMaxAge !== null && $cacheControlMaxAge > 0) {

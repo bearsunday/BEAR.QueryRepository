@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Requires `ray/di` 2.23 or later: the empty writer set the log modules declare needs it.
 
+### Fixed
+- A `#[Cacheable]` body that holds a request below its top level, in a nested array (#267) or inside another object such as a service that keeps the resource client, is handled like any value `serialize()` refuses: `SkipSerializationError` serves the response uncached instead of failing with a 500. This needs bear/resource's `RequestNotSerializableException`.
+
 ## [1.19.1] - 2026-11-07
 
 ### Changed
