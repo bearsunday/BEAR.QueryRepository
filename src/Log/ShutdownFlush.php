@@ -10,6 +10,8 @@ use Throwable;
 
 use function assert;
 use function error_log;
+use function get_debug_type;
+use function is_array;
 use function register_shutdown_function;
 
 /**
@@ -31,10 +33,19 @@ final class ShutdownFlush implements LogSinkInterface
     /** The session the registered callback will flush; a second, different logger is a mistake */
     private SemanticLoggerInterface|null $armedLogger = null;
 
+    /** @var list<LogWriterInterface> */
+    private array $receivers = [];
+
+    /** @param iterable<LogWriterInterface> $receivers writers after the bound one; the log modules pass the LogWriterInterface set */
     public function __construct(
         private LogWriterInterface $writer,
         private ConcurrentRuntimeInterface $runtime = new HostRuntime(),
+        iterable $receivers = [],
     ) {
+        // Copied now so no Map or generator, nor the injector behind it, is serialized
+        foreach ($receivers as $receiver) {
+            $this->receivers[] = $receiver;
+        }
     }
 
     /**
@@ -43,22 +54,30 @@ final class ShutdownFlush implements LogSinkInterface
      * A compiled app is serialized once; a captured `armed` would silence every request served
      * from that snapshot.
      *
-     * @return array{writer: LogWriterInterface, runtime: ConcurrentRuntimeInterface}
+     * @return array{writer: LogWriterInterface, runtime: ConcurrentRuntimeInterface, receivers: list<LogWriterInterface>}
      */
     public function __serialize(): array
     {
-        return ['writer' => $this->writer, 'runtime' => $this->runtime];
+        return ['writer' => $this->writer, 'runtime' => $this->runtime, 'receivers' => $this->receivers];
     }
 
-    /** @param array{writer?: mixed, runtime?: mixed} $data */
+    /** @param array{writer?: mixed, runtime?: mixed, receivers?: mixed} $data */
     public function __unserialize(array $data): void
     {
         $writer = $data['writer'] ?? null;
         $runtime = $data['runtime'] ?? null;
+        $receivers = $data['receivers'] ?? [];
         assert($writer instanceof LogWriterInterface);
         assert($runtime instanceof ConcurrentRuntimeInterface);
+        assert(is_array($receivers));
         $this->writer = $writer;
         $this->runtime = $runtime;
+        $this->receivers = [];
+        foreach ($receivers as $receiver) {
+            assert($receiver instanceof LogWriterInterface);
+            $this->receivers[] = $receiver;
+        }
+
         $this->armed = false;
         $this->armedLogger = null;
     }
@@ -98,12 +117,22 @@ final class ShutdownFlush implements LogSinkInterface
     #[Override]
     public function flush(SemanticLoggerInterface $logger): void
     {
+        // The log is a side channel: a failing destination must not change how the request ended or
+        // keep the next one from the session. Thrown from a shutdown callback it would be a fatal.
         try {
-            $this->writer->write($logger->flush());
+            $log = $logger->flush();
         } catch (Throwable $e) {
-            // The log is a side channel: a destination that fails must not change how the request
-            // ended. Thrown from a shutdown callback this would surface as an uncaught fatal.
             error_log('QueryRepository log: flush failed - ' . $e::class . ': ' . $e->getMessage());
+
+            return;
+        }
+
+        foreach ([$this->writer, ...$this->receivers] as $writer) {
+            try {
+                $writer->write($log);
+            } catch (Throwable $e) {
+                error_log('QueryRepository log: flush failed - ' . get_debug_type($writer) . ' - ' . $e::class . ': ' . $e->getMessage());
+            }
         }
     }
 }
