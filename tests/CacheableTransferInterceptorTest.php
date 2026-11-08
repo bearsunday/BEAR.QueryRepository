@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 
@@ -46,6 +47,25 @@ class CacheableTransferInterceptorTest extends TestCase
 
         $this->assertSame('max-age=60', $missCacheControl);
         $this->assertSame($missCacheControl, $this->transferredCacheControl($hit));
+    }
+
+    /** @return array<string, array{string}> */
+    public static function expiryAtEntries(): array
+    {
+        return [
+            'value entry' => ['app://self/control-expiry'],
+            'view entry' => ['app://self/control-expiry-view'],
+        ];
+    }
+
+    #[DataProvider('expiryAtEntries')]
+    public function testAnExpiryAtHitTransfersItsRemainingLifetime(string $uri): void
+    {
+        $this->resource->get($uri);
+        $hit = $this->resource->get($uri);
+        $this->assertArrayHasKey(Header::AGE, $hit->headers, 'the second read is a hit');
+
+        $this->assertMatchesRegularExpression('/max-age=([1-9]|[12]\d|30)$/', (string) $this->transferredCacheControl($hit), 'the lifetime is read from the restored body');
     }
 
     public function testTheResourceOwnPrivateCacheControlStands(): void
