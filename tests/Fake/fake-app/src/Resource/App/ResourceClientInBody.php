@@ -11,7 +11,7 @@ use BEAR\Resource\ResourceObject;
 /**
  * A #[Cacheable] resource whose body holds the resource client, as a URL helper that keeps it would (#267)
  *
- * The client keeps the last request it made, and a request refuses to serialize with a LogicException.
+ * The client keeps the last request it made, and a request refuses to serialize with RequestNotSerializableException.
  */
 #[Cacheable]
 class ResourceClientInBody extends ResourceObject
