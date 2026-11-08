@@ -118,7 +118,7 @@ Every outcome is a self-describing word, never a bare boolean — except `saved`
 | Field | Values | Reading |
 |---|---|---|
 | `layer` | `resource` \| `donut` \| `donut-view` \| `etag` | which store was asked. `resource` = the `#[Cacheable]` value/view store; `donut` = the donut template (only ever an event); `donut-view` = the recomposed donut page; `etag` = the ETag pool behind a conditional request |
-| `saved` | `true` \| `false` | **`false` = the pool refused the write.** Nothing else in the system records this |
+| `saved` | `true` \| `false` | **`false` = the pool refused the write.** Nothing else in the system records this. `true` = the pool accepted it, not that it is kept: `NullAdapter`, the store when none is bound, accepts every write and keeps nothing, so every read is a miss |
 | `roPool` / `etagPool` | `invalidated` \| `failed` | per-pool invalidation result |
 | `cdn` | `purged` \| `failed` \| `skipped` | `skipped` = no purger configured (`NullPurger`), not "nothing to do" |
 | `operation` | `read` \| `write` | which side of the cache threw |
@@ -333,6 +333,18 @@ tags, CDN header values and raw exception text. Treat a written session as an ap
 `LogFileWriter` creates 0700 directories and 0600 files. To scrub or rate-limit, decorate
 `LogWriterInterface` — that is the seam, and it is also the answer to a pool outage, during which
 every request emits `cache_error` and retention rises to 100%.
+
+Decorating changes what the bound writer gets. To hand each session to one more destination, add a
+writer to the `LogWriterInterface` set instead: the sink flushes once and passes the same session to
+the bound writer, then to each added writer in the order added; a writer that throws is reported to
+`error_log()` and the rest still get the session. An added writer gets every session unfiltered —
+the retention policy and any decorator apply to the bound writer only — so it scrubs and samples for
+itself.
+
+```php
+MultiBinder::newInstance($this, LogWriterInterface::class)->addBinding()->to(EventStoreWriter::class);
+$this->bind(EventStoreWriter::class); // a compiled injector builds only bound classes (ray-di/Ray.Compiler#148)
+```
 
 ## Pointers
 

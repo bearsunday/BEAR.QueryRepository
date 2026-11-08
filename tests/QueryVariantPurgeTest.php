@@ -9,6 +9,7 @@ use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
 use FakeVendor\HelloWorld\Resource\App\PagedErrorOnBare;
+use FakeVendor\HelloWorld\Resource\App\User;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 use ReflectionMethod;
@@ -38,6 +39,7 @@ class QueryVariantPurgeTest extends TestCase
         $this->resource = $injector->getInstance(ResourceInterface::class);
         $this->repository = $injector->getInstance(QueryRepositoryInterface::class);
         $this->storage = $injector->getInstance(ResourceStorageInterface::class);
+        User::$data = User::DATA;
     }
 
     private function time(string $uri): float

@@ -45,7 +45,7 @@ This demo executes the following scenarios:
    - Should be cache-hit
 
 3. Write to level-three (PUT)
-   - The command purges the written resource and refreshes it in place
+   - The command purges the written resource and refreshes it with a GET
    - The surrogate-key cascade busts level-two and level-one
    - The log shows a command scope (method/annotations/source)
      driving the purge — cause and effect in one subtree

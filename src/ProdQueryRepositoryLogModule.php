@@ -13,12 +13,13 @@ use BEAR\QueryRepository\Log\ProcessSession;
 use BEAR\QueryRepository\Log\RetentionPolicyInterface;
 use BEAR\QueryRepository\Log\SafeSemanticLoggerProvider;
 use BEAR\QueryRepository\Log\SessionStoreInterface;
-use BEAR\QueryRepository\Log\ShutdownFlush;
+use BEAR\QueryRepository\Log\ShutdownFlushProvider;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\RepositoryModule\Annotation\LogDestination;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 use Ray\Di\AbstractModule;
+use Ray\Di\MultiBinder;
 use Ray\Di\Scope;
 
 /**
@@ -61,7 +62,9 @@ final class ProdQueryRepositoryLogModule extends AbstractModule
         $this->bind(RetentionPolicyInterface::class)->toInstance(new KeepMutationsAndFailures($this->sampleRate));
         $this->bind(LogWriterInterface::class)->annotatedWith(LogDestination::class)->toInstance(new LogStreamWriter($this->stream));
         $this->bind(LogWriterInterface::class)->toConstructor(PolicyLogWriter::class, ['writer' => LogDestination::class]);
-        $this->bind(LogSinkInterface::class)->to(ShutdownFlush::class)->in(Scope::SINGLETON);
+        $this->bind(LogSinkInterface::class)->toProvider(ShutdownFlushProvider::class)->in(Scope::SINGLETON);
+        // ShutdownFlushProvider injects this set, which must exist even when an app adds no writer
+        MultiBinder::newInstance($this, LogWriterInterface::class);
         $this->bind(SessionStoreInterface::class)->to(ProcessSession::class)->in(Scope::SINGLETON);
         $this->bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)->toProvider(SafeSemanticLoggerProvider::class)->in(Scope::SINGLETON);
     }

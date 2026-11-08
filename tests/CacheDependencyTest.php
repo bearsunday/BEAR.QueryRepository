@@ -130,8 +130,8 @@ class CacheDependencyTest extends TestCase
     /**
      * The same grandchild cascade as testDestroyByGrandChild, but driven by a write
      * command instead of a manual purge: writing level-three busts it and, via the
-     * surrogate-key tags, its parents. The written resource is refreshed in place by
-     * the command, so only the parents are left cold. This pins the command-driven
+     * surrogate-key tags, its parents. The written resource is refreshed right away by
+     * the command's GET, so only the parents are left cold. This pins the command-driven
      * invalidation flow demonstrated in demo/run-dependency.php.
      */
     public function testWriteToGrandChildCascadesInvalidation(): void
@@ -143,8 +143,8 @@ class CacheDependencyTest extends TestCase
         $this->resource->put('page://self/dep/level-three');
         $this->assertNull($this->repository->get(new Uri('page://self/dep/level-one')));
         $this->assertNull($this->repository->get(new Uri('page://self/dep/level-two')));
-        // The written resource is purged and refreshed in place by the command, so unlike
-        // its parents it is cached again right after the write — in both pools.
+        // The written resource is purged and refreshed right away by the command's GET, so
+        // unlike its parents it is cached again right after the write — in both pools.
         $three = $this->repository->get(new Uri('page://self/dep/level-three'));
         $this->assertInstanceOf(ResourceState::class, $three);
         $this->assertTrue($this->storage->hasEtag($three->headers[Header::ETAG]));

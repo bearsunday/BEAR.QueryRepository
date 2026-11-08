@@ -10,11 +10,12 @@ use BEAR\QueryRepository\Log\LogWriterInterface;
 use BEAR\QueryRepository\Log\ProcessSession;
 use BEAR\QueryRepository\Log\SafeSemanticLoggerProvider;
 use BEAR\QueryRepository\Log\SessionStoreInterface;
-use BEAR\QueryRepository\Log\ShutdownFlush;
+use BEAR\QueryRepository\Log\ShutdownFlushProvider;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 use Ray\Di\AbstractModule;
+use Ray\Di\MultiBinder;
 use Ray\Di\Scope;
 
 /**
@@ -41,7 +42,9 @@ final class DevQueryRepositoryLogModule extends AbstractModule
     protected function configure(): void
     {
         $this->bind(LogWriterInterface::class)->toInstance(new LogFileWriter($this->logDir, $this->keep));
-        $this->bind(LogSinkInterface::class)->to(ShutdownFlush::class)->in(Scope::SINGLETON);
+        $this->bind(LogSinkInterface::class)->toProvider(ShutdownFlushProvider::class)->in(Scope::SINGLETON);
+        // ShutdownFlushProvider injects this set, which must exist even when an app adds no writer
+        MultiBinder::newInstance($this, LogWriterInterface::class);
         $this->bind(SessionStoreInterface::class)->to(ProcessSession::class)->in(Scope::SINGLETON);
         // Shared session: open() at an interceptor and event() at storage resolve to one logger
         $this->bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)->toProvider(SafeSemanticLoggerProvider::class)->in(Scope::SINGLETON);
