@@ -76,11 +76,12 @@ final readonly class HeaderSetter
         } catch (Throwable $e) {
             // serialize()'s own refusal is this class with this wording, and a request refuses with its
             // own type; any other exception (__serialize()/__sleep(), an embedded onGet()) keeps propagating.
-            if ($e instanceof RequestNotSerializableException) {
-                $refused = AbstractRequest::class;
-            } elseif ($e::class === 'Exception' && preg_match(self::SERIALIZATION_REFUSAL, $e->getMessage(), $matches) === 1) {
+            $refused = $e instanceof RequestNotSerializableException ? AbstractRequest::class : null;
+            if ($e::class === 'Exception' && preg_match(self::SERIALIZATION_REFUSAL, $e->getMessage(), $matches) === 1) {
                 $refused = $matches[1];
-            } else {
+            }
+
+            if ($refused === null) {
                 throw $e;
             }
 
