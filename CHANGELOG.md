@@ -12,6 +12,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Requires `ray/di` 2.23 or later: the empty writer set the log modules declare needs it.
+- **Behaviour change**: a `#[Cacheable]` body must serialize. A body holding a closure, a connection, a DOM node or an object whose `__serialize()` throws fails the request in every environment with PHP's own exception, logged as `cache_error{operation: write}`; before deploying, request each `#[Cacheable]` resource once in development, with each kind of data if such a value appears only for some of it.
+- Under the deprecated `MobileEtagModule`, a `#[CacheableResponse]` page whose body does not serialize fails the same way, since its ETag serializes the body.
+- **Behaviour change**: a `#[Cacheable]` response gets its client `Cache-Control` when it is transferred: `max-age` from its lifetime, or `no-cache` when it has none (the default `expiry: 'never'`, which sent `max-age=31536000`). A response requested inside the app (`$resource->get()`) does not carry it, and an existing `max-age`, `no-store` or `no-cache` is left as is.
+- Deploy this version with a new `CacheVersionModule` version (or clear your own pools) and a rebuilt injector: an entry stored by an earlier version replays the `Cache-Control: max-age` it was stored with, and a compiled or serialized injector refers to the removed classes.
+
+### Removed
+- `BodySerializationErrorHandlerInterface`, `ThrowSerializationError`, `SkipSerializationError` and `Exception\BodySerializationNotAllowedException`, added in 1.19.0: a body that does not serialize cannot be served uncached. Remove a binding of the interface, and catch PHP's own exception where `BodySerializationNotAllowedException` was caught.
+- The `put_skipped` reason `unserializable` and its `class` field.
+
+### Fixed
+- A `#[Cacheable(type: 'view')]` entry or a partial ETag (`#[HttpCache(etag: [...])]`) whose body does not serialize no longer runs the pre-write cleanup, and its CDN purge, on every request: the request fails before the cleanup (#264).
 
 ## [1.19.1] - 2026-11-07
 

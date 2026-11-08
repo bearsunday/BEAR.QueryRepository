@@ -54,10 +54,13 @@ surrogate key を追加せずに上書きしていた）。失われた子を pu
 プールが、成功した保存に見えることはもうありません。put が続かない miss は
 理由付きの `put_skipped` を出します（`etag-present`、実際のレスポンスコードを
 伴う `error-code`、`not-cacheable`、このリクエストで unstorable とマークされた
-応答の `unstorable`、body が `serialize()` に拒まれた `unserializable`）—
-保存の不在は記録された決定であり、謎ではありません。保持ポリシーはセッションを丸ごと
-残すか捨てるかを決めます。`put_skipped{reason: unserializable}` はそのセッションを
-残します（規則ではなく欠陥だからです）。ほかの理由のスキップだけでは、セッションは残りません。無効化はターゲットごとの結果（`roPool`/`etagPool`:
+応答の `unstorable`）—
+保存の不在は記録された決定であり、謎ではありません。どの理由も単独でセッションを
+残しません — 保持ポリシーはそれらをコードが生きている限り変わらない規則として
+扱います。保存先が持てない body（`serialize()` がクロージャを拒むなど）は
+スキップを生む代わりにリクエストを失敗させます。`cache_error{operation: write}`
+がその拒否を記録し、これは保持ポリシーが実際にセッションを残す「起きなかった
+効果」の一つです。無効化はターゲットごとの結果（`roPool`/`etagPool`:
 `invalidated`|`failed`、`cdn`: `purged`|`failed`|`skipped`）と所要時間を
 報告します。失敗した書き込みでも command スコープは開かれ、その 4xx とともに
 閉じられます — purge が*正しくスキップされた*ことを記録するのです。

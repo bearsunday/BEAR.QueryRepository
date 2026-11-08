@@ -105,7 +105,7 @@ operation inside a GET or a command is an ordinary event there instead.
 | `pre_write_cleanup` | `uri` | the writer is about to clear the entry it will rewrite |
 | `invalidate` | `tags`, `roPool`, `etagPool`, `cdn`, `durationMs` | tags were invalidated, with a result per target |
 | `purge` | `uri` | a URI-targeted bust was requested |
-| `put_skipped` | `uri`, `reason`, `code`, `class` | a miss was **not** followed by a write, and why |
+| `put_skipped` | `uri`, `reason`, `code` | a miss was **not** followed by a write, and why |
 | `cache_hit` / `cache_miss` | `layer`, `durationMs` | an inner lookup, always `layer: donut` — whether the donut template was there. `durationMs` is null here: an event has no scope to measure |
 | `cache_error` | `uri`, `operation`, `error`, `exceptionClass` | the cache path threw |
 | `pool_error` | `key`, `operation`, `error`, `exceptionClass` | the backend refused an operation and the adapter swallowed it |
@@ -122,13 +122,12 @@ Every outcome is a self-describing word, never a bare boolean — except `saved`
 | `roPool` / `etagPool` | `invalidated` \| `failed` | per-pool invalidation result |
 | `cdn` | `purged` \| `failed` \| `skipped` | `skipped` = no purger configured (`NullPurger`), not "nothing to do" |
 | `operation` | `read` \| `write` | which side of the cache threw |
-| `reason` (`put_skipped`) | `etag-present` \| `error-code` \| `not-cacheable` \| `unstorable` \| `unserializable` | why no write happened. `etag-present` = the resource already carried an ETag, so the donut layer left it alone; `not-cacheable` = a donut page re-rendered from its template, which is never stored as a page; `error-code` carries the response `code`, and the threshold differs by path: `#[Cacheable]` skips any non-200 (a `203` appears here), a donut skips 4xx and above; `unstorable` = a producer marked the response during this request, or its `Cache-Control` says `no-store`/`private` other than the value its `#[HttpCache]`/`#[NoHttpCache]` declares (the declared value alone does not count) — the write is refused even though the code and type would otherwise allow it; `unserializable` = the body held a value `serialize()` refused (a closure, a PDO connection, an HTTP client), named in the `class` field |
+| `reason` (`put_skipped`) | `etag-present` \| `error-code` \| `not-cacheable` \| `unstorable` | why no write happened. `etag-present` = the resource already carried an ETag, so the donut layer left it alone; `not-cacheable` = a donut page re-rendered from its template, which is never stored as a page; `error-code` carries the response `code`, and the threshold differs by path: `#[Cacheable]` skips any non-200 (a `203` appears here), a donut skips 4xx and above; `unstorable` = a producer marked the response during this request, or its `Cache-Control` says `no-store`/`private` other than the value its `#[HttpCache]`/`#[NoHttpCache]` declares (the declared value alone does not count) — the write is refused even though the code and type would otherwise allow it |
 | `reason` (`dependency_skipped`) | `no_body` \| `no_etag_or_surrogate_key` | what the child's body showed at write time; it carried neither header that marks a dependency. `no_body` = the body was null: on a donut page usually a hole the renderer runs later, the healthy shape (a 204 that ran reads the same). `no_etag_or_surrogate_key` = the body was set but the child carried no tag: usually a data dependency, whose change then never reaches the parent's stored entry - make the child cacheable or render it as a hole. A hole whose class declares a default `$body` reads the same, so check whether `onGet()` reads the child. A `#[Cacheable]` put runs every top-level embedded request first, so there the child is always stored with the parent |
 | `result` (`manual_*`) | `stored`/`purged`/`invalidated` \| `failed` | the direct call's outcome |
 | `requestedTtl` | seconds | what this package asked the store to keep. `31536000` is the `never` convention; `0`/`null` = it asked for no expiry, which a backend may override (see the rule below) |
 | `sMaxAge` (`put_donut`) | seconds | the shared-cache (CDN) lifetime the write asked for — the same argument as `DonutRepositoryInterface::putStatic($ro, ttl: …, sMaxAge: …)`, and not the entry's own `requestedTtl`. `null` = none requested, and `putDonut` always records `null` |
 | `code` (`put_skipped`) | HTTP status | present only when `reason` is `error-code`; `null` for the other reasons |
-| `class` (`put_skipped`) | the refused value's class name | present only when `reason` is `unserializable`; `null` for the other reasons |
 
 ## Reading rules
 
@@ -136,8 +135,7 @@ These are the ones you cannot guess from a field name.
 
 **When a miss is not followed by a write, `put_skipped` says why.** A rule forbade storing: a
 response code that path will not cache, a validator already present, a donut page served from its
-template, a response marked `unstorable` for this request, or a body `serialize()` refused
-(`unserializable`, with the failing class) — the event names which one.
+template, or a response marked `unstorable` for this request — the event names which one.
 
 **A donut write of a non-200 has no `save_etag`, and its `cdn_headers` carries no lifetime.**
 The donut threshold lets 2xx and 3xx through, and a validator is issued for 200 only, so a stored
