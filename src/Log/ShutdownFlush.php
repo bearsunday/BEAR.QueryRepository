@@ -42,7 +42,7 @@ final class ShutdownFlush implements LogSinkInterface
         private ConcurrentRuntimeInterface $runtime = new HostRuntime(),
         iterable $receivers = [],
     ) {
-        // Built now so no Map, and the injector it holds, is serialized
+        // Copied now so no Map or generator, nor the injector behind it, is serialized
         foreach ($receivers as $receiver) {
             $this->receivers[] = $receiver;
         }
