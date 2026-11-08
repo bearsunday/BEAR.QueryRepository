@@ -75,11 +75,12 @@ class EmbeddedChildMaterializationTest extends TestCase
     }
 
     /**
-     * An embedded child the parent moves into a nested array is stored as its result (#267)
+     * An embedded child the parent moves into a nested array is stored as its result (#267),
+     * while the live response keeps the request
      */
     public function testChildMovedIntoNestedArrayIsStored(): void
     {
-        $this->resource->get('page://self/dep/parent-of-nested-child');
+        $ro = $this->resource->get('page://self/dep/parent-of-nested-child');
 
         $state = $this->repository->get(new Uri('page://self/dep/parent-of-nested-child'));
         $this->assertInstanceOf(ResourceState::class, $state);
@@ -87,6 +88,10 @@ class EmbeddedChildMaterializationTest extends TestCase
         $nested = $state->body['nested'];
         assert(is_array($nested));
         $this->assertInstanceOf(ResourceObject::class, $nested['child']);
+        assert(is_array($ro->body));
+        $liveNested = $ro->body['nested'];
+        assert(is_array($liveNested));
+        $this->assertInstanceOf(RequestInterface::class, $liveNested['child']);
     }
 
     /**
