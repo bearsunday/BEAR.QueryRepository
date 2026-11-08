@@ -57,7 +57,11 @@ final class ResourceBodyEvaluator
             return clone $item; // a live object placed in the body directly
         }
 
-        return $item; // scalars, arrays and anything else pass through untouched
+        if (is_array($item)) {
+            return $this($item); // a request placed in a nested array is materialized too
+        }
+
+        return $item; // scalars and anything else pass through untouched
     }
 
     /**

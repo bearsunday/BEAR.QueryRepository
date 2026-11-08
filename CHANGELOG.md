@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Requires `ray/di` 2.23 or later: the empty writer set the log modules declare needs it.
 
+### Fixed
+- A `#[Cacheable]` resource that moves an embedded child into a nested array of its body is stored again; since 1.17.0 it failed with `LogicException` (#267).
+
 ## [1.19.1] - 2026-11-07
 
 ### Changed

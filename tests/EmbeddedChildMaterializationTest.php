@@ -75,6 +75,21 @@ class EmbeddedChildMaterializationTest extends TestCase
     }
 
     /**
+     * An embedded child the parent moves into a nested array is stored as its result (#267)
+     */
+    public function testChildMovedIntoNestedArrayIsStored(): void
+    {
+        $this->resource->get('page://self/dep/parent-of-nested-child');
+
+        $state = $this->repository->get(new Uri('page://self/dep/parent-of-nested-child'));
+        $this->assertInstanceOf(ResourceState::class, $state);
+        assert(is_array($state->body));
+        $nested = $state->body['nested'];
+        assert(is_array($nested));
+        $this->assertInstanceOf(ResourceObject::class, $nested['child']);
+    }
+
+    /**
      * The stored child is a copy: mutating it must not reach the live response graph
      *
      * The live body holds the request, not the child, so the comparison is against the
