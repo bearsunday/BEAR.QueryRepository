@@ -166,6 +166,18 @@ class DonutQueryInterceptorPurgeTest extends TestCase
         $this->assertNotSame($bLastModified, $a2->headers[Header::LAST_MODIFIED], 'B→A advances Last-Modified');
     }
 
+    public function testADependencyDeclaredWhileRenderingRebuildsThePage(): void
+    {
+        $pageUri = 'page://self/html/render-time-dependency';
+        MutableComment::$comment = 'comment-a';
+        $this->assertSame('comment:comment-a', (string) $this->resource->get($pageUri)->view);
+
+        MutableComment::$comment = 'comment-b';
+        $this->repository->purge(new Uri('page://self/html/mutable-comment'));
+
+        $this->assertSame('comment:comment-b', (string) $this->resource->get($pageUri)->view, 'the template holds the old comment, so the purge drops it instead of recomposing from it');
+    }
+
     private function isStateCached(): bool
     {
         return $this->repository->get(new Uri('page://self/html/blog-posting')) instanceof ResourceState;

@@ -146,9 +146,11 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $this->logger->event(new PutDonutContext((string) $ro->uri, $ttl, $sMaxAge));
         $keys = new SurrogateKeys($ro->uri, ($this->baseUriTag)($ro));
         $keys->addTag($ro);
-        $declaredKeys = $this->getHeaderKeys($ro);
-        $templateKeys = $this->templateKeys($ro, $declaredKeys);
-        $donut = ResourceDonut::create($ro, $this->renderer, $keys, $sMaxAge, true)->withStorageState($ttl, $templateKeys);
+        $donut = ResourceDonut::create($ro, $this->renderer, $keys, $sMaxAge, true);
+        // Read after rendering: a dependency declared while rendering is baked into the template,
+        // so its purge must reach the template too
+        $templateKeys = $this->templateKeys($ro, $this->getHeaderKeys($ro));
+        $donut = $donut->withStorageState($ttl, $templateKeys);
         $donut->render($ro, $this->renderer);
         // Checked on the rendered response before setHeaders() mutates it
         $unstorable = $this->declaredCacheControl->reason($ro);
@@ -172,9 +174,10 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $this->classifyMaterials($ro);
         $this->logger->event(new PutDonutContext((string) $ro->uri, $donutTtl, null));
         $keys = new SurrogateKeys($ro->uri, ($this->baseUriTag)($ro));
-        $declaredKeys = $this->getHeaderKeys($ro);
-        $templateKeys = $this->templateKeys($ro, $declaredKeys);
-        $donut = ResourceDonut::create($ro, $this->renderer, $keys, $donutTtl, false)->withStorageState($donutTtl, $templateKeys);
+        $donut = ResourceDonut::create($ro, $this->renderer, $keys, $donutTtl, false);
+        // Read after rendering: a dependency declared while rendering is baked into the template
+        $templateKeys = $this->templateKeys($ro, $this->getHeaderKeys($ro));
+        $donut = $donut->withStorageState($donutTtl, $templateKeys);
         $donut->render($ro, $this->renderer);
         $unstorable = $this->declaredCacheControl->reason($ro);
         $keys->setSurrogateHeader($ro);

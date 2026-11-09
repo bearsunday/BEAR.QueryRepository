@@ -178,6 +178,8 @@ An untagged data dependency - a child the parent reads or stores that carries no
 
 Dependencies and holes are found where `#[Embed]` puts a child: at the top level of the body. A request the page moves into a nested array, replaces or `unset()`s before the write is not seen. On a `#[CacheableResponse]`/`#[DonutCache]` page a nested request does not become a hole either: when the template prints it, it runs and its output is written into the stored template, its tags reach no one, and nothing is logged. The page then shows that child's old content until the page's own TTL, and a per-user child nested this way puts one visitor's content into the template every visitor shares.
 
+A child the template fetches while rendering, from a template helper for example, is written into the stored template the same way. Declare it there with `CacheDependencyInterface::depends($page, $child)`: the page's stored template and view then carry the child's tags, so a change to the child rebuilds the page from `onGet()`. A per-user child still does not belong in the template.
+
 A list whose length, order or queries come from data (blocks an editor arranges, say) cannot be written as `#[Embed]` on the page, which is static. Build it in a child resource instead, embed that child, and let the child list the block requests at the top level of its own body - the child's write is read the same way:
 
 ```php

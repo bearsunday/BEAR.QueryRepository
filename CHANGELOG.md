@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - A `#[Cacheable(type: 'view')]` entry or a partial ETag (`#[HttpCache(etag: [...])]`) whose body does not serialize no longer runs the pre-write cleanup, and its CDN purge, on every request: the request fails before the cleanup (#264).
+- A dependency declared while a `#[CacheableResponse]` or `#[DonutCache]` page renders, such as `CacheDependencyInterface::depends()` called from a template helper, now also invalidates the stored template, so its purge rebuilds the page instead of recomposing the content the template already holds.
 
 ## [1.19.1] - 2026-11-07
 
