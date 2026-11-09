@@ -146,7 +146,7 @@ A `#[Cacheable]` body is serialized once before anything is stored or purged. A 
 
 ### Client Cache-Control of a #[Cacheable] response
 
-A stored `#[Cacheable]` entry carries no client lifetime; it is set when the response is transferred. A 200, unless its own code marked it unstorable (`private` or `no-store`), gets `no-cache` when the declaration has no lifetime (the default `expiry: 'never'`), otherwise `max-age` from `expiryAt`, then `expirySecond`, then the preset. A `Cache-Control` that already has `max-age`, `no-store` or `no-cache` (from `#[HttpCache]`/`#[NoHttpCache]` or the resource) is kept; other directives get the lifetime appended. A response requested inside the app (`$resource->get()`) is not transferred and carries none. Donut pages (`#[CacheableResponse]`/`#[DonutCache]`) are not affected.
+A `#[Cacheable]` response is stored with its client `Cache-Control`: `max-age` from `expiryAt`, then `expirySecond`, then the preset, or `no-cache` when the declaration has no lifetime (the default `expiry: 'never'`, an entry that lives until a write invalidates it). A hit replays the stored directive with `Age`, so a client counts down the same lifetime. A `Cache-Control` that already has `max-age` or `no-store` (from `#[HttpCache]`/`#[NoHttpCache]` or the resource) is kept, and an existing directive is not repeated; other directives get the new one appended. A response whose own code marked it unstorable (`private` or `no-store`) gets none. Donut pages (`#[CacheableResponse]`/`#[DonutCache]`) are not affected.
 
 ## Cache Dependencies
 

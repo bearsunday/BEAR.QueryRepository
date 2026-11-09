@@ -37,7 +37,7 @@ final readonly class HeaderSetter
     }
 
     /**
-     * Set the validator and, when a lifetime is given, the Cache-Control max-age; strip every
+     * Set the validator and, when a directive is given, the client Cache-Control; strip every
      * CDN-facing header instead when the response's own Cache-Control already reads private or
      * no-store outside what #[HttpCache]/#[NoHttpCache] declares
      *
@@ -45,7 +45,7 @@ final readonly class HeaderSetter
      * CDN-facing headers are stripped. A value #[HttpCache] or #[NoHttpCache] declared is
      * exempt from this check.
      */
-    public function __invoke(ResourceObject $ro, int|null $cacheControlMaxAge, HttpCache|null $httpCache, int|null $time = null): void
+    public function __invoke(ResourceObject $ro, string|null $cacheControl, HttpCache|null $httpCache, int|null $time = null): void
     {
         if ($this->declaredCacheControl->reason($ro) !== null) {
             $this->stripHeaders($ro, self::CDN_FACING_HEADERS);
@@ -54,9 +54,15 @@ final readonly class HeaderSetter
         }
 
         ($this->etagSetter)($ro, $time, $httpCache);
-        if ($cacheControlMaxAge !== null && $cacheControlMaxAge > 0) {
-            $this->setCacheControlMaxAge($ro, $cacheControlMaxAge);
+        if ($cacheControl !== null) {
+            $this->addCacheControl($ro, $cacheControl);
         }
+    }
+
+    /** The max-age directive for a lifetime, none when there is no lifetime to give */
+    public static function maxAge(int|null $seconds): string|null
+    {
+        return $seconds !== null && $seconds > 0 ? sprintf('max-age=%d', $seconds) : null;
     }
 
     /** @param list<string> $canonicalNames */
@@ -71,29 +77,28 @@ final readonly class HeaderSetter
         }
     }
 
-    private function setCacheControlMaxAge(ResourceObject $ro, int $age): void
+    private function addCacheControl(ResourceObject $ro, string $directive): void
     {
-        $setMaxAge = sprintf('max-age=%d', $age);
         $existingName = Header::findKey($ro->headers, Header::CACHE_CONTROL);
         if ($existingName === null) {
-            $ro->headers[Header::CACHE_CONTROL] = $setMaxAge;
+            $ro->headers[Header::CACHE_CONTROL] = $directive;
 
             return;
         }
 
-        // no-store forbids keeping the response at all, so a lifetime beside it is contradictory;
-        // every case variant of the key is a Cache-Control the client receives
+        // A lifetime already there stands, no-store forbids keeping the response at all, and a
+        // directive is not repeated; every case variant of the key is a Cache-Control the client receives
         foreach ($ro->headers as $name => $value) {
             if (strtolower($name) !== strtolower(Header::CACHE_CONTROL)) {
                 continue;
             }
 
             $lower = strtolower($value);
-            if (str_contains($lower, 'max-age') || str_contains($lower, 'no-store')) {
+            if (str_contains($lower, 'max-age') || str_contains($lower, 'no-store') || str_contains($lower, $directive)) {
                 return;
             }
         }
 
-        $ro->headers[$existingName] .= ', ' . $setMaxAge;
+        $ro->headers[$existingName] .= ', ' . $directive;
     }
 }

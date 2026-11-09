@@ -6,10 +6,14 @@ namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\ExpireAtKeyNotExists;
 use BEAR\Resource\ResourceInterface;
-use BEAR\Resource\ResourceObject;
 use FakeVendor\HelloWorld\Resource\App\HttpCacheControlWithCacheable;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
+
+use function preg_match;
+use function sleep;
+use function strtotime;
+use function time;
 
 class GetInterceptorTest extends TestCase
 {
@@ -36,24 +40,53 @@ class GetInterceptorTest extends TestCase
         $this->assertSame($expect, $user['time']);
     }
 
-    private function transferredCacheControl(ResourceObject $ro): string|null
-    {
-        $responder = new FakeRecordingResponder();
-        $ro->transfer($responder, []);
-
-        return $responder->headers['Cache-Control'] ?? null;
-    }
-
     public function testCacheControlHeaderNone(): void
     {
         $user = $this->resource->get('app://self/control-none');
-        $this->assertSame('max-age=60', $this->transferredCacheControl($user));
+        $this->assertArrayHasKey('Cache-Control', $user->headers);
+        $this->assertSame('max-age=60', $user->headers['Cache-Control']);
     }
 
     public function testCacheControlHeaderExpiry(): void
     {
         $user = $this->resource->get('app://self/control-expiry');
-        $this->assertStringContainsString('public, max-age=3', (string) $this->transferredCacheControl($user)); // 30 sec (but may 30+x sec for slow CI)
+        $this->assertArrayHasKey('Cache-Control', $user->headers);
+        $this->assertStringContainsString('public, max-age=3', $user->headers['Cache-Control']); // 30 sec (but may 30+x sec for slow CI)
+    }
+
+    public function testAnEntryWithoutALifetimeTellsTheClientToRevalidate(): void
+    {
+        $first = $this->resource->get('app://self/user', ['id' => 1]);
+        $hit = $this->resource->get('app://self/user', ['id' => 1]);
+
+        $this->assertSame('no-cache', $first->headers['Cache-Control']);
+        $this->assertArrayHasKey('Age', $hit->headers, 'the second read is a hit');
+        $this->assertSame('no-cache', $hit->headers['Cache-Control']);
+    }
+
+    public function testAnExpiryAtHitLeavesTheClientTheRemainingLifetime(): void
+    {
+        $uris = ['app://self/control-expiry', 'app://self/control-expiry-view'];
+        foreach ($uris as $uri) {
+            $this->resource->get($uri);
+        }
+
+        sleep(2);
+        foreach ($uris as $uri) {
+            $hit = $this->resource->get($uri);
+            $age = (int) $hit->headers['Age'];
+            $this->assertGreaterThanOrEqual(2, $age, $uri . ' is a hit stored at least two seconds ago');
+            if (preg_match('/max-age=(\d+)/', $hit->headers['Cache-Control'], $maxAge) !== 1) {
+                $this->fail($uri . ' carries a max-age');
+            }
+
+            $this->assertIsArray($hit->body);
+            $expiryAt = $hit->body['expiry_at'];
+            $this->assertIsString($expiryAt);
+            $remaining = (int) strtotime($expiryAt) - time();
+            // A client counts the lifetime down from Age, so the stored max-age minus Age is what is left
+            $this->assertEqualsWithDelta($remaining, (int) $maxAge[1] - $age, 1, $uri);
+        }
     }
 
     public function testCacheControlHeaderExpiryError(): void
@@ -78,7 +111,7 @@ class GetInterceptorTest extends TestCase
     {
         HttpCacheControlWithCacheable::$calls = 0;
         $ro = $this->resource->get('app://self/http-cache-control-with-cacheable');
-        $this->assertSame('private, max-age=10', $this->transferredCacheControl($ro));
+        $this->assertSame('private, max-age=10', $ro->headers['Cache-Control']);
 
         // #[HttpCache(isPrivate: true)]'s own declared value is exempt from the runtime-private
         // check: a second GET is served from the server-side store, not a fresh onGet() call.

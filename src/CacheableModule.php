@@ -75,11 +75,5 @@ final class CacheableModule extends AbstractModule
             $this->matcher->startsWith('onGet'),
             [HttpCacheInterceptor::class],
         );
-
-        $this->bindInterceptor(
-            $this->matcher->annotatedWith(Cacheable::class),
-            $this->matcher->startsWith('transfer'),
-            [CacheableTransferInterceptor::class],
-        );
     }
 }

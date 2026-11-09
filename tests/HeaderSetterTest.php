@@ -55,7 +55,7 @@ class HeaderSetterTest extends TestCase
         $ro = new None();
         $ro->headers['cache-control'] = 'public';
 
-        ($this->headerSetter())($ro, 60, null);
+        ($this->headerSetter())($ro, 'max-age=60', null);
 
         $this->assertArrayNotHasKey(Header::CACHE_CONTROL, $ro->headers, 'no second, canonically-cased header was added');
         $this->assertSame('public, max-age=60', $ro->headers['cache-control']);
@@ -66,7 +66,7 @@ class HeaderSetterTest extends TestCase
         $ro = new None();
         $ro->headers['cache-control'] = 'max-age=30';
 
-        ($this->headerSetter())($ro, 60, null);
+        ($this->headerSetter())($ro, 'max-age=60', null);
 
         $this->assertArrayNotHasKey(Header::CACHE_CONTROL, $ro->headers, 'no second, canonically-cased header was added');
         $this->assertSame('max-age=30', $ro->headers['cache-control']);
@@ -79,7 +79,7 @@ class HeaderSetterTest extends TestCase
         $ro = new CacheableResponseNoStore();
         $ro->headers[Header::CACHE_CONTROL] = 'no-store';
 
-        ($this->headerSetter())($ro, 31536000, null);
+        ($this->headerSetter())($ro, 'max-age=31536000', null);
 
         $this->assertSame('no-store', $ro->headers[Header::CACHE_CONTROL]);
     }
@@ -91,9 +91,19 @@ class HeaderSetterTest extends TestCase
         $ro = new CacheableResponseNoStore();
         $ro->headers = ['cache-control' => 'public', Header::CACHE_CONTROL => 'no-store'];
 
-        ($this->headerSetter())($ro, 60, null);
+        ($this->headerSetter())($ro, 'max-age=60', null);
 
         $this->assertSame('public', $ro->headers['cache-control']);
         $this->assertSame('no-store', $ro->headers[Header::CACHE_CONTROL]);
+    }
+
+    public function testANoCacheAlreadyThereIsNotRepeated(): void
+    {
+        $ro = new None();
+        $ro->headers[Header::CACHE_CONTROL] = 'public, no-cache';
+
+        ($this->headerSetter())($ro, 'no-cache', null);
+
+        $this->assertSame('public, no-cache', $ro->headers[Header::CACHE_CONTROL]);
     }
 }

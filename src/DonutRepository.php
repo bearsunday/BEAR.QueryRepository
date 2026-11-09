@@ -285,7 +285,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         // When the recomposed content is byte-identical to the recorded one, carry over
         // the original Last-Modified instead of advancing it to the recomposition time
         $lastModified = $donut->getUnchangedLastModified((string) $ro->view);
-        ($this->headerSetter)($ro, $donut->ttl, null, $lastModified);
+        ($this->headerSetter)($ro, HeaderSetter::maxAge($donut->ttl), null, $lastModified);
 
         $this->setCdnCacheControl($ro, $donut->ttl);
         $this->logCdnHeaders($ro);
@@ -394,7 +394,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $keys->setSurrogateHeader($ro);
         $surrogateKeys = $ro->headers[Header::SURROGATE_KEY] ?? '';
         $this->setCdnCacheControl($ro, $sMaxAge);
-        ($this->headerSetter)($ro, 0, null);
+        ($this->headerSetter)($ro, null, null);
 
         return $surrogateKeys;
     }

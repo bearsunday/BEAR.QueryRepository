@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Exception\ExpireAtKeyNotExists;
 use BEAR\QueryRepository\Log\Context\CachePolicyContext;
 use BEAR\QueryRepository\Log\Context\DependencySkippedContext;
 use BEAR\QueryRepository\Log\Context\ManualPurgeContext;
@@ -24,7 +25,10 @@ use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 use ReflectionClass;
 
+use function is_array;
+use function max;
 use function serialize;
+use function sprintf;
 use function strtotime;
 use function time;
 use function trim;
@@ -97,9 +101,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
             serialize(($this->evaluateBody)($ro->body));
         }
 
-        // No lifetime for the client here: a #[Cacheable] response gets its Cache-Control when it
-        // is transferred (CacheableTransferInterceptor), so a stored entry carries none to replay
-        ($this->headerSetter)($ro, null, $httpCache);
+        ($this->headerSetter)($ro, $this->clientCacheControl($cacheable, $ttl), $httpCache);
         $this->cleanUpBeforeWrite($ro, $unstorable);
 
         if ($unstorable !== null) {
@@ -120,14 +122,22 @@ final readonly class QueryRepository implements QueryRepositoryInterface
     /** The seconds a #[Cacheable] entry lives, recorded with the declaration that decided them */
     private function lifetime(ResourceObject $ro, Cacheable|null $cacheable): int
     {
-        if ($cacheable === null) {
-            return 0;
+        $ttl = $this->getExpiryTime($ro, $cacheable);
+        if ($cacheable instanceof Cacheable) {
+            $this->logger->event($this->cachePolicy($ro, $cacheable, $ttl));
         }
 
-        $ttl = (new CacheableExpiry($this->expiry))->seconds($ro, $cacheable);
-        $this->logger->event($this->cachePolicy($ro, $cacheable, $ttl));
-
         return $ttl;
+    }
+
+    /** An entry without a lifetime lives until a write invalidates it, so the client revalidates it */
+    private function clientCacheControl(Cacheable|null $cacheable, int $ttl): string|null
+    {
+        if ($cacheable instanceof Cacheable && $cacheable->expiryAt === '' && $cacheable->expirySecond === 0 && $cacheable->expiry === 'never') {
+            return 'no-cache';
+        }
+
+        return HeaderSetter::maxAge($ttl);
     }
 
     private function saveEtag(ResourceObject $ro, int $ttl): void
@@ -159,7 +169,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
     /**
      * The declaration that decided the lifetime, as declared.
      *
-     * The precedence is the one {@see CacheableExpiry::seconds()} applies: an expiry field in the body
+     * The precedence is the one {@see self::getExpiryTime()} applies: an expiry field in the body
      * wins, then an explicit second count, then the preset. Only the winner is recorded, so a
      * reader never has to re-derive which of the three was in force.
      */
@@ -261,5 +271,34 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         $attributes = (new ReflectionClass($ro))->getAttributes(Cacheable::class);
 
         return isset($attributes[0]) ? $attributes[0]->newInstance() : null;
+    }
+
+    private function getExpiryTime(ResourceObject $ro, Cacheable|null $cacheable = null): int
+    {
+        if ($cacheable === null) {
+            return 0;
+        }
+
+        if ($cacheable->expiryAt !== '') {
+            return $this->getExpiryAtSec($ro, $cacheable);
+        }
+
+        // A user-supplied expirySecond may be negative; the schemas declare "minimum": 0
+        return max(0, $cacheable->expirySecond ?: $this->expiry->getTime($cacheable->expiry));
+    }
+
+    private function getExpiryAtSec(ResourceObject $ro, Cacheable $cacheable): int
+    {
+        if (! is_array($ro->body) || ! isset($ro->body[$cacheable->expiryAt])) {
+            $msg = sprintf('%s::%s', $ro::class, $cacheable->expiryAt);
+
+            throw new ExpireAtKeyNotExists($msg);
+        }
+
+        /** @var string $expiryAt */
+        $expiryAt = $ro->body[$cacheable->expiryAt];
+
+        // A past expiryAt yields no lifetime to set, which the storage stores as "no expiry"
+        return max(0, (int) strtotime($expiryAt) - time());
     }
 }
