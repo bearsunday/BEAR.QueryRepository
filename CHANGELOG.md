@@ -14,12 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Requires `ray/di` 2.23 or later: the empty writer set the log modules declare needs it.
 - **Behaviour change**: a `#[Cacheable]` body must serialize. A body holding a closure, a PDO connection, a DOM node or an object whose `__serialize()` throws fails the request in every environment with the exception `serialize()` throws, unwrapped, logged as `cache_error{operation: write}`; before deploying, request each `#[Cacheable]` resource once in development, with each kind of data if such a value appears only for some of it.
 - Under the deprecated `MobileEtagModule`, a `#[CacheableResponse]` page whose body does not serialize fails the same way, since its ETag serializes the body.
-- A write to a `#[Cacheable]` resource fails the same way when the GET that refreshes its entry builds such a body; the write itself has already run.
+- A write to a `#[Cacheable]` resource fails the same way when the GET that refreshes its entry builds such a body; the write and the purge of its entry, including any CDN purge, have already run.
 - **Behaviour change**: a `#[Cacheable]` response without a lifetime (the default `expiry: 'never'`) carries `Cache-Control: max-age=0` instead of `max-age=31536000` unless it already declares a `max-age` or `no-store`, so a browser revalidates it with its ETag while an `s-maxage` from `#[HttpCache]` still governs a CDN. `'never'` is for content a write invalidates; data that changes without one, such as a dashboard or stock prices, declares a lifetime.
 - Deploy this version with a new `CacheVersionModule` version (or clear your own pools) and a rebuilt injector: an entry stored by an earlier version replays the `Cache-Control: max-age` it was stored with, and a compiled or serialized injector refers to the removed classes. A browser that already holds a response sent with `max-age=31536000` keeps using it until it expires, without a request reaching the server.
 
 ### Removed
-- `BodySerializationErrorHandlerInterface`, `ThrowSerializationError`, `SkipSerializationError` and `Exception\BodySerializationNotAllowedException`, added in 1.19.0: a body that does not serialize cannot be served uncached. Remove a binding of the interface, and catch PHP's own exception where `BodySerializationNotAllowedException` was caught.
+- `BodySerializationErrorHandlerInterface`, `ThrowSerializationError`, `SkipSerializationError` and `Exception\BodySerializationNotAllowedException`, added in 1.19.0: a body that does not serialize cannot be served uncached. Remove a binding of the interface, and catch the exception `serialize()` throws where `BodySerializationNotAllowedException` was caught.
 - The `put_skipped` reason `unserializable` and its `class` field.
 
 ### Fixed
