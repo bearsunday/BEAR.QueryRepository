@@ -178,6 +178,15 @@ class DonutQueryInterceptorPurgeTest extends TestCase
         $this->assertSame('comment:comment-b', (string) $this->resource->get($pageUri)->view, 'the template holds the old comment, so the purge drops it instead of recomposing from it');
     }
 
+    public function testAPageWithoutALifetimeTellsTheBrowserToRevalidate(): void
+    {
+        $pageUri = 'page://self/html/mutable-blog-posting';
+        $this->assertSame('max-age=0', $this->resource->get($pageUri)->headers[Header::CACHE_CONTROL]);
+
+        $this->repository->purge(new Uri('page://self/html/mutable-comment'));
+        $this->assertSame('max-age=0', $this->resource->get($pageUri)->headers[Header::CACHE_CONTROL], 'a page recomposed after a purge says the same');
+    }
+
     private function isStateCached(): bool
     {
         return $this->repository->get(new Uri('page://self/html/blog-posting')) instanceof ResourceState;

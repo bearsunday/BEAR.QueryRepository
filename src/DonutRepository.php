@@ -34,6 +34,12 @@ use function max;
 /** @internal */
 final readonly class DonutRepository implements DonutRepositoryInterface
 {
+    /**
+     * A page stored without a lifetime lives until a write invalidates it, so a browser revalidates
+     * it every time instead of reusing it for a lifetime guessed from Last-Modified
+     */
+    private const REVALIDATE = 'max-age=0';
+
     private CacheDependencyInterface $cacheDependency;
 
     /** @SuppressWarnings("PHPMD.ExcessiveParameterList") */
@@ -288,7 +294,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         // When the recomposed content is byte-identical to the recorded one, carry over
         // the original Last-Modified instead of advancing it to the recomposition time
         $lastModified = $donut->getUnchangedLastModified((string) $ro->view);
-        ($this->headerSetter)($ro, HeaderSetter::maxAge($donut->ttl), null, $lastModified);
+        ($this->headerSetter)($ro, HeaderSetter::maxAge($donut->ttl) ?? self::REVALIDATE, null, $lastModified);
 
         $this->setCdnCacheControl($ro, $donut->ttl);
         $this->logCdnHeaders($ro);
@@ -388,7 +394,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     }
 
     /**
-     * Set the page's own headers (validator, CDN lifetime)
+     * Set the page's own headers (validator, client revalidation, CDN lifetime)
      *
      * @return string the Surrogate-Key header as composed, before the CDN setter runs
      */
@@ -397,7 +403,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $keys->setSurrogateHeader($ro);
         $surrogateKeys = $ro->headers[Header::SURROGATE_KEY] ?? '';
         $this->setCdnCacheControl($ro, $sMaxAge);
-        ($this->headerSetter)($ro, null, null);
+        ($this->headerSetter)($ro, HeaderSetter::maxAge($sMaxAge) === null ? self::REVALIDATE : null, null);
 
         return $surrogateKeys;
     }
