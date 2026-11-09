@@ -73,7 +73,9 @@ class GetInterceptorTest extends TestCase
 
         sleep(2);
         foreach ($uris as $uri) {
+            $before = time();
             $hit = $this->resource->get($uri);
+            $after = time();
             $age = (int) $hit->headers['Age'];
             $this->assertGreaterThanOrEqual(2, $age, $uri . ' is a hit stored at least two seconds ago');
             if (preg_match('/max-age=(\d+)/', $hit->headers['Cache-Control'], $maxAge) !== 1) {
@@ -83,9 +85,12 @@ class GetInterceptorTest extends TestCase
             $this->assertIsArray($hit->body);
             $expiryAt = $hit->body['expiry_at'];
             $this->assertIsString($expiryAt);
-            $remaining = (int) strtotime($expiryAt) - time();
-            // A client counts the lifetime down from Age, so the stored max-age minus Age is what is left
-            $this->assertEqualsWithDelta($remaining, (int) $maxAge[1] - $age, 1, $uri);
+            $expiresAt = (int) strtotime($expiryAt);
+            // A client counts the stored max-age down from Age: what is left is the time to expiry
+            // when the hit was served, plus at most the second the store took to record its time
+            $left = (int) $maxAge[1] - $age;
+            $this->assertGreaterThanOrEqual($expiresAt - $after, $left, $uri);
+            $this->assertLessThanOrEqual($expiresAt - $before + 1, $left, $uri);
         }
     }
 
