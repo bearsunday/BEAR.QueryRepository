@@ -153,8 +153,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $keys = new SurrogateKeys($ro->uri, ($this->baseUriTag)($ro));
         $keys->addTag($ro);
         $donut = ResourceDonut::create($ro, $this->renderer, $keys, $sMaxAge, true);
-        // Read after rendering: a dependency declared while rendering is baked into the template,
-        // so its purge must reach the template too
+        // Read after rendering, see templateKeys()
         $templateKeys = $this->templateKeys($ro, $this->getHeaderKeys($ro));
         $donut = $donut->withStorageState($ttl, $templateKeys);
         $donut->render($ro, $this->renderer);
@@ -181,7 +180,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $this->logger->event(new PutDonutContext((string) $ro->uri, $donutTtl, null));
         $keys = new SurrogateKeys($ro->uri, ($this->baseUriTag)($ro));
         $donut = ResourceDonut::create($ro, $this->renderer, $keys, $donutTtl, false);
-        // Read after rendering: a dependency declared while rendering is baked into the template
+        // Read after rendering, see templateKeys()
         $templateKeys = $this->templateKeys($ro, $this->getHeaderKeys($ro));
         $donut = $donut->withStorageState($donutTtl, $templateKeys);
         $donut->render($ro, $this->renderer);
@@ -239,8 +238,10 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     }
 
     /**
-     * The template's own URI tag (so `purge($uri)` reaches it, #185) and the declared keys, which include material
-     * children's tags (classifyMaterials()). Holes are left out: their write drops only the content and the shell is recomposed.
+     * The template's own URI tag (so `purge($uri)` reaches it, #185) and the declared keys: material children's tags
+     * (classifyMaterials()) and the dependencies declared while the page rendered, such as depends() from a template
+     * helper, so they are read after ResourceDonut::create(). Holes are left out: their write drops only the content and
+     * the shell is recomposed.
      *
      * @param list<string> $declaredKeys
      *

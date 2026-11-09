@@ -65,6 +65,8 @@ class DonutQueryInterceptorPurgeTest extends TestCase
     protected function tearDown(): void
     {
         MutableComment::$comment = 'comment-a';
+        // The pool outlives each test: purge the child so no stored view keeps the comment a test set
+        $this->repository->purge(new Uri('page://self/html/mutable-comment'));
         // Every emitted log entry must conform to the published schema (drift detection)
         $this->flushAndValidate($this->logger);
     }
@@ -181,10 +183,11 @@ class DonutQueryInterceptorPurgeTest extends TestCase
     public function testAPageWithoutALifetimeTellsTheBrowserToRevalidate(): void
     {
         $pageUri = 'page://self/html/mutable-blog-posting';
-        $this->assertSame('max-age=0', $this->resource->get($pageUri)->headers[Header::CACHE_CONTROL]);
+        $this->repository->purge(new Uri($pageUri)); // stored afresh, not a view an earlier test left
+        $this->assertSame('max-age=0', $this->resource->get($pageUri)->headers[Header::CACHE_CONTROL], 'when stored');
 
         $this->repository->purge(new Uri('page://self/html/mutable-comment'));
-        $this->assertSame('max-age=0', $this->resource->get($pageUri)->headers[Header::CACHE_CONTROL], 'a page recomposed after a purge says the same');
+        $this->assertSame('max-age=0', $this->resource->get($pageUri)->headers[Header::CACHE_CONTROL], 'when recomposed after a purge');
     }
 
     private function isStateCached(): bool
