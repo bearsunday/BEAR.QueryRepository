@@ -86,15 +86,15 @@ final readonly class HeaderSetter
             return;
         }
 
-        // A lifetime already there stands, no-store forbids keeping the response at all, and a
-        // directive is not repeated; every case variant of the key is a Cache-Control the client receives
+        // A lifetime already there stands, and no-store forbids keeping the response at all;
+        // every case variant of the key is a Cache-Control the client receives
         foreach ($ro->headers as $name => $value) {
             if (strtolower($name) !== strtolower(Header::CACHE_CONTROL)) {
                 continue;
             }
 
             $lower = strtolower($value);
-            if (str_contains($lower, 'max-age') || str_contains($lower, 'no-store') || str_contains($lower, $directive)) {
+            if (str_contains($lower, 'max-age') || str_contains($lower, 'no-store')) {
                 return;
             }
         }

@@ -59,9 +59,19 @@ class GetInterceptorTest extends TestCase
         $first = $this->resource->get('app://self/user', ['id' => 1]);
         $hit = $this->resource->get('app://self/user', ['id' => 1]);
 
-        $this->assertSame('no-cache', $first->headers['Cache-Control']);
+        $this->assertSame('max-age=0', $first->headers['Cache-Control']);
         $this->assertArrayHasKey('Age', $hit->headers, 'the second read is a hit');
-        $this->assertSame('no-cache', $hit->headers['Cache-Control']);
+        $this->assertSame('max-age=0', $hit->headers['Cache-Control']);
+    }
+
+    public function testAnEntryWithoutALifetimeKeepsTheSharedLifetimeItDeclares(): void
+    {
+        $first = $this->resource->get('app://self/cacheable-with-shared-lifetime');
+        $hit = $this->resource->get('app://self/cacheable-with-shared-lifetime');
+
+        $this->assertSame('s-maxage=600, max-age=0', $first->headers['Cache-Control']);
+        $this->assertArrayHasKey('Age', $hit->headers, 'the second read is a hit');
+        $this->assertSame('s-maxage=600, max-age=0', $hit->headers['Cache-Control']);
     }
 
     public function testAnExpiryAtHitLeavesTheClientTheRemainingLifetime(): void

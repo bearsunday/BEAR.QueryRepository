@@ -12,9 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Requires `ray/di` 2.23 or later: the empty writer set the log modules declare needs it.
-- **Behaviour change**: a `#[Cacheable]` body must serialize. A body holding a closure, a connection, a DOM node or an object whose `__serialize()` throws fails the request in every environment with PHP's own exception, logged as `cache_error{operation: write}`; before deploying, request each `#[Cacheable]` resource once in development, with each kind of data if such a value appears only for some of it.
+- **Behaviour change**: a `#[Cacheable]` body must serialize. A body holding a closure, a connection, a DOM node or an object whose `__serialize()` throws fails the request in every environment with the exception `serialize()` throws, unwrapped, logged as `cache_error{operation: write}`; before deploying, request each `#[Cacheable]` resource once in development, with each kind of data if such a value appears only for some of it.
 - Under the deprecated `MobileEtagModule`, a `#[CacheableResponse]` page whose body does not serialize fails the same way, since its ETag serializes the body.
-- **Behaviour change**: a `#[Cacheable]` response without a lifetime (the default `expiry: 'never'`) carries `Cache-Control: no-cache` instead of `max-age=31536000`: the entry lives until a write invalidates it, so a client revalidates with its ETag instead of keeping the response for a year.
+- **Behaviour change**: a `#[Cacheable]` response without a lifetime (the default `expiry: 'never'`) carries `Cache-Control: max-age=0` instead of `max-age=31536000` unless it already declares a `max-age` or `no-store`, so a browser revalidates it with its ETag while an `s-maxage` from `#[HttpCache]` still governs a CDN. `'never'` is for content a write invalidates; data that changes without one, such as a dashboard or stock prices, declares a lifetime.
 - Deploy this version with a new `CacheVersionModule` version (or clear your own pools) and a rebuilt injector: an entry stored by an earlier version replays the `Cache-Control: max-age` it was stored with, and a compiled or serialized injector refers to the removed classes.
 
 ### Removed

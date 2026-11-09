@@ -22,6 +22,7 @@ use RuntimeException;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
+use Throwable;
 
 use function assert;
 use function basename;
@@ -59,10 +60,11 @@ class DonutRepositoryTest extends TestCase
         parent::setUp();
     }
 
-    private function getInjector(PurgerInterface|null $purger = null): Injector
+    private function getInjector(PurgerInterface|null $purger = null, bool $mobileEtag = false): Injector
     {
         $namespace = 'FakeVendor\HelloWorld';
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance($namespace));
+        $base = new FakeEtagPoolModule(ModuleFactory::getInstance($namespace));
+        $module = $mobileEtag ? new MobileEtagModule($base) : $base;
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
         if ($purger !== null) {
             $module->override(new class ($purger) extends AbstractModule {
@@ -227,6 +229,25 @@ class DonutRepositoryTest extends TestCase
 
         $this->assertSame(1, ClosureBodyDonut::$calls, 'the page stores its rendered view, so later requests are served from it');
         $this->assertCount(1, $purger->tags, 'only the first write cleans up before storing');
+    }
+
+    public function testUnderMobileEtagAClosureInACacheableResponseBodyFailsBeforeAnythingIsPurged(): void
+    {
+        $purger = new FakeCountingPurger();
+        $resource = $this->getInjector($purger, true)->getInstance(ResourceInterface::class);
+
+        $refusal = null;
+        try {
+            $resource->get('page://self/html/closure-body-donut');
+        } catch (Throwable $e) {
+            $refusal = $e;
+        }
+
+        // The deprecated MobileEtagModule's ETag serializes the body, which a page otherwise does not store
+        $this->assertNotNull($refusal, 'the refusal propagates');
+        $this->assertSame('Exception', $refusal::class, "PHP's own exception, not a wrapper");
+        $this->assertSame("Serialization of 'Closure' is not allowed", $refusal->getMessage());
+        $this->assertSame([], $purger->tags, 'a write that cannot happen purges nothing');
     }
 
     public function testUnstorableDonutWriteStillDropsAnEarlierEntry(): void

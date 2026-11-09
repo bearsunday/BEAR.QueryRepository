@@ -96,14 +96,4 @@ class HeaderSetterTest extends TestCase
         $this->assertSame('public', $ro->headers['cache-control']);
         $this->assertSame('no-store', $ro->headers[Header::CACHE_CONTROL]);
     }
-
-    public function testANoCacheAlreadyThereIsNotRepeated(): void
-    {
-        $ro = new None();
-        $ro->headers[Header::CACHE_CONTROL] = 'public, no-cache';
-
-        ($this->headerSetter())($ro, 'no-cache', null);
-
-        $this->assertSame('public, no-cache', $ro->headers[Header::CACHE_CONTROL]);
-    }
 }

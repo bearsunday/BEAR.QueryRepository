@@ -130,11 +130,14 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         return $ttl;
     }
 
-    /** An entry without a lifetime lives until a write invalidates it, so the client revalidates it */
+    /**
+     * An entry without a lifetime lives until a write invalidates it: max-age=0 makes a browser
+     * revalidate it, while an s-maxage still governs a shared cache
+     */
     private function clientCacheControl(Cacheable|null $cacheable, int $ttl): string|null
     {
         if ($cacheable instanceof Cacheable && $cacheable->expiryAt === '' && $cacheable->expirySecond === 0 && $cacheable->expiry === 'never') {
-            return 'no-cache';
+            return 'max-age=0';
         }
 
         return HeaderSetter::maxAge($ttl);
