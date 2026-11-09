@@ -24,6 +24,7 @@ use Symfony\Component\Cache\Adapter\TagAwareAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 use Throwable;
 
+use function array_fill;
 use function assert;
 use function basename;
 use function class_exists;
@@ -236,17 +237,18 @@ class DonutRepositoryTest extends TestCase
         $purger = new FakeCountingPurger();
         $resource = $this->getInjector($purger, true)->getInstance(ResourceInterface::class);
 
-        $refusal = null;
-        try {
-            $resource->get('page://self/html/closure-body-donut');
-        } catch (Throwable $e) {
-            $refusal = $e;
+        $outcomes = [];
+        for ($i = 0; $i < 2; $i++) {
+            try {
+                $resource->get('page://self/html/closure-body-donut');
+                $outcomes[] = 'served';
+            } catch (Throwable $e) {
+                $outcomes[] = $e::class . ': ' . $e->getMessage();
+            }
         }
 
         // The deprecated MobileEtagModule's ETag serializes the body, which a page otherwise does not store
-        $this->assertNotNull($refusal, 'the refusal propagates');
-        $this->assertSame('Exception', $refusal::class, "PHP's own exception, not a wrapper");
-        $this->assertSame("Serialization of 'Closure' is not allowed", $refusal->getMessage());
+        $this->assertSame(array_fill(0, 2, "Exception: Serialization of 'Closure' is not allowed"), $outcomes, 'nothing is stored, so the next request fails too');
         $this->assertSame([], $purger->tags, 'a write that cannot happen purges nothing');
     }
 
