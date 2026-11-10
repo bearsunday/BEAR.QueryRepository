@@ -100,7 +100,7 @@ operation inside a GET or a command is an ordinary event there instead.
 | `put_donut` | `uri`, `requestedTtl`, `sMaxAge` | a donut write was requested, with the lifetime asked for |
 | `refresh_donut` | `uri` | a cached donut was recomposed rather than served as-is |
 | `cdn_headers` | `uri`, `headers`, `surrogateKeys` | the CDN-facing headers the response actually carried |
-| `depends_on` | `parent`, `child`, `childTags` | one dependency edge: the child's tags were added to the parent. A `#[Cacheable]` put records one for each child that carries tags, and so does a donut page write for a data dependency (a child whose `onGet()` reads it) that carries tags; a hole has not run yet and records `dependency_skipped` instead |
+| `depends_on` | `parent`, `child`, `childTags` | one dependency edge: the child's tags were added to the parent. A `#[Cacheable]` put records one for each child that carries tags, and so does a donut page write for a data dependency (a child whose `onGet()` reads it) that carries tags; a hole has not run yet and records `dependency_skipped` instead. A `CacheDependencyInterface::depends()` call while a donut page renders, from a template helper for example, records one between `put_donut` and the `save_*` events |
 | `dependency_skipped` | `parent`, `child`, `reason` | a cached parent's write (a `#[Cacheable]` put or a donut page write) left an embedded request at the top level of the body out of its dependencies: the child's tags are not added to the stored value or donut template. A hole's tags still reach a `#[CacheableResponse]` view when the hole renders. A request in a nested array is not seen and records nothing |
 | `pre_write_cleanup` | `uri` | the writer is about to clear the entry it will rewrite |
 | `invalidate` | `tags`, `roPool`, `etagPool`, `cdn`, `durationMs` | tags were invalidated, with a result per target |
@@ -206,7 +206,10 @@ a `cache_hit` with no `refresh_donut` in it.
 
 The hole is tracked only while it is an embedded request the renderer runs. A page that fetches and
 inlines a child by other means writes nothing for it, so purging that child leaves the stored page
-serving the composition it holds.
+serving the composition it holds. Declare such a child with `CacheDependencyInterface::depends($page, $child)`
+while the page renders: it is then recorded like a data dependency, with a `depends_on` edge between
+`put_donut` and the `save_*` events and its tags on the template and the view, so purging it drops
+both and the next read closes `cache_miss`.
 
 **Read `cache_policy.expiry`, not a TTL, to learn whether an entry is meant to expire.**
 `expiry: "never"` means until invalidation; the number it resolves to is a backstop and depends on
