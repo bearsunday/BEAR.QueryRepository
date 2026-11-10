@@ -8,6 +8,8 @@ use BEAR\QueryRepository\Exception\CacheStoreException;
 use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
+use Koriym\SemanticLogger\NullSemanticLogger;
+use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Throwable;
 
 use function array_unique;
@@ -76,9 +78,9 @@ final class ResourceDonut
     ) {
     }
 
-    public function refresh(ResourceInterface $resource, ResourceObject $ro): ResourceObject
+    public function refresh(ResourceInterface $resource, ResourceObject $ro, SemanticLoggerInterface $logger = new NullSemanticLogger()): ResourceObject
     {
-        $etags = new SurrogateKeys($ro->uri);
+        $etags = new SurrogateKeys($ro->uri, logger: $logger);
         $refreshView =  preg_replace_callback(self::URI_REGEX, static function (array $matches) use ($resource, $etags): string {
             // Group 1 is "2" for a new `le2` match (its URI, group 2, is rawurlencode()'d),
             // or "" for a legacy `le` match (group 2 is its URI, used verbatim).

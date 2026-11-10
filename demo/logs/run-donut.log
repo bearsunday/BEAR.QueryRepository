@@ -53,7 +53,7 @@ get uri=page://self/html/blog-posting
 │   │   ├── roPool: invalidated
 │   │   ├── etagPool: invalidated
 │   │   ├── cdn: skipped
-│   │   └── durationMs: 0.081
+│   │   └── durationMs: 0.053
 │   ├── save_value uri=page://self/html/comment tags=[_html_comment_, grp-_html_comment_ +1 items] requestedTtl=31536000 saved=true [event]
 │   │   ├── uri: page://self/html/comment
 │   │   ├── tags[0]: _html_comment_
@@ -61,9 +61,9 @@ get uri=page://self/html/blog-posting
 │   │   ├── tags[2]: comment01
 │   │   ├── requestedTtl: 31536000
 │   │   └── saved: 1
-│   ├── save_etag uri=page://self/html/comment etag="197332199" tags=[comment01, grp-_html_comment_ +1 items] requestedTtl=31536000 (+1 more) [event]
+│   ├── save_etag uri=page://self/html/comment etag="1293600790" tags=[comment01, grp-_html_comment_ +1 items] requestedTtl=31536000 (+1 more) [event]
 │   │   ├── uri: page://self/html/comment
-│   │   ├── etag: "197332199"
+│   │   ├── etag: "1293600790"
 │   │   ├── tags[0]: comment01
 │   │   ├── tags[1]: grp-_html_comment_
 │   │   ├── tags[2]: _html_comment_
@@ -71,7 +71,13 @@ get uri=page://self/html/blog-posting
 │   │   └── saved: 1
 │   └── close cache_miss
 │       ├── layer: resource
-│       └── durationMs: 4.059
+│       └── durationMs: 3.356
+├── depends_on parent=page://self/html/blog-posting child=page://self/html/comment childTags=[_html_comment_, grp-_html_comment_ +1 items] [event]
+│   ├── parent: page://self/html/blog-posting
+│   ├── child: page://self/html/comment
+│   ├── childTags[0]: _html_comment_
+│   ├── childTags[1]: grp-_html_comment_
+│   └── childTags[2]: comment01
 ├── cdn_headers uri=page://self/html/blog-posting surrogateKeys=[blog-posting-page, _html_blog-posting_ +4 items] [event]
 │   ├── uri: page://self/html/blog-posting
 │   ├── surrogateKeys[0]: blog-posting-page
@@ -97,9 +103,9 @@ get uri=page://self/html/blog-posting
 │   ├── tags[4]: grp-_html_comment_
 │   ├── tags[5]: comment01
 │   └── saved: 1
-├── save_etag uri=page://self/html/blog-posting etag="2602427150" tags=[blog-posting-page, _html_blog-posting_ +4 items] saved=true [event]
+├── save_etag uri=page://self/html/blog-posting etag="4197133417" tags=[blog-posting-page, _html_blog-posting_ +4 items] saved=true [event]
 │   ├── uri: page://self/html/blog-posting
-│   ├── etag: "2602427150"
+│   ├── etag: "4197133417"
 │   ├── tags[0]: blog-posting-page
 │   ├── tags[1]: _html_blog-posting_
 │   ├── tags[2]: grp-_html_blog-posting_
@@ -115,12 +121,12 @@ get uri=page://self/html/blog-posting
 │   └── saved: 1
 └── close cache_miss
     ├── layer: donut-view
-    └── durationMs: 27.057
+    └── durationMs: 14.581
 get uri=page://self/html/blog-posting
 ├── uri: page://self/html/blog-posting
 └── close cache_hit
     ├── layer: donut-view
-    └── durationMs: 0.035
+    └── durationMs: 0.033
 manual_purge uri=page://self/html/comment
 ├── uri: page://self/html/comment
 ├── invalidate tags=[_html_comment_, grp-_html_comment_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
@@ -159,9 +165,9 @@ get uri=page://self/html/blog-posting
 │   │   ├── tags[2]: comment01
 │   │   ├── requestedTtl: 31536000
 │   │   └── saved: 1
-│   ├── save_etag uri=page://self/html/comment etag="197332199" tags=[comment01, grp-_html_comment_ +1 items] requestedTtl=31536000 (+1 more) [event]
+│   ├── save_etag uri=page://self/html/comment etag="1293600790" tags=[comment01, grp-_html_comment_ +1 items] requestedTtl=31536000 (+1 more) [event]
 │   │   ├── uri: page://self/html/comment
-│   │   ├── etag: "197332199"
+│   │   ├── etag: "1293600790"
 │   │   ├── tags[0]: comment01
 │   │   ├── tags[1]: grp-_html_comment_
 │   │   ├── tags[2]: _html_comment_
@@ -169,7 +175,13 @@ get uri=page://self/html/blog-posting
 │   │   └── saved: 1
 │   └── close cache_miss
 │       ├── layer: resource
-│       └── durationMs: 0.172
+│       └── durationMs: 0.171
+├── depends_on parent=page://self/html/blog-posting child=page://self/html/comment childTags=[_html_comment_, grp-_html_comment_ +1 items] [event]
+│   ├── parent: page://self/html/blog-posting
+│   ├── child: page://self/html/comment
+│   ├── childTags[0]: _html_comment_
+│   ├── childTags[1]: grp-_html_comment_
+│   └── childTags[2]: comment01
 ├── cdn_headers uri=page://self/html/blog-posting surrogateKeys=[blog-posting-page, _html_blog-posting_ +4 items] [event]
 │   ├── uri: page://self/html/blog-posting
 │   ├── surrogateKeys[0]: blog-posting-page
@@ -187,9 +199,9 @@ get uri=page://self/html/blog-posting
 │   ├── tags[4]: grp-_html_comment_
 │   ├── tags[5]: comment01
 │   └── saved: 1
-├── save_etag uri=page://self/html/blog-posting etag="2602427150" tags=[blog-posting-page, _html_blog-posting_ +4 items] saved=true [event]
+├── save_etag uri=page://self/html/blog-posting etag="4197133417" tags=[blog-posting-page, _html_blog-posting_ +4 items] saved=true [event]
 │   ├── uri: page://self/html/blog-posting
-│   ├── etag: "2602427150"
+│   ├── etag: "4197133417"
 │   ├── tags[0]: blog-posting-page
 │   ├── tags[1]: _html_blog-posting_
 │   ├── tags[2]: grp-_html_blog-posting_
@@ -199,7 +211,7 @@ get uri=page://self/html/blog-posting
 │   └── saved: 1
 └── close cache_hit
     ├── layer: donut-view
-    └── durationMs: 0.46
+    └── durationMs: 0.456
 get uri=page://self/html/counter-donut
 ├── uri: page://self/html/counter-donut
 ├── cache_miss layer=donut [event]
@@ -210,6 +222,11 @@ get uri=page://self/html/counter-donut
 │   └── reason: no_etag_or_surrogate_key
 ├── put_donut uri=page://self/html/counter-donut [event]
 │   └── uri: page://self/html/counter-donut
+├── depends_on parent=page://self/html/counter-donut child=app://self/counter childTags=[_counter_, grp-_counter_] [event]
+│   ├── parent: page://self/html/counter-donut
+│   ├── child: app://self/counter
+│   ├── childTags[0]: _counter_
+│   └── childTags[1]: grp-_counter_
 ├── cdn_headers uri=page://self/html/counter-donut surrogateKeys=[_html_counter-donut_ +3 items] [event]
 │   ├── uri: page://self/html/counter-donut
 │   ├── surrogateKeys[0]: _html_counter-donut_
@@ -223,7 +240,7 @@ get uri=page://self/html/counter-donut
 │   ├── roPool: invalidated
 │   ├── etagPool: invalidated
 │   ├── cdn: skipped
-│   └── durationMs: 0.005
+│   └── durationMs: 0.004
 ├── save_donut uri=page://self/html/counter-donut tags=[_html_counter-donut_ +1 items] saved=true [event]
 │   ├── uri: page://self/html/counter-donut
 │   ├── tags[0]: _html_counter-donut_
@@ -231,7 +248,7 @@ get uri=page://self/html/counter-donut
 │   └── saved: 1
 └── close cache_miss
     ├── layer: donut-view
-    └── durationMs: 1.552
+    └── durationMs: 1.12
 
 === Cache Log JSON ===
 {
@@ -313,7 +330,7 @@ get uri=page://self/html/counter-donut
                                 "roPool": "invalidated",
                                 "etagPool": "invalidated",
                                 "cdn": "skipped",
-                                "durationMs": 0.081
+                                "durationMs": 0.053
                             }
                         },
                         {
@@ -337,7 +354,7 @@ get uri=page://self/html/counter-donut
                             "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                             "context": {
                                 "uri": "page://self/html/comment",
-                                "etag": "\"197332199\"",
+                                "etag": "\"1293600790\"",
                                 "tags": [
                                     "comment01",
                                     "grp-_html_comment_",
@@ -354,8 +371,22 @@ get uri=page://self/html/counter-donut
                         "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
                         "context": {
                             "layer": "resource",
-                            "durationMs": 4.059
+                            "durationMs": 3.356
                         }
+                    }
+                },
+                {
+                    "id": "depends_on_1",
+                    "type": "depends_on",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/depends_on.json",
+                    "context": {
+                        "parent": "page://self/html/blog-posting",
+                        "child": "page://self/html/comment",
+                        "childTags": [
+                            "_html_comment_",
+                            "grp-_html_comment_",
+                            "comment01"
+                        ]
                     }
                 },
                 {
@@ -424,7 +455,7 @@ get uri=page://self/html/counter-donut
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                     "context": {
                         "uri": "page://self/html/blog-posting",
-                        "etag": "\"2602427150\"",
+                        "etag": "\"4197133417\"",
                         "tags": [
                             "blog-posting-page",
                             "_html_blog-posting_",
@@ -459,7 +490,7 @@ get uri=page://self/html/counter-donut
                 "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
                 "context": {
                     "layer": "donut-view",
-                    "durationMs": 27.057
+                    "durationMs": 14.581
                 }
             }
         },
@@ -476,7 +507,7 @@ get uri=page://self/html/counter-donut
                 "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_hit.json",
                 "context": {
                     "layer": "donut-view",
-                    "durationMs": 0.035
+                    "durationMs": 0.033
                 }
             }
         },
@@ -601,7 +632,7 @@ get uri=page://self/html/counter-donut
                             "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                             "context": {
                                 "uri": "page://self/html/comment",
-                                "etag": "\"197332199\"",
+                                "etag": "\"1293600790\"",
                                 "tags": [
                                     "comment01",
                                     "grp-_html_comment_",
@@ -618,8 +649,22 @@ get uri=page://self/html/counter-donut
                         "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
                         "context": {
                             "layer": "resource",
-                            "durationMs": 0.172
+                            "durationMs": 0.171
                         }
+                    }
+                },
+                {
+                    "id": "depends_on_2",
+                    "type": "depends_on",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/depends_on.json",
+                    "context": {
+                        "parent": "page://self/html/blog-posting",
+                        "child": "page://self/html/comment",
+                        "childTags": [
+                            "_html_comment_",
+                            "grp-_html_comment_",
+                            "comment01"
+                        ]
                     }
                 },
                 {
@@ -666,7 +711,7 @@ get uri=page://self/html/counter-donut
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                     "context": {
                         "uri": "page://self/html/blog-posting",
-                        "etag": "\"2602427150\"",
+                        "etag": "\"4197133417\"",
                         "tags": [
                             "blog-posting-page",
                             "_html_blog-posting_",
@@ -686,7 +731,7 @@ get uri=page://self/html/counter-donut
                 "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_hit.json",
                 "context": {
                     "layer": "donut-view",
-                    "durationMs": 0.46
+                    "durationMs": 0.456
                 }
             }
         },
@@ -728,6 +773,19 @@ get uri=page://self/html/counter-donut
                     }
                 },
                 {
+                    "id": "depends_on_3",
+                    "type": "depends_on",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/depends_on.json",
+                    "context": {
+                        "parent": "page://self/html/counter-donut",
+                        "child": "app://self/counter",
+                        "childTags": [
+                            "_counter_",
+                            "grp-_counter_"
+                        ]
+                    }
+                },
+                {
                     "id": "cdn_headers_3",
                     "type": "cdn_headers",
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cdn_headers.json",
@@ -763,7 +821,7 @@ get uri=page://self/html/counter-donut
                         "roPool": "invalidated",
                         "etagPool": "invalidated",
                         "cdn": "skipped",
-                        "durationMs": 0.005
+                        "durationMs": 0.004
                     }
                 },
                 {
@@ -787,10 +845,10 @@ get uri=page://self/html/counter-donut
                 "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
                 "context": {
                     "layer": "donut-view",
-                    "durationMs": 1.552
+                    "durationMs": 1.12
                 }
             }
         }
     ]
 }
-Schema validation: OK (46 entries)
+Schema validation: OK (49 entries)

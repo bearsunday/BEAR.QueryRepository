@@ -97,17 +97,20 @@ class DonutMaterialDependencyTest extends TestCase
         $this->assertStringContainsString('"' . self::CACHEABLE_MATERIAL_CHILD_SURROGATE_KEY . '"', $saveDonut[0], "the child's own Surrogate-Key reaches the stored template");
 
         $edges = self::dependsOnEdgesFrom($tree, self::PAGE_WITH_CACHEABLE_MATERIAL);
-        $this->assertCount(1, $edges, 'reading the embedded child in onGet() makes it a material, so depends() runs for it');
+        $this->assertCount(2, $edges, 'reading the embedded child in onGet() makes it a material, so depends() runs for it; the render adds its tags again');
         $this->assertStringContainsString('"child":"' . self::CACHEABLE_MATERIAL_CHILD . '"', $edges[0]);
+        $this->assertStringContainsString('"child":"' . self::CACHEABLE_MATERIAL_CHILD . '"', $edges[1]);
         $this->assertSame([], self::skippedChildrenOf($tree, self::PAGE_WITH_CACHEABLE_MATERIAL), 'a material is an edge, never also reported as skipped');
     }
 
-    public function testAHoleSaysWhyThePageHasNoDependsOnEdge(): void
+    public function testAHoleSaysWhyItIsNotADataDependencyThenRecordsItsEdgeWhenItRenders(): void
     {
         $this->resource->get(self::PAGE_WITH_MUTABLE_HOLE);
         $tree = $this->flushAndValidate($this->logger);
 
-        $this->assertSame([], self::dependsOnEdgesFrom($tree, self::PAGE_WITH_MUTABLE_HOLE));
+        $edges = self::dependsOnEdgesFrom($tree, self::PAGE_WITH_MUTABLE_HOLE);
+        $this->assertCount(1, $edges);
+        $this->assertStringContainsString('"child":"' . self::MUTABLE_CHILD . '"', $edges[0]);
         $this->assertSame(
             ['{"parent":"' . self::PAGE_WITH_MUTABLE_HOLE . '","child":"' . self::MUTABLE_CHILD . '","reason":"no_body"}'],
             self::skippedChildrenOf($tree, self::PAGE_WITH_MUTABLE_HOLE),
@@ -119,7 +122,9 @@ class DonutMaterialDependencyTest extends TestCase
         $this->resource->get(self::PAGE_READING_UNTAGGED_CHILD);
         $tree = $this->flushAndValidate($this->logger);
 
-        $this->assertSame([], self::dependsOnEdgesFrom($tree, self::PAGE_READING_UNTAGGED_CHILD));
+        $edges = self::dependsOnEdgesFrom($tree, self::PAGE_READING_UNTAGGED_CHILD);
+        $this->assertCount(1, $edges, 'only the render\'s edge, for the URI tags it adds to the view');
+        $this->assertStringContainsString('"child":"app://self/counter"', $edges[0]);
         $this->assertSame(
             ['{"parent":"' . self::PAGE_READING_UNTAGGED_CHILD . '","child":"app://self/counter","reason":"no_etag_or_surrogate_key"}'],
             self::skippedChildrenOf($tree, self::PAGE_READING_UNTAGGED_CHILD),
@@ -230,7 +235,7 @@ class DonutMaterialDependencyTest extends TestCase
         $this->assertSame([], self::eventContextsJsonOf($tree, 'save_etag', self::DONUT_MATERIAL_CHILD), 'a #[DonutCache] child never gets an ETag - the only signal available is its Surrogate-Key');
 
         $edges = self::dependsOnEdgesFrom($tree, self::PAGE_WITH_DONUT_MATERIAL);
-        $this->assertCount(1, $edges, 'the child was read in onGet(), so it is still classified as a material through its Surrogate-Key');
+        $this->assertCount(2, $edges, 'the child was read in onGet(), so it is still classified as a material through its Surrogate-Key; the render adds its tags again');
         $this->assertStringContainsString('"child":"' . self::DONUT_MATERIAL_CHILD . '"', $edges[0]);
 
         $saveDonut = self::eventContextsJsonOf($tree, 'save_donut', self::PAGE_WITH_DONUT_MATERIAL);
@@ -250,7 +255,7 @@ class DonutMaterialDependencyTest extends TestCase
         $tree = $this->flushAndValidate($this->logger);
 
         $edges = self::dependsOnEdgesFrom($tree, self::PAGE_WITH_PLAIN_ETAG_MATERIAL);
-        $this->assertCount(1, $edges, 'the child carries only an ETag, no Surrogate-Key - it must still be classified as a material');
+        $this->assertCount(2, $edges, 'the child carries only an ETag, no Surrogate-Key - it must still be classified as a material; the render adds its tags again');
         $this->assertStringContainsString('"child":"' . self::PLAIN_ETAG_MATERIAL_CHILD . '"', $edges[0]);
 
         $saveDonut = self::eventContextsJsonOf($tree, 'save_donut', self::PAGE_WITH_PLAIN_ETAG_MATERIAL);
@@ -273,7 +278,7 @@ class DonutMaterialDependencyTest extends TestCase
         $tree = $this->flushAndValidate($this->logger);
 
         $edges = self::dependsOnEdgesFrom($tree, self::PAGE_WITH_TAGGED_HEADER_HOLE);
-        $this->assertCount(1, $edges, 'the property-default header makes this pure hole look like a material');
+        $this->assertCount(2, $edges, 'the property-default header makes this pure hole look like a material; the render adds its tags again');
 
         $saveEtag = self::eventContextsJsonOf($tree, 'save_etag', self::TAGGED_HEADER_CHILD);
         $this->assertCount(1, $saveEtag);

@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The log sink hands each flushed session to every `LogWriterInterface` an application adds with `MultiBinder::newInstance($this, LogWriterInterface::class)->addBinding()`, after the bound writer. Bind the added class as well: a compiled injector builds only bound classes (ray-di/Ray.Compiler#148).
 - The cache log records `surrogate_key_oversize` when a response's `Surrogate-Key` exceeds Fastly's limits, 1,024 bytes per key or 16,384 bytes for the header, as a long query value can make it. The keys are still stored and sent unchanged.
 - The cache log records `dependency_after_save` when a `#[Cacheable]` value page declares a dependency with `CacheDependencyInterface::depends()` while it renders, after its value and ETag were stored: a change to that child does not reach them. Cache such a page's rendered output with `#[CacheableResponse]` or `#[Cacheable(type: 'view')]`.
+- The cache log records `depends_on` for each embedded request a `#[CacheableResponse]` or `#[DonutCache]` template renders, with the tags it adds to the page, so a hole's tags can be traced; a data dependency gets a second edge for the same child.
 
 ### Changed
 - Requires `ray/di` 2.23 or later: the empty writer set the log modules declare needs it.

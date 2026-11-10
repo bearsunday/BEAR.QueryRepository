@@ -106,13 +106,15 @@ class DonutDependencyEvidenceTest extends TestCase
         $this->assertStringContainsString('"layer":"resource"', $close[1]);
     }
 
-    public function testCacheableResponseWriteRecordsNoDependsOnEdge(): void
+    public function testCacheableResponseWriteRecordsTheHoleEdgeWhenItRenders(): void
     {
         $this->bootDonutApp();
         $this->resource->get(self::CACHEABLE_RESPONSE);
         $tree = $this->flushAndValidate($this->logger);
 
-        $this->assertSame([], self::dependsOnEdgesFrom($tree, self::CACHEABLE_RESPONSE), 'a #[CacheableResponse] write never reaches CacheDependency');
+        $edges = self::dependsOnEdgesFrom($tree, self::CACHEABLE_RESPONSE);
+        $this->assertCount(1, $edges, 'the render adds the hole\'s tags; CacheDependency is never reached');
+        $this->assertStringContainsString('"child":"' . self::CHILD . '"', $edges[0]);
     }
 
     public function testCacheableResponseTagsEtagAndViewWithTheChildButNotTheTemplate(): void
@@ -154,7 +156,7 @@ class DonutDependencyEvidenceTest extends TestCase
         $this->assertStringContainsString('"layer":"donut-view"', $close[1]);
         $this->assertNotSame([], self::eventContextsJsonOf($tree, 'refresh_donut', self::CACHEABLE_RESPONSE), 'a hit without this event is the stale shape');
         $this->assertNotSame([], self::eventContextsJsonOf($tree, 'save_donut_view', self::CACHEABLE_RESPONSE), 'the recomposed page is stored again');
-        $this->assertSame([], self::dependsOnEdgesFrom($tree, self::CACHEABLE_RESPONSE), 'recomposition records no dependency edge either');
+        $this->assertCount(1, self::dependsOnEdgesFrom($tree, self::CACHEABLE_RESPONSE), 'recomposition adds the hole\'s tags again');
 
         $childClose = self::scopeCloseOf($tree, 'get', self::CHILD);
         $this->assertNotNull($childClose);
@@ -173,7 +175,7 @@ class DonutDependencyEvidenceTest extends TestCase
         $this->assertStringNotContainsString('"' . self::CHILD_SURROGATE_KEY . '"', $saveDonut[0], 'the template is the only entry, and it is not tagged by its children');
         $this->assertSame([], self::eventContextsJsonOf($tree, 'save_etag', self::DONUT_CACHE), 'no validator is stored for a page that is never stored');
         $this->assertSame([], self::eventContextsJsonOf($tree, 'save_donut_view', self::DONUT_CACHE), 'no page view is stored');
-        $this->assertSame([], self::dependsOnEdgesFrom($tree, self::DONUT_CACHE), 'a #[DonutCache] write never reaches CacheDependency');
+        $this->assertCount(1, self::dependsOnEdgesFrom($tree, self::DONUT_CACHE), 'the hole\'s edge, from the render; CacheDependency is never reached');
 
         $cdnHeaders = self::eventContextsJsonOf($tree, 'cdn_headers', self::DONUT_CACHE);
         $this->assertNotSame([], $cdnHeaders);
@@ -190,7 +192,7 @@ class DonutDependencyEvidenceTest extends TestCase
         $this->resource->get(self::DONUT_CACHE);
         $warm = $this->flushAndValidate($this->logger);
         $warmTypes = self::scopeEventTypesOf($warm, 'get', self::DONUT_CACHE);
-        $this->assertSame(['cache_hit', 'refresh_donut', 'cdn_headers', 'put_skipped'], $warmTypes);
+        $this->assertSame(['cache_hit', 'refresh_donut', 'depends_on', 'cdn_headers', 'put_skipped'], $warmTypes);
 
         $this->queryRepository->purge(new Uri(self::CHILD));
         $this->flushAndValidate($this->logger);

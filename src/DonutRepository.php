@@ -151,7 +151,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     {
         $this->classifyMaterials($ro);
         $this->logger->event(new PutDonutContext((string) $ro->uri, $ttl, $sMaxAge));
-        $keys = new SurrogateKeys($ro->uri, ($this->baseUriTag)($ro));
+        $keys = new SurrogateKeys($ro->uri, ($this->baseUriTag)($ro), $this->logger);
         $keys->addTag($ro);
         $donut = ResourceDonut::create($ro, $this->renderer, $keys, $sMaxAge, true);
         // Read after rendering, see templateKeys()
@@ -179,7 +179,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     {
         $this->classifyMaterials($ro);
         $this->logger->event(new PutDonutContext((string) $ro->uri, $donutTtl, null));
-        $keys = new SurrogateKeys($ro->uri, ($this->baseUriTag)($ro));
+        $keys = new SurrogateKeys($ro->uri, ($this->baseUriTag)($ro), $this->logger);
         $donut = ResourceDonut::create($ro, $this->renderer, $keys, $donutTtl, false);
         // Read after rendering, see templateKeys()
         $templateKeys = $this->templateKeys($ro, $this->getHeaderKeys($ro));
@@ -282,7 +282,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
 
         $this->logger->event(new CacheHitContext('donut'));
         $this->logger->event(new RefreshDonutContext((string) $ro->uri));
-        $donut->refresh($this->resource, $ro);
+        $donut->refresh($this->resource, $ro, $this->logger);
         $surrogateKeys = $ro->headers[Header::SURROGATE_KEY] ?? '';
 
         if (! $donut->isCacheble) {
