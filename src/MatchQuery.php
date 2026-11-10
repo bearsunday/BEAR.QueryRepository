@@ -17,8 +17,8 @@ use function strtolower;
 /**
  * @internal
  *
- * Reads a required parameter from its name or the snake_case key BEAR.Resource also binds (`user_id` for `$userId`),
- * and returns it under the parameter name.
+ * Reads each onGet() parameter from its name or, failing that, the snake_case key BEAR.Resource also binds
+ * (`user_id` for `$userId`), and returns it under the parameter name.
  */
 final class MatchQuery implements MatchQueryInterface
 {

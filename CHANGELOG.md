@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Requires `ray/di` 2.23 or later: the empty writer set the log modules declare needs it.
 
 ### Fixed
-- A write whose query spells an `onGet()` parameter in snake_case (`user_id` for `$userId`), as BEAR.Resource accepts, refreshes the cache as `userId` does, from `onPut` and `onPost` alike. Entries fetched with `?user_id=` are not reached (#275).
+- A write whose query spells an `onGet()` parameter in snake_case (`user_id` for `$userId`), as BEAR.Resource accepts, refreshes the cache as `userId` does, instead of throwing `UnmatchedQuery` from `onPut` after the write or skipping the refresh from `onPost`. An entry fetched with `?user_id=` is still not reached (#275).
 
 ## [1.19.1] - 2026-11-07
 
