@@ -105,6 +105,20 @@ class DependencyAfterSaveTest extends TestCase
         $this->assertSame([], self::eventContextsJsonOf($tree, 'dependency_after_save'));
     }
 
+    public function testAValuePageDeclaringInOnGetStoresTheChildTagsAndIsNotLogged(): void
+    {
+        $this->resource->get('page://self/dep/depending-in-on-get-value');
+        $tree = $this->flushAndValidate($this->logger);
+
+        $this->assertSame([], self::eventContextsJsonOf($tree, 'dependency_after_save'));
+        $saves = self::eventContextsJsonOf($tree, 'save_value', 'page://self/dep/depending-in-on-get-value');
+        $this->assertCount(1, $saves);
+        /** @var array{tags: list<string>} $save */
+        $save = json_decode($saves[0], true, 512, JSON_THROW_ON_ERROR);
+        $this->assertContains('_dep_child-c_', $save['tags']);
+        $this->assertContains('grp-_dep_child-c_', $save['tags']);
+    }
+
     public function testARefreshThatPutsThePageAgainIsNotLogged(): void
     {
         $this->boot(true);

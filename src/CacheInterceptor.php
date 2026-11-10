@@ -45,6 +45,7 @@ final readonly class CacheInterceptor implements MethodInterceptor
         private UriTagInterface $uriTag,
         #[CacheLog]
         private SemanticLoggerInterface $logger = new NullSemanticLogger(),
+        private PutInProgress $putInProgress = new PutInProgress(),
     ) {
     }
 
@@ -86,34 +87,13 @@ final readonly class CacheInterceptor implements MethodInterceptor
                 return $ro;
             }
 
-            /** @psalm-suppress MixedAssignment */
-            $ro = $invocation->proceed();
-            assert($ro instanceof ResourceObject);
+            // A dependency onGet() declares is stored with the entry, the same as one the put finds
+            $this->putInProgress->begin($ro);
             try {
-                if ($ro->code !== 200) {
-                    // Record the actual non-200 code; without it the purge below reads
-                    // as if a 203 and a 404 were the same thing.
-                    $this->logger->event(new PutSkippedContext((string) $ro->uri, 'error-code', $ro->code));
-                    // Only this URI's own tag: purge() would also evict its query variants.
-                    $this->logger->event(new PurgeContext((string) $ro->uri));
-                    $this->storage->invalidateTags([($this->uriTag)($ro->uri)]);
-
-                    return $ro;
-                }
-
-                $this->repository->put($ro);
-            } catch (Throwable $e) {
-                // The store refused the write: the already-correct response is served and the
-                // failure recorded; a render/purge failure is not the store's and keeps propagating.
-                $this->logger->event(self::failure((string) $ro->uri, 'write', $e));
-                if (! $e instanceof CacheStoreException) {
-                    throw $e;
-                }
-
-                $this->triggerWarning($e);
+                return $this->rebuild($invocation);
+            } finally {
+                $this->putInProgress->end($ro);
             }
-
-            return $ro;
         } finally {
             $durationMs = round((hrtime(true) - $start) / 1_000_000, 3);
             // Psalm mis-tracks the $hit flag mutated inside try when read from finally.
@@ -123,6 +103,39 @@ final readonly class CacheInterceptor implements MethodInterceptor
                 $openId,
             );
         }
+    }
+
+    /** @param MethodInvocation<object> $invocation */
+    private function rebuild(MethodInvocation $invocation): ResourceObject
+    {
+        /** @psalm-suppress MixedAssignment */
+        $ro = $invocation->proceed();
+        assert($ro instanceof ResourceObject);
+        try {
+            if ($ro->code !== 200) {
+                // Record the actual non-200 code; without it the purge below reads
+                // as if a 203 and a 404 were the same thing.
+                $this->logger->event(new PutSkippedContext((string) $ro->uri, 'error-code', $ro->code));
+                // Only this URI's own tag: purge() would also evict its query variants.
+                $this->logger->event(new PurgeContext((string) $ro->uri));
+                $this->storage->invalidateTags([($this->uriTag)($ro->uri)]);
+
+                return $ro;
+            }
+
+            $this->repository->put($ro);
+        } catch (Throwable $e) {
+            // The store refused the write: the already-correct response is served and the
+            // failure recorded; a render/purge failure is not the store's and keeps propagating.
+            $this->logger->event(self::failure((string) $ro->uri, 'write', $e));
+            if (! $e instanceof CacheStoreException) {
+                throw $e;
+            }
+
+            $this->triggerWarning($e);
+        }
+
+        return $ro;
     }
 
     /**
