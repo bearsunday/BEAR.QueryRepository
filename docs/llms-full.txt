@@ -101,6 +101,15 @@ use BEAR\RepositoryModule\Annotation\Purge;
 public function onDelete(int $id): static { ... }
 ```
 
+A `#[Refresh]`/`#[Purge]` template must carry every required `onGet()` parameter of the resource it names, under its own name or its snake_case form (`user_id` for `$userId`). Otherwise the write throws `TemplateLacksRequiredParameter` before it runs.
+
+A list given to an exploded query variable (`?id={ids*}`, `{?id*}`) names one URI per element, and several lists name every combination; an empty list names none. In `{?id*}` the keys come from the value, so the required-parameter check does not apply to it.
+
+```php
+#[Purge(uri: 'app://self/tag?id={ids*}')]
+public function onPost(array $ids): static { ... }  // ids: [1, 2] purges tag?id=1 and tag?id=2
+```
+
 ### Purging query variants
 
 A purge also reaches the query variants of the URI it names that differ from it only in default-valued `onGet()` parameters or in queries `onGet()` does not declare. Each cache entry also carries a group tag: its URI with every default-valued `onGet()` parameter, and any query `onGet()` does not declare, dropped. `purge()`, `#[Purge]` and `#[Refresh]` invalidate the named URI's own tag and its group tag, so purging `app://self/articles` drops `?page=2`. A variant that differs in a required parameter is a separate group. A parent that embeds a variant carries the variant's group tag as well and is dropped with it.

@@ -42,4 +42,20 @@ class BaseUriTagTest extends TestCase
 
         $this->assertSame('grp-' . $uriTag(new Uri('app://self/item?id=1')), $groupTag);
     }
+
+    public function testStringableRequiredParameterKeepsItsStringInTheGroupTag(): void
+    {
+        $ro = new class extends ResourceObject {
+            public function onGet(string $id, int $page = 1): static
+            {
+                unset($id, $page);
+
+                return $this;
+            }
+        };
+        $ro->uri = new Uri('app://self/item');
+        $ro->uri->query = ['id' => new FakeStringableId('a'), 'page' => 2];
+
+        $this->assertSame('grp-_item_id=a', (new BaseUriTag(new UriTag()))($ro));
+    }
 }

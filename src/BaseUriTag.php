@@ -65,7 +65,7 @@ final class BaseUriTag implements BaseUriTagInterface
     }
 
     /** The conversion BEAR.Resource applies when it binds a query to a parameter */
-    private static function snakeName(string $name): string
+    public static function snakeName(string $name): string
     {
         return ltrim(strtolower((string) preg_replace('/[A-Z]/', '_\0', $name)), '_');
     }
