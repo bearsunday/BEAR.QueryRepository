@@ -50,6 +50,8 @@ final class SurrogateKeys
      * classified before the page renders and rendered again as a request of its own
      *
      * @return bool whether the page depends on it
+     *
+     * @internal
      */
     public function embedded(ResourceObject $ro): bool
     {
@@ -57,12 +59,13 @@ final class SurrogateKeys
             return DependsOnTags::tagEmbedded($ro, null);
         }
 
-        $uri = (string) $ro->uri;
-        if (! array_key_exists($uri, $this->declared)) {
-            $this->declared[$uri] = $this->dependsOnTags->ran($ro);
+        // (string) $ro->uri drops Stringable query values, so two requests could share one key
+        $key = $ro::class . ' ' . ($this->uriTag)($ro->uri);
+        if (! array_key_exists($key, $this->declared)) {
+            $this->declared[$key] = $this->dependsOnTags->ran($ro);
         }
 
-        return DependsOnTags::tagEmbedded($ro, $this->declared[$uri]);
+        return DependsOnTags::tagEmbedded($ro, $this->declared[$key]);
     }
 
     public function setSurrogateHeader(ResourceObject $ro): void
