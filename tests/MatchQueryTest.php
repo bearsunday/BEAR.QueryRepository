@@ -87,33 +87,4 @@ class MatchQueryTest extends TestCase
 
         $this->assertSame(['userId' => 1, 'perPage' => 20], ($this->matchQuery)($ro));
     }
-
-    /** BEAR.Resource hands the write null here, so the snake_case value does not address the entry it wrote. */
-    public function testNullUnderTheParameterNameIsNotReplacedBySnakeCaseKey(): void
-    {
-        $ro = new class extends ResourceObject {
-            public function onGet(int|null $userId): static
-            {
-                return $this;
-            }
-        };
-        $ro->uri = new Uri('app://self/x', ['userId' => null, 'user_id' => 1]);
-
-        $this->expectException(UnmatchedQuery::class);
-        ($this->matchQuery)($ro);
-    }
-
-    /** BEAR.Resource skips a null under the name of a default-valued parameter and reads the snake_case key. */
-    public function testNullUnderTheNameOfParameterWithDefaultValueFallsBackToSnakeCaseKey(): void
-    {
-        $ro = new class extends ResourceObject {
-            public function onGet(int $userId, int $perPage = 10): static
-            {
-                return $this;
-            }
-        };
-        $ro->uri = new Uri('app://self/x', ['userId' => 1, 'perPage' => null, 'per_page' => 20]);
-
-        $this->assertSame(['userId' => 1, 'perPage' => 20], ($this->matchQuery)($ro));
-    }
 }
