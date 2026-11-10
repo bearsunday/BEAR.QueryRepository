@@ -7,11 +7,11 @@ namespace BEAR\RepositoryModule\Annotation;
 use Attribute;
 
 /**
- * Tags the resource with the URI each body row expands `uri` to, so a write to that URI invalidates it
+ * Tags the stored resource with the URI `uri` expands to, so a write to that URI invalidates it and every page that embeds it
  *
- * The body must be a list of rows; a page depends on the rows by embedding this resource with #[Embed].
+ * On a resource's onGet(), every template variable must be an onGet() parameter. On a row class, the variables are its public properties.
  */
-#[Attribute(Attribute::TARGET_METHOD | Attribute::IS_REPEATABLE)]
+#[Attribute(Attribute::TARGET_METHOD | Attribute::TARGET_CLASS | Attribute::IS_REPEATABLE)]
 final class DependsOn
 {
     public function __construct(

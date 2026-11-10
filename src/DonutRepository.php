@@ -41,6 +41,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     private const REVALIDATE = 'max-age=0';
 
     private CacheDependencyInterface $cacheDependency;
+    private DependsOnTags $dependsOnTags;
 
     /** @SuppressWarnings("PHPMD.ExcessiveParameterList") */
     public function __construct(
@@ -53,13 +54,13 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         private SemanticLoggerInterface $logger,
         private DonutRendererInterface $renderer,
         private BaseUriTagInterface $baseUriTag,
-        private RowDependency $rowDependency,
         private UriTagInterface $uriTag = new UriTag(),
         CacheDependencyInterface|null $cacheDependency = null,
         private DeclaredCacheControl $declaredCacheControl = new DeclaredCacheControl(),
     ) {
         // Same UriTag as templateKeys(), so a material's tag matches the format purge() emits.
         $this->cacheDependency = $cacheDependency ?? new CacheDependency($this->uriTag, $this->logger, $this->baseUriTag);
+        $this->dependsOnTags = new DependsOnTags($this->uriTag);
     }
 
     #[Override]
@@ -218,11 +219,11 @@ final readonly class DonutRepository implements DonutRepositoryInterface
      * A child carrying an ETag or Surrogate-Key already ran during onGet() (a material); a hole has not run yet.
      * Headers only: running a child here would execute a hole outside its hole scope. A child left out is logged
      * as `dependency_skipped` with what its body shows: none yet (a hole, or a run that left none), or one without a tag.
-     * A child that ran with #[DependsOn] on its onGet() counts as a dependency even with no rows.
+     * A child that ran counts as well when it, or a request it embeds and ran, declares #[DependsOn].
      */
     private function classifyMaterials(ResourceObject $ro): void
     {
-        ($this->rowDependency)($ro);
+        ($this->dependsOnTags)($ro);
 
         /** @var mixed $body */
         foreach ((array) $ro->body as $body) {
@@ -231,8 +232,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
             }
 
             $child = $body->resourceObject;
-            $declared = ($this->rowDependency)($child);
-            if (! $declared && ! isset($child->headers[Header::ETAG]) && ! isset($child->headers[Header::SURROGATE_KEY])) {
+            if (! $this->dependsOnTags->embedded($child)) {
                 $this->logger->event(DependencySkippedContext::of($ro, $child));
 
                 continue;

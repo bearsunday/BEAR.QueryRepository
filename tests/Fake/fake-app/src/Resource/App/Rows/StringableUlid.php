@@ -5,17 +5,17 @@ declare(strict_types=1);
 namespace FakeVendor\HelloWorld\Resource\App\Rows;
 
 use BEAR\RepositoryModule\Annotation\Cacheable;
-use BEAR\RepositoryModule\Annotation\DependsOn;
 use BEAR\Resource\ResourceObject;
+use FakeVendor\HelloWorld\Entity\Item;
+use FakeVendor\HelloWorld\Entity\Ulid;
 
-/** A row that is a scalar, not an array: #[DependsOn] must refuse it */
+/** A row whose ULID is a Stringable */
 #[Cacheable]
-class ScalarRow extends ResourceObject
+class StringableUlid extends ResourceObject
 {
-    #[DependsOn(uri: 'app://self/rows/comment{?id}')]
     public function onGet(): static
     {
-        $this->body = ['1', '3'];
+        $this->body = [new Item(new Ulid('a1'), 's1')];
 
         return $this;
     }

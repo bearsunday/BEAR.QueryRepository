@@ -19,11 +19,13 @@ final class SurrogateKeys
     private array $surrogateKeys;
     private readonly UriTagInterface $uriTag;
     private readonly BaseUriTagInterface $baseUriTag;
+    private readonly DependsOnTags $dependsOnTags;
 
     public function __construct(AbstractUri $uri, string|null $baseTag = null)
     {
         $this->uriTag = new UriTag();
         $this->baseUriTag = new BaseUriTag($this->uriTag);
+        $this->dependsOnTags = new DependsOnTags($this->uriTag);
         $this->surrogateKeys = $baseTag === null ? [($this->uriTag)($uri)] : [($this->uriTag)($uri), $baseTag];
     }
 
@@ -32,6 +34,7 @@ final class SurrogateKeys
      */
     public function addTag(ResourceObject $ro): void
     {
+        $this->dependsOnTags->embedded($ro);
         $this->surrogateKeys[] = ($this->uriTag)($ro->uri);
         $this->surrogateKeys[] = ($this->baseUriTag)($ro);
         if (array_key_exists(Header::SURROGATE_KEY, $ro->headers)) {

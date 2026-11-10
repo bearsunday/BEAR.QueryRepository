@@ -108,15 +108,16 @@ invalidateTags([uriTag('page://self/html/blog-posting')]) → BlogPosting invali
 
 ### Row Dependencies (`#[DependsOn]`)
 
-A list declares the URI each body row expands a template to; a write to a row invalidates the list and every page that embeds it.
+A declaration on `onGet()` expands from the call's arguments; one on a row class expands from each instance's public properties. A write to a declared URI invalidates the resource and every page that embeds it.
 
 ```text
-Plain #[DependsOn(uri: 'app://self/rows/comment{?id}')] → rows 1, 3
-PUT comment?id=3 → the page embedding Plain invalidated
-PUT comment?id=7 → the page stays stored
+Plain onGet(channelId) #[DependsOn('taxonomy?ulid={channelId}')], rows Item(a1, s1), Item(a3, s1)
+Item #[DependsOn('article?ulid={ulid}')] #[DependsOn('taxonomy?ulid={seriesId}')]
+PUT taxonomy?ulid=c1 / article?ulid=a3 / taxonomy?ulid=s1 → the page embedding Plain invalidated
+PUT article?ulid=a7 → the page stays stored
 ```
 
-**Test:** `DependsOnTest` — each cache declaration shape of the list, an uncached list embedded in a page, a list with no rows, a list rendered as a hole, and the body shapes the declaration rejects
+**Test:** `DependsOnTest` — the four cache declaration shapes, pages through zero, one and two uncached resources, a 404 list, a hole, defaults, snake_case queries, null and Stringable values, cycles, inheritance, a doubly declared URI, and each reason of `DependsOnNotExpandable`
 
 ## Component Unit Tests
 

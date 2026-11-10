@@ -8,20 +8,17 @@ use BEAR\RepositoryModule\Annotation\CacheableResponse;
 use BEAR\Resource\Annotation\Embed;
 use BEAR\Resource\ResourceObject;
 
-/**
- * A class-level #[CacheableResponse] page that reads its embedded list eagerly, making it a
- * material instead of a hole (the established CacheableResponseWithMaterial.php pattern)
- */
+/** A class-level #[CacheableResponse] page that reads its uncached list */
 #[CacheableResponse]
 class PageView extends ResourceObject
 {
     public static int $runs = 0;
 
-    #[Embed(rel: 'rows', src: 'app://self/rows/plain?article_id=1')]
+    #[Embed(rel: 'list', src: 'app://self/rows/plain?channelId=c1')]
     public function onGet(): static
     {
         self::$runs++;
-        $this->body['touch'] = (string) $this->body['rows'];
+        $this->body['read'] = (string) $this->body['list'];
 
         return $this;
     }

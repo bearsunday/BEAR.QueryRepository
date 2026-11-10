@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - The log sink hands each flushed session to every `LogWriterInterface` an application adds with `MultiBinder::newInstance($this, LogWriterInterface::class)->addBinding()`, after the bound writer. Bind the added class as well: a compiled injector builds only bound classes (ray-di/Ray.Compiler#148).
-- `#[DependsOn(uri: 'app://self/comment{?id}')]` on a list resource's `onGet()` tags the list with each body row's URI, so a write to a row invalidates the list and every page that embeds it. The body must be a list of rows that carry the template's keys; otherwise the GET fails with an exception naming the mismatch, such as `BEAR\QueryRepository\Exception\DependsOnRowKeyNotExists`.
+- `#[DependsOn(uri: ...)]` tags a stored resource with the URI it names, expanded from the `onGet()` arguments when on `onGet()` or from the public properties of each instance in the body when on a row class, so a write to that URI invalidates the resource and every page that embeds it. Tag array rows with `UriTagInterface::fromAssoc()`; a declaration that cannot expand fails the GET with `BEAR\QueryRepository\Exception\DependsOnNotExpandable`.
 
 ### Changed
 - Requires `ray/di` 2.23 or later: the empty writer set the log modules declare needs it.

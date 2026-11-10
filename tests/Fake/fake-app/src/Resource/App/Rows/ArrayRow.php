@@ -5,17 +5,16 @@ declare(strict_types=1);
 namespace FakeVendor\HelloWorld\Resource\App\Rows;
 
 use BEAR\RepositoryModule\Annotation\Cacheable;
-use BEAR\RepositoryModule\Annotation\DependsOn;
 use BEAR\Resource\ResourceObject;
+use FakeVendor\HelloWorld\Entity\ArrayUlid;
 
-/** A template with no variable at all: #[DependsOn] must refuse it */
+/** A row class whose template variable is an array */
 #[Cacheable]
-class NoVariableTemplate extends ResourceObject
+class ArrayRow extends ResourceObject
 {
-    #[DependsOn(uri: 'app://self/rows/comment')]
     public function onGet(): static
     {
-        $this->body = [['id' => '1']];
+        $this->body = [new ArrayUlid(['a1'])];
 
         return $this;
     }

@@ -8,14 +8,13 @@ use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\DependsOn;
 use BEAR\Resource\ResourceObject;
 
-/** The body is an assoc array, not a list: #[DependsOn] must refuse it */
 #[Cacheable]
-class KeyedBody extends ResourceObject
+#[DependsOn(uri: 'app://self/rows/taxonomy?ulid={channelId}')]
+class ClassDeclared extends ResourceObject
 {
-    #[DependsOn(uri: 'app://self/rows/comment{?id}')]
-    public function onGet(): static
+    public function onGet(string $channelId): static
     {
-        $this->body = ['comments' => [['id' => '1']]];
+        $this->body = ['channelId' => $channelId];
 
         return $this;
     }

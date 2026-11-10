@@ -4,27 +4,21 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\QueryRepository\Exception\DependsOnBodyNotRows;
-use BEAR\QueryRepository\Exception\DependsOnRowKeyNotExists;
-use BEAR\QueryRepository\Exception\DependsOnRowValueNotScalar;
-use BEAR\QueryRepository\Exception\DependsOnTemplateWithoutVariable;
+use BEAR\QueryRepository\Exception\DependsOnNotExpandable;
 use BEAR\Resource\ResourceInterface;
+use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
-use FakeVendor\HelloWorld\Resource\App\Rows\Ca;
-use FakeVendor\HelloWorld\Resource\App\Rows\Cr;
-use FakeVendor\HelloWorld\Resource\App\Rows\Mr;
-use FakeVendor\HelloWorld\Resource\App\Rows\PageDonut;
-use FakeVendor\HelloWorld\Resource\App\Rows\PageHole;
-use FakeVendor\HelloWorld\Resource\App\Rows\PageValue;
-use FakeVendor\HelloWorld\Resource\App\Rows\PageView;
-use FakeVendor\HelloWorld\Resource\App\Rows\Plain;
-use FakeVendor\HelloWorld\Resource\App\Rows\Ps;
+use FakeVendor\HelloWorld\Entity\Catalog;
+use Madapaja\TwigModule\TwigModule;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
-use Throwable;
 
-/** A write to a row that #[DependsOn] names invalidates the list and every page that embeds it */
+use function array_count_values;
+use function dirname;
+use function explode;
+
+/** A write to a URI that #[DependsOn] names invalidates the stored resource and every page that embeds it */
 class DependsOnTest extends TestCase
 {
     private ResourceInterface $resource;
@@ -33,193 +27,198 @@ class DependsOnTest extends TestCase
 
     protected function setUp(): void
     {
-        $namespace = 'FakeVendor\HelloWorld';
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance($namespace));
+        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
         $injector = new Injector($module, __DIR__ . '/tmp');
         $this->repository = $injector->getInstance(QueryRepositoryInterface::class);
         $this->resource = $injector->getInstance(ResourceInterface::class);
         $this->storage = $injector->getInstance(ResourceStorageInterface::class);
-
-        Ca::$runs = 0;
-        Ca::$data = ['1' => ['1', '3'], '2' => ['7']];
-        Cr::$data = ['1' => ['1', '3'], '2' => ['7']];
-        Mr::$data = ['1' => ['1', '3'], '2' => ['7']];
-        Ps::$data = ['1' => ['1', '3'], '2' => ['7']];
-        Plain::$data = ['1' => ['1', '3'], 'empty' => []];
-        PageValue::$runs = 0;
-        PageView::$runs = 0;
-        PageDonut::$runs = 0;
-        PageHole::$runs = 0;
+        Catalog::reset();
 
         parent::setUp();
     }
 
-    /** @return array<string, array{0: string, 1: bool}> uri, whether the entry is donut-stored (vs. a plain value) */
-    public static function declarationShapeProvider(): array
+    /** @return array<string, array{0: string, 1: bool}> uri, whether the entry is donut-stored */
+    public static function shapeProvider(): array
     {
         return [
-            'class #[Cacheable]' => ['app://self/rows/ca?article_id=1', false],
-            'class #[CacheableResponse]' => ['app://self/rows/cr?article_id=1', true],
-            'method #[CacheableResponse]' => ['app://self/rows/mr?article_id=1', true],
-            'onGet() putStatic()' => ['app://self/rows/ps?article_id=1', true],
+            'class #[Cacheable]' => ['app://self/rows/ca?channelId=c1', false],
+            'class #[CacheableResponse], snake_case query' => ['app://self/rows/cr?channel_id=c1', true],
+            'method #[CacheableResponse]' => ['app://self/rows/mr?channelId=c1', true],
+            'putStatic() in onGet()' => ['app://self/rows/ps?channelId=c1', true],
         ];
     }
 
-    /** A write to one of its rows invalidates the list, across every declaration shape */
-    #[DataProvider('declarationShapeProvider')]
-    public function testDependsOnInvalidatesTheListForEachDeclarationShape(string $uri, bool $isDonut): void
+    /** @return array<string, array{0: string, 1: bool, 2: string}> */
+    public static function shapeAndTargetProvider(): array
     {
-        $this->resource->get($uri);
-        $this->assertTrue($this->isStored($uri, $isDonut), "{$uri} must be stored after the first GET");
+        $cases = [];
+        foreach (self::shapeProvider() as $shape => [$uri, $isDonut]) {
+            $cases["{$shape}, onGet() argument"] = [$uri, $isDonut, 'app://self/rows/taxonomy?ulid=c1'];
+            $cases["{$shape}, row property"] = [$uri, $isDonut, 'app://self/rows/article?ulid=a3'];
+            $cases["{$shape}, row parent class"] = [$uri, $isDonut, 'app://self/rows/taxonomy?ulid=s1'];
+        }
 
-        $this->resource->put('app://self/rows/comment?id=7');
-        $this->assertTrue($this->isStored($uri, $isDonut), 'a write to an unrelated id must not invalidate the list');
-
-        $this->resource->put('app://self/rows/comment?id=3');
-        $this->assertFalse($this->isStored($uri, $isDonut), "a write to one of the list's own rows must invalidate it");
+        return $cases;
     }
 
-    /** @return array<string, array{0: string, 1: bool}> page uri, whether the entry is donut-stored */
-    public static function embeddingPageProvider(): array
+    #[DataProvider('shapeAndTargetProvider')]
+    public function testAWriteToADeclaredUriInvalidatesTheList(string $uri, bool $isDonut, string $target): void
+    {
+        $this->resource->get($uri);
+        $this->assertTrue($this->isStored($uri, $isDonut));
+
+        $this->resource->put('app://self/rows/article?ulid=a7');
+        $this->resource->put('app://self/rows/taxonomy?ulid=c2');
+        $this->assertTrue($this->isStored($uri, $isDonut), 'a write to a URI of another channel must not invalidate the list');
+
+        $this->resource->put($target);
+        $this->assertFalse($this->isStored($uri, $isDonut));
+    }
+
+    /** @return array<string, array{0: string, 1: bool}> */
+    public static function pageProvider(): array
     {
         return [
             '#[Cacheable] page' => ['app://self/rows/page-value', false],
-            'class #[CacheableResponse] page' => ['app://self/rows/page-view', false],
-            'method #[CacheableResponse] page' => ['app://self/rows/page-donut', true],
+            'class #[CacheableResponse] page reading the list' => ['app://self/rows/page-view', true],
+            'method #[CacheableResponse] page reading the list' => ['app://self/rows/page-donut', true],
+            'page <- mid <- list' => ['app://self/rows/page-chain', false],
+            'donut page <- mid <- list' => ['app://self/rows/page-chain-donut', true],
+            'page <- outer <- mid <- list' => ['app://self/rows/page-deep-chain', false],
         ];
     }
 
-    /** A page that embeds a declared, uncached list is invalidated by a write to one of the list's rows */
-    #[DataProvider('embeddingPageProvider')]
-    public function testEmbeddingPropagatesTheDependencyToTheParentPage(string $uri, bool $isDonut): void
+    /** The declarations of an uncached list reach the page that stores it, through uncached resources in between */
+    #[DataProvider('pageProvider')]
+    public function testTheDeclarationsOfAnEmbeddedListReachThePage(string $uri, bool $isDonut): void
     {
-        $this->resource->get($uri);
-        $this->assertTrue($this->isStored($uri, $isDonut), "{$uri} must be stored after the first GET");
-
-        $this->resource->put('app://self/rows/comment?id=7');
-        $this->assertTrue($this->isStored($uri, $isDonut), 'a write to an unrelated id must not invalidate the page');
-
-        $this->resource->put('app://self/rows/comment?id=3');
-        $this->assertFalse($this->isStored($uri, $isDonut), "a write to the embedded list's own row must invalidate the page");
-    }
-
-    /** A hand-set Surrogate-Key and the declared tag both survive, and either one's invalidation drops the entry */
-    public function testHandWrittenKeyAndDeclaredTagBothInvalidateTheEntry(): void
-    {
-        $uri = 'app://self/rows/hand-key';
-        $this->resource->get($uri);
-        $this->assertNotNull($this->repository->get(new Uri($uri)));
-
-        $this->storage->invalidateTags(['hand-key']);
-        $this->assertNull($this->repository->get(new Uri($uri)), 'invalidating the hand-written key must drop the entry');
-
-        $this->resource->get($uri);
-        $this->assertNotNull($this->repository->get(new Uri($uri)));
-
-        $this->resource->put('app://self/rows/comment?id=5');
-        $this->assertNull($this->repository->get(new Uri($uri)), "invalidating the declared row's tag must also drop the entry");
-    }
-
-    /** @return array<string, array{0: string, 1: class-string<Throwable>}> */
-    public static function invalidBodyProvider(): array
-    {
-        return [
-            'body is not a list' => ['app://self/rows/keyed-body', DependsOnBodyNotRows::class],
-            'row is a scalar, not an array' => ['app://self/rows/scalar-row', DependsOnBodyNotRows::class],
-            'row has no key the template needs' => ['app://self/rows/missing-key', DependsOnRowKeyNotExists::class],
-            'template has no variable' => ['app://self/rows/no-variable-template', DependsOnTemplateWithoutVariable::class],
-            "row's value is an array, not a scalar" => ['app://self/rows/array-value-row', DependsOnRowValueNotScalar::class],
-        ];
-    }
-
-    /**
-     * A body shape #[DependsOn] cannot read throws the exception that names the mismatch, and nothing is stored
-     *
-     * @param class-string<Throwable> $exception
-     */
-    #[DataProvider('invalidBodyProvider')]
-    public function testInvalidBodyShapeThrowsAndStoresNothing(string $uri, string $exception): void
-    {
-        $this->expectException($exception);
-
-        try {
+        foreach (['app://self/rows/taxonomy?ulid=c1', 'app://self/rows/article?ulid=a3'] as $target) {
             $this->resource->get($uri);
-        } finally {
-            $this->assertNull($this->storage->get(new Uri($uri)), 'a failed declaration must not store a stale entry');
+            $this->assertTrue($this->isStored($uri, $isDonut));
+
+            $this->resource->put('app://self/rows/article?ulid=a7');
+            $this->assertTrue($this->isStored($uri, $isDonut));
+
+            $this->resource->put($target);
+            $this->assertFalse($this->isStored($uri, $isDonut), "a write to {$target} must invalidate {$uri}");
         }
     }
 
-    /** A row whose declared value is null names no dependency for that row, but is otherwise stored normally */
-    public function testANullRowIsSkippedNotAnError(): void
+    public function testAListThatAnswers404IsStillADependencyOfItsPage(): void
     {
-        $uri = 'app://self/rows/null-row';
+        $uri = 'app://self/rows/page404';
         $this->resource->get($uri);
-        $this->assertNotNull($this->repository->get(new Uri($uri)));
+        $this->assertTrue($this->isStored($uri, false));
 
-        $this->resource->put('app://self/rows/comment?id=1');
-        $this->assertNull($this->repository->get(new Uri($uri)), "a write to the first (non-null) row's id must invalidate the entry");
-
-        $this->resource->get($uri);
-        $this->resource->put('app://self/rows/comment?id=3');
-        $this->assertNull($this->repository->get(new Uri($uri)), 'a write to the third row\'s id must also invalidate the entry');
+        $this->resource->put('app://self/rows/taxonomy?ulid=c1');
+        $this->assertFalse($this->isStored($uri, false));
     }
 
-    /** A row keyed differently from the row resource's argument reaches it through the template's mapping */
-    public function testATemplateMapsARowKeyToTheRowArgument(): void
+    public function testAnEmptyListIsStillADependencyOfItsPage(): void
     {
-        $uri = 'app://self/rows/renamed';
+        $uri = 'app://self/rows/page-empty';
         $this->resource->get($uri);
-        $this->assertNotNull($this->repository->get(new Uri($uri)));
+        $this->assertTrue($this->isStored($uri, false));
 
-        $this->resource->put('app://self/rows/comment?id=7');
-        $this->assertNotNull($this->repository->get(new Uri($uri)), 'a write to an unrelated id must not invalidate the list');
-
-        $this->resource->put('app://self/rows/comment?id=3');
-        $this->assertNull($this->repository->get(new Uri($uri)), "a write to the mapped row's id must invalidate the list");
+        $this->resource->put('app://self/rows/taxonomy?ulid=empty');
+        $this->assertFalse($this->isStored($uri, false));
     }
 
-    /** A row added by a POST becomes a dependency once the list is refetched and re-tagged */
-    public function testARowAddedByPostBecomesADependencyAfterTheListIsRefetched(): void
+    public function testTheDeclarationsOfAListRenderedAsAHoleReachThePageHeader(): void
     {
-        $uri = 'app://self/rows/ca?article_id=1';
+        $page = $this->resource->get('app://self/rows/page-hole');
+
+        $keys = $this->keys($page);
+        $this->assertContains($this->tag('app://self/rows/taxonomy?ulid=c1'), $keys);
+        $this->assertContains($this->tag('app://self/rows/article?ulid=a3'), $keys);
+    }
+
+    public function testAnArgumentOmittedFromTheQueryExpandsFromItsDefault(): void
+    {
+        $uri = 'app://self/rows/defaulted';
         $this->resource->get($uri);
-        $this->assertSame(1, Ca::$runs);
+        $this->assertTrue($this->isStored($uri, false));
 
-        // Ca is #[Cacheable]: writing to it purges and refetches its own entry immediately.
-        $this->resource->post('app://self/rows/ca', ['article_id' => '1', 'id' => '9']);
-        $this->assertSame(2, Ca::$runs, 'the POST must have refreshed the list, tagging the new row');
-
-        $this->resource->put('app://self/rows/comment?id=9');
-        $this->assertNull($this->repository->get(new Uri($uri)), 'a write to the newly added row must invalidate the refreshed list');
+        $this->resource->put('app://self/rows/taxonomy?ulid=c9');
+        $this->assertFalse($this->isStored($uri, false));
     }
 
-    /** A declared list with zero rows for this call is still a dependency: its own purge invalidates the embedding page */
-    public function testADeclaredEmptyListIsStillADependencyOfItsPage(): void
+    public function testANullValueNamesNoUri(): void
     {
-        $pageUri = 'app://self/rows/page-empty-rows';
-        $this->resource->get($pageUri);
-        $this->assertNotNull($this->repository->get(new Uri($pageUri)));
+        $keys = $this->keys($this->resource->get('app://self/rows/null-values'));
 
-        $this->repository->purge(new Uri('app://self/rows/plain?article_id=empty'));
-        $this->assertNull($this->repository->get(new Uri($pageUri)), "purging the empty list's own URI must invalidate the page that declared a dependency on it");
+        $this->assertContains($this->tag('app://self/rows/article?ulid=a1'), $keys);
+        $this->assertContains($this->tag('app://self/rows/taxonomy?ulid=s1'), $keys);
+        $this->assertNotContains($this->tag('app://self/rows/taxonomy'), $keys);
+        $this->assertNotContains($this->tag('app://self/rows/taxonomy?ulid='), $keys);
     }
 
-    /**
-     * A declared but uncached list rendered as a donut hole (never read in onGet()) does not become a page
-     * dependency: applying #[DependsOn] to a child must not turn a hole into a material.
-     */
-    public function testADeclaredListRenderedAsAHoleDoesNotBecomeAPageDependency(): void
+    public function testAStringableValueExpandsAsAString(): void
     {
-        $pageUri = 'app://self/rows/page-hole';
-        $this->resource->get($pageUri);
-        $this->assertSame(1, PageHole::$runs);
-        $this->assertNotNull($this->repository->get(new Uri($pageUri)));
+        $uri = 'app://self/rows/stringable-ulid';
+        $this->resource->get($uri);
 
-        $this->resource->put('app://self/rows/comment?id=3');
-        $this->assertNotNull($this->repository->get(new Uri($pageUri)), "a write to the hole's row must not invalidate the page: the hole was never read, so it was never declared");
+        $this->resource->put('app://self/rows/article?ulid=a1');
+        $this->assertFalse($this->isStored($uri, false));
+    }
 
-        $this->resource->get($pageUri);
-        $this->assertSame(1, PageHole::$runs, 'the page must still answer from cache, not have re-run onGet()');
+    public function testRowsThatReferToEachOtherAreEachReadOnce(): void
+    {
+        $keys = $this->keys($this->resource->get('app://self/rows/cyclic'));
+
+        $this->assertSame(1, array_count_values($keys)[$this->tag('app://self/rows/article?ulid=a1')] ?? 0);
+        $this->assertSame(1, array_count_values($keys)[$this->tag('app://self/rows/article?ulid=a3')] ?? 0);
+    }
+
+    public function testTheDeclarationOnAnOverriddenOnGetIsRead(): void
+    {
+        $uri = 'app://self/rows/overriding?channelId=c1';
+        $this->resource->get($uri);
+        $this->assertTrue($this->isStored($uri, false));
+
+        $this->resource->put('app://self/rows/taxonomy?ulid=c1');
+        $this->assertFalse($this->isStored($uri, false));
+    }
+
+    /** A URI named by two declarations and fromAssoc() is tagged once, and both it and a hand-written key still invalidate */
+    public function testAUriDeclaredTwiceIsTaggedOnce(): void
+    {
+        $uri = 'app://self/rows/doubled?channelId=c1';
+        $keys = $this->keys($this->resource->get($uri));
+        $this->assertSame(1, array_count_values($keys)[$this->tag('app://self/rows/taxonomy?ulid=c1')] ?? 0);
+        $this->assertContains('hand-key', $keys);
+
+        $this->resource->put('app://self/rows/taxonomy?ulid=c1');
+        $this->assertFalse($this->isStored($uri, false));
+
+        $this->resource->get($uri);
+        $this->storage->invalidateTags(['hand-key']);
+        $this->assertFalse($this->isStored($uri, false));
+    }
+
+    /** @return array<string, array{0: string, 1: string}> */
+    public static function notExpandableProvider(): array
+    {
+        return [
+            'private property' => ['app://self/rows/private-row', "no 'ulid'"],
+            'array property' => ['app://self/rows/array-row', "'ulid' is array"],
+            'variable not an onGet() parameter' => ['app://self/rows/not-parameter?channelId=c1', "'ulid' is not an onGet() parameter"],
+            'declared on a resource class' => ['app://self/rows/class-declared?channelId=c1', 'declared on a resource class'],
+        ];
+    }
+
+    #[DataProvider('notExpandableProvider')]
+    public function testADeclarationThatCannotExpandThrowsAndStoresNothing(string $uri, string $reason): void
+    {
+        try {
+            $this->resource->get($uri);
+            $this->fail('DependsOnNotExpandable must be thrown');
+        } catch (DependsOnNotExpandable $e) {
+            $this->assertSame($reason, $e->reason);
+        }
+
+        $this->assertFalse($this->isStored($uri, false));
     }
 
     private function isStored(string $uri, bool $isDonut): bool
@@ -227,5 +226,16 @@ class DependsOnTest extends TestCase
         $abstractUri = new Uri($uri);
 
         return $isDonut ? $this->storage->getDonut($abstractUri) !== null : $this->repository->get($abstractUri) !== null;
+    }
+
+    /** @return list<string> */
+    private function keys(ResourceObject $ro): array
+    {
+        return explode(' ', $ro->headers[Header::SURROGATE_KEY] ?? '');
+    }
+
+    private function tag(string $uri): string
+    {
+        return (new UriTag())(new Uri($uri));
     }
 }

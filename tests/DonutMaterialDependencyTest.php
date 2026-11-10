@@ -412,7 +412,6 @@ class DonutMaterialDependencyTest extends TestCase
                 $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class),
                 $injector->getInstance(DonutRendererInterface::class),
                 new BaseUriTag($uriTag),
-                new RowDependency($uriTag),
                 $uriTag,
             ),
         ];
