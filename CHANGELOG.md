@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Requires `ray/di` 2.23 or later: the empty writer set the log modules declare needs it.
 
+### Fixed
+- `StorageMemcachedEtagModule` now keeps ETags in its own Memcached servers; since 1.11.0 they went to the resource pool, and installing it next to `StorageMemcachedModule` pointed both pools at whichever module's servers were installed last.
+
 ## [1.19.1] - 2026-11-07
 
 ### Changed
