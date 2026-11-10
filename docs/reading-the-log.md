@@ -206,10 +206,11 @@ a `cache_hit` with no `refresh_donut` in it.
 
 The hole is tracked only while it is an embedded request the renderer runs. A page that fetches and
 inlines a child by other means writes nothing for it, so purging that child leaves the stored page
-serving the composition it holds. Declare such a child with `CacheDependencyInterface::depends($page, $child)`
-while the page renders: it is then recorded like a data dependency, with a `depends_on` edge between
-`put_donut` and the `save_*` events and its tags on the template and the view, so purging it drops
-both and the next read closes `cache_miss`.
+serving the composition it holds. Declare such a child while the page renders with
+`$cacheDependency->depends($page, $child)`, where `$cacheDependency` is the injected
+`CacheDependencyInterface`: it is then recorded like a data dependency, with a `depends_on` edge
+between `put_donut` and the `save_*` events and its tags on the template and the view, so purging it
+drops both and the next read closes `cache_miss`.
 
 **Read `cache_policy.expiry`, not a TTL, to learn whether an entry is meant to expire.**
 `expiry: "never"` means until invalidation; the number it resolves to is a backstop and depends on

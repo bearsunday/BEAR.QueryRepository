@@ -200,7 +200,8 @@ purge するとビューが落ち、次の read は `cache_hit{layer: donut-view
 穴が追跡されるのは、レンダラが実行する埋め込みリクエストである間だけです。ページが別の手段で子を
 取得して埋め込んでいる場合、その子について何も書かれないので、purge しても保存済みのページは
 保持している合成結果を配信し続けます。そうした子は、ページの描画中に
-`CacheDependencyInterface::depends($page, $child)` で宣言します。宣言した子はデータ依存と同じく記録され、
+`$cacheDependency->depends($page, $child)` で宣言します(`$cacheDependency` は注入した
+`CacheDependencyInterface`)。宣言した子はデータ依存と同じく記録され、
 `put_donut` と `save_*` のあいだに `depends_on` の辺が出て、タグはテンプレートとビューの両方に載ります。
 だから purge すると両方が落ち、次の read は `cache_miss` で閉じます。
 
