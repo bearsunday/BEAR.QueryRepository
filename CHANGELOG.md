@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Behaviour change**: a `#[Purge]`/`#[Refresh]` whose URI template leaves out a required `onGet()` parameter of the resource it names now throws `TemplateLacksRequiredParameter` before the write runs, instead of purging nothing (`#[Purge]`) or failing after the write (`#[Refresh]`). Add the parameter to the template; the snake_case name also counts.
 - **Behaviour change**: a list given to an exploded `#[Purge]`/`#[Refresh]` query variable (`{?id*}`, `?id={ids*}`) now invalidates one URI per element, every combination when there are several, instead of one URI with the last element (`{?id*}`) or the elements joined by commas (`?id={ids*}`); an empty list invalidates nothing instead of the URI without the variable. Drop the `*` where a template relied on the old URI.
 
+### Fixed
+- A `Stringable` query value, such as a ULID value object, is now part of the entry's URI tag, so a `#[Purge]`/`#[Refresh]` that writes the value as a string reaches it; the value was dropped from the tag. Nothing to change: entries stored after the deploy carry the new tag.
+
 ## [1.19.1] - 2026-11-07
 
 ### Changed
