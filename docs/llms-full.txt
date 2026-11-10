@@ -13,7 +13,7 @@ see the BEAR.Sunday documentation: https://bearsunday.github.io/llms-full.txt
 
 - Event-driven cache invalidation
 - Automatic dependency resolution between cached resources
-- Donut caching (DO-NOT-CACHE pattern - static outer shell with dynamic inner content)
+- Donut caching (`#[CacheableResponse]`/`#[DonutCache]`: a stored page template whose embedded holes are rendered per request or on events)
 - CDN integration (Fastly, Akamai)
 - ETag support for conditional requests
 - Redis and Memcached support
@@ -28,22 +28,23 @@ composer require bear/query-repository
 
 ### #[Cacheable]
 
-Marks a resource as cacheable with TTL-based expiration.
+Class attribute. Stores the `onGet()` response; a write to the resource refreshes it. Without a lifetime the entry lives until a write invalidates it.
 
 ```php
 use BEAR\RepositoryModule\Annotation\Cacheable;
 
+#[Cacheable]                   // no lifetime (default expiry: 'never'): kept until a write invalidates it, client gets max-age=0
 #[Cacheable(expiry: 'short')]  // 60 seconds
 #[Cacheable(expiry: 'medium')] // 1 hour
 #[Cacheable(expiry: 'long')]   // 1 day
-#[Cacheable(expiry: 'never')]  // 1 year
 #[Cacheable(expirySecond: 300)] // Custom TTL
+#[Cacheable(expiryAt: 'expiry_at')] // Until the time in $body['expiry_at']
 ```
 
 Parameters:
-- `expiry`: 'short' | 'medium' | 'long' | 'never'
+- `expiry`: 'short' | 'medium' | 'long' | 'never' (default). The store keeps a `never` entry under the `never` preset (31536000 seconds by default); the presets come from the `Expiry` binding
 - `expirySecond`: Custom TTL in seconds
-- `expiryAt`: Body field containing expiry timestamp
+- `expiryAt`: Body key holding the expiry time as a `strtotime()` string; a missing key throws `ExpireAtKeyNotExists`. Precedence: `expiryAt`, then `expirySecond`, then `expiry`
 - `type`: 'value' (body only) | 'view' (body + rendered view)
 
 ### #[HttpCache]
@@ -65,6 +66,7 @@ Parameters:
 - `mustRevalidate`: Require revalidation when stale
 - `maxAge`: Client cache lifetime (seconds)
 - `sMaxAge`: Shared cache (CDN) lifetime (seconds)
+- `etag`: Body keys whose string values make the ETag instead of the whole representation (partial ETag)
 
 ### #[NoHttpCache]
 
@@ -78,7 +80,7 @@ use BEAR\RepositoryModule\Annotation\NoHttpCache;
 
 ### #[Refresh]
 
-Invalidates dependent cache after command execution.
+After a write that answers below 400, purges the URI and rebuilds it with a GET (and stores it if that GET did not). The URI template expands from the write's body, then its query.
 
 ```php
 use BEAR\RepositoryModule\Annotation\Refresh;
@@ -90,7 +92,7 @@ public function onPut(int $id): static { ... }
 
 ### #[Purge]
 
-Purges specific cache after command execution.
+After a write that answers below 400, purges the URI. The template expands as for `#[Refresh]`.
 
 ```php
 use BEAR\RepositoryModule\Annotation\Purge;
@@ -119,6 +121,10 @@ A purge also reaches the query variants of the URI it names that differ from it 
 
 ## Modules
 
+### QueryRepositoryModule
+
+Base module: binds the core with a `NullAdapter` store (nothing is kept), a `NullPurger` and the cache log off, and installs the `#[Cacheable]` and donut interceptors. Storage and CDN modules replace its defaults: `$module->override(new StorageRedisDsnModule(...))`.
+
 ### StorageRedisDsnModule
 
 Configures Redis-backed storage.
@@ -127,6 +133,7 @@ Configures Redis-backed storage.
 use BEAR\QueryRepository\StorageRedisDsnModule;
 
 new StorageRedisDsnModule('redis://localhost:6379');
+// optional: $options, $defaultLifetime, $marshallingOptions (e.g. ['enabled' => true, 'type' => 'deflate'])
 ```
 
 ### StorageMemcachedModule
@@ -136,22 +143,35 @@ Configures Memcached-backed storage.
 ```php
 use BEAR\QueryRepository\StorageMemcachedModule;
 
-new StorageMemcachedModule('localhost', 11211);
+new StorageMemcachedModule('mem1.example.com:11211:33,mem2.example.com:11211:67'); // {host}:{port}[:{weight}], comma-separated
 ```
 
 ### CDN Modules
 
 ```php
-use BEAR\QueryRepository\FastlyModule;
-use BEAR\QueryRepository\AkamaiModule;
+use BEAR\QueryRepository\Cdn\AkamaiModule;
+use BEAR\QueryRepository\Cdn\FastlyModule;
 
-new FastlyModule($apiKey, $serviceId);
-new AkamaiModule($host, $clientToken, $clientSecret, $accessToken);
+new FastlyModule($fastlyApiKey, $fastlyServiceId); // requires bear/fastly-module
+new AkamaiModule();
 ```
 
-### BodySerializationErrorHandlerInterface
+`FastlyModule` sets `Surrogate-Control` and purges by surrogate key through the Fastly API. `AkamaiModule` only sets the headers (`Akamai-Cache-Control`, `Surrogate-Key` renamed to `Edge-Cache-Tag`); it binds no purger, so a purge does not reach Akamai unless the app binds its own `PurgerInterface`.
 
-`QueryRepositoryModule` binds the default `ThrowSerializationError`, which fails the request when a body the ETag computation serializes holds a value `serialize()` refuses (`EtagSetter` for a `#[Cacheable]` value entry; `MobileEtagSetter` for a `#[Cacheable]` entry or a `#[CacheableResponse]` page, not a `#[DonutCache]` page, which computes no ETag on store). `ProdQueryRepositoryModule` binds `SkipSerializationError` instead, which lets the response go out uncached (`put_skipped{reason: unserializable}`) rather than fail. An application rebinds `BodySerializationErrorHandlerInterface` to its own implementation (report to Sentry and return, say) to get the same uncached-response safety net with its own side effect.
+### Other modules
+
+- `CacheVersionModule($version)`: the cache namespace. Deploy with a new version so entries stored by the previous one are not read.
+- `StorageExpiryModule($short, $medium, $long)`: the `short`/`medium`/`long` presets (60/3600/86400 by default); bind `Expiry` to change `never` too.
+- `DevEtagModule`: ETags derived from the URI instead of the content, for debugging.
+- `DevQueryRepositoryLogModule` / `ProdQueryRepositoryLogModule`: turn the cache log on (see below).
+
+### A stored body must serialize
+
+A `#[Cacheable]` body is checked by serializing it before its own entry is stored or its pre-write cleanup runs; an embedded child has run by then, and a cached child has stored its own entry. A value `serialize()` refuses (a closure, a PDO connection, a DOM node, an object whose `__serialize()` throws) fails the request in every environment with the exception `serialize()` throws, unwrapped, and the log records it as `cache_error{operation: write}` with that exception's class and message. A write fails the same way when the GET that refreshes its entry builds such a body, after the write and the purge of its entry, including any CDN purge, have run. A PHP resource such as a stream is not refused: `serialize()` turns it into `0`, so the check passes and the stored copy loses it (`0`, or `null` with a deprecation notice under igbinary); keep resources out of a cached body. A `#[CacheableResponse]`/`#[DonutCache]` page stores its rendered view, so its body is not checked; under the deprecated `MobileEtagModule` a `#[CacheableResponse]` page's body must serialize too, since its ETag serializes it.
+
+### Client Cache-Control of a #[Cacheable] response
+
+A `#[Cacheable]` response is stored with its client `Cache-Control`: `max-age` from `expiryAt`, then `expirySecond`, then the preset, or `max-age=0` when the declaration has no lifetime (the default `expiry: 'never'`, for content that lives until a write invalidates it; data that changes without a write, such as a dashboard or stock prices, declares a lifetime). An `expiryAt` already past resolves to no lifetime (`resolvedTtl: 0`): no `max-age` is added, not even `max-age=0`, and the entry is stored without expiry (`requestedTtl: 0`), so it is served until a write invalidates it. `max-age=0` makes a browser revalidate with the ETag, while an `s-maxage` from `#[HttpCache]` still governs a shared cache. A hit replays the stored directive with `Age`, so a client counts down the same lifetime. A `Cache-Control` that already has `max-age` or `no-store` (from `#[HttpCache]`/`#[NoHttpCache]` or the resource) is kept; other directives get the lifetime appended. A response whose own code marked it unstorable (`private` or `no-store`) gets none. A class-level `#[CacheableResponse]` response, which the attribute stores without a lifetime, gets `max-age=0` by the same rule on a 2xx or 3xx, both when stored and when recomposed; one that answers 4xx/5xx or sets its own ETag is not stored (`put_skipped` reason `error-code` / `etag-present`) and gets none. A `#[DonutCache]` page is not affected, nor is an `onGet()` carrying a method-level `#[CacheableResponse]`, which stores only the template the same way.
 
 ## Cache Dependencies
 
@@ -182,6 +202,8 @@ A child a cached parent embeds is safe in one of two shapes:
 An untagged data dependency - a child the parent reads or stores that carries no tag - is the one shape that goes stale: the parent's cache holds the child's data, while a change to the child never reaches the parent before the parent's own TTL. Caching the parent caches such a child too, even though the child declares no cache. While it stays at the top level of the body, the log records it as `dependency_skipped` (reason `no_etag_or_surrogate_key`, or `no_body` when its run left a null body); make the child cacheable or render it as a hole.
 
 Dependencies and holes are found where `#[Embed]` puts a child: at the top level of the body. A request the page moves into a nested array, replaces or `unset()`s before the write is not seen. On a `#[CacheableResponse]`/`#[DonutCache]` page a nested request does not become a hole either: when the template prints it, it runs and its output is written into the stored template, its tags reach no one, and nothing is logged. The page then shows that child's old content until the page's own TTL, and a per-user child nested this way puts one visitor's content into the template every visitor shares.
+
+A child the template fetches while rendering, from a template helper for example, is written into the stored template the same way. Declare it there with `$cacheDependency->depends($page, $child)`, where `$cacheDependency` is the injected `CacheDependencyInterface`: the page's stored template and view then carry the child's tags, so invalidating the child rebuilds the page from `onGet()`. A per-user child still does not belong in the template.
 
 A list whose length, order or queries come from data (blocks an editor arranges, say) cannot be written as `#[Embed]` on the page, which is static. Build it in a child resource instead, embed that child, and let the child list the block requests at the top level of its own body - the child's write is read the same way:
 
@@ -225,24 +247,27 @@ On a donut page a top-level embedded request becomes a hole that can only be pri
 
 ## Donut Caching
 
-Combines static outer content with dynamic inner content.
+A page stores its rendered template; each child it takes in with `#[Embed]` and only renders is a hole, rendered into the template on every read. A value fetched in `onGet()` with `$this->resource->get()` is part of the template, not a hole.
 
 ```php
 use BEAR\RepositoryModule\Annotation\DonutCache;
+use BEAR\Resource\Annotation\Embed;
 
 #[DonutCache]
 class BlogPage extends ResourceObject
 {
+    #[Embed(rel: 'comment', src: 'app://self/comment')] // hole
     public function onGet(): static
     {
-        $this->body = [
-            'header' => $this->resource->get('app://self/header'),  // static
-            'content' => $this->resource->get('app://self/content'), // dynamic
-        ];
+        $this->body['article'] = '1'; // template
         return $this;
     }
 }
 ```
+
+- `#[DonutCache]`: stores the template only; holes run on every request. For per-user holes.
+- `#[CacheableResponse]`: also stores the composed page; a hole's purge recomposes it from the template. A write method of the class purges and rebuilds the page.
+- `#[CacheableResponse]` on `onGet()` alone stores the template only, as `#[DonutCache]` does. A write method marked `#[RefreshCache]` purges and rebuilds its own URI.
 
 ## Cache Log (Semantic Log)
 
@@ -257,7 +282,7 @@ Cache operations are logged as an open/event/close tree (Koriym.SemanticLogger) 
 | `get` | open | A resource/donut GET scope; embedded child GETs nest under it |
 | `cache_hit` / `cache_miss` (`layer`) | close/event | Lookup outcome (`layer`: `resource` / `donut` / `donut-view` / `etag`) |
 | `command` (`method`/`annotations`/`source`) | open | A write scope; `source` names the producing interceptor, `annotations` its `#[Refresh]`/`#[Purge]` attributes (empty on the CacheableResponse path by design) |
-| `depends_on` (`parent`/`child`/`childTags`) | event | Parent registered a dependency on a child's tags. A `#[Cacheable]` parent records it on put for each child that carries tags (their tags land on `save_value`/`save_view` and `save_etag`); a donut page write records it for a data dependency that carries tags — a child whose `onGet()` reads it — whose tags land on `save_donut` too. A hole records `dependency_skipped` instead: its tags reach `save_etag`/`save_donut_view` (`#[CacheableResponse]`) or only `cdn_headers.surrogateKeys` (`#[DonutCache]`), never `save_donut` |
+| `depends_on` (`parent`/`child`/`childTags`) | event | Parent registered a dependency on a child's tags. A `#[Cacheable]` parent records it on put for each child that carries tags (their tags land on `save_value`/`save_view` and `save_etag`); a donut page write records it for a data dependency that carries tags — a child whose `onGet()` reads it — whose tags land on `save_donut` too, and for each `CacheDependencyInterface::depends()` call made while the page renders (from a template helper, say), between `put_donut` and the `save_*` events, whose tags land on `save_donut` as well. A hole records `dependency_skipped` instead: its tags reach `save_etag`/`save_donut_view` (`#[CacheableResponse]`) or only `cdn_headers.surrogateKeys` (`#[DonutCache]`), never `save_donut` |
 | `dependency_skipped` (`parent`/`child`/`reason`) | event | A cached parent's write (a `#[Cacheable]` put or a donut page write) left a top-level embedded child out of its dependencies: the child carried neither an ETag nor a Surrogate-Key. `reason` is what its body showed: `no_body` (null; on a donut page usually a hole) or `no_etag_or_surrogate_key` (set but untagged; usually a data dependency, though a hole whose class declares a default `$body` reads the same). `docs/reading-the-log.md` explains each |
 | `save_value` / `save_view` / `save_etag` / `save_donut` / `save_donut_view` | event | What was offered to the pool, with `tags`, `requestedTtl` (seconds until expiry; 0/null = no expiry set), and the `saved` outcome: `true` = the pool accepted it, not that it is kept — `NullAdapter`, the store when none is bound, accepts every write and keeps nothing |
 | `pre_write_cleanup` (`uri`) | event | Marker recorded by a writer right before it clears the entry it is about to rewrite; the `invalidate` immediately following it in the same scope is pre-write cleanup, not a real invalidation |
@@ -265,7 +290,7 @@ Cache operations are logged as an open/event/close tree (Koriym.SemanticLogger) 
 | `cdn_headers` (`uri`/`headers`/`surrogateKeys`) | event | The CDN-facing headers a donut write or refresh put on the response, read back after they are final: the literal name => value pairs (`CDN-Cache-Control`, `Surrogate-Control`, `Akamai-Cache-Control`, `Surrogate-Key`, `Edge-Cache-Tag`) — including the bound setter's default when no `sMaxAge` was requested. No lifetime header means the response gave the CDN no lifetime directive (the `putDonut` kind); what the CDN then does is outside this log. `surrogateKeys` is the split key list a purge's tags must reach to drop the response at the edge. A state-served hit replays the stored headers and emits no new event |
 | `conditional_request` (`ifNoneMatch`) | open | A conditional request presented a validator at the transfer boundary; closes with the ETag pool's answer as `cache_hit`/`cache_miss` at layer `etag`. A hit is the 304 decision — the entire request answered without running the resource, which no `get` scope can show. No `If-None-Match` presents nothing and records nothing. Flushing stays the host's responsibility: flush before an early-exit 304 transfer to retain it |
 | `purge` | event | An explicit purge request |
-| `put_skipped` (`uri`/`reason`[/`code`][/`class`]) | event | A miss was not followed by a put (`reason`: `etag-present` / `error-code` with the actual response `code` / `not-cacheable` / `unstorable` / `unserializable` with the failing `class`) |
+| `put_skipped` (`uri`/`reason`[/`code`]) | event | A miss was not followed by a put (`reason`: `etag-present` / `error-code` with the actual response `code` / `not-cacheable` / `unstorable`) |
 | `cache_error` (`uri`/`operation`/`error`/`exceptionClass`) | event | A failure raised on the cache read/write path: the pool itself (e.g. cache server down) or any work the store performs (rendering a view, purging a CDN); `operation`: `read` / `write`, `exceptionClass` names the throwable that failed |
 | `put_donut` / `refresh_donut` | event | Donut store / re-render from a template hit |
 | `semantic_logger_error` (`code` + details) | event | Core SemanticLogger diagnostic (koriym/semantic-logger, not this package): logging-protocol misuse recorded in-band at the exact failure point — codes: `close_id_mismatch` / `close_without_open` / `unclosed_at_flush` / `context_serialization_failed`; the tree is preserved |
@@ -277,7 +302,7 @@ A donut refresh is not marked in any response header — only in the log (`refre
 
 - Off by default (`QueryRepositoryModule`): `SemanticLoggerInterface` annotated with `#[CacheLog]` → `Koriym\SemanticLogger\NullSemanticLogger`. The qualifier is why installing this package cannot decide an application's own `SemanticLoggerInterface` binding; resolve the cache log with `getInstance(SemanticLoggerInterface::class, CacheLog::class)`. Nothing is recorded, nothing accumulates, no flush is owed — the same rule the package already applies to its cache engine (`NullAdapter`). A measured healthy read carries no information (0 failure entries out of 28-95 per session in the four demos), while a recorded session costs ~1.4 KB per request until something flushes it, so recording is something an app asks for.
 - Development: `new DevQueryRepositoryLogModule($appDir . '/var/log/query-repository', module: new QueryRepositoryModule())`. Every session is written whole, one file per process — one request under PHP-FPM, every request of a CLI script that makes several — plus a fixed `latest.json` — `vendor/bin/stree var/log/query-repository/latest.json` renders the session that just ran. Note the wrapping: a module's `install()` cannot replace a binding the installer already holds (`Container::merge()` keeps existing keys), which is why the log module takes the module it turns recording on for, exactly as `DevEtagModule` does.
-- Production: `new ProdQueryRepositoryLogModule('php://stdout', sampleRate: 1000, module: new QueryRepositoryModule())`. The session is buffered and judged at flush (`RetentionPolicyInterface`), and the line is who else knows rather than success-vs-failure: mutations (a `command` scope, a `manual_*` call, or an `invalidate` that is not marker-preceded pre-write cleanup), effects that were intended and did not happen (`saved: false`, `invalidate` with `roPool`/`etagPool`/`cdn` `failed`, a `manual_*` result of `failed`, `cache_error{operation: write}` - a store or an invalidation abandoned), and an optional sample. Healthy reads are dropped, and so are two things that look like incidents but are accounted for elsewhere: `cache_error{operation: read}` is already reported by the application's own warning channel - both interceptors `trigger_error()` before degrading, for every cause and not only the outage a pool's monitoring would see - and it repeats on every request while the incident lasts (so the separation of a degraded miss from a cold one is a development-time reading), and every `put_skipped` except `unserializable` records a store that was never attempted because a rule forbade it - a response code the path will not cache (`#[Cacheable]` skips any non-200, a donut skips 4xx and above), a validator already set, or a page served from its template - which is a decision, stable while the code and the configuration are, rather than a runtime failure; `put_skipped{reason: unserializable}` (a body `serialize()` refused) keeps its session despite looking like the rest, since it is the defect `SkipSerializationError` exists to surface. Retention keeps or drops whole sessions: the dropped events do not keep a session on their own, and a session kept for another reason still carries them. `saved: false` can still repeat per write under a capacity problem: that is the signal, and a host that needs a ceiling decorates `LogWriterInterface`. This buys forensics, not monitoring — hit rates belong to metrics. An app that wants full recording for one request implements `RetentionPolicyInterface` and overrides the binding, since only the app knows what authorizes it.
+- Production: `new ProdQueryRepositoryLogModule('php://stdout', sampleRate: 1000, module: new QueryRepositoryModule())`. The session is buffered and judged at flush (`RetentionPolicyInterface`), and the line is who else knows rather than success-vs-failure: mutations (a `command` scope, a `manual_*` call, or an `invalidate` that is not marker-preceded pre-write cleanup), effects that were intended and did not happen (`saved: false`, `invalidate` with `roPool`/`etagPool`/`cdn` `failed`, a `manual_*` result of `failed`, `cache_error{operation: write}` - a store or an invalidation abandoned), and an optional sample. Healthy reads are dropped, and so is one thing that looks like an incident but is accounted for elsewhere: `cache_error{operation: read}` is already reported by the application's own warning channel - both interceptors `trigger_error()` before degrading, for every cause and not only the outage a pool's monitoring would see - and it repeats on every request while the incident lasts (so the separation of a degraded miss from a cold one is a development-time reading). Every `put_skipped` records a store that was never attempted because a rule forbade it - a response code the path will not cache (`#[Cacheable]` skips any non-200, a donut skips 4xx and above), a validator already set, or a page served from its template - which is a decision, stable while the code and the configuration are, rather than a runtime failure, so none of its reasons keep a session on their own. A body a stored entry cannot hold (`serialize()` refusing a closure, say) fails the request instead of producing a skip, and `cache_error{operation: write}` - already one of the kept effects above - records the refusal. Retention keeps or drops whole sessions: the dropped events do not keep a session on their own, and a session kept for another reason still carries them. `saved: false` can still repeat per write under a capacity problem: that is the signal, and a host that needs a ceiling decorates `LogWriterInterface`. This buys forensics, not monitoring — hit rates belong to metrics. An app that wants full recording for one request implements `RetentionPolicyInterface` and overrides the binding, since only the app knows what authorizes it.
 - A written session is application-log material, not an artefact: it records resource URIs **with their query strings** (`AbstractUri::__toString()` appends them, so `page://self/reset?token=…` is written in full), the client's raw `If-None-Match`, `$_SERVER['REQUEST_URI']` on the `HttpCache` path, cache/surrogate tags, CDN header values, and `cache_error.error` - the verbatim `getMessage()` of whatever the read/write path threw, which for an HTTP CDN purger can carry the purge endpoint and its credentials. No response body is recorded by any context. `LogFileWriter` therefore creates its directory 0700 and its files 0600, and a host that must scrub decorates `LogWriterInterface` rather than waiting for a redaction option: the seam is one class (`final class Scrubbed implements LogWriterInterface { public function __construct(private LogWriterInterface $inner) {} }`). The same seam rate-limits: during a cache-pool outage every request emits `cache_error`, so retention rises from `1/sampleRate` to 100% - a decorator that caps kept sessions per interval keeps an incident from flooding the collector it exists to inform.
 - Destinations are `LogWriterInterface` implementations, so a session's payload stays a tree rather than a string: `LogFileWriter` (one whole session per file — what `stree` reads), `LogStreamWriter` (one JSON line per session to a stream or file), `PolicyLogWriter` (the retention decorator) and `PsrLogWriter`, which hands the tree to the app's PSR-3 logger under the `log` context key. PSR-3 is an adapter and not the interface for two reasons: it carries strings, so a `LineFormatter` would flatten the tree the schemas describe, and its severity would act as a second filter able to drop what the content-based retention policy chose to keep (the level is configuration on the adapter, never derived).
 - One flush, several destinations: the log modules declare an empty `LogWriterInterface` set, and the sink passes each flushed session to the bound writer and then to every writer added with `MultiBinder::newInstance($this, LogWriterInterface::class)->addBinding()->to(X::class)`, in the order added. Adding replaces no binding, so install order cannot drop a destination; decorating stays the way to change what the bound writer gets. An added writer gets every session unfiltered: `PolicyLogWriter` retention and any decorator apply to the bound writer only, so an added writer scrubs and samples for itself. A writer that throws is reported to `error_log()` and the rest still run. Bind `X` as well (`$this->bind(X::class)`): a compiled injector builds only bound classes, so an unbound one works under `Ray\Di\Injector` and fails in production (ray-di/Ray.Compiler#148).
@@ -287,9 +312,9 @@ A donut refresh is not marked in any response header — only in the log (`refre
 
 ### Verifying the event-driven cache from logs
 
-- Event-driven entries appear with their configured TTL in seconds (`requestedTtl` = seconds until expiry; the `never` convention = 31536000 = 1 year, effectively indefinite). `0`/`null` also mean no expiry is set. Such entries live until an `invalidate` event with a matching tag — correlate `save_*` `tags` with `invalidate` `tags` to confirm a write busted its dependents. Which `save_*` carries a child's tags is decided by the parent's declaration: `#[Cacheable]` puts them on `save_value`/`save_view` and `save_etag`, records a `depends_on` edge as well, and the parent closes `cache_miss` once the child is purged; a donut parent separates two uses: a data dependency (a child `onGet()` read) records `depends_on` and tags the template and the view, so purging it makes the next read a `cache_miss`; a hole (run by the template, not before the write) records `dependency_skipped` instead of an edge and tags the view only, so purging it still closes `cache_hit{layer: donut-view}` with a `refresh_donut` inside - a page that inlines a child by other means is not tracked at all — a hit with no `refresh_donut` is the stale shape; `#[DonutCache]` stores no child tag at all (they reach only `cdn_headers.surrogateKeys`) and every read after the first is `refresh_donut` + `put_skipped{not-cacheable}`.
+- Event-driven entries appear with their configured TTL in seconds (`requestedTtl` = seconds until expiry; the `never` convention = 31536000 = 1 year, effectively indefinite — the TTL asked of the store, not a browser lifetime: a declaration without a lifetime, a lifetime-less `#[Cacheable]` or a class-level `#[CacheableResponse]`, sends the client `max-age=0`). `0`/`null` also mean no expiry is set. Such entries live until an `invalidate` event with a matching tag — correlate `save_*` `tags` with `invalidate` `tags` to confirm a write busted its dependents. Which `save_*` carries a child's tags is decided by the parent's declaration: `#[Cacheable]` puts them on `save_value`/`save_view` and `save_etag`, records a `depends_on` edge as well, and the parent closes `cache_miss` once the child is purged; a donut parent separates two uses: a data dependency (a child `onGet()` read) records `depends_on` and tags the template and the view, so purging it makes the next read a `cache_miss`; a hole (run by the template, not before the write) records `dependency_skipped` instead of an edge and tags the view only, so purging it still closes `cache_hit{layer: donut-view}` with a `refresh_donut` inside — a hit with no `refresh_donut` is the stale shape. A child the template fetches while rendering is tracked only when declared with `CacheDependencyInterface::depends()`: it then records `depends_on` between `put_donut` and the `save_*` events and tags the template and the view like a data dependency; one inlined by other means is not tracked at all. A `#[DonutCache]` page stores no view, so its holes' tags reach only `cdn_headers.surrogateKeys`, and every read after the first is `refresh_donut` + `put_skipped{not-cacheable}`.
 - A `get` scope with no events and a `cache_hit` close was served from cache; nesting mirrors the embed structure of resources; `manual_*` scopes mark non-AOP entry points — a direct `put()`, `purge()`, `invalidateTags()` or donut write (`putStatic()`/`putDonut()`), the whole write rooted in one `manual_store` scope.
-- A miss scope without `save_*` events means no put happened — look for a `put_skipped` event recording why (`reason`: `etag-present`, `error-code` with the actual response `code`, `not-cacheable` for donut pages served from their template plus inner caches, `unstorable` for a response marked unstorable for this request or carrying a `private`/`no-store` `Cache-Control` other than the value its `#[HttpCache]`/`#[NoHttpCache]` declares, or `unserializable` with the `class` `serialize()` refused). A non-200 GET yields `put_skipped{error-code, code}` + `purge` + `invalidate` (for commands, a 4xx `command_result` with no invalidation events).
+- A miss scope without `save_*` events means nothing was stored — look for a `put_skipped` event recording why (`reason`: `etag-present`, `error-code` with the actual response `code`, `not-cacheable` for donut pages served from their template plus inner caches, or `unstorable` for a response marked unstorable for this request or carrying a `private`/`no-store` `Cache-Control` other than the value its `#[HttpCache]`/`#[NoHttpCache]` declares), or a `cache_error{operation: write}` when the put failed: a body `serialize()` refuses fails the request this way, with no `put_skipped`. A non-200 GET yields `put_skipped{error-code, code}` + `purge` + `invalidate` (for commands, a 4xx `command_result` with no invalidation events).
 - An `invalidate` is pre-write cleanup iff the event immediately preceding it in the same scope's event stream is a `pre_write_cleanup` marker — the writer records the purpose at the source (`QueryRepository::doPut()` and `DonutRepository::putStatic()`/`putDonut()` emit the marker right before clearing the entry they are about to rewrite), so nothing is inferred from tag correlation and no case is undecidable. Any `invalidate` without the marker is a real invalidation (a `#[Refresh]` command shows both shapes: the purge's invalidate has no marker, the re-put's deleteEtag is marker-preceded). The cleanup uses the resource's own URI tag — which is also its parents' surrogate key — so a child refill visibly purges the parent entry, by design.
 - Check outcome fields: `saved: false` on a save context means the pool rejected the entry — it is NOT cached despite the save event. `cdn` on `invalidate` is tri-state: `purged` (a configured purger ran), `failed` (the purge threw; fail-closed, after local pools were invalidated), `skipped` (NullPurger, no CDN configured). A `cache_error` event records a failure on the cache path, not necessarily a cache outage: read `exceptionClass` before concluding one, because `operation: write` also covers the work the store performs (a view that fails to render, a CDN purge that throws). A pool exception on `operation: read` means the store could not be read, so the `cache_miss` after it reports a failed lookup rather than an absent entry. `semantic_logger_error` events are core SemanticLogger diagnostics (codes: `close_id_mismatch`, `close_without_open`, `unclosed_at_flush`, `context_serialization_failed`) recording logging-protocol misuse in-band at the exact failure point — the log tree itself is preserved.
 - Events and nested scopes within one scope are interleaved in one `log` list, in record order (resolved upstream: koriym/semantic-logger's `log` format replaces the old separate `open`/`events` arrays). Use that order, plus scope nesting and the next GET's hit/miss, as ground truth for final state after competing save/invalidate.
@@ -301,19 +326,19 @@ Schemas: docs/schemas/context/ (one JSON Schema per context, e.g. docs/schemas/c
 ### Core Components
 
 - **QueryRepository**: Main entry point for cache operations (put, get, purge)
-- **ResourceStorage**: Low-level storage using Symfony Cache TagAwareAdapter
-- **CacheInterceptor**: AOP interceptor for #[Cacheable] resources
-- **CommandInterceptor**: Handles #[Refresh] and #[Purge] after commands
-- **DonutRepository**: Implements donut caching pattern
+- **ResourceStorage**: Low-level storage using Symfony Cache TagAwareAdapter: a resource pool and an ETag pool (the resource pool unless one is bound)
+- **CacheInterceptor**: AOP interceptor on `onGet()` of #[Cacheable] resources
+- **CommandInterceptor**: On write methods of #[Cacheable] resources: runs `RefreshSameCommand` (purge and re-GET its own URI) and `RefreshAnnotatedCommand` (#[Refresh]/#[Purge])
+- **RefreshInterceptor**: #[Refresh]/#[Purge] on a resource that is not #[Cacheable]
+- **DonutRepository**: Implements donut caching pattern (`DonutCacheInterceptor`, `DonutCacheableResponseInterceptor` on reads, `DonutCommandInterceptor` on writes)
 - **CacheDependency**: Manages cache dependencies via Surrogate-Key headers
 
 ### Cache Invalidation Flow
 
-1. Resource with #[Refresh] or #[Purge] is invoked
-2. CommandInterceptor executes the command
-3. After successful response, annotations are processed
-4. ResourceStorage.invalidateTags() clears both RO and ETag pools
-5. CDN purger (if configured) purges surrogate keys
+1. A write method runs; the interceptor acts only when it answers below 400
+2. The resource's own URI, default-valued `onGet()` parameters dropped, is purged and rebuilt by a GET on a new resource instance (`RefreshSameCommand` for #[Cacheable], `DonutCommandInterceptor` for #[CacheableResponse] or #[RefreshCache])
+3. Each #[Purge] URI is purged; each #[Refresh] URI is purged and rebuilt by a GET
+4. A purge invalidates the URI's tag and its group tag: ResourceStorage::invalidateTags() clears both pools, then the `PurgerInterface` (CDN) runs; a failing CDN purge throws after the local pools are cleared
 
 ## Documentation
 

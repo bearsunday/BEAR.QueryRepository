@@ -65,6 +65,8 @@ class DonutQueryInterceptorPurgeTest extends TestCase
     protected function tearDown(): void
     {
         MutableComment::$comment = 'comment-a';
+        // The pool outlives each test: purge the child so no stored view keeps the comment a test set
+        $this->repository->purge(new Uri('page://self/html/mutable-comment'));
         // Every emitted log entry must conform to the published schema (drift detection)
         $this->flushAndValidate($this->logger);
     }
@@ -164,6 +166,28 @@ class DonutQueryInterceptorPurgeTest extends TestCase
         $a2 = $this->resource->get($pageUri);
         $this->assertNotSame($aLastModified, $a2->headers[Header::LAST_MODIFIED], 'A→B→A does not revive the old A time');
         $this->assertNotSame($bLastModified, $a2->headers[Header::LAST_MODIFIED], 'B→A advances Last-Modified');
+    }
+
+    public function testADependencyDeclaredWhileRenderingRebuildsThePage(): void
+    {
+        $pageUri = 'page://self/html/render-time-dependency';
+        MutableComment::$comment = 'comment-a';
+        $this->assertSame('comment:comment-a', (string) $this->resource->get($pageUri)->view);
+
+        MutableComment::$comment = 'comment-b';
+        $this->repository->purge(new Uri('page://self/html/mutable-comment'));
+
+        $this->assertSame('comment:comment-b', (string) $this->resource->get($pageUri)->view, 'the template holds the old comment, so the purge drops it instead of recomposing from it');
+    }
+
+    public function testAPageWithoutALifetimeTellsTheBrowserToRevalidate(): void
+    {
+        $pageUri = 'page://self/html/mutable-blog-posting';
+        $this->repository->purge(new Uri($pageUri)); // stored afresh, not a view an earlier test left
+        $this->assertSame('max-age=0', $this->resource->get($pageUri)->headers[Header::CACHE_CONTROL], 'when stored');
+
+        $this->repository->purge(new Uri('page://self/html/mutable-comment'));
+        $this->assertSame('max-age=0', $this->resource->get($pageUri)->headers[Header::CACHE_CONTROL], 'when recomposed after a purge');
     }
 
     private function isStateCached(): bool

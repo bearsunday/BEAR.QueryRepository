@@ -10,6 +10,7 @@ use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
+use FakeVendor\HelloWorld\Resource\Page\Html\ClosureBodyDonut;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Madapaja\TwigModule\TwigModule;
 use Override;
@@ -21,7 +22,9 @@ use RuntimeException;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
+use Throwable;
 
+use function array_fill;
 use function assert;
 use function basename;
 use function class_exists;
@@ -58,10 +61,11 @@ class DonutRepositoryTest extends TestCase
         parent::setUp();
     }
 
-    private function getInjector(PurgerInterface|null $purger = null): Injector
+    private function getInjector(PurgerInterface|null $purger = null, bool $mobileEtag = false): Injector
     {
         $namespace = 'FakeVendor\HelloWorld';
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance($namespace));
+        $base = new FakeEtagPoolModule(ModuleFactory::getInstance($namespace));
+        $module = $mobileEtag ? new MobileEtagModule($base) : $base;
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
         if ($purger !== null) {
             $module->override(new class ($purger) extends AbstractModule {
@@ -214,34 +218,38 @@ class DonutRepositoryTest extends TestCase
         }
     }
 
-    public function testRepeatedUnserializableDonutGetDoesNotPurge(): void
+    public function testAClosureInADonutPageBodyIsNotStoredSoItNeitherFailsNorPurgesAgain(): void
     {
-        // Mirrors testRepeatedUnstorableDonutGetDoesNotPurge for the unserializable skip
-        // (#259 follow-up): doPutStatic()'s own pre-write cleanup must see it too, or a
-        // #[CacheableResponse] page whose body serialize() refuses would purge every request.
         $purger = new FakeCountingPurger();
-        $namespace = 'FakeVendor\HelloWorld';
-        $module = new MobileEtagModule(new FakeEtagPoolModule(ModuleFactory::getInstance($namespace)));
-        $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
-        $module->override(new class ($purger) extends AbstractModule {
-            public function __construct(private readonly PurgerInterface $purger)
-            {
-            }
+        $resource = $this->getInjector($purger)->getInstance(ResourceInterface::class);
+        ClosureBodyDonut::$calls = 0;
 
-            #[Override]
-            protected function configure(): void
-            {
-                $this->bind(PurgerInterface::class)->toInstance($this->purger);
-                $this->bind(BodySerializationErrorHandlerInterface::class)->to(SkipSerializationError::class);
-            }
-        });
-        $resource = (new Injector($module, __DIR__ . '/tmp'))->getInstance(ResourceInterface::class);
-
-        for ($i = 0; $i < 5; $i++) {
-            $resource->get('page://self/html/unserializable-donut');
+        for ($i = 0; $i < 3; $i++) {
+            $resource->get('page://self/html/closure-body-donut');
         }
 
-        $this->assertSame([], $purger->tags);
+        $this->assertSame(1, ClosureBodyDonut::$calls, 'the page stores its rendered view, so later requests are served from it');
+        $this->assertCount(1, $purger->tags, 'only the first write cleans up before storing');
+    }
+
+    public function testUnderMobileEtagAClosureInACacheableResponseBodyFailsBeforeAnythingIsPurged(): void
+    {
+        $purger = new FakeCountingPurger();
+        $resource = $this->getInjector($purger, true)->getInstance(ResourceInterface::class);
+
+        $outcomes = [];
+        for ($i = 0; $i < 2; $i++) {
+            try {
+                $resource->get('page://self/html/closure-body-donut');
+                $outcomes[] = 'served';
+            } catch (Throwable $e) {
+                $outcomes[] = $e::class . ': ' . $e->getMessage();
+            }
+        }
+
+        // The deprecated MobileEtagModule's ETag serializes the body, which a page otherwise does not store
+        $this->assertSame(array_fill(0, 2, "Exception: Serialization of 'Closure' is not allowed"), $outcomes, 'nothing is stored, so the next request fails too');
+        $this->assertSame([], $purger->tags, 'a write that cannot happen purges nothing');
     }
 
     public function testUnstorableDonutWriteStillDropsAnEarlierEntry(): void

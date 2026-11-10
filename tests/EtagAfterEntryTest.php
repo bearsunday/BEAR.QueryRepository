@@ -87,15 +87,6 @@ class EtagAfterEntryTest extends TestCase
         $this->assertFalse($this->answers304($injector, $ro));
     }
 
-    public function testAViewEntryWhoseBodyTheMarshallerRefusesIsNotAnswered304(): void
-    {
-        $injector = $this->app(refuseEntries: false);
-
-        $ro = $injector->getInstance(ResourceInterface::class)->get('app://self/unserializable-view');
-
-        $this->assertFalse($this->answers304($injector, $ro));
-    }
-
     public function testADonutPageViewThePoolRefusesIsNotAnswered304(): void
     {
         $injector = $this->app(refuseEntries: true);

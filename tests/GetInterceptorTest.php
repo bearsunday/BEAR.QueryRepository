@@ -10,6 +10,11 @@ use FakeVendor\HelloWorld\Resource\App\HttpCacheControlWithCacheable;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 
+use function preg_match;
+use function sleep;
+use function strtotime;
+use function time;
+
 class GetInterceptorTest extends TestCase
 {
     private ResourceInterface $resource;
@@ -47,6 +52,56 @@ class GetInterceptorTest extends TestCase
         $user = $this->resource->get('app://self/control-expiry');
         $this->assertArrayHasKey('Cache-Control', $user->headers);
         $this->assertStringContainsString('public, max-age=3', $user->headers['Cache-Control']); // 30 sec (but may 30+x sec for slow CI)
+    }
+
+    public function testAnEntryWithoutALifetimeTellsTheClientToRevalidate(): void
+    {
+        $first = $this->resource->get('app://self/user', ['id' => 1]);
+        $hit = $this->resource->get('app://self/user', ['id' => 1]);
+
+        $this->assertSame('max-age=0', $first->headers['Cache-Control']);
+        $this->assertArrayHasKey('Age', $hit->headers, 'the second read is a hit');
+        $this->assertSame('max-age=0', $hit->headers['Cache-Control']);
+    }
+
+    public function testAnEntryWithoutALifetimeKeepsTheSharedLifetimeItDeclares(): void
+    {
+        $first = $this->resource->get('app://self/cacheable-with-shared-lifetime');
+        $hit = $this->resource->get('app://self/cacheable-with-shared-lifetime');
+
+        $this->assertSame('s-maxage=600, max-age=0', $first->headers['Cache-Control']);
+        $this->assertArrayHasKey('Age', $hit->headers, 'the second read is a hit');
+        $this->assertSame('s-maxage=600, max-age=0', $hit->headers['Cache-Control']);
+    }
+
+    public function testAnExpiryAtHitLeavesTheClientTheRemainingLifetime(): void
+    {
+        $uris = ['app://self/control-expiry', 'app://self/control-expiry-view'];
+        foreach ($uris as $uri) {
+            $this->resource->get($uri);
+        }
+
+        sleep(2);
+        foreach ($uris as $uri) {
+            $before = time();
+            $hit = $this->resource->get($uri);
+            $after = time();
+            $age = (int) $hit->headers['Age'];
+            $this->assertGreaterThanOrEqual(2, $age, $uri . ' is a hit stored at least two seconds ago');
+            if (preg_match('/max-age=(\d+)/', $hit->headers['Cache-Control'], $maxAge) !== 1) {
+                $this->fail($uri . ' carries a max-age');
+            }
+
+            $this->assertIsArray($hit->body);
+            $expiryAt = $hit->body['expiry_at'];
+            $this->assertIsString($expiryAt);
+            $expiresAt = (int) strtotime($expiryAt);
+            // A client counts the stored max-age down from Age: what is left is the time to expiry
+            // when the hit was served, plus at most the second the store took to record its time
+            $left = (int) $maxAge[1] - $age;
+            $this->assertGreaterThanOrEqual($expiresAt - $after, $left, $uri);
+            $this->assertLessThanOrEqual($expiresAt - $before + 1, $left, $uri);
+        }
     }
 
     public function testCacheControlHeaderExpiryError(): void
