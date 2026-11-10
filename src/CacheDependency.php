@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Log\Context\DependencyAfterSaveContext;
 use BEAR\QueryRepository\Log\Context\DependsOnContext;
+use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\ResourceObject;
 use Koriym\SemanticLogger\NullSemanticLogger;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
+use ReflectionClass;
 
 use function array_unique;
 use function array_values;
@@ -55,5 +58,21 @@ final readonly class CacheDependency implements CacheDependencyInterface
             (string) $to->uri,
             $childTagList,
         ));
+
+        if (isset($from->headers[Header::ETAG]) && self::storesValue($from)) {
+            $this->logger->event(new DependencyAfterSaveContext((string) $from->uri, (string) $to->uri));
+        }
+    }
+
+    /**
+     * A value entry is stored, and its ETag set, before the page renders: an ETag here means the save has happened
+     *
+     * An ETag the resource set itself in onGet() reads the same.
+     */
+    private static function storesValue(ResourceObject $ro): bool
+    {
+        $attributes = (new ReflectionClass($ro))->getAttributes(Cacheable::class);
+
+        return isset($attributes[0]) && $attributes[0]->newInstance()->type === 'value';
     }
 }

@@ -15,6 +15,7 @@ declare(strict_types=1);
  * Resources used (from tests/Fake/fake-app):
  * - LevelOne -> LevelTwo -> LevelThree (3-level dependency chain)
  * - ParentA, ParentB -> ChildC (multiple parents depend on same child)
+ * - RenderTimeDependencyValue -> MutableComment (a value page reading a child while it renders)
  */
 
 use BEAR\QueryRepository\FakeEtagPoolModule;
@@ -65,6 +66,11 @@ This demo executes the following scenarios:
 7. Re-access both parents after purge
    - Both should be cache-miss (regenerated)
 
+8. Render a #[Cacheable] value page that reads a child while rendering
+   - The value and its ETag were stored before the render, so the
+     depends() call records depends_on followed by dependency_after_save:
+     a change to the child will not reach the stored entry
+
 === Executing... ===
 
 SCENARIOS;
@@ -90,6 +96,7 @@ $resource->get('page://self/dep/parent-b');                 // 5b. Access Parent
 $repository->purge(new Uri('page://self/dep/child-c'));     // 6. Manual purge (manual_purge scope)
 $resource->get('page://self/dep/parent-a');                 // 7a. Re-access ParentA
 $resource->get('page://self/dep/parent-b');                 // 7b. Re-access ParentB
+$resource->get('page://self/html/render-time-dependency-value')->toString(); // 8. Render after the save
 
 $log = $logger->flush();
 

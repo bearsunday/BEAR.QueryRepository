@@ -30,6 +30,11 @@ This demo executes the following scenarios:
 7. Re-access both parents after purge
    - Both should be cache-miss (regenerated)
 
+8. Render a #[Cacheable] value page that reads a child while rendering
+   - The value and its ETag were stored before the render, so the
+     depends() call records depends_on followed by dependency_after_save:
+     a change to the child will not reach the stored entry
+
 === Executing... ===
 === Cache Log Tree ===
 get uri=page://self/dep/level-one
@@ -49,23 +54,23 @@ get uri=page://self/dep/level-one
 │   │   │   ├── roPool: invalidated
 │   │   │   ├── etagPool: invalidated
 │   │   │   ├── cdn: skipped
-│   │   │   └── durationMs: 0.08
+│   │   │   └── durationMs: 0.064
 │   │   ├── save_value uri=page://self/dep/level-three tags=[_dep_level-three_, grp-_dep_level-three_] requestedTtl=31536000 saved=true [event]
 │   │   │   ├── uri: page://self/dep/level-three
 │   │   │   ├── tags[0]: _dep_level-three_
 │   │   │   ├── tags[1]: grp-_dep_level-three_
 │   │   │   ├── requestedTtl: 31536000
 │   │   │   └── saved: 1
-│   │   ├── save_etag uri=page://self/dep/level-three etag="3676272351" tags=[grp-_dep_level-three_, _dep_level-three_] requestedTtl=31536000 (+1 more) [event]
+│   │   ├── save_etag uri=page://self/dep/level-three etag="3218634139" tags=[grp-_dep_level-three_, _dep_level-three_] requestedTtl=31536000 (+1 more) [event]
 │   │   │   ├── uri: page://self/dep/level-three
-│   │   │   ├── etag: "3676272351"
+│   │   │   ├── etag: "3218634139"
 │   │   │   ├── tags[0]: grp-_dep_level-three_
 │   │   │   ├── tags[1]: _dep_level-three_
 │   │   │   ├── requestedTtl: 31536000
 │   │   │   └── saved: 1
 │   │   └── close cache_miss
 │   │       ├── layer: resource
-│   │       └── durationMs: 3.435
+│   │       └── durationMs: 3.13
 │   ├── depends_on parent=page://self/dep/level-two child=page://self/dep/level-three childTags=[_dep_level-three_, grp-_dep_level-three_] [event]
 │   │   ├── parent: page://self/dep/level-two
 │   │   ├── child: page://self/dep/level-three
@@ -82,7 +87,7 @@ get uri=page://self/dep/level-one
 │   │   ├── roPool: invalidated
 │   │   ├── etagPool: invalidated
 │   │   ├── cdn: skipped
-│   │   └── durationMs: 0.012
+│   │   └── durationMs: 0.005
 │   ├── save_value uri=page://self/dep/level-two tags=[_dep_level-two_, grp-_dep_level-two_ +2 items] requestedTtl=31536000 saved=true [event]
 │   │   ├── uri: page://self/dep/level-two
 │   │   ├── tags[0]: _dep_level-two_
@@ -91,9 +96,9 @@ get uri=page://self/dep/level-one
 │   │   ├── tags[3]: grp-_dep_level-three_
 │   │   ├── requestedTtl: 31536000
 │   │   └── saved: 1
-│   ├── save_etag uri=page://self/dep/level-two etag="2480234360" tags=[_dep_level-three_, grp-_dep_level-three_ +2 items] requestedTtl=31536000 (+1 more) [event]
+│   ├── save_etag uri=page://self/dep/level-two etag="1707621274" tags=[_dep_level-three_, grp-_dep_level-three_ +2 items] requestedTtl=31536000 (+1 more) [event]
 │   │   ├── uri: page://self/dep/level-two
-│   │   ├── etag: "2480234360"
+│   │   ├── etag: "1707621274"
 │   │   ├── tags[0]: _dep_level-three_
 │   │   ├── tags[1]: grp-_dep_level-three_
 │   │   ├── tags[2]: grp-_dep_level-two_
@@ -102,7 +107,7 @@ get uri=page://self/dep/level-one
 │   │   └── saved: 1
 │   └── close cache_miss
 │       ├── layer: resource
-│       └── durationMs: 5.61
+│       └── durationMs: 4.053
 ├── depends_on parent=page://self/dep/level-one child=page://self/dep/level-two childTags=[_dep_level-two_, grp-_dep_level-two_ +2 items] [event]
 │   ├── parent: page://self/dep/level-one
 │   ├── child: page://self/dep/level-two
@@ -121,7 +126,7 @@ get uri=page://self/dep/level-one
 │   ├── roPool: invalidated
 │   ├── etagPool: invalidated
 │   ├── cdn: skipped
-│   └── durationMs: 0.011
+│   └── durationMs: 0.004
 ├── save_value uri=page://self/dep/level-one tags=[_dep_level-one_, grp-_dep_level-one_ +4 items] requestedTtl=31536000 saved=true [event]
 │   ├── uri: page://self/dep/level-one
 │   ├── tags[0]: _dep_level-one_
@@ -132,9 +137,9 @@ get uri=page://self/dep/level-one
 │   ├── tags[5]: grp-_dep_level-three_
 │   ├── requestedTtl: 31536000
 │   └── saved: 1
-├── save_etag uri=page://self/dep/level-one etag="4200369382" tags=[_dep_level-two_, grp-_dep_level-two_ +4 items] requestedTtl=31536000 (+1 more) [event]
+├── save_etag uri=page://self/dep/level-one etag="1296063000" tags=[_dep_level-two_, grp-_dep_level-two_ +4 items] requestedTtl=31536000 (+1 more) [event]
 │   ├── uri: page://self/dep/level-one
-│   ├── etag: "4200369382"
+│   ├── etag: "1296063000"
 │   ├── tags[0]: _dep_level-two_
 │   ├── tags[1]: grp-_dep_level-two_
 │   ├── tags[2]: _dep_level-three_
@@ -145,12 +150,12 @@ get uri=page://self/dep/level-one
 │   └── saved: 1
 └── close cache_miss
     ├── layer: resource
-    └── durationMs: 8.132
+    └── durationMs: 4.924
 get uri=page://self/dep/level-one
 ├── uri: page://self/dep/level-one
 └── close cache_hit
     ├── layer: resource
-    └── durationMs: 0.098
+    └── durationMs: 0.046
 command method=onPut source=CommandInterceptor
 ├── method: onPut
 ├── source: CommandInterceptor
@@ -162,7 +167,7 @@ command method=onPut source=CommandInterceptor
 │   ├── roPool: invalidated
 │   ├── etagPool: invalidated
 │   ├── cdn: skipped
-│   └── durationMs: 0.019
+│   └── durationMs: 0.007
 ├── get uri=page://self/dep/level-three
 │   ├── uri: page://self/dep/level-three
 │   ├── cache_policy uri=page://self/dep/level-three expiry=never resolvedTtl=31536000 [event]
@@ -176,23 +181,23 @@ command method=onPut source=CommandInterceptor
 │   │   ├── roPool: invalidated
 │   │   ├── etagPool: invalidated
 │   │   ├── cdn: skipped
-│   │   └── durationMs: 0.011
+│   │   └── durationMs: 0.004
 │   ├── save_value uri=page://self/dep/level-three tags=[_dep_level-three_, grp-_dep_level-three_] requestedTtl=31536000 saved=true [event]
 │   │   ├── uri: page://self/dep/level-three
 │   │   ├── tags[0]: _dep_level-three_
 │   │   ├── tags[1]: grp-_dep_level-three_
 │   │   ├── requestedTtl: 31536000
 │   │   └── saved: 1
-│   ├── save_etag uri=page://self/dep/level-three etag="3676272351" tags=[grp-_dep_level-three_, _dep_level-three_] requestedTtl=31536000 (+1 more) [event]
+│   ├── save_etag uri=page://self/dep/level-three etag="3218634139" tags=[grp-_dep_level-three_, _dep_level-three_] requestedTtl=31536000 (+1 more) [event]
 │   │   ├── uri: page://self/dep/level-three
-│   │   ├── etag: "3676272351"
+│   │   ├── etag: "3218634139"
 │   │   ├── tags[0]: grp-_dep_level-three_
 │   │   ├── tags[1]: _dep_level-three_
 │   │   ├── requestedTtl: 31536000
 │   │   └── saved: 1
 │   └── close cache_miss
 │       ├── layer: resource
-│       └── durationMs: 0.311
+│       └── durationMs: 0.135
 └── close command_result
     └── code: 200
 get uri=page://self/dep/level-one
@@ -203,7 +208,7 @@ get uri=page://self/dep/level-one
 │   │   ├── uri: page://self/dep/level-three
 │   │   └── close cache_hit
 │   │       ├── layer: resource
-│   │       └── durationMs: 0.031
+│   │       └── durationMs: 0.015
 │   ├── depends_on parent=page://self/dep/level-two child=page://self/dep/level-three childTags=[_dep_level-three_, grp-_dep_level-three_] [event]
 │   │   ├── parent: page://self/dep/level-two
 │   │   ├── child: page://self/dep/level-three
@@ -220,7 +225,7 @@ get uri=page://self/dep/level-one
 │   │   ├── roPool: invalidated
 │   │   ├── etagPool: invalidated
 │   │   ├── cdn: skipped
-│   │   └── durationMs: 0.011
+│   │   └── durationMs: 0.004
 │   ├── save_value uri=page://self/dep/level-two tags=[_dep_level-two_, grp-_dep_level-two_ +2 items] requestedTtl=31536000 saved=true [event]
 │   │   ├── uri: page://self/dep/level-two
 │   │   ├── tags[0]: _dep_level-two_
@@ -229,9 +234,9 @@ get uri=page://self/dep/level-one
 │   │   ├── tags[3]: grp-_dep_level-three_
 │   │   ├── requestedTtl: 31536000
 │   │   └── saved: 1
-│   ├── save_etag uri=page://self/dep/level-two etag="3720261949" tags=[_dep_level-three_, grp-_dep_level-three_ +2 items] requestedTtl=31536000 (+1 more) [event]
+│   ├── save_etag uri=page://self/dep/level-two etag="3571732951" tags=[_dep_level-three_, grp-_dep_level-three_ +2 items] requestedTtl=31536000 (+1 more) [event]
 │   │   ├── uri: page://self/dep/level-two
-│   │   ├── etag: "3720261949"
+│   │   ├── etag: "3571732951"
 │   │   ├── tags[0]: _dep_level-three_
 │   │   ├── tags[1]: grp-_dep_level-three_
 │   │   ├── tags[2]: grp-_dep_level-two_
@@ -240,7 +245,7 @@ get uri=page://self/dep/level-one
 │   │   └── saved: 1
 │   └── close cache_miss
 │       ├── layer: resource
-│       └── durationMs: 0.482
+│       └── durationMs: 0.216
 ├── depends_on parent=page://self/dep/level-one child=page://self/dep/level-two childTags=[_dep_level-two_, grp-_dep_level-two_ +2 items] [event]
 │   ├── parent: page://self/dep/level-one
 │   ├── child: page://self/dep/level-two
@@ -259,7 +264,7 @@ get uri=page://self/dep/level-one
 │   ├── roPool: invalidated
 │   ├── etagPool: invalidated
 │   ├── cdn: skipped
-│   └── durationMs: 0.011
+│   └── durationMs: 0.004
 ├── save_value uri=page://self/dep/level-one tags=[_dep_level-one_, grp-_dep_level-one_ +4 items] requestedTtl=31536000 saved=true [event]
 │   ├── uri: page://self/dep/level-one
 │   ├── tags[0]: _dep_level-one_
@@ -270,9 +275,9 @@ get uri=page://self/dep/level-one
 │   ├── tags[5]: grp-_dep_level-three_
 │   ├── requestedTtl: 31536000
 │   └── saved: 1
-├── save_etag uri=page://self/dep/level-one etag="3678287055" tags=[_dep_level-two_, grp-_dep_level-two_ +4 items] requestedTtl=31536000 (+1 more) [event]
+├── save_etag uri=page://self/dep/level-one etag="2616962457" tags=[_dep_level-two_, grp-_dep_level-two_ +4 items] requestedTtl=31536000 (+1 more) [event]
 │   ├── uri: page://self/dep/level-one
-│   ├── etag: "3678287055"
+│   ├── etag: "2616962457"
 │   ├── tags[0]: _dep_level-two_
 │   ├── tags[1]: grp-_dep_level-two_
 │   ├── tags[2]: _dep_level-three_
@@ -283,7 +288,7 @@ get uri=page://self/dep/level-one
 │   └── saved: 1
 └── close cache_miss
     ├── layer: resource
-    └── durationMs: 1.027
+    └── durationMs: 0.457
 get uri=page://self/dep/parent-a
 ├── uri: page://self/dep/parent-a
 ├── get uri=page://self/dep/child-c
@@ -299,23 +304,23 @@ get uri=page://self/dep/parent-a
 │   │   ├── roPool: invalidated
 │   │   ├── etagPool: invalidated
 │   │   ├── cdn: skipped
-│   │   └── durationMs: 0.011
+│   │   └── durationMs: 0.004
 │   ├── save_value uri=page://self/dep/child-c tags=[_dep_child-c_, grp-_dep_child-c_] requestedTtl=31536000 saved=true [event]
 │   │   ├── uri: page://self/dep/child-c
 │   │   ├── tags[0]: _dep_child-c_
 │   │   ├── tags[1]: grp-_dep_child-c_
 │   │   ├── requestedTtl: 31536000
 │   │   └── saved: 1
-│   ├── save_etag uri=page://self/dep/child-c etag="4145630537" tags=[grp-_dep_child-c_, _dep_child-c_] requestedTtl=31536000 (+1 more) [event]
+│   ├── save_etag uri=page://self/dep/child-c etag="706271399" tags=[grp-_dep_child-c_, _dep_child-c_] requestedTtl=31536000 (+1 more) [event]
 │   │   ├── uri: page://self/dep/child-c
-│   │   ├── etag: "4145630537"
+│   │   ├── etag: "706271399"
 │   │   ├── tags[0]: grp-_dep_child-c_
 │   │   ├── tags[1]: _dep_child-c_
 │   │   ├── requestedTtl: 31536000
 │   │   └── saved: 1
 │   └── close cache_miss
 │       ├── layer: resource
-│       └── durationMs: 0.256
+│       └── durationMs: 0.111
 ├── depends_on parent=page://self/dep/parent-a child=page://self/dep/child-c childTags=[_dep_child-c_, grp-_dep_child-c_] [event]
 │   ├── parent: page://self/dep/parent-a
 │   ├── child: page://self/dep/child-c
@@ -332,7 +337,7 @@ get uri=page://self/dep/parent-a
 │   ├── roPool: invalidated
 │   ├── etagPool: invalidated
 │   ├── cdn: skipped
-│   └── durationMs: 0.011
+│   └── durationMs: 0.004
 ├── save_value uri=page://self/dep/parent-a tags=[_dep_parent-a_, grp-_dep_parent-a_ +2 items] requestedTtl=31536000 saved=true [event]
 │   ├── uri: page://self/dep/parent-a
 │   ├── tags[0]: _dep_parent-a_
@@ -341,9 +346,9 @@ get uri=page://self/dep/parent-a
 │   ├── tags[3]: grp-_dep_child-c_
 │   ├── requestedTtl: 31536000
 │   └── saved: 1
-├── save_etag uri=page://self/dep/parent-a etag="3235622429" tags=[_dep_child-c_, grp-_dep_child-c_ +2 items] requestedTtl=31536000 (+1 more) [event]
+├── save_etag uri=page://self/dep/parent-a etag="1728731495" tags=[_dep_child-c_, grp-_dep_child-c_ +2 items] requestedTtl=31536000 (+1 more) [event]
 │   ├── uri: page://self/dep/parent-a
-│   ├── etag: "3235622429"
+│   ├── etag: "1728731495"
 │   ├── tags[0]: _dep_child-c_
 │   ├── tags[1]: grp-_dep_child-c_
 │   ├── tags[2]: grp-_dep_parent-a_
@@ -352,14 +357,14 @@ get uri=page://self/dep/parent-a
 │   └── saved: 1
 └── close cache_miss
     ├── layer: resource
-    └── durationMs: 1.915
+    └── durationMs: 0.644
 get uri=page://self/dep/parent-b
 ├── uri: page://self/dep/parent-b
 ├── get uri=page://self/dep/child-c
 │   ├── uri: page://self/dep/child-c
 │   └── close cache_hit
 │       ├── layer: resource
-│       └── durationMs: 0.034
+│       └── durationMs: 0.016
 ├── depends_on parent=page://self/dep/parent-b child=page://self/dep/child-c childTags=[_dep_child-c_, grp-_dep_child-c_] [event]
 │   ├── parent: page://self/dep/parent-b
 │   ├── child: page://self/dep/child-c
@@ -376,7 +381,7 @@ get uri=page://self/dep/parent-b
 │   ├── roPool: invalidated
 │   ├── etagPool: invalidated
 │   ├── cdn: skipped
-│   └── durationMs: 0.011
+│   └── durationMs: 0.004
 ├── save_value uri=page://self/dep/parent-b tags=[_dep_parent-b_, grp-_dep_parent-b_ +2 items] requestedTtl=31536000 saved=true [event]
 │   ├── uri: page://self/dep/parent-b
 │   ├── tags[0]: _dep_parent-b_
@@ -385,9 +390,9 @@ get uri=page://self/dep/parent-b
 │   ├── tags[3]: grp-_dep_child-c_
 │   ├── requestedTtl: 31536000
 │   └── saved: 1
-├── save_etag uri=page://self/dep/parent-b etag="1915236845" tags=[_dep_child-c_, grp-_dep_child-c_ +2 items] requestedTtl=31536000 (+1 more) [event]
+├── save_etag uri=page://self/dep/parent-b etag="1078457122" tags=[_dep_child-c_, grp-_dep_child-c_ +2 items] requestedTtl=31536000 (+1 more) [event]
 │   ├── uri: page://self/dep/parent-b
-│   ├── etag: "1915236845"
+│   ├── etag: "1078457122"
 │   ├── tags[0]: _dep_child-c_
 │   ├── tags[1]: grp-_dep_child-c_
 │   ├── tags[2]: grp-_dep_parent-b_
@@ -396,7 +401,7 @@ get uri=page://self/dep/parent-b
 │   └── saved: 1
 └── close cache_miss
     ├── layer: resource
-    └── durationMs: 0.423
+    └── durationMs: 0.188
 manual_purge uri=page://self/dep/child-c
 ├── uri: page://self/dep/child-c
 ├── invalidate tags=[_dep_child-c_, grp-_dep_child-c_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
@@ -405,7 +410,7 @@ manual_purge uri=page://self/dep/child-c
 │   ├── roPool: invalidated
 │   ├── etagPool: invalidated
 │   ├── cdn: skipped
-│   └── durationMs: 0.017
+│   └── durationMs: 0.006
 └── close manual_purge_result
     └── result: purged
 get uri=page://self/dep/parent-a
@@ -423,23 +428,23 @@ get uri=page://self/dep/parent-a
 │   │   ├── roPool: invalidated
 │   │   ├── etagPool: invalidated
 │   │   ├── cdn: skipped
-│   │   └── durationMs: 0.011
+│   │   └── durationMs: 0.004
 │   ├── save_value uri=page://self/dep/child-c tags=[_dep_child-c_, grp-_dep_child-c_] requestedTtl=31536000 saved=true [event]
 │   │   ├── uri: page://self/dep/child-c
 │   │   ├── tags[0]: _dep_child-c_
 │   │   ├── tags[1]: grp-_dep_child-c_
 │   │   ├── requestedTtl: 31536000
 │   │   └── saved: 1
-│   ├── save_etag uri=page://self/dep/child-c etag="4145630537" tags=[grp-_dep_child-c_, _dep_child-c_] requestedTtl=31536000 (+1 more) [event]
+│   ├── save_etag uri=page://self/dep/child-c etag="706271399" tags=[grp-_dep_child-c_, _dep_child-c_] requestedTtl=31536000 (+1 more) [event]
 │   │   ├── uri: page://self/dep/child-c
-│   │   ├── etag: "4145630537"
+│   │   ├── etag: "706271399"
 │   │   ├── tags[0]: grp-_dep_child-c_
 │   │   ├── tags[1]: _dep_child-c_
 │   │   ├── requestedTtl: 31536000
 │   │   └── saved: 1
 │   └── close cache_miss
 │       ├── layer: resource
-│       └── durationMs: 0.289
+│       └── durationMs: 0.124
 ├── depends_on parent=page://self/dep/parent-a child=page://self/dep/child-c childTags=[_dep_child-c_, grp-_dep_child-c_] [event]
 │   ├── parent: page://self/dep/parent-a
 │   ├── child: page://self/dep/child-c
@@ -456,7 +461,7 @@ get uri=page://self/dep/parent-a
 │   ├── roPool: invalidated
 │   ├── etagPool: invalidated
 │   ├── cdn: skipped
-│   └── durationMs: 0.011
+│   └── durationMs: 0.004
 ├── save_value uri=page://self/dep/parent-a tags=[_dep_parent-a_, grp-_dep_parent-a_ +2 items] requestedTtl=31536000 saved=true [event]
 │   ├── uri: page://self/dep/parent-a
 │   ├── tags[0]: _dep_parent-a_
@@ -465,9 +470,9 @@ get uri=page://self/dep/parent-a
 │   ├── tags[3]: grp-_dep_child-c_
 │   ├── requestedTtl: 31536000
 │   └── saved: 1
-├── save_etag uri=page://self/dep/parent-a etag="3235622429" tags=[_dep_child-c_, grp-_dep_child-c_ +2 items] requestedTtl=31536000 (+1 more) [event]
+├── save_etag uri=page://self/dep/parent-a etag="1728731495" tags=[_dep_child-c_, grp-_dep_child-c_ +2 items] requestedTtl=31536000 (+1 more) [event]
 │   ├── uri: page://self/dep/parent-a
-│   ├── etag: "3235622429"
+│   ├── etag: "1728731495"
 │   ├── tags[0]: _dep_child-c_
 │   ├── tags[1]: grp-_dep_child-c_
 │   ├── tags[2]: grp-_dep_parent-a_
@@ -476,14 +481,14 @@ get uri=page://self/dep/parent-a
 │   └── saved: 1
 └── close cache_miss
     ├── layer: resource
-    └── durationMs: 0.757
+    └── durationMs: 0.326
 get uri=page://self/dep/parent-b
 ├── uri: page://self/dep/parent-b
 ├── get uri=page://self/dep/child-c
 │   ├── uri: page://self/dep/child-c
 │   └── close cache_hit
 │       ├── layer: resource
-│       └── durationMs: 0.03
+│       └── durationMs: 0.013
 ├── depends_on parent=page://self/dep/parent-b child=page://self/dep/child-c childTags=[_dep_child-c_, grp-_dep_child-c_] [event]
 │   ├── parent: page://self/dep/parent-b
 │   ├── child: page://self/dep/child-c
@@ -500,7 +505,7 @@ get uri=page://self/dep/parent-b
 │   ├── roPool: invalidated
 │   ├── etagPool: invalidated
 │   ├── cdn: skipped
-│   └── durationMs: 0.011
+│   └── durationMs: 0.004
 ├── save_value uri=page://self/dep/parent-b tags=[_dep_parent-b_, grp-_dep_parent-b_ +2 items] requestedTtl=31536000 saved=true [event]
 │   ├── uri: page://self/dep/parent-b
 │   ├── tags[0]: _dep_parent-b_
@@ -509,9 +514,9 @@ get uri=page://self/dep/parent-b
 │   ├── tags[3]: grp-_dep_child-c_
 │   ├── requestedTtl: 31536000
 │   └── saved: 1
-├── save_etag uri=page://self/dep/parent-b etag="1915236845" tags=[_dep_child-c_, grp-_dep_child-c_ +2 items] requestedTtl=31536000 (+1 more) [event]
+├── save_etag uri=page://self/dep/parent-b etag="1078457122" tags=[_dep_child-c_, grp-_dep_child-c_ +2 items] requestedTtl=31536000 (+1 more) [event]
 │   ├── uri: page://self/dep/parent-b
-│   ├── etag: "1915236845"
+│   ├── etag: "1078457122"
 │   ├── tags[0]: _dep_child-c_
 │   ├── tags[1]: grp-_dep_child-c_
 │   ├── tags[2]: grp-_dep_parent-b_
@@ -520,7 +525,78 @@ get uri=page://self/dep/parent-b
 │   └── saved: 1
 └── close cache_miss
     ├── layer: resource
-    └── durationMs: 0.476
+    └── durationMs: 0.21
+get uri=page://self/html/render-time-dependency-...(+5)
+├── uri: page://self/html/render-time-dependency-value
+├── cache_policy uri=page://self/html/render-time-dependency-...(+5) expiry=never resolvedTtl=31536000 [event]
+│   ├── uri: page://self/html/render-time-dependency-value
+│   ├── expiry: never
+│   └── resolvedTtl: 31536000
+├── pre_write_cleanup uri=page://self/html/render-time-dependency-...(+5) [event]
+│   └── uri: page://self/html/render-time-dependency-value
+├── invalidate tags=[_html_render-time-dependency-value_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
+│   ├── tags[0]: _html_render-time-dependency-value_
+│   ├── roPool: invalidated
+│   ├── etagPool: invalidated
+│   ├── cdn: skipped
+│   └── durationMs: 0.004
+├── save_value uri=page://self/html/render-time-dependency-...(+5) tags=[_html_render-time-dependency-value_ +1 items] requestedTtl=31536000 saved=true [event]
+│   ├── uri: page://self/html/render-time-dependency-value
+│   ├── tags[0]: _html_render-time-dependency-value_
+│   ├── tags[1]: grp-_html_render-time-dependency-value_
+│   ├── requestedTtl: 31536000
+│   └── saved: 1
+├── save_etag uri=page://self/html/render-time-dependency-...(+5) etag="2836405247" tags=[grp-_html_render-time-dependency-value_ +1 items] requestedTtl=31536000 (+1 more) [event]
+│   ├── uri: page://self/html/render-time-dependency-value
+│   ├── etag: "2836405247"
+│   ├── tags[0]: grp-_html_render-time-dependency-value_
+│   ├── tags[1]: _html_render-time-dependency-value_
+│   ├── requestedTtl: 31536000
+│   └── saved: 1
+└── close cache_miss
+    ├── layer: resource
+    └── durationMs: 0.11
+get uri=page://self/html/mutable-comment
+├── uri: page://self/html/mutable-comment
+├── cache_policy uri=page://self/html/mutable-comment expiry=never resolvedTtl=31536000 [event]
+│   ├── uri: page://self/html/mutable-comment
+│   ├── expiry: never
+│   └── resolvedTtl: 31536000
+├── pre_write_cleanup uri=page://self/html/mutable-comment [event]
+│   └── uri: page://self/html/mutable-comment
+├── invalidate tags=[_html_mutable-comment_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
+│   ├── tags[0]: _html_mutable-comment_
+│   ├── roPool: invalidated
+│   ├── etagPool: invalidated
+│   ├── cdn: skipped
+│   └── durationMs: 0.004
+├── save_value uri=page://self/html/mutable-comment tags=[_html_mutable-comment_ +2 items] requestedTtl=31536000 saved=true [event]
+│   ├── uri: page://self/html/mutable-comment
+│   ├── tags[0]: _html_mutable-comment_
+│   ├── tags[1]: grp-_html_mutable-comment_
+│   ├── tags[2]: mutable-comment
+│   ├── requestedTtl: 31536000
+│   └── saved: 1
+├── save_etag uri=page://self/html/mutable-comment etag="404619219" tags=[mutable-comment +2 items] requestedTtl=31536000 (+1 more) [event]
+│   ├── uri: page://self/html/mutable-comment
+│   ├── etag: "404619219"
+│   ├── tags[0]: mutable-comment
+│   ├── tags[1]: grp-_html_mutable-comment_
+│   ├── tags[2]: _html_mutable-comment_
+│   ├── requestedTtl: 31536000
+│   └── saved: 1
+└── close cache_miss
+    ├── layer: resource
+    └── durationMs: 0.115
+depends_on parent=page://self/html/render-time-dependency-...(+5) child=page://self/html/mutable-comment childTags=[_html_mutable-comment_ +2 items] [event]
+├── parent: page://self/html/render-time-dependency-value
+├── child: page://self/html/mutable-comment
+├── childTags[0]: _html_mutable-comment_
+├── childTags[1]: grp-_html_mutable-comment_
+└── childTags[2]: mutable-comment
+dependency_after_save parent=page://self/html/render-time-dependency-...(+5) child=page://self/html/mutable-comment [event]
+├── parent: page://self/html/render-time-dependency-value
+└── child: page://self/html/mutable-comment
 
 === Cache Log JSON ===
 {
@@ -581,7 +657,7 @@ get uri=page://self/dep/parent-b
                                         "roPool": "invalidated",
                                         "etagPool": "invalidated",
                                         "cdn": "skipped",
-                                        "durationMs": 0.08
+                                        "durationMs": 0.064
                                     }
                                 },
                                 {
@@ -604,7 +680,7 @@ get uri=page://self/dep/parent-b
                                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                                     "context": {
                                         "uri": "page://self/dep/level-three",
-                                        "etag": "\"3676272351\"",
+                                        "etag": "\"3218634139\"",
                                         "tags": [
                                             "grp-_dep_level-three_",
                                             "_dep_level-three_"
@@ -620,7 +696,7 @@ get uri=page://self/dep/parent-b
                                 "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
                                 "context": {
                                     "layer": "resource",
-                                    "durationMs": 3.435
+                                    "durationMs": 3.13
                                 }
                             }
                         },
@@ -668,7 +744,7 @@ get uri=page://self/dep/parent-b
                                 "roPool": "invalidated",
                                 "etagPool": "invalidated",
                                 "cdn": "skipped",
-                                "durationMs": 0.012
+                                "durationMs": 0.005
                             }
                         },
                         {
@@ -693,7 +769,7 @@ get uri=page://self/dep/parent-b
                             "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                             "context": {
                                 "uri": "page://self/dep/level-two",
-                                "etag": "\"2480234360\"",
+                                "etag": "\"1707621274\"",
                                 "tags": [
                                     "_dep_level-three_",
                                     "grp-_dep_level-three_",
@@ -711,7 +787,7 @@ get uri=page://self/dep/parent-b
                         "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
                         "context": {
                             "layer": "resource",
-                            "durationMs": 5.61
+                            "durationMs": 4.053
                         }
                     }
                 },
@@ -761,7 +837,7 @@ get uri=page://self/dep/parent-b
                         "roPool": "invalidated",
                         "etagPool": "invalidated",
                         "cdn": "skipped",
-                        "durationMs": 0.011
+                        "durationMs": 0.004
                     }
                 },
                 {
@@ -788,7 +864,7 @@ get uri=page://self/dep/parent-b
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                     "context": {
                         "uri": "page://self/dep/level-one",
-                        "etag": "\"4200369382\"",
+                        "etag": "\"1296063000\"",
                         "tags": [
                             "_dep_level-two_",
                             "grp-_dep_level-two_",
@@ -808,7 +884,7 @@ get uri=page://self/dep/parent-b
                 "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
                 "context": {
                     "layer": "resource",
-                    "durationMs": 8.132
+                    "durationMs": 4.924
                 }
             }
         },
@@ -825,7 +901,7 @@ get uri=page://self/dep/parent-b
                 "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_hit.json",
                 "context": {
                     "layer": "resource",
-                    "durationMs": 0.098
+                    "durationMs": 0.046
                 }
             }
         },
@@ -859,7 +935,7 @@ get uri=page://self/dep/parent-b
                         "roPool": "invalidated",
                         "etagPool": "invalidated",
                         "cdn": "skipped",
-                        "durationMs": 0.019
+                        "durationMs": 0.007
                     }
                 },
                 {
@@ -901,7 +977,7 @@ get uri=page://self/dep/parent-b
                                 "roPool": "invalidated",
                                 "etagPool": "invalidated",
                                 "cdn": "skipped",
-                                "durationMs": 0.011
+                                "durationMs": 0.004
                             }
                         },
                         {
@@ -924,7 +1000,7 @@ get uri=page://self/dep/parent-b
                             "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                             "context": {
                                 "uri": "page://self/dep/level-three",
-                                "etag": "\"3676272351\"",
+                                "etag": "\"3218634139\"",
                                 "tags": [
                                     "grp-_dep_level-three_",
                                     "_dep_level-three_"
@@ -940,7 +1016,7 @@ get uri=page://self/dep/parent-b
                         "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
                         "context": {
                             "layer": "resource",
-                            "durationMs": 0.311
+                            "durationMs": 0.135
                         }
                     }
                 }
@@ -983,7 +1059,7 @@ get uri=page://self/dep/parent-b
                                 "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_hit.json",
                                 "context": {
                                     "layer": "resource",
-                                    "durationMs": 0.031
+                                    "durationMs": 0.015
                                 }
                             }
                         },
@@ -1031,7 +1107,7 @@ get uri=page://self/dep/parent-b
                                 "roPool": "invalidated",
                                 "etagPool": "invalidated",
                                 "cdn": "skipped",
-                                "durationMs": 0.011
+                                "durationMs": 0.004
                             }
                         },
                         {
@@ -1056,7 +1132,7 @@ get uri=page://self/dep/parent-b
                             "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                             "context": {
                                 "uri": "page://self/dep/level-two",
-                                "etag": "\"3720261949\"",
+                                "etag": "\"3571732951\"",
                                 "tags": [
                                     "_dep_level-three_",
                                     "grp-_dep_level-three_",
@@ -1074,7 +1150,7 @@ get uri=page://self/dep/parent-b
                         "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
                         "context": {
                             "layer": "resource",
-                            "durationMs": 0.482
+                            "durationMs": 0.216
                         }
                     }
                 },
@@ -1124,7 +1200,7 @@ get uri=page://self/dep/parent-b
                         "roPool": "invalidated",
                         "etagPool": "invalidated",
                         "cdn": "skipped",
-                        "durationMs": 0.011
+                        "durationMs": 0.004
                     }
                 },
                 {
@@ -1151,7 +1227,7 @@ get uri=page://self/dep/parent-b
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                     "context": {
                         "uri": "page://self/dep/level-one",
-                        "etag": "\"3678287055\"",
+                        "etag": "\"2616962457\"",
                         "tags": [
                             "_dep_level-two_",
                             "grp-_dep_level-two_",
@@ -1171,7 +1247,7 @@ get uri=page://self/dep/parent-b
                 "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
                 "context": {
                     "layer": "resource",
-                    "durationMs": 1.027
+                    "durationMs": 0.457
                 }
             }
         },
@@ -1222,7 +1298,7 @@ get uri=page://self/dep/parent-b
                                 "roPool": "invalidated",
                                 "etagPool": "invalidated",
                                 "cdn": "skipped",
-                                "durationMs": 0.011
+                                "durationMs": 0.004
                             }
                         },
                         {
@@ -1245,7 +1321,7 @@ get uri=page://self/dep/parent-b
                             "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                             "context": {
                                 "uri": "page://self/dep/child-c",
-                                "etag": "\"4145630537\"",
+                                "etag": "\"706271399\"",
                                 "tags": [
                                     "grp-_dep_child-c_",
                                     "_dep_child-c_"
@@ -1261,7 +1337,7 @@ get uri=page://self/dep/parent-b
                         "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
                         "context": {
                             "layer": "resource",
-                            "durationMs": 0.256
+                            "durationMs": 0.111
                         }
                     }
                 },
@@ -1309,7 +1385,7 @@ get uri=page://self/dep/parent-b
                         "roPool": "invalidated",
                         "etagPool": "invalidated",
                         "cdn": "skipped",
-                        "durationMs": 0.011
+                        "durationMs": 0.004
                     }
                 },
                 {
@@ -1334,7 +1410,7 @@ get uri=page://self/dep/parent-b
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                     "context": {
                         "uri": "page://self/dep/parent-a",
-                        "etag": "\"3235622429\"",
+                        "etag": "\"1728731495\"",
                         "tags": [
                             "_dep_child-c_",
                             "grp-_dep_child-c_",
@@ -1352,7 +1428,7 @@ get uri=page://self/dep/parent-b
                 "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
                 "context": {
                     "layer": "resource",
-                    "durationMs": 1.915
+                    "durationMs": 0.644
                 }
             }
         },
@@ -1377,7 +1453,7 @@ get uri=page://self/dep/parent-b
                         "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_hit.json",
                         "context": {
                             "layer": "resource",
-                            "durationMs": 0.034
+                            "durationMs": 0.016
                         }
                     }
                 },
@@ -1425,7 +1501,7 @@ get uri=page://self/dep/parent-b
                         "roPool": "invalidated",
                         "etagPool": "invalidated",
                         "cdn": "skipped",
-                        "durationMs": 0.011
+                        "durationMs": 0.004
                     }
                 },
                 {
@@ -1450,7 +1526,7 @@ get uri=page://self/dep/parent-b
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                     "context": {
                         "uri": "page://self/dep/parent-b",
-                        "etag": "\"1915236845\"",
+                        "etag": "\"1078457122\"",
                         "tags": [
                             "_dep_child-c_",
                             "grp-_dep_child-c_",
@@ -1468,7 +1544,7 @@ get uri=page://self/dep/parent-b
                 "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
                 "context": {
                     "layer": "resource",
-                    "durationMs": 0.423
+                    "durationMs": 0.188
                 }
             }
         },
@@ -1492,7 +1568,7 @@ get uri=page://self/dep/parent-b
                         "roPool": "invalidated",
                         "etagPool": "invalidated",
                         "cdn": "skipped",
-                        "durationMs": 0.017
+                        "durationMs": 0.006
                     }
                 }
             ],
@@ -1552,7 +1628,7 @@ get uri=page://self/dep/parent-b
                                 "roPool": "invalidated",
                                 "etagPool": "invalidated",
                                 "cdn": "skipped",
-                                "durationMs": 0.011
+                                "durationMs": 0.004
                             }
                         },
                         {
@@ -1575,7 +1651,7 @@ get uri=page://self/dep/parent-b
                             "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                             "context": {
                                 "uri": "page://self/dep/child-c",
-                                "etag": "\"4145630537\"",
+                                "etag": "\"706271399\"",
                                 "tags": [
                                     "grp-_dep_child-c_",
                                     "_dep_child-c_"
@@ -1591,7 +1667,7 @@ get uri=page://self/dep/parent-b
                         "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
                         "context": {
                             "layer": "resource",
-                            "durationMs": 0.289
+                            "durationMs": 0.124
                         }
                     }
                 },
@@ -1639,7 +1715,7 @@ get uri=page://self/dep/parent-b
                         "roPool": "invalidated",
                         "etagPool": "invalidated",
                         "cdn": "skipped",
-                        "durationMs": 0.011
+                        "durationMs": 0.004
                     }
                 },
                 {
@@ -1664,7 +1740,7 @@ get uri=page://self/dep/parent-b
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                     "context": {
                         "uri": "page://self/dep/parent-a",
-                        "etag": "\"3235622429\"",
+                        "etag": "\"1728731495\"",
                         "tags": [
                             "_dep_child-c_",
                             "grp-_dep_child-c_",
@@ -1682,7 +1758,7 @@ get uri=page://self/dep/parent-b
                 "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
                 "context": {
                     "layer": "resource",
-                    "durationMs": 0.757
+                    "durationMs": 0.326
                 }
             }
         },
@@ -1707,7 +1783,7 @@ get uri=page://self/dep/parent-b
                         "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_hit.json",
                         "context": {
                             "layer": "resource",
-                            "durationMs": 0.03
+                            "durationMs": 0.013
                         }
                     }
                 },
@@ -1755,7 +1831,7 @@ get uri=page://self/dep/parent-b
                         "roPool": "invalidated",
                         "etagPool": "invalidated",
                         "cdn": "skipped",
-                        "durationMs": 0.011
+                        "durationMs": 0.004
                     }
                 },
                 {
@@ -1780,7 +1856,7 @@ get uri=page://self/dep/parent-b
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                     "context": {
                         "uri": "page://self/dep/parent-b",
-                        "etag": "\"1915236845\"",
+                        "etag": "\"1078457122\"",
                         "tags": [
                             "_dep_child-c_",
                             "grp-_dep_child-c_",
@@ -1798,10 +1874,199 @@ get uri=page://self/dep/parent-b
                 "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
                 "context": {
                     "layer": "resource",
-                    "durationMs": 0.476
+                    "durationMs": 0.21
                 }
+            }
+        },
+        {
+            "id": "get_17",
+            "type": "get",
+            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/get.json",
+            "context": {
+                "uri": "page://self/html/render-time-dependency-value"
+            },
+            "log": [
+                {
+                    "id": "cache_policy_13",
+                    "type": "cache_policy",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_policy.json",
+                    "context": {
+                        "uri": "page://self/html/render-time-dependency-value",
+                        "expiry": "never",
+                        "expirySecond": null,
+                        "expiryAt": null,
+                        "resolvedTtl": 31536000
+                    }
+                },
+                {
+                    "id": "pre_write_cleanup_13",
+                    "type": "pre_write_cleanup",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/pre_write_cleanup.json",
+                    "context": {
+                        "uri": "page://self/html/render-time-dependency-value"
+                    }
+                },
+                {
+                    "id": "invalidate_15",
+                    "type": "invalidate",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/invalidate.json",
+                    "context": {
+                        "tags": [
+                            "_html_render-time-dependency-value_"
+                        ],
+                        "roPool": "invalidated",
+                        "etagPool": "invalidated",
+                        "cdn": "skipped",
+                        "durationMs": 0.004
+                    }
+                },
+                {
+                    "id": "save_value_13",
+                    "type": "save_value",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_value.json",
+                    "context": {
+                        "uri": "page://self/html/render-time-dependency-value",
+                        "tags": [
+                            "_html_render-time-dependency-value_",
+                            "grp-_html_render-time-dependency-value_"
+                        ],
+                        "requestedTtl": 31536000,
+                        "saved": true
+                    }
+                },
+                {
+                    "id": "save_etag_13",
+                    "type": "save_etag",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
+                    "context": {
+                        "uri": "page://self/html/render-time-dependency-value",
+                        "etag": "\"2836405247\"",
+                        "tags": [
+                            "grp-_html_render-time-dependency-value_",
+                            "_html_render-time-dependency-value_"
+                        ],
+                        "requestedTtl": 31536000,
+                        "saved": true
+                    }
+                }
+            ],
+            "close": {
+                "id": "cache_miss_13",
+                "type": "cache_miss",
+                "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
+                "context": {
+                    "layer": "resource",
+                    "durationMs": 0.11
+                }
+            }
+        },
+        {
+            "id": "get_18",
+            "type": "get",
+            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/get.json",
+            "context": {
+                "uri": "page://self/html/mutable-comment"
+            },
+            "log": [
+                {
+                    "id": "cache_policy_14",
+                    "type": "cache_policy",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_policy.json",
+                    "context": {
+                        "uri": "page://self/html/mutable-comment",
+                        "expiry": "never",
+                        "expirySecond": null,
+                        "expiryAt": null,
+                        "resolvedTtl": 31536000
+                    }
+                },
+                {
+                    "id": "pre_write_cleanup_14",
+                    "type": "pre_write_cleanup",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/pre_write_cleanup.json",
+                    "context": {
+                        "uri": "page://self/html/mutable-comment"
+                    }
+                },
+                {
+                    "id": "invalidate_16",
+                    "type": "invalidate",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/invalidate.json",
+                    "context": {
+                        "tags": [
+                            "_html_mutable-comment_"
+                        ],
+                        "roPool": "invalidated",
+                        "etagPool": "invalidated",
+                        "cdn": "skipped",
+                        "durationMs": 0.004
+                    }
+                },
+                {
+                    "id": "save_value_14",
+                    "type": "save_value",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_value.json",
+                    "context": {
+                        "uri": "page://self/html/mutable-comment",
+                        "tags": [
+                            "_html_mutable-comment_",
+                            "grp-_html_mutable-comment_",
+                            "mutable-comment"
+                        ],
+                        "requestedTtl": 31536000,
+                        "saved": true
+                    }
+                },
+                {
+                    "id": "save_etag_14",
+                    "type": "save_etag",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
+                    "context": {
+                        "uri": "page://self/html/mutable-comment",
+                        "etag": "\"404619219\"",
+                        "tags": [
+                            "mutable-comment",
+                            "grp-_html_mutable-comment_",
+                            "_html_mutable-comment_"
+                        ],
+                        "requestedTtl": 31536000,
+                        "saved": true
+                    }
+                }
+            ],
+            "close": {
+                "id": "cache_miss_14",
+                "type": "cache_miss",
+                "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
+                "context": {
+                    "layer": "resource",
+                    "durationMs": 0.115
+                }
+            }
+        },
+        {
+            "id": "depends_on_9",
+            "type": "depends_on",
+            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/depends_on.json",
+            "context": {
+                "parent": "page://self/html/render-time-dependency-value",
+                "child": "page://self/html/mutable-comment",
+                "childTags": [
+                    "_html_mutable-comment_",
+                    "grp-_html_mutable-comment_",
+                    "mutable-comment"
+                ]
+            }
+        },
+        {
+            "id": "dependency_after_save_1",
+            "type": "dependency_after_save",
+            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/dependency_after_save.json",
+            "context": {
+                "parent": "page://self/html/render-time-dependency-value",
+                "child": "page://self/html/mutable-comment"
             }
         }
     ]
 }
-Schema validation: OK (107 entries)
+Schema validation: OK (123 entries)

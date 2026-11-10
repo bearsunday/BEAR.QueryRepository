@@ -1,0 +1,20 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/dependency_after_save.json",
+    "title": "dependency_after_save",
+    "description": "Event: a #[Cacheable] value resource that already carries an ETag declared a dependency with CacheDependencyInterface::depends(), usually from a template helper while the page renders. The value and its ETag were stored before rendering, so the child's tags reach the response's Surrogate-Key only: a change to the child does not invalidate the entry, and the old ETag keeps answering 304. Only recorded; a page that reads children while rendering should cache its rendered output with #[CacheableResponse] or #[Cacheable(type: 'view')]. Follows the `depends_on` for the same edge.",
+    "type": "object",
+    "required": [
+        "parent",
+        "child"
+    ],
+    "properties": {
+        "parent": {
+            "type": "string"
+        },
+        "child": {
+            "type": "string"
+        }
+    },
+    "additionalProperties": false
+}

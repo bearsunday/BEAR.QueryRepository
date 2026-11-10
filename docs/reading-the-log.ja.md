@@ -101,6 +101,7 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 | `surrogate_key_oversize` | `uri`, `headerBytes`, `longestKeyBytes` | `#[Cacheable]` の put や donut の書き込み・リフレッシュで応答に付いた Surrogate-Key が、Fastly の上限(1 キー 1,024 バイト、ヘッダ全体 16,384 バイト)を超えた。記録するだけで、キーはそのまま保存・送信される。測るのは応答のヘッダだけで、`#[Cacheable]` が保存時に自分のエントリへ足す URI タグや、CDN へ purge で送るキーは測らない |
 | `depends_on` | `parent`, `child`, `childTags` | 依存の辺 1 本。子のタグが親に加わった。`#[Cacheable]` の put ではタグを持つ子ごとに、donut ページの書き込みではタグを持つデータ依存(`onGet()` が読んだ子)ごとに記録する。穴はまだ実行されていないので、代わりに `dependency_skipped` を記録する。donut ページの描画中に呼んだ `CacheDependencyInterface::depends()`(テンプレートのヘルパーからなど)も、`put_donut` と `save_*` のあいだに記録する |
 | `dependency_skipped` | `parent`, `child`, `reason` | キャッシュされる親の書き込み(`#[Cacheable]` の put、または donut ページの書き込み)で、body の最上位にある埋め込みリクエストを依存に入れなかった。子のタグは保存される値や donut テンプレートに加わらない。穴のタグは、穴が描画されるときに `#[CacheableResponse]` のビューには届く。配列の中のリクエストは見えず、何も記録しない |
+| `dependency_after_save` | `parent`, `child` | ETag をすでに持つ `#[Cacheable]` の値のリソースが `CacheDependencyInterface::depends()` を呼んだ。多くはページの描画中にテンプレートのヘルパーから呼んだもので、その `depends_on` の直後に記録する。値と ETag は描画の前に保存済みなので、子のタグは応答の `Surrogate-Key` にしか入らない。子が変わってもエントリは消えず、古い ETag が 304 を返し続ける。描画中に子を読むページは、`#[CacheableResponse]` か `#[Cacheable(type: 'view')]` で描画結果をキャッシュする。記録するだけ。`onGet()` で自分で ETag を付けるリソースは、埋め込んだ子についても記録する |
 | `pre_write_cleanup` | `uri` | 書き込み側が、上書きするエントリを消す直前 |
 | `invalidate` | `tags`, `roPool`, `etagPool`, `cdn`, `durationMs` | タグを無効化した。対象ごとの結果つき |
 | `purge` | `uri` | URI 指定の破棄を要求した |
