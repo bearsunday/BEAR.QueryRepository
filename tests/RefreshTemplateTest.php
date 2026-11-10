@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\TemplateLacksRequiredParameter;
 use BEAR\Resource\ResourceInterface;
+use FakeVendor\HelloWorld\Resource\App\AssistedPageWriter;
 use FakeVendor\HelloWorld\Resource\App\CacheablePagedCategoryWriter;
 use FakeVendor\HelloWorld\Resource\App\GetlessTargetWriter;
 use FakeVendor\HelloWorld\Resource\App\PagedCategory;
@@ -31,6 +32,7 @@ class RefreshTemplateTest extends TestCase
         PathTemplateWriter::$writes = 0;
         QueryExpansionWriter::$writes = 0;
         GetlessTargetWriter::$writes = 0;
+        AssistedPageWriter::$writes = 0;
 
         parent::setUp();
     }
@@ -142,5 +144,12 @@ class RefreshTemplateTest extends TestCase
         $this->resource->post('app://self/getless-target-writer');
 
         $this->assertSame(1, GetlessTargetWriter::$writes);
+    }
+
+    public function testRequiredParameterInjectedByResourceParamNeedNotBeInTheTemplate(): void
+    {
+        $this->resource->post('app://self/assisted-page-writer', ['id' => 'a']);
+
+        $this->assertSame(1, AssistedPageWriter::$writes);
     }
 }
