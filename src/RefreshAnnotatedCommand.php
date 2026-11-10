@@ -148,21 +148,23 @@ final readonly class RefreshAnnotatedCommand implements CommandInterface
     /** @param array<mixed> $query */
     private function request(ResourceObject $ro, object $annotation, array $query): void
     {
-        if (! $annotation instanceof AbstractCommand) {
+        if (! $annotation instanceof Purge && ! $annotation instanceof Refresh) {
             return;
         }
 
+        $uris = [];
         foreach ($this->getUris($ro, $annotation, $query) as $uriString) {
             $uri = new Uri($uriString);
-            if ($annotation instanceof Purge) {
-                $this->repository->purge($uri);
-            }
-
-            if (! ($annotation instanceof Refresh)) {
-                continue;
-            }
-
             $this->repository->purge($uri);
+            $uris[] = $uri;
+        }
+
+        if (! $annotation instanceof Refresh) {
+            return;
+        }
+
+        // Every URI is purged before the first GET, so a GET that throws leaves misses behind, not stale entries.
+        foreach ($uris as $uri) {
             $refreshed = $this->resource->get((string) $uri);
             // A #[Cacheable] destination stored itself during the GET; a second put would purge the CDN again.
             if ($this->repository->get($uri) === null) {

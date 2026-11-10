@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\Resource\ResourceInterface;
+use FakeVendor\HelloWorld\Resource\App\FlakyTagPage;
 use FakeVendor\HelloWorld\Resource\App\TagIndex;
 use FakeVendor\HelloWorld\Resource\App\TagPage;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -26,6 +27,8 @@ class FanOutRefreshTest extends TestCase
         TagPage::$version = 1;
         TagPage::$gets = 0;
         TagIndex::$version = 1;
+        FlakyTagPage::$version = 1;
+        FlakyTagPage::$failOn = null;
 
         parent::setUp();
     }
@@ -136,5 +139,22 @@ class FanOutRefreshTest extends TestCase
         $this->resource->post('app://self/exploded-path-writer', ['path' => ['user', 'profile']]);
 
         $this->assertNotSame($before, $this->resource->get('app://self/user/profile', ['user_id' => 1])->body);
+    }
+
+    public function testRefreshThatFailsMidwayLeavesNoStaleEntry(): void
+    {
+        foreach (['a', 'b', 'c'] as $id) {
+            $this->resource->get('app://self/flaky-tag-page', ['id' => $id]);
+        }
+
+        FlakyTagPage::$failOn = 'b';
+        try {
+            $this->resource->post('app://self/flaky-refresh-writer', ['id' => ['a', 'b', 'c']]);
+            $this->fail('the refresh did not fail');
+        } catch (FakeRefreshFailure) {
+        }
+
+        FlakyTagPage::$failOn = null;
+        $this->assertSame(['v' => 'c:v2'], $this->resource->get('app://self/flaky-tag-page', ['id' => 'c'])->body);
     }
 }
