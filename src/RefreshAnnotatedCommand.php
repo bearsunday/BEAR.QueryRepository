@@ -7,6 +7,7 @@ namespace BEAR\QueryRepository;
 use BEAR\RepositoryModule\Annotation\AbstractCommand;
 use BEAR\RepositoryModule\Annotation\Purge;
 use BEAR\RepositoryModule\Annotation\Refresh;
+use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
@@ -53,7 +54,13 @@ final readonly class RefreshAnnotatedCommand implements CommandInterface
     private function getUris(ResourceObject $ro, AbstractCommand $annotation): array
     {
         $body = is_array($ro->body) ? $ro->body : [];
-        $query = $body + $ro->uri->query;
+        /**
+         * $uri is documented as AbstractUri, but a resource object taken from the injector, not requested through the resource client, has none.
+         *
+         * @psalm-suppress RedundantConditionGivenDocblockType
+         * @phpstan-ignore instanceof.alwaysTrue
+         */
+        $query = $ro->uri instanceof AbstractUri ? $body + $ro->uri->query : $body;
         $variableSets = [$query];
         foreach (self::explodedQueryNames($annotation->uri) as $name) {
             if (isset($query[$name]) && is_array($query[$name]) && array_is_list($query[$name])) {
