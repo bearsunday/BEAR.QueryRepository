@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\DependsOnNotExpandable;
+use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
@@ -15,6 +16,7 @@ use FakeVendor\HelloWorld\Entity\Ulid;
 use Madapaja\TwigModule\TwigModule;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
 
 use function array_count_values;
@@ -198,6 +200,40 @@ class DependsOnTest extends TestCase
 
         $this->resource->put('app://self/rows/taxonomy?ulid=c1');
         $this->assertFalse($this->isStored($uri, false));
+    }
+
+    /** With a UriTagInterface of the application's own, a hole's declaration takes its format both when the page is stored and when it is refreshed */
+    public function testAHoleDeclarationTakesTheBoundUriTagFormatWhenStoredAndRefreshed(): void
+    {
+        $uriTag = new class implements UriTagInterface {
+            public function __invoke(AbstractUri $uri): string
+            {
+                return 'x-' . (new UriTag())($uri);
+            }
+
+            /** @param list<array<string, mixed>> $assoc */
+            public function fromAssoc(string $uriTemplate, array $assoc): string
+            {
+                return 'x-' . (new UriTag())->fromAssoc($uriTemplate, $assoc);
+            }
+        };
+        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
+        $module->override(new class ($uriTag) extends AbstractModule {
+            public function __construct(private readonly UriTagInterface $uriTag)
+            {
+                parent::__construct();
+            }
+
+            protected function configure(): void
+            {
+                $this->bind(UriTagInterface::class)->toInstance($this->uriTag);
+            }
+        });
+        $resource = (new Injector($module, __DIR__ . '/tmp'))->getInstance(ResourceInterface::class);
+        foreach (['stored', 'refreshed'] as $round) {
+            $this->assertContains('x-_rows_taxonomy_ulid=c1', $this->keys($resource->get('app://self/rows/page-hole')), "the {$round} page");
+        }
     }
 
     /** A URI named by two declarations and fromAssoc() is tagged once, and both it and a hand-written key still invalidate */
