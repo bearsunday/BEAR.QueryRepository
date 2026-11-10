@@ -10,6 +10,7 @@ parameters:
     - tests/Fake/fake-app/src/Resource/Page/Html/BlogPostingDonut.php
     - tests/Fake/fake-app/src/Resource/Page/Html/Comment.php
     - tests/Fake/fake-app/src/Resource/Page/Html/Like.php
+    - demo/snapshot.php
   level: max
   paths:
     - src

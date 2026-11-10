@@ -13,6 +13,8 @@ declare(strict_types=1);
 
 use Koriym\SemanticLogger\LogJson;
 use Koriym\SemanticLogger\SemanticLogValidator;
+use Koriym\SemanticLogger\Stree\RenderConfig;
+use Koriym\SemanticLogger\Stree\TreeRenderer;
 
 /**
  * Validate the flushed log against docs/schemas/context and print a one-line verdict
@@ -73,4 +75,12 @@ function countLogEntries(array $node): int
     }
 
     return $count;
+}
+
+/** Print the session's log tree, then validate it */
+function reportLog(LogJson $log, string $title): void
+{
+    echo PHP_EOL . "=== Cache Log Tree — {$title} ===" . PHP_EOL;
+    echo (new TreeRenderer(new RenderConfig(true, 0.0, 1000, true, snapshot: true)))->render($log) . PHP_EOL;
+    validateLog($log);
 }

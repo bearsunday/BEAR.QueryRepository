@@ -1,0 +1,285 @@
+=== Cache Kinds Demo ===
+
+Each kind is requested three times: GET (miss, stored), GET (hit), and a
+conditional GET with the held ETag (304, cache_hit{layer: etag}).
+
+A. #[Cacheable] value          app://self/article       -> save_value, Cache-Control: max-age=0
+B. #[Cacheable(type: 'view')]  app://self/article-view  -> save_view
+C. #[Cacheable] body that cannot be stored               -> cache_error{write}, the request fails
+D. #[CacheableResponse]        page://self/html/blog-posting       -> put_donut, max-age=0
+E. #[DonutCache]               page://self/html/blog-posting-donut -> the page is recomposed from
+                                  the cached template and content on every request: it carries
+                                  no ETag or Cache-Control, so a conditional GET is not answered 304
+
+=== Executing... ===
+A GET app://self/article?id=1 (miss) -> 200, Cache-Control: max-age=0
+A GET app://self/article?id=1 (hit)  -> 200, Cache-Control: max-age=0
+A conditional GET with the held ETag -> 304
+B GET app://self/article-view?id=1 (miss) -> 200, Cache-Control: max-age=0
+B GET app://self/article-view?id=1 (hit)  -> 200, Cache-Control: max-age=0
+B conditional GET with the held ETag -> 304
+C GET app://self/report -> Exception: Serialization of 'Closure' is not allowed
+
+=== Cache Log Tree — A-C. #[Cacheable] ===
+get uri=app://self/article?id=1
+├── uri: app://self/article?id=1
+├── cache_policy uri=app://self/article?id=1 expiry=never resolvedTtl=31536000 [event]
+│   ├── uri: app://self/article?id=1
+│   ├── expiry: never
+│   └── resolvedTtl: 31536000
+├── pre_write_cleanup uri=app://self/article?id=1 [event]
+│   └── uri: app://self/article?id=1
+├── invalidate tags=[_article_id=1] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
+│   ├── tags[0]: _article_id=1
+│   ├── roPool: invalidated
+│   ├── etagPool: invalidated
+│   ├── cdn: skipped
+│   └── durationMs: 0
+├── save_value uri=app://self/article?id=1 tags=[_article_id=1, grp-_article_id=1] requestedTtl=31536000 saved=true [event]
+│   ├── uri: app://self/article?id=1
+│   ├── tags[0]: _article_id=1
+│   ├── tags[1]: grp-_article_id=1
+│   ├── requestedTtl: 31536000
+│   └── saved: true
+├── save_etag uri=app://self/article?id=1 etag="etag-1" tags=[grp-_article_id=1, _article_id=1] requestedTtl=31536000 (+1 more) [event]
+│   ├── uri: app://self/article?id=1
+│   ├── etag: "etag-1"
+│   ├── tags[0]: grp-_article_id=1
+│   ├── tags[1]: _article_id=1
+│   ├── requestedTtl: 31536000
+│   └── saved: true
+└── close cache_miss
+    ├── layer: resource
+    └── durationMs: 0
+get uri=app://self/article?id=1
+├── uri: app://self/article?id=1
+└── close cache_hit
+    ├── layer: resource
+    └── durationMs: 0
+conditional_request ifNoneMatch="etag-1"
+├── ifNoneMatch: "etag-1"
+└── close cache_hit
+    ├── layer: etag
+    └── durationMs: 0
+get uri=app://self/article-view?id=1
+├── uri: app://self/article-view?id=1
+├── cache_policy uri=app://self/article-view?id=1 expiry=never resolvedTtl=31536000 [event]
+│   ├── uri: app://self/article-view?id=1
+│   ├── expiry: never
+│   └── resolvedTtl: 31536000
+├── pre_write_cleanup uri=app://self/article-view?id=1 [event]
+│   └── uri: app://self/article-view?id=1
+├── invalidate tags=[_article-view_id=1] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
+│   ├── tags[0]: _article-view_id=1
+│   ├── roPool: invalidated
+│   ├── etagPool: invalidated
+│   ├── cdn: skipped
+│   └── durationMs: 0
+├── save_view uri=app://self/article-view?id=1 tags=[_article-view_id=1 +1 items] requestedTtl=31536000 saved=true [event]
+│   ├── uri: app://self/article-view?id=1
+│   ├── tags[0]: _article-view_id=1
+│   ├── tags[1]: grp-_article-view_id=1
+│   ├── requestedTtl: 31536000
+│   └── saved: true
+├── save_etag uri=app://self/article-view?id=1 etag="etag-2" tags=[grp-_article-view_id=1 +1 items] requestedTtl=31536000 (+1 more) [event]
+│   ├── uri: app://self/article-view?id=1
+│   ├── etag: "etag-2"
+│   ├── tags[0]: grp-_article-view_id=1
+│   ├── tags[1]: _article-view_id=1
+│   ├── requestedTtl: 31536000
+│   └── saved: true
+└── close cache_miss
+    ├── layer: resource
+    └── durationMs: 0
+get uri=app://self/article-view?id=1
+├── uri: app://self/article-view?id=1
+└── close cache_hit
+    ├── layer: resource
+    └── durationMs: 0
+conditional_request ifNoneMatch="etag-2"
+├── ifNoneMatch: "etag-2"
+└── close cache_hit
+    ├── layer: etag
+    └── durationMs: 0
+get uri=app://self/report
+├── uri: app://self/report
+├── cache_policy uri=app://self/report expiry=never resolvedTtl=31536000 [event]
+│   ├── uri: app://self/report
+│   ├── expiry: never
+│   └── resolvedTtl: 31536000
+├── cache_error uri=app://self/report operation=write error=Serialization of 'Closure' is not allowe...(+1) exceptionClass=Exception [event]
+│   ├── uri: app://self/report
+│   ├── operation: write
+│   ├── error: Serialization of 'Closure' is not allowed
+│   └── exceptionClass: Exception
+└── close cache_miss
+    ├── layer: resource
+    └── durationMs: 0
+Schema validation: OK (26 entries)
+D GET page://self/html/blog-posting (miss) -> 200, Cache-Control: max-age=0
+D GET page://self/html/blog-posting (hit)  -> 200, Cache-Control: max-age=0
+D conditional GET with the held ETag -> 304
+E GET page://self/html/blog-posting-donut (miss) -> 200, Cache-Control: (none)
+E GET page://self/html/blog-posting-donut (hit)  -> 200, Cache-Control: (none)
+E no ETag to revalidate with
+
+=== Cache Log Tree — D-E. donut pages ===
+get uri=page://self/html/blog-posting
+├── uri: page://self/html/blog-posting
+├── cache_miss layer=donut [event]
+│   └── layer: donut
+├── dependency_skipped parent=page://self/html/blog-posting child=page://self/html/comment reason=no_body [event]
+│   ├── parent: page://self/html/blog-posting
+│   ├── child: page://self/html/comment
+│   └── reason: no_body
+├── put_donut uri=page://self/html/blog-posting [event]
+│   └── uri: page://self/html/blog-posting
+├── get uri=page://self/html/comment
+│   ├── uri: page://self/html/comment
+│   ├── cache_policy uri=page://self/html/comment expiry=never resolvedTtl=31536000 [event]
+│   │   ├── uri: page://self/html/comment
+│   │   ├── expiry: never
+│   │   └── resolvedTtl: 31536000
+│   ├── pre_write_cleanup uri=page://self/html/comment [event]
+│   │   └── uri: page://self/html/comment
+│   ├── invalidate tags=[_html_comment_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
+│   │   ├── tags[0]: _html_comment_
+│   │   ├── roPool: invalidated
+│   │   ├── etagPool: invalidated
+│   │   ├── cdn: skipped
+│   │   └── durationMs: 0
+│   ├── save_value uri=page://self/html/comment tags=[_html_comment_, grp-_html_comment_ +1 items] requestedTtl=31536000 saved=true [event]
+│   │   ├── uri: page://self/html/comment
+│   │   ├── tags[0]: _html_comment_
+│   │   ├── tags[1]: grp-_html_comment_
+│   │   ├── tags[2]: comment01
+│   │   ├── requestedTtl: 31536000
+│   │   └── saved: true
+│   ├── save_etag uri=page://self/html/comment etag="etag-3" tags=[comment01, grp-_html_comment_ +1 items] requestedTtl=31536000 (+1 more) [event]
+│   │   ├── uri: page://self/html/comment
+│   │   ├── etag: "etag-3"
+│   │   ├── tags[0]: comment01
+│   │   ├── tags[1]: grp-_html_comment_
+│   │   ├── tags[2]: _html_comment_
+│   │   ├── requestedTtl: 31536000
+│   │   └── saved: true
+│   └── close cache_miss
+│       ├── layer: resource
+│       └── durationMs: 0
+├── cdn_headers uri=page://self/html/blog-posting surrogateKeys=[blog-posting-page, _html_blog-posting_ +4 items] [event]
+│   ├── uri: page://self/html/blog-posting
+│   ├── surrogateKeys[0]: blog-posting-page
+│   ├── surrogateKeys[1]: _html_blog-posting_
+│   ├── surrogateKeys[2]: grp-_html_blog-posting_
+│   ├── surrogateKeys[3]: _html_comment_
+│   ├── surrogateKeys[4]: grp-_html_comment_
+│   └── surrogateKeys[5]: comment01
+├── pre_write_cleanup uri=page://self/html/blog-posting [event]
+│   └── uri: page://self/html/blog-posting
+├── invalidate tags=[_html_blog-posting_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
+│   ├── tags[0]: _html_blog-posting_
+│   ├── roPool: invalidated
+│   ├── etagPool: invalidated
+│   ├── cdn: skipped
+│   └── durationMs: 0
+├── save_donut_view uri=page://self/html/blog-posting tags=[_html_blog-posting_ +5 items] saved=true [event]
+│   ├── uri: page://self/html/blog-posting
+│   ├── tags[0]: _html_blog-posting_
+│   ├── tags[1]: grp-_html_blog-posting_
+│   ├── tags[2]: blog-posting-page
+│   ├── tags[3]: _html_comment_
+│   ├── tags[4]: grp-_html_comment_
+│   ├── tags[5]: comment01
+│   └── saved: true
+├── save_etag uri=page://self/html/blog-posting etag="etag-4" tags=[blog-posting-page, _html_blog-posting_ +4 items] saved=true [event]
+│   ├── uri: page://self/html/blog-posting
+│   ├── etag: "etag-4"
+│   ├── tags[0]: blog-posting-page
+│   ├── tags[1]: _html_blog-posting_
+│   ├── tags[2]: grp-_html_blog-posting_
+│   ├── tags[3]: _html_comment_
+│   ├── tags[4]: grp-_html_comment_
+│   ├── tags[5]: comment01
+│   └── saved: true
+├── save_donut uri=page://self/html/blog-posting tags=[_html_blog-posting_ +2 items] saved=true [event]
+│   ├── uri: page://self/html/blog-posting
+│   ├── tags[0]: _html_blog-posting_
+│   ├── tags[1]: grp-_html_blog-posting_
+│   ├── tags[2]: blog-posting-page
+│   └── saved: true
+└── close cache_miss
+    ├── layer: donut-view
+    └── durationMs: 0
+get uri=page://self/html/blog-posting
+├── uri: page://self/html/blog-posting
+└── close cache_hit
+    ├── layer: donut-view
+    └── durationMs: 0
+conditional_request ifNoneMatch="etag-4"
+├── ifNoneMatch: "etag-4"
+└── close cache_hit
+    ├── layer: etag
+    └── durationMs: 0
+get uri=page://self/html/blog-posting-donut
+├── uri: page://self/html/blog-posting-donut
+├── cache_miss layer=donut [event]
+│   └── layer: donut
+├── dependency_skipped parent=page://self/html/blog-posting-donut child=page://self/html/comment reason=no_body [event]
+│   ├── parent: page://self/html/blog-posting-donut
+│   ├── child: page://self/html/comment
+│   └── reason: no_body
+├── put_donut uri=page://self/html/blog-posting-donut [event]
+│   └── uri: page://self/html/blog-posting-donut
+├── get uri=page://self/html/comment
+│   ├── uri: page://self/html/comment
+│   └── close cache_hit
+│       ├── layer: resource
+│       └── durationMs: 0
+├── cdn_headers uri=page://self/html/blog-posting-donut surrogateKeys=[_html_blog-posting-donut_ +4 items] [event]
+│   ├── uri: page://self/html/blog-posting-donut
+│   ├── surrogateKeys[0]: _html_blog-posting-donut_
+│   ├── surrogateKeys[1]: grp-_html_blog-posting-donut_
+│   ├── surrogateKeys[2]: _html_comment_
+│   ├── surrogateKeys[3]: grp-_html_comment_
+│   └── surrogateKeys[4]: comment01
+├── pre_write_cleanup uri=page://self/html/blog-posting-donut [event]
+│   └── uri: page://self/html/blog-posting-donut
+├── invalidate tags=[_html_blog-posting-donut_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
+│   ├── tags[0]: _html_blog-posting-donut_
+│   ├── roPool: invalidated
+│   ├── etagPool: invalidated
+│   ├── cdn: skipped
+│   └── durationMs: 0
+├── save_donut uri=page://self/html/blog-posting-donut tags=[_html_blog-posting-donut_ +1 items] saved=true [event]
+│   ├── uri: page://self/html/blog-posting-donut
+│   ├── tags[0]: _html_blog-posting-donut_
+│   ├── tags[1]: grp-_html_blog-posting-donut_
+│   └── saved: true
+└── close cache_miss
+    ├── layer: donut-view
+    └── durationMs: 0
+get uri=page://self/html/blog-posting-donut
+├── uri: page://self/html/blog-posting-donut
+├── cache_hit layer=donut [event]
+│   └── layer: donut
+├── refresh_donut uri=page://self/html/blog-posting-donut [event]
+│   └── uri: page://self/html/blog-posting-donut
+├── get uri=page://self/html/comment
+│   ├── uri: page://self/html/comment
+│   └── close cache_hit
+│       ├── layer: resource
+│       └── durationMs: 0
+├── cdn_headers uri=page://self/html/blog-posting-donut surrogateKeys=[_html_blog-posting-donut_ +4 items] [event]
+│   ├── uri: page://self/html/blog-posting-donut
+│   ├── surrogateKeys[0]: _html_blog-posting-donut_
+│   ├── surrogateKeys[1]: grp-_html_blog-posting-donut_
+│   ├── surrogateKeys[2]: _html_comment_
+│   ├── surrogateKeys[3]: grp-_html_comment_
+│   └── surrogateKeys[4]: comment01
+├── put_skipped uri=page://self/html/blog-posting-donut reason=not-cacheable [event]
+│   ├── uri: page://self/html/blog-posting-donut
+│   └── reason: not-cacheable
+└── close cache_hit
+    ├── layer: donut-view
+    └── durationMs: 0
+Schema validation: OK (41 entries)

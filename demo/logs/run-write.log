@@ -1,0 +1,353 @@
+=== Write Demo ===
+
+app://self/tag is #[Cacheable]; every write to app://self/tag-writer bumps its version,
+so a rebuilt entry shows the new version and an untouched one the old.
+
+A. PATCH app://self/member with member_id    -> the #[Cacheable] resource's own write
+                                                refreshes ?memberId=1 (snake_case query)
+B. PUT    tag-writer id=[a, b]  #[Refresh(uri: 'app://self/tag{?id*}')]
+                                              -> one refresh per element: a and b rebuilt
+C. DELETE tag-writer id=[a, b]  #[Purge(uri: 'app://self/tag{?id*}')]
+                                              -> one purge per element, nothing rebuilt
+D. DELETE tag-writer id=[]                   -> an empty list invalidates nothing
+E. GET tag with a Stringable id, then DELETE id=[x]
+                                              -> the value is part of the key: x is purged
+                                                 by its string, y keeps its own entry
+
+=== Executing... ===
+A GET app://self/member {"memberId":1} -> {"memberId":1,"name":"kuma"}
+
+=== Cache Log Tree — A. snake_case write query ===
+command method=onPatch source=CommandInterceptor
+├── method: onPatch
+├── source: CommandInterceptor
+├── purge uri=app://self/member?memberId=1 [event]
+│   └── uri: app://self/member?memberId=1
+├── invalidate tags=[_member_memberId=1 +1 items] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
+│   ├── tags[0]: _member_memberId=1
+│   ├── tags[1]: grp-_member_memberId=1
+│   ├── roPool: invalidated
+│   ├── etagPool: invalidated
+│   ├── cdn: skipped
+│   └── durationMs: 0
+├── get uri=app://self/member?memberId=1
+│   ├── uri: app://self/member?memberId=1
+│   ├── cache_policy uri=app://self/member?memberId=1 expiry=never resolvedTtl=31536000 [event]
+│   │   ├── uri: app://self/member?memberId=1
+│   │   ├── expiry: never
+│   │   └── resolvedTtl: 31536000
+│   ├── pre_write_cleanup uri=app://self/member?memberId=1 [event]
+│   │   └── uri: app://self/member?memberId=1
+│   ├── invalidate tags=[_member_memberId=1] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
+│   │   ├── tags[0]: _member_memberId=1
+│   │   ├── roPool: invalidated
+│   │   ├── etagPool: invalidated
+│   │   ├── cdn: skipped
+│   │   └── durationMs: 0
+│   ├── save_value uri=app://self/member?memberId=1 tags=[_member_memberId=1 +1 items] requestedTtl=31536000 saved=true [event]
+│   │   ├── uri: app://self/member?memberId=1
+│   │   ├── tags[0]: _member_memberId=1
+│   │   ├── tags[1]: grp-_member_memberId=1
+│   │   ├── requestedTtl: 31536000
+│   │   └── saved: true
+│   ├── save_etag uri=app://self/member?memberId=1 etag="etag-1" tags=[grp-_member_memberId=1 +1 items] requestedTtl=31536000 (+1 more) [event]
+│   │   ├── uri: app://self/member?memberId=1
+│   │   ├── etag: "etag-1"
+│   │   ├── tags[0]: grp-_member_memberId=1
+│   │   ├── tags[1]: _member_memberId=1
+│   │   ├── requestedTtl: 31536000
+│   │   └── saved: true
+│   └── close cache_miss
+│       ├── layer: resource
+│       └── durationMs: 0
+└── close command_result
+    └── code: 200
+get uri=app://self/member?memberId=1
+├── uri: app://self/member?memberId=1
+└── close cache_hit
+    ├── layer: resource
+    └── durationMs: 0
+Schema validation: OK (13 entries)
+B GET app://self/tag {"id":"a"} -> {"id":"a","version":2}
+B GET app://self/tag {"id":"c"} -> {"id":"c","version":1}
+
+=== Cache Log Tree — B. #[Refresh] with a list ===
+command method=onPut annotations=[1 items] source=RefreshInterceptor
+├── method: onPut
+├── source: RefreshInterceptor
+├── purge uri=app://self/tag?id=a [event]
+│   └── uri: app://self/tag?id=a
+├── invalidate tags=[_tag_id=a, grp-_tag_id=a] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
+│   ├── tags[0]: _tag_id=a
+│   ├── tags[1]: grp-_tag_id=a
+│   ├── roPool: invalidated
+│   ├── etagPool: invalidated
+│   ├── cdn: skipped
+│   └── durationMs: 0
+├── purge uri=app://self/tag?id=b [event]
+│   └── uri: app://self/tag?id=b
+├── invalidate tags=[_tag_id=b, grp-_tag_id=b] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
+│   ├── tags[0]: _tag_id=b
+│   ├── tags[1]: grp-_tag_id=b
+│   ├── roPool: invalidated
+│   ├── etagPool: invalidated
+│   ├── cdn: skipped
+│   └── durationMs: 0
+├── get uri=app://self/tag?id=a
+│   ├── uri: app://self/tag?id=a
+│   ├── cache_policy uri=app://self/tag?id=a expiry=never resolvedTtl=31536000 [event]
+│   │   ├── uri: app://self/tag?id=a
+│   │   ├── expiry: never
+│   │   └── resolvedTtl: 31536000
+│   ├── pre_write_cleanup uri=app://self/tag?id=a [event]
+│   │   └── uri: app://self/tag?id=a
+│   ├── invalidate tags=[_tag_id=a] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
+│   │   ├── tags[0]: _tag_id=a
+│   │   ├── roPool: invalidated
+│   │   ├── etagPool: invalidated
+│   │   ├── cdn: skipped
+│   │   └── durationMs: 0
+│   ├── save_value uri=app://self/tag?id=a tags=[_tag_id=a, grp-_tag_id=a] requestedTtl=31536000 saved=true [event]
+│   │   ├── uri: app://self/tag?id=a
+│   │   ├── tags[0]: _tag_id=a
+│   │   ├── tags[1]: grp-_tag_id=a
+│   │   ├── requestedTtl: 31536000
+│   │   └── saved: true
+│   ├── save_etag uri=app://self/tag?id=a etag="etag-2" tags=[grp-_tag_id=a, _tag_id=a] requestedTtl=31536000 (+1 more) [event]
+│   │   ├── uri: app://self/tag?id=a
+│   │   ├── etag: "etag-2"
+│   │   ├── tags[0]: grp-_tag_id=a
+│   │   ├── tags[1]: _tag_id=a
+│   │   ├── requestedTtl: 31536000
+│   │   └── saved: true
+│   └── close cache_miss
+│       ├── layer: resource
+│       └── durationMs: 0
+├── get uri=app://self/tag?id=b
+│   ├── uri: app://self/tag?id=b
+│   ├── cache_policy uri=app://self/tag?id=b expiry=never resolvedTtl=31536000 [event]
+│   │   ├── uri: app://self/tag?id=b
+│   │   ├── expiry: never
+│   │   └── resolvedTtl: 31536000
+│   ├── pre_write_cleanup uri=app://self/tag?id=b [event]
+│   │   └── uri: app://self/tag?id=b
+│   ├── invalidate tags=[_tag_id=b] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
+│   │   ├── tags[0]: _tag_id=b
+│   │   ├── roPool: invalidated
+│   │   ├── etagPool: invalidated
+│   │   ├── cdn: skipped
+│   │   └── durationMs: 0
+│   ├── save_value uri=app://self/tag?id=b tags=[_tag_id=b, grp-_tag_id=b] requestedTtl=31536000 saved=true [event]
+│   │   ├── uri: app://self/tag?id=b
+│   │   ├── tags[0]: _tag_id=b
+│   │   ├── tags[1]: grp-_tag_id=b
+│   │   ├── requestedTtl: 31536000
+│   │   └── saved: true
+│   ├── save_etag uri=app://self/tag?id=b etag="etag-3" tags=[grp-_tag_id=b, _tag_id=b] requestedTtl=31536000 (+1 more) [event]
+│   │   ├── uri: app://self/tag?id=b
+│   │   ├── etag: "etag-3"
+│   │   ├── tags[0]: grp-_tag_id=b
+│   │   ├── tags[1]: _tag_id=b
+│   │   ├── requestedTtl: 31536000
+│   │   └── saved: true
+│   └── close cache_miss
+│       ├── layer: resource
+│       └── durationMs: 0
+└── close command_result
+    └── code: 200
+get uri=app://self/tag?id=a
+├── uri: app://self/tag?id=a
+└── close cache_hit
+    ├── layer: resource
+    └── durationMs: 0
+get uri=app://self/tag?id=c
+├── uri: app://self/tag?id=c
+└── close cache_hit
+    ├── layer: resource
+    └── durationMs: 0
+Schema validation: OK (24 entries)
+C GET app://self/tag {"id":"a"} -> {"id":"a","version":3}
+
+=== Cache Log Tree — C. #[Purge] with a list ===
+command method=onDelete annotations=[1 items] source=RefreshInterceptor
+├── method: onDelete
+├── source: RefreshInterceptor
+├── purge uri=app://self/tag?id=a [event]
+│   └── uri: app://self/tag?id=a
+├── invalidate tags=[_tag_id=a, grp-_tag_id=a] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
+│   ├── tags[0]: _tag_id=a
+│   ├── tags[1]: grp-_tag_id=a
+│   ├── roPool: invalidated
+│   ├── etagPool: invalidated
+│   ├── cdn: skipped
+│   └── durationMs: 0
+├── purge uri=app://self/tag?id=b [event]
+│   └── uri: app://self/tag?id=b
+├── invalidate tags=[_tag_id=b, grp-_tag_id=b] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
+│   ├── tags[0]: _tag_id=b
+│   ├── tags[1]: grp-_tag_id=b
+│   ├── roPool: invalidated
+│   ├── etagPool: invalidated
+│   ├── cdn: skipped
+│   └── durationMs: 0
+└── close command_result
+    └── code: 200
+get uri=app://self/tag?id=a
+├── uri: app://self/tag?id=a
+├── cache_policy uri=app://self/tag?id=a expiry=never resolvedTtl=31536000 [event]
+│   ├── uri: app://self/tag?id=a
+│   ├── expiry: never
+│   └── resolvedTtl: 31536000
+├── pre_write_cleanup uri=app://self/tag?id=a [event]
+│   └── uri: app://self/tag?id=a
+├── invalidate tags=[_tag_id=a] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
+│   ├── tags[0]: _tag_id=a
+│   ├── roPool: invalidated
+│   ├── etagPool: invalidated
+│   ├── cdn: skipped
+│   └── durationMs: 0
+├── save_value uri=app://self/tag?id=a tags=[_tag_id=a, grp-_tag_id=a] requestedTtl=31536000 saved=true [event]
+│   ├── uri: app://self/tag?id=a
+│   ├── tags[0]: _tag_id=a
+│   ├── tags[1]: grp-_tag_id=a
+│   ├── requestedTtl: 31536000
+│   └── saved: true
+├── save_etag uri=app://self/tag?id=a etag="etag-4" tags=[grp-_tag_id=a, _tag_id=a] requestedTtl=31536000 (+1 more) [event]
+│   ├── uri: app://self/tag?id=a
+│   ├── etag: "etag-4"
+│   ├── tags[0]: grp-_tag_id=a
+│   ├── tags[1]: _tag_id=a
+│   ├── requestedTtl: 31536000
+│   └── saved: true
+└── close cache_miss
+    ├── layer: resource
+    └── durationMs: 0
+Schema validation: OK (13 entries)
+D GET app://self/tag {"id":"c"} -> {"id":"c","version":1}
+
+=== Cache Log Tree — D. #[Purge] with an empty list ===
+command method=onDelete annotations=[1 items] source=RefreshInterceptor
+├── method: onDelete
+├── source: RefreshInterceptor
+└── close command_result
+    └── code: 200
+get uri=app://self/tag?id=c
+├── uri: app://self/tag?id=c
+└── close cache_hit
+    ├── layer: resource
+    └── durationMs: 0
+Schema validation: OK (4 entries)
+E GET app://self/tag {"id":"x"} -> {"id":"x","version":5}
+E GET app://self/tag {"id":"y"} -> {"id":"y","version":4}
+
+=== Cache Log Tree — E. Stringable query value ===
+get uri=app://self/tag?
+├── uri: app://self/tag?
+├── cache_policy uri=app://self/tag? expiry=never resolvedTtl=31536000 [event]
+│   ├── uri: app://self/tag?
+│   ├── expiry: never
+│   └── resolvedTtl: 31536000
+├── pre_write_cleanup uri=app://self/tag? [event]
+│   └── uri: app://self/tag?
+├── invalidate tags=[_tag_id=x] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
+│   ├── tags[0]: _tag_id=x
+│   ├── roPool: invalidated
+│   ├── etagPool: invalidated
+│   ├── cdn: skipped
+│   └── durationMs: 0
+├── save_value uri=app://self/tag? tags=[_tag_id=x, grp-_tag_id=x] requestedTtl=31536000 saved=true [event]
+│   ├── uri: app://self/tag?
+│   ├── tags[0]: _tag_id=x
+│   ├── tags[1]: grp-_tag_id=x
+│   ├── requestedTtl: 31536000
+│   └── saved: true
+├── save_etag uri=app://self/tag? etag="etag-5" tags=[grp-_tag_id=x, _tag_id=x] requestedTtl=31536000 (+1 more) [event]
+│   ├── uri: app://self/tag?
+│   ├── etag: "etag-5"
+│   ├── tags[0]: grp-_tag_id=x
+│   ├── tags[1]: _tag_id=x
+│   ├── requestedTtl: 31536000
+│   └── saved: true
+└── close cache_miss
+    ├── layer: resource
+    └── durationMs: 0
+get uri=app://self/tag?
+├── uri: app://self/tag?
+├── cache_policy uri=app://self/tag? expiry=never resolvedTtl=31536000 [event]
+│   ├── uri: app://self/tag?
+│   ├── expiry: never
+│   └── resolvedTtl: 31536000
+├── pre_write_cleanup uri=app://self/tag? [event]
+│   └── uri: app://self/tag?
+├── invalidate tags=[_tag_id=y] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
+│   ├── tags[0]: _tag_id=y
+│   ├── roPool: invalidated
+│   ├── etagPool: invalidated
+│   ├── cdn: skipped
+│   └── durationMs: 0
+├── save_value uri=app://self/tag? tags=[_tag_id=y, grp-_tag_id=y] requestedTtl=31536000 saved=true [event]
+│   ├── uri: app://self/tag?
+│   ├── tags[0]: _tag_id=y
+│   ├── tags[1]: grp-_tag_id=y
+│   ├── requestedTtl: 31536000
+│   └── saved: true
+├── save_etag uri=app://self/tag? etag="etag-6" tags=[grp-_tag_id=y, _tag_id=y] requestedTtl=31536000 (+1 more) [event]
+│   ├── uri: app://self/tag?
+│   ├── etag: "etag-6"
+│   ├── tags[0]: grp-_tag_id=y
+│   ├── tags[1]: _tag_id=y
+│   ├── requestedTtl: 31536000
+│   └── saved: true
+└── close cache_miss
+    ├── layer: resource
+    └── durationMs: 0
+command method=onDelete annotations=[1 items] source=RefreshInterceptor
+├── method: onDelete
+├── source: RefreshInterceptor
+├── purge uri=app://self/tag?id=x [event]
+│   └── uri: app://self/tag?id=x
+├── invalidate tags=[_tag_id=x, grp-_tag_id=x] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
+│   ├── tags[0]: _tag_id=x
+│   ├── tags[1]: grp-_tag_id=x
+│   ├── roPool: invalidated
+│   ├── etagPool: invalidated
+│   ├── cdn: skipped
+│   └── durationMs: 0
+└── close command_result
+    └── code: 200
+get uri=app://self/tag?
+├── uri: app://self/tag?
+├── cache_policy uri=app://self/tag? expiry=never resolvedTtl=31536000 [event]
+│   ├── uri: app://self/tag?
+│   ├── expiry: never
+│   └── resolvedTtl: 31536000
+├── pre_write_cleanup uri=app://self/tag? [event]
+│   └── uri: app://self/tag?
+├── invalidate tags=[_tag_id=x] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
+│   ├── tags[0]: _tag_id=x
+│   ├── roPool: invalidated
+│   ├── etagPool: invalidated
+│   ├── cdn: skipped
+│   └── durationMs: 0
+├── save_value uri=app://self/tag? tags=[_tag_id=x, grp-_tag_id=x] requestedTtl=31536000 saved=true [event]
+│   ├── uri: app://self/tag?
+│   ├── tags[0]: _tag_id=x
+│   ├── tags[1]: grp-_tag_id=x
+│   ├── requestedTtl: 31536000
+│   └── saved: true
+├── save_etag uri=app://self/tag? etag="etag-7" tags=[grp-_tag_id=x, _tag_id=x] requestedTtl=31536000 (+1 more) [event]
+│   ├── uri: app://self/tag?
+│   ├── etag: "etag-7"
+│   ├── tags[0]: grp-_tag_id=x
+│   ├── tags[1]: _tag_id=x
+│   ├── requestedTtl: 31536000
+│   └── saved: true
+└── close cache_miss
+    ├── layer: resource
+    └── durationMs: 0
+get uri=app://self/tag?
+├── uri: app://self/tag?
+└── close cache_hit
+    ├── layer: resource
+    └── durationMs: 0
+Schema validation: OK (27 entries)

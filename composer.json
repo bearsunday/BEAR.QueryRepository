@@ -88,6 +88,7 @@
         "sa": ["./vendor/bin/psalm --show-info=true", "./vendor/bin/phpstan analyse -c phpstan.neon"],
         "metrics": ["./vendor/bin/phpmetrics --report-html=build/metrics --exclude=Exception --junit=build/junit.xml src"],
         "phpmd": ["./vendor/bin/phpmd --exclude src/Annotation src text ./phpmd.xml"],
+        "demo": ["php demo/update-snapshots.php"],
         "build": ["@cs", "@sa", "@pcov", "@metrics"]
     },
     "extra": {
