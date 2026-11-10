@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Requires `ray/di` 2.23 or later: the empty writer set the log modules declare needs it.
+- **Behaviour change**: a `#[Purge]`/`#[Refresh]` whose URI template leaves out a required `onGet()` parameter of the resource it names now throws `TemplateLacksRequiredParameter` before the write runs, instead of purging nothing (`#[Purge]`) or failing after the write (`#[Refresh]`). Add the parameter to the template; the snake_case name also counts.
 
 ## [1.19.1] - 2026-11-07
 

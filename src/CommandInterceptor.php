@@ -35,6 +35,7 @@ final readonly class CommandInterceptor implements MethodInterceptor
     public function __construct(
         #[Commands]
         private array $commands,
+        private RefreshTemplateValidator $refreshTemplateValidator,
         #[CacheLog]
         private SemanticLoggerInterface $logger = new NullSemanticLogger(),
     ) {
@@ -49,6 +50,7 @@ final readonly class CommandInterceptor implements MethodInterceptor
     #[Override]
     public function invoke(MethodInvocation $invocation)
     {
+        ($this->refreshTemplateValidator)($invocation);
         /** @psalm-suppress MixedAssignment */
         $ro = $invocation->proceed();
         if (! $ro instanceof ResourceObject) {

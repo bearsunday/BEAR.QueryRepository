@@ -12,6 +12,7 @@ use BEAR\RepositoryModule\Annotation\Refresh;
 use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
 use Override;
 use Ray\Di\AbstractModule;
+use Ray\Di\Scope;
 
 /**
  *  Provides HttpCacheInterface and derived bindings
@@ -21,6 +22,7 @@ use Ray\Di\AbstractModule;
  *  HttpCacheInterface
  *  -Commands
  *  RefreshInterceptor
+ *  RefreshTemplateValidator
  *  StorageExpiryModule
  */
 final class CacheableModule extends AbstractModule
@@ -34,6 +36,7 @@ final class CacheableModule extends AbstractModule
         $this->bind(HttpCacheInterface::class)->to(HttpCache::class);
         $this->bind()->annotatedWith(Commands::class)->toProvider(CommandsProvider::class);
         $this->bind(RefreshInterceptor::class);
+        $this->bind(RefreshTemplateValidator::class)->in(Scope::SINGLETON);
         $this->install(new StorageExpiryModule(60, 60 * 60, 60 * 60 * 24));
         $this->installAopModule();
     }
