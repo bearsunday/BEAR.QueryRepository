@@ -7,7 +7,7 @@ namespace BEAR\QueryRepository\Log\Context;
 use Koriym\SemanticLogger\AbstractContext;
 
 /**
- * Event: a #[Cacheable] value resource declared a dependency after its value and ETag were stored
+ * Event: a #[Cacheable] value resource declared a dependency outside its own put
  *
  * Usually a template helper's depends() while the page renders. The child's tags reach the response
  * header only, so a change to the child does not invalidate the stored entry or its ETag.

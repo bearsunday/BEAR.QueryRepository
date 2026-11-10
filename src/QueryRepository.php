@@ -51,6 +51,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         private DeclaredCacheControl $declaredCacheControl = new DeclaredCacheControl(),
         private UriTagInterface $uriTag = new UriTag(),
         private ResourceBodyEvaluator $evaluateBody = new ResourceBodyEvaluator(),
+        private PutInProgress $putInProgress = new PutInProgress(),
     ) {
     }
 
@@ -78,6 +79,16 @@ final readonly class QueryRepository implements QueryRepositoryInterface
     }
 
     private function doPut(ResourceObject $ro): bool
+    {
+        $this->putInProgress->begin($ro);
+        try {
+            return $this->store($ro);
+        } finally {
+            $this->putInProgress->end($ro);
+        }
+    }
+
+    private function store(ResourceObject $ro): bool
     {
         if ($ro->code === 200) {
             $this->setCacheDependency($ro);

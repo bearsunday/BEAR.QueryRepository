@@ -30,6 +30,7 @@ final readonly class CacheDependency implements CacheDependencyInterface
         #[CacheLog]
         private SemanticLoggerInterface $logger = new NullSemanticLogger(),
         BaseUriTagInterface|null $baseUriTag = null,
+        private PutInProgress $putInProgress = new PutInProgress(),
     ) {
         $this->baseUriTag = $baseUriTag ?? new BaseUriTag($uriTag);
     }
@@ -59,16 +60,12 @@ final readonly class CacheDependency implements CacheDependencyInterface
             $childTagList,
         ));
 
-        if (isset($from->headers[Header::ETAG]) && self::storesValue($from)) {
+        if (! $this->putInProgress->has($from) && self::storesValue($from)) {
             $this->logger->event(new DependencyAfterSaveContext((string) $from->uri, (string) $to->uri));
         }
     }
 
-    /**
-     * A value entry is stored, and its ETag set, before the page renders: an ETag here means the save has happened
-     *
-     * An ETag the resource set itself in onGet() reads the same.
-     */
+    /** A value entry is stored before the page renders, so a dependency declared outside its put does not reach it */
     private static function storesValue(ResourceObject $ro): bool
     {
         $attributes = (new ReflectionClass($ro))->getAttributes(Cacheable::class);

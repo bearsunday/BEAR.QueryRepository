@@ -156,7 +156,7 @@ $this->install(new DevQueryRepositoryLogModule($appDir . '/var/log/query-reposit
 
 and, in production, keeps only the sessions nothing else can account for —
 mutations, effects that did not happen, an entry no invalidation reaches as
-the page intends (`surrogate_key_oversize`, `dependency_after_save`), and a sample:
+the page intends (`surrogate_key_oversize`), and a sample:
 
 ```php
 $this->install(new ProdQueryRepositoryLogModule('php://stdout', sampleRate: 1000, module: new QueryRepositoryModule()));

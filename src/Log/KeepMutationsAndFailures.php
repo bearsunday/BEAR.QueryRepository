@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository\Log;
 
-use BEAR\QueryRepository\Log\Context\DependencyAfterSaveContext;
 use BEAR\QueryRepository\Log\Context\SurrogateKeyOversizeContext;
 use Koriym\SemanticLogger\LogJson;
 use Override;
@@ -33,8 +32,8 @@ use function random_int;
  *  - effects that did not happen: `saved: false`, `invalidate` with `roPool`/`etagPool`/`cdn`
  *    `failed`, a `manual_*` result of `failed`, `cache_error{operation: write}` - a store or
  *    an invalidation that was aborted.
- *  - an entry no invalidation reaches as the page intends: `surrogate_key_oversize`,
- *    `dependency_after_save`. Which URI hits them depends on production data.
+ *  - an entry no invalidation reaches as the page intends: `surrogate_key_oversize`. Which URI
+ *    hits it depends on production data.
  *  - a sample, when a rate is configured.
  *
  * Deliberately not kept: `cache_error{operation: read}` (availability, monitored elsewhere -
@@ -61,7 +60,7 @@ final class KeepMutationsAndFailures implements RetentionPolicyInterface
 {
     private const MUTATION_SCOPES = ['command', 'manual_store', 'manual_purge', 'manual_invalidate'];
     private const CLEANUP_MARKER = 'pre_write_cleanup';
-    private const UNREACHABLE_ENTRY_EVENTS = [SurrogateKeyOversizeContext::TYPE, DependencyAfterSaveContext::TYPE];
+    private const UNREACHABLE_ENTRY_EVENTS = [SurrogateKeyOversizeContext::TYPE];
 
     /** @param int $sampleRate keep 1 session in N regardless of content; 0 disables sampling */
     public function __construct(private int $sampleRate = 0)

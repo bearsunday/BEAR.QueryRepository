@@ -101,7 +101,7 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 | `surrogate_key_oversize` | `uri`, `headerBytes`, `longestKeyBytes` | `#[Cacheable]` の put や donut の書き込み・リフレッシュで応答に付いた Surrogate-Key が、Fastly の上限(1 キー 1,024 バイト、ヘッダ全体 16,384 バイト)を超えた。記録するだけで、キーはそのまま保存・送信される。測るのは応答のヘッダだけで、`#[Cacheable]` が保存時に自分のエントリへ足す URI タグや、CDN へ purge で送るキーは測らない。これを記録したセッションは本番の既定でも残る |
 | `depends_on` | `parent`, `child`, `childTags` | 依存の辺 1 本。子のタグが親に加わった。`#[Cacheable]` の put ではタグを持つ子ごとに、donut ページの書き込みではタグを持つデータ依存(`onGet()` が読んだ子)ごとに記録する。穴は書き込みの時点ではまだ実行されていないので、そこでは `dependency_skipped{no_body}` を記録し、辺はテンプレートが穴を描画したときに `put_donut` か `refresh_donut` の後に出る。その `childTags` は `save_donut_view` と `save_etag` (`#[CacheableResponse]`)、または `cdn_headers` だけ (`#[DonutCache]`) に載るタグで、`save_donut` には載らない。描画はデータ依存についても辺を記録するので、同じ子の辺が 2 本目として出る。donut ページの描画中に呼んだ `CacheDependencyInterface::depends()`(テンプレートのヘルパーからなど)も、`put_donut` と `save_*` のあいだに記録する |
 | `dependency_skipped` | `parent`, `child`, `reason` | キャッシュされる親の書き込み(`#[Cacheable]` の put、または donut ページの書き込み)で、body の最上位にある埋め込みリクエストを依存に入れなかった。子のタグは保存される値や donut テンプレートに加わらない。穴のタグは、穴が描画されるときに `#[CacheableResponse]` のビューには届く。配列の中のリクエストは見えず、何も記録しない |
-| `dependency_after_save` | `parent`, `child` | ETag をすでに持つ `#[Cacheable]` の値のリソースが `CacheDependencyInterface::depends()` を呼んだ。多くはページの描画中にテンプレートのヘルパーから呼んだもので、その `depends_on` の直後に記録する。値と ETag は描画の前に保存済みなので、子のタグは応答の `Surrogate-Key` にしか入らない。子が変わってもエントリは消えず、古い ETag が 304 を返し続ける。描画中に子を読むページは、`#[CacheableResponse]` か `#[Cacheable(type: 'view')]` で描画結果をキャッシュする。記録するだけ。`onGet()` で自分で ETag を付けるリソースは、埋め込んだ子についても記録する。これを記録したセッションは本番の既定でも残る |
+| `dependency_after_save` | `parent`, `child` | `#[Cacheable]` の値のリソースが、自分の put の外で `CacheDependencyInterface::depends()` を呼んだ。多くはページの描画中にテンプレートのヘルパーから呼んだもので、その `depends_on` の直後に記録する。値と ETag は描画の前に保存済みなので、子のタグは応答の `Surrogate-Key` にしか入らない。子が変わってもエントリは消えず、古い ETag が 304 を返し続ける。描画中に子を読むページは、`#[CacheableResponse]` か `#[Cacheable(type: 'view')]` で描画結果をキャッシュする。記録するだけ。リソース自身の `onGet()` から呼んでも記録するが、そのタグはエントリに届いている。描画のたびに(キャッシュヒットでも)記録するので、これを記録したセッションは本番の既定では残らない。開発で見つける |
 | `pre_write_cleanup` | `uri` | 書き込み側が、上書きするエントリを消す直前 |
 | `invalidate` | `tags`, `roPool`, `etagPool`, `cdn`, `durationMs` | タグを無効化した。対象ごとの結果つき |
 | `purge` | `uri` | URI 指定の破棄を要求した |
@@ -316,7 +316,7 @@ command {"method": "onPut", "annotations": [], "source": "CommandInterceptor"}
 | | 出力先 | ポリシー |
 |---|---|---|
 | `DevQueryRepositoryLogModule` | 1 セッション = 1 ファイル + `latest.json` | 全部 |
-| `ProdQueryRepositoryLogModule` | 1 セッション = 1 行の JSON を `php://stdout` またはファイルへ | mutation、起きなかった効果、`surrogate_key_oversize`、`dependency_after_save`、任意のサンプル |
+| `ProdQueryRepositoryLogModule` | 1 セッション = 1 行の JSON を `php://stdout` またはファイルへ | mutation、起きなかった効果、`surrogate_key_oversize`、任意のサンプル |
 | | `sampleRate: N` は正常セッションを N 本に 1 本残す(`0` で無効)。保持されるセッションの実測は中央値 3.9 KB、最大 21 KB(デモ全体)。純ヒットは 698 B | |
 | | PHP-FPM では `php://stdout` はプールの出力に届くのに `catch_workers_output = yes` が必要。コンテナならそのまま収集基盤へ。転送・ローテーション・保管期間はホストの責務 | |
 | `PsrLogWriter` | アプリの PSR-3 ロガー。ツリーは `context['log']` に入る | 包んだ writer のポリシー |

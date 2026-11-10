@@ -25,7 +25,6 @@ use Koriym\SemanticLogger\AbstractContext;
 use Koriym\SemanticLogger\CloseEntry;
 use Koriym\SemanticLogger\LogJson;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
-use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -176,23 +175,21 @@ class RetentionPolicyTest extends TestCase
         }
     }
 
-    /** @return array<string, array{AbstractContext}> */
-    public static function entryThatOutrunsItsInvalidationProvider(): array
-    {
-        return [
-            'an oversize Surrogate-Key' => [new SurrogateKeyOversizeContext('page://self/html/blog-posting', 16385, 30)],
-            'a dependency declared after the save' => [new DependencyAfterSaveContext('page://self/html/blog-posting', 'page://self/html/comment')],
-        ];
-    }
-
-    #[DataProvider('entryThatOutrunsItsInvalidationProvider')]
-    public function testAColdReadIsKeptWhenItsEntryOutrunsItsInvalidation(AbstractContext $event): void
+    public function testAColdReadIsKeptWhenItsSurrogateKeyIsOversize(): void
     {
         $this->recordAColdRead(null);
         $this->assertFalse($this->policy->keeps($this->logger->flush()));
 
-        $this->recordAColdRead($event);
+        $this->recordAColdRead(new SurrogateKeyOversizeContext('page://self/html/blog-posting', 16385, 30));
         $this->assertTrue($this->policy->keeps($this->logger->flush()));
+    }
+
+    public function testADependencyDeclaredAfterTheSaveIsNotAnIncidentOfItsOwn(): void
+    {
+        // Every render of the page repeats it, cache hits included: a page's design, found in development
+        $this->recordAColdRead(new DependencyAfterSaveContext('page://self/html/blog-posting', 'page://self/html/comment'));
+
+        $this->assertFalse($this->policy->keeps($this->logger->flush()));
     }
 
     private function recordAColdRead(AbstractContext|null $event): void
