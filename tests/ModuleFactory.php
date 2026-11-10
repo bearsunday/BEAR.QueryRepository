@@ -6,7 +6,6 @@ namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Log\SafeSemanticLogger;
 use BEAR\RepositoryModule\Annotation\CacheLog;
-use BEAR\RepositoryModule\Annotation\EtagPool;
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\Resource\Module\ResourceModule;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
@@ -30,7 +29,7 @@ final class ModuleFactory
             protected function configure(): void
             {
                 $this->bind(AdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->to(ArrayAdapter::class);
-                $this->bind(AdapterInterface::class)->annotatedWith(EtagPool::class)->to(ArrayAdapter::class);
+                $this->install(new FakeEtagPoolModule());
                 $this->bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)->toInstance(new SafeSemanticLogger());
             }
         });

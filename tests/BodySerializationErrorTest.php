@@ -8,7 +8,6 @@ use BEAR\QueryRepository\Exception\BodySerializationNotAllowedException;
 use BEAR\QueryRepository\Log\Context\CacheErrorContext;
 use BEAR\QueryRepository\Log\Context\PutSkippedContext;
 use BEAR\RepositoryModule\Annotation\CacheLog;
-use BEAR\RepositoryModule\Annotation\EtagPool;
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\Resource\Module\ResourceModule;
 use BEAR\Resource\ResourceInterface;
@@ -79,7 +78,7 @@ class BodySerializationErrorTest extends TestCase
                 // Swap the production pools (APCu/file-backed) and logger for fast, inspectable
                 // test doubles; BodySerializationErrorHandlerInterface is left to the real modules.
                 $this->bind(AdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->to(ArrayAdapter::class);
-                $this->bind(AdapterInterface::class)->annotatedWith(EtagPool::class)->to(ArrayAdapter::class);
+                $this->install(new FakeEtagPoolModule());
                 $this->bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)->toInstance($this->logger);
             }
         });
