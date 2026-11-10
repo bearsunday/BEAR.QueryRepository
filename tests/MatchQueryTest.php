@@ -48,4 +48,17 @@ class MatchQueryTest extends TestCase
         $this->expectException(UnmatchedQuery::class);
         ($this->matchQuery)($this->ro);
     }
+
+    public function testReadsSnakeCaseKeyUnderParameterName(): void
+    {
+        $ro = new class extends ResourceObject {
+            public function onGet(int $userId): static
+            {
+                return $this;
+            }
+        };
+        $ro->uri = new Uri('app://self/x', ['user_id' => 1]);
+
+        $this->assertSame(['userId' => 1], ($this->matchQuery)($ro));
+    }
 }
