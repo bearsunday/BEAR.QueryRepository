@@ -9,6 +9,7 @@ use BEAR\Resource\ResourceObject;
 use Override;
 use ReflectionMethod;
 
+use function array_key_exists;
 use function ltrim;
 use function preg_replace;
 use function sprintf;
@@ -32,9 +33,12 @@ final class MatchQuery implements MatchQueryInterface
         $getQuery = [];
         $query = $ro->uri->query;
         foreach ($refParameters as $parameter) {
-            $key = isset($query[$parameter->name]) ? $parameter->name : self::snakeName($parameter->name);
+            $hasDefault = $parameter->isDefaultValueAvailable();
+            // A null under the name: BEAR.Resource binds it to a parameter without a default, and skips it for one with a default
+            $isNamed = $hasDefault ? isset($query[$parameter->name]) : array_key_exists($parameter->name, $query);
+            $key = $isNamed ? $parameter->name : self::snakeName($parameter->name);
             if (! isset($query[$key])) {
-                if ($parameter->isDefaultValueAvailable()) {
+                if ($hasDefault) {
                     continue;
                 }
 
