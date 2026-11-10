@@ -14,7 +14,6 @@ use BEAR\QueryRepository\Log\Context\ManualStoreResultContext;
 use BEAR\QueryRepository\Log\Context\PreWriteCleanupContext;
 use BEAR\QueryRepository\Log\Context\PurgeContext;
 use BEAR\QueryRepository\Log\Context\PutSkippedContext;
-use BEAR\QueryRepository\Log\Context\SurrogateKeyOversizeContext;
 use BEAR\QueryRepository\Log\TopLevelAwareInterface;
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\CacheLog;
@@ -43,7 +42,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
     public function __construct(
         #[CacheLog]
         private SemanticLoggerInterface $logger,
-        private HeaderSetter $headerSetter,
+        private PutTracker $putTracker,
         private ResourceStorageInterface $storage,
         private Expiry $expiry,
         private CacheDependencyInterface $cacheDependency,
@@ -51,7 +50,6 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         private DeclaredCacheControl $declaredCacheControl = new DeclaredCacheControl(),
         private UriTagInterface $uriTag = new UriTag(),
         private ResourceBodyEvaluator $evaluateBody = new ResourceBodyEvaluator(),
-        private PutInProgress $putInProgress = new PutInProgress(),
     ) {
     }
 
@@ -80,12 +78,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
 
     private function doPut(ResourceObject $ro): bool
     {
-        $this->putInProgress->begin($ro);
-        try {
-            return $this->store($ro);
-        } finally {
-            $this->putInProgress->end($ro);
-        }
+        return $this->putTracker->storing($ro, fn (): bool => $this->store($ro));
     }
 
     private function store(ResourceObject $ro): bool
@@ -113,12 +106,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
             serialize(($this->evaluateBody)($ro->body));
         }
 
-        ($this->headerSetter)($ro, $this->clientCacheControl($cacheable, $ttl), $httpCache);
-        $oversize = SurrogateKeyOversizeContext::of($ro);
-        if ($oversize !== null) {
-            $this->logger->event($oversize);
-        }
-
+        $this->putTracker->setHeaders($ro, $this->clientCacheControl($cacheable, $ttl), $httpCache);
         $this->cleanUpBeforeWrite($ro, $unstorable);
 
         if ($unstorable !== null) {

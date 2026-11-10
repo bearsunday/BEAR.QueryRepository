@@ -39,7 +39,7 @@ class ResourceRepositoryTest extends TestCase
         };
         $this->repository = new Repository(
             new NullSemanticLogger(),
-            new HeaderSetter(new EtagSetter()),
+            new PutTracker(new HeaderSetter(new EtagSetter())),
             new ResourceStorage(
                 new NullSemanticLogger(),
                 new NullPurger(),
@@ -123,7 +123,7 @@ class ResourceRepositoryTest extends TestCase
         };
         $repository = new Repository(
             new NullSemanticLogger(),
-            new HeaderSetter(new EtagSetter()),
+            new PutTracker(new HeaderSetter(new EtagSetter())),
             new ResourceStorage(
                 new NullSemanticLogger(),
                 new NullPurger(),

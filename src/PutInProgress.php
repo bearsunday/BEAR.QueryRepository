@@ -32,7 +32,11 @@ final class PutInProgress
         return [];
     }
 
-    /** @param array<never> $data */
+    /**
+     * @param array<never> $data
+     *
+     * @SuppressWarnings("PHPMD.UnusedFormalParameter")
+     */
     public function __unserialize(array $data): void
     {
         $this->resourceObjects = self::none();
