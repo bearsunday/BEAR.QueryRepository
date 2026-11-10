@@ -150,10 +150,9 @@ final readonly class DonutRepository implements DonutRepositoryInterface
 
     private function doPutStatic(ResourceObject $ro, int|null $ttl, int|null $sMaxAge): void
     {
-        $this->classifyMaterials($ro);
-        $this->logger->event(new PutDonutContext((string) $ro->uri, $ttl, $sMaxAge));
         $keys = new SurrogateKeys($ro->uri, ($this->baseUriTag)($ro));
-        $keys->addTag($ro);
+        $this->classifyMaterials($ro, $keys);
+        $this->logger->event(new PutDonutContext((string) $ro->uri, $ttl, $sMaxAge));
         $donut = ResourceDonut::create($ro, $this->renderer, $keys, $sMaxAge, true);
         // Read after rendering, see templateKeys()
         $templateKeys = $this->templateKeys($ro, $this->getHeaderKeys($ro));
@@ -178,9 +177,9 @@ final readonly class DonutRepository implements DonutRepositoryInterface
 
     private function doPutDonut(ResourceObject $ro, int|null $donutTtl): void
     {
-        $this->classifyMaterials($ro);
-        $this->logger->event(new PutDonutContext((string) $ro->uri, $donutTtl, null));
         $keys = new SurrogateKeys($ro->uri, ($this->baseUriTag)($ro));
+        $this->classifyMaterials($ro, $keys);
+        $this->logger->event(new PutDonutContext((string) $ro->uri, $donutTtl, null));
         $donut = ResourceDonut::create($ro, $this->renderer, $keys, $donutTtl, false);
         // Read after rendering, see templateKeys()
         $templateKeys = $this->templateKeys($ro, $this->getHeaderKeys($ro));
@@ -221,7 +220,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
      * as `dependency_skipped` with what its body shows: none yet (a hole, or a run that left none), or one without a tag.
      * A child that ran counts as well when it, or a request it embeds and ran, declares #[DependsOn].
      */
-    private function classifyMaterials(ResourceObject $ro): void
+    private function classifyMaterials(ResourceObject $ro, SurrogateKeys $keys): void
     {
         ($this->dependsOnTags)($ro);
 
@@ -232,7 +231,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
             }
 
             $child = $body->resourceObject;
-            if (! $this->dependsOnTags->embedded($child)) {
+            if (! $keys->embedded($child)) {
                 $this->logger->event(DependencySkippedContext::of($ro, $child));
 
                 continue;

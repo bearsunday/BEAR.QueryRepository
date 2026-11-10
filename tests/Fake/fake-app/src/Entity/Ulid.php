@@ -9,6 +9,8 @@ use Stringable;
 
 final class Ulid implements Stringable
 {
+    public static int $casts = 0;
+
     public function __construct(
         private readonly string $value,
     ) {
@@ -17,6 +19,8 @@ final class Ulid implements Stringable
     #[Override]
     public function __toString(): string
     {
+        self::$casts++;
+
         return $this->value;
     }
 }

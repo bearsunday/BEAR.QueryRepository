@@ -8,7 +8,10 @@ use BEAR\QueryRepository\Exception\DependsOnNotExpandable;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
+use FakeVendor\HelloWorld\Entity\ArrayUlid;
 use FakeVendor\HelloWorld\Entity\Catalog;
+use FakeVendor\HelloWorld\Entity\PrivateUlid;
+use FakeVendor\HelloWorld\Entity\Ulid;
 use Madapaja\TwigModule\TwigModule;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -197,28 +200,55 @@ class DependsOnTest extends TestCase
         $this->assertFalse($this->isStored($uri, false));
     }
 
-    /** @return array<string, array{0: string, 1: string}> */
+    /** @return array<string, array{0: string, 1: string, 2: string}> */
     public static function notExpandableProvider(): array
     {
         return [
-            'private property' => ['app://self/rows/private-row', "no 'ulid'"],
-            'array property' => ['app://self/rows/array-row', "'ulid' is array"],
-            'variable not an onGet() parameter' => ['app://self/rows/not-parameter?channelId=c1', "'ulid' is not an onGet() parameter"],
-            'declared on a resource class' => ['app://self/rows/class-declared?channelId=c1', 'declared on a resource class'],
+            'private property' => ['app://self/rows/private-row', 'app://self/rows/private-row ' . PrivateUlid::class, "no 'ulid'"],
+            'array property' => ['app://self/rows/array-row', 'app://self/rows/array-row ' . ArrayUlid::class, "'ulid' is array"],
+            'variable not an onGet() parameter' => ['app://self/rows/not-parameter?channelId=c1', 'app://self/rows/not-parameter?channelId=c1 onGet()', "'ulid' is not an onGet() parameter"],
+            'declared on a resource class' => ['app://self/rows/class-declared?channelId=c1', 'app://self/rows/class-declared?channelId=c1', 'declared on a resource class'],
         ];
     }
 
     #[DataProvider('notExpandableProvider')]
-    public function testADeclarationThatCannotExpandThrowsAndStoresNothing(string $uri, string $reason): void
+    public function testADeclarationThatCannotExpandThrowsAndStoresNothing(string $uri, string $source, string $reason): void
     {
         try {
             $this->resource->get($uri);
             $this->fail('DependsOnNotExpandable must be thrown');
         } catch (DependsOnNotExpandable $e) {
+            $this->assertSame($source, $e->source);
             $this->assertSame($reason, $e->reason);
         }
 
         $this->assertFalse($this->isStored($uri, false));
+    }
+
+    /** @return array<string, array{0: string}> */
+    public static function storeProvider(): array
+    {
+        return [
+            'class #[Cacheable]' => ['app://self/rows/ca?channelId=c1'],
+            'class #[CacheableResponse]' => ['app://self/rows/cr?channelId=c1'],
+            'method #[CacheableResponse]' => ['app://self/rows/mr?channelId=c1'],
+            'putStatic() in onGet()' => ['app://self/rows/ps?channelId=c1'],
+            '#[Cacheable] page' => ['app://self/rows/page-value'],
+            'class #[CacheableResponse] page reading the list' => ['app://self/rows/page-view'],
+            'method #[CacheableResponse] page reading the list' => ['app://self/rows/page-donut'],
+            'page with the list as a hole' => ['app://self/rows/page-hole'],
+            'donut page <- mid <- list' => ['app://self/rows/page-chain-donut'],
+        ];
+    }
+
+    /** A material is classified before its page renders and rendered again as a request of its own */
+    #[DataProvider('storeProvider')]
+    public function testEachRowIsExpandedOncePerStore(string $uri): void
+    {
+        Ulid::$casts = 0;
+        $this->resource->get($uri);
+
+        $this->assertSame(2, Ulid::$casts, 'each of the two rows expands its ULID once');
     }
 
     private function isStored(string $uri, bool $isDonut): bool

@@ -20,6 +20,6 @@ final class Catalog
     /** @return list<Item> */
     public static function items(string $channelId): array
     {
-        return array_map(static fn (array $row): Item => new Item($row[0], $row[1]), self::$channels[$channelId] ?? []);
+        return array_map(static fn (array $row): Item => new Item(new Ulid($row[0]), $row[1]), self::$channels[$channelId] ?? []);
     }
 }

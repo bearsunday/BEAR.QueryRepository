@@ -43,17 +43,25 @@ final readonly class DependsOnTags
      */
     public function embedded(ResourceObject $child): bool
     {
-        $tags = $this->ran($child);
+        return self::tagEmbedded($child, $this->ran($child));
+    }
+
+    /**
+     * @param list<string>|null $tags what ran() found for the child
+     *
+     * @return bool whether its parent depends on it: a declaration was found, or it carries an ETag or a Surrogate-Key
+     */
+    public static function tagEmbedded(ResourceObject $child, array|null $tags): bool
+    {
         self::addTags($child, $tags ?? []);
 
         return $tags !== null || isset($child->headers[Header::ETAG]) || isset($child->headers[Header::SURROGATE_KEY]);
     }
 
-    /** @return list<string>|null null when no declaration was found */
-    private function ran(ResourceObject $ro): array|null
+    /** @return list<string>|null the tags the resource and the requests it embeds and ran declare; null when none declares */
+    public function ran(ResourceObject $ro): array|null
     {
-        // A request that has not run yet, such as a hole, still has the default code and no body
-        if ($ro->code === 200 && $ro->body === null) {
+        if (! self::hasRun($ro)) {
             return null;
         }
 
@@ -73,6 +81,12 @@ final readonly class DependsOnTags
         return $tags;
     }
 
+    /** A request that has not run yet, such as a hole, still has the default code and no body */
+    public static function hasRun(ResourceObject $ro): bool
+    {
+        return $ro->code !== 200 || $ro->body !== null;
+    }
+
     /** @return list<string>|null null when neither onGet() nor a row class in the body declares */
     private function declared(ResourceObject $ro): array|null
     {
@@ -83,7 +97,7 @@ final readonly class DependsOnTags
 
         $onGet = DependsOnTemplates::ofOnGet($ro);
         $tags = $onGet === [] ? null : $this->fromArguments($ro, $onGet);
-        $rows = RowClassWalk::tags($ro->body, $this->uriTag);
+        $rows = RowClassWalk::tags($ro->body, $this->uriTag, (string) $ro->uri);
         if ($rows === null) {
             return $tags;
         }

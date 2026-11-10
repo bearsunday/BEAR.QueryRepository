@@ -21,6 +21,9 @@ final class SurrogateKeys
     private readonly BaseUriTagInterface $baseUriTag;
     private readonly DependsOnTags $dependsOnTags;
 
+    /** @var array<string, list<string>|null> */
+    private array $declared = [];
+
     public function __construct(AbstractUri $uri, string|null $baseTag = null)
     {
         $this->uriTag = new UriTag();
@@ -34,12 +37,32 @@ final class SurrogateKeys
      */
     public function addTag(ResourceObject $ro): void
     {
-        $this->dependsOnTags->embedded($ro);
+        $this->embedded($ro);
         $this->surrogateKeys[] = ($this->uriTag)($ro->uri);
         $this->surrogateKeys[] = ($this->baseUriTag)($ro);
         if (array_key_exists(Header::SURROGATE_KEY, $ro->headers)) {
             $this->surrogateKeys = array_merge($this->surrogateKeys, explode(' ', $ro->headers[Header::SURROGATE_KEY]));
         }
+    }
+
+    /**
+     * Tags the embedded resource with what it declares in #[DependsOn], reading each URI once: a page's material is
+     * classified before the page renders and rendered again as a request of its own
+     *
+     * @return bool whether the page depends on it
+     */
+    public function embedded(ResourceObject $ro): bool
+    {
+        if (! DependsOnTags::hasRun($ro)) {
+            return DependsOnTags::tagEmbedded($ro, null);
+        }
+
+        $uri = (string) $ro->uri;
+        if (! array_key_exists($uri, $this->declared)) {
+            $this->declared[$uri] = $this->dependsOnTags->ran($ro);
+        }
+
+        return DependsOnTags::tagEmbedded($ro, $this->declared[$uri]);
     }
 
     public function setSurrogateHeader(ResourceObject $ro): void
