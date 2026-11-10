@@ -6,7 +6,7 @@ BEAR.QueryRepository separates query (read) and command (write) operations to op
 
 ## Core Concepts
 
-- **Cacheable**: Mark resources for TTL-based caching with `#[Cacheable]`
+- **Cacheable**: Store a resource with `#[Cacheable]`; the entry lives until a write invalidates it, or for the lifetime it declares
 - **HttpCache**: Control HTTP Cache-Control headers with `#[HttpCache]`
 - **Refresh/Purge**: Invalidate dependent caches after commands with `#[Refresh]` or `#[Purge]`
 - **Donut Caching**: Combine static outer shell with dynamic inner content

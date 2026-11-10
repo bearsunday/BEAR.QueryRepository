@@ -13,7 +13,7 @@ see the BEAR.Sunday documentation: https://bearsunday.github.io/llms-full.txt
 
 - Event-driven cache invalidation
 - Automatic dependency resolution between cached resources
-- Donut caching (DO-NOT-CACHE pattern - static outer shell with dynamic inner content)
+- Donut caching (`#[CacheableResponse]`/`#[DonutCache]`: a stored page template whose embedded holes are rendered per request or on events)
 - CDN integration (Fastly, Akamai)
 - ETag support for conditional requests
 - Redis and Memcached support
@@ -28,22 +28,23 @@ composer require bear/query-repository
 
 ### #[Cacheable]
 
-Marks a resource as cacheable with TTL-based expiration.
+Class attribute. Stores the `onGet()` response; a write to the resource refreshes it. Without a lifetime the entry lives until a write invalidates it.
 
 ```php
 use BEAR\RepositoryModule\Annotation\Cacheable;
 
+#[Cacheable]                   // no lifetime (default expiry: 'never'): kept until a write invalidates it, client gets max-age=0
 #[Cacheable(expiry: 'short')]  // 60 seconds
 #[Cacheable(expiry: 'medium')] // 1 hour
 #[Cacheable(expiry: 'long')]   // 1 day
-#[Cacheable(expiry: 'never')]  // 1 year
 #[Cacheable(expirySecond: 300)] // Custom TTL
+#[Cacheable(expiryAt: 'expiry_at')] // Until the time in $body['expiry_at']
 ```
 
 Parameters:
-- `expiry`: 'short' | 'medium' | 'long' | 'never'
+- `expiry`: 'short' | 'medium' | 'long' | 'never' (default). The store keeps a `never` entry under the `never` preset (31536000 seconds by default); the presets come from the `Expiry` binding
 - `expirySecond`: Custom TTL in seconds
-- `expiryAt`: Body field containing expiry timestamp
+- `expiryAt`: Body key holding the expiry time as a `strtotime()` string; a missing key throws `ExpireAtKeyNotExists`. Precedence: `expiryAt`, then `expirySecond`, then `expiry`
 - `type`: 'value' (body only) | 'view' (body + rendered view)
 
 ### #[HttpCache]
@@ -65,6 +66,7 @@ Parameters:
 - `mustRevalidate`: Require revalidation when stale
 - `maxAge`: Client cache lifetime (seconds)
 - `sMaxAge`: Shared cache (CDN) lifetime (seconds)
+- `etag`: Body keys whose string values make the ETag instead of the whole representation (partial ETag)
 
 ### #[NoHttpCache]
 
@@ -78,7 +80,7 @@ use BEAR\RepositoryModule\Annotation\NoHttpCache;
 
 ### #[Refresh]
 
-Invalidates dependent cache after command execution.
+After a write that answers below 400, purges the URI and rebuilds it with a GET (and stores it if that GET did not). The URI template expands from the write's body, then its query.
 
 ```php
 use BEAR\RepositoryModule\Annotation\Refresh;
@@ -90,7 +92,7 @@ public function onPut(int $id): static { ... }
 
 ### #[Purge]
 
-Purges specific cache after command execution.
+After a write that answers below 400, purges the URI. The template expands as for `#[Refresh]`.
 
 ```php
 use BEAR\RepositoryModule\Annotation\Purge;
@@ -110,6 +112,10 @@ A purge also reaches the query variants of the URI it names that differ from it 
 
 ## Modules
 
+### QueryRepositoryModule
+
+Base module: binds the core with a `NullAdapter` store (nothing is kept), a `NullPurger` and the cache log off, and installs the `#[Cacheable]` and donut interceptors. Storage and CDN modules replace its defaults: `$module->override(new StorageRedisDsnModule(...))`.
+
 ### StorageRedisDsnModule
 
 Configures Redis-backed storage.
@@ -118,6 +124,7 @@ Configures Redis-backed storage.
 use BEAR\QueryRepository\StorageRedisDsnModule;
 
 new StorageRedisDsnModule('redis://localhost:6379');
+// optional: $options, $defaultLifetime, $marshallingOptions (e.g. ['enabled' => true, 'type' => 'deflate'])
 ```
 
 ### StorageMemcachedModule
@@ -127,18 +134,27 @@ Configures Memcached-backed storage.
 ```php
 use BEAR\QueryRepository\StorageMemcachedModule;
 
-new StorageMemcachedModule('localhost', 11211);
+new StorageMemcachedModule('mem1.example.com:11211:33,mem2.example.com:11211:67'); // {host}:{port}[:{weight}], comma-separated
 ```
 
 ### CDN Modules
 
 ```php
-use BEAR\QueryRepository\FastlyModule;
-use BEAR\QueryRepository\AkamaiModule;
+use BEAR\QueryRepository\Cdn\AkamaiModule;
+use BEAR\QueryRepository\Cdn\FastlyModule;
 
-new FastlyModule($apiKey, $serviceId);
-new AkamaiModule($host, $clientToken, $clientSecret, $accessToken);
+new FastlyModule($fastlyApiKey, $fastlyServiceId); // requires bear/fastly-module
+new AkamaiModule();
 ```
+
+`FastlyModule` sets `Surrogate-Control` and purges by surrogate key through the Fastly API. `AkamaiModule` only sets the headers (`Akamai-Cache-Control`, `Surrogate-Key` renamed to `Edge-Cache-Tag`); it binds no purger, so a purge does not reach Akamai unless the app binds its own `PurgerInterface`.
+
+### Other modules
+
+- `CacheVersionModule($version)`: the cache namespace. Deploy with a new version so entries stored by the previous one are not read.
+- `StorageExpiryModule($short, $medium, $long)`: the `short`/`medium`/`long` presets (60/3600/86400 by default); bind `Expiry` to change `never` too.
+- `DevEtagModule`: ETags derived from the URI instead of the content, for debugging.
+- `DevQueryRepositoryLogModule` / `ProdQueryRepositoryLogModule`: turn the cache log on (see below).
 
 ### A stored body must serialize
 
@@ -222,24 +238,27 @@ On a donut page a top-level embedded request becomes a hole that can only be pri
 
 ## Donut Caching
 
-Combines static outer content with dynamic inner content.
+A page stores its rendered template; each child it takes in with `#[Embed]` and only renders is a hole, rendered into the template on every read. A value fetched in `onGet()` with `$this->resource->get()` is part of the template, not a hole.
 
 ```php
 use BEAR\RepositoryModule\Annotation\DonutCache;
+use BEAR\Resource\Annotation\Embed;
 
 #[DonutCache]
 class BlogPage extends ResourceObject
 {
+    #[Embed(rel: 'comment', src: 'app://self/comment')] // hole
     public function onGet(): static
     {
-        $this->body = [
-            'header' => $this->resource->get('app://self/header'),  // static
-            'content' => $this->resource->get('app://self/content'), // dynamic
-        ];
+        $this->body['article'] = '1'; // template
         return $this;
     }
 }
 ```
+
+- `#[DonutCache]`: stores the template only; holes run on every request. For per-user holes.
+- `#[CacheableResponse]`: also stores the composed page; a hole's purge recomposes it from the template. A write method of the class purges and rebuilds the page.
+- `#[CacheableResponse]` on `onGet()` alone stores the template only, as `#[DonutCache]` does. A write method marked `#[RefreshCache]` purges and rebuilds its own URI.
 
 ## Cache Log (Semantic Log)
 
@@ -298,19 +317,19 @@ Schemas: docs/schemas/context/ (one JSON Schema per context, e.g. docs/schemas/c
 ### Core Components
 
 - **QueryRepository**: Main entry point for cache operations (put, get, purge)
-- **ResourceStorage**: Low-level storage using Symfony Cache TagAwareAdapter
-- **CacheInterceptor**: AOP interceptor for #[Cacheable] resources
-- **CommandInterceptor**: Handles #[Refresh] and #[Purge] after commands
-- **DonutRepository**: Implements donut caching pattern
+- **ResourceStorage**: Low-level storage using Symfony Cache TagAwareAdapter: a resource pool and an ETag pool (the resource pool unless one is bound)
+- **CacheInterceptor**: AOP interceptor on `onGet()` of #[Cacheable] resources
+- **CommandInterceptor**: On write methods of #[Cacheable] resources: runs `RefreshSameCommand` (purge and re-GET its own URI) and `RefreshAnnotatedCommand` (#[Refresh]/#[Purge])
+- **RefreshInterceptor**: #[Refresh]/#[Purge] on a resource that is not #[Cacheable]
+- **DonutRepository**: Implements donut caching pattern (`DonutCacheInterceptor`, `DonutCacheableResponseInterceptor` on reads, `DonutCommandInterceptor` on writes)
 - **CacheDependency**: Manages cache dependencies via Surrogate-Key headers
 
 ### Cache Invalidation Flow
 
-1. Resource with #[Refresh] or #[Purge] is invoked
-2. CommandInterceptor executes the command
-3. After successful response, annotations are processed
-4. ResourceStorage.invalidateTags() clears both RO and ETag pools
-5. CDN purger (if configured) purges surrogate keys
+1. A write method runs; the interceptor acts only when it answers below 400
+2. The resource's own URI, default-valued `onGet()` parameters dropped, is purged and rebuilt by a GET on a new resource instance (`RefreshSameCommand` for #[Cacheable], `DonutCommandInterceptor` for #[CacheableResponse] or #[RefreshCache])
+3. Each #[Purge] URI is purged; each #[Refresh] URI is purged and rebuilt by a GET
+4. A purge invalidates the URI's tag and its group tag: ResourceStorage::invalidateTags() clears both pools, then the `PurgerInterface` (CDN) runs; a failing CDN purge throws after the local pools are cleared
 
 ## Documentation
 
