@@ -108,6 +108,22 @@ class DependsOnTest extends TestCase
         }
     }
 
+    /** A list that runs only as its mid renders is read with that render, so the page's view depends on it */
+    public function testAListThatRunsOnlyAsItsMidRendersIsADependencyOfThePageView(): void
+    {
+        $uri = new Uri('app://self/rows/page-touch-lazy-mid');
+        foreach (['app://self/rows/taxonomy?ulid=c1', 'app://self/rows/article?ulid=a3'] as $target) {
+            $this->resource->get((string) $uri);
+            $this->assertNotNull($this->storage->get($uri));
+
+            $this->resource->put('app://self/rows/article?ulid=a7');
+            $this->assertNotNull($this->storage->get($uri));
+
+            $this->resource->put($target);
+            $this->assertNull($this->storage->get($uri), "a write to {$target} must invalidate the view");
+        }
+    }
+
     public function testAListThatAnswers404IsStillADependencyOfItsPage(): void
     {
         $uri = 'app://self/rows/page404';

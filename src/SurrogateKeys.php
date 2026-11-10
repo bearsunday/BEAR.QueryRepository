@@ -61,11 +61,17 @@ final class SurrogateKeys
 
         // (string) $ro->uri drops Stringable query values, so two requests could share one key
         $key = $ro::class . ' ' . ($this->uriTag)($ro->uri);
-        if (! array_key_exists($key, $this->declared)) {
-            $this->declared[$key] = $this->dependsOnTags->ran($ro);
+        if (array_key_exists($key, $this->declared)) {
+            return DependsOnTags::tagEmbedded($ro, $this->declared[$key]);
         }
 
-        return DependsOnTags::tagEmbedded($ro, $this->declared[$key]);
+        $tags = $this->dependsOnTags->ran($ro);
+        // A request that runs later, as it renders, may still add tags, so the answer is read again then
+        if (! DependsOnTags::awaitsRequest($ro)) {
+            $this->declared[$key] = $tags;
+        }
+
+        return DependsOnTags::tagEmbedded($ro, $tags);
     }
 
     public function setSurrogateHeader(ResourceObject $ro): void
