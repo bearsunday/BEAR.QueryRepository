@@ -9,10 +9,9 @@ use BEAR\Resource\ResourceObject;
 use Override;
 
 /**
- * A #[Cacheable(type: 'view')] resource whose body holds a closure (issue #261)
+ * A #[Cacheable(type: 'view')] resource whose body holds a closure
  *
- * The ETag is computed from the rendered view, so it succeeds; the entry stores the body too,
- * and the pool's marshaller refuses it.
+ * The ETag is computed from the rendered view, so only the body check before the store catches it.
  */
 #[Cacheable(type: 'view')]
 class UnserializableView extends ResourceObject

@@ -7,7 +7,9 @@ namespace BEAR\QueryRepository;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\Uri;
 use Override;
+use Stringable;
 
+use function array_walk_recursive;
 use function http_build_query;
 use function implode;
 use function ksort;
@@ -25,6 +27,12 @@ final class UriTag implements UriTagInterface
     {
         $query = $uri->query;
         ksort($query);
+        // http_build_query() drops objects that have no public properties, Stringable included.
+        array_walk_recursive($query, static function (mixed &$value): void {
+            if ($value instanceof Stringable) {
+                $value = (string) $value;
+            }
+        });
 
         $uriKey = sprintf('%s_%s', $uri->path, http_build_query($query));
 

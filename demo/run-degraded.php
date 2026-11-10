@@ -34,9 +34,6 @@ declare(strict_types=1);
  *   K. Unstorable response ....... put_skipped{reason: unstorable}, Cache-Control:
  *                                  private, no-store on both a #[Cacheable] value and
  *                                  a #[CacheableResponse] donut, no CDN-Cache-Control
- *   L. Unserializable body ...... put_skipped{reason: unserializable}, Cache-Control:
- *                                  private with max-age kept and s-maxage/public dropped,
- *                                  and the default Throw policy failing the request instead
  *
  * Together with the other three demos this reaches every context type, every
  * schema enum value and every command producer the package can emit.
@@ -56,9 +53,6 @@ use BEAR\QueryRepository\FakeErrorCache;
 use BEAR\QueryRepository\FakeEtagPoolModule;
 use BEAR\QueryRepository\FakeRefusingPool;
 use BEAR\QueryRepository\FakeThrowingPurger;
-use BEAR\QueryRepository\BodySerializationErrorHandlerInterface;
-use BEAR\QueryRepository\Exception\BodySerializationNotAllowedException;
-use BEAR\QueryRepository\SkipSerializationError;
 use BEAR\QueryRepository\ModuleFactory;
 use BEAR\QueryRepository\PurgerInterface;
 use BEAR\QueryRepository\QueryRepositoryInterface;
@@ -126,9 +120,6 @@ G. The other command producers               -> command{source: DonutCommandInte
 H. A finite TTL under #[HttpCache]           -> save_* with requestedTtl=10, private Cache-Control
 I. Direct putStatic(ttl, sMaxAge)            -> manual_store{,_result} rooting a donut
                                                 write with real ttl/sMaxAge
-L. Unserializable body (#259)                -> put_skipped{reason: unserializable}: the
-                                                default Throw policy fails the request;
-                                                Skip serves it uncached instead
 
 === Executing... ===
 
@@ -499,38 +490,3 @@ echo sprintf(
 ) . PHP_EOL;
 
 $report($logger->flush(), 'K. unstorable response');
-
-// -------------------------------------------- L. unserializable body
-// A #[Cacheable] resource whose body holds a value serialize() refuses (a closure here;
-// a PDO connection or an HTTP client in production) is routed through
-// BodySerializationErrorHandlerInterface by EtagSetter.
-$injector = $newInjector(null, twig: true);
-$resource = $injector->getInstance(ResourceInterface::class);
-$logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
-
-try {
-    $resource->get('app://self/unserializable-value');
-    echo 'L1 (unreachable: the default policy always throws)' . PHP_EOL;
-} catch (BodySerializationNotAllowedException $e) {
-    echo sprintf('L1 GET with the default Throw policy -> request failed: %s', $e->getMessage()) . PHP_EOL;
-}
-
-$report($logger->flush(), 'L1. unserializable body, default Throw policy');
-
-$injector = $newInjector(new class extends AbstractModule {
-    protected function configure(): void
-    {
-        $this->bind(BodySerializationErrorHandlerInterface::class)->to(SkipSerializationError::class);
-    }
-}, twig: true);
-$resource = $injector->getInstance(ResourceInterface::class);
-$logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
-
-$skippedRo = $resource->get('app://self/unserializable-value');
-echo sprintf(
-    'L2 GET with the Skip policy -> %d served uncached, Cache-Control: %s, put_skipped(unserializable)',
-    $skippedRo->code,
-    $skippedRo->headers['Cache-Control'] ?? '(none)',
-) . PHP_EOL;
-
-$report($logger->flush(), 'L2. unserializable body, Skip policy');

@@ -27,6 +27,7 @@ use ReflectionClass;
 
 use function is_array;
 use function max;
+use function serialize;
 use function sprintf;
 use function strtotime;
 use function time;
@@ -49,6 +50,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         private RowDependency $rowDependency,
         private DeclaredCacheControl $declaredCacheControl = new DeclaredCacheControl(),
         private UriTagInterface $uriTag = new UriTag(),
+        private ResourceBodyEvaluator $evaluateBody = new ResourceBodyEvaluator(),
     ) {
     }
 
@@ -91,19 +93,20 @@ final readonly class QueryRepository implements QueryRepositoryInterface
             $ro->toString();
         }
 
-        $ttl = $this->getExpiryTime($ro, $cacheable);
-        if ($cacheable instanceof Cacheable) {
-            $this->logger->event($this->cachePolicy($ro, $cacheable, $ttl));
+        $ttl = $this->lifetime($ro, $cacheable);
+
+        $unstorable = $this->declaredCacheControl->reason($ro);
+        if ($unstorable === null) {
+            // Every body this store keeps must serialize: a refusal surfaces here, before the
+            // cleanup below can purge the entry and its dependents for a write that cannot happen
+            serialize(($this->evaluateBody)($ro->body));
         }
 
-        // HeaderSetter checks the same state and returns null for an unstorable response, so the class is null then
-        $unstorable = $this->declaredCacheControl->reason($ro);
-        $unserializableClass = ($this->headerSetter)($ro, $ttl, $httpCache);
-        $skipReason = $unstorable ?? ($unserializableClass !== null ? 'unserializable' : null);
-        $this->cleanUpBeforeWrite($ro, $skipReason);
+        ($this->headerSetter)($ro, $this->clientCacheControl($cacheable, $ttl), $httpCache);
+        $this->cleanUpBeforeWrite($ro, $unstorable);
 
-        if ($skipReason !== null) {
-            $this->logger->event(new PutSkippedContext((string) $ro->uri, $skipReason, null, $unserializableClass));
+        if ($unstorable !== null) {
+            $this->logger->event(new PutSkippedContext((string) $ro->uri, $unstorable));
 
             return false;
         }
@@ -115,6 +118,30 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         }
 
         return $saved;
+    }
+
+    /** The seconds a #[Cacheable] entry lives, recorded with the declaration that decided them */
+    private function lifetime(ResourceObject $ro, Cacheable|null $cacheable): int
+    {
+        $ttl = $this->getExpiryTime($ro, $cacheable);
+        if ($cacheable instanceof Cacheable) {
+            $this->logger->event($this->cachePolicy($ro, $cacheable, $ttl));
+        }
+
+        return $ttl;
+    }
+
+    /**
+     * An entry without a lifetime lives until a write invalidates it: max-age=0 makes a browser
+     * revalidate it, while an s-maxage still governs a shared cache
+     */
+    private function clientCacheControl(Cacheable|null $cacheable, int $ttl): string|null
+    {
+        if ($cacheable instanceof Cacheable && $cacheable->expiryAt === '' && $cacheable->expirySecond === 0 && $cacheable->expiry === 'never') {
+            return 'max-age=0';
+        }
+
+        return HeaderSetter::maxAge($ttl);
     }
 
     private function saveEtag(ResourceObject $ro, int $ttl): void

@@ -35,6 +35,7 @@ final readonly class RefreshInterceptor implements MethodInterceptor
 
     public function __construct(
         private RefreshAnnotatedCommand $command,
+        private RefreshTemplateValidator $refreshTemplateValidator,
         #[CacheLog]
         private SemanticLoggerInterface $logger = new NullSemanticLogger(),
     ) {
@@ -44,6 +45,7 @@ final readonly class RefreshInterceptor implements MethodInterceptor
     #[Override]
     public function invoke(MethodInvocation $invocation): ResourceObject
     {
+        ($this->refreshTemplateValidator)($invocation);
         /** @psalm-suppress MixedAssignment */
         $ro = $invocation->proceed();
         if (! $ro instanceof ResourceObject) {
