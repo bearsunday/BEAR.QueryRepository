@@ -53,6 +53,7 @@ class ResourceRepositoryTest extends TestCase
             new Expiry(0, 0, 0),
             new CacheDependency(new UriTag()),
             new BaseUriTag(new UriTag()),
+            new RowDependency(new UriTag()),
         );
         $this->ro = new Index();
         $this->ro->uri = new Uri('page://self/user');
@@ -137,6 +138,7 @@ class ResourceRepositoryTest extends TestCase
             new Expiry(0, 0, 0),
             new CacheDependency(new UriTag()),
             new BaseUriTag(new UriTag()),
+            new RowDependency(new UriTag()),
         );
         $this->assertInstanceOf(Repository::class, $repository);
     }

@@ -46,6 +46,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         private Expiry $expiry,
         private CacheDependencyInterface $cacheDependency,
         private BaseUriTagInterface $baseUriTag,
+        private RowDependency $rowDependency,
         private DeclaredCacheControl $declaredCacheControl = new DeclaredCacheControl(),
         private UriTagInterface $uriTag = new UriTag(),
     ) {
@@ -165,6 +166,8 @@ final readonly class QueryRepository implements QueryRepositoryInterface
 
     private function setCacheDependency(ResourceObject $ro): void
     {
+        ($this->rowDependency)($ro);
+
         /** @var mixed $body */
         foreach ((array) $ro->body as $body) {
             if (! ($body instanceof AbstractRequest)) {
@@ -178,7 +181,8 @@ final readonly class QueryRepository implements QueryRepositoryInterface
             // do (see ResourceStorage::materialize(); __invoke() re-executes).
             (string) $body;
             $child = $body->resourceObject;
-            if (! isset($child->headers[Header::ETAG]) && ! isset($child->headers[Header::SURROGATE_KEY])) {
+            $declared = ($this->rowDependency)($child);
+            if (! $declared && ! isset($child->headers[Header::ETAG]) && ! isset($child->headers[Header::SURROGATE_KEY])) {
                 $this->logger->event(DependencySkippedContext::of($ro, $child));
 
                 continue;

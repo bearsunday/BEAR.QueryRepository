@@ -10,6 +10,7 @@ BEAR.QueryRepository separates query (read) and command (write) operations to op
 - **HttpCache**: Control HTTP Cache-Control headers with `#[HttpCache]`
 - **Refresh/Purge**: Invalidate dependent caches after commands with `#[Refresh]` or `#[Purge]`
 - **Donut Caching**: Combine static outer shell with dynamic inner content
+- **DependsOn**: Tag a list resource's rows as cache dependencies with `#[DependsOn]`, without embedding each one
 
 ## Quick Start
 

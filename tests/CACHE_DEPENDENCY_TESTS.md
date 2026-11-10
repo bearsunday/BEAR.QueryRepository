@@ -106,6 +106,18 @@ invalidateTags([uriTag('page://self/html/blog-posting')]) → BlogPosting invali
 
 **Test:** `DonutRepositoryTest::testInvalidateTags`
 
+### Row Dependencies (`#[DependsOn]`)
+
+A list declares the URI each body row expands a template to; a write to a row invalidates the list and every page that embeds it.
+
+```text
+Plain #[DependsOn(uri: 'app://self/rows/comment{?id}')] → rows 1, 3
+PUT comment?id=3 → the page embedding Plain invalidated
+PUT comment?id=7 → the page stays stored
+```
+
+**Test:** `DependsOnTest` — each cache declaration shape of the list, an uncached list embedded in a page, a list with no rows, a list rendered as a hole, and the body shapes the declaration rejects
+
 ## Component Unit Tests
 
 | Component | Test File | Coverage |

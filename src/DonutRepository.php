@@ -47,6 +47,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         private SemanticLoggerInterface $logger,
         private DonutRendererInterface $renderer,
         private BaseUriTagInterface $baseUriTag,
+        private RowDependency $rowDependency,
         private UriTagInterface $uriTag = new UriTag(),
         CacheDependencyInterface|null $cacheDependency = null,
         private DeclaredCacheControl $declaredCacheControl = new DeclaredCacheControl(),
@@ -211,9 +212,12 @@ final readonly class DonutRepository implements DonutRepositoryInterface
      * A child carrying an ETag or Surrogate-Key already ran during onGet() (a material); a hole has not run yet.
      * Headers only: running a child here would execute a hole outside its hole scope. A child left out is logged
      * as `dependency_skipped` with what its body shows: none yet (a hole, or a run that left none), or one without a tag.
+     * A child that ran with #[DependsOn] on its onGet() counts as a dependency even with no rows.
      */
     private function classifyMaterials(ResourceObject $ro): void
     {
+        ($this->rowDependency)($ro);
+
         /** @var mixed $body */
         foreach ((array) $ro->body as $body) {
             if (! ($body instanceof AbstractRequest)) {
@@ -221,7 +225,8 @@ final readonly class DonutRepository implements DonutRepositoryInterface
             }
 
             $child = $body->resourceObject;
-            if (! isset($child->headers[Header::ETAG]) && ! isset($child->headers[Header::SURROGATE_KEY])) {
+            $declared = ($this->rowDependency)($child);
+            if (! $declared && ! isset($child->headers[Header::ETAG]) && ! isset($child->headers[Header::SURROGATE_KEY])) {
                 $this->logger->event(DependencySkippedContext::of($ro, $child));
 
                 continue;
