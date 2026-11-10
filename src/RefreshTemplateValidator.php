@@ -19,11 +19,10 @@ use function explode;
 use function is_callable;
 use function parse_str;
 use function parse_url;
+use function preg_match;
 use function preg_match_all;
 use function preg_replace;
-use function preg_split;
 use function sprintf;
-use function str_contains;
 use function strrchr;
 use function substr;
 use function uri_template;
@@ -71,8 +70,8 @@ final class RefreshTemplateValidator
     private function validate(string $methodName, Purge|Refresh $annotation): void
     {
         $template = $annotation->uri;
-        // A variable in the path picks the destination per request, so no class is known here.
-        if (str_contains(preg_split('/\?|\{[?&]/', $template, 2)[0] ?? '', '{')) {
+        // An exploded query expression or a reserved expansion takes its keys from the value, so they are known only per request.
+        if (preg_match('/\{(?:[?&][^}]*\*|\+)/', $template) === 1) {
             return;
         }
 
@@ -80,7 +79,7 @@ final class RefreshTemplateValidator
         try {
             $destination = $this->resource->newInstance($uri);
         } catch (BadRequestException) {
-            // Not a resource of this application, so there is no onGet() to check against.
+            // No resource at this URI, as when a path variable picks the destination per request.
             return;
         }
 

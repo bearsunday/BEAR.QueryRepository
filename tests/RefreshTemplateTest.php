@@ -10,6 +10,7 @@ use FakeVendor\HelloWorld\Resource\App\CacheablePagedCategoryWriter;
 use FakeVendor\HelloWorld\Resource\App\PagedCategory;
 use FakeVendor\HelloWorld\Resource\App\PagedCategoryWriter;
 use FakeVendor\HelloWorld\Resource\App\PathTemplateWriter;
+use FakeVendor\HelloWorld\Resource\App\QueryExpansionWriter;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
@@ -27,6 +28,7 @@ class RefreshTemplateTest extends TestCase
         PagedCategoryWriter::$writes = 0;
         CacheablePagedCategoryWriter::$writes = 0;
         PathTemplateWriter::$writes = 0;
+        QueryExpansionWriter::$writes = 0;
 
         parent::setUp();
     }
@@ -92,5 +94,44 @@ class RefreshTemplateTest extends TestCase
         $this->resource->put('app://self/path-template-writer', ['target' => 'paged-category']);
 
         $this->assertSame(1, PathTemplateWriter::$writes);
+    }
+
+    /** @return array<string, array{string, array<string, array<string, int>|string>}> */
+    public static function queryExpansions(): array
+    {
+        return [
+            'exploded query' => ['post', ['params' => ['category_id' => 1, 'page' => 2]]],
+            'reserved expansion' => ['put', ['qs' => 'category_id=1&page=2']],
+        ];
+    }
+
+    /**
+     * Keys that appear only at run time are not checked
+     *
+     * @param array<string, array<string, int>|string> $query
+     */
+    #[DataProvider('queryExpansions')]
+    public function testTemplateWhoseQueryKeysComeFromAValueIsNotChecked(string $method, array $query): void
+    {
+        $this->resource->get('app://self/paged-category', ['category_id' => 1, 'page' => 1]);
+        $this->resource->get('app://self/paged-category', ['category_id' => 1, 'page' => 2]);
+
+        $this->resource->{$method}('app://self/query-expansion-writer', $query);
+
+        $this->assertSame(1, QueryExpansionWriter::$writes);
+        $this->assertSame(['v' => '1:1:20:v1'], $this->resource->get('app://self/paged-category', ['category_id' => 1, 'page' => 1])->body);
+        $this->assertSame(['v' => '1:2:20:v2'], $this->resource->get('app://self/paged-category', ['category_id' => 1, 'page' => 2])->body);
+    }
+
+    public function testExplodedValueUnderAWrittenKeyIsChecked(): void
+    {
+        try {
+            $this->resource->patch('app://self/query-expansion-writer', ['categoryIds' => [1]]);
+            $this->fail('the write was not stopped');
+        } catch (TemplateLacksRequiredParameter $e) {
+            $this->assertSame(['page'], $e->missing);
+        }
+
+        $this->assertSame(0, QueryExpansionWriter::$writes);
     }
 }
