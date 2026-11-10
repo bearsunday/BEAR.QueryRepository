@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository\Log;
 
+use BEAR\QueryRepository\Log\Context\DependencyAfterSaveContext;
+use BEAR\QueryRepository\Log\Context\SurrogateKeyOversizeContext;
 use Koriym\SemanticLogger\LogJson;
 use Override;
 
@@ -24,13 +26,15 @@ use function random_int;
  * is discarded by the interceptor, and an invalidation that failed to land shows up later as
  * stale content with no error attached to it.
  *
- * So three kinds of session are kept:
+ * So four kinds of session are kept:
  *
  *  - mutations: a `command` scope, a direct `manual_*` call, or a real tag invalidation. Writes
  *    decide the tags, TTLs and CDN keys every later read repeats.
  *  - effects that did not happen: `saved: false`, `invalidate` with `roPool`/`etagPool`/`cdn`
  *    `failed`, a `manual_*` result of `failed`, `cache_error{operation: write}` - a store or
  *    an invalidation that was aborted.
+ *  - an entry no invalidation reaches as the page intends: `surrogate_key_oversize`,
+ *    `dependency_after_save`. Which URI hits them depends on production data.
  *  - a sample, when a rate is configured.
  *
  * Deliberately not kept: `cache_error{operation: read}` (availability, monitored elsewhere -
@@ -57,6 +61,7 @@ final class KeepMutationsAndFailures implements RetentionPolicyInterface
 {
     private const MUTATION_SCOPES = ['command', 'manual_store', 'manual_purge', 'manual_invalidate'];
     private const CLEANUP_MARKER = 'pre_write_cleanup';
+    private const UNREACHABLE_ENTRY_EVENTS = [SurrogateKeyOversizeContext::TYPE, DependencyAfterSaveContext::TYPE];
 
     /** @param int $sampleRate keep 1 session in N regardless of content; 0 disables sampling */
     public function __construct(private int $sampleRate = 0)
@@ -85,7 +90,7 @@ final class KeepMutationsAndFailures implements RetentionPolicyInterface
     private function isNotable(array $node): bool
     {
         $type = $node['type'] ?? null;
-        if (is_string($type) && in_array($type, self::MUTATION_SCOPES, true)) {
+        if (is_string($type) && in_array($type, [...self::MUTATION_SCOPES, ...self::UNREACHABLE_ENTRY_EVENTS], true)) {
             return true;
         }
 

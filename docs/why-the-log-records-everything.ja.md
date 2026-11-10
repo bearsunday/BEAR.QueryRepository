@@ -153,7 +153,8 @@ $this->install(new DevQueryRepositoryLogModule($appDir . '/var/log/query-reposit
 ```
 
 そして本番では、ほかの何によっても説明できないセッションだけを残します —
-変更、起きなかった作用、そしてサンプル:
+変更、起きなかった作用、無効化がページの意図どおりに届かないエントリ
+(`surrogate_key_oversize`、`dependency_after_save`)、そしてサンプル:
 
 ```php
 $this->install(new ProdQueryRepositoryLogModule('php://stdout', sampleRate: 1000, module: new QueryRepositoryModule()));

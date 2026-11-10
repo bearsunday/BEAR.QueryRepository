@@ -9,6 +9,7 @@ use BEAR\QueryRepository\Log\Context\CacheHitContext;
 use BEAR\QueryRepository\Log\Context\CacheMissContext;
 use BEAR\QueryRepository\Log\Context\CommandContext;
 use BEAR\QueryRepository\Log\Context\CommandResultContext;
+use BEAR\QueryRepository\Log\Context\DependencyAfterSaveContext;
 use BEAR\QueryRepository\Log\Context\GetContext;
 use BEAR\QueryRepository\Log\Context\InvalidateContext;
 use BEAR\QueryRepository\Log\Context\ManualPurgeContext;
@@ -17,11 +18,14 @@ use BEAR\QueryRepository\Log\Context\PreWriteCleanupContext;
 use BEAR\QueryRepository\Log\Context\PutSkippedContext;
 use BEAR\QueryRepository\Log\Context\SaveEtagContext;
 use BEAR\QueryRepository\Log\Context\SaveValueContext;
+use BEAR\QueryRepository\Log\Context\SurrogateKeyOversizeContext;
 use BEAR\QueryRepository\Log\KeepMutationsAndFailures;
 use BEAR\QueryRepository\Log\SafeSemanticLogger;
+use Koriym\SemanticLogger\AbstractContext;
 use Koriym\SemanticLogger\CloseEntry;
 use Koriym\SemanticLogger\LogJson;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -170,6 +174,38 @@ class RetentionPolicyTest extends TestCase
 
             $this->assertFalse($this->policy->keeps($this->logger->flush()), $reason . ' is not an incident');
         }
+    }
+
+    /** @return array<string, array{AbstractContext}> */
+    public static function entryThatOutrunsItsInvalidationProvider(): array
+    {
+        return [
+            'an oversize Surrogate-Key' => [new SurrogateKeyOversizeContext('page://self/html/blog-posting', 16385, 30)],
+            'a dependency declared after the save' => [new DependencyAfterSaveContext('page://self/html/blog-posting', 'page://self/html/comment')],
+        ];
+    }
+
+    #[DataProvider('entryThatOutrunsItsInvalidationProvider')]
+    public function testAColdReadIsKeptWhenItsEntryOutrunsItsInvalidation(AbstractContext $event): void
+    {
+        $this->recordAColdRead(null);
+        $this->assertFalse($this->policy->keeps($this->logger->flush()));
+
+        $this->recordAColdRead($event);
+        $this->assertTrue($this->policy->keeps($this->logger->flush()));
+    }
+
+    private function recordAColdRead(AbstractContext|null $event): void
+    {
+        $open = $this->logger->open(new GetContext('page://self/html/blog-posting'));
+        $embedded = $this->logger->open(new GetContext('page://self/html/comment'));
+        $this->logger->close(new CacheMissContext('resource'), $embedded);
+        $this->logger->event(new SaveValueContext('page://self/html/blog-posting', ['_tag_'], 60, true));
+        if ($event !== null) {
+            $this->logger->event($event);
+        }
+
+        $this->logger->close(new CacheMissContext('resource'), $open);
     }
 
     public function testAFailedOutcomeIsFoundWhereTheRootKeepsItAsARecord(): void
