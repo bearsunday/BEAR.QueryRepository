@@ -26,6 +26,7 @@ use Psr\Cache\CacheItemPoolInterface;
 use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
 use Ray\PsrCacheModule\Annotation\Shared;
+use Symfony\Component\Cache\Adapter\AdapterInterface;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
@@ -254,7 +255,8 @@ class QueryRepositoryTest extends TestCase
             protected function configure(): void
             {
                 $this->bind(CacheItemPoolInterface::class)->annotatedWith(Shared::class)->to(FilesystemAdapter::class);
-                $this->bind(CacheItemPoolInterface::class)->annotatedWith(EtagPool::class)->to(FilesystemAdapter::class);
+                $this->bind(AdapterInterface::class)->annotatedWith(EtagPool::class)->to(FilesystemAdapter::class);
+                $this->bind(TagAwareAdapterInterface::class)->annotatedWith(EtagPool::class)->toConstructor(TagAwareAdapter::class, ['itemsPool' => EtagPool::class]);
             }
         });
         $injector = new Injector($module);

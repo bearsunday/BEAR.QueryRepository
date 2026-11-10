@@ -30,6 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - A write whose query spells an `onGet()` parameter in snake_case (`user_id` for `$userId`), as BEAR.Resource accepts, refreshes the cache as `userId` does, instead of throwing `UnmatchedQuery` from `onPut` after the write or skipping the refresh from `onPost`. An entry fetched with `?user_id=` is still not reached (#275).
 
+### Fixed
+- `StorageMemcachedEtagModule` now keeps ETags in the Memcached servers it is given; since 1.11.0 they went to the resource pool, and next to `StorageMemcachedModule` both pools used whichever servers were installed last. Check that those servers are reachable before deploying: ETags (and, depending on install order, cached resources) start empty there.
+
 ## [1.19.1] - 2026-11-07
 
 ### Changed

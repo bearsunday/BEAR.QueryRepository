@@ -230,6 +230,20 @@ class ResourceStorageTest extends TestCase
         $this->assertFalse($this->storage->hasEtag("\"123456\"\n"), 'trailing newline');
     }
 
+    public function testInvalidationReachesASeparateEtagPool(): void
+    {
+        $roPool = new TagAwareAdapter(new ArrayAdapter());
+        $etagPool = new TagAwareAdapter(new ArrayAdapter());
+        $storage = self::getResourceStorageInstance(roPool: $roPool, etagPool: $etagPool);
+        $storage->saveEtag($this->ro->uri, '"123456"', '', 10);
+        $this->assertTrue($etagPool->hasItem('123456'));
+        $this->assertFalse($roPool->hasItem('123456'));
+
+        $storage->deleteEtag($this->ro->uri);
+
+        $this->assertFalse($storage->hasEtag('"123456"'));
+    }
+
     public function testEtagIsNotRegisteredAsInvalidationTag(): void
     {
         $this->ro->headers['ETag'] = 'test-etag-value';

@@ -21,24 +21,9 @@ use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 use Symfony\Component\Cache\Marshaller\MarshallerInterface;
 
 /**
- * Provides ResourceStorageInterface and derived bindings
- * *
- * * The following bindings are provided:
- * *
- * * CacheItemPoolInterface-EtagPool::class
- * *
- * * The following module are installed:
- * *
- * * Psr6RedisModule
- * Provides CacheItemPool and derived bindings
+ * Provides TagAwareAdapterInterface-ResourceObjectPool::class backed by Redis
  *
- * [...]
- *
- * The following bindings are provided:
- *
- *  ::RedisDsn
- *  CacheItemPoolInterface::Local
- *  CacheItemPoolInterface::Shared
+ * ETags share this pool unless TagAwareAdapterInterface-EtagPool::class is bound.
  */
 final class StorageRedisDsnModule extends AbstractModule
 {
