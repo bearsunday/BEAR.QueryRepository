@@ -7,7 +7,6 @@ namespace FakeVendor\HelloWorld\Resource\App;
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\Resource\ResourceObject;
 
-/** The destination of the #[Purge]/#[Refresh] templates in PagedCategoryWriter and CacheablePagedCategoryWriter */
 #[Cacheable]
 class PagedCategory extends ResourceObject
 {

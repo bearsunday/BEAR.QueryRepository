@@ -14,13 +14,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 
-/**
- * A #[Purge]/#[Refresh] template must carry every required onGet() parameter of its destination
- *
- * PagedCategoryWriter goes through RefreshInterceptor, CacheablePagedCategoryWriter through
- * CommandInterceptor; both write to app://self/paged-category, whose onGet() requires
- * categoryId and page and defaults perPage.
- */
+/** A #[Purge]/#[Refresh] template must carry every required onGet() parameter of its destination */
 class RefreshTemplateTest extends TestCase
 {
     private ResourceInterface $resource;

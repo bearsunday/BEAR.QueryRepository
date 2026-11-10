@@ -7,7 +7,6 @@ namespace FakeVendor\HelloWorld\Resource\App;
 use BEAR\RepositoryModule\Annotation\Purge;
 use BEAR\Resource\ResourceObject;
 
-/** A #[Purge] whose destination is chosen by a path variable */
 class PathTemplateWriter extends ResourceObject
 {
     public static int $writes = 0;

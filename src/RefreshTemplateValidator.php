@@ -33,8 +33,6 @@ use const PHP_URL_QUERY;
 /**
  * Checks that each #[Purge]/#[Refresh] template on a write method carries the required onGet() parameters of its destination
  *
- * Only the template is checked: a variable the request leaves without a value still drops out at run time.
- *
  * @internal
  */
 final class RefreshTemplateValidator
