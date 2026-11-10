@@ -16,8 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Behaviour change**: a list given to an exploded `#[Purge]`/`#[Refresh]` query variable (`{?id*}`, `?id={ids*}`) now invalidates one URI per element, every combination when there are several, instead of one URI with the last element (`{?id*}`) or the elements joined by commas (`?id={ids*}`); an empty list invalidates nothing instead of the URI without the variable. Drop the `*` where a template relied on the old URI.
 
 ### Fixed
-- A `Stringable` query value, such as a ULID value object, is now part of the entry's URI tag, so a `#[Purge]`/`#[Refresh]` that writes the value as a string reaches it; the value was dropped from the tag. Nothing to change: entries stored after the deploy carry the new tag.
-- A `#[Purge]`/`#[Refresh]` on a write of a resource that is not `#[Cacheable]`, called directly on an object taken from the injector (it has no URI), now expands its template from the write's body instead of failing with a `TypeError` after the write ran.
+- A `Stringable` query value, such as a ULID value object, is now part of the cache key and URI tag; it was dropped, so resources requested with different values shared one entry and served each other's content, and a `#[Purge]`/`#[Refresh]` that writes the value as a string missed it. Nothing to change: entries stored after the deploy are keyed and tagged by the value.
+- A `#[Purge]`/`#[Refresh]` on a write of a resource that is not `#[Cacheable]`, called directly on an object taken from the injector (it has no URI), now expands its template from the write's body and arguments instead of failing with a `TypeError` after the write ran.
 
 ## [1.19.1] - 2026-11-07
 

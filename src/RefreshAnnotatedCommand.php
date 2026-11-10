@@ -40,27 +40,49 @@ final readonly class RefreshAnnotatedCommand implements CommandInterface
     public function command(MethodInvocation $invocation, ResourceObject $ro): void
     {
         $method = $invocation->getMethod();
-        $annotations = $method->getAnnotations();
-        foreach ($annotations as $annotation) {
-            $this->request($ro, $annotation);
+        /** @var AbstractUri|null $uri a resource object taken from the injector has none */
+        $uri = $ro->uri;
+        $query = $uri === null ? self::passedArguments($invocation) : $uri->query;
+        foreach ($method->getAnnotations() as $annotation) {
+            $this->request($ro, $annotation, $query);
         }
+    }
+
+    /**
+     * The arguments the call passed, under each parameter's name and its snake_case form, as a request would carry them
+     *
+     * @param MethodInvocation<object> $invocation
+     *
+     * @return array<string, mixed>
+     */
+    private static function passedArguments(MethodInvocation $invocation): array
+    {
+        $arguments = $invocation->getArguments();
+        $query = [];
+        foreach ($invocation->getMethod()->getParameters() as $parameter) {
+            $position = $parameter->getPosition();
+            if (! isset($arguments[$position])) {
+                continue;
+            }
+
+            $query += [$parameter->name => $arguments[$position]];
+            $query += [BaseUriTag::snakeName($parameter->name) => $arguments[$position]];
+        }
+
+        return $query;
     }
 
     /**
      * One URI per element of each list given to an exploded query variable (`{?id*}`, `?id={ids*}`), the product when there are several
      *
+     * @param array<mixed> $query
+     *
      * @return list<string>
      */
-    private function getUris(ResourceObject $ro, AbstractCommand $annotation): array
+    private function getUris(ResourceObject $ro, AbstractCommand $annotation, array $query): array
     {
         $body = is_array($ro->body) ? $ro->body : [];
-        /**
-         * $uri is documented as AbstractUri, but a resource object taken from the injector, not requested through the resource client, has none.
-         *
-         * @psalm-suppress RedundantConditionGivenDocblockType
-         * @phpstan-ignore instanceof.alwaysTrue
-         */
-        $query = $ro->uri instanceof AbstractUri ? $body + $ro->uri->query : $body;
+        $query = $body + $query;
         $variableSets = [$query];
         foreach (self::explodedQueryNames($annotation->uri) as $name) {
             if (isset($query[$name]) && is_array($query[$name]) && array_is_list($query[$name])) {
@@ -123,13 +145,14 @@ final readonly class RefreshAnnotatedCommand implements CommandInterface
         return array_values(array_unique($names));
     }
 
-    private function request(ResourceObject $ro, object $annotation): void
+    /** @param array<mixed> $query */
+    private function request(ResourceObject $ro, object $annotation, array $query): void
     {
         if (! $annotation instanceof AbstractCommand) {
             return;
         }
 
-        foreach ($this->getUris($ro, $annotation) as $uriString) {
+        foreach ($this->getUris($ro, $annotation, $query) as $uriString) {
             $uri = new Uri($uriString);
             if ($annotation instanceof Purge) {
                 $this->repository->purge($uri);
