@@ -34,8 +34,8 @@ class EtagAfterEntryTest extends TestCase
         $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
         if ($refuseEntries) {
-            // Only the entry pool refuses; the ETag pool keeps accepting, as a separate ETag
-            // store does in production.
+            // The ETag pool falls back to the entry pool when unbound; a pool of its own keeps
+            // accepting while the entry pool refuses, as a separate ETag store does in production.
             $module->override(new class ($refusedKeyPrefix) extends AbstractModule {
                 public function __construct(private readonly string $refusedKeyPrefix)
                 {

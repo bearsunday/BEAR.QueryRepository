@@ -49,20 +49,14 @@ final class StorageMemcachedEtagModule extends AbstractModule
         $this->bind(MemcachedProvider::class)->annotatedWith(EtagPool::class)->toInstance(new MemcachedProvider($this->memcacheServer));
         // A dedicated ETag store that is down must reach the cache log too,
         // or a failed validator read is an ordinary miss.
-        $this->bind(AdapterInterface::class)->annotatedWith(EtagPool::class)->toConstructor(
-            MemcachedAdapter::class,
-            ['provider' => EtagPool::class, 'namespace' => CacheNamespace::class],
-            (new InjectionPoints())->addMethod('setLogger', 'poolError'),
-        );
-        $this->bind(CacheItemPoolInterface::class)->annotatedWith(EtagPool::class)->toConstructor(
-            MemcachedAdapter::class,
-            ['provider' => EtagPool::class, 'namespace' => CacheNamespace::class],
-            (new InjectionPoints())->addMethod('setLogger', 'poolError'),
-        );
+        $setLogger = (new InjectionPoints())->addMethod('setLogger', 'poolError');
+        $memcachedArgs = ['provider' => EtagPool::class, 'namespace' => CacheNamespace::class];
+        $this->bind(AdapterInterface::class)->annotatedWith(EtagPool::class)->toConstructor(MemcachedAdapter::class, $memcachedArgs, $setLogger);
+        $this->bind(CacheItemPoolInterface::class)->annotatedWith(EtagPool::class)->toConstructor(MemcachedAdapter::class, $memcachedArgs, $setLogger);
         $this->bind(TagAwareAdapterInterface::class)->annotatedWith(EtagPool::class)->toConstructor(
             TagAwareAdapter::class,
             ['itemsPool' => EtagPool::class],
-            (new InjectionPoints())->addMethod('setLogger', 'poolError'),
+            $setLogger,
         );
     }
 }

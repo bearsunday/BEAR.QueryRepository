@@ -29,7 +29,6 @@ final class ModuleFactory
             protected function configure(): void
             {
                 $this->bind(AdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->to(ArrayAdapter::class);
-                $this->install(new FakeEtagPoolModule());
                 $this->bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)->toInstance(new SafeSemanticLogger());
             }
         });
