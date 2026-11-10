@@ -11,9 +11,11 @@ use BEAR\Resource\ResourceObject;
 class TagPage extends ResourceObject
 {
     public static int $version = 1;
+    public static int $gets = 0;
 
     public function onGet(string $id, int $page = 1): static
     {
+        self::$gets++;
         $this->body = ['v' => $id . ':' . $page . ':v' . self::$version];
 
         return $this;

@@ -20,8 +20,12 @@ use function explode;
 use function is_array;
 use function preg_match_all;
 use function str_ends_with;
+use function strpos;
 use function substr;
 use function uri_template;
+
+use const PREG_OFFSET_CAPTURE;
+use const PREG_SET_ORDER;
 
 final readonly class RefreshAnnotatedCommand implements CommandInterface
 {
@@ -42,7 +46,7 @@ final readonly class RefreshAnnotatedCommand implements CommandInterface
     }
 
     /**
-     * One URI per element of each list given to an exploded variable (`{?id*}`, `?id={ids*}`), the product when there are several
+     * One URI per element of each list given to an exploded query variable (`{?id*}`, `?id={ids*}`), the product when there are several
      *
      * @return list<string>
      */
@@ -51,7 +55,7 @@ final readonly class RefreshAnnotatedCommand implements CommandInterface
         $body = is_array($ro->body) ? $ro->body : [];
         $query = $body + $ro->uri->query;
         $variableSets = [$query];
-        foreach (self::explodedNames($annotation->uri) as $name) {
+        foreach (self::explodedQueryNames($annotation->uri) as $name) {
             if (! isset($query[$name]) || ! is_array($query[$name]) || ! array_is_list($query[$name])) {
                 continue;
             }
@@ -60,6 +64,11 @@ final readonly class RefreshAnnotatedCommand implements CommandInterface
             foreach ($variableSets as $variables) {
                 /** @psalm-suppress MixedAssignment */
                 foreach ($query[$name] as $value) {
+                    // A null would drop the variable, and the bare URI's group tag reaches every variant.
+                    if ($value === null) {
+                        continue;
+                    }
+
                     $expanded[] = [$name => $value] + $variables;
                 }
             }
@@ -72,16 +81,23 @@ final readonly class RefreshAnnotatedCommand implements CommandInterface
             $uris[] = uri_template($annotation->uri, $variables);
         }
 
-        return $uris;
+        return array_values(array_unique($uris));
     }
 
     /** @return list<string> */
-    private static function explodedNames(string $template): array
+    private static function explodedQueryNames(string $template): array
     {
-        preg_match_all('/\{[+#.\/;?&]?([^}]+)\}/', $template, $matches);
+        preg_match_all('/\{([+#.\/;?&]?)([^}]+)\}/', $template, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE);
+        $queryStart = strpos($template, '?');
         $names = [];
-        foreach ($matches[1] as $varList) {
-            foreach (explode(',', $varList) as $varSpec) {
+        foreach ($matches as $match) {
+            $operator = $match[1][0];
+            $inQuery = $operator === '?' || $operator === '&' || ($operator === '' && $queryStart !== false && $match[0][1] > $queryStart);
+            if (! $inQuery) {
+                continue;
+            }
+
+            foreach (explode(',', $match[2][0]) as $varSpec) {
                 if (str_ends_with($varSpec, '*')) {
                     $names[] = substr($varSpec, 0, -1);
                 }

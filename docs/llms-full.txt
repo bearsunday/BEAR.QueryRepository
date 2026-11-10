@@ -101,11 +101,11 @@ public function onDelete(int $id): static { ... }
 
 A `#[Refresh]`/`#[Purge]` template must carry every required `onGet()` parameter of the resource it names, under its own name or its snake_case form (`user_id` for `$userId`). Otherwise the write throws `TemplateLacksRequiredParameter` before it runs.
 
-A list given to an exploded variable (`{?id*}`, `?id={ids*}`) names one URI per element, and several lists name every combination; an empty list names none.
+A list given to an exploded query variable (`?id={ids*}`, `{?id*}`) names one URI per element, and several lists name every combination; an empty list names none. In `{?id*}` the keys come from the value, so the required-parameter check does not apply to it.
 
 ```php
-#[Purge(uri: 'app://self/tag{?id*}')]
-public function onPost(array $id): static { ... }  // id: [1, 2] purges tag?id=1 and tag?id=2
+#[Purge(uri: 'app://self/tag?id={ids*}')]
+public function onPost(array $ids): static { ... }  // ids: [1, 2] purges tag?id=1 and tag?id=2
 ```
 
 ### Purging query variants

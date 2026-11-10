@@ -24,6 +24,7 @@ class FanOutRefreshTest extends TestCase
         $injector = new Injector(new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld')), __DIR__ . '/tmp');
         $this->resource = $injector->getInstance(ResourceInterface::class);
         TagPage::$version = 1;
+        TagPage::$gets = 0;
         TagIndex::$version = 1;
 
         parent::setUp();
@@ -106,5 +107,34 @@ class FanOutRefreshTest extends TestCase
 
         $this->assertSame(['v' => '1:v1'], $this->resource->get('app://self/tag-index')->body);
         $this->assertSame(['v' => '2:v1'], $this->resource->get('app://self/tag-index', ['page' => 2])->body);
+    }
+
+    public function testRepeatedElementIsRefreshedOnce(): void
+    {
+        $this->resource->post('app://self/fan-out-refresh-writer', ['id' => ['a', 'a', 'b']]);
+
+        $this->assertSame(2, TagPage::$gets);
+    }
+
+    public function testNullElementInvalidatesNothing(): void
+    {
+        $this->resource->get('app://self/tag-index');
+        $this->resource->get('app://self/tag-index', ['page' => 2]);
+        $this->resource->get('app://self/tag-index', ['page' => 3]);
+
+        $this->resource->put('app://self/fan-out-refresh-writer', ['page' => [null, 2]]);
+
+        $this->assertSame(['v' => '1:v1'], $this->resource->get('app://self/tag-index')->body);
+        $this->assertSame(['v' => '2:v2'], $this->resource->get('app://self/tag-index', ['page' => 2])->body);
+        $this->assertSame(['v' => '3:v1'], $this->resource->get('app://self/tag-index', ['page' => 3])->body);
+    }
+
+    public function testExplodedPathStaysOneUri(): void
+    {
+        $before = $this->resource->get('app://self/user/profile', ['user_id' => 1])->body;
+
+        $this->resource->post('app://self/exploded-path-writer', ['path' => ['user', 'profile']]);
+
+        $this->assertNotSame($before, $this->resource->get('app://self/user/profile', ['user_id' => 1])->body);
     }
 }
