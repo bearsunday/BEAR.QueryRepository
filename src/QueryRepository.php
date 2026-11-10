@@ -14,6 +14,7 @@ use BEAR\QueryRepository\Log\Context\ManualStoreResultContext;
 use BEAR\QueryRepository\Log\Context\PreWriteCleanupContext;
 use BEAR\QueryRepository\Log\Context\PurgeContext;
 use BEAR\QueryRepository\Log\Context\PutSkippedContext;
+use BEAR\QueryRepository\Log\Context\SurrogateKeyOversizeContext;
 use BEAR\QueryRepository\Log\TopLevelAwareInterface;
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\CacheLog;
@@ -102,6 +103,11 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         }
 
         ($this->headerSetter)($ro, $this->clientCacheControl($cacheable, $ttl), $httpCache);
+        $oversize = SurrogateKeyOversizeContext::of($ro);
+        if ($oversize !== null) {
+            $this->logger->event($oversize);
+        }
+
         $this->cleanUpBeforeWrite($ro, $unstorable);
 
         if ($unstorable !== null) {

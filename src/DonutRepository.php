@@ -17,6 +17,7 @@ use BEAR\QueryRepository\Log\Context\PutDonutContext;
 use BEAR\QueryRepository\Log\Context\PutSkippedContext;
 use BEAR\QueryRepository\Log\Context\RefreshDonutContext;
 use BEAR\QueryRepository\Log\Context\SaveDonutContext;
+use BEAR\QueryRepository\Log\Context\SurrogateKeyOversizeContext;
 use BEAR\QueryRepository\Log\TopLevelAwareInterface;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\AbstractRequest;
@@ -351,6 +352,10 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         }
 
         $this->logger->event(new CdnHeadersContext((string) $ro->uri, $headers, $surrogateKeys));
+        $oversize = SurrogateKeyOversizeContext::of($ro);
+        if ($oversize !== null) {
+            $this->logger->event($oversize);
+        }
     }
 
     /**

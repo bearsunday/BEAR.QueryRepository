@@ -34,6 +34,8 @@ declare(strict_types=1);
  *   K. Unstorable response ....... put_skipped{reason: unstorable}, Cache-Control:
  *                                  private, no-store on both a #[Cacheable] value and
  *                                  a #[CacheableResponse] donut, no CDN-Cache-Control
+ *   L. Oversized Surrogate-Key ... surrogate_key_oversize: a key over Fastly's
+ *                                  1,024 bytes, stored and sent as it is
  *
  * Together with the other three demos this reaches every context type, every
  * schema enum value and every command producer the package can emit.
@@ -490,3 +492,17 @@ echo sprintf(
 ) . PHP_EOL;
 
 $report($logger->flush(), 'K. unstorable response');
+
+// ------------------------------------------------- L. oversized Surrogate-Key
+// A tag carries the URI's query, so a long query value makes a long key; this resource
+// advertises one directly. Fastly takes 1,024 bytes per key and 16,384 for the header;
+// past either, the write is still stored and the header still sent, and the log is the
+// only place that says so.
+$injector = $newInjector();
+$resource = $injector->getInstance(ResourceInterface::class);
+$logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
+
+$ro = $resource->get('app://self/advertised-keys', ['keyBytes' => 1025]);
+echo sprintf('L  GET a #[Cacheable] value advertising a %d-byte key -> stored, surrogate_key_oversize', strlen($ro->headers['Surrogate-Key'])) . PHP_EOL;
+
+$report($logger->flush(), 'L. oversized Surrogate-Key');

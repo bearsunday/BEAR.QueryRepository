@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - The log sink hands each flushed session to every `LogWriterInterface` an application adds with `MultiBinder::newInstance($this, LogWriterInterface::class)->addBinding()`, after the bound writer. Bind the added class as well: a compiled injector builds only bound classes (ray-di/Ray.Compiler#148).
+- The cache log records `surrogate_key_oversize` when a response's `Surrogate-Key` exceeds Fastly's limits, 1,024 bytes per key or 16,384 bytes for the header, as a long query value can make it. The keys are still stored and sent unchanged.
 
 ### Changed
 - Requires `ray/di` 2.23 or later: the empty writer set the log modules declare needs it.
