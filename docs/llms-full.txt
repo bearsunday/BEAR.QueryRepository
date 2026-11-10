@@ -162,7 +162,7 @@ final class Entry
 - A declaration on a parent class, or on the `onGet()` a child class overrides, applies as well.
 - A `Stringable` value expands as its string. A `null` value names no URI and adds no tag.
 - Rows held as arrays have no class to declare on: tag them by hand with `UriTagInterface::fromAssoc()`. A URI tagged both ways is tagged once.
-- The target resource's writes invalidate its own URI; `#[DependsOn]` only adds the tag.
+- `#[DependsOn]` only adds the tag. The URI is invalidated by the named resource's own write when it is `#[Cacheable]`, or by a `#[Purge]`/`#[Refresh]` that names it.
 
 A declaration that cannot expand fails the GET with `BEAR\QueryRepository\Exception\DependsOnNotExpandable`, and nothing is stored. Its `reason` is `no '<variable>'` (no such argument or public property), `'<variable>' is not an onGet() parameter`, `'<variable>' is <type>` (neither scalar, `Stringable` nor `null`) or `declared on a resource class` (declare it on `onGet()`).
 
