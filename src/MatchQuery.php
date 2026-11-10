@@ -9,9 +9,17 @@ use BEAR\Resource\ResourceObject;
 use Override;
 use ReflectionMethod;
 
+use function ltrim;
+use function preg_replace;
 use function sprintf;
+use function strtolower;
 
-/** @internal */
+/**
+ * @internal
+ *
+ * Reads each onGet() parameter from its name or, failing that, the snake_case key BEAR.Resource also binds
+ * (`user_id` for `$userId`), and returns it under the parameter name.
+ */
 final class MatchQuery implements MatchQueryInterface
 {
     /**
@@ -24,7 +32,8 @@ final class MatchQuery implements MatchQueryInterface
         $getQuery = [];
         $query = $ro->uri->query;
         foreach ($refParameters as $parameter) {
-            if (! isset($query[$parameter->name])) {
+            $key = isset($query[$parameter->name]) ? $parameter->name : self::snakeName($parameter->name);
+            if (! isset($query[$key])) {
                 if ($parameter->isDefaultValueAvailable()) {
                     continue;
                 }
@@ -33,9 +42,15 @@ final class MatchQuery implements MatchQueryInterface
             }
 
             /** @psalm-suppress MixedAssignment */
-            $getQuery[$parameter->name] = $query[$parameter->name];
+            $getQuery[$parameter->name] = $query[$key];
         }
 
         return $getQuery;
+    }
+
+    /** The conversion BEAR.Resource applies when it binds a query to a parameter */
+    private static function snakeName(string $name): string
+    {
+        return ltrim(strtolower((string) preg_replace('/[A-Z]/', '_\0', $name)), '_');
     }
 }
