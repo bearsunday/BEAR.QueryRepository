@@ -30,7 +30,8 @@ final readonly class CacheDependency implements CacheDependencyInterface
         #[CacheLog]
         private SemanticLoggerInterface $logger = new NullSemanticLogger(),
         BaseUriTagInterface|null $baseUriTag = null,
-        private PutInProgress $putInProgress = new PutInProgress(),
+        // Without the injector's shared instance no put can be seen, so dependency_after_save is not recorded
+        private PutInProgress|null $putInProgress = null,
     ) {
         $this->baseUriTag = $baseUriTag ?? new BaseUriTag($uriTag);
     }
@@ -60,7 +61,7 @@ final readonly class CacheDependency implements CacheDependencyInterface
             $childTagList,
         ));
 
-        if (! $this->putInProgress->has($from) && self::storesValue($from)) {
+        if ($this->putInProgress !== null && ! $this->putInProgress->has($from) && self::storesValue($from)) {
             $this->logger->event(new DependencyAfterSaveContext((string) $from->uri, (string) $to->uri));
         }
     }

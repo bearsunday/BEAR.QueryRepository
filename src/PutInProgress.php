@@ -14,7 +14,7 @@ use WeakMap;
  */
 final class PutInProgress
 {
-    /** @var WeakMap<ResourceObject, true> */
+    /** @var WeakMap<ResourceObject, int> */
     private WeakMap $resourceObjects;
 
     public function __construct()
@@ -38,13 +38,21 @@ final class PutInProgress
         $this->resourceObjects = self::none();
     }
 
+    /** Every begin() needs its own end() before the mark is gone */
     public function begin(ResourceObject $ro): void
     {
-        $this->resourceObjects[$ro] = true;
+        $this->resourceObjects[$ro] = $this->depth($ro) + 1;
     }
 
     public function end(ResourceObject $ro): void
     {
+        $depth = $this->depth($ro) - 1;
+        if ($depth > 0) {
+            $this->resourceObjects[$ro] = $depth;
+
+            return;
+        }
+
         unset($this->resourceObjects[$ro]);
     }
 
@@ -53,10 +61,17 @@ final class PutInProgress
         return isset($this->resourceObjects[$ro]);
     }
 
-    /** @return WeakMap<ResourceObject, true> */
+    private function depth(ResourceObject $ro): int
+    {
+        $depth = $this->resourceObjects[$ro] ?? null;
+
+        return $depth ?? 0;
+    }
+
+    /** @return WeakMap<ResourceObject, int> */
     private static function none(): WeakMap
     {
-        /** @var WeakMap<ResourceObject, true> $none */
+        /** @var WeakMap<ResourceObject, int> $none */
         $none = new WeakMap();
 
         return $none;

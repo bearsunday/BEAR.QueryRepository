@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Log\Context\DependencySkippedContext;
+use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\Module\HalModule;
 use BEAR\Resource\ResourceInterface;
@@ -22,6 +23,7 @@ use function array_merge;
 use function array_unique;
 use function array_values;
 use function assert;
+use function count;
 use function explode;
 use function is_array;
 use function json_decode;
@@ -350,5 +352,32 @@ class CacheDependencyTest extends TestCase
         assert(is_array($context));
         $childTags = $context['childTags'];
         $this->assertSame([$uriTag($child->uri), (new BaseUriTag($uriTag))($child)], $childTags);
+    }
+
+    public function testAValuePageWithoutAPutInProgressRecordsNoDependencyAfterSave(): void
+    {
+        $this->assertSame(['depends_on' => 1, 'dependency_after_save' => 0], $this->eventsOfAValuePageDependency(null));
+        $this->assertSame(['depends_on' => 1, 'dependency_after_save' => 1], $this->eventsOfAValuePageDependency(new PutInProgress()));
+    }
+
+    /** @return array{depends_on: int, dependency_after_save: int} */
+    private function eventsOfAValuePageDependency(PutInProgress|null $putInProgress): array
+    {
+        $logger = new SemanticLogger();
+        $parent = new #[Cacheable]
+        class extends ResourceObject {
+        };
+        $parent->uri = new Uri('page://self/dep/unit-value-parent');
+        $child = new class extends ResourceObject {
+        };
+        $child->uri = new Uri('page://self/dep/unit-value-child');
+
+        (new CacheDependency(new UriTag(), $logger, null, $putInProgress))->depends($parent, $child);
+        $tree = $this->flushAndValidate($logger);
+
+        return [
+            'depends_on' => count(self::eventContextsJsonOf($tree, 'depends_on')),
+            'dependency_after_save' => count(self::eventContextsJsonOf($tree, 'dependency_after_save')),
+        ];
     }
 }
