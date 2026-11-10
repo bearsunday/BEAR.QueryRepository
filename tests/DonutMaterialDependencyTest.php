@@ -380,6 +380,22 @@ class DonutMaterialDependencyTest extends TestCase
         $this->assertContains('grp-customtag_page___self_dep_unit-paged', explode(' ', $result->headers[Header::SURROGATE_KEY] ?? ''));
     }
 
+    /** With a custom UriTag, a donut page carries a child's #[DependsOn] tag in that format, the one a purge of the named URI invalidates */
+    public function testADonutPageCarriesAChildsDependsOnTagInTheCustomUriTagFormat(): void
+    {
+        [$resource, $repository] = $this->manuallyConstructedRepository();
+        $childRequest = $resource->uri('app://self/rows/plain?channelId=c1');
+        $childRequest();
+        $parent = new class extends ResourceObject {
+        };
+        $parent->uri = new Uri('page://self/dep/unit-depends-on-parent');
+        $parent->body = ['list' => $childRequest];
+
+        $result = $repository->putDonut($parent, null);
+
+        $this->assertContains('customtag_app___self_rows_taxonomy_ulid=c1', explode(' ', $result->headers[Header::SURROGATE_KEY] ?? ''));
+    }
+
     /** @return array{ResourceInterface, DonutRepository} */
     private function manuallyConstructedRepository(): array
     {

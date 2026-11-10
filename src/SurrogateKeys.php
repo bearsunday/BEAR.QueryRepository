@@ -24,11 +24,12 @@ final class SurrogateKeys
     /** @var array<string, list<string>|null> */
     private array $declared = [];
 
-    public function __construct(AbstractUri $uri, string|null $baseTag = null)
+    /** @param UriTagInterface|null $dependsOnUriTag what #[DependsOn] declarations expand with; the repository passes its own */
+    public function __construct(AbstractUri $uri, string|null $baseTag = null, UriTagInterface|null $dependsOnUriTag = null)
     {
         $this->uriTag = new UriTag();
         $this->baseUriTag = new BaseUriTag($this->uriTag);
-        $this->dependsOnTags = new DependsOnTags($this->uriTag);
+        $this->dependsOnTags = new DependsOnTags($dependsOnUriTag ?? $this->uriTag);
         $this->surrogateKeys = $baseTag === null ? [($this->uriTag)($uri)] : [($this->uriTag)($uri), $baseTag];
     }
 
