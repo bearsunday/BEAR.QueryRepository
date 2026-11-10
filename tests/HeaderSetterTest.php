@@ -15,11 +15,6 @@ class HeaderSetterTest extends TestCase
         return new HeaderSetter(new EtagSetter());
     }
 
-    private function headerSetterWithSkip(): HeaderSetter
-    {
-        return new HeaderSetter(new EtagSetter(), bodySerializationErrorHandler: new SkipSerializationError());
-    }
-
     public function testStripHeadersMatchesALowercaseCdnCacheControlHeaderName(): void
     {
         // $ro->headers is a plain PHP array, not an HTTP-aware collection (RFC 7230 §3.2):
@@ -60,7 +55,7 @@ class HeaderSetterTest extends TestCase
         $ro = new None();
         $ro->headers['cache-control'] = 'public';
 
-        ($this->headerSetter())($ro, 60, null);
+        ($this->headerSetter())($ro, 'max-age=60', null);
 
         $this->assertArrayNotHasKey(Header::CACHE_CONTROL, $ro->headers, 'no second, canonically-cased header was added');
         $this->assertSame('public, max-age=60', $ro->headers['cache-control']);
@@ -71,7 +66,7 @@ class HeaderSetterTest extends TestCase
         $ro = new None();
         $ro->headers['cache-control'] = 'max-age=30';
 
-        ($this->headerSetter())($ro, 60, null);
+        ($this->headerSetter())($ro, 'max-age=60', null);
 
         $this->assertArrayNotHasKey(Header::CACHE_CONTROL, $ro->headers, 'no second, canonically-cased header was added');
         $this->assertSame('max-age=30', $ro->headers['cache-control']);
@@ -84,7 +79,7 @@ class HeaderSetterTest extends TestCase
         $ro = new CacheableResponseNoStore();
         $ro->headers[Header::CACHE_CONTROL] = 'no-store';
 
-        ($this->headerSetter())($ro, 31536000, null);
+        ($this->headerSetter())($ro, 'max-age=31536000', null);
 
         $this->assertSame('no-store', $ro->headers[Header::CACHE_CONTROL]);
     }
@@ -96,44 +91,9 @@ class HeaderSetterTest extends TestCase
         $ro = new CacheableResponseNoStore();
         $ro->headers = ['cache-control' => 'public', Header::CACHE_CONTROL => 'no-store'];
 
-        ($this->headerSetter())($ro, 60, null);
+        ($this->headerSetter())($ro, 'max-age=60', null);
 
         $this->assertSame('public', $ro->headers['cache-control']);
         $this->assertSame('no-store', $ro->headers[Header::CACHE_CONTROL]);
-    }
-
-    public function testMakeCacheControlPrivateRewritesEveryCaseVariantOfTheHeader(): void
-    {
-        // DeclaredCacheControl inspects every case variant of Cache-Control, not one
-        // canonical name; the skip rewrite must match that or a second variant left
-        // untouched would still carry s-maxage/public to a shared cache.
-        foreach ([['cache-control', 'Cache-Control'], ['Cache-Control', 'cache-control']] as [$first, $second]) {
-            $ro = new None();
-            $ro->headers[$first] = 'public, s-maxage=600';
-            $ro->headers[$second] = 'max-age=60';
-            $ro->body = ['handler' => static fn () => null];
-
-            ($this->headerSetterWithSkip())($ro, null, null);
-
-            foreach ([$first, $second] as $name) {
-                $this->assertStringNotContainsString('s-maxage', $ro->headers[$name], $name);
-                $this->assertStringNotContainsString('public', $ro->headers[$name], $name);
-                $this->assertStringContainsString('private', $ro->headers[$name], $name);
-                $this->assertStringContainsString('max-age=60', $ro->headers[$name], $name);
-            }
-
-            $this->assertSame($ro->headers[$first], $ro->headers[$second], 'both case variants end up with the same rewritten value');
-        }
-    }
-
-    public function testMakeCacheControlPrivateKeepsAnExtensionDirectiveThatOnlyStartsWithSMaxage(): void
-    {
-        $ro = new None();
-        $ro->headers[Header::CACHE_CONTROL] = 'public, s-maxage-tenant=600, s-maxage=600, max-age=60';
-        $ro->body = ['handler' => static fn () => null];
-
-        ($this->headerSetterWithSkip())($ro, null, null);
-
-        $this->assertSame('s-maxage-tenant=600, max-age=60, private', $ro->headers[Header::CACHE_CONTROL]);
     }
 }

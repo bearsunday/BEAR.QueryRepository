@@ -55,12 +55,14 @@ is a fact about the domain, not a fault of the design.
 didn't. A store records its `saved` outcome — a pool that rejects a write no
 longer looks like a successful save. A miss not followed by a put emits
 `put_skipped` with the reason (`etag-present`, `error-code` with the actual
-response code, `not-cacheable`, `unstorable` for a response marked unstorable
-for this request, `unserializable` for a body `serialize()` refused) — an
-absent save is a recorded decision, not a mystery. The retention policy keeps or
-drops whole sessions: a `put_skipped{reason: unserializable}` keeps its session,
-since it is a defect rather than a rule the code enforced on purpose, while the
-other skip reasons do not keep a session on their own. Invalidation reports per-target outcomes (`roPool`/`etagPool`:
+response code, `not-cacheable`, or `unstorable` for a response marked unstorable
+for this request) — an absent save is a recorded decision, not a mystery, and
+none of those reasons keep a session on their own: the retention policy treats
+them as rules, stable for as long as the code is. A body a stored entry cannot
+hold (`serialize()` refusing a closure, say) fails the request instead of
+producing a skip; `cache_error{operation: write}` records the refusal, and that
+is one of the effects that did not happen the retention policy does keep a
+session for. Invalidation reports per-target outcomes (`roPool`/`etagPool`:
 `invalidated`|`failed`; `cdn`: `purged`|`failed`|`skipped`) plus its
 duration. A failed write still opens a command scope, closed with its 4xx —
 recording that the purge was *correctly skipped*.

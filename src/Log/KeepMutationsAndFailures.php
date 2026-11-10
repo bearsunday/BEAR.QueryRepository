@@ -30,12 +30,11 @@ use function random_int;
  *    decide the tags, TTLs and CDN keys every later read repeats.
  *  - effects that did not happen: `saved: false`, `invalidate` with `roPool`/`etagPool`/`cdn`
  *    `failed`, a `manual_*` result of `failed`, `cache_error{operation: write}` - a store or
- *    an invalidation that was aborted - and `put_skipped{reason: unserializable}`, a body
- *    `serialize()` refused, which is a defect rather than a rule.
+ *    an invalidation that was aborted.
  *  - a sample, when a rate is configured.
  *
  * Deliberately not kept: `cache_error{operation: read}` (availability, monitored elsewhere -
- * separating a degraded miss from a cold one is a development-time reading) and every other
+ * separating a degraded miss from a cold one is a development-time reading) and every
  * `put_skipped`, which records a store that was never attempted because a rule forbade it - a
  * response code the path will not cache (`#[Cacheable]` skips any non-200, a donut skips 4xx and
  * above), a validator already set, or a page served from its template. Those are decisions, stable
@@ -191,10 +190,6 @@ final class KeepMutationsAndFailures implements RetentionPolicyInterface
             if (($context[$target] ?? null) === 'failed') {
                 return true;
             }
-        }
-
-        if ($type === 'put_skipped' && ($context['reason'] ?? null) === 'unserializable') {
-            return true;
         }
 
         // A read that threw is availability, and its monitoring saw it first; a write that threw

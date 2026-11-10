@@ -36,7 +36,6 @@ use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
  *  UriTag
  *  BaseUriTagInterface
  *  DeclaredCacheControl
- *  BodySerializationErrorHandlerInterface (ThrowSerializationError - fails the request; see ProdQueryRepositoryModule)
  *
  *  The following module are installed.
  *
@@ -82,7 +81,6 @@ final class QueryRepositoryModule extends AbstractModule
         // Server context for thread safety (Swoole, RoadRunner, etc.)
         $this->bind(ServerContextInterface::class)->to(GlobalServerContext::class)->in(Scope::SINGLETON);
         $this->bind(DeclaredCacheControl::class);
-        $this->bind(BodySerializationErrorHandlerInterface::class)->to(ThrowSerializationError::class);
         // #[Cacheable]
         $this->install(new CacheableModule());
         // #[CacheableResponse]

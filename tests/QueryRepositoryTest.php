@@ -20,6 +20,7 @@ use FakeVendor\HelloWorld\Resource\App\User\Profile;
 use FakeVendor\HelloWorld\Resource\Page\None;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Psr\Cache\CacheItemPoolInterface;
 use Ray\Di\AbstractModule;
@@ -28,6 +29,7 @@ use Ray\PsrCacheModule\Annotation\Shared;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
+use Throwable;
 
 use function assert;
 use function is_array;
@@ -104,7 +106,6 @@ class QueryRepositoryTest extends TestCase
         $this->assertTrue(Profile::$requested);
     }
 
-    /** @covers \BEAR\QueryRepository\QueryRepository::getExpiryTime() */
     public function testNoAnnotationLifeTime(): void
     {
         $ro = new None(); // no annotation
@@ -340,32 +341,39 @@ class QueryRepositoryTest extends TestCase
         $this->assertSame([], $purger->tags);
     }
 
-    public function testRepeatedUnserializableGetDoesNotPurge(): void
+    /** @return array<string, array{string}> */
+    public static function bodiesSerializeRefuses(): array
     {
-        // Skip's own pre-write cleanup must see the unserializable skip the same way it
-        // already sees `unstorable`, or a body serialize() refuses would purge on every
-        // request even though nothing was ever stored for it (#259 follow-up).
+        return [
+            'value entry' => ['app://self/unserializable-value'],
+            'view entry, whose ETag comes from the view' => ['app://self/unserializable-view'],
+            'partial ETag, which reads only the declared field' => ['app://self/unserializable-partial-etag'],
+        ];
+    }
+
+    #[DataProvider('bodiesSerializeRefuses')]
+    public function testABodySerializeRefusesFailsTheRequestBeforeAnythingIsPurged(string $uri): void
+    {
         $purger = new FakeCountingPurger();
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
-        $module->override(new class ($purger) extends AbstractModule {
-            public function __construct(private readonly PurgerInterface $purger)
-            {
-            }
+        $injector = $this->injectorWithPurger($purger);
 
-            #[Override]
-            protected function configure(): void
-            {
-                $this->bind(PurgerInterface::class)->toInstance($this->purger);
-                $this->bind(BodySerializationErrorHandlerInterface::class)->to(SkipSerializationError::class);
-            }
-        });
-        $resource = (new Injector($module, __DIR__ . '/tmp'))->getInstance(ResourceInterface::class);
-
-        for ($i = 0; $i < 5; $i++) {
-            $resource->get('app://self/unserializable-value');
+        $refusal = null;
+        try {
+            $injector->getInstance(ResourceInterface::class)->get($uri);
+        } catch (Throwable $e) {
+            $refusal = $e;
         }
 
-        $this->assertSame([], $purger->tags);
+        $this->assertNotNull($refusal, 'the refusal propagates');
+        $this->assertSame('Exception', $refusal::class, "PHP's own exception, not a wrapper");
+        $this->assertSame("Serialization of 'Closure' is not allowed", $refusal->getMessage());
+        $this->assertSame([], $purger->tags, 'a write that cannot happen purges nothing');
+        $this->assertNull($injector->getInstance(QueryRepositoryInterface::class)->get(new Uri($uri)));
+
+        $error = self::eventContextJsonOf($this->flushAndValidate($injector->getInstance(SemanticLoggerInterface::class, CacheLog::class)), 'cache_error');
+        $this->assertNotNull($error, 'the refusal is recorded before it travels');
+        $this->assertStringContainsString('"operation":"write"', $error);
+        $this->assertStringContainsString('"exceptionClass":"Exception"', $error);
     }
 
     public function testUnstorablePutStillDropsAnEarlierEntry(): void

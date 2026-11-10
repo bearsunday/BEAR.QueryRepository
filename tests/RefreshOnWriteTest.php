@@ -8,6 +8,7 @@ use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
 use Closure;
+use FakeVendor\HelloWorld\Resource\App\ClosureAfterWrite;
 use FakeVendor\HelloWorld\Resource\App\DeletableWriter;
 use FakeVendor\HelloWorld\Resource\App\StatusWriter;
 use FakeVendor\HelloWorld\Resource\Page\Html\CreatedDonutWriter;
@@ -15,6 +16,7 @@ use Madapaja\TwigModule\TwigModule;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
+use Throwable;
 
 use function array_diff_key;
 use function array_flip;
@@ -36,6 +38,7 @@ class RefreshOnWriteTest extends TestCase
         StatusWriter::$gets = 0;
         CreatedDonutWriter::$gets = 0;
         DeletableWriter::$data = DeletableWriter::DATA;
+        ClosureAfterWrite::$written = false;
 
         parent::setUp();
     }
@@ -139,6 +142,26 @@ class RefreshOnWriteTest extends TestCase
         $this->assertSame(204, $delete->code, 'the refresh GET 404 became the DELETE response');
         $this->assertNull($this->repository->get(new Uri('app://self/deletable-writer?id=1')));
         $this->assertSame(404, $this->resource->get('app://self/deletable-writer', ['id' => '1'])->code);
+    }
+
+    public function testAWriteWhoseRefreshBodyDoesNotSerializeFailsAfterTheWriteRan(): void
+    {
+        $uri = new Uri('app://self/closure-after-write');
+        $this->resource->get((string) $uri);
+        $this->assertNotNull($this->repository->get($uri), 'the GET before the write stored its entry');
+
+        $refusal = null;
+        try {
+            $this->resource->put((string) $uri);
+        } catch (Throwable $e) {
+            $refusal = $e;
+        }
+
+        $this->assertTrue(ClosureAfterWrite::$written, 'the write ran before its refresh failed');
+        $this->assertNotNull($refusal, 'the refusal propagates');
+        $this->assertSame('Exception', $refusal::class, "PHP's own exception, not a wrapper");
+        $this->assertSame("Serialization of 'Closure' is not allowed", $refusal->getMessage());
+        $this->assertNull($this->repository->get($uri), 'the entry stored before the write is not left stale');
     }
 
     public function testHrefAfterAWriteFollowsTheWritesOwnLink(): void

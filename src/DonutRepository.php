@@ -34,6 +34,12 @@ use function max;
 /** @internal */
 final readonly class DonutRepository implements DonutRepositoryInterface
 {
+    /**
+     * A page stored without a lifetime lives until a write invalidates it, so a browser revalidates
+     * it every time instead of reusing it for a lifetime guessed from Last-Modified
+     */
+    private const REVALIDATE = 'max-age=0';
+
     private CacheDependencyInterface $cacheDependency;
 
     /** @SuppressWarnings("PHPMD.ExcessiveParameterList") */
@@ -146,19 +152,18 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $this->logger->event(new PutDonutContext((string) $ro->uri, $ttl, $sMaxAge));
         $keys = new SurrogateKeys($ro->uri, ($this->baseUriTag)($ro));
         $keys->addTag($ro);
-        $declaredKeys = $this->getHeaderKeys($ro);
-        $templateKeys = $this->templateKeys($ro, $declaredKeys);
-        $donut = ResourceDonut::create($ro, $this->renderer, $keys, $sMaxAge, true)->withStorageState($ttl, $templateKeys);
+        $donut = ResourceDonut::create($ro, $this->renderer, $keys, $sMaxAge, true);
+        // Read after rendering, see templateKeys()
+        $templateKeys = $this->templateKeys($ro, $this->getHeaderKeys($ro));
+        $donut = $donut->withStorageState($ttl, $templateKeys);
         $donut->render($ro, $this->renderer);
-        // Checked on the rendered response before setHeaders() mutates it; HeaderSetter checks the
-        // same state and returns null for an unstorable response, so the class is null then.
+        // Checked on the rendered response before setHeaders() mutates it
         $unstorable = $this->declaredCacheControl->reason($ro);
-        [$surrogateKeys, $unserializableClass] = $this->setHeaders($keys, $ro, $sMaxAge);
+        $surrogateKeys = $this->setHeaders($keys, $ro, $sMaxAge);
         $this->logCdnHeaders($ro);
-        $skipReason = $unstorable ?? ($unserializableClass !== null ? 'unserializable' : null);
-        $this->cleanUpBeforeWrite($ro, $skipReason);
-        if ($skipReason !== null) {
-            $this->logger->event(new PutSkippedContext((string) $ro->uri, $skipReason, null, $unserializableClass));
+        $this->cleanUpBeforeWrite($ro, $unstorable);
+        if ($unstorable !== null) {
+            $this->logger->event(new PutSkippedContext((string) $ro->uri, $unstorable));
 
             return;
         }
@@ -174,9 +179,10 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $this->classifyMaterials($ro);
         $this->logger->event(new PutDonutContext((string) $ro->uri, $donutTtl, null));
         $keys = new SurrogateKeys($ro->uri, ($this->baseUriTag)($ro));
-        $declaredKeys = $this->getHeaderKeys($ro);
-        $templateKeys = $this->templateKeys($ro, $declaredKeys);
-        $donut = ResourceDonut::create($ro, $this->renderer, $keys, $donutTtl, false)->withStorageState($donutTtl, $templateKeys);
+        $donut = ResourceDonut::create($ro, $this->renderer, $keys, $donutTtl, false);
+        // Read after rendering, see templateKeys()
+        $templateKeys = $this->templateKeys($ro, $this->getHeaderKeys($ro));
+        $donut = $donut->withStorageState($donutTtl, $templateKeys);
         $donut->render($ro, $this->renderer);
         $unstorable = $this->declaredCacheControl->reason($ro);
         $keys->setSurrogateHeader($ro);
@@ -232,8 +238,10 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     }
 
     /**
-     * The template's own URI tag (so `purge($uri)` reaches it, #185) and the declared keys, which include material
-     * children's tags (classifyMaterials()). Holes are left out: their write drops only the content and the shell is recomposed.
+     * The template's own URI tag (so `purge($uri)` reaches it, #185) and the declared keys: material children's tags
+     * (classifyMaterials()) and the dependencies declared while the page rendered, such as depends() from a template
+     * helper, so they are read after ResourceDonut::create(). Holes are left out: their write drops only the content and
+     * the shell is recomposed.
      *
      * @param list<string> $declaredKeys
      *
@@ -287,13 +295,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         // When the recomposed content is byte-identical to the recorded one, carry over
         // the original Last-Modified instead of advancing it to the recomposition time
         $lastModified = $donut->getUnchangedLastModified((string) $ro->view);
-        $unserializableClass = ($this->headerSetter)($ro, $donut->ttl, null, $lastModified);
-        if ($unserializableClass !== null) {
-            $this->logCdnHeaders($ro);
-            $this->logger->event(new PutSkippedContext((string) $ro->uri, 'unserializable', null, $unserializableClass));
-
-            return $ro;
-        }
+        ($this->headerSetter)($ro, HeaderSetter::maxAge($donut->ttl) ?? self::REVALIDATE, null, $lastModified);
 
         $this->setCdnCacheControl($ro, $donut->ttl);
         $this->logCdnHeaders($ro);
@@ -393,20 +395,18 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     }
 
     /**
-     * Set the page's own headers (validator, CDN lifetime), and report the body's serializability
+     * Set the page's own headers (validator, client revalidation, CDN lifetime)
      *
-     * @return array{0: string, 1: string|null} the Surrogate-Key header as composed, before the
-     *     CDN setter runs; and the class serialize() refused, when HeaderSetter's handler
-     *     returned instead of throwing (the caller must not store), or null otherwise
+     * @return string the Surrogate-Key header as composed, before the CDN setter runs
      */
-    private function setHeaders(SurrogateKeys $keys, ResourceObject $ro, int|null $sMaxAge): array
+    private function setHeaders(SurrogateKeys $keys, ResourceObject $ro, int|null $sMaxAge): string
     {
         $keys->setSurrogateHeader($ro);
         $surrogateKeys = $ro->headers[Header::SURROGATE_KEY] ?? '';
         $this->setCdnCacheControl($ro, $sMaxAge);
-        $unserializableClass = ($this->headerSetter)($ro, 0, null);
+        ($this->headerSetter)($ro, HeaderSetter::maxAge($sMaxAge) === null ? self::REVALIDATE : null, null);
 
-        return [$surrogateKeys, $unserializableClass];
+        return $surrogateKeys;
     }
 
     /**
