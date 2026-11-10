@@ -327,7 +327,7 @@ Schemas: docs/schemas/context/ (one JSON Schema per context, e.g. docs/schemas/c
 ### Cache Invalidation Flow
 
 1. A write method runs; the interceptor acts only when it answers below 400
-2. The resource's own URI, default-valued `onGet()` parameters dropped, is purged and rebuilt by a GET on a new resource instance (`RefreshSameCommand` for #[Cacheable], `DonutCommandInterceptor` for #[CacheableResponse] or #[RefreshCache])
+2. The resource's own URI is purged with default-valued `onGet()` parameters dropped, which reaches every variant; a GET with the write's own query on a new resource instance then rebuilds only that entry (`RefreshSameCommand` for #[Cacheable], `DonutCommandInterceptor` for #[CacheableResponse] or #[RefreshCache])
 3. Each #[Purge] URI is purged; each #[Refresh] URI is purged and rebuilt by a GET
 4. A purge invalidates the URI's tag and its group tag: ResourceStorage::invalidateTags() clears both pools, then the `PurgerInterface` (CDN) runs; a failing CDN purge throws after the local pools are cleared
 
