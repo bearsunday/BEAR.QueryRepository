@@ -502,7 +502,7 @@ $injector = $newInjector();
 $resource = $injector->getInstance(ResourceInterface::class);
 $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
-$ro = $resource->get('app://self/advertised-keys', ['keyBytes' => 1025]);
+$ro = $resource->get('app://self/advertised-keys', ['keyBytes' => 1025, 'headerBytes' => 1025]);
 echo sprintf('L  GET a #[Cacheable] value advertising a %d-byte key -> stored, surrogate_key_oversize', strlen($ro->headers['Surrogate-Key'])) . PHP_EOL;
 
 $report($logger->flush(), 'L. oversized Surrogate-Key');

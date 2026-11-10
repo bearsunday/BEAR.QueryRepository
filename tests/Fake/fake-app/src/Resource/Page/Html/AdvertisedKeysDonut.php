@@ -7,24 +7,16 @@ namespace FakeVendor\HelloWorld\Resource\Page\Html;
 use BEAR\QueryRepository\Header;
 use BEAR\RepositoryModule\Annotation\CacheableResponse;
 use BEAR\Resource\ResourceObject;
+use FakeVendor\HelloWorld\Resource\App\AdvertisedKeys;
 
-use function implode;
-use function sprintf;
-use function str_pad;
-
-/** Advertises $keys surrogate keys of $keyBytes bytes each */
+/** @see AdvertisedKeys */
 #[CacheableResponse]
 class AdvertisedKeysDonut extends ResourceObject
 {
-    public function onGet(int $keyBytes, int $keys = 1): static
+    public function onGet(int $keyBytes, int $headerBytes): static
     {
-        $list = [];
-        for ($i = 0; $i < $keys; $i++) {
-            $list[] = str_pad(sprintf('k%d-', $i), $keyBytes, 'x');
-        }
-
-        $this->headers[Header::SURROGATE_KEY] = implode(' ', $list);
-        $this->body = ['keys' => $keys];
+        $this->headers[Header::SURROGATE_KEY] = AdvertisedKeys::header($keyBytes, $headerBytes);
+        $this->body = ['headerBytes' => $headerBytes];
 
         return $this;
     }

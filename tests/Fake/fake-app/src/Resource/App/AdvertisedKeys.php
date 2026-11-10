@@ -9,22 +9,30 @@ use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\Resource\ResourceObject;
 
 use function implode;
+use function min;
 use function sprintf;
 use function str_pad;
 
-/** Advertises $keys surrogate keys of $keyBytes bytes each */
+/** Advertises a $headerBytes-byte Surrogate-Key of $keyBytes-byte keys, the last one taking the remainder */
 #[Cacheable]
 class AdvertisedKeys extends ResourceObject
 {
-    public function onGet(int $keyBytes, int $keys = 1): static
+    public static function header(int $keyBytes, int $headerBytes): string
     {
-        $list = [];
-        for ($i = 0; $i < $keys; $i++) {
-            $list[] = str_pad(sprintf('k%d-', $i), $keyBytes, 'x');
+        $keys = [];
+        for ($i = 0, $left = $headerBytes; $left > 0; $i++) {
+            $length = min($keyBytes, $left);
+            $keys[] = str_pad(sprintf('k%d-', $i), $length, 'x');
+            $left -= $length + 1;
         }
 
-        $this->headers[Header::SURROGATE_KEY] = implode(' ', $list);
-        $this->body = ['keys' => $keys];
+        return implode(' ', $keys);
+    }
+
+    public function onGet(int $keyBytes, int $headerBytes): static
+    {
+        $this->headers[Header::SURROGATE_KEY] = self::header($keyBytes, $headerBytes);
+        $this->body = ['headerBytes' => $headerBytes];
 
         return $this;
     }

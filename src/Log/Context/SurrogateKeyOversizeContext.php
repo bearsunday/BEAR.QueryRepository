@@ -22,8 +22,8 @@ final class SurrogateKeyOversizeContext extends AbstractContext
 {
     public const TYPE = 'surrogate_key_oversize';
     public const SCHEMA_URL = 'https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/surrogate_key_oversize.json';
-    public const FASTLY_MAX_KEY_BYTES = 1024;
-    public const FASTLY_MAX_HEADER_BYTES = 16384;
+    private const FASTLY_MAX_KEY_BYTES = 1024;
+    private const FASTLY_MAX_HEADER_BYTES = 16384;
 
     public function __construct(
         public readonly string $uri,

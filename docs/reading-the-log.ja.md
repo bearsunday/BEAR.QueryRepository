@@ -98,7 +98,7 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 | `put_donut` | `uri`, `requestedTtl`, `sMaxAge` | donut の書き込みを要求した。要求時の lifetime つき |
 | `refresh_donut` | `uri` | キャッシュ済み donut をそのまま返さず再合成した |
 | `cdn_headers` | `uri`, `headers`, `surrogateKeys` | 応答に実際に付いた CDN 向けヘッダ |
-| `surrogate_key_oversize` | `uri`, `headerBytes`, `longestKeyBytes` | `#[Cacheable]` の put や donut の書き込みで応答に付いた Surrogate-Key が、Fastly の上限(1 キー 1,024 バイト、ヘッダ全体 16,384 バイト)を超えた。記録するだけで、キーはそのまま保存・送信される |
+| `surrogate_key_oversize` | `uri`, `headerBytes`, `longestKeyBytes` | `#[Cacheable]` の put や donut の書き込み・リフレッシュで応答に付いた Surrogate-Key が、Fastly の上限(1 キー 1,024 バイト、ヘッダ全体 16,384 バイト)を超えた。記録するだけで、キーはそのまま保存・送信される。測るのは応答のヘッダだけで、`#[Cacheable]` が保存時に自分のエントリへ足す URI タグや、CDN へ purge で送るキーは測らない |
 | `depends_on` | `parent`, `child`, `childTags` | 依存の辺 1 本。子のタグが親に加わった。`#[Cacheable]` の put ではタグを持つ子ごとに、donut ページの書き込みではタグを持つデータ依存(`onGet()` が読んだ子)ごとに記録する。穴はまだ実行されていないので、代わりに `dependency_skipped` を記録する。donut ページの描画中に呼んだ `CacheDependencyInterface::depends()`(テンプレートのヘルパーからなど)も、`put_donut` と `save_*` のあいだに記録する |
 | `dependency_skipped` | `parent`, `child`, `reason` | キャッシュされる親の書き込み(`#[Cacheable]` の put、または donut ページの書き込み)で、body の最上位にある埋め込みリクエストを依存に入れなかった。子のタグは保存される値や donut テンプレートに加わらない。穴のタグは、穴が描画されるときに `#[CacheableResponse]` のビューには届く。配列の中のリクエストは見えず、何も記録しない |
 | `pre_write_cleanup` | `uri` | 書き込み側が、上書きするエントリを消す直前 |

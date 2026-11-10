@@ -40,56 +40,61 @@ class SurrogateKeyOversizeTest extends TestCase
         parent::setUp();
     }
 
-    /** @return array<string, array{string, int, int}> */
+    /**
+     * The donut page appends its own URI tag and group tag, both carrying the query, so it sends more than it advertises.
+     *
+     * @return array<string, array{string, int, int, int}>
+     */
     public static function oversizeProvider(): array
     {
         return [
-            'value: one key over 1,024 bytes' => ['app://self/advertised-keys', 1025, 1],
-            'value: header over 16,384 bytes' => ['app://self/advertised-keys', 565, 29],
-            'view: one key over 1,024 bytes' => ['app://self/advertised-keys-view', 1025, 1],
-            'view: header over 16,384 bytes' => ['app://self/advertised-keys-view', 565, 29],
-            'donut: one key over 1,024 bytes' => ['page://self/html/advertised-keys-donut', 1025, 1],
-            'donut: header over 16,384 bytes' => ['page://self/html/advertised-keys-donut', 565, 29],
+            'value: a 1,025-byte key' => ['app://self/advertised-keys', 1025, 1025, 1025],
+            'value: a 16,385-byte header' => ['app://self/advertised-keys', 1000, 16385, 16385],
+            'view: a 1,025-byte key' => ['app://self/advertised-keys-view', 1025, 1025, 1025],
+            'view: a 16,385-byte header' => ['app://self/advertised-keys-view', 1000, 16385, 16385],
+            'donut: a 1,025-byte key' => ['page://self/html/advertised-keys-donut', 1025, 1025, 1147],
+            'donut: a 16,385-byte header' => ['page://self/html/advertised-keys-donut', 1000, 16261, 16385],
         ];
     }
 
     #[DataProvider('oversizeProvider')]
-    public function testASurrogateKeyOverTheFastlyLimitIsLogged(string $uri, int $keyBytes, int $keys): void
+    public function testASurrogateKeyOverTheFastlyLimitIsLogged(string $uri, int $keyBytes, int $headerBytes, int $sentBytes): void
     {
-        $ro = $this->resource->get($uri, ['keyBytes' => $keyBytes, 'keys' => $keys]);
+        $ro = $this->resource->get($uri, ['keyBytes' => $keyBytes, 'headerBytes' => $headerBytes]);
         $tree = $this->flushAndValidate($this->logger);
 
         $header = $ro->headers[Header::SURROGATE_KEY];
+        $this->assertSame($sentBytes, strlen($header));
         $contexts = self::eventContextsJsonOf($tree, 'surrogate_key_oversize');
         $this->assertCount(1, $contexts);
         $this->assertSame([
             'uri' => (string) $ro->uri,
-            'headerBytes' => strlen($header),
+            'headerBytes' => $sentBytes,
             'longestKeyBytes' => max(array_map('strlen', explode(' ', $header))),
         ], json_decode($contexts[0], true, 512, JSON_THROW_ON_ERROR));
     }
 
-    /** @return array<string, array{string, int, int}> */
+    /** @return array<string, array{string, int, int, int}> */
     public static function withinLimitProvider(): array
     {
         return [
-            'value: a 1,024-byte key' => ['app://self/advertised-keys', 1024, 1],
-            'value: a 16,384-byte header' => ['app://self/advertised-keys', 564, 29],
-            'view: a 1,024-byte key' => ['app://self/advertised-keys-view', 1024, 1],
-            'view: a 16,384-byte header' => ['app://self/advertised-keys-view', 564, 29],
-            'donut: a 1,024-byte key' => ['page://self/html/advertised-keys-donut', 1024, 1],
-            'donut: a header under 16,384 bytes' => ['page://self/html/advertised-keys-donut', 500, 29],
+            'value: a 1,024-byte key' => ['app://self/advertised-keys', 1024, 1024, 1024],
+            'value: a 16,384-byte header' => ['app://self/advertised-keys', 1000, 16384, 16384],
+            'view: a 1,024-byte key' => ['app://self/advertised-keys-view', 1024, 1024, 1024],
+            'view: a 16,384-byte header' => ['app://self/advertised-keys-view', 1000, 16384, 16384],
+            'donut: a 1,024-byte key' => ['page://self/html/advertised-keys-donut', 1024, 1024, 1146],
+            'donut: a 16,384-byte header' => ['page://self/html/advertised-keys-donut', 1000, 16260, 16384],
         ];
     }
 
     #[DataProvider('withinLimitProvider')]
-    public function testASurrogateKeyWithinTheFastlyLimitIsNotLogged(string $uri, int $keyBytes, int $keys): void
+    public function testASurrogateKeyWithinTheFastlyLimitIsNotLogged(string $uri, int $keyBytes, int $headerBytes, int $sentBytes): void
     {
-        $ro = $this->resource->get($uri, ['keyBytes' => $keyBytes, 'keys' => $keys]);
+        $ro = $this->resource->get($uri, ['keyBytes' => $keyBytes, 'headerBytes' => $headerBytes]);
         $tree = $this->flushAndValidate($this->logger);
 
         $header = $ro->headers[Header::SURROGATE_KEY];
-        $this->assertLessThanOrEqual(16384, strlen($header));
+        $this->assertSame($sentBytes, strlen($header));
         $this->assertLessThanOrEqual(1024, max(array_map('strlen', explode(' ', $header))));
         $this->assertSame([], self::eventContextsJsonOf($tree, 'surrogate_key_oversize'));
     }

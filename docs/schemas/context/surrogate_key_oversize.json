@@ -2,7 +2,7 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/surrogate_key_oversize.json",
     "title": "surrogate_key_oversize",
-    "description": "Event: the Surrogate-Key a #[Cacheable] put or a donut write or refresh left on the response exceeds Fastly's limits, 1,024 bytes per key or 16,384 bytes for the header value. Only recorded: the keys are stored and sent as they are. `headerBytes` is the header value's length, `longestKeyBytes` the longest key's. A state-served hit replays the stored header and emits no new event.",
+    "description": "Event: the Surrogate-Key a #[Cacheable] put or a donut write or refresh left on the response exceeds Fastly's limits, 1,024 bytes per key or 16,384 bytes for the header value. Only recorded: the keys are stored and sent as they are. Only the response header is measured, not the URI tag a #[Cacheable] adds to its own entry at save time nor the keys purged at the CDN. `headerBytes` is the header value's length, `longestKeyBytes` the longest key's. A state-served hit replays the stored header and emits no new event.",
     "type": "object",
     "required": [
         "uri",
