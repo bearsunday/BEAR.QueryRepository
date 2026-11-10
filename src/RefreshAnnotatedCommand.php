@@ -56,24 +56,9 @@ final readonly class RefreshAnnotatedCommand implements CommandInterface
         $query = $body + $ro->uri->query;
         $variableSets = [$query];
         foreach (self::explodedQueryNames($annotation->uri) as $name) {
-            if (! isset($query[$name]) || ! is_array($query[$name]) || ! array_is_list($query[$name])) {
-                continue;
+            if (isset($query[$name]) && is_array($query[$name]) && array_is_list($query[$name])) {
+                $variableSets = self::fanOut($variableSets, $name, $query[$name]);
             }
-
-            $expanded = [];
-            foreach ($variableSets as $variables) {
-                /** @psalm-suppress MixedAssignment */
-                foreach ($query[$name] as $value) {
-                    // A null would drop the variable, and the bare URI's group tag reaches every variant.
-                    if ($value === null) {
-                        continue;
-                    }
-
-                    $expanded[] = [$name => $value] + $variables;
-                }
-            }
-
-            $variableSets = $expanded;
         }
 
         $uris = [];
@@ -82,6 +67,30 @@ final readonly class RefreshAnnotatedCommand implements CommandInterface
         }
 
         return array_values(array_unique($uris));
+    }
+
+    /**
+     * @param list<array<mixed>> $variableSets
+     * @param list<mixed>        $values
+     *
+     * @return list<array<mixed>>
+     */
+    private static function fanOut(array $variableSets, string $name, array $values): array
+    {
+        $expanded = [];
+        foreach ($variableSets as $variables) {
+            /** @psalm-suppress MixedAssignment */
+            foreach ($values as $value) {
+                // A null would drop the variable, and the bare URI's group tag reaches every variant.
+                if ($value === null) {
+                    continue;
+                }
+
+                $expanded[] = [$name => $value] + $variables;
+            }
+        }
+
+        return $expanded;
     }
 
     /** @return list<string> */
