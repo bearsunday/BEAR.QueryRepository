@@ -28,9 +28,11 @@ echo <<<'SCENARIOS'
 app://self/tag is #[Cacheable]; every write to app://self/tag-writer bumps its version,
 so a rebuilt entry shows the new version and an untouched one the old.
 
-A. PATCH app://self/member with member_id    -> the #[Cacheable] resource's own write
-                                                refreshes ?memberId=1 (snake_case query)
-                                                and purges ?member_id=1 as well
+A. GET memberId=1 and member_id=1, then PATCH member_id=1
+                                              -> the #[Cacheable] resource's own write
+                                                refreshes ?memberId=1 (snake_case query):
+                                                a hit with the new body; ?member_id=1 is
+                                                only purged, so it misses, then rebuilds
 B. PUT    tag-writer id=[a, b]  #[Refresh(uri: 'app://self/tag{?id*}')]
                                               -> one refresh per element: a and b rebuilt
 C. DELETE tag-writer id=[a, b]  #[Purge(uri: 'app://self/tag{?id*}')]
@@ -68,9 +70,11 @@ $warmTags = static function (string ...$ids) use ($resource, $logger): void {
 
 // ----------------------------------------------------- A. snake_case write query
 $resource->get('app://self/member', ['memberId' => 1]);
+$resource->get('app://self/member', ['member_id' => 1]);
 $logger->flush();
 $resource->patch('app://self/member', ['member_id' => 1, 'name' => 'kuma']);
 $show('A', 'app://self/member', ['memberId' => 1]);
+$show('A', 'app://self/member', ['member_id' => 1]);
 
 reportLog($logger->flush(), 'A. snake_case write query');
 

@@ -3,9 +3,11 @@
 app://self/tag is #[Cacheable]; every write to app://self/tag-writer bumps its version,
 so a rebuilt entry shows the new version and an untouched one the old.
 
-A. PATCH app://self/member with member_id    -> the #[Cacheable] resource's own write
-                                                refreshes ?memberId=1 (snake_case query)
-                                                and purges ?member_id=1 as well
+A. GET memberId=1 and member_id=1, then PATCH member_id=1
+                                              -> the #[Cacheable] resource's own write
+                                                refreshes ?memberId=1 (snake_case query):
+                                                a hit with the new body; ?member_id=1 is
+                                                only purged, so it misses, then rebuilds
 B. PUT    tag-writer id=[a, b]  #[Refresh(uri: 'app://self/tag{?id*}')]
                                               -> one refresh per element: a and b rebuilt
 C. DELETE tag-writer id=[a, b]  #[Purge(uri: 'app://self/tag{?id*}')]
@@ -23,6 +25,7 @@ G. PATCH app://self/article id=1             -> its own write invalidates articl
 
 === Executing... ===
 A GET app://self/member {"memberId":1} -> {"memberId":1,"name":"kuma"}
+A GET app://self/member {"member_id":1} -> {"memberId":1,"name":"kuma"}
 
 === Cache Log Tree — A. snake_case write query ===
 command method=onPatch source=CommandInterceptor
@@ -83,7 +86,37 @@ get uri=app://self/member?memberId=1
 └── close cache_hit
     ├── layer: resource
     └── durationMs: [volatile]
-Schema validation: OK (15 entries)
+get uri=app://self/member?member_id=1
+├── uri: app://self/member?member_id=1
+├── cache_policy uri=app://self/member?member_id=1 expiry=never resolvedTtl=31536000 [event]
+│   ├── uri: app://self/member?member_id=1
+│   ├── expiry: never
+│   └── resolvedTtl: 31536000
+├── pre_write_cleanup uri=app://self/member?member_id=1 [event]
+│   └── uri: app://self/member?member_id=1
+├── invalidate tags=[_member_member_id=1] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
+│   ├── tags[0]: _member_member_id=1
+│   ├── roPool: invalidated
+│   ├── etagPool: invalidated
+│   ├── cdn: skipped
+│   └── durationMs: [volatile]
+├── save_value uri=app://self/member?member_id=1 tags=[_member_member_id=1 +1 items] requestedTtl=31536000 saved=true [event]
+│   ├── uri: app://self/member?member_id=1
+│   ├── tags[0]: _member_member_id=1
+│   ├── tags[1]: grp-_member_member_id=1
+│   ├── requestedTtl: 31536000
+│   └── saved: true
+├── save_etag uri=app://self/member?member_id=1 etag=[volatile] tags=[grp-_member_member_id=1 +1 items] requestedTtl=31536000 (+1 more) [event]
+│   ├── uri: app://self/member?member_id=1
+│   ├── etag: [volatile]
+│   ├── tags[0]: grp-_member_member_id=1
+│   ├── tags[1]: _member_member_id=1
+│   ├── requestedTtl: 31536000
+│   └── saved: true
+└── close cache_miss
+    ├── layer: resource
+    └── durationMs: [volatile]
+Schema validation: OK (22 entries)
 B GET app://self/tag {"id":"a"} -> {"id":"a","version":2}
 B GET app://self/tag {"id":"c"} -> {"id":"c","version":1}
 

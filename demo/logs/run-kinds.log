@@ -1,6 +1,6 @@
 === Cache Kinds Demo ===
 
-Each kind is requested three times: GET (miss, stored), GET (hit), and a
+Each kind but C and E is requested three times: GET (miss, stored), GET (hit), and a
 conditional GET with the held ETag (304, cache_hit{layer: etag}).
 
 A. #[Cacheable] value          app://self/article       -> save_value, Cache-Control: max-age=0

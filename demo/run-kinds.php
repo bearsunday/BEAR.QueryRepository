@@ -5,9 +5,11 @@ declare(strict_types=1);
 /**
  * Cache Kinds Demo
  *
- * Each kind of cache answers the same three requests: the first GET stores it, the
+ * Each kind but two answers the same three requests: the first GET stores it, the
  * second is served from the cache, and a conditional GET with the ETag the client
- * holds is answered 304 from the ETag pool without running the resource.
+ * holds is answered 304 from the ETag pool without running the resource. C's body
+ * cannot be stored, so its one request fails instead of completing a cycle; E's
+ * #[DonutCache] page carries no ETag, so it stops after the second request.
  */
 
 use BEAR\QueryRepository\FakeEtagPoolModule;
@@ -30,7 +32,7 @@ require __DIR__ . '/validate.php';
 echo <<<'SCENARIOS'
 === Cache Kinds Demo ===
 
-Each kind is requested three times: GET (miss, stored), GET (hit), and a
+Each kind but C and E is requested three times: GET (miss, stored), GET (hit), and a
 conditional GET with the held ETag (304, cache_hit{layer: etag}).
 
 A. #[Cacheable] value          app://self/article       -> save_value, Cache-Control: max-age=0

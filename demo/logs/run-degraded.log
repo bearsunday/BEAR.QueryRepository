@@ -2864,13 +2864,13 @@ J  GET app://self/value -> 200 served live while the store is unreachable:
 
 === Cache Log Tree — J. the store is down and says so ===
 get uri=app://self/value
-├── pool_error key=ro-_value_ operation=read error=Redis connection failed: Connection refu...(+3) exceptionClass=InvalidArgumentException [event]
+├── pool_error key=ro-_value_ operation=read error=(redis client message) exceptionClass=(redis client exception) [event]
 ├── cache_policy uri=app://self/value expiry=never resolvedTtl=31536000 [event]
 ├── pre_write_cleanup uri=app://self/value [event]
-├── pool_error operation=write error=Redis connection failed: Connection refu...(+3) exceptionClass=InvalidArgumentException [event]
+├── pool_error operation=write error=(redis client message) exceptionClass=(redis client exception) [event]
 ├── invalidate tags=[_value_] roPool=failed etagPool=invalidated cdn=skipped (+1 more) [event]
-├── pool_error key=ro-_value_ operation=read error=Redis connection failed: Connection refu...(+3) exceptionClass=InvalidArgumentException [event]
-├── pool_error key=ro-_value_ operation=write error=Redis connection failed: Connection refu...(+3) exceptionClass=InvalidArgumentException [event]
+├── pool_error key=ro-_value_ operation=read error=(redis client message) exceptionClass=(redis client exception) [event]
+├── pool_error key=ro-_value_ operation=write error=(redis client message) exceptionClass=(redis client exception) [event]
 ├── save_value uri=app://self/value tags=[_value_, grp-_value_] requestedTtl=31536000 saved=false [event]
 └── cache_miss layer=resource durationMs=[volatile]
 
@@ -2893,8 +2893,8 @@ get uri=app://self/value
                     "context": {
                         "key": "ro-_value_",
                         "operation": "read",
-                        "error": "Redis connection failed: Connection refused",
-                        "exceptionClass": "Symfony\\Component\\Cache\\Exception\\InvalidArgumentException"
+                        "error": "(redis client message)",
+                        "exceptionClass": "(redis client exception)"
                     }
                 },
                 {
@@ -2924,8 +2924,8 @@ get uri=app://self/value
                     "context": {
                         "key": "",
                         "operation": "write",
-                        "error": "Redis connection failed: Connection refused",
-                        "exceptionClass": "Symfony\\Component\\Cache\\Exception\\InvalidArgumentException"
+                        "error": "(redis client message)",
+                        "exceptionClass": "(redis client exception)"
                     }
                 },
                 {
@@ -2949,8 +2949,8 @@ get uri=app://self/value
                     "context": {
                         "key": "ro-_value_",
                         "operation": "read",
-                        "error": "Redis connection failed: Connection refused",
-                        "exceptionClass": "Symfony\\Component\\Cache\\Exception\\InvalidArgumentException"
+                        "error": "(redis client message)",
+                        "exceptionClass": "(redis client exception)"
                     }
                 },
                 {
@@ -2960,8 +2960,8 @@ get uri=app://self/value
                     "context": {
                         "key": "ro-_value_",
                         "operation": "write",
-                        "error": "Redis connection failed: Connection refused",
-                        "exceptionClass": "Symfony\\Component\\Cache\\Exception\\InvalidArgumentException"
+                        "error": "(redis client message)",
+                        "exceptionClass": "(redis client exception)"
                     }
                 },
                 {

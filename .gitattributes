@@ -27,3 +27,7 @@
 # Configure diff output for .php and .phar files.
 *.php diff=php
 *.phar -diff
+
+# demo/logs/*.log is a byte-for-byte snapshot DemoSnapshotTest compares; a Windows
+# checkout must not rewrite its LF line endings to CRLF.
+/demo/logs/*.log text eol=lf

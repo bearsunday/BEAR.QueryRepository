@@ -11,8 +11,9 @@ declare(strict_types=1);
  * normalize the same fields in the raw "Cache Log JSON" block some demos also print, since
  * stree --snapshot cannot combine with --json (semantic-logger 0.11.1 CHANGELOG) and that
  * rendering never reaches it, plus a value no schema marks volatile at all: the literal
- * ETag/Last-Modified header lines a script prints from $ro->headers, and a conditional
- * request's ifNoneMatch, the client's own validator rather than a value this package made.
+ * ETag/Last-Modified header lines a script prints from $ro->headers, a conditional request's
+ * ifNoneMatch, a `--prefer-lowest` dependency's own warning text, and scene J's Redis-client-
+ * specific wording. A Windows PHP_EOL is CRLF; it is folded to LF before any of the above.
  */
 
 /** @return array<string, string> demo name => script path */
@@ -48,10 +49,36 @@ function runDemo(string $script): string
 
 function normalizeDemoOutput(string $output): string
 {
+    $output = (string) str_replace("\r\n", "\n", $output); // a Windows PHP_EOL is CRLF; the stored snapshot is LF
+    $output = normalizeDiagnostics($output);
     $output = normalizeDuration($output);
+    $output = normalizePoolError($output);
     $output = (string) preg_replace('/^Last-Modified:.*$/m', 'Last-Modified:(time)', $output);
 
     return normalizeEtags($output);
+}
+
+/** A dependency's own PHP warning/deprecation (its line and version float with --prefer-lowest), not a value this package or a demo prints */
+function normalizeDiagnostics(string $output): string
+{
+    return (string) preg_replace('/^(?:PHP )?(?:Warning|Deprecated|Notice|Parse error|Fatal error):.*\n(?:\n)?/m', '', $output);
+}
+
+/**
+ * Scene J's pool_error "error"/"exceptionClass" come from whichever Redis client composer
+ * installed (ext-redis vs Predis), with a different message and class; masked here since the
+ * backend's own wording is not a value this package controls, unlike cache_error's, which a
+ * fixture throws on purpose and is left alone
+ */
+function normalizePoolError(string $output): string
+{
+    $output = (string) preg_replace('/(pool_error\b[^\n]*?error=).*?( exceptionClass=)\S+/', '${1}(redis client message)${2}(redis client exception)', $output);
+
+    return (string) preg_replace(
+        '/("type": "pool_error"[\s\S]*?"error": ")[^"]*(")([\s\S]*?"exceptionClass": ")[^"\\\\]*(?:\\\\.[^"\\\\]*)*(")/',
+        '${1}(redis client message)${2}${3}(redis client exception)${4}',
+        $output,
+    );
 }
 
 /** The durationMs that cache_hit, cache_miss and invalidate record, still a real number in the raw JSON block */
