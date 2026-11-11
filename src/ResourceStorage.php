@@ -176,7 +176,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
      */
     private function findEtag(string $etag, string|null $uriTag): bool
     {
-        foreach (EntityTags::of($etag) as $opaqueTag) {
+        foreach (array_unique(EntityTags::of($etag)) as $opaqueTag) {
             $item = $this->guard(fn () => $this->etagPool->getItem($opaqueTag));
             if (! $item->isHit()) {
                 continue;
