@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- A write now invalidates a `#[Cacheable]`/`#[CacheableResponse]` entry a GET stored with an `onGet()` parameter's snake_case query key (`?user_id=1` for `$userId`), not only the parameter's own spelling (`?userId=1`); it was left stale. A GET that mixes both spellings across its required keys (`?userId=1&post_id=2`) is still not reached (#275).
 - `isNotModified()`/`isNotModifiedFor()` no longer answer `304` for an ETag whose entry a pre-write cleanup failure, a write-time race, or a shorter entry TTL already dropped from the pool; both now confirm the entry before trusting the ETag (#266). An ETag with no entry in the resource pool (a `NullAdapter` resource pool beside a real ETag pool, or `saveEtag()` called without a saved entry) is no longer answered `304` either.
 
 ## [1.20.0] - 2026-11-11

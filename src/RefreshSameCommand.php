@@ -60,11 +60,20 @@ final readonly class RefreshSameCommand implements CommandInterface
         }
 
         $delUri = clone $ro->uri;
+        $baseQuery = $this->baseQuery($ro, $getQuery);
         // Default-valued parameters dropped, as BaseUriTag drops them; the refresh below still uses the exact $getQuery.
-        $delUri->query = $this->baseQuery($ro, $getQuery);
+        $delUri->query = $baseQuery;
 
         // delete data in repository
         $this->repository->purge($delUri);
+
+        // A GET stored under the snake_case key keeps that spelling in its group tag; purge it too.
+        $snakeQuery = self::snakeQuery($baseQuery);
+        if ($snakeQuery !== $baseQuery) {
+            $snakeUri = clone $ro->uri;
+            $snakeUri->query = $snakeQuery;
+            $this->repository->purge($snakeUri);
+        }
 
         // Read to rebuild the cache entry
         $get = $this->factory->newInstance("{$ro->uri->scheme}://{$ro->uri->host}{$ro->uri->path}");
@@ -89,6 +98,22 @@ final readonly class RefreshSameCommand implements CommandInterface
         }
 
         return $baseQuery;
+    }
+
+    /**
+     * @param array<string, mixed> $query
+     *
+     * @return array<string, mixed>
+     */
+    private static function snakeQuery(array $query): array
+    {
+        $snakeQuery = [];
+        /** @psalm-suppress MixedAssignment */
+        foreach ($query as $key => $value) {
+            $snakeQuery[BaseUriTag::snakeName($key)] = $value;
+        }
+
+        return $snakeQuery;
     }
 
     /**
