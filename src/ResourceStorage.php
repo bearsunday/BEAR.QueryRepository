@@ -197,7 +197,8 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
             $key = self::KEY_RO . $issuedFor . $this->getVary();
             $state = $this->guard(fn () => $this->roPool->getItem($key))->get();
             assert($state instanceof ResourceState || $state === null);
-            if ($state !== null && trim($state->headers[Header::ETAG] ?? '', '"') === $opaqueTag) {
+            // A missing entry reads as '', which is never an opaque-tag.
+            if (trim($state?->headers[Header::ETAG] ?? '', '"') === $opaqueTag) {
                 return true;
             }
         }
@@ -341,7 +342,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
     {
         // Despite the legacy parameter name (kept for BC), this argument carries the donut
         // template entry TTL (putStatic passes $ttl, putDonut passes $donutTtl), never a CDN s-maxage.
-        $sMaxAge = $sMaxAge === null ? null : max(0, $sMaxAge);
+        $sMaxAge = $this->nonNegative($sMaxAge);
         $key = $this->getUriKey($uri, self::KEY_DONUT);
         $headerKeys = $this->uniqueTags($headerKeys);
         $saved = $this->guard(fn (): bool => ($this->saver)($key, $donut, $this->roPool, $headerKeys, $sMaxAge));
@@ -353,7 +354,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
     #[Override]
     public function saveDonutView(ResourceObject $ro, int|null $ttl, array|null $tags = null): bool
     {
-        $ttl = $ttl === null ? null : max(0, $ttl);
+        $ttl = $this->nonNegative($ttl);
         $resourceState = ResourceState::create($ro, [], $ro->view);
         $key = $this->getUriKey($ro->uri, self::KEY_RO);
         $tags = $this->getTags($ro, $tags);
@@ -393,6 +394,11 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         return array_values(array_unique(array_filter($tags, static fn (string $tag): bool => $tag !== '')));
     }
 
+    private function nonNegative(int|null $ttl): int|null
+    {
+        return $ttl === null ? null : max(0, $ttl);
+    }
+
     private function getUriKey(AbstractUri $uri, string $type): string
     {
         return $type . ($this->uriTag)($uri) . $this->getVary();
@@ -427,7 +433,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
     #[Override]
     public function saveEtag(AbstractUri $uri, string $etag, string $surrogateKeys, int|null $ttl): void
     {
-        $ttl = $ttl === null ? null : max(0, $ttl);
+        $ttl = $this->nonNegative($ttl);
         $uniqueTags = $this->uniqueTags([...explode(' ', $surrogateKeys), ($this->uriTag)($uri)]);
         // The header value is a quoted entity-tag; the pool key is the bare opaque-tag. The entry's
         // value is the URI tag it was issued for - the field used to be the constant 'etag', which
