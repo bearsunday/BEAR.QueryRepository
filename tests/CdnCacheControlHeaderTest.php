@@ -9,6 +9,7 @@ use BEAR\QueryRepository\Cdn\FastlyModule;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
+use Fastly\Api\PurgeApi;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Madapaja\TwigModule\TwigModule;
 use PHPUnit\Framework\TestCase;
@@ -68,6 +69,31 @@ class CdnCacheControlHeaderTest extends TestCase
         $this->assertStringContainsString('"Surrogate-Control":"max-age=31536000"', $cdnHeaders);
     }
 
+    public function testFastlyModuleSendsThePurgedKeysToFastly(): void
+    {
+        $module = $this->getModule();
+        $module->override(new FastlyModule('apiKey', 'serviceId'));
+        $module->override(new FakeFastlyPurgeModule());
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        $api = $injector->getInstance(PurgeApi::class);
+        $this->assertInstanceOf(FakeFastlyPurgeApi::class, $api);
+
+        $injector->getInstance(ResourceInterface::class)->get('page://self/html/blog-posting');
+        $this->assertSame([], $api->logs, 'storing where nothing was stored leaves the edge alone');
+
+        $injector->getInstance(QueryRepositoryInterface::class)->purge(new Uri('page://self/html/comment'));
+        $this->assertSame(
+            [
+                [
+                    'fastly_soft_purge' => 0,
+                    'service_id' => 'serviceId',
+                    'purge_response' => ['surrogate_keys' => ['_html_comment_', 'grp-_html_comment_']],
+                ],
+            ],
+            $api->logs,
+        );
+    }
+
     public function testAkamaiModule(): void
     {
         $module = $this->getModule();
@@ -103,13 +129,13 @@ class CdnCacheControlHeaderTest extends TestCase
         $etag1 = $ro1->headers[Header::ETAG];
         $storage->invalidateTags([$commentTag]);
         $this->assertNull($queryRepository->get($uri), 'the page state written by doPutStatic stays tagged by the embedded comment');
-        $this->assertFalse($storage->hasEtag($etag1), 'the ETag entry written by doPutStatic stays tagged by the embedded comment');
+        $this->assertFalse($storage->hasEtag($etag1), 'the ETag issued by doPutStatic goes with its page state');
 
         $ro2 = $resource->get((string) $uri);
         $etag2 = $ro2->headers[Header::ETAG];
         $storage->invalidateTags([$commentTag]);
         $this->assertNull($queryRepository->get($uri), 'the page state rewritten by refreshDonut stays tagged by the embedded comment');
-        $this->assertFalse($storage->hasEtag($etag2), 'the ETag entry rewritten by refreshDonut stays tagged by the embedded comment');
+        $this->assertFalse($storage->hasEtag($etag2), 'the ETag issued by refreshDonut goes with its page state');
     }
 
     public function testNullCdnCacheControlModule(): void

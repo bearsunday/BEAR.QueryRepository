@@ -279,6 +279,16 @@ class ResourceStorageTest extends TestCase
         $this->assertNull($this->storage->get($this->ro->uri));
     }
 
+    public function testSaveEtagStoresNothing(): void
+    {
+        $items = new ArrayAdapter();
+        $storage = self::getResourceStorageInstance(roPool: new TagAwareAdapter($items));
+
+        $storage->saveEtag($this->ro->uri, '"123456"', 'a b', 10);
+
+        $this->assertSame([], $items->getValues());
+    }
+
     public function testEtagIsNotRegisteredAsInvalidationTag(): void
     {
         $this->ro->headers['ETag'] = 'test-etag-value';
