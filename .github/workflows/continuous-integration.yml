@@ -76,19 +76,27 @@ jobs:
             php-version: "8.5"
             dependencies: highest
 
+    # Service containers run on Linux runners only; an empty image skips the service
+    services:
+      redis:
+        image: ${{ matrix.os == 'ubuntu-latest' && 'redis:7' || '' }}
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+      memcached:
+        image: ${{ matrix.os == 'ubuntu-latest' && 'memcached:1.6' || '' }}
+        ports:
+          - 11211:11211
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # --- Redis Setup (All Platforms) ---
-      - name: Setup Redis (Ubuntu)
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y redis-server redis-tools
-          sudo systemctl start redis-server
-          redis-cli ping
-
+      # --- Redis Setup (Windows, macOS; Ubuntu uses the service container) ---
       - name: Setup Redis (Windows)
         if: runner.os == 'Windows'
         shell: powershell
@@ -108,13 +116,7 @@ jobs:
           sleep 8
           redis-cli ping
 
-      # --- Memcached Setup (All Platforms) ---
-      - name: Install Memcached (Ubuntu)
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get install -y memcached
-          sudo systemctl start memcached
-
+      # --- Memcached Setup (Windows, macOS; Ubuntu uses the service container) ---
       - name: Install Memcached (macOS)
         if: runner.os == 'macOS'
         run: |
