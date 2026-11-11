@@ -7,13 +7,13 @@ declare(strict_types=1);
  *
  * The trees are rendered with RenderConfig snapshot: true, schemaDir: docs/schemas/context,
  * which renders a context schema's "x-volatile" values (durationMs of cache_hit/cache_miss/
- * invalidate; save_etag's etag) as `[volatile]` inside the tree. The functions below still
- * normalize the same fields in the raw "Cache Log JSON" block some demos also print, since
- * stree --snapshot cannot combine with --json (semantic-logger 0.11.1 CHANGELOG) and that
- * rendering never reaches it, plus a value no schema marks volatile at all: the literal
- * ETag/Last-Modified header lines a script prints from $ro->headers, a conditional request's
- * ifNoneMatch, and scene J's Redis-client-specific wording. A Windows PHP_EOL is CRLF; it is
- * folded to LF before any of the above.
+ * invalidate) as `[volatile]` inside the tree. The functions below still normalize the same
+ * field in the raw "Cache Log JSON" block some demos also print, since stree --snapshot
+ * cannot combine with --json (semantic-logger 0.11.1 CHANGELOG) and that rendering never
+ * reaches it, plus a value no schema marks volatile at all: the literal ETag/Last-Modified
+ * header lines a script prints from $ro->headers, a conditional request's ifNoneMatch, and
+ * scene J's Redis-client-specific wording. A Windows PHP_EOL is CRLF; it is folded to LF
+ * before any of the above.
  */
 
 /** @return array<string, string> demo name => script path */
@@ -66,23 +66,9 @@ function normalizeDemoOutput(string $output): string
     $output = (string) preg_replace('~^(?:PHP )?(?:Warning|Notice|Deprecated): .* in \S*[/\\\\]vendor[/\\\\]\S* on line \d+\n~m', '', $output);
     $output = normalizeDuration($output);
     $output = normalizePoolError($output);
-    $output = normalizeSaveEtagJson($output);
     $output = (string) preg_replace('/^Last-Modified:.*$/m', 'Last-Modified:(time)', $output);
 
     return normalizeEtags($output);
-}
-
-/**
- * save_etag.etag is schema-marked x-volatile and already `[volatile]` in the tree; mask it
- * the same way in the raw JSON block, which that rendering does not reach.
- */
-function normalizeSaveEtagJson(string $output): string
-{
-    return (string) preg_replace(
-        '/("type": "save_etag"[\s\S]*?"etag": ")[^"\\\\]*(?:\\\\.[^"\\\\]*)*(")/',
-        '${1}[volatile]${2}',
-        $output,
-    );
 }
 
 /**
@@ -109,24 +95,25 @@ function normalizeDuration(string $output): string
 }
 
 /**
- * Replace each ETag value with etag-1, etag-2, ... in order of first appearance
+ * Number the hash of each "locator.hash" ETag etag-1, etag-2, ... in order of first appearance
  *
- * save_etag.etag is masked everywhere by now (tree and JSON); what is left for this to match
- * is the literal "ETag:" header line a demo prints from $ro->headers, and a conditional
- * request's ifNoneMatch, which no schema marks volatile since it is the client's own
- * validator. Numbering keeps which entries share one.
+ * The locator comes from the URI alone and is left as it is. An ETag appears in the literal
+ * "ETag:" header line a demo prints from $ro->headers, and in a conditional request's
+ * ifNoneMatch, which no schema marks volatile since it is the client's own validator.
+ * Numbering keeps which responses share one.
  */
 function normalizeEtags(string $output): string
 {
-    preg_match_all('/(?:etag|ifNoneMatch)"?[:=] ?\\\\?"\\\\?"?(\d+)\\\\?"/i', $output, $matches);
     $names = [];
-    foreach ($matches[1] as $etag) {
-        $names[$etag] ??= 'etag-' . (count($names) + 1);
-    }
 
-    foreach ($names as $etag => $name) {
-        $output = (string) preg_replace('/(?<![0-9])' . $etag . '(?![0-9])/', $name, $output);
-    }
+    return (string) preg_replace_callback(
+        '/((?:etag|ifNoneMatch)"?[:=] ?\\\\?"\\\\?"?)([A-Za-z0-9_-]{22}\.)(\d+)/i',
+        static function (array $match) use (&$names): string {
+            [, $before, $locator, $hash] = $match;
+            $names[$locator . $hash] ??= 'etag-' . (count($names) + 1);
 
-    return $output;
+            return $before . $locator . $names[$locator . $hash];
+        },
+        $output,
+    );
 }

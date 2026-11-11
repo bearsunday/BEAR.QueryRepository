@@ -15,7 +15,6 @@ declare(strict_types=1);
  * - Comment embeds Like
  */
 
-use BEAR\QueryRepository\FakeEtagPoolModule;
 use BEAR\QueryRepository\ModuleFactory;
 use BEAR\QueryRepository\QueryRepositoryInterface;
 use BEAR\QueryRepository\ResourceStorageInterface;
@@ -72,7 +71,7 @@ purge's tags must reach to drop the page at the edge.
 SCENARIOS;
 
 $namespace = 'FakeVendor\HelloWorld';
-$module = new FakeEtagPoolModule(ModuleFactory::getInstance($namespace));
+$module = ModuleFactory::getInstance($namespace);
 $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
 $injector = new Injector($module, __DIR__ . '/tmp');
 

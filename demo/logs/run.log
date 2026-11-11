@@ -1,9 +1,10 @@
 *** onGet() method invoked ***
 get
 200
-ETag:"Xbwuu4h5qZ_UsP80JcgE-A.1611202115"
+ETag:"Xbwuu4h5qZ_UsP80JcgE-A.etag-1"
 Last-Modified:(time)
 Cache-Control:max-age=0
+Content-Type:application/json
 {
     "name": "bear",
     "update": 0
@@ -11,7 +12,7 @@ Cache-Control:max-age=0
 
 get
 200
-ETag:"Xbwuu4h5qZ_UsP80JcgE-A.1611202115"
+ETag:"Xbwuu4h5qZ_UsP80JcgE-A.etag-1"
 Last-Modified:(time)
 Cache-Control:max-age=0
 Age:0
@@ -30,7 +31,7 @@ patch
 
 get
 200
-ETag:"Xbwuu4h5qZ_UsP80JcgE-A.2821468644"
+ETag:"Xbwuu4h5qZ_UsP80JcgE-A.etag-2"
 Last-Modified:(time)
 Cache-Control:max-age=0
 Age:0
@@ -41,7 +42,7 @@ Age:0
 
 get
 200
-ETag:"Xbwuu4h5qZ_UsP80JcgE-A.2821468644"
+ETag:"Xbwuu4h5qZ_UsP80JcgE-A.etag-2"
 Last-Modified:(time)
 Cache-Control:max-age=0
 Age:0
@@ -60,14 +61,6 @@ get uri=app://self/user?id=1
 │   ├── uri: app://self/user?id=1
 │   ├── expiry: never
 │   └── resolvedTtl: 31536000
-├── pre_write_cleanup uri=app://self/user?id=1 [event]
-│   └── uri: app://self/user?id=1
-├── invalidate tags=[_user_id=1] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
-│   ├── tags[0]: _user_id=1
-│   ├── roPool: invalidated
-│   ├── etagPool: invalidated
-│   ├── cdn: skipped
-│   └── durationMs: [volatile]
 ├── save_value uri=app://self/user?id=1 tags=[_user_id=1, grp-_user_id=1] requestedTtl=31536000 saved=true [event]
 │   ├── uri: app://self/user?id=1
 │   ├── tags[0]: _user_id=1
@@ -87,11 +80,10 @@ command method=onPatch source=CommandInterceptor
 ├── source: CommandInterceptor
 ├── purge uri=app://self/user?id=1 [event]
 │   └── uri: app://self/user?id=1
-├── invalidate tags=[_user_id=1, grp-_user_id=1] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
+├── invalidate tags=[_user_id=1, grp-_user_id=1] roPool=invalidated cdn=skipped durationMs=[volatile] [event]
 │   ├── tags[0]: _user_id=1
 │   ├── tags[1]: grp-_user_id=1
 │   ├── roPool: invalidated
-│   ├── etagPool: invalidated
 │   ├── cdn: skipped
 │   └── durationMs: [volatile]
 ├── get uri=app://self/user?id=1
@@ -100,14 +92,6 @@ command method=onPatch source=CommandInterceptor
 │   │   ├── uri: app://self/user?id=1
 │   │   ├── expiry: never
 │   │   └── resolvedTtl: 31536000
-│   ├── pre_write_cleanup uri=app://self/user?id=1 [event]
-│   │   └── uri: app://self/user?id=1
-│   ├── invalidate tags=[_user_id=1] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
-│   │   ├── tags[0]: _user_id=1
-│   │   ├── roPool: invalidated
-│   │   ├── etagPool: invalidated
-│   │   ├── cdn: skipped
-│   │   └── durationMs: [volatile]
 │   ├── save_value uri=app://self/user?id=1 tags=[_user_id=1, grp-_user_id=1] requestedTtl=31536000 saved=true [event]
 │   │   ├── uri: app://self/user?id=1
 │   │   ├── tags[0]: _user_id=1
@@ -134,8 +118,8 @@ get uri=app://self/user?id=1
 └── close cache_hit
     ├── layer: resource
     └── durationMs: [volatile]
-conditional_request ifNoneMatch="Xbwuu4h5qZ_UsP80JcgE-A.2821468644"
-├── ifNoneMatch: "Xbwuu4h5qZ_UsP80JcgE-A.2821468644"
+conditional_request ifNoneMatch="Xbwuu4h5qZ_UsP80JcgE-A.etag-2"
+├── ifNoneMatch: "Xbwuu4h5qZ_UsP80JcgE-A.etag-2"
 └── close cache_hit
     ├── layer: etag
     └── durationMs: [volatile]
@@ -167,28 +151,6 @@ conditional_request ifNoneMatch="stale"
                         "expirySecond": null,
                         "expiryAt": null,
                         "resolvedTtl": 31536000
-                    }
-                },
-                {
-                    "id": "pre_write_cleanup_1",
-                    "type": "pre_write_cleanup",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/pre_write_cleanup.json",
-                    "context": {
-                        "uri": "app://self/user?id=1"
-                    }
-                },
-                {
-                    "id": "invalidate_1",
-                    "type": "invalidate",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/invalidate.json",
-                    "context": {
-                        "tags": [
-                            "_user_id=1"
-                        ],
-                        "roPool": "invalidated",
-                        "etagPool": "invalidated",
-                        "cdn": "skipped",
-                        "durationMs": 0
                     }
                 },
                 {
@@ -252,7 +214,7 @@ conditional_request ifNoneMatch="stale"
                     }
                 },
                 {
-                    "id": "invalidate_2",
+                    "id": "invalidate_1",
                     "type": "invalidate",
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/invalidate.json",
                     "context": {
@@ -261,7 +223,6 @@ conditional_request ifNoneMatch="stale"
                             "grp-_user_id=1"
                         ],
                         "roPool": "invalidated",
-                        "etagPool": "invalidated",
                         "cdn": "skipped",
                         "durationMs": 0
                     }
@@ -284,28 +245,6 @@ conditional_request ifNoneMatch="stale"
                                 "expirySecond": null,
                                 "expiryAt": null,
                                 "resolvedTtl": 31536000
-                            }
-                        },
-                        {
-                            "id": "pre_write_cleanup_2",
-                            "type": "pre_write_cleanup",
-                            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/pre_write_cleanup.json",
-                            "context": {
-                                "uri": "app://self/user?id=1"
-                            }
-                        },
-                        {
-                            "id": "invalidate_3",
-                            "type": "invalidate",
-                            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/invalidate.json",
-                            "context": {
-                                "tags": [
-                                    "_user_id=1"
-                                ],
-                                "roPool": "invalidated",
-                                "etagPool": "invalidated",
-                                "cdn": "skipped",
-                                "durationMs": 0
                             }
                         },
                         {
@@ -399,7 +338,7 @@ conditional_request ifNoneMatch="stale"
             "type": "conditional_request",
             "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/conditional_request.json",
             "context": {
-                "ifNoneMatch": "\"Xbwuu4h5qZ_UsP80JcgE-A.2821468644\""
+                "ifNoneMatch": "\"Xbwuu4h5qZ_UsP80JcgE-A.etag-2\""
             },
             "close": {
                 "id": "cache_hit_5",
@@ -430,4 +369,4 @@ conditional_request ifNoneMatch="stale"
         }
     ]
 }
-Schema validation: OK (28 entries)
+Schema validation: OK (24 entries)

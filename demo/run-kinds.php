@@ -7,12 +7,11 @@ declare(strict_types=1);
  *
  * Each kind but two answers the same three requests: the first GET stores it, the
  * second is served from the cache, and a conditional GET with the ETag the client
- * holds is answered 304 from the ETag pool without running the resource. C's body
+ * holds is answered 304 from the stored entry without running the resource. C's body
  * cannot be stored, so its one request fails instead of completing a cycle; E's
  * #[DonutCache] page carries no ETag, so it stops after the second request.
  */
 
-use BEAR\QueryRepository\FakeEtagPoolModule;
 use BEAR\QueryRepository\ModuleFactory;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\ResourceInterface;
@@ -87,7 +86,7 @@ try {
 reportLog($logger->flush(), 'A-C. #[Cacheable]');
 
 // --------------------------------------------------------------- page:// resources
-$module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+$module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
 $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
 $injector = new Injector($module, __DIR__ . '/tmp');
 $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);

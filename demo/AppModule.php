@@ -6,7 +6,6 @@ namespace FakeVendor\DemoApp;
 
 use BEAR\QueryRepository\DevQueryRepositoryLogModule;
 use BEAR\QueryRepository\QueryRepositoryModule;
-use BEAR\RepositoryModule\Annotation\EtagPool;
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\Resource\Module\ResourceModule;
 use Ray\Di\AbstractModule;
@@ -35,9 +34,8 @@ class AppModule extends AbstractModule
         // local user could pre-create.
         $logDir = sys_get_temp_dir() . '/bear-query-repository-demo-' . bin2hex(random_bytes(6));
         $this->install(new DevQueryRepositoryLogModule($logDir, module: new QueryRepositoryModule()));
-        // Real in-memory pools: QueryRepositoryModule's default is a NullAdapter,
+        // A real in-memory pool: QueryRepositoryModule's default is a NullAdapter,
         // under which every demo GET would miss and the log could never show a hit.
         $this->bind(AdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->to(ArrayAdapter::class);
-        $this->bind(AdapterInterface::class)->annotatedWith(EtagPool::class)->to(ArrayAdapter::class);
     }
 }
