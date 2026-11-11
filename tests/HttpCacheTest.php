@@ -82,6 +82,7 @@ class HttpCacheTest extends TestCase
         $ro = new Index();
         $ro->uri = new Uri('page://self/x');
         $ro->body = [];
+        $ro->headers[Header::ETAG] = '"abc"';
         $storage->saveValue($ro, 10);
         $storage->saveEtag($ro->uri, '"abc"', '', null);
         $httpCache = new CliHttpCache($storage);

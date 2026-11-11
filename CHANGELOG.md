@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Requires `koriym/semantic-logger` 0.11.1 or later: the demos render their logs with `RenderConfig`'s `schemaDir`, which needs that version.
 
+### Fixed
+- `isNotModified()`/`isNotModifiedFor()` no longer answer `304` for the ETag of an entry a later write replaced, left behind when an invalidation failed in the ETag pool alone; the ETag must now be the one the stored entry carries. An application that calls `ResourceStorageInterface::saveEtag()` itself must save the entry with the same `ETag` header.
+
 ## [1.20.1] - 2026-11-11
 
 ### Fixed

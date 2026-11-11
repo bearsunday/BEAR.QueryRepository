@@ -169,9 +169,10 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
     /**
      * Is a live entry for this validator, issued for $uriTag when one is named?
      *
-     * The entry is confirmed too, because the ETag and the entry are written, expired and
-     * invalidated separately (#266). A {@see self::LEGACY_PLACEHOLDER} item is exempted: it
-     * carries no URI tag to confirm an entry by.
+     * The entry must carry the same validator, because the ETag and the entry are written,
+     * expired and invalidated separately (#266): an ETag item can outlive its entry, and a newer
+     * entry can sit under the same URI. A {@see self::LEGACY_PLACEHOLDER} item is exempted: it
+     * carries no URI tag to find an entry by.
      */
     private function findEtag(string $etag, string|null $uriTag): bool
     {
@@ -194,7 +195,9 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
 
             assert(is_string($issuedFor));
             $key = self::KEY_RO . $issuedFor . $this->getVary();
-            if ($this->guard(fn (): bool => $this->roPool->hasItem($key))) {
+            $state = $this->guard(fn () => $this->roPool->getItem($key))->get();
+            assert($state instanceof ResourceState || $state === null);
+            if ($state !== null && trim($state->headers[Header::ETAG] ?? '', '"') === $opaqueTag) {
                 return true;
             }
         }
