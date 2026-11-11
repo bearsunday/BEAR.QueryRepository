@@ -88,10 +88,10 @@ decided by the parent's cache declaration, not by the embed:
 | `#[DonutCache]` | `cdn_headers.surrogateKeys` only | unchanged: `refresh_donut` + `put_skipped{not-cacheable}` |
 
 **Tests:** `DonutDependencyEvidenceTest` — `testCacheableParentRecordsADependsOnEdge`,
-`testCacheableParentTagsValueAndEtagWithTheChild`,
+`testCacheableParentTagsItsEntryWithTheChild`,
 `testCacheableParentMissesAfterItsChildIsPurged`,
 `testCacheableResponseWriteRecordsNoDependsOnEdge`,
-`testCacheableResponseTagsEtagAndViewWithTheChildButNotTheTemplate`,
+`testCacheableResponseTagsItsViewWithTheChildButNotTheTemplate`,
 `testCacheableResponseRebuildsFromItsTemplateAfterTheChildIsPurged`,
 `testDonutCacheKeepsTheChildTagsOutOfTheStore`,
 `testDonutCacheReadShapeIsUnchangedByPurgingTheChild`

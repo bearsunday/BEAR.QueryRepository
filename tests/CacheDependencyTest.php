@@ -113,18 +113,20 @@ class CacheDependencyTest extends TestCase
     public function testDestroyByGrandChild(): void
     {
         $this->resource->get('page://self/dep/level-one');
-        $one1 = $this->repository->get(new Uri('page://self/dep/level-one'));
-        $this->assertInstanceOf(ResourceState::class, $one1);
+        $etags = [];
+        foreach (['level-one', 'level-two', 'level-three'] as $level) {
+            $state = $this->repository->get(new Uri('page://self/dep/' . $level));
+            $this->assertInstanceOf(ResourceState::class, $state);
+            $etags[$level] = $state->headers[Header::ETAG];
+            $this->assertTrue($this->storage->hasEtag($etags[$level]), $level);
+        }
+
         $this->repository->purge(new Uri('page://self/dep/level-three'));
-        $one2 = $this->repository->get(new Uri('page://self/dep/level-one'));
-        $this->assertNull($one2);
-        $etag1 = $one1->headers[Header::ETAG];
-        $surrogateKeys = explode(' ', $one1->headers['Surrogate-Key']);
-        $etag2 = $surrogateKeys[0];
-        $etag3 = $surrogateKeys[1];
-        $this->assertFalse($this->storage->hasEtag($etag1));
-        $this->assertFalse($this->storage->hasEtag($etag2));
-        $this->assertFalse($this->storage->hasEtag($etag3));
+
+        $this->assertNull($this->repository->get(new Uri('page://self/dep/level-one')));
+        foreach ($etags as $level => $etag) {
+            $this->assertFalse($this->storage->hasEtag($etag), $level);
+        }
     }
 
     /**

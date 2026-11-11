@@ -127,9 +127,9 @@ class HttpCacheTest extends TestCase
         }
     }
 
-    public function testAnUnreadableEtagPoolAnswersTheRequestInFull(): void
+    public function testAnUnreadablePoolAnswersTheRequestInFull(): void
     {
-        // The ETag pool is down: a validator that cannot be read is a validator that does not
+        // The pool is down: a validator whose entry cannot be read is a validator that does not
         // match, so the request is answered in full rather than failed (issue #190). The scope
         // still closes - an unclosed one would surface as an unclosed_at_flush diagnostic - and
         // records the outage as the established idiom reads it: cache_error + cache_miss.

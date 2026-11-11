@@ -74,7 +74,7 @@ class DonutDependencyEvidenceTest extends TestCase
         $this->assertStringContainsString('"' . self::CACHEABLE_CHILD_URI_TAG . '"', $edges[0], "the child's URI tag is what the edge carries into the parent");
     }
 
-    public function testCacheableParentTagsValueAndEtagWithTheChild(): void
+    public function testCacheableParentTagsItsEntryWithTheChild(): void
     {
         $this->bootCacheableApp();
         $this->resource->get(self::CACHEABLE);
@@ -111,7 +111,7 @@ class DonutDependencyEvidenceTest extends TestCase
         $this->assertSame([], self::dependsOnEdgesFrom($tree, self::CACHEABLE_RESPONSE), 'a #[CacheableResponse] write never reaches CacheDependency');
     }
 
-    public function testCacheableResponseTagsEtagAndViewWithTheChildButNotTheTemplate(): void
+    public function testCacheableResponseTagsItsViewWithTheChildButNotTheTemplate(): void
     {
         $this->bootDonutApp();
         $this->resource->get(self::CACHEABLE_RESPONSE);
