@@ -18,6 +18,7 @@ use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\ProviderInterface;
+use ReflectionClass;
 use RuntimeException;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
@@ -58,10 +59,10 @@ class ResourceStorageTest extends TestCase
             $purger ?? new NullPurger(),
             new UriTag(),
             new ResourceStorageSaver(),
-            new GlobalServerContext(),
+            new CacheIdentityFactory(new GlobalServerContext()),
             $provider($roPool ?? $tagAwareAdapter),
             $provider($etagPool ?? $tagAwareAdapter),
-            new BaseUriTag(new UriTag()),
+            new CacheTags(new UriTag(), new BaseUriTag(new UriTag())),
         );
     }
 
@@ -92,15 +93,38 @@ class ResourceStorageTest extends TestCase
             new NullPurger(),
             new UriTag(),
             new ResourceStorageSaver(),
-            new GlobalServerContext(),
+            new CacheIdentityFactory(new GlobalServerContext()),
             new FakeArrayPoolProvider(),
             new FakeArrayPoolProvider(),
-            new BaseUriTag(new UriTag()),
+            new CacheTags(new UriTag(), new BaseUriTag(new UriTag())),
         );
         $storage = unserialize(serialize($serializable));
         assert($storage instanceof ResourceStorage);
 
         $this->assertTrue($storage->saveValue($this->ro, 60));
+    }
+
+    public function testAStorageRestoredFromLegacyPropertiesStillWrites(): void
+    {
+        $data = [
+            'logger' => new NullSemanticLogger(),
+            'purger' => new NullPurger(),
+            'uriTag' => new UriTag(),
+            'saver' => new ResourceStorageSaver(),
+            'roProvider' => new FakeArrayPoolProvider(),
+            'etagProvider' => new FakeArrayPoolProvider(),
+            'serverContext' => new GlobalServerContext(),
+            'baseUriTag' => new BaseUriTag(new UriTag()),
+        ];
+        $storage = (new ReflectionClass(ResourceStorage::class))->newInstanceWithoutConstructor();
+        $storage->__unserialize($data);
+
+        $this->assertTrue($storage->saveValue($this->ro, 60));
+        $this->assertSame($this->ro->body, $storage->get($this->ro->uri)?->body);
+        $this->assertArrayHasKey('identityFactory', $storage->__serialize());
+        $this->assertArrayHasKey('cacheTags', $storage->__serialize());
+        $storage->invalidateTags(['grp-_user_']);
+        $this->assertNull($storage->get($this->ro->uri));
     }
 
     public function testADoubleSpacedSurrogateKeyStoresTheEntryAndItsEtagUnderTheRemainingKeys(): void
@@ -290,10 +314,10 @@ class ResourceStorageTest extends TestCase
             new NullPurger(),
             new UriTag(),
             new ResourceStorageSaver(),
-            new GlobalServerContext(),
+            new CacheIdentityFactory(new GlobalServerContext()),
             $poolProvider,
             $poolProvider,
-            new BaseUriTag(new UriTag()),
+            new CacheTags(new UriTag(), new BaseUriTag(new UriTag())),
         );
 
         $saved = $storage->saveValue($this->ro, 10);
@@ -333,10 +357,10 @@ class ResourceStorageTest extends TestCase
             new NullPurger(),
             new UriTag(),
             new ResourceStorageSaver(),
-            new GlobalServerContext(),
+            new CacheIdentityFactory(new GlobalServerContext()),
             $poolProvider,
             $poolProvider,
-            new BaseUriTag(new UriTag()),
+            new CacheTags(new UriTag(), new BaseUriTag(new UriTag())),
         );
         $donut = ResourceDonut::create($this->ro, new DonutRenderer(), new SurrogateKeys(new Uri('app://self/')), null, false);
 

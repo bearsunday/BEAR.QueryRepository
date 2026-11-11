@@ -45,14 +45,15 @@ class ResourceRepositoryTest extends TestCase
                 new NullPurger(),
                 new UriTag(),
                 new ResourceStorageSaver(),
-                new GlobalServerContext(),
+                new CacheIdentityFactory(new GlobalServerContext()),
                 $tagAwareAdapterProvider,
                 $tagAwareAdapterProvider,
-                new BaseUriTag(new UriTag()),
+                new CacheTags(new UriTag(), new BaseUriTag(new UriTag())),
             ),
             new Expiry(0, 0, 0),
-            new CacheDependency(new UriTag()),
+            new CacheDependencyCollector(new DependsOnTags(new UriTag()), new CacheDependency(new UriTag()), new NullSemanticLogger()),
             new BaseUriTag(new UriTag()),
+            new CacheTags(new UriTag(), new BaseUriTag(new UriTag())),
         );
         $this->ro = new Index();
         $this->ro->uri = new Uri('page://self/user');
@@ -129,14 +130,15 @@ class ResourceRepositoryTest extends TestCase
                 new NullPurger(),
                 new UriTag(),
                 new ResourceStorageSaver(),
-                new GlobalServerContext(),
+                new CacheIdentityFactory(new GlobalServerContext()),
                 $tagAwareAdapterProvider,
                 $tagAwareAdapterProvider,
-                new BaseUriTag(new UriTag()),
+                new CacheTags(new UriTag(), new BaseUriTag(new UriTag())),
             ),
             new Expiry(0, 0, 0),
-            new CacheDependency(new UriTag()),
+            new CacheDependencyCollector(new DependsOnTags(new UriTag()), new CacheDependency(new UriTag()), new NullSemanticLogger()),
             new BaseUriTag(new UriTag()),
+            new CacheTags(new UriTag(), new BaseUriTag(new UriTag())),
         );
         $this->assertInstanceOf(Repository::class, $repository);
     }

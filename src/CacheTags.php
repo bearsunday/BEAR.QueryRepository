@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceObject;
 
 use function explode;
@@ -14,6 +15,7 @@ final readonly class CacheTags
     public function __construct(
         private UriTagInterface $uriTag,
         private BaseUriTagInterface $baseUriTag,
+        private CacheIdentityFactory $identityFactory = new CacheIdentityFactory(),
     ) {
     }
 
@@ -29,5 +31,15 @@ final readonly class CacheTags
         $declaredTags ??= isset($ro->headers[Header::SURROGATE_KEY]) ? explode(' ', $ro->headers[Header::SURROGATE_KEY]) : [];
 
         return [...$ownTags, ...$declaredTags];
+    }
+
+    /**
+     * The URI's own tag plus the group tag shared by its query variants (see BaseUriTag).
+     *
+     * @return list<string>
+     */
+    public function forUri(AbstractUri $uri): array
+    {
+        return [($this->uriTag)($uri), $this->identityFactory->groupTag(($this->uriTag)($uri))];
     }
 }

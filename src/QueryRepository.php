@@ -34,23 +34,18 @@ use function trim;
 /** @internal */
 final readonly class QueryRepository implements QueryRepositoryInterface
 {
-    private CacheDependencyCollector $dependencyCollector;
-
     public function __construct(
         #[CacheLog]
         private SemanticLoggerInterface $logger,
         private HeaderSetter $headerSetter,
         private ResourceStorageInterface $storage,
         private Expiry $expiry,
-        private CacheDependencyInterface $cacheDependency,
+        private CacheDependencyCollector $dependencyCollector,
         private BaseUriTagInterface $baseUriTag,
+        private CacheTags $cacheTags,
         private DeclaredCacheControl $declaredCacheControl = new DeclaredCacheControl(),
-        private UriTagInterface $uriTag = new UriTag(),
         private ResourceBodyEvaluator $evaluateBody = new ResourceBodyEvaluator(),
-        private CacheIdentityFactory $identityFactory = new CacheIdentityFactory(),
-        CacheDependencyCollector|null $dependencyCollector = null,
     ) {
-        $this->dependencyCollector = $dependencyCollector ?? new CacheDependencyCollector(new DependsOnTags($this->uriTag), $this->cacheDependency, $this->logger);
     }
 
     /**
@@ -221,8 +216,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
     #[Override]
     public function purge(AbstractUri $uri)
     {
-        // The URI's own tag plus the group tag shared by its query variants (see BaseUriTag).
-        $tags = [($this->uriTag)($uri), $this->identityFactory->groupTag(($this->uriTag)($uri))];
+        $tags = $this->cacheTags->forUri($uri);
 
         // A top-level purge is an application-initiated (manual) cache bust: wrap it in a
         // manual_purge scope so it stands out from automatic invalidation. A purge nested

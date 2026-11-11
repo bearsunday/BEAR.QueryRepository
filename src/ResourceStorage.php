@@ -44,8 +44,10 @@ use function trim;
  *     saver: ResourceStorageSaver,
  *     roProvider:ProviderInterface<TagAwareAdapterInterface>,
  *     etagProvider: ProviderInterface<TagAwareAdapterInterface>,
- *     serverContext: ServerContextInterface,
- *     baseUriTag: BaseUriTagInterface,
+ *     identityFactory?: CacheIdentityFactory,
+ *     cacheTags?: CacheTags,
+ *     serverContext?: ServerContextInterface,
+ *     baseUriTag?: BaseUriTagInterface,
  * }
  * @internal
  */
@@ -81,8 +83,6 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
     private ProviderInterface $etagPoolProvider;
     private TagAwareAdapterInterface $roPool;
     private TagAwareAdapterInterface $etagPool;
-    private readonly CacheIdentityFactory $identityFactory;
-    private readonly CacheTags $cacheTags;
 
     /**
      * @param ProviderInterface<TagAwareAdapterInterface> $roPoolProvider
@@ -94,18 +94,14 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         private PurgerInterface $purger,
         private UriTagInterface $uriTag,
         private ResourceStorageSaver $saver,
-        private ServerContextInterface $serverContext,
+        private readonly CacheIdentityFactory $identityFactory,
         #[Set(TagAwareAdapterInterface::class, ResourceObjectPool::class)]
         ProviderInterface $roPoolProvider,
         #[Set(TagAwareAdapterInterface::class, EtagPool::class)]
         ProviderInterface $etagPoolProvider,
-        private BaseUriTagInterface $baseUriTag,
+        private readonly CacheTags $cacheTags,
         private ResourceBodyEvaluator $evaluateBody = new ResourceBodyEvaluator(),
-        CacheIdentityFactory|null $identityFactory = null,
-        CacheTags|null $cacheTags = null,
     ) {
-        $this->identityFactory = $identityFactory ?? new CacheIdentityFactory($serverContext);
-        $this->cacheTags = $cacheTags ?? new CacheTags($uriTag, $baseUriTag);
         $this->initializePools($roPoolProvider, $etagPoolProvider);
     }
 
@@ -444,8 +440,8 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
             'saver' => $this->saver,
             'roProvider' => $this->roPoolProvider,
             'etagProvider' => $this->etagPoolProvider,
-            'serverContext' => $this->serverContext,
-            'baseUriTag' => $this->baseUriTag,
+            'identityFactory' => $this->identityFactory,
+            'cacheTags' => $this->cacheTags,
         ];
     }
 
@@ -460,13 +456,20 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         $this->purger = $data['purger'];
         $this->uriTag = $data['uriTag'];
         $this->saver = $data['saver'];
-        $this->serverContext = $data['serverContext'];
-        $this->baseUriTag = $data['baseUriTag'];
-        // Derived from the dependencies above or stateless, so rebuilt rather than carried: left
-        // out of the payload they stay uninitialized, and the first save after a
-        // compiled-injector restore throws.
-        $this->identityFactory = new CacheIdentityFactory($this->serverContext);
-        $this->cacheTags = new CacheTags($this->uriTag, $this->baseUriTag);
+        if (! isset($data['identityFactory'])) {
+            assert(isset($data['serverContext']));
+            $data['identityFactory'] = new CacheIdentityFactory($data['serverContext']);
+        }
+
+        if (! isset($data['cacheTags'])) {
+            assert(isset($data['baseUriTag']));
+            $data['cacheTags'] = new CacheTags($this->uriTag, $data['baseUriTag']);
+        }
+
+        $this->identityFactory = $data['identityFactory'];
+        $this->cacheTags = $data['cacheTags'];
+        // Stateless, so rebuilt rather than carried: left out of the payload it stays
+        // uninitialized, and the first save after a compiled-injector restore throws.
         $this->evaluateBody = new ResourceBodyEvaluator();
         $this->initializePools($data['roProvider'], $data['etagProvider']);
     }
