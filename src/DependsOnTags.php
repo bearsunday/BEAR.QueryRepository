@@ -5,16 +5,11 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\DependsOnNotExpandable;
-use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\ResourceObject;
 use ReflectionMethod;
 
-use function array_filter;
 use function array_key_exists;
-use function array_unique;
-use function array_values;
 use function explode;
-use function implode;
 use function in_array;
 use function sprintf;
 
@@ -66,12 +61,7 @@ final readonly class DependsOnTags
         }
 
         $tags = $this->declared($ro);
-        /** @var mixed $body */
-        foreach ((array) $ro->body as $body) {
-            if (! $body instanceof AbstractRequest) {
-                continue;
-            }
-
+        foreach (CacheDependencyCollector::requests($ro) as $body) {
             $embedded = $this->ran($body->resourceObject);
             if ($embedded !== null) {
                 $tags = [...$tags ?? [], ...$embedded];
@@ -90,9 +80,8 @@ final readonly class DependsOnTags
     /** Whether a request it embeds, at any depth, has not run yet: what that request declares is known only once it runs */
     public static function awaitsRequest(ResourceObject $ro): bool
     {
-        /** @var mixed $body */
-        foreach ((array) $ro->body as $body) {
-            if ($body instanceof AbstractRequest && (! self::hasRun($body->resourceObject) || self::awaitsRequest($body->resourceObject))) {
+        foreach (CacheDependencyCollector::requests($ro) as $body) {
+            if (! self::hasRun($body->resourceObject) || self::awaitsRequest($body->resourceObject)) {
                 return true;
             }
         }
@@ -180,6 +169,6 @@ final readonly class DependsOnTags
         }
 
         $existing = isset($ro->headers[Header::SURROGATE_KEY]) ? explode(' ', $ro->headers[Header::SURROGATE_KEY]) : [];
-        $ro->headers[Header::SURROGATE_KEY] = implode(' ', array_values(array_unique(array_filter([...$existing, ...$tags], static fn (string $tag): bool => $tag !== ''))));
+        $ro->headers[Header::SURROGATE_KEY] = (new TagSet([...$existing, ...$tags]))->toHeader();
     }
 }

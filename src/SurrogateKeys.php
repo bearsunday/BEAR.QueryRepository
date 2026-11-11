@@ -40,11 +40,7 @@ final class SurrogateKeys
     public function addTag(ResourceObject $ro): void
     {
         $this->embedded($ro);
-        $this->surrogateKeys[] = ($this->uriTag)($ro->uri);
-        $this->surrogateKeys[] = ($this->baseUriTag)($ro);
-        if (array_key_exists(Header::SURROGATE_KEY, $ro->headers)) {
-            $this->surrogateKeys = array_merge($this->surrogateKeys, explode(' ', $ro->headers[Header::SURROGATE_KEY]));
-        }
+        $this->surrogateKeys = [...$this->surrogateKeys, ...CacheDependencyCollector::tags($ro, $this->uriTag, $this->baseUriTag)];
     }
 
     /**

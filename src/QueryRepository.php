@@ -6,7 +6,6 @@ namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\ExpireAtKeyNotExists;
 use BEAR\QueryRepository\Log\Context\CachePolicyContext;
-use BEAR\QueryRepository\Log\Context\DependencySkippedContext;
 use BEAR\QueryRepository\Log\Context\ManualPurgeContext;
 use BEAR\QueryRepository\Log\Context\ManualPurgeResultContext;
 use BEAR\QueryRepository\Log\Context\ManualStoreContext;
@@ -18,7 +17,6 @@ use BEAR\QueryRepository\Log\TopLevelAwareInterface;
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\RepositoryModule\Annotation\HttpCache;
-use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceObject;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
@@ -192,29 +190,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
 
     private function setCacheDependency(ResourceObject $ro): void
     {
-        ($this->dependsOnTags)($ro);
-
-        /** @var mixed $body */
-        foreach ((array) $ro->body as $body) {
-            if (! ($body instanceof AbstractRequest)) {
-                continue;
-            }
-
-            // Materialize the child while HAL still has the Request in body: the keys read
-            // below are set on the child resource by its own interceptor or onGet(), so they
-            // only exist once the child has run. AbstractRequest::__toString() memoizes the result,
-            // so the renderer reads this same run - but only readers that consult the memo
-            // do (see ResourceStorage::materialize(); __invoke() re-executes).
-            (string) $body;
-            $child = $body->resourceObject;
-            if (! $this->dependsOnTags->embedded($child)) {
-                $this->logger->event(DependencySkippedContext::of($ro, $child));
-
-                continue;
-            }
-
-            $this->cacheDependency->depends($ro, $child);
-        }
+        CacheDependencyCollector::collect($ro, $this->dependsOnTags, $this->cacheDependency, $this->logger);
     }
 
     /**

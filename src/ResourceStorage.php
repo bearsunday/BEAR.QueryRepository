@@ -26,9 +26,7 @@ use Ray\Di\ProviderInterface;
 use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 use Throwable;
 
-use function array_filter;
 use function array_unique;
-use function array_values;
 use function assert;
 use function explode;
 use function hrtime;
@@ -342,7 +340,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         // template entry TTL (putStatic passes $ttl, putDonut passes $donutTtl), never a CDN s-maxage.
         $sMaxAge = $this->nonNegative($sMaxAge);
         $key = $this->getUriKey($uri, self::KEY_DONUT);
-        $headerKeys = $this->uniqueTags($headerKeys);
+        $headerKeys = (new TagSet($headerKeys))->toArray();
         $saved = $this->guard(fn (): bool => ($this->saver)($key, $donut, $this->roPool, $headerKeys, $sMaxAge));
         // saved=false is logged, not asserted: a quiet store failure must stay observable
         // in the log (an assert here would throw AFTER the event, contradicting it).
@@ -369,27 +367,10 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
      */
     private function getTags(ResourceObject $ro, array|null $surrogateKeys = null): array
     {
-        // ETag is intentionally NOT used as an invalidation tag. The cache entry is
-        // purged by its URI tag (deleteEtag/invalidateTags) and surrogate keys; no code
-        // path ever invalidates by ETag. Because ETag is content-versioned, registering it
-        // as a tag produced one non-volatile tag Set per content version that, under a
-        // volatile-* eviction policy, is never reclaimed - leaking memory without being read.
+        // ETags are content versions, never invalidation tags.
         $surrogateKeys ??= isset($ro->headers[Header::SURROGATE_KEY]) ? explode(' ', $ro->headers[Header::SURROGATE_KEY]) : [];
 
-        // Reachable by a purge aimed at the bare URI (see BaseUriTag).
-        return $this->uniqueTags([($this->uriTag)($ro->uri), ($this->baseUriTag)($ro), ...$surrogateKeys]);
-    }
-
-    /**
-     * An empty key - an empty or double-spaced key string splits into one - is not a tag the pool accepts
-     *
-     * @param list<string> $tags
-     *
-     * @return list<string>
-     */
-    private function uniqueTags(array $tags): array
-    {
-        return array_values(array_unique(array_filter($tags, static fn (string $tag): bool => $tag !== '')));
+        return (new TagSet(CacheDependencyCollector::tags($ro, $this->uriTag, $this->baseUriTag, $surrogateKeys)))->toArray();
     }
 
     private function nonNegative(int|null $ttl): int|null
@@ -406,7 +387,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
     public function saveEtag(AbstractUri $uri, string $etag, string $surrogateKeys, int|null $ttl): void
     {
         $ttl = $this->nonNegative($ttl);
-        $uniqueTags = $this->uniqueTags([...explode(' ', $surrogateKeys), ($this->uriTag)($uri)]);
+        $uniqueTags = TagSet::fromHeader($surrogateKeys)->merge(new TagSet([($this->uriTag)($uri)]))->toArray();
         // The header value is a quoted entity-tag; the pool key is the bare opaque-tag. The entry's
         // value is the URI tag it was issued for - the field used to be the constant 'etag', which
         // is why a validator from any resource satisfied any request.

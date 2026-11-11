@@ -9,7 +9,6 @@ use BEAR\QueryRepository\Cdn\FastlyCacheControlHeaderSetter;
 use BEAR\QueryRepository\Log\Context\CacheHitContext;
 use BEAR\QueryRepository\Log\Context\CacheMissContext;
 use BEAR\QueryRepository\Log\Context\CdnHeadersContext;
-use BEAR\QueryRepository\Log\Context\DependencySkippedContext;
 use BEAR\QueryRepository\Log\Context\ManualStoreContext;
 use BEAR\QueryRepository\Log\Context\ManualStoreResultContext;
 use BEAR\QueryRepository\Log\Context\PreWriteCleanupContext;
@@ -19,7 +18,6 @@ use BEAR\QueryRepository\Log\Context\RefreshDonutContext;
 use BEAR\QueryRepository\Log\Context\SaveDonutContext;
 use BEAR\QueryRepository\Log\TopLevelAwareInterface;
 use BEAR\RepositoryModule\Annotation\CacheLog;
-use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
@@ -222,23 +220,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
      */
     private function classifyMaterials(ResourceObject $ro, SurrogateKeys $keys): void
     {
-        ($this->dependsOnTags)($ro);
-
-        /** @var mixed $body */
-        foreach ((array) $ro->body as $body) {
-            if (! ($body instanceof AbstractRequest)) {
-                continue;
-            }
-
-            $child = $body->resourceObject;
-            if (! $keys->embedded($child)) {
-                $this->logger->event(DependencySkippedContext::of($ro, $child));
-
-                continue;
-            }
-
-            $this->cacheDependency->depends($ro, $child);
-        }
+        CacheDependencyCollector::collect($ro, $this->dependsOnTags, $this->cacheDependency, $this->logger, $keys);
     }
 
     /**
@@ -253,7 +235,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
      */
     private function templateKeys(ResourceObject $ro, array $declaredKeys): array
     {
-        return array_values(array_unique([($this->uriTag)($ro->uri), ($this->baseUriTag)($ro), ...$declaredKeys]));
+        return array_values(array_unique(CacheDependencyCollector::tags($ro, $this->uriTag, $this->baseUriTag, $declaredKeys)));
     }
 
     /**
