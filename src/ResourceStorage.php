@@ -373,7 +373,9 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
      */
     private function getTags(ResourceObject $ro, array|null $surrogateKeys = null): array
     {
-        // ETags are content versions, never invalidation tags.
+        // An ETag is never an invalidation tag: it is content-versioned, so each version
+        // would leave a tag Set that nothing invalidates and a volatile-* eviction policy
+        // never reclaims.
         $surrogateKeys ??= isset($ro->headers[Header::SURROGATE_KEY]) ? explode(' ', $ro->headers[Header::SURROGATE_KEY]) : [];
 
         return (new TagSet(CacheDependencyCollector::tags($ro, $this->uriTag, $this->baseUriTag, $surrogateKeys)))->toArray();

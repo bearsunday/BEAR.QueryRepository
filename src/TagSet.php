@@ -16,7 +16,12 @@ final readonly class TagSet
     /** @var list<string> */
     private array $values;
 
-    /** @param list<string> $values */
+    /**
+     * Only '' is dropped - an empty or double-spaced key string splits into one, and the pool
+     * rejects it. Every other value and the first-seen order are kept as given.
+     *
+     * @param list<string> $values
+     */
     public function __construct(array $values)
     {
         $this->values = array_values(array_unique(array_filter($values, static fn (string $tag): bool => $tag !== '')));

@@ -26,7 +26,13 @@ final class CacheDependencyCollector
         }
     }
 
-    /** Null materialKeys renders children; donut collection must only inspect children that already ran. */
+    /**
+     * Null $materialKeys materializes each child first: the keys read from it are set by its own
+     * interceptor or onGet(), so they exist only once it has run. AbstractRequest::__toString()
+     * memoizes that run for the renderer; __invoke() would execute the child again.
+     *
+     * With $materialKeys (donut), only children that already ran are inspected.
+     */
     public static function collect(
         ResourceObject $ro,
         DependsOnTags $dependsOnTags,
@@ -59,6 +65,7 @@ final class CacheDependencyCollector
      */
     public static function tags(ResourceObject $ro, UriTagInterface $uriTag, BaseUriTagInterface $baseUriTag, array|null $declaredTags = null): array
     {
+        // The base tag makes the entry reachable by a purge aimed at the bare URI (see BaseUriTag).
         $ownTags = [($uriTag)($ro->uri), ($baseUriTag)($ro)];
         $declaredTags ??= isset($ro->headers[Header::SURROGATE_KEY]) ? explode(' ', $ro->headers[Header::SURROGATE_KEY]) : [];
 
