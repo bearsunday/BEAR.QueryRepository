@@ -32,15 +32,14 @@ function demoScripts(): array
 /**
  * Run one demo in its own process, stderr merged into stdout as a terminal shows it
  *
- * display_errors/log_errors are off: a dependency's own PHP warning or deprecation (its
- * line and version float with --prefer-lowest) would otherwise ride along, twice (once via
- * each setting). A demo's explicit error_log() call, such as User.php's "*** onGet() method
- * invoked ***", is a direct write and reaches stderr regardless of either setting.
+ * PHP diagnostics are displayed on stderr and so reach the comparison. normalizeDemoOutput()
+ * drops only those raised inside vendor/ (their wording and line float with --prefer-lowest);
+ * one raised by this package or by a demo stays and fails the comparison.
  */
 function runDemo(string $script): string
 {
     $process = proc_open(
-        [PHP_BINARY, '-d', 'display_errors=0', '-d', 'log_errors=0', $script],
+        [PHP_BINARY, '-d', 'display_errors=stderr', '-d', 'log_errors=0', '-d', 'html_errors=0', $script],
         [1 => ['pipe', 'w'], 2 => ['redirect', 1]],
         $pipes,
         dirname(__DIR__),
@@ -62,6 +61,7 @@ function runDemo(string $script): string
 function normalizeDemoOutput(string $output): string
 {
     $output = (string) str_replace("\r\n", "\n", $output); // a Windows PHP_EOL is CRLF; the stored snapshot is LF
+    $output = (string) preg_replace('~^(?:PHP )?(?:Warning|Notice|Deprecated): .* in \S*[/\\\\]vendor[/\\\\]\S* on line \d+\n~m', '', $output);
     $output = normalizeDuration($output);
     $output = normalizePoolError($output);
     $output = (string) preg_replace('/^Last-Modified:.*$/m', 'Last-Modified:(time)', $output);
