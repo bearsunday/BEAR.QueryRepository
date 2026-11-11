@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\DependsOnNotExpandable;
+use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\ResourceObject;
+use Generator;
 use ReflectionMethod;
 
 use function array_key_exists;
@@ -23,6 +25,22 @@ final readonly class DependsOnTags
     public function __construct(
         private UriTagInterface $uriTag,
     ) {
+    }
+
+    /**
+     * Enumerate only immediate values of the array-cast body, in order and with duplicates.
+     * Do not execute requests, descend into children, or consume Traversable bodies.
+     *
+     * @return Generator<AbstractRequest>
+     */
+    public static function requests(ResourceObject $ro): Generator
+    {
+        /** @var mixed $body */
+        foreach ((array) $ro->body as $body) {
+            if ($body instanceof AbstractRequest) {
+                yield $body;
+            }
+        }
     }
 
     /** Tags the resource being stored with its onGet() declarations and the row classes in its body */
@@ -61,7 +79,7 @@ final readonly class DependsOnTags
         }
 
         $tags = $this->declared($ro);
-        foreach (CacheDependencyCollector::requests($ro) as $body) {
+        foreach (self::requests($ro) as $body) {
             $embedded = $this->ran($body->resourceObject);
             if ($embedded !== null) {
                 $tags = [...$tags ?? [], ...$embedded];
@@ -80,7 +98,7 @@ final readonly class DependsOnTags
     /** Whether a request it embeds, at any depth, has not run yet: what that request declares is known only once it runs */
     public static function awaitsRequest(ResourceObject $ro): bool
     {
-        foreach (CacheDependencyCollector::requests($ro) as $body) {
+        foreach (self::requests($ro) as $body) {
             if (! self::hasRun($body->resourceObject) || self::awaitsRequest($body->resourceObject)) {
                 return true;
             }

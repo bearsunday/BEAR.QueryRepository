@@ -46,6 +46,8 @@ use function trim;
  *     etagProvider: ProviderInterface<TagAwareAdapterInterface>,
  *     serverContext: ServerContextInterface,
  *     baseUriTag: BaseUriTagInterface,
+ *     identityFactory: CacheIdentityFactory,
+ *     cacheTags: CacheTags,
  * }
  * @internal
  */
@@ -81,6 +83,8 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
     private ProviderInterface $etagPoolProvider;
     private TagAwareAdapterInterface $roPool;
     private TagAwareAdapterInterface $etagPool;
+    private readonly CacheIdentityFactory $identityFactory;
+    private readonly CacheTags $cacheTags;
 
     /**
      * @param ProviderInterface<TagAwareAdapterInterface> $roPoolProvider
@@ -99,7 +103,11 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         ProviderInterface $etagPoolProvider,
         private BaseUriTagInterface $baseUriTag,
         private ResourceBodyEvaluator $evaluateBody = new ResourceBodyEvaluator(),
+        CacheIdentityFactory|null $identityFactory = null,
+        CacheTags|null $cacheTags = null,
     ) {
+        $this->identityFactory = $identityFactory ?? new CacheIdentityFactory($serverContext);
+        $this->cacheTags = $cacheTags ?? new CacheTags($uriTag, $baseUriTag);
         $this->initializePools($roPoolProvider, $etagPoolProvider);
     }
 
@@ -190,7 +198,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
             }
 
             assert(is_string($issuedFor));
-            $key = CacheIdentityFactory::storageKey($issuedFor, self::KEY_RO, $this->serverContext);
+            $key = $this->identityFactory->storageKey($issuedFor, self::KEY_RO);
             $state = $this->guard(fn () => $this->roPool->getItem($key))->get();
             assert($state instanceof ResourceState || $state === null);
             // A missing entry reads as '', which is never an opaque-tag.
@@ -378,7 +386,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         // never reclaims.
         $surrogateKeys ??= isset($ro->headers[Header::SURROGATE_KEY]) ? explode(' ', $ro->headers[Header::SURROGATE_KEY]) : [];
 
-        return (new TagSet(CacheDependencyCollector::tags($ro, $this->uriTag, $this->baseUriTag, $surrogateKeys)))->toArray();
+        return (new TagSet($this->cacheTags->tags($ro, $surrogateKeys)))->toArray();
     }
 
     private function nonNegative(int|null $ttl): int|null
@@ -388,7 +396,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
 
     private function getUriKey(AbstractUri $uri, string $type): string
     {
-        return CacheIdentityFactory::storageKey(($this->uriTag)($uri), $type, $this->serverContext);
+        return $this->identityFactory->storageKey(($this->uriTag)($uri), $type);
     }
 
     #[Override]
@@ -440,6 +448,8 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
             'etagProvider' => $this->etagPoolProvider,
             'serverContext' => $this->serverContext,
             'baseUriTag' => $this->baseUriTag,
+            'identityFactory' => $this->identityFactory,
+            'cacheTags' => $this->cacheTags,
         ];
     }
 
@@ -455,6 +465,8 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         $this->uriTag = $data['uriTag'];
         $this->saver = $data['saver'];
         $this->serverContext = $data['serverContext'];
+        $this->identityFactory = $data['identityFactory'];
+        $this->cacheTags = $data['cacheTags'];
         // Stateless, so rebuilt rather than carried: left out of the payload it stays
         // uninitialized, and the first save after a compiled-injector restore throws.
         $this->evaluateBody = new ResourceBodyEvaluator();

@@ -15,7 +15,7 @@ final class CommandQueryTest extends TestCase
         $ro = $this->resource();
         $query = ['extra' => 'x', 'page' => 2, 'token' => 't', 'userId' => 'camel', 'user_id' => 'snake'];
 
-        $this->assertSame(['userId' => 'camel', 'token' => 't'], CommandQuery::baseQuery($ro, $query));
+        $this->assertSame(['userId' => 'camel', 'token' => 't'], (new CommandQuery())->baseQuery($ro, $query));
         $this->assertSame(['extra' => 'x', 'page' => 2, 'token' => 't', 'userId' => 'camel', 'user_id' => 'snake'], $query);
     }
 
@@ -23,9 +23,9 @@ final class CommandQueryTest extends TestCase
     {
         $ro = $this->resource();
 
-        $this->assertSame([], CommandQuery::baseQuery($ro, []));
-        $this->assertSame([], CommandQuery::baseQuery($ro, ['user_id' => 'snake', 'token' => null]));
-        $this->assertSame([], CommandQuery::baseQuery($ro, ['userId' => null, 'user_id' => 'snake']));
+        $this->assertSame([], (new CommandQuery())->baseQuery($ro, []));
+        $this->assertSame([], (new CommandQuery())->baseQuery($ro, ['user_id' => 'snake', 'token' => null]));
+        $this->assertSame([], (new CommandQuery())->baseQuery($ro, ['userId' => null, 'user_id' => 'snake']));
     }
 
     public function testBaseQueryPreservesValuesWithoutConvertingThem(): void
@@ -34,9 +34,9 @@ final class CommandQueryTest extends TestCase
         $object = new stdClass();
         $query = ['userId' => ['nested' => [1, null]], 'token' => $object];
 
-        $this->assertSame($query, CommandQuery::baseQuery($ro, $query));
-        $this->assertSame(['userId' => 0, 'token' => false], CommandQuery::baseQuery($ro, ['userId' => 0, 'token' => false]));
-        $this->assertSame(['userId' => '', 'token' => []], CommandQuery::baseQuery($ro, ['userId' => '', 'token' => []]));
+        $this->assertSame($query, (new CommandQuery())->baseQuery($ro, $query));
+        $this->assertSame(['userId' => 0, 'token' => false], (new CommandQuery())->baseQuery($ro, ['userId' => 0, 'token' => false]));
+        $this->assertSame(['userId' => '', 'token' => []], (new CommandQuery())->baseQuery($ro, ['userId' => '', 'token' => []]));
     }
 
     public function testBaseQueryKeepsSuppliedVariadicParameter(): void
@@ -50,8 +50,8 @@ final class CommandQueryTest extends TestCase
             }
         };
 
-        $this->assertSame(['items' => [1, 2]], CommandQuery::baseQuery($ro, ['items' => [1, 2], 'extra' => 3]));
-        $this->assertSame([], CommandQuery::baseQuery($ro, []));
+        $this->assertSame(['items' => [1, 2]], (new CommandQuery())->baseQuery($ro, ['items' => [1, 2], 'extra' => 3]));
+        $this->assertSame([], (new CommandQuery())->baseQuery($ro, []));
     }
 
     public function testBaseQueryWithoutParametersIsEmpty(): void
@@ -63,7 +63,7 @@ final class CommandQueryTest extends TestCase
             }
         };
 
-        $this->assertSame([], CommandQuery::baseQuery($ro, ['extra' => 'x']));
+        $this->assertSame([], (new CommandQuery())->baseQuery($ro, ['extra' => 'x']));
     }
 
     public function testSnakeQueryConvertsAcronymsAndPreservesValuesAndOrder(): void
@@ -71,15 +71,15 @@ final class CommandQueryTest extends TestCase
         $object = new stdClass();
         $query = ['userId' => ['nestedKey' => 1], 'URLValue' => $object, 'token' => null];
 
-        $this->assertSame(['user_id' => ['nestedKey' => 1], 'u_r_l_value' => $object, 'token' => null], CommandQuery::snakeQuery($query));
+        $this->assertSame(['user_id' => ['nestedKey' => 1], 'u_r_l_value' => $object, 'token' => null], (new CommandQuery())->snakeQuery($query));
         $this->assertSame(['userId' => ['nestedKey' => 1], 'URLValue' => $object, 'token' => null], $query);
-        $this->assertSame([], CommandQuery::snakeQuery([]));
+        $this->assertSame([], (new CommandQuery())->snakeQuery([]));
     }
 
     public function testSnakeQueryKeepsTheLastValueWhenNamesCollide(): void
     {
-        $this->assertSame(['user_id' => 'snake'], CommandQuery::snakeQuery(['userId' => 'camel', 'user_id' => 'snake']));
-        $this->assertSame(['user_id' => 'camel'], CommandQuery::snakeQuery(['user_id' => 'snake', 'userId' => 'camel']));
+        $this->assertSame(['user_id' => 'snake'], (new CommandQuery())->snakeQuery(['userId' => 'camel', 'user_id' => 'snake']));
+        $this->assertSame(['user_id' => 'camel'], (new CommandQuery())->snakeQuery(['user_id' => 'snake', 'userId' => 'camel']));
     }
 
     private function resource(): ResourceObject

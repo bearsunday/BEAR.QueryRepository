@@ -29,6 +29,7 @@ final readonly class RefreshSameCommand implements CommandInterface
         private InvokerInterface $invoker,
         #[CacheLog]
         private SemanticLoggerInterface $logger = new NullSemanticLogger(),
+        private CommandQuery $commandQuery = new CommandQuery(),
     ) {
     }
 
@@ -59,7 +60,7 @@ final readonly class RefreshSameCommand implements CommandInterface
         }
 
         $delUri = clone $ro->uri;
-        $baseQuery = CommandQuery::baseQuery($ro, $getQuery);
+        $baseQuery = $this->commandQuery->baseQuery($ro, $getQuery);
         // Default-valued parameters dropped, as BaseUriTag drops them; the refresh below still uses the exact $getQuery.
         $delUri->query = $baseQuery;
 
@@ -67,7 +68,7 @@ final readonly class RefreshSameCommand implements CommandInterface
         $this->repository->purge($delUri);
 
         // A GET stored under the snake_case key keeps that spelling in its group tag; purge it too.
-        $snakeQuery = CommandQuery::snakeQuery($baseQuery);
+        $snakeQuery = $this->commandQuery->snakeQuery($baseQuery);
         if ($snakeQuery !== $baseQuery) {
             $snakeUri = clone $ro->uri;
             $snakeUri->query = $snakeQuery;

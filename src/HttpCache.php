@@ -17,11 +17,15 @@ use function http_response_code;
 /** @psalm-suppress DeprecatedInterface for BC */
 final readonly class HttpCache implements HttpCacheInterface, DeprecatedHttpCacheInterface, UriScopedHttpCacheInterface
 {
+    private ConditionalRequest $conditionalRequest;
+
     public function __construct(
         private ResourceStorageInterface $storage,
         #[CacheLog]
         private SemanticLoggerInterface $logger = new NullSemanticLogger(),
+        ConditionalRequest|null $conditionalRequest = null,
     ) {
+        $this->conditionalRequest = $conditionalRequest ?? new ConditionalRequest($storage, $logger);
     }
 
     /**
@@ -39,7 +43,7 @@ final readonly class HttpCache implements HttpCacheInterface, DeprecatedHttpCach
 
         $ifNoneMatch = $server[Header::HTTP_IF_NONE_MATCH];
 
-        return ConditionalRequest::isNotModified($this->storage, $this->logger, $ifNoneMatch, $server);
+        return $this->conditionalRequest->isNotModified($ifNoneMatch, $server);
     }
 
     /**
@@ -57,7 +61,7 @@ final readonly class HttpCache implements HttpCacheInterface, DeprecatedHttpCach
 
         $ifNoneMatch = $server[Header::HTTP_IF_NONE_MATCH];
 
-        return ConditionalRequest::isNotModifiedFor($this->storage, $this->logger, $uri, $ifNoneMatch, $server);
+        return $this->conditionalRequest->isNotModifiedFor($uri, $ifNoneMatch, $server);
     }
 
     /**

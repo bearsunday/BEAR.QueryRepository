@@ -8,14 +8,14 @@ use BEAR\Resource\ResourceObject;
 use ReflectionMethod;
 
 /** @internal */
-final class CommandQuery
+final readonly class CommandQuery
 {
     /**
      * @param array<string, mixed> $getQuery
      *
      * @return array<string, mixed>
      */
-    public static function baseQuery(ResourceObject $ro, array $getQuery): array
+    public function baseQuery(ResourceObject $ro, array $getQuery): array
     {
         $baseQuery = [];
         foreach ((new ReflectionMethod($ro, 'onGet'))->getParameters() as $parameter) {
@@ -35,7 +35,7 @@ final class CommandQuery
      *
      * @return array<string, mixed>
      */
-    public static function snakeQuery(array $query): array
+    public function snakeQuery(array $query): array
     {
         $snakeQuery = [];
         /** @psalm-suppress MixedAssignment */

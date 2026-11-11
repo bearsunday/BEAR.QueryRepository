@@ -19,18 +19,18 @@ final class SurrogateKeys
     private array $surrogateKeys;
     private readonly UriTagInterface $uriTag;
     private readonly UriTag $keyTag;
-    private readonly BaseUriTagInterface $baseUriTag;
+    private readonly CacheTags $cacheTags;
     private readonly DependsOnTags $dependsOnTags;
 
     /** @var array<string, list<string>|null> */
     private array $declared = [];
 
-    public function __construct(AbstractUri $uri, string|null $baseTag = null, UriTagInterface|null $uriTag = null)
+    public function __construct(AbstractUri $uri, string|null $baseTag = null, UriTagInterface|null $uriTag = null, CacheTags|null $cacheTags = null, DependsOnTags|null $dependsOnTags = null)
     {
         $this->uriTag = $uriTag ?? new UriTag();
         $this->keyTag = new UriTag();
-        $this->baseUriTag = new BaseUriTag($this->uriTag);
-        $this->dependsOnTags = new DependsOnTags($this->uriTag);
+        $this->cacheTags = $cacheTags ?? new CacheTags($this->uriTag, new BaseUriTag($this->uriTag));
+        $this->dependsOnTags = $dependsOnTags ?? new DependsOnTags($this->uriTag);
         $this->surrogateKeys = $baseTag === null ? [($this->uriTag)($uri)] : [($this->uriTag)($uri), $baseTag];
     }
 
@@ -40,7 +40,7 @@ final class SurrogateKeys
     public function addTag(ResourceObject $ro): void
     {
         $this->embedded($ro);
-        $this->surrogateKeys = [...$this->surrogateKeys, ...CacheDependencyCollector::tags($ro, $this->uriTag, $this->baseUriTag)];
+        $this->surrogateKeys = [...$this->surrogateKeys, ...$this->cacheTags->tags($ro)];
     }
 
     /**

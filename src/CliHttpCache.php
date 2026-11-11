@@ -22,11 +22,15 @@ use const PHP_EOL;
 
 final readonly class CliHttpCache implements HttpCacheInterface, UriScopedHttpCacheInterface
 {
+    private ConditionalRequest $conditionalRequest;
+
     public function __construct(
         private ResourceStorageInterface $storage,
         #[CacheLog]
         private SemanticLoggerInterface $logger = new NullSemanticLogger(),
+        ConditionalRequest|null $conditionalRequest = null,
     ) {
+        $this->conditionalRequest = $conditionalRequest ?? new ConditionalRequest($storage, $logger);
     }
 
     /**
@@ -43,7 +47,7 @@ final readonly class CliHttpCache implements HttpCacheInterface, UriScopedHttpCa
             return false;
         }
 
-        return ConditionalRequest::isNotModified($this->storage, $this->logger, $etag, $server);
+        return $this->conditionalRequest->isNotModified($etag, $server);
     }
 
     /**
@@ -60,7 +64,7 @@ final readonly class CliHttpCache implements HttpCacheInterface, UriScopedHttpCa
             return false;
         }
 
-        return ConditionalRequest::isNotModifiedFor($this->storage, $this->logger, $uri, $ifNoneMatch, $server);
+        return $this->conditionalRequest->isNotModifiedFor($uri, $ifNoneMatch, $server);
     }
 
     /**

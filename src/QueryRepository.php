@@ -34,7 +34,7 @@ use function trim;
 /** @internal */
 final readonly class QueryRepository implements QueryRepositoryInterface
 {
-    private DependsOnTags $dependsOnTags;
+    private CacheDependencyCollector $dependencyCollector;
 
     public function __construct(
         #[CacheLog]
@@ -47,8 +47,10 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         private DeclaredCacheControl $declaredCacheControl = new DeclaredCacheControl(),
         private UriTagInterface $uriTag = new UriTag(),
         private ResourceBodyEvaluator $evaluateBody = new ResourceBodyEvaluator(),
+        private CacheIdentityFactory $identityFactory = new CacheIdentityFactory(),
+        CacheDependencyCollector|null $dependencyCollector = null,
     ) {
-        $this->dependsOnTags = new DependsOnTags($this->uriTag);
+        $this->dependencyCollector = $dependencyCollector ?? new CacheDependencyCollector(new DependsOnTags($this->uriTag), $this->cacheDependency, $this->logger);
     }
 
     /**
@@ -190,7 +192,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
 
     private function setCacheDependency(ResourceObject $ro): void
     {
-        CacheDependencyCollector::collect($ro, $this->dependsOnTags, $this->cacheDependency, $this->logger);
+        $this->dependencyCollector->collect($ro);
     }
 
     /**
@@ -220,7 +222,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
     public function purge(AbstractUri $uri)
     {
         // The URI's own tag plus the group tag shared by its query variants (see BaseUriTag).
-        $tags = [($this->uriTag)($uri), CacheIdentityFactory::groupTag(($this->uriTag)($uri))];
+        $tags = [($this->uriTag)($uri), $this->identityFactory->groupTag(($this->uriTag)($uri))];
 
         // A top-level purge is an application-initiated (manual) cache bust: wrap it in a
         // manual_purge scope so it stands out from automatic invalidation. A purge nested

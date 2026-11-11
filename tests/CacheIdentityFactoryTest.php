@@ -18,7 +18,7 @@ final class CacheIdentityFactoryTest extends TestCase
         $query = ['z' => [new FakeStringableId('a/b')], 'a' => new FakeStringableId('x y')];
         $uri->query = $query;
 
-        $this->assertSame('_item_a=x+y_z%5B0%5D=a%2Fb', CacheIdentityFactory::exactTag($uri));
+        $this->assertSame('_item_a=x+y_z%5B0%5D=a%2Fb', (new CacheIdentityFactory())->exactTag($uri));
         $this->assertSame($query, $uri->query);
     }
 
@@ -37,7 +37,7 @@ final class CacheIdentityFactoryTest extends TestCase
             #[Override]
             public function __invoke(AbstractUri $uri): string
             {
-                return 'custom-' . CacheIdentityFactory::exactTag($uri);
+                return 'custom-' . (new CacheIdentityFactory())->exactTag($uri);
             }
 
             #[Override]
@@ -47,10 +47,10 @@ final class CacheIdentityFactoryTest extends TestCase
             }
         };
 
-        $this->assertSame('grp-custom-_item_userId=camel', CacheIdentityFactory::groupTagFor($ro, $uriTag));
+        $this->assertSame('grp-custom-_item_userId=camel', (new BaseUriTag($uriTag))($ro));
         $this->assertSame(['user_id' => 'snake', 'userId' => 'camel', 'page' => '2', 'extra' => 'x'], $ro->uri->query);
         $ro->uri = new Uri('app://self/item?user_id=snake&page=2');
-        $this->assertSame('grp-custom-_item_user_id=snake', CacheIdentityFactory::groupTagFor($ro, $uriTag));
+        $this->assertSame('grp-custom-_item_user_id=snake', (new BaseUriTag($uriTag))($ro));
     }
 
     public function testGroupTagWithoutOnGetKeepsTheWholeQuery(): void
@@ -59,22 +59,22 @@ final class CacheIdentityFactoryTest extends TestCase
         };
         $ro->uri = new Uri('page://self/item?page=2');
 
-        $this->assertSame('grp-_item_page=2', CacheIdentityFactory::groupTagFor($ro, new UriTag()));
+        $this->assertSame('grp-_item_page=2', (new BaseUriTag(new UriTag()))($ro));
     }
 
     public function testStorageKeyReadsVaryInDeclaredOrderWithRepeatsAndMissingValues(): void
     {
         $context = new FakeServerContext(['X_VARY' => 'device, , missing, lang, device', 'X_LANG' => 'ja', 'X_DEVICE' => 'mobile']);
 
-        $this->assertSame('ro-custom-mobilejamobile', CacheIdentityFactory::storageKey('custom-', 'ro-', $context));
-        $this->assertSame('donut-custom-mobilejamobile', CacheIdentityFactory::storageKey('custom-', 'donut-', $context));
-        $this->assertSame('ro-custom-', CacheIdentityFactory::storageKey('custom-', 'ro-', new FakeServerContext([])));
-        $this->assertSame('ro-custom-', CacheIdentityFactory::storageKey('custom-', 'ro-', new FakeServerContext(['X_VARY' => ''])));
+        $this->assertSame('ro-custom-mobilejamobile', (new CacheIdentityFactory($context))->storageKey('custom-', 'ro-'));
+        $this->assertSame('donut-custom-mobilejamobile', (new CacheIdentityFactory($context))->storageKey('custom-', 'donut-'));
+        $this->assertSame('ro-custom-', (new CacheIdentityFactory(new FakeServerContext([])))->storageKey('custom-', 'ro-'));
+        $this->assertSame('ro-custom-', (new CacheIdentityFactory(new FakeServerContext(['X_VARY' => ''])))->storageKey('custom-', 'ro-'));
     }
 
     public function testSnakeNameKeepsTheExistingAcronymConversion(): void
     {
-        $this->assertSame('u_r_l_value', CacheIdentityFactory::snakeName('URLValue'));
-        $this->assertSame('user_id', CacheIdentityFactory::snakeName('user_id'));
+        $this->assertSame('u_r_l_value', (new CacheIdentityFactory())->snakeName('URLValue'));
+        $this->assertSame('user_id', (new CacheIdentityFactory())->snakeName('user_id'));
     }
 }

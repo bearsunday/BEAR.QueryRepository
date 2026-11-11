@@ -50,6 +50,7 @@ final class DonutCacheModule extends AbstractModule
         $this->bind(RepositoryLoggerInterface::class)->to(RepositoryLogger::class)->in(Scope::SINGLETON);
         $this->bind(PurgerInterface::class)->to(NullPurger::class);
         $this->bind(UriTagInterface::class)->to(UriTag::class);
+        $this->bind(CacheIdentityFactory::class);
         $this->installAopClassModule();
         $this->installAopMethodModule();
     }
