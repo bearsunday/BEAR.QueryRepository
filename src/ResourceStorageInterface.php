@@ -20,9 +20,11 @@ interface ResourceStorageInterface
     public function saveEtag(AbstractUri $uri, string $etag, string $surrogateKeys, int|null $ttl): void;
 
     /**
+     * Drop the entries of the URI, and with them the ETag each holds
+     *
      * @return bool
      *
-     * @deprecated Does nothing: the entry itself holds its ETag
+     * @deprecated Use invalidateTags() with the URI's tag
      */
     public function deleteEtag(AbstractUri $uri);
 

@@ -266,6 +266,19 @@ class ResourceStorageTest extends TestCase
         }
     }
 
+    public function testDeleteEtagDropsTheEntryThatHoldsTheEtag(): void
+    {
+        $this->ro->headers[Header::ETAG] = '"123456"';
+        $this->storage->saveValue($this->ro, 10);
+        $etag = $this->ro->headers[Header::ETAG];
+        $this->assertTrue($this->storage->hasEtag($etag));
+
+        $this->assertTrue($this->storage->deleteEtag($this->ro->uri));
+
+        $this->assertFalse($this->storage->hasEtag($etag));
+        $this->assertNull($this->storage->get($this->ro->uri));
+    }
+
     public function testEtagIsNotRegisteredAsInvalidationTag(): void
     {
         $this->ro->headers['ETag'] = 'test-etag-value';

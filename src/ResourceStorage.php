@@ -168,7 +168,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
     #[Override]
     public function deleteEtag(AbstractUri $uri)
     {
-        return true;
+        return $this->invalidateTags([$this->cacheTags->uriTag($uri)]);
     }
 
     /**
