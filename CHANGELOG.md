@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
-- `isNotModified()`/`isNotModifiedFor()` no longer answer `304` for an ETag whose entry a pre-write cleanup failure, a write-time race, or a shorter entry TTL already dropped from the pool; both now confirm the entry before trusting the ETag (#266). No action needed.
+- `isNotModified()`/`isNotModifiedFor()` no longer answer `304` for an ETag whose entry a pre-write cleanup failure, a write-time race, or a shorter entry TTL already dropped from the pool; both now confirm the entry before trusting the ETag (#266). An ETag with no entry in the resource pool (a `NullAdapter` resource pool beside a real ETag pool, or `saveEtag()` called without a saved entry) is no longer answered `304` either.
 
 ## [1.20.0] - 2026-11-11
 
