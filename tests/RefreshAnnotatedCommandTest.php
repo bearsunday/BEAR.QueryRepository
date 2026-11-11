@@ -76,7 +76,7 @@ class RefreshAnnotatedCommandTest extends TestCase
             $this->purger->tags,
             static fn (string $tag): bool => in_array('_user_profile_user_id=1', explode(' ', $tag), true),
         ));
-        $this->assertCount(2, $profileTagPurges, 'the explicit purge plus the GET\'s own pre-write cleanup');
+        $this->assertCount(1, $profileTagPurges, 'the explicit purge; the GET that follows writes into the emptied slot');
 
         $this->assertNotNull($this->repository->get(new Uri('app://self/user/profile?user_id=1')));
     }

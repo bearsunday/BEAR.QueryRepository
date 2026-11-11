@@ -84,8 +84,8 @@ final class CacheIdentityFactoryTest extends TestCase
     {
         $context = new FakeServerContext(['X_VARY' => 'device, , missing, lang, device', 'X_LANG' => 'ja', 'X_DEVICE' => 'mobile']);
 
-        $this->assertSame('ro-K.' . self::k('6:mobile2:ja6:mobile'), (new CacheIdentityFactory($context))->storageKey('K', 'ro-'));
-        $this->assertSame('donut-K.' . self::k('6:mobile2:ja6:mobile'), (new CacheIdentityFactory($context))->storageKey('K', 'donut-'));
+        $this->assertSame('ro-K.' . self::k('6:DEVICE6:mobile4:LANG2:ja6:DEVICE6:mobile'), (new CacheIdentityFactory($context))->storageKey('K', 'ro-'));
+        $this->assertSame('donut-K.' . self::k('6:DEVICE6:mobile4:LANG2:ja6:DEVICE6:mobile'), (new CacheIdentityFactory($context))->storageKey('K', 'donut-'));
         $this->assertSame('ro-K', (new CacheIdentityFactory(new FakeServerContext([])))->storageKey('K', 'ro-'));
         $this->assertSame('ro-K', (new CacheIdentityFactory(new FakeServerContext(['X_VARY' => ''])))->storageKey('K', 'ro-'));
     }
