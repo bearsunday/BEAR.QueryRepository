@@ -49,8 +49,8 @@ get uri=app://self/article?id=1
 └── close cache_hit
     ├── layer: resource
     └── durationMs: [volatile]
-conditional_request ifNoneMatch="UwyizhapTrRJhydFdHzPCA.3399129766"
-├── ifNoneMatch: "UwyizhapTrRJhydFdHzPCA.3399129766"
+conditional_request ifNoneMatch="HQBO2JVkda6HoM1hCV8xVA.3399129766"
+├── ifNoneMatch: "HQBO2JVkda6HoM1hCV8xVA.3399129766"
 └── close cache_hit
     ├── layer: etag
     └── durationMs: [volatile]
@@ -82,8 +82,8 @@ get uri=app://self/article-view?id=1
 └── close cache_hit
     ├── layer: resource
     └── durationMs: [volatile]
-conditional_request ifNoneMatch="TZhhuCo-jnUfMPNC-PsmGw.707500951"
-├── ifNoneMatch: "TZhhuCo-jnUfMPNC-PsmGw.707500951"
+conditional_request ifNoneMatch="QGh3nzSqUBn1zBdI-QLFxw.707500951"
+├── ifNoneMatch: "QGh3nzSqUBn1zBdI-QLFxw.707500951"
 └── close cache_hit
     ├── layer: etag
     └── durationMs: [volatile]
@@ -184,8 +184,8 @@ get uri=page://self/html/blog-posting
 └── close cache_hit
     ├── layer: donut-view
     └── durationMs: [volatile]
-conditional_request ifNoneMatch="4MLGFjAV4fpiS9wgelCLRg.1846589429"
-├── ifNoneMatch: "4MLGFjAV4fpiS9wgelCLRg.1846589429"
+conditional_request ifNoneMatch="cw163O0wMyXoI_w7r_S9gw.1846589429"
+├── ifNoneMatch: "cw163O0wMyXoI_w7r_S9gw.1846589429"
 └── close cache_hit
     ├── layer: etag
     └── durationMs: [volatile]

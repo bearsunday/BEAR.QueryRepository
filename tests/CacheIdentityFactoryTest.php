@@ -10,9 +10,12 @@ use BEAR\Resource\Uri;
 use Override;
 use PHPUnit\Framework\TestCase;
 
+use function array_map;
+use function array_unique;
 use function base64_encode;
 use function hash;
 use function rtrim;
+use function str_repeat;
 use function strtr;
 use function substr;
 
@@ -81,13 +84,46 @@ final class CacheIdentityFactoryTest extends TestCase
     {
         $context = new FakeServerContext(['X_VARY' => 'device, , missing, lang, device', 'X_LANG' => 'ja', 'X_DEVICE' => 'mobile']);
 
-        $this->assertSame('ro-' . self::k('custom-mobilejamobile'), (new CacheIdentityFactory($context))->storageKey('custom-', 'ro-'));
-        $this->assertSame('donut-' . self::k('custom-mobilejamobile'), (new CacheIdentityFactory($context))->storageKey('custom-', 'donut-'));
-        $this->assertSame('ro-' . self::k('custom-'), (new CacheIdentityFactory(new FakeServerContext([])))->storageKey('custom-', 'ro-'));
-        $this->assertSame('ro-' . self::k('custom-'), (new CacheIdentityFactory(new FakeServerContext(['X_VARY' => ''])))->storageKey('custom-', 'ro-'));
+        $this->assertSame('ro-K.' . self::k('6:mobile2:ja6:mobile'), (new CacheIdentityFactory($context))->storageKey('K', 'ro-'));
+        $this->assertSame('donut-K.' . self::k('6:mobile2:ja6:mobile'), (new CacheIdentityFactory($context))->storageKey('K', 'donut-'));
+        $this->assertSame('ro-K', (new CacheIdentityFactory(new FakeServerContext([])))->storageKey('K', 'ro-'));
+        $this->assertSame('ro-K', (new CacheIdentityFactory(new FakeServerContext(['X_VARY' => ''])))->storageKey('K', 'ro-'));
     }
 
-    /** The locator K of an exact tag followed by its vary values */
+    public function testVaryValuesAreToldApartWhereverTheyAreSplit(): void
+    {
+        $key = static fn (string $lang, string $device): string => (new CacheIdentityFactory(
+            new FakeServerContext(['X_VARY' => 'lang,device', 'X_LANG' => $lang, 'X_DEVICE' => $device]),
+        ))->storageKey('K', 'ro-');
+
+        $this->assertNotSame($key('ja', 'mobile'), $key('jam', 'obile'));
+    }
+
+    public function testLocatorKeepsTheSchemeHostAndSeparatorsAndIgnoresVary(): void
+    {
+        $factory = new CacheIdentityFactory(new FakeServerContext(['X_VARY' => 'lang', 'X_LANG' => 'ja']));
+        $uris = ['app://self/a/b', 'app://self/a_b', 'page://self/a/b', 'app://other/a/b', 'app://self/a?b=', 'app://self/a/b?x=1&y=2'];
+        $locators = array_map(static fn (string $uri): string => $factory->locator(new Uri($uri)), $uris);
+
+        $this->assertSame($locators, array_unique($locators));
+        $this->assertSame(self::k('app://self/a/b?'), $locators[0]);
+        $this->assertSame(self::k('app://self/a/b?x=1&y=2'), $factory->locator(new Uri('app://self/a/b?y=2&x=1')));
+        $this->assertSame((string) (new UriTag())(new Uri($uris[0])), (string) (new UriTag())(new Uri($uris[2])), 'while the tags stay shared');
+    }
+
+    public function testLocatorOfReadsOnlyTheShapeOfALocator(): void
+    {
+        $factory = new CacheIdentityFactory();
+        $k = $factory->locator(new Uri('app://self/a'));
+
+        $this->assertSame($k, $factory->locatorOf($k . '.123'));
+        $this->assertSame($k, $factory->locatorOf($k . '.'));
+        foreach ([$k, substr($k, 1) . '.1', $k . 'a.1', 'ro-' . $k . '.1', "\n" . $k . '.1', '日本.語', '.', '', str_repeat('b', 1000) . '.x'] as $value) {
+            $this->assertNull($factory->locatorOf($value), $value);
+        }
+    }
+
+    /** The 22 base64url characters a locator or a vary suffix is made of */
     public static function k(string $material): string
     {
         return rtrim(strtr(base64_encode(substr(hash('sha256', $material, true), 0, 16)), '+/', '-_'), '=');

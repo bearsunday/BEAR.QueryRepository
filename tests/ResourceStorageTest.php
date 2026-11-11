@@ -26,6 +26,7 @@ use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 
 use function assert;
 use function serialize;
+use function str_repeat;
 use function trim;
 use function unserialize;
 
@@ -56,7 +57,6 @@ class ResourceStorageTest extends TestCase
         return new ResourceStorage(
             $logger ?? new NullSemanticLogger(),
             $purger ?? new NullPurger(),
-            new UriTag(),
             new ResourceStorageSaver(),
             new CacheIdentityFactory(new GlobalServerContext()),
             $provider($roPool ?? $tagAwareAdapter),
@@ -89,7 +89,6 @@ class ResourceStorageTest extends TestCase
         $serializable = new ResourceStorage(
             new NullSemanticLogger(),
             new NullPurger(),
-            new UriTag(),
             new ResourceStorageSaver(),
             new CacheIdentityFactory(new GlobalServerContext()),
             new FakeArrayPoolProvider(),
@@ -236,6 +235,39 @@ class ResourceStorageTest extends TestCase
         $this->assertFalse($this->storage->hasEtag('"' . $tag . "\"\n"), 'trailing newline');
     }
 
+    public function testAValueNotShapedLikeAStoredValidatorIsNotLookedUp(): void
+    {
+        // Every read of this pool throws, so a false here is an answer given without one.
+        $storage = self::getResourceStorageInstance(roPool: new TagAwareAdapter(new FakeErrorCache()));
+
+        foreach (['"日本.語"', '"' . str_repeat('b', 1000) . '.x"', '".x"', '"abc.x"', '"ro-abc.x"', '"no-dot"'] as $etag) {
+            $this->assertFalse($storage->hasEtag($etag), $etag);
+            $this->assertFalse($storage->hasEtagFor($etag, $this->ro->uri), $etag);
+        }
+    }
+
+    public function testAnotherVariantsValidatorIsNotAnsweredWhereThisVariantHasNoEntry(): void
+    {
+        $_SERVER['X_VARY'] = 'lang';
+        $_SERVER['X_LANG'] = 'en';
+        try {
+            $storage = self::getResourceStorageInstance(roPool: new TagAwareAdapter(new ArrayAdapter()));
+            $this->ro->headers[Header::ETAG] = '"1"';
+            $storage->saveValue($this->ro, 10);
+            $etag = $this->ro->headers[Header::ETAG];
+            $this->assertTrue($storage->hasEtag($etag));
+            $this->assertTrue($storage->hasEtagFor($etag, $this->ro->uri));
+
+            $_SERVER['X_LANG'] = 'ja';
+
+            $this->assertNull($storage->get($this->ro->uri));
+            $this->assertFalse($storage->hasEtag($etag), 'the entry asked about is the one this request is served from');
+            $this->assertFalse($storage->hasEtagFor($etag, $this->ro->uri));
+        } finally {
+            unset($_SERVER['X_VARY'], $_SERVER['X_LANG']);
+        }
+    }
+
     public function testEtagIsNotRegisteredAsInvalidationTag(): void
     {
         $this->ro->headers['ETag'] = 'test-etag-value';
@@ -275,7 +307,6 @@ class ResourceStorageTest extends TestCase
         $storage = new ResourceStorage(
             $logger,
             new NullPurger(),
-            new UriTag(),
             new ResourceStorageSaver(),
             new CacheIdentityFactory(new GlobalServerContext()),
             $poolProvider,
@@ -317,7 +348,6 @@ class ResourceStorageTest extends TestCase
         $storage = new ResourceStorage(
             $logger,
             new NullPurger(),
-            new UriTag(),
             new ResourceStorageSaver(),
             new CacheIdentityFactory(new GlobalServerContext()),
             $poolProvider,

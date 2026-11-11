@@ -39,7 +39,6 @@ class EtagOfReplacedEntryTest extends TestCase
             $storage,
             new Expiry(),
             new CacheDependencyCollector(new DependsOnTags(new UriTag()), new CacheDependency(new UriTag()), new NullSemanticLogger()),
-            new BaseUriTag(new UriTag()),
             new CacheTags(new UriTag(), new BaseUriTag(new UriTag())),
         );
     }

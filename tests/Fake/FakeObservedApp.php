@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\Resource\ResourceInterface;
+use BEAR\Resource\Uri;
 use Madapaja\TwigModule\TwigModule;
 use Override;
 use Ray\Di\AbstractModule;
@@ -21,6 +22,8 @@ use function array_values;
 use function assert;
 use function dirname;
 use function is_array;
+use function preg_match;
+use function strtr;
 use function explode;
 use function strtoupper;
 use function trim;
@@ -118,17 +121,21 @@ final class FakeObservedApp
     }
 
     /**
-     * The pre-hash key: type, exact tag, vary values
+     * The key before hashing, as type, exact tag and vary values
+     *
+     * A key hashes the URI, and the fake app's URIs hold no "_", so the entry's own tag reads back as one.
      *
      * @param list<string> $tags
      */
     private function readableKey(string $key, array $tags): string
     {
         $factory = new CacheIdentityFactory(new FakeServerContext($this->server));
+        preg_match('/\A((?:_[^_=]+)*)_(.*)\z/', $tags[0] ?? '', $tag);
+        $pathAndQuery = strtr($tag[1] ?? '', '_', '/') . '?' . strtr($tag[2] ?? '', '_', '&');
         foreach (['ro-', 'donut-'] as $type) {
-            foreach ($tags as $tag) {
-                if ($factory->storageKey($tag, $type) === $key) {
-                    return $type . $tag . $this->vary();
+            foreach (['app', 'page'] as $scheme) {
+                if ($factory->storageKey($factory->locator(new Uri($scheme . '://self' . $pathAndQuery)), $type) === $key) {
+                    return $type . $tags[0] . $this->vary();
                 }
             }
         }

@@ -33,7 +33,6 @@ use function max;
 use function round;
 use function str_starts_with;
 use function strlen;
-use function strpos;
 use function substr;
 use function trim;
 
@@ -41,7 +40,6 @@ use function trim;
  * @psalm-type Props = array{
  *     logger: SemanticLoggerInterface,
  *     purger:PurgerInterface,
- *     uriTag: UriTag,
  *     saver: ResourceStorageSaver,
  *     roProvider:ProviderInterface<TagAwareAdapterInterface>,
  *     identityFactory: CacheIdentityFactory,
@@ -76,7 +74,6 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         #[CacheLog]
         private SemanticLoggerInterface $logger,
         private PurgerInterface $purger,
-        private UriTagInterface $uriTag,
         private ResourceStorageSaver $saver,
         private readonly CacheIdentityFactory $identityFactory,
         #[Set(TagAwareAdapterInterface::class, ResourceObjectPool::class)]
@@ -124,7 +121,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
     #[Override]
     public function hasEtagFor(string $etag, AbstractUri $uri): bool
     {
-        return $this->findEtag($etag, $this->identityFactory->locator(($this->uriTag)($uri)));
+        return $this->findEtag($etag, $this->identityFactory->locator($uri));
     }
 
     /**
@@ -137,25 +134,22 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
     }
 
     /**
-     * Does the entry the validator's K locates still carry this validator?
+     * Does the entry this request would be served from still carry this validator?
      *
-     * A validator is "K.H": K names the entry, so one read decides. $locator, when given, is the
-     * K of the URI asked for.
+     * A validator is "K.H". K and the request's vary values name the entry, so one read decides,
+     * and another variant's validator finds this request's entry, not its own. $locator, when
+     * given, is the K of the URI asked for.
      */
     private function findEtag(string $etag, string|null $locator): bool
     {
         foreach (array_unique(EntityTags::of($etag)) as $opaqueTag) {
-            $dot = strpos($opaqueTag, '.');
-            if ($dot === false) {
+            $entryLocator = $this->identityFactory->locatorOf($opaqueTag);
+            if ($entryLocator === null || ($locator !== null && $entryLocator !== $locator)) {
                 continue;
             }
 
-            $entryLocator = substr($opaqueTag, 0, $dot);
-            if ($locator !== null && $entryLocator !== $locator) {
-                continue;
-            }
-
-            $state = $this->guard(fn () => $this->roPool->getItem(self::KEY_RO . $entryLocator))->get();
+            $key = $this->identityFactory->storageKey($entryLocator, self::KEY_RO);
+            $state = $this->guard(fn () => $this->roPool->getItem($key))->get();
             assert($state instanceof ResourceState || $state === null);
             if (EntityTags::of($state?->headers[Header::ETAG] ?? '') === [$opaqueTag]) {
                 return true;
@@ -334,7 +328,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         $etag = $ro->headers[Header::ETAG];
         $weak = str_starts_with($etag, 'W/') ? 'W/' : '';
         $opaque = trim(substr($etag, strlen($weak)), '"');
-        $locator = $this->identityFactory->locator(($this->uriTag)($ro->uri));
+        $locator = $this->identityFactory->locator($ro->uri);
         if (str_starts_with($opaque, $locator . '.')) {
             return;
         }
@@ -370,7 +364,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
 
     private function getUriKey(AbstractUri $uri, string $type): string
     {
-        return $this->identityFactory->storageKey(($this->uriTag)($uri), $type);
+        return $this->identityFactory->storageKey($this->identityFactory->locator($uri), $type);
     }
 
     #[Override]
@@ -409,7 +403,6 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         return [
             'logger' => $this->logger,
             'purger' => $this->purger,
-            'uriTag' => $this->uriTag,
             'saver' => $this->saver,
             'roProvider' => $this->roPoolProvider,
             'identityFactory' => $this->identityFactory,
@@ -426,7 +419,6 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
     {
         $this->logger = $data['logger'];
         $this->purger = $data['purger'];
-        $this->uriTag = $data['uriTag'];
         $this->saver = $data['saver'];
         $this->identityFactory = $data['identityFactory'];
         $this->cacheTags = $data['cacheTags'];

@@ -40,7 +40,6 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         private ResourceStorageInterface $storage,
         private Expiry $expiry,
         private CacheDependencyCollector $dependencyCollector,
-        private BaseUriTagInterface $baseUriTag,
         private CacheTags $cacheTags,
         private DeclaredCacheControl $declaredCacheControl = new DeclaredCacheControl(),
         private ResourceBodyEvaluator $evaluateBody = new ResourceBodyEvaluator(),

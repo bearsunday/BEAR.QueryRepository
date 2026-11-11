@@ -12,9 +12,9 @@ use PHPUnit\Framework\TestCase;
 use function array_keys;
 
 /**
- * The URI tag and the pool keys built from it, as they are today
+ * The URI tag as it is today, and the pool keys
  *
- * Distinct URIs that share a tag (scheme dropped, `/` `?` `&` turned into `_`) share an entry.
+ * Distinct URIs can share a tag (scheme dropped, `/` `?` `&` turned into `_`); they never share an entry.
  */
 class GoldenStorageKeyTest extends TestCase
 {
@@ -56,7 +56,7 @@ class GoldenStorageKeyTest extends TestCase
         $this->assertSame('_item_id=1 _item_id=2', (new UriTag())->fromAssoc('app://self/item{?id}', [['id' => 1], ['id' => 2]]));
     }
 
-    public function testUrisSharingATagShareAnEntry(): void
+    public function testUrisSharingATagKeepSeparateEntries(): void
     {
         $app = new FakeObservedApp();
         $storage = $app->injector->getInstance(ResourceStorageInterface::class);
@@ -68,7 +68,7 @@ class GoldenStorageKeyTest extends TestCase
 
         $this->assertSame(['ro-_a_b_x=1'], array_keys($app->roEntries()));
         foreach (['page://self/a/b?x=1', 'app://self/a_b?x=1', 'app://self/a?b_x=1'] as $other) {
-            $this->assertSame(['stored-as' => 'app://self/a/b?x=1'], $storage->get(new Uri($other))?->body, $other);
+            $this->assertNull($storage->get(new Uri($other)), $other);
         }
     }
 

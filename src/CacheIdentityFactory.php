@@ -14,10 +14,12 @@ use function hash;
 use function http_build_query;
 use function ksort;
 use function ltrim;
+use function preg_match;
 use function preg_replace;
 use function rtrim;
 use function sprintf;
 use function str_replace;
+use function strlen;
 use function strtolower;
 use function strtoupper;
 use function strtr;
@@ -34,16 +36,7 @@ final readonly class CacheIdentityFactory
     /** Scheme omission and separator collisions are part of the tag format. */
     public function exactTag(AbstractUri $uri): string
     {
-        $query = $uri->query;
-        ksort($query);
-        // http_build_query() drops objects that have no public properties, Stringable included.
-        array_walk_recursive($query, static function (mixed &$value): void {
-            if ($value instanceof Stringable) {
-                $value = (string) $value;
-            }
-        });
-
-        $uriKey = sprintf('%s_%s', $uri->path, http_build_query($query));
+        $uriKey = sprintf('%s_%s', $uri->path, $this->sortedQuery($uri));
 
         return str_replace(['/', '?', '&'], '_', $uriKey);
     }
@@ -54,17 +47,28 @@ final readonly class CacheIdentityFactory
         return 'grp-' . $exactTag;
     }
 
-    public function storageKey(string $exactTag, string $type): string
+    /** Variants of one URI share K; the request's vary values tell their entries apart. */
+    public function storageKey(string $locator, string $type): string
     {
-        return $type . $this->locator($exactTag);
+        $vary = $this->vary();
+
+        return $type . $locator . ($vary === '' ? '' : '.' . $this->digest($vary));
     }
 
-    /** The entry locator K that prefixes a stored ETag ("K.H"); never contains '.' */
-    public function locator(string $exactTag): string
+    /**
+     * The entry locator K that prefixes a stored ETag ("K.H"): 22 base64url characters
+     *
+     * Unlike the tag it keeps the scheme, the host and the separators, so distinct URIs get distinct entries.
+     */
+    public function locator(AbstractUri $uri): string
     {
-        $digest = substr(hash('sha256', $exactTag . $this->vary(), true), 0, 16);
+        return $this->digest(sprintf('%s://%s%s?%s', $uri->scheme, $uri->host, $uri->path, $this->sortedQuery($uri)));
+    }
 
-        return rtrim(strtr(base64_encode($digest), '+/', '-_'), '=');
+    /** The K of a validator shaped like the ones stored here, null otherwise: no other client value may become a pool key */
+    public function locatorOf(string $opaqueTag): string|null
+    {
+        return preg_match('/\A([A-Za-z0-9_-]{22})\./', $opaqueTag, $matches) === 1 ? $matches[1] : null;
     }
 
     /** The conversion BEAR.Resource applies when it binds a query to a parameter */
@@ -73,6 +77,26 @@ final readonly class CacheIdentityFactory
         return ltrim(strtolower((string) preg_replace('/[A-Z]/', '_\0', $name)), '_');
     }
 
+    private function sortedQuery(AbstractUri $uri): string
+    {
+        $query = $uri->query;
+        ksort($query);
+        // http_build_query() drops objects that have no public properties, Stringable included.
+        array_walk_recursive($query, static function (mixed &$value): void {
+            if ($value instanceof Stringable) {
+                $value = (string) $value;
+            }
+        });
+
+        return http_build_query($query);
+    }
+
+    private function digest(string $material): string
+    {
+        return rtrim(strtr(base64_encode(substr(hash('sha256', $material, true), 0, 16)), '+/', '-_'), '=');
+    }
+
+    /** The request's vary values, each behind its length: "ja", "mobile" and "jam", "obile" must not read the same. */
     private function vary(): string
     {
         $xvary = $this->serverContext->get('X_VARY');
@@ -91,7 +115,7 @@ final readonly class CacheIdentityFactory
             $phpVaryKey = sprintf('X_%s', strtoupper($vary));
             $value = $this->serverContext->get($phpVaryKey);
             if ($value !== null) {
-                $varyString .= $value;
+                $varyString .= strlen($value) . ':' . $value;
             }
         }
 

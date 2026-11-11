@@ -2620,13 +2620,13 @@ J  GET app://self/value -> 200 served live while the store is unreachable:
 
 === Cache Log Tree — J. the store is down and says so ===
 get uri=app://self/value
-├── pool_error key=ro-J727EpEt6m8iCZS4f6if4g operation=read error=(redis client message) exceptionClass=(redis client exception) [event]
+├── pool_error key=ro-zNxCGZRoSNHtKRNKZwremA operation=read error=(redis client message) exceptionClass=(redis client exception) [event]
 ├── cache_policy uri=app://self/value expiry=never resolvedTtl=31536000 [event]
 ├── pre_write_cleanup uri=app://self/value [event]
 ├── pool_error operation=write error=(redis client message) exceptionClass=(redis client exception) [event]
 ├── invalidate tags=[_value_] roPool=failed etagPool=invalidated cdn=skipped (+1 more) [event]
-├── pool_error key=ro-J727EpEt6m8iCZS4f6if4g operation=read error=(redis client message) exceptionClass=(redis client exception) [event]
-├── pool_error key=ro-J727EpEt6m8iCZS4f6if4g operation=write error=(redis client message) exceptionClass=(redis client exception) [event]
+├── pool_error key=ro-zNxCGZRoSNHtKRNKZwremA operation=read error=(redis client message) exceptionClass=(redis client exception) [event]
+├── pool_error key=ro-zNxCGZRoSNHtKRNKZwremA operation=write error=(redis client message) exceptionClass=(redis client exception) [event]
 ├── save_value uri=app://self/value tags=[_value_, grp-_value_] requestedTtl=31536000 saved=false [event]
 └── cache_miss layer=resource durationMs=[volatile]
 
@@ -2647,7 +2647,7 @@ get uri=app://self/value
                     "type": "pool_error",
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/pool_error.json",
                     "context": {
-                        "key": "ro-J727EpEt6m8iCZS4f6if4g",
+                        "key": "ro-zNxCGZRoSNHtKRNKZwremA",
                         "operation": "read",
                         "error": "(redis client message)",
                         "exceptionClass": "(redis client exception)"
@@ -2703,7 +2703,7 @@ get uri=app://self/value
                     "type": "pool_error",
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/pool_error.json",
                     "context": {
-                        "key": "ro-J727EpEt6m8iCZS4f6if4g",
+                        "key": "ro-zNxCGZRoSNHtKRNKZwremA",
                         "operation": "read",
                         "error": "(redis client message)",
                         "exceptionClass": "(redis client exception)"
@@ -2714,7 +2714,7 @@ get uri=app://self/value
                     "type": "pool_error",
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/pool_error.json",
                     "context": {
-                        "key": "ro-J727EpEt6m8iCZS4f6if4g",
+                        "key": "ro-zNxCGZRoSNHtKRNKZwremA",
                         "operation": "write",
                         "error": "(redis client message)",
                         "exceptionClass": "(redis client exception)"

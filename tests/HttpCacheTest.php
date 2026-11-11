@@ -147,6 +147,7 @@ class HttpCacheTest extends TestCase
                 throw new RuntimeException('cache server down', 0, new LogicException('driver detail'));
             }
         }));
+        $etag = '"' . (new CacheIdentityFactory())->locator(new Uri('app://self/user?id=1')) . '.any"';
 
         foreach ([HttpCache::class, CliHttpCache::class] as $class) {
             $logger = new RecordingSemanticLogger();
@@ -161,7 +162,7 @@ class HttpCacheTest extends TestCase
                 return true;
             });
             try {
-                $notModified = $httpCache->isNotModified(['HTTP_IF_NONE_MATCH' => '"k.any"', 'REQUEST_URI' => '/user?id=1']);
+                $notModified = $httpCache->isNotModified(['HTTP_IF_NONE_MATCH' => $etag, 'REQUEST_URI' => '/user?id=1']);
             } finally {
                 restore_error_handler();
             }
@@ -220,7 +221,7 @@ class HttpCacheTest extends TestCase
         // The same decision as the unscoped answer, recorded against the URI that was asked for.
         $storage = ResourceStorageTest::getResourceStorageInstance(roPool: new TagAwareAdapter(new FakeErrorCache()));
         $uri = new Uri('app://self/user?id=1');
-        $etag = '"' . (new CacheIdentityFactory())->locator((new UriTag())($uri)) . '.any"';
+        $etag = '"' . (new CacheIdentityFactory())->locator($uri) . '.any"';
 
         foreach ([HttpCache::class, CliHttpCache::class] as $class) {
             $logger = new RecordingSemanticLogger();

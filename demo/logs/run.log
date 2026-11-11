@@ -1,7 +1,7 @@
 *** onGet() method invoked ***
 get
 200
-ETag:"Q7TcM9vmFSALhI_2FIAH_Q.1611202115"
+ETag:"Xbwuu4h5qZ_UsP80JcgE-A.1611202115"
 Last-Modified:(time)
 Cache-Control:max-age=0
 {
@@ -11,7 +11,7 @@ Cache-Control:max-age=0
 
 get
 200
-ETag:"Q7TcM9vmFSALhI_2FIAH_Q.1611202115"
+ETag:"Xbwuu4h5qZ_UsP80JcgE-A.1611202115"
 Last-Modified:(time)
 Cache-Control:max-age=0
 Age:0
@@ -30,7 +30,7 @@ patch
 
 get
 200
-ETag:"Q7TcM9vmFSALhI_2FIAH_Q.2821468644"
+ETag:"Xbwuu4h5qZ_UsP80JcgE-A.2821468644"
 Last-Modified:(time)
 Cache-Control:max-age=0
 Age:0
@@ -41,7 +41,7 @@ Age:0
 
 get
 200
-ETag:"Q7TcM9vmFSALhI_2FIAH_Q.2821468644"
+ETag:"Xbwuu4h5qZ_UsP80JcgE-A.2821468644"
 Last-Modified:(time)
 Cache-Control:max-age=0
 Age:0
@@ -134,8 +134,8 @@ get uri=app://self/user?id=1
 └── close cache_hit
     ├── layer: resource
     └── durationMs: [volatile]
-conditional_request ifNoneMatch="Q7TcM9vmFSALhI_2FIAH_Q.2821468644"
-├── ifNoneMatch: "Q7TcM9vmFSALhI_2FIAH_Q.2821468644"
+conditional_request ifNoneMatch="Xbwuu4h5qZ_UsP80JcgE-A.2821468644"
+├── ifNoneMatch: "Xbwuu4h5qZ_UsP80JcgE-A.2821468644"
 └── close cache_hit
     ├── layer: etag
     └── durationMs: [volatile]
@@ -399,7 +399,7 @@ conditional_request ifNoneMatch="stale"
             "type": "conditional_request",
             "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/conditional_request.json",
             "context": {
-                "ifNoneMatch": "\"Q7TcM9vmFSALhI_2FIAH_Q.2821468644\""
+                "ifNoneMatch": "\"Xbwuu4h5qZ_UsP80JcgE-A.2821468644\""
             },
             "close": {
                 "id": "cache_hit_5",

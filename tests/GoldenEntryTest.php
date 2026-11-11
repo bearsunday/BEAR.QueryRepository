@@ -285,7 +285,7 @@ class GoldenEntryTest extends TestCase
 
     private static function etag(ResourceObject $ro, string $state): string
     {
-        $k = (new CacheIdentityFactory(new FakeServerContext([])))->locator((new UriTag())($ro->uri));
+        $k = (new CacheIdentityFactory())->locator($ro->uri);
 
         return '"' . $k . '.' . crc32($ro::class . $state . (string) $ro->uri) . '"';
     }
