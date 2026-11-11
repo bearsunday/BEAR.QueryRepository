@@ -24,7 +24,8 @@ use Override;
 use ReflectionClass;
 use Throwable;
 
-use function array_diff_key;
+use function array_diff_assoc;
+use function array_replace;
 use function is_array;
 use function max;
 use function serialize;
@@ -96,16 +97,22 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         }
 
         $ofRendering = $storesView || $unstorable !== null ? [] : $this->renderValue($ro, $httpCache);
-        ($this->headerSetter)($ro, $this->clientCacheControl($cacheable, $ttl), $httpCache);
-        $this->dropReplacedEntry($ro);
+        try {
+            ($this->headerSetter)($ro, $this->clientCacheControl($cacheable, $ttl), $httpCache);
+            $this->dropReplacedEntry($ro);
 
-        if ($unstorable !== null) {
-            $this->logger->event(new PutSkippedContext((string) $ro->uri, $unstorable));
+            if ($unstorable !== null) {
+                $this->logger->event(new PutSkippedContext((string) $ro->uri, $unstorable));
 
-            return false;
+                return false;
+            }
+
+            return $storesView ? $this->storage->saveView($ro, $ttl) : $this->storage->saveValue($ro, $ttl);
+        } finally {
+            // The response carries the headers of its rendering, such as Content-Type. A value
+            // entry does not: a hit renders again.
+            $ro->headers = array_replace($ro->headers, $ofRendering);
         }
-
-        return $storesView ? $this->storage->saveView($ro, $ttl) : $this->saveValue($ro, $ttl, $ofRendering);
     }
 
     /**
@@ -114,7 +121,11 @@ final readonly class QueryRepository implements QueryRepositoryInterface
      * first. A resource with no representation in this context - an app resource under an html
      * renderer has no template - stays unrendered, and its validator stands for its body.
      *
-     * @return array<string, string> the headers the renderer added
+     * What the renderer did to the headers and the body is taken back: the entry, and a parent
+     * reading the body, get the state the resource returned. A HAL renderer moves every embedded
+     * request out of the body.
+     *
+     * @return array<string, string> the headers the renderer set, for the caller to put back on the response
      */
     private function renderValue(ResourceObject $ro, HttpCache|null $httpCache): array
     {
@@ -122,31 +133,19 @@ final readonly class QueryRepository implements QueryRepositoryInterface
             return []; // the validator, if any, does not stand for the view
         }
 
-        $headers = $ro->headers;
+        $returned = [$ro->headers, $ro->body];
         $ro->view = null;
         try {
             $ro->view = $ro->toString();
+            $ofRendering = array_diff_assoc($ro->headers, $returned[0]);
         } catch (Throwable) {
             $ro->view = null;
-            $ro->headers = $headers;
+            $ofRendering = [];
         }
 
-        return array_diff_key($ro->headers, $headers);
-    }
+        [$ro->headers, $ro->body] = $returned;
 
-    /**
-     * A value entry keeps no header of one rendering, such as Content-Type: a hit renders again
-     *
-     * @param array<string, string> $ofRendering
-     */
-    private function saveValue(ResourceObject $ro, int $ttl, array $ofRendering): bool
-    {
-        $ro->headers = array_diff_key($ro->headers, $ofRendering);
-        try {
-            return $this->storage->saveValue($ro, $ttl);
-        } finally {
-            $ro->headers += $ofRendering;
-        }
+        return $ofRendering;
     }
 
     /** The seconds a #[Cacheable] entry lives, recorded with the declaration that decided them */
