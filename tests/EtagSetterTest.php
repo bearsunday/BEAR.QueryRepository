@@ -64,6 +64,24 @@ class EtagSetterTest extends TestCase
         );
     }
 
+    /** A child restored from the donut cache has no body: its view is all that tells two states apart. */
+    public function testEmbeddedChildViewChangesTheParentTag(): void
+    {
+        $setEtag = new EtagSetter();
+        $tagOf = static function (string $childView) use ($setEtag): string {
+            $child = new Code();
+            $child->uri = new Uri('app://self/child-c');
+            $child->body = null;
+            $child->view = $childView;
+            $parent = new Code();
+            $parent->body = ['parent-a' => 1, 'child' => $child];
+
+            return $setEtag->getEtagByEntireView($parent);
+        };
+
+        $this->assertNotSame($tagOf('child-v1'), $tagOf('child-v2'));
+    }
+
     public function testHeadersOfAChildEmbeddedInAChildDoNotChangeTheParentTag(): void
     {
         $setEtag = new EtagSetter();

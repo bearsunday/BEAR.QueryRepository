@@ -65,11 +65,14 @@ final readonly class EtagSetter implements EtagSetterInterface
         return $ro::class . serialize($ro->view ?? $this->state(($this->evaluateBody)($ro->body)));
     }
 
-    /** An embedded child counts by its class, code and body: its headers carry the time it was built. */
+    /**
+     * An embedded child counts by its class, code, body and view: its headers carry the time
+     * it was built, and a child restored from the donut cache holds its state in the view alone.
+     */
     private function state(mixed $body): mixed
     {
         if ($body instanceof ResourceObject) {
-            return [$body::class, $body->code, $this->state($body->body)];
+            return [$body::class, $body->code, $this->state($body->body), $body->view];
         }
 
         return is_array($body) ? array_map($this->state(...), $body) : $body;
