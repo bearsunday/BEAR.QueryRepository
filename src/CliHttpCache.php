@@ -75,7 +75,12 @@ final readonly class CliHttpCache implements HttpCacheInterface, UriScopedHttpCa
     #[Override]
     public function transfer()
     {
-        echo '304 Not Modified' . PHP_EOL . PHP_EOL;
+        $output = '304 Not Modified' . PHP_EOL;
+        foreach ($this->conditionalRequest->notModifiedHeaders() as $label => $value) {
+            $output .= "{$label}: {$value}" . PHP_EOL;
+        }
+
+        echo $output . PHP_EOL;
     }
 
     /** @return array<string, string> */

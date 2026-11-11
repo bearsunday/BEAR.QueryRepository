@@ -11,6 +11,8 @@ use BEAR\QueryRepository\Log\Context\CacheMissContext;
 use BEAR\QueryRepository\Log\Context\ConditionalRequestContext;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\AbstractUri;
+use BEAR\Sunday\Provide\Transfer\ConditionalResponse;
+use BEAR\Sunday\Provide\Transfer\ConditionalResponseInterface;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Throwable;
 
@@ -23,13 +25,50 @@ use function trigger_error;
 use const E_USER_WARNING;
 
 /** @internal */
-final readonly class ConditionalRequest
+final class ConditionalRequest
 {
+    /** @var array<string, string> the headers of the entry that validated the last request */
+    private array $validated = [];
+
     public function __construct(
-        private ResourceStorageInterface $storage,
+        private readonly ResourceStorageInterface $storage,
         #[CacheLog]
-        private SemanticLoggerInterface $logger,
+        private readonly SemanticLoggerInterface $logger,
+        private readonly ConditionalResponseInterface $conditionalResponse = new ConditionalResponse(),
     ) {
+    }
+
+    /**
+     * The headers of the 304 answering the request last found not modified
+     *
+     * They are those of the entry that validated it: the 304 says what a 200 from that entry
+     * would. Taken once, and none when the storage cannot hand the entry over.
+     *
+     * @return array<string, string>
+     */
+    public function notModifiedHeaders(): array
+    {
+        $headers = $this->conditionalResponse->getOutput($this->validated)->headers;
+        $this->validated = [];
+
+        return $headers;
+    }
+
+    private function validate(string $ifNoneMatch, AbstractUri|null $uri): bool
+    {
+        $this->validated = [];
+        if (! $this->storage instanceof ResourceStorage) {
+            return $uri !== null && $this->storage instanceof ScopedValidatorInterface ? $this->storage->hasEtagFor($ifNoneMatch, $uri) : $this->storage->hasEtag($ifNoneMatch);
+        }
+
+        $state = $this->storage->validatedEntry($ifNoneMatch, $uri);
+        if ($state === null) {
+            return false;
+        }
+
+        $this->validated = $state->headers;
+
+        return true;
     }
 
     /**
@@ -46,7 +85,7 @@ final readonly class ConditionalRequest
         $openId = $this->logger->open(new ConditionalRequestContext($ifNoneMatch));
         $start = hrtime(true);
         try {
-            $hit = $this->storage->hasEtag($ifNoneMatch);
+            $hit = $this->validate($ifNoneMatch, null);
         } catch (CacheStoreException $e) {
             // An unreadable validator does not match: serve the request in full rather than
             // fail it with a 500 for a down ETag store.
@@ -84,7 +123,7 @@ final readonly class ConditionalRequest
         $openId = $this->logger->open(new ConditionalRequestContext($ifNoneMatch));
         $start = hrtime(true);
         try {
-            $hit = $this->storage->hasEtagFor($ifNoneMatch, $uri);
+            $hit = $this->validate($ifNoneMatch, $uri);
         } catch (CacheStoreException $e) {
             // The same decision as the unscoped answer, against the URI that was asked for.
             $cause = $e->getPrevious() ?? $e;

@@ -121,7 +121,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
     #[Override]
     public function hasEtagFor(string $etag, AbstractUri $uri): bool
     {
-        return $this->findEtag($etag, $this->identityFactory->locator($uri));
+        return $this->validatedEntry($etag, $uri) !== null;
     }
 
     /**
@@ -130,19 +130,22 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
     #[Override]
     public function hasEtag(string $etag): bool
     {
-        return $this->findEtag($etag, null);
+        return $this->validatedEntry($etag) !== null;
     }
 
     /**
-     * Does the entry this request would be served from still carry this validator?
+     * The entry this request would be served from, when it still carries one of these validators
      *
      * A validator is "K.H". K and the request's vary values name the entry, so one read decides,
-     * and another variant's validator finds this request's entry, not its own. $locator, when
-     * given, is the K of the URI asked for.
+     * and another variant's validator finds this request's entry, not its own. With $uri, only a
+     * validator issued for that URI is looked up.
+     *
+     * @internal
      */
-    private function findEtag(string $etag, string|null $locator): bool
+    public function validatedEntry(string $ifNoneMatch, AbstractUri|null $uri = null): ResourceState|null
     {
-        foreach (array_unique(EntityTags::of($etag)) as $opaqueTag) {
+        $locator = $uri === null ? null : $this->identityFactory->locator($uri);
+        foreach (array_unique(EntityTags::of($ifNoneMatch)) as $opaqueTag) {
             $entryLocator = $this->identityFactory->locatorOf($opaqueTag);
             if ($entryLocator === null || ($locator !== null && $entryLocator !== $locator)) {
                 continue;
@@ -152,11 +155,11 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
             $state = $this->guard(fn () => $this->roPool->getItem($key))->get();
             assert($state instanceof ResourceState || $state === null);
             if (EntityTags::of($state?->headers[Header::ETAG] ?? '') === [$opaqueTag]) {
-                return true;
+                return $state;
             }
         }
 
-        return false;
+        return null;
     }
 
     /**
