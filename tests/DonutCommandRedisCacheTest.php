@@ -38,9 +38,8 @@ class DonutCommandRedisCacheTest extends DonutCommandInterceptorTest
         // Override with Redis-backed instances. parent::setUp() assigns the same
         // properties from a non-Redis module, so it must run first.
         // StorageRedisDsnModule binds the RedisTagAwareAdapter pools consumed by
-        // ResourceStorage; the deprecated StorageRedisModule does not. No ETag pool of its own:
-        // the HttpCache below is restored from a serialized copy, and an in-process pool would
-        // come back empty, so the ETags share the Redis pool as they do under this module.
+        // ResourceStorage; the deprecated StorageRedisModule does not. The HttpCache below is
+        // restored from a serialized copy and reads the ETags from the entries in that Redis pool.
         $namespace = 'FakeVendor\HelloWorld';
         $module = ModuleFactory::getInstance($namespace);
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));

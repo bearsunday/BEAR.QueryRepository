@@ -29,7 +29,6 @@ meet in an entry can be traced to the thing it names in your application.
 | In the log | Is | Where you meet it in your app |
 |---|---|---|
 | `roPool` | the **R**esource **O**bject pool: the store holding cached bodies, views and donut templates | the adapter you bind with `#[ResourceObjectPool]` |
-| `etagPool` | the store holding validators, keyed by ETag | the adapter you bind with `#[EtagPool]` |
 | `tags` | the invalidation namespace an entry is stored under — surrogate keys | `Header::SURROGATE_KEY`, and `UriTagInterface` for a URI turned into a tag |
 | a URI tag | one resource's URI as a tag, which is also the surrogate key its parents carry | `($this->uriTag)(new Uri('app://self/foo'))` |
 | `etag` | the entity-tag of a representation: a validator, not a key | the `ETag` response header |
@@ -41,7 +40,7 @@ meet in an entry can be traced to the thing it names in your application.
 | `sMaxAge` | the shared-cache lifetime a write asked the CDN for | `DonutRepositoryInterface::putStatic($ro, ttl: …, sMaxAge: …)` |
 | a scope, an event, a close | the three node kinds of the tree, described next | — (a log-only distinction) |
 
-`roPool` and `etagPool` name **pools**; `layer` names **the store that answered a lookup**. A
+`roPool` names **a pool**; `layer` names **the store that answered a lookup**. A
 `get` closing `cache_hit{layer: resource}` says the resource store answered; an `invalidate`
 reporting `roPool: invalidated` says that store dropped the tags. One is a target of invalidation,
 the other an outcome of a lookup.
@@ -94,7 +93,6 @@ operation inside a GET or a command is an ordinary event there instead.
 | `cache_policy` | `uri`, `expiry`, `expirySecond`, `expiryAt`, `resolvedTtl` | what the resource declared about its lifetime, and what that resolved to |
 | `save_value` | `uri`, `tags`, `requestedTtl`, `saved` | the body was offered to the pool |
 | `save_view` | `uri`, `tags`, `requestedTtl`, `saved` | body + rendered view were offered |
-| `save_etag` | `uri`, `etag`, `tags`, `requestedTtl`, `saved` | the validator was offered to the ETag pool |
 | `save_donut` | `uri`, `tags`, `requestedTtl`, `saved` | the donut template was offered |
 | `save_donut_view` | `uri`, `tags`, `requestedTtl`, `saved` | the recomposed donut view was offered |
 | `put_donut` | `uri`, `requestedTtl`, `sMaxAge` | a donut write was requested, with the lifetime asked for |
@@ -102,8 +100,8 @@ operation inside a GET or a command is an ordinary event there instead.
 | `cdn_headers` | `uri`, `headers`, `surrogateKeys` | the CDN-facing headers the response actually carried |
 | `depends_on` | `parent`, `child`, `childTags` | one dependency edge: the child's tags were added to the parent. A `#[Cacheable]` put records one for each child that carries tags, and so does a donut page write for a data dependency (a child whose `onGet()` reads it) that carries tags; a hole has not run yet and records `dependency_skipped` instead. A `CacheDependencyInterface::depends()` call while a donut page renders, from a template helper for example, records one between `put_donut` and the `save_*` events. A child that ran and declares `#[DependsOn]`, itself or in a request it embeds and ran, records one whatever its code, so its own URI tag reaches the parent; each declared tag appears in `childTags` and in the `tags` of the parent's `save_*` events |
 | `dependency_skipped` | `parent`, `child`, `reason` | a cached parent's write (a `#[Cacheable]` put or a donut page write) left an embedded request at the top level of the body out of its dependencies: the child's tags are not added to the stored value or donut template. A hole's tags still reach a `#[CacheableResponse]` view when the hole renders. A request in a nested array is not seen and records nothing |
-| `pre_write_cleanup` | `uri` | the writer is about to clear the entry it will rewrite |
-| `invalidate` | `tags`, `roPool`, `etagPool`, `cdn`, `durationMs` | tags were invalidated, with a result per target |
+| `pre_write_cleanup` | `uri` | the writer found a stored entry where it writes and is about to clear it; a write into an empty slot records none |
+| `invalidate` | `tags`, `roPool`, `cdn`, `durationMs` | tags were invalidated, with a result per target |
 | `purge` | `uri` | a URI-targeted bust was requested |
 | `put_skipped` | `uri`, `reason`, `code` | a miss was **not** followed by a write, and why |
 | `cache_hit` / `cache_miss` | `layer`, `durationMs` | an inner lookup, always `layer: donut` — whether the donut template was there. `durationMs` is null here: an event has no scope to measure |
@@ -117,9 +115,9 @@ Every outcome is a self-describing word, never a bare boolean — except `saved`
 
 | Field | Values | Reading |
 |---|---|---|
-| `layer` | `resource` \| `donut` \| `donut-view` \| `etag` | which store was asked. `resource` = the `#[Cacheable]` value/view store; `donut` = the donut template (only ever an event); `donut-view` = the recomposed donut page; `etag` = the ETag pool behind a conditional request |
+| `layer` | `resource` \| `donut` \| `donut-view` \| `etag` | which store was asked. `resource` = the `#[Cacheable]` value/view store; `donut` = the donut template (only ever an event); `donut-view` = the recomposed donut page; `etag` = the stored entry the validator of a conditional request names |
 | `saved` | `true` \| `false` | **`false` = the pool refused the write.** Nothing else in the system records this. `true` = the pool accepted it, not that it is kept: `NullAdapter`, the store when none is bound, accepts every write and keeps nothing, so every read is a miss |
-| `roPool` / `etagPool` | `invalidated` \| `failed` | per-pool invalidation result |
+| `roPool` | `invalidated` \| `failed` | the pool's invalidation result |
 | `cdn` | `purged` \| `failed` \| `skipped` | `skipped` = no purger configured (`NullPurger`), not "nothing to do" |
 | `operation` | `read` \| `write` | which side of the cache threw |
 | `reason` (`put_skipped`) | `etag-present` \| `error-code` \| `not-cacheable` \| `unstorable` | why no write happened. `etag-present` = the resource already carried an ETag, so the donut layer left it alone; `not-cacheable` = a donut page re-rendered from its template, which is never stored as a page; `error-code` carries the response `code`, and the threshold differs by path: `#[Cacheable]` skips any non-200 (a `203` appears here), a donut skips 4xx and above; `unstorable` = a producer marked the response during this request, or its `Cache-Control` says `no-store`/`private` other than the value its `#[HttpCache]`/`#[NoHttpCache]` declares (the declared value alone does not count) — the write is refused even though the code and type would otherwise allow it |
@@ -137,12 +135,12 @@ These are the ones you cannot guess from a field name.
 response code that path will not cache, a validator already present, a donut page served from its
 template, or a response marked `unstorable` for this request — the event names which one.
 
-**A donut write of a non-200 has no `save_etag`, and its `cdn_headers` carries no lifetime.**
+**A donut write of a non-200 stores no validator, and its `cdn_headers` carries no lifetime.**
 The donut threshold lets 2xx and 3xx through, and a validator is issued for 200 only, so a stored
-`204` or `301` has none to save - `save_donut_view` and `save_donut` appear without the
-`save_etag` that follows the view for a 200. The same rule holds the CDN lifetime back: only a 200
-is given one, so a `cdn_headers` for a stored non-200 lists the purge keys and no
-`CDN-Cache-Control`. Neither absence is a failed write.
+`204` or `301` answers without an `ETag` - `save_donut_view` and `save_donut` appear as they do
+for a 200. The same rule holds the CDN lifetime back: only a 200 is given one, so a `cdn_headers`
+for a stored non-200 lists the purge keys and no `CDN-Cache-Control`. Neither absence is a failed
+write.
 
 **`cache_miss` reports that the lookup produced no entry, and four different things produce it.**
 The miss itself does not say which:
@@ -185,18 +183,23 @@ work while responses stay correct. That is a `cache_error` rate to watch, not a 
 exception.
 
 **An `invalidate` is pre-write cleanup iff a `pre_write_cleanup` marker sits immediately before
-it in the same scope.** A writer clears the entry it is about to rewrite, which looks identical
-to a real bust. The marker is recorded at the source, so nothing is inferred from tag
-correlation. Any `invalidate` without the marker is a real invalidation.
+it in the same scope.** A writer that finds a stored entry where it writes clears it first, which
+looks identical to a real bust. The marker is recorded at the source, so nothing is inferred from
+tag correlation. Any `invalidate` without the marker is a real invalidation.
+
+**A write into an empty slot clears nothing and records neither.** That is the write after a miss,
+so the other variants of the URI and the parents that embed it stay stored. The marker shows only
+where a write lands on a stored entry: a direct `put()`/`putStatic()`/`putDonut()` over one, or the
+later of two requests that missed together. That cleanup invalidates the entry's URI tag, so the
+parents that embed it are dropped with it.
 
 **Dependency correctness is a set intersection.** Correlate the `tags` of a `save_*` with the
 `tags` of a later `invalidate`. Tags that do not meet mean the write left that entry standing —
 which is what serving stale looks like from the inside.
 
 **Which entry carries a child's tags is decided by how the parent uses the child.** A `#[Cacheable]`
-parent records a `depends_on` edge and puts the child's tags on its `save_value`/`save_view` and
-`save_etag`, so purging the child takes the parent's entry with it and the next read closes
-`cache_miss`. A donut parent (`#[CacheableResponse]` or `#[DonutCache]`) tells two uses of a child
+parent records a `depends_on` edge and puts the child's tags on its `save_value`/`save_view`,
+so purging the child takes the parent's entry with it and the next read closes `cache_miss`. A donut parent (`#[CacheableResponse]` or `#[DonutCache]`) tells two uses of a child
 apart. A *data dependency* that carries tags — one the page's `onGet()` already read — records the edge and puts its tags on
 the template and the view, so purging it drops both and the next read closes `cache_miss`. A *hole*
 — run by the template, not before the write — records no edge and puts its tags on the view only,
@@ -253,7 +256,8 @@ Correlate its `surrogateKeys` with an `invalidate`'s `tags` to see whether a pur
 what the edge holds.
 
 **A `conditional_request` closing `cache_hit{layer: etag}` is a 304** — the whole request
-answered from the ETag pool without running the resource. It is the only place a 304 appears.
+answered by the stored entry the validator names, without running the resource. It is the only
+place a 304 appears.
 Which question was asked depends on where the application put the check: `isNotModified($server)`
 runs before routing and can only ask whether the validator is alive somewhere, so a validator a
 client obtained for another URI satisfies it. `isNotModifiedFor($uri, $server)` asks whether the
@@ -267,18 +271,17 @@ kept makes the read a hit, and the recomposition is what makes the page fresh.
 
 ## Worked example
 
-Verbatim from `demo/run-dependency.php` — a PUT on a resource two other resources embed:
+From `demo/run-dependency.php`, with durations and null fields left out — a PUT on a resource two
+other resources embed:
 
 ```text
 command {"method": "onPut", "annotations": [], "source": "CommandInterceptor"}
-  get {"uri": "page://self/dep/level-three"}
-    pre_write_cleanup {"uri": "page://self/dep/level-three"}
-    invalidate {"tags": ["_dep_level-three_"], "roPool": "invalidated", "etagPool": "invalidated", "cdn": "skipped"}
-    save_value {"uri": "page://self/dep/level-three", "tags": ["_dep_level-three_"], "requestedTtl": 31536000, "saved": true}
-    save_etag {"uri": "page://self/dep/level-three", "tags": ["_dep_level-three_"], "requestedTtl": 31536000, "saved": true}
-    cache_miss {"layer": "resource"}
   purge {"uri": "page://self/dep/level-three"}
-  invalidate {"tags": ["_dep_level-three_"], "roPool": "invalidated", "etagPool": "invalidated", "cdn": "skipped"}
+  invalidate {"tags": ["_dep_level-three_", "grp-_dep_level-three_"], "roPool": "invalidated", "cdn": "skipped"}
+  get {"uri": "page://self/dep/level-three"}
+    cache_policy {"uri": "page://self/dep/level-three", "expiry": "never", "resolvedTtl": 31536000}
+    save_value {"uri": "page://self/dep/level-three", "tags": ["_dep_level-three_", "grp-_dep_level-three_"], "requestedTtl": 31536000, "saved": true}
+    cache_miss {"layer": "resource"}
   command_result {"code": 200}
 ```
 
@@ -289,17 +292,15 @@ Read it in order:
    attribute does choose one, each entry is `{"class": "…\\Annotation\\Refresh", "uri": "app://self/refresh-dest{?id}"}`:
    the class says which attribute, the uri says its target, and `{?id}` is the URI template whose
    parameters come from the command's own arguments.
-2. The nested `get` is that refresh, and it is a scope of its own: the resource really ran
-   (`cache_miss{layer: resource}`) and was stored (`saved: true` twice - the body, then the
-   validator, which is saved only once the body is).
-3. The **inner** `invalidate` follows a `pre_write_cleanup` for the same URI: that is the writer
-   clearing the entry it is about to rewrite, not a bust.
-4. The **outer** `invalidate` has no marker before it, so it is a real invalidation. Its tag is
-   the child's URI tag, which is also the surrogate key its two parents were stored under - this
-   single event is what makes the embedding resources stale.
-5. `cdn: skipped` twice: no purger is configured here. On a CDN-backed app these would read
-   `purged`, and a `failed` would mean the local pools were cleared while the edge was not.
-6. `command_result{code: 200}` closes it. A 4xx here with no `invalidate` above would be the
+2. The `invalidate` follows a `purge` and has no marker before it, so it is a real invalidation.
+   Its first tag is the child's URI tag, which is also the surrogate key its two parents were
+   stored under - this single event is what makes the embedding resources stale.
+3. The nested `get` is the refresh, and it is a scope of its own: the resource really ran
+   (`cache_miss{layer: resource}`) and was stored (`saved: true`). The purge had emptied the slot,
+   so the write records no `pre_write_cleanup` and no second `invalidate`.
+4. `cdn: skipped`: no purger is configured here. On a CDN-backed app it would read `purged`, and a
+   `failed` would mean the local pool was cleared while the edge was not.
+5. `command_result{code: 200}` closes it. A 4xx here with no `invalidate` above would be the
    record of a failed write correctly busting nothing.
 
 ## Finding the session

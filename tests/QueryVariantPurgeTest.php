@@ -190,7 +190,7 @@ class QueryVariantPurgeTest extends TestCase
         $this->assertSame($page2, (string) $this->resource->get('page://self/paged-list?page=2'));
     }
 
-    /** etagPool flavour: the bare URI's first fetch keeps the sibling's If-None-Match validator. */
+    /** The bare URI's first fetch keeps the sibling's If-None-Match validator. */
     public function testBareColdMissStoreDoesNotEvictSiblingVariantEtag(): void
     {
         assert($this->storage instanceof ScopedValidatorInterface);
@@ -202,8 +202,7 @@ class QueryVariantPurgeTest extends TestCase
         $this->assertTrue($this->storage->hasEtagFor($etag, $uri));
     }
 
-    /** A bare purge also invalidates the variant's If-None-Match validator; the etagPool builds its tag
-     *  list apart from getTags(). */
+    /** A bare purge also invalidates the variant's If-None-Match validator. */
     public function testBarePurgeInvalidatesQueryVariantEtag(): void
     {
         assert($this->storage instanceof ScopedValidatorInterface);
@@ -223,9 +222,9 @@ class QueryVariantPurgeTest extends TestCase
     {
         assert($this->storage instanceof ScopedValidatorInterface);
         $uri = new Uri('page://self/html/paged-static-donut');
-        $this->resource->get((string) $uri); // the interceptor's own putStatic() warms both pools
+        $this->resource->get((string) $uri); // the interceptor's own putStatic() stores the value and the donut template
 
-        // Drop just the value/etag entry, leaving the donut template behind, by reaching into
+        // Drop just the value entry, leaving the donut template behind, by reaching into
         // ResourceStorage's internal pool directly - no public API removes only one of the two.
         $roPool = (new ReflectionProperty($this->storage, 'roPool'))->getValue($this->storage);
         assert($roPool instanceof TagAwareAdapterInterface);
@@ -246,7 +245,7 @@ class QueryVariantPurgeTest extends TestCase
         $this->assertFalse($this->storage->hasEtagFor($etag, $uri));
     }
 
-    /** On the first, never-refreshed save, doPutStatic()'s SurrogateKeys tags the etagPool entry with the page's group tag. */
+    /** On the first, never-refreshed save, doPutStatic()'s SurrogateKeys tags the entry holding the validator with the page's group tag. */
     public function testDonutInitialSaveTagsTheEtagValidatorWithTheGroupTag(): void
     {
         assert($this->storage instanceof ScopedValidatorInterface);

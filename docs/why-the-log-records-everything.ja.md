@@ -39,11 +39,11 @@ surrogate key を追加せずに上書きしていた）。失われた子を pu
 しなければならない依存グラフは、目に見える形そのものです。
 
 **コンテキストはどれも 1 つの決定点です。** 語彙 — `cache_hit`、`cache_miss`、
-`depends_on`、`dependency_skipped`、5 種の `save_*`、`invalidate`、`purge`、`put_skipped`、
+`depends_on`、`dependency_skipped`、4 種の `save_*`、`invalidate`、`purge`、`put_skipped`、
 `cache_error`、`pre_write_cleanup`、`manual_*` スコープ群 — は冗長さでは
 ありません。このパッケージが持つ境界でキャッシュサブシステムが下す決定の列挙です
 （沈黙させている決定は [what-the-log-proves.ja.md](what-the-log-proves.ja.md) に一覧があります）。save
-コンテキストが 5 つあるのは、物理的に異なる書き込み経路が 5 つあるからです。
+コンテキストが 4 つあるのは、物理的に異なる書き込み経路が 4 つあるからです。
 統合すれば、デバッグの場面で必要になるまさにその区別が消えます。語彙の
 大きさはドメインについての事実であり、設計の欠陥ではありません。
 
@@ -60,7 +60,7 @@ surrogate key を追加せずに上書きしていた）。失われた子を pu
 扱います。保存先が持てない body（`serialize()` がクロージャを拒むなど）は
 スキップを生む代わりにリクエストを失敗させます。`cache_error{operation: write}`
 がその拒否を記録し、これは保持ポリシーが実際にセッションを残す「起きなかった
-効果」の一つです。無効化はターゲットごとの結果（`roPool`/`etagPool`:
+効果」の一つです。無効化はターゲットごとの結果（`roPool`:
 `invalidated`|`failed`、`cdn`: `purged`|`failed`|`skipped`）と所要時間を
 報告します。失敗した書き込みでも command スコープは開かれ、その 4xx とともに
 閉じられます — purge が*正しくスキップされた*ことを記録するのです。
@@ -98,11 +98,11 @@ CDN の HTTP API（fake で実行）と実時間での期限切れ（構成上�
 
 **人間。** `vendor/bin/stree` はセッションをツリーとして描画します
 （`php demo/run-dependency.php`）。イベントを持たない hit、
-cleanup-invalidate-save の連なりを伴う miss、依存エッジ、command のカスケード。
+自分が起こした保存を伴う miss、依存エッジ、command のカスケード。
 
 **テスト。** ツリーの形は `SemanticLogSchemaTest` とその仲間に固定されています
 — ログは回帰の防具も兼ねます。v1.16.1 のバグのクラスは、いま構造として見えます。
-`save_etag` の tags が子のすべてを蓄積している親スコープは、アサーション
+`save_value` の tags が子のすべてを蓄積している親スコープは、アサーション
 1 つの距離にあります。
 
 **機械。** ここが AI 時代のために作られた部分です。キャッシュを診断する
@@ -138,7 +138,7 @@ PHP-FPM では無償ですが、決して flush しないワーカーでは無�
 失敗 10%、足場 90%。健全なセッションには読むものがありません。
 
 **量。** 純ヒットのセッションは JSONL 1 行で 698 B。本番が意図して残すセッション
-（コマンド、cleanup-invalidate-save の連なり、手動呼び出し）はデモ全体で中央値
+（コマンド、invalidate-save の連なり、手動呼び出し）はデモ全体で中央値
 3.9 KB、最大 21 KB です。毎分 1000 リクエストで全セッションを書けば 1 日あたり
 約 1 GB。mutation と起きなかった効果だけに絞れば「書き込み率 × 3.9 KB」になり、
 リクエストの 1% が書き込みのアプリなら 1 日あたり約 56 MB です。保持ポリシーは

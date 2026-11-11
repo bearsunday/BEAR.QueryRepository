@@ -28,8 +28,8 @@ use function random_int;
  *
  *  - mutations: a `command` scope, a direct `manual_*` call, or a real tag invalidation. Writes
  *    decide the tags, TTLs and CDN keys every later read repeats.
- *  - effects that did not happen: `saved: false`, `invalidate` with `roPool`/`etagPool`/`cdn`
- *    `failed`, a `manual_*` result of `failed`, `cache_error{operation: write}` - a store or
+ *  - effects that did not happen: `saved: false`, `invalidate` with `roPool`/`cdn` `failed`,
+ *    a `manual_*` result of `failed`, `cache_error{operation: write}` - a store or
  *    an invalidation that was aborted.
  *  - a sample, when a rate is configured.
  *
@@ -184,9 +184,9 @@ final class KeepMutationsAndFailures implements RetentionPolicyInterface
             return true;
         }
 
-        // Every per-target outcome is a self-describing status word: `roPool`/`etagPool` are
-        // invalidated|failed and `cdn` is purged|failed|skipped - none of them are booleans.
-        foreach (['cdn', 'roPool', 'etagPool'] as $target) {
+        // Every per-target outcome is a self-describing status word: `roPool` is
+        // invalidated|failed and `cdn` is purged|failed|skipped - neither is a boolean.
+        foreach (['cdn', 'roPool'] as $target) {
             if (($context[$target] ?? null) === 'failed') {
                 return true;
             }

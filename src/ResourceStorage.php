@@ -177,7 +177,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         $start = hrtime(true);
         $roOk = $this->guard(fn (): bool => $this->roPool->invalidateTags($tags));
 
-        // The outcome is logged before the failure is raised, and the local pools are invalidated
+        // The outcome is logged before the failure is raised, and the local pool is invalidated
         // first, so a caller that retries does not double-invalidate.
         $purgerError = null;
         try {
@@ -189,7 +189,6 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         $result = new InvalidateContext(
             $tags,
             roPoolInvalidated: $roOk,
-            etagPoolInvalidated: true,
             cdnStatus: $purgerError === null ? $this->getCdnOkStatus() : 'failed',
             durationMs: round((hrtime(true) - $start) / 1_000_000, 3),
         );
@@ -235,7 +234,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
             // the reading rules teach); the close is the one-word verdict.
             $openId = $this->logger->open(new ManualInvalidateContext($tags));
             $this->logger->event($result);
-            $invalidated = $result->roPoolInvalidated && $result->etagPoolInvalidated && $result->cdnStatus !== 'failed';
+            $invalidated = $result->roPoolInvalidated && $result->cdnStatus !== 'failed';
             $this->logger->close(new ManualInvalidateResultContext($invalidated), $openId);
 
             return;
@@ -381,7 +380,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
      * raises arrives as CacheStoreException, and everything else keeps travelling.
      *
      * The CDN purge in invalidateTags() is raised by hand instead: its outcome is logged and the
-     * local pools invalidated before it leaves, which a wrapper around the call cannot order.
+     * local pool invalidated before it leaves, which a wrapper around the call cannot order.
      *
      * @param callable(): T $io
      *

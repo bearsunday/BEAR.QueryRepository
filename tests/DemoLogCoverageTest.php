@@ -13,7 +13,6 @@ use Symfony\Component\Process\Process;
 use function array_diff;
 use function array_flip;
 use function array_keys;
-use function array_values;
 use function basename;
 use function dirname;
 use function file_get_contents;
@@ -61,9 +60,6 @@ class DemoLogCoverageTest extends TestCase
      */
     private const COMMAND_PRODUCERS = ['CommandInterceptor', 'DonutCommandInterceptor', 'RefreshInterceptor'];
 
-    /** Vocabulary the package still declares but no longer emits */
-    private const NOT_EMITTED = ['save_etag', 'invalidate.etagPool=failed'];
-
     /** @var array<string, int> demo name => exit code */
     private static array $exitCodes = [];
 
@@ -105,7 +101,7 @@ class DemoLogCoverageTest extends TestCase
             $declared[] = is_string($type) ? $type : '';
         }
 
-        $missing = array_diff($declared, self::$types, self::NOT_EMITTED);
+        $missing = array_diff($declared, self::$types);
         $this->assertSame([], self::sorted($missing), 'context classes no demo provokes: ' . implode(', ', $missing));
     }
 
@@ -129,7 +125,6 @@ class DemoLogCoverageTest extends TestCase
             }
         }
 
-        $missing = array_values(array_diff($missing, self::NOT_EMITTED));
         $this->assertSame([], $missing, 'schema enum values no demo emits: ' . implode(', ', $missing));
     }
 

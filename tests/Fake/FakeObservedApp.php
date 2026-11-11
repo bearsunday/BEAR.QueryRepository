@@ -30,9 +30,9 @@ use function trim;
 use function ksort;
 
 /**
- * The fake app on array pools whose stored entries can be listed by key, with their tags
+ * The fake app on an array pool whose stored entries can be listed by key, with their tags
  *
- * Separate ArrayAdapters hold the tag versions, so the item adapters hold entries only.
+ * A separate ArrayAdapter holds the tag versions, so the item adapter holds entries only.
  */
 final class FakeObservedApp
 {
@@ -96,7 +96,7 @@ final class FakeObservedApp
     }
 
     /**
-     * Stored ETag-pool entries by the URI tag each was issued for: URI tag => [opaque-tag, tags]
+     * The ETag each stored entry holds, by the entry's URI tag: URI tag => [opaque-tag, tags]
      *
      * Keyed by URI tag because an opaque-tag hashes the woven class name, which differs between checkouts.
      *

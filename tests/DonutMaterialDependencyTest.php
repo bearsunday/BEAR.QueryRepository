@@ -227,8 +227,6 @@ class DonutMaterialDependencyTest extends TestCase
         $this->resource->get(self::PAGE_WITH_DONUT_MATERIAL);
         $tree = $this->flushAndValidate($this->logger);
 
-        $this->assertSame([], self::eventContextsJsonOf($tree, 'save_etag', self::DONUT_MATERIAL_CHILD), 'a #[DonutCache] child never gets an ETag - the only signal available is its Surrogate-Key');
-
         $edges = self::dependsOnEdgesFrom($tree, self::PAGE_WITH_DONUT_MATERIAL);
         $this->assertCount(1, $edges, 'the child was read in onGet(), so it is still classified as a material through its Surrogate-Key');
         $this->assertStringContainsString('"child":"' . self::DONUT_MATERIAL_CHILD . '"', $edges[0]);
@@ -236,6 +234,9 @@ class DonutMaterialDependencyTest extends TestCase
         $saveDonut = self::eventContextsJsonOf($tree, 'save_donut', self::PAGE_WITH_DONUT_MATERIAL);
         $this->assertCount(1, $saveDonut);
         $this->assertStringContainsString('"' . self::DONUT_MATERIAL_CHILD_URI_TAG . '"', $saveDonut[0], "the child's URI tag reaches the stored template");
+
+        $child = $this->resource->get(self::DONUT_MATERIAL_CHILD);
+        $this->assertArrayNotHasKey(Header::ETAG, $child->headers, 'a #[DonutCache] child never gets an ETag - the only signal available is its Surrogate-Key');
     }
 
     /**
@@ -265,7 +266,7 @@ class DonutMaterialDependencyTest extends TestCase
      * limit). The regression this pins is narrower: with the unset removed from
      * CacheDependency::depends(), the child's own write must keep its own key - losing it
      * would strip the key from both the child's independent cache entry and its own
-     * save_etag record.
+     * response.
      */
     public function testAChildTaggedThroughAHeaderDefaultKeepsItsOwnKeyAfterBeingMisreadAsAMaterial(): void
     {

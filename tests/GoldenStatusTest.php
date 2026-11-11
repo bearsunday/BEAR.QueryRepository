@@ -41,7 +41,7 @@ class GoldenStatusTest extends TestCase
 
     /**
      * @return array<string, array{string, int, array<string, list<string>>, list<string>, array<string, string>}>
-     *     uri, code, resource pool key => tags, URI tags in the ETag pool, response headers
+     *     uri, code, resource pool key => tags, URI tags of the entries holding an ETag, response headers
      */
     public static function donutProvider(): array
     {

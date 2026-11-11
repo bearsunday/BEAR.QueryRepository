@@ -9,7 +9,7 @@ A [CQRS](http://martinfowler.com/bliki/CQRS.html)-style read side for BEAR.Sunda
 
 - **The resource graph is the dependency graph**: a cached child taken in with `#[Embed]` becomes a dependency of the parent, and `#[DependsOn]` ties a resource to the URIs its `onGet()` arguments or its row classes name, without embedding each one.
 - **Writes invalidate**: a command (`onPut`, `onPatch`, ...) invalidates what it changes with `#[Purge]`, `#[Refresh]` or `#[RefreshCache]`, rather than waiting for expiry.
-- **One tag crosses every layer**: the origin cache, the ETag pool behind `304 Not Modified`, and the CDN's `Surrogate-Key` are invalidated by the same tags.
+- **One tag crosses every layer**: the origin cache, the validator behind `304 Not Modified`, and the CDN's `Surrogate-Key` are invalidated by the same tags.
 - **Three uses of a child**: a per-user hole (`#[DonutCache]`), a hole rebuilt on events (`#[CacheableResponse]`), and material the page reads.
 - **Verifiable**: the semantic log records each store, hit, dependency and invalidation.
 

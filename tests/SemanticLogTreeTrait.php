@@ -159,7 +159,7 @@ trait SemanticLogTreeTrait
      * JSON of every event (point) context whose type matches, depth-first, optionally for one `uri` only
      *
      * One type can be emitted for several URIs in one session - a parent and the children
-     * it embeds both `save_etag` - so a tag assertion has to name whose event it reads.
+     * it embeds both `save_value` - so a tag assertion has to name whose event it reads.
      *
      * @param array<string, mixed> $tree
      *

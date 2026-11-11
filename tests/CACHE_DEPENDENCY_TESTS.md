@@ -83,8 +83,8 @@ decided by the parent's cache declaration, not by the embed:
 
 | Parent declaration | Child tags recorded on | Parent's read after the child is purged |
 |---|---|---|
-| `#[Cacheable]` | `depends_on`, `save_value`/`save_view`, `save_etag` | `cache_miss{layer: resource}` |
-| `#[CacheableResponse]` | `save_etag`, `save_donut_view`, never `save_donut` | `cache_hit{layer: donut-view}` holding a `refresh_donut` |
+| `#[Cacheable]` | `depends_on`, `save_value`/`save_view` | `cache_miss{layer: resource}` |
+| `#[CacheableResponse]` | `save_donut_view`, never `save_donut` | `cache_hit{layer: donut-view}` holding a `refresh_donut` |
 | `#[DonutCache]` | `cdn_headers.surrogateKeys` only | unchanged: `refresh_donut` + `put_skipped{not-cacheable}` |
 
 **Tests:** `DonutDependencyEvidenceTest` — `testCacheableParentRecordsADependsOnEdge`,
@@ -144,11 +144,11 @@ Typed `AbstractContext` subclasses live in `src/Log/Context/` and each carries a
 | `cache_hit` / `cache_miss` (`layer`) | close/event | interceptors, `DonutRepository` | The lookup outcome (`layer`: resource / donut / donut-view) |
 | `command` (`method`/`annotations`/`source`) | open | `CommandInterceptor`, `DonutCommandInterceptor`, `RefreshInterceptor` (all via the shared `CommandContextFactory`) | A write scope; `source` names the producing interceptor, `annotations` its `#[Refresh]`/`#[Purge]` attributes (empty on the CacheableResponse path by design) |
 | `depends_on` (`parent`/`child`/`childTags`) | event | `CacheDependency::depends()` | A dependency-graph edge |
-| `save_value` / `save_view` / `save_etag` / `save_donut` / `save_donut_view` | event | `ResourceStorage` | What was stored, with `tags`, `ttl` (seconds until expiry; 0/null = no expiry set) and the `saved` outcome |
-| `pre_write_cleanup` (`uri`) | event | `QueryRepository::doPut()`, `DonutRepository::putStatic()`/`putDonut()` | Marker recorded by a writer right before it clears the entry it is about to rewrite: the `invalidate` immediately following it in the same scope is pre-write cleanup, not a real invalidation |
-| `invalidate` (`tags`/`roPool`/`etagPool`/`cdn`/`durationMs`) | event | `ResourceStorage::invalidateTags()` | Per-target outcome as status words: `roPool`/`etagPool` are `invalidated`\|`failed`; `cdn` is tri-state: `purged` (a configured purger ran), `failed` (the purge threw — fail-closed: local pools are invalidated first, then the exception propagates), `skipped` (NullPurger, no CDN configured). Pre-write cleanup vs real invalidation is recorded at the source via the `pre_write_cleanup` marker — see the flow example below |
+| `save_value` / `save_view` / `save_donut` / `save_donut_view` | event | `ResourceStorage` | What was stored, with `tags`, `ttl` (seconds until expiry; 0/null = no expiry set) and the `saved` outcome |
+| `pre_write_cleanup` (`uri`) | event | `QueryRepository::doPut()`, `DonutRepository::putStatic()`/`putDonut()` | Marker recorded by a writer right before it clears the entry it replaces: the `invalidate` immediately following it in the same scope is pre-write cleanup, not a real invalidation. A write into an empty slot - every miss - records neither |
+| `invalidate` (`tags`/`roPool`/`cdn`/`durationMs`) | event | `ResourceStorage::invalidateTags()` | Per-target outcome as status words: `roPool` is `invalidated`\|`failed`; `cdn` is tri-state: `purged` (a configured purger ran), `failed` (the purge threw — fail-closed: the local pool is invalidated first, then the exception propagates), `skipped` (NullPurger, no CDN configured). Pre-write cleanup vs real invalidation is recorded at the source via the `pre_write_cleanup` marker — see the flow example below |
 | `cdn_headers` (`uri`/`headers`/`surrogateKeys`) | event | `DonutRepository` (donut write and refresh paths) | The CDN-facing headers the response ended up with, read back after they are final: literal name => value pairs of the headers this package's setters manage (`CDN-Cache-Control`, `Surrogate-Control`, `Akamai-Cache-Control`, `Surrogate-Key`, `Edge-Cache-Tag`) — including the bound setter's default when no `sMaxAge` was requested, which the `put_donut` request fields alone cannot reveal. No lifetime header present = the response gave the CDN no lifetime directive (the `putDonut` kind); the CDN's own behavior is outside this log. `surrogateKeys` is the split key list a purge's tags must reach to drop the response at the edge; under Akamai it comes from `Edge-Cache-Tag` (the response carries no `Surrogate-Key`). A state-served hit replays the stored headers and emits no new event |
-| `conditional_request` (`ifNoneMatch`) | open | `HttpCache`, `CliHttpCache` (transfer boundary) | A conditional request presented a validator; the scope closes with the ETag pool's answer as `cache_hit`/`cache_miss` at layer `etag`. A hit is the 304 decision — the whole request served without running the resource. A direct `ResourceStorage::hasEtag()` call records nothing: the semantic event is the answered conditional request, owned by the transfer boundary |
+| `conditional_request` (`ifNoneMatch`) | open | `HttpCache`, `CliHttpCache` (transfer boundary) | A conditional request presented a validator; the scope closes as `cache_hit`/`cache_miss` at layer `etag`, answered by the entry the validator names. A hit is the 304 decision — the whole request served without running the resource. A direct `ResourceStorage::hasEtag()` call records nothing: the semantic event is the answered conditional request, owned by the transfer boundary |
 | `purge` | event | `QueryRepository::purge()` | An explicit purge request |
 | `put_skipped` (`uri`/`reason`[/`code`]) | event | `CacheInterceptor`, `AbstractDonutCacheInterceptor`, `DonutRepository` | A miss was not followed by a put (`reason`: `etag-present` / `error-code` with the actual response `code` / `not-cacheable` for a donut page served from its template) |
 | `cache_error` (`uri`/`operation`/`error`/`exceptionClass`) | event | `CacheInterceptor`, `AbstractDonutCacheInterceptor` | A failure raised on the cache read/write path — the pool itself (e.g. cache server down) or any work the store performs (rendering a view, purging a CDN); `operation` is the failing side (`read` / `write`) and `exceptionClass` the throwable, so a pool outage is distinguishable from a rendering bug; a `cache_miss` after a read-side outage is a degraded cache, not a cold one |
@@ -166,45 +166,39 @@ Typed `AbstractContext` subclasses live in `src/Log/Context/` and each carries a
 `Stree\TreeRenderer`. The 3-level chain appears as native nesting — the embed
 structure is the log structure, no reconstruction. Within a scope the JSON
 interleaves its nested events and opens in one `log` list, in the order they
-were recorded; the emission order is: the leading `pre_write_cleanup` marker
-and its `invalidate` (every `QueryRepository::doPut()` records the marker, then
-deleteEtags, before it stores), then the nested child GET scopes run to
-completion, then the parent's `depends_on` / `save_*` (the parent materializes
-its embeds before it can register and store):
+were recorded; the emission order is: the nested child GET scopes run to
+completion, then the parent's `depends_on` / `cache_policy` / `save_*` (the
+parent materializes its embeds before it can register and store):
 
 ```text
 get uri=page://self/dep/level-one
-├── pre_write_cleanup uri=.../level-one [event]
-├── invalidate tags=[_dep_level-one_] [event]            (marker-preceded: cleanup)
 ├── get uri=page://self/dep/level-two
-│   ├── pre_write_cleanup uri=.../level-two [event]
-│   ├── invalidate tags=[_dep_level-two_] [event]        (marker-preceded: cleanup)
 │   ├── get uri=page://self/dep/level-three
-│   │   ├── pre_write_cleanup → invalidate → save_value → save_etag [events]
+│   │   ├── cache_policy → save_value [events]
 │   │   └── (close) cache_miss layer=resource
 │   ├── depends_on parent=.../level-two child=.../level-three [event]
-│   ├── save_value → save_etag [events]
+│   ├── cache_policy → save_value [events]
 │   └── (close) cache_miss layer=resource
-├── depends_on parent=.../level-one child=.../level-two childTags=[_dep_level-two_, _dep_level-three_] [event]
-├── save_value uri=.../level-one tags=[..., _dep_level-three_] ttl=31536000 saved=true [event]
-├── save_etag uri=.../level-one tags=[...] saved=true [event]
+├── depends_on parent=.../level-one child=.../level-two childTags=[_dep_level-two_, ..., _dep_level-three_, ...] [event]
+├── cache_policy uri=.../level-one expiry=never resolvedTtl=31536000 [event]
+├── save_value uri=.../level-one tags=[..., _dep_level-three_, ...] requestedTtl=31536000 saved=true [event]
 └── (close) cache_miss layer=resource
 ```
 
-The leading `invalidate` uses the resource's own URI tag, which is also its
-parents' surrogate key — so a child refill visibly purges the parent entry
-before both are rebuilt, by design.
+A miss writes into an empty slot, so it records no `invalidate`: the other
+variants of the URI and the parents that embed it stay stored.
 
 Pre-write cleanup vs real invalidation is recorded at the source, not
 inferred: an `invalidate` is pre-write cleanup iff the event immediately
 preceding it in the same scope's event stream is a `pre_write_cleanup` marker.
 The writers emit the marker themselves — `QueryRepository::doPut()` and
 `DonutRepository::putStatic()`/`putDonut()` record it right before clearing
-the entry they are about to rewrite — so the classification needs no tag
-correlation and has no undecidable case. Any `invalidate` without the marker
-is a real invalidation; a `#[Refresh]` command shows both shapes: the purge's
-invalidate has no marker (real), the re-put's own deleteEtag is
-marker-preceded (cleanup).
+the entry they replace — so the classification needs no tag correlation and
+has no undecidable case. The marker appears only where a write lands on a
+stored entry: a direct `put()`/`putStatic()`/`putDonut()` over one, or the
+later of two requests that missed together. Any `invalidate` without the
+marker is a real invalidation; a `#[Refresh]` command shows that shape alone:
+its purge empties the slot, so the re-put that follows replaces nothing.
 The tree JSON interleaves a scope's events with its nested scopes in one `log`
 list, in record order: within one scope events are time-ordered, and the
 boundary with a nested scope's own contents carries a position too — so the
@@ -235,7 +229,7 @@ against the core schemas bundled with the logger.
 `DemoLogCoverageTest` keeps the demos honest as the readable specification of the
 log: it runs all four `demo/*.php` scripts and fails unless the union of their
 sessions still emits every context class in `src/Log/Context/`, every `enum` value
-declared in `docs/schemas/context/`, both `saved` outcomes for all five save
+declared in `docs/schemas/context/`, both `saved` outcomes for all four save
 contexts, and all three built-in `command.source` producers. Adding a context type
 or an enum value therefore forces a demo scenario that provokes it. A clean exit
 from each script is asserted too, which is also its own offline schema validation.
@@ -254,7 +248,7 @@ pins resilience:
 
 | Test | Verifies |
 |------|----------|
-| `testInvalidateTagsWithNullPurgerLogsCdnSkipped` | With the default NullPurger (no CDN) `cdn` is `skipped`; `roPool`/`etagPool` are `invalidated`, `durationMs` is recorded |
+| `testInvalidateTagsWithNullPurgerLogsCdnSkipped` | With the default NullPurger (no CDN) `cdn` is `skipped`; `roPool` is `invalidated`, `durationMs` is recorded |
 | `testInvalidateTagsLogsCdnPurgedWithConfiguredPurger` | A configured purger that runs without error logs `cdn` = `purged` |
 | `testInvalidateTagsFailsClosedWhenPurgerFails` | A CDN purger outage is logged as `cdn=failed` after local invalidation, then the purge exception propagates (fail-closed) |
 | `SafeSemanticLoggerTest::testLifoViolationIsRecordedAsDiagnosticAndFlushRecovers` | A LIFO violation is recorded as a `close_id_mismatch` diagnostic with the tree preserved (nothing discarded); flush always resets, so the next session logs normally |

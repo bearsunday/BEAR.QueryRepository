@@ -144,7 +144,7 @@ class CacheDependencyTest extends TestCase
         $this->assertNull($this->repository->get(new Uri('page://self/dep/level-one')));
         $this->assertNull($this->repository->get(new Uri('page://self/dep/level-two')));
         // The written resource is purged and refreshed right away by the command's GET, so
-        // unlike its parents it is cached again right after the write — in both pools.
+        // unlike its parents it is cached again right after the write, validator included.
         $three = $this->repository->get(new Uri('page://self/dep/level-three'));
         $this->assertInstanceOf(ResourceState::class, $three);
         $this->assertTrue($this->storage->hasEtag($three->headers[Header::ETAG]));

@@ -7,7 +7,6 @@ namespace BEAR\QueryRepository;
 use BEAR\QueryRepository\Log\Context\InvalidateContext;
 use BEAR\QueryRepository\Log\Context\SaveDonutContext;
 use BEAR\QueryRepository\Log\Context\SaveDonutViewContext;
-use BEAR\QueryRepository\Log\Context\SaveEtagContext;
 use BEAR\QueryRepository\Log\Context\SaveValueContext;
 use BEAR\QueryRepository\Log\Context\SaveViewContext;
 use BEAR\Resource\Uri;
@@ -24,6 +23,7 @@ use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 
+use function array_keys;
 use function assert;
 use function serialize;
 use function str_repeat;
@@ -137,7 +137,6 @@ class ResourceStorageTest extends TestCase
         $context = $logger->events[0];
         assert($context instanceof InvalidateContext);
         $this->assertTrue($context->roPoolInvalidated);
-        $this->assertTrue($context->etagPoolInvalidated);
         // The default NullPurger is a no-op: the CDN side is "skipped", not "purged" —
         // nothing was purged, but nothing was meant to be.
         $this->assertSame('skipped', $context->cdnStatus);
@@ -175,7 +174,7 @@ class ResourceStorageTest extends TestCase
         $storage = self::getResourceStorageInstance($logger, new FakeThrowingPurger());
 
         // The CDN purge is fail-closed: a purge failure propagates so the write does not
-        // silently leave stale CDN content. The local pools are invalidated first and the
+        // silently leave stale CDN content. The local pool is invalidated first and the
         // outcome is logged as cdn=failed before the exception surfaces.
         try {
             $storage->invalidateTags(['_user_']);
@@ -187,7 +186,6 @@ class ResourceStorageTest extends TestCase
         $context = $logger->events[0];
         assert($context instanceof InvalidateContext);
         $this->assertTrue($context->roPoolInvalidated);
-        $this->assertTrue($context->etagPoolInvalidated);
         $this->assertSame('failed', $context->cdnStatus);
         $this->assertSame('failed', $context->jsonSerialize()['cdn']);
     }
@@ -388,7 +386,6 @@ class ResourceStorageTest extends TestCase
         assert(
             $event instanceof SaveValueContext
             || $event instanceof SaveViewContext
-            || $event instanceof SaveEtagContext
             || $event instanceof SaveDonutViewContext
             || $event instanceof SaveDonutContext,
         );
@@ -396,24 +393,18 @@ class ResourceStorageTest extends TestCase
         return $event->requestedTtl;
     }
 
-    public function testInvalidateTagsFailsWhenOnlyOnePoolRefuses(): void
+    public function testInvalidateTagsFailsWhenThePoolRefuses(): void
     {
         $logger = new RecordingSemanticLogger();
         $refusing = new FakeRefusingPool(new TagAwareAdapter(new ArrayAdapter()), refuseSave: false, refuseInvalidation: true);
         $storage = self::getResourceStorageInstance($logger, roPool: $refusing);
 
-        // Fail-closed: one pool still holding the entry means the resource is not
-        // invalidated, however well the other pool did.
         $this->assertFalse($storage->invalidateTags(['_user_']));
 
         $context = $logger->events[0];
         assert($context instanceof InvalidateContext);
         $this->assertFalse($context->roPoolInvalidated);
-        $this->assertTrue($context->etagPoolInvalidated);
-        // Both status words in one event: the pool that kept the entry must not read as
-        // invalidated, and the one that dropped it must not read as failed
-        $json = $context->jsonSerialize();
-        $this->assertSame('failed', $json['roPool']);
-        $this->assertSame('invalidated', $json['etagPool']);
+        $this->assertSame(['tags', 'roPool', 'cdn', 'durationMs'], array_keys($context->jsonSerialize()));
+        $this->assertSame('failed', $context->jsonSerialize()['roPool']);
     }
 }

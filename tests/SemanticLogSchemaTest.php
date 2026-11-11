@@ -287,7 +287,7 @@ class SemanticLogSchemaTest extends TestCase
         $storage = $injector->getInstance(ResourceStorageInterface::class);
         $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
-        // Local pools dropped the tags but the CDN purge failed: fail-closed, and the
+        // The local pool dropped the tags but the CDN purge failed: fail-closed, and the
         // verdict must say failed - "invalidated" while the CDN still serves the content
         // would be the close contradicting its own nested event.
         try {

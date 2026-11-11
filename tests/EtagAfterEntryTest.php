@@ -6,7 +6,6 @@ namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Log\Context\RefreshDonutContext;
 use BEAR\RepositoryModule\Annotation\CacheLog;
-use BEAR\RepositoryModule\Annotation\EtagPool;
 use BEAR\RepositoryModule\Annotation\HttpCache;
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\Resource\ResourceInterface;
@@ -34,8 +33,6 @@ class EtagAfterEntryTest extends TestCase
         $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
         if ($refuseEntries) {
-            // The ETag pool falls back to the entry pool when unbound; a pool of its own keeps
-            // accepting while the entry pool refuses, as a separate ETag store does in production.
             $module->override(new class ($refusedKeyPrefix) extends AbstractModule {
                 public function __construct(private readonly string $refusedKeyPrefix)
                 {
@@ -47,7 +44,6 @@ class EtagAfterEntryTest extends TestCase
                 {
                     $pool = new FakeRefusingPool(new TagAwareAdapter(new ArrayAdapter()), refusedKeyPrefix: $this->refusedKeyPrefix);
                     $this->bind(TagAwareAdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->toInstance($pool);
-                    $this->bind(TagAwareAdapterInterface::class)->annotatedWith(EtagPool::class)->toInstance(new TagAwareAdapter(new ArrayAdapter()));
                 }
             });
         }
