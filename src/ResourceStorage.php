@@ -46,8 +46,6 @@ use function trim;
  *     etagProvider: ProviderInterface<TagAwareAdapterInterface>,
  *     serverContext: ServerContextInterface,
  *     baseUriTag: BaseUriTagInterface,
- *     identityFactory: CacheIdentityFactory,
- *     cacheTags: CacheTags,
  * }
  * @internal
  */
@@ -448,8 +446,6 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
             'etagProvider' => $this->etagPoolProvider,
             'serverContext' => $this->serverContext,
             'baseUriTag' => $this->baseUriTag,
-            'identityFactory' => $this->identityFactory,
-            'cacheTags' => $this->cacheTags,
         ];
     }
 
@@ -465,12 +461,13 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         $this->uriTag = $data['uriTag'];
         $this->saver = $data['saver'];
         $this->serverContext = $data['serverContext'];
-        $this->identityFactory = $data['identityFactory'];
-        $this->cacheTags = $data['cacheTags'];
-        // Stateless, so rebuilt rather than carried: left out of the payload it stays
-        // uninitialized, and the first save after a compiled-injector restore throws.
-        $this->evaluateBody = new ResourceBodyEvaluator();
         $this->baseUriTag = $data['baseUriTag'];
+        // Derived from the dependencies above or stateless, so rebuilt rather than carried: left
+        // out of the payload they stay uninitialized, and the first save after a
+        // compiled-injector restore throws.
+        $this->identityFactory = new CacheIdentityFactory($this->serverContext);
+        $this->cacheTags = new CacheTags($this->uriTag, $this->baseUriTag);
+        $this->evaluateBody = new ResourceBodyEvaluator();
         $this->initializePools($data['roProvider'], $data['etagProvider']);
     }
 }
