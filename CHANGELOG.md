@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - The log sink hands each flushed session to every `LogWriterInterface` an application adds with `MultiBinder::newInstance($this, LogWriterInterface::class)->addBinding()`, after the bound writer. Bind the added class as well: a compiled injector builds only bound classes (ray-di/Ray.Compiler#148).
+- `#[DependsOn(uri: ...)]` tags a stored resource with the URI it names, expanded from the `onGet()` arguments when on `onGet()` or from the public properties of each instance in the body when on a row class, so invalidating that URI also invalidates the resource and every page that embeds it. Tag array rows with `UriTagInterface::fromAssoc()`; a declaration that cannot expand fails the GET with `BEAR\QueryRepository\Exception\DependsOnNotExpandable`.
 
 ### Changed
 - Requires `ray/di` 2.23 or later: the empty writer set the log modules declare needs it.
@@ -32,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `StorageMemcachedEtagModule` now keeps ETags in the Memcached servers it is given; since 1.11.0 they went to the resource pool, and next to `StorageMemcachedModule` both pools used whichever servers were installed last. Check that those servers are reachable before deploying: ETags (and, depending on install order, cached resources) start empty there.
 - A `Stringable` query value, such as a ULID value object, is now part of the cache key and URI tag; it was dropped, so resources requested with different values shared one entry and served each other's content, and a `#[Purge]`/`#[Refresh]` that writes the value as a string missed it. Nothing to change: entries stored after the deploy are keyed and tagged by the value.
 - A `#[Purge]`/`#[Refresh]` on a write of a resource that is not `#[Cacheable]`, called directly on an object taken from the injector (it has no URI), now expands its template from the write's body and arguments instead of failing with a `TypeError` after the write ran.
+- With an application's own `UriTagInterface`, a `#[CacheableResponse]` or `#[DonutCache]` page now carries its own URI tag and its holes' tags in that format, the one a purge sends; they were in the default format, so a purge could miss the page.
 
 ## [1.19.1] - 2026-11-07
 

@@ -7,6 +7,8 @@ namespace BEAR\QueryRepository;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
+use FakeVendor\HelloWorld\Entity\Ulid;
+use FakeVendor\HelloWorld\Resource\App\Rows\Ca;
 use Madapaja\TwigModule\TwigModule;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
@@ -91,5 +93,17 @@ class SurrogateKeysTest extends TestCase
         $ro->uri = $uri;
         $etags->setSurrogateHeader($ro);
         $this->assertSame('shared-tag _foo_ _foo1_ grp-_foo1_', $ro->headers[Header::SURROGATE_KEY]);
+    }
+
+    public function testEmbeddedRequestsThatDifferOnlyInStringableQueryValuesKeepTheirOwnDeclarations(): void
+    {
+        $keys = new SurrogateKeys(new Uri('page://self/page'));
+        foreach (['c1', 'c2'] as $channelId) {
+            $child = new Ca();
+            $child->uri = new Uri('app://self/rows/ca', ['channelId' => new Ulid($channelId)]);
+            $child->body = [];
+            $keys->embedded($child);
+            $this->assertSame((new UriTag())(new Uri('app://self/rows/taxonomy', ['ulid' => $channelId])), $child->headers[Header::SURROGATE_KEY]);
+        }
     }
 }

@@ -119,6 +119,57 @@ A purge also reaches the query variants of the URI it names that differ from it 
 - A required key keeps the spelling the request used. A purge reaches a GET's entries only when it spells each required key the same way: `?user_id=1` reaches `?user_id=1&page=2`, `?userId=1` does not. The automatic purge after a write uses the parameter name (`userId`).
 - A non-200 GET response invalidates only its own URI's tag; cached variants stay.
 
+### #[DependsOn]
+
+Tags the stored resource with the URI a template expands to, so a write to that URI invalidates it and every page that embeds it, without an `#[Embed]` per row. It reads its values in one of two places.
+
+On a resource's `onGet()`, every template variable must be an `onGet()` parameter; the URI expands once, from the call's arguments:
+
+```php
+use BEAR\RepositoryModule\Annotation\DependsOn;
+
+#[Cacheable]
+class ChannelEntries extends ResourceObject
+{
+    #[DependsOn(uri: 'app://self/taxonomy?ulid={channelId}')]
+    public function onGet(string $channelId): static
+    {
+        $this->body = ['entries' => $this->query->entries($channelId)]; // list<Entry>
+
+        return $this;
+    }
+}
+```
+
+On a row class, the variables are its public properties; each instance of the class found in the stored body expands it once:
+
+```php
+#[DependsOn(uri: 'app://self/article?ulid={ulid}')]
+#[DependsOn(uri: 'app://self/taxonomy?ulid={seriesId}')]
+final class Entry
+{
+    public function __construct(
+        public readonly string $ulid,
+        public readonly string|null $seriesId,
+    ) {
+    }
+}
+```
+
+- The arguments are read back from the request query, under the parameter name or its snake_case form, then from the parameter default. A value bound by `#[ResourceParam]` or another provider is not in the query: with a default, the URI silently expands from the default instead of the bound value; without one, the declaration fails. A query value is the string the request sent, so an `int` argument expands as written and a `BackedEnum` default fails as not scalar.
+- The body is walked through arrays and public properties only: rows inside a `Traversable` (`ArrayObject`, a collection, a `Generator`) are not found. An embedded request or resource object is not entered: it is read as a dependency of its own. Each object is read once, so rows that refer to each other are safe.
+- Each row adds a tag to the `Surrogate-Key` header: 1,000 rows make it about 24 KB, beyond Fastly's 16,384-byte header limit.
+- A declaration on a parent class, or on the `onGet()` a child class overrides, applies as well.
+- A `Stringable` value expands as its string. A `null` value names no URI and adds no tag.
+- Rows held as arrays have no class to declare on: tag them by hand with `UriTagInterface::fromAssoc()`. A URI tagged both ways is tagged once.
+- `#[DependsOn]` only adds the tag. The URI is invalidated by the named resource's own write when it is `#[Cacheable]`, or by a `#[Purge]`/`#[Refresh]` that names it.
+
+A declaration that cannot expand fails the GET with `BEAR\QueryRepository\Exception\DependsOnNotExpandable`, and nothing is stored. Its `reason` is `no '<variable>'` (no such argument or public property), `'<variable>' is not an onGet() parameter`, `'<variable>' is <type>` (neither scalar, `Stringable` nor `null`) or `declared on a resource class` (declare it on `onGet()`).
+
+A row added to a list is caught by the write that adds it, not by the row tags: that write must invalidate the list's own URI, or a URI the list's `onGet()` declares. The list's own URI reaches a page only when the page embeds the list directly; below an uncached resource in between, only declared tags reach the page, so declare on the list's `onGet()` a URI the adding write invalidates. A list with no rows carries no row tag either, so the same applies.
+
+An embedded child need not be cached for its declarations to reach the page. When the page is stored, the declarations of each embedded child that ran, and of the requests those embed and ran, are read whatever their response code. A request that answered 200 without setting a body cannot be told from one that has not run, so its declarations are not read: an `onGet()` that declares returns `[]` or a 404 when it has no rows; a child rendered later as a hole adds its declarations to the page's `Surrogate-Key`. A child with a declaration becomes a dependency of the page, carrying its own URI tag; an uncached child further down passes on only its declared tags.
+
 ## Modules
 
 ### QueryRepositoryModule
@@ -175,7 +226,7 @@ A `#[Cacheable]` response is stored with its client `Cache-Control`: `max-age` f
 
 ## Cache Dependencies
 
-A child taken in with `#[Embed]` becomes a dependency of its parent when the child carries an ETag or a `Surrogate-Key`, which a cache attribute on the child gives it: invalidating the child then invalidates the parent. A `#[Cacheable]` parent and a donut page apply the same test. A child carrying neither header adds no dependency, so purging its URI leaves the parent as stored. A value fetched eagerly in `onGet()` (`$this->resource->get(...)`) is not an embedded request and is not tracked.
+A child taken in with `#[Embed]` becomes a dependency of its parent when the child carries an ETag or a `Surrogate-Key` - from a cache attribute, or from `#[DependsOn]` - or when it, or a request it embeds and ran, declares `#[DependsOn]`: invalidating the child, or a URI it declares, then invalidates the parent. A `#[Cacheable]` parent and a donut page apply the same test. A child carrying neither header and no `#[DependsOn]` declaration adds no dependency, so purging its URI leaves the parent as stored. A value fetched eagerly in `onGet()` (`$this->resource->get(...)`) is not an embedded request and is not tracked.
 
 ```php
 #[Cacheable]
@@ -200,6 +251,8 @@ A child a cached parent embeds is safe in one of two shapes:
 - **A hole**: on a `#[CacheableResponse]`/`#[DonutCache]` page, a child the page only renders. It is never part of the stored template, so per-user or per-request values belong here.
 
 An untagged data dependency - a child the parent reads or stores that carries no tag - is the one shape that goes stale: the parent's cache holds the child's data, while a change to the child never reaches the parent before the parent's own TTL. Caching the parent caches such a child too, even though the child declares no cache. While it stays at the top level of the body, the log records it as `dependency_skipped` (reason `no_etag_or_surrogate_key`, or `no_body` when its run left a null body); make the child cacheable or render it as a hole.
+
+A list of rows read directly - not embedded one by one - ties itself to each row's URI the same way: `#[DependsOn]` under Attributes above tags the list's own `Surrogate-Key`, without an `#[Embed]` for each row.
 
 Dependencies and holes are found where `#[Embed]` puts a child: at the top level of the body. A request the page moves into a nested array, replaces or `unset()`s before the write is not seen. On a `#[CacheableResponse]`/`#[DonutCache]` page a nested request does not become a hole either: when the template prints it, it runs and its output is written into the stored template, its tags reach no one, and nothing is logged. The page then shows that child's old content until the page's own TTL, and a per-user child nested this way puts one visitor's content into the template every visitor shares.
 
@@ -282,7 +335,7 @@ Cache operations are logged as an open/event/close tree (Koriym.SemanticLogger) 
 | `get` | open | A resource/donut GET scope; embedded child GETs nest under it |
 | `cache_hit` / `cache_miss` (`layer`) | close/event | Lookup outcome (`layer`: `resource` / `donut` / `donut-view` / `etag`) |
 | `command` (`method`/`annotations`/`source`) | open | A write scope; `source` names the producing interceptor, `annotations` its `#[Refresh]`/`#[Purge]` attributes (empty on the CacheableResponse path by design) |
-| `depends_on` (`parent`/`child`/`childTags`) | event | Parent registered a dependency on a child's tags. A `#[Cacheable]` parent records it on put for each child that carries tags (their tags land on `save_value`/`save_view` and `save_etag`); a donut page write records it for a data dependency that carries tags — a child whose `onGet()` reads it — whose tags land on `save_donut` too, and for each `CacheDependencyInterface::depends()` call made while the page renders (from a template helper, say), between `put_donut` and the `save_*` events, whose tags land on `save_donut` as well. A hole records `dependency_skipped` instead: its tags reach `save_etag`/`save_donut_view` (`#[CacheableResponse]`) or only `cdn_headers.surrogateKeys` (`#[DonutCache]`), never `save_donut` |
+| `depends_on` (`parent`/`child`/`childTags`) | event | Parent registered a dependency on a child's tags. A `#[Cacheable]` parent records it on put for each child that carries tags (their tags land on `save_value`/`save_view` and `save_etag`); a donut page write records it for a data dependency that carries tags — a child whose `onGet()` reads it — whose tags land on `save_donut` too, and for each `CacheDependencyInterface::depends()` call made while the page renders (from a template helper, say), between `put_donut` and the `save_*` events, whose tags land on `save_donut` as well. A hole records `dependency_skipped` instead: its tags reach `save_etag`/`save_donut_view` (`#[CacheableResponse]`) or only `cdn_headers.surrogateKeys` (`#[DonutCache]`), never `save_donut`. A child that ran and declares `#[DependsOn]`, itself or in a request it embeds and ran, records one whatever its code, so its own URI tag reaches the parent; each declared tag lands in `childTags` here and in the parent's `save_*` `tags` too |
 | `dependency_skipped` (`parent`/`child`/`reason`) | event | A cached parent's write (a `#[Cacheable]` put or a donut page write) left a top-level embedded child out of its dependencies: the child carried neither an ETag nor a Surrogate-Key. `reason` is what its body showed: `no_body` (null; on a donut page usually a hole) or `no_etag_or_surrogate_key` (set but untagged; usually a data dependency, though a hole whose class declares a default `$body` reads the same). `docs/reading-the-log.md` explains each |
 | `save_value` / `save_view` / `save_etag` / `save_donut` / `save_donut_view` | event | What was offered to the pool, with `tags`, `requestedTtl` (seconds until expiry; 0/null = no expiry set), and the `saved` outcome: `true` = the pool accepted it, not that it is kept — `NullAdapter`, the store when none is bound, accepts every write and keeps nothing |
 | `pre_write_cleanup` (`uri`) | event | Marker recorded by a writer right before it clears the entry it is about to rewrite; the `invalidate` immediately following it in the same scope is pre-write cleanup, not a real invalidation |

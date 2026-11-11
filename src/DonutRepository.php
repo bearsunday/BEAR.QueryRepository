@@ -41,6 +41,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     private const REVALIDATE = 'max-age=0';
 
     private CacheDependencyInterface $cacheDependency;
+    private DependsOnTags $dependsOnTags;
 
     /** @SuppressWarnings("PHPMD.ExcessiveParameterList") */
     public function __construct(
@@ -59,6 +60,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     ) {
         // Same UriTag as templateKeys(), so a material's tag matches the format purge() emits.
         $this->cacheDependency = $cacheDependency ?? new CacheDependency($this->uriTag, $this->logger, $this->baseUriTag);
+        $this->dependsOnTags = new DependsOnTags($this->uriTag);
     }
 
     #[Override]
@@ -148,10 +150,9 @@ final readonly class DonutRepository implements DonutRepositoryInterface
 
     private function doPutStatic(ResourceObject $ro, int|null $ttl, int|null $sMaxAge): void
     {
-        $this->classifyMaterials($ro);
+        $keys = new SurrogateKeys($ro->uri, ($this->baseUriTag)($ro), $this->uriTag);
+        $this->classifyMaterials($ro, $keys);
         $this->logger->event(new PutDonutContext((string) $ro->uri, $ttl, $sMaxAge));
-        $keys = new SurrogateKeys($ro->uri, ($this->baseUriTag)($ro));
-        $keys->addTag($ro);
         $donut = ResourceDonut::create($ro, $this->renderer, $keys, $sMaxAge, true);
         // Read after rendering, see templateKeys()
         $templateKeys = $this->templateKeys($ro, $this->getHeaderKeys($ro));
@@ -176,9 +177,9 @@ final readonly class DonutRepository implements DonutRepositoryInterface
 
     private function doPutDonut(ResourceObject $ro, int|null $donutTtl): void
     {
-        $this->classifyMaterials($ro);
+        $keys = new SurrogateKeys($ro->uri, ($this->baseUriTag)($ro), $this->uriTag);
+        $this->classifyMaterials($ro, $keys);
         $this->logger->event(new PutDonutContext((string) $ro->uri, $donutTtl, null));
-        $keys = new SurrogateKeys($ro->uri, ($this->baseUriTag)($ro));
         $donut = ResourceDonut::create($ro, $this->renderer, $keys, $donutTtl, false);
         // Read after rendering, see templateKeys()
         $templateKeys = $this->templateKeys($ro, $this->getHeaderKeys($ro));
@@ -217,9 +218,12 @@ final readonly class DonutRepository implements DonutRepositoryInterface
      * A child carrying an ETag or Surrogate-Key already ran during onGet() (a material); a hole has not run yet.
      * Headers only: running a child here would execute a hole outside its hole scope. A child left out is logged
      * as `dependency_skipped` with what its body shows: none yet (a hole, or a run that left none), or one without a tag.
+     * A child that ran counts as well when it, or a request it embeds and ran, declares #[DependsOn].
      */
-    private function classifyMaterials(ResourceObject $ro): void
+    private function classifyMaterials(ResourceObject $ro, SurrogateKeys $keys): void
     {
+        ($this->dependsOnTags)($ro);
+
         /** @var mixed $body */
         foreach ((array) $ro->body as $body) {
             if (! ($body instanceof AbstractRequest)) {
@@ -227,7 +231,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
             }
 
             $child = $body->resourceObject;
-            if (! isset($child->headers[Header::ETAG]) && ! isset($child->headers[Header::SURROGATE_KEY])) {
+            if (! $keys->embedded($child)) {
                 $this->logger->event(DependencySkippedContext::of($ro, $child));
 
                 continue;
@@ -281,7 +285,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
 
         $this->logger->event(new CacheHitContext('donut'));
         $this->logger->event(new RefreshDonutContext((string) $ro->uri));
-        $donut->refresh($this->resource, $ro);
+        $donut->refresh($this->resource, $ro, $this->uriTag);
         $surrogateKeys = $ro->headers[Header::SURROGATE_KEY] ?? '';
 
         if (! $donut->isCacheble) {

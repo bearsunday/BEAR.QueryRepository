@@ -39,6 +39,8 @@ final readonly class QueryRepository implements QueryRepositoryInterface
     /** @see BaseUriTag::GROUP_TAG_PREFIX */
     private const GROUP_TAG_PREFIX = 'grp-';
 
+    private DependsOnTags $dependsOnTags;
+
     public function __construct(
         #[CacheLog]
         private SemanticLoggerInterface $logger,
@@ -51,6 +53,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         private UriTagInterface $uriTag = new UriTag(),
         private ResourceBodyEvaluator $evaluateBody = new ResourceBodyEvaluator(),
     ) {
+        $this->dependsOnTags = new DependsOnTags($this->uriTag);
     }
 
     /**
@@ -192,6 +195,8 @@ final readonly class QueryRepository implements QueryRepositoryInterface
 
     private function setCacheDependency(ResourceObject $ro): void
     {
+        ($this->dependsOnTags)($ro);
+
         /** @var mixed $body */
         foreach ((array) $ro->body as $body) {
             if (! ($body instanceof AbstractRequest)) {
@@ -205,7 +210,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
             // do (see ResourceStorage::materialize(); __invoke() re-executes).
             (string) $body;
             $child = $body->resourceObject;
-            if (! isset($child->headers[Header::ETAG]) && ! isset($child->headers[Header::SURROGATE_KEY])) {
+            if (! $this->dependsOnTags->embedded($child)) {
                 $this->logger->event(DependencySkippedContext::of($ro, $child));
 
                 continue;
