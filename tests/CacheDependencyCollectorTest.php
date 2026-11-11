@@ -17,6 +17,41 @@ use function iterator_to_array;
 
 class CacheDependencyCollectorTest extends TestCase
 {
+    public function testRequestsPreserveOrderAndDuplicatesWithoutConsumingTraversableBodies(): void
+    {
+        $child = new class extends ResourceObject {
+        };
+        $child->uri = new Uri('app://self/child');
+        $invoker = new class implements InvokerInterface {
+            public int $calls = 0;
+
+            #[Override]
+            public function invoke(AbstractRequest $request): ResourceObject
+            {
+                $this->calls++;
+
+                return $request->resourceObject;
+            }
+        };
+        $first = new Request($invoker, $child);
+        $second = new Request($invoker, clone $child);
+        $parent = clone $child;
+        $child->body = [$second];
+        $parent->body = (object) ['second' => $second, 'nested' => [$first], 'child' => $child, 'first' => $first, 'again' => $second];
+
+        // INV-08: enumeration preserves order and multiplicity without running a child.
+        $this->assertSame([$second, $first, $second], iterator_to_array(CacheDependencyCollector::requests($parent)));
+        $this->assertSame(0, $invoker->calls);
+
+        $parent->body = (static function () use ($first, $invoker) {
+            $invoker->calls++;
+            yield $first;
+        })();
+
+        $this->assertSame([], iterator_to_array(CacheDependencyCollector::requests($parent)));
+        $this->assertSame(0, $invoker->calls);
+    }
+
     public function testCollectRendersOnceAndReusesTheRequestResult(): void
     {
         $child = new class extends ResourceObject {

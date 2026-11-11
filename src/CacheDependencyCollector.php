@@ -15,7 +15,12 @@ use function explode;
 /** @internal */
 final class CacheDependencyCollector
 {
-    /** @return Generator<AbstractRequest> */
+    /**
+     * Enumerate only immediate values of the array-cast body, in order and with duplicates.
+     * Do not execute requests, descend into children, or consume Traversable bodies.
+     *
+     * @return Generator<AbstractRequest>
+     */
     public static function requests(ResourceObject $ro): Generator
     {
         /** @var mixed $body */
