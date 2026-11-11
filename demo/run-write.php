@@ -43,7 +43,7 @@ E. GET tag with a Stringable id, then DELETE id=[x]
                                                  by its string, y keeps its own entry
 F. GET article-summary, which reads app://self/article directly (no #[Embed]) and
    declares #[DependsOn(uri: 'app://self/article?id={id}')]
-                                              -> save_value/save_etag tag it with
+                                              -> save_value tags it with
                                                  _article_id=1 too; stored, then hits
 G. PATCH app://self/article id=1             -> its own write invalidates article-summary
                                                  too, by the tag #[DependsOn] added: miss
@@ -108,7 +108,7 @@ $show('E', 'app://self/tag', ['id' => new TagId('y')]);
 reportLog($logger->flush(), 'E. Stringable query value');
 
 // ------------------------------------------------- F. #[DependsOn] without an #[Embed]
-$resource->get('app://self/article-summary', ['id' => 1]); // miss: save_value/save_etag add tag _article_id=1
+$resource->get('app://self/article-summary', ['id' => 1]); // miss: save_value adds tag _article_id=1
 $show('F', 'app://self/article-summary', ['id' => 1]);      // hit: the stored summary
 
 reportLog($logger->flush(), 'F. #[DependsOn] reads another resource without #[Embed]');

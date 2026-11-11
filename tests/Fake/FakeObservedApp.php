@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\RepositoryModule\Annotation\EtagPool;
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\Resource\ResourceInterface;
+use BEAR\Resource\Uri;
 use Madapaja\TwigModule\TwigModule;
 use Override;
 use Ray\Di\AbstractModule;
@@ -22,13 +22,17 @@ use function array_values;
 use function assert;
 use function dirname;
 use function is_array;
-use function is_string;
+use function preg_match;
+use function strtr;
+use function explode;
+use function strtoupper;
+use function trim;
 use function ksort;
 
 /**
- * The fake app on array pools whose stored entries can be listed by key, with their tags
+ * The fake app on an array pool whose stored entries can be listed by key, with their tags
  *
- * Separate ArrayAdapters hold the tag versions, so the item adapters hold entries only.
+ * A separate ArrayAdapter holds the tag versions, so the item adapter holds entries only.
  */
 final class FakeObservedApp
 {
@@ -36,8 +40,8 @@ final class FakeObservedApp
     public readonly ResourceInterface $resource;
     private readonly ArrayAdapter $roItems;
     private readonly TagAwareAdapter $roPool;
-    private readonly ArrayAdapter $etagItems;
-    private readonly TagAwareAdapter $etagPool;
+    /** @var array<string, string> */
+    private readonly array $server;
 
     /**
      * @param array<string, string> $server what ServerContextInterface reads, X_VARY and its X_* values
@@ -47,19 +51,17 @@ final class FakeObservedApp
     {
         $this->roItems = new ArrayAdapter();
         $this->roPool = new TagAwareAdapter($this->roItems, new ArrayAdapter());
-        $this->etagItems = new ArrayAdapter();
-        $this->etagPool = new TagAwareAdapter($this->etagItems, new ArrayAdapter());
+        $this->server = $server;
 
         $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
         if ($twig) {
             $module->override(new TwigModule([dirname(__DIR__) . '/Fake/fake-app/var/templates']));
         }
 
-        $module->override(new class ($this->roPool, $this->etagPool, $server) extends AbstractModule {
+        $module->override(new class ($this->roPool, $server) extends AbstractModule {
             /** @param array<string, string> $server */
             public function __construct(
                 private readonly TagAwareAdapter $roPool,
-                private readonly TagAwareAdapter $etagPool,
                 private readonly array $server,
             ) {
                 parent::__construct();
@@ -69,7 +71,6 @@ final class FakeObservedApp
             protected function configure(): void
             {
                 $this->bind(TagAwareAdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->toInstance($this->roPool);
-                $this->bind(TagAwareAdapterInterface::class)->annotatedWith(EtagPool::class)->toInstance($this->etagPool);
                 $this->bind(ServerContextInterface::class)->toInstance(new FakeServerContext($this->server));
             }
         });
@@ -86,7 +87,7 @@ final class FakeObservedApp
     {
         $entries = [];
         foreach ($this->hits($this->roItems, $this->roPool) as $key => $item) {
-            $entries[$key] = self::tags($item);
+            $entries[$this->readableKey($key, self::tags($item))] = self::tags($item);
         }
 
         ksort($entries);
@@ -95,7 +96,7 @@ final class FakeObservedApp
     }
 
     /**
-     * Stored ETag-pool entries by the URI tag each was issued for: URI tag => [opaque-tag, tags]
+     * The ETag each stored entry holds, by the entry's URI tag: URI tag => [opaque-tag, tags]
      *
      * Keyed by URI tag because an opaque-tag hashes the woven class name, which differs between checkouts.
      *
@@ -104,15 +105,52 @@ final class FakeObservedApp
     public function etagEntries(): array
     {
         $entries = [];
-        foreach ($this->hits($this->etagItems, $this->etagPool) as $key => $item) {
-            $issuedFor = $item->get();
-            assert(is_string($issuedFor) && ! isset($entries[$issuedFor]));
-            $entries[$issuedFor] = [(string) $key, self::tags($item)];
+        foreach ($this->hits($this->roItems, $this->roPool) as $key => $item) {
+            $state = $item->get();
+            if (! $state instanceof ResourceState || ! isset($state->headers[Header::ETAG])) {
+                continue;
+            }
+
+            $tags = self::tags($item);
+            $entries[$tags[0]] = [trim($state->headers[Header::ETAG], '"'), $tags];
         }
 
         ksort($entries);
 
         return $entries;
+    }
+
+    /**
+     * The key before hashing, as type, exact tag and vary values
+     *
+     * A key hashes the URI, and the fake app's URIs hold no "_", so the entry's own tag reads back as one.
+     *
+     * @param list<string> $tags
+     */
+    private function readableKey(string $key, array $tags): string
+    {
+        $factory = new CacheIdentityFactory(new FakeServerContext($this->server));
+        preg_match('/\A((?:_[^_=]+)*)_(.*)\z/', $tags[0] ?? '', $tag);
+        $pathAndQuery = strtr($tag[1] ?? '', '_', '/') . '?' . strtr($tag[2] ?? '', '_', '&');
+        foreach (['ro-', 'donut-'] as $type) {
+            foreach (['app', 'page'] as $scheme) {
+                if ($factory->storageKey($factory->locator(new Uri($scheme . '://self' . $pathAndQuery)), $type) === $key) {
+                    return $type . $tags[0] . $this->vary();
+                }
+            }
+        }
+
+        return $key;
+    }
+
+    private function vary(): string
+    {
+        $vary = '';
+        foreach (explode(',', $this->server['X_VARY'] ?? '') as $name) {
+            $vary .= $this->server['X_' . strtoupper(trim($name))] ?? '';
+        }
+
+        return $vary;
     }
 
     /** @return array<string, ItemInterface> */

@@ -43,16 +43,13 @@ class ResourceRepositoryTest extends TestCase
             new ResourceStorage(
                 new NullSemanticLogger(),
                 new NullPurger(),
-                new UriTag(),
                 new ResourceStorageSaver(),
                 new CacheIdentityFactory(new GlobalServerContext()),
-                $tagAwareAdapterProvider,
                 $tagAwareAdapterProvider,
                 new CacheTags(new UriTag(), new BaseUriTag(new UriTag())),
             ),
             new Expiry(0, 0, 0),
             new CacheDependencyCollector(new DependsOnTags(new UriTag()), new CacheDependency(new UriTag()), new NullSemanticLogger()),
-            new BaseUriTag(new UriTag()),
             new CacheTags(new UriTag(), new BaseUriTag(new UriTag())),
         );
         $this->ro = new Index();
@@ -128,16 +125,13 @@ class ResourceRepositoryTest extends TestCase
             new ResourceStorage(
                 new NullSemanticLogger(),
                 new NullPurger(),
-                new UriTag(),
                 new ResourceStorageSaver(),
                 new CacheIdentityFactory(new GlobalServerContext()),
-                $tagAwareAdapterProvider,
                 $tagAwareAdapterProvider,
                 new CacheTags(new UriTag(), new BaseUriTag(new UriTag())),
             ),
             new Expiry(0, 0, 0),
             new CacheDependencyCollector(new DependsOnTags(new UriTag()), new CacheDependency(new UriTag()), new NullSemanticLogger()),
-            new BaseUriTag(new UriTag()),
             new CacheTags(new UriTag(), new BaseUriTag(new UriTag())),
         );
         $this->assertInstanceOf(Repository::class, $repository);

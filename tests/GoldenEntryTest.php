@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\ResourceObject;
 use FakeVendor\HelloWorld\Entity\Catalog;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
+use function array_diff_key;
 use function array_keys;
 use function array_map;
 use function crc32;
@@ -20,7 +22,7 @@ use const PHP_EOL;
 /**
  * What each cache kind stores, under which tags, and the headers it answers with
  *
- * The donut template is tagged without its holes; the page view and its ETag entry carry them.
+ * The donut template is tagged without its holes; the page view carries them.
  */
 class GoldenEntryTest extends TestCase
 {
@@ -39,7 +41,7 @@ class GoldenEntryTest extends TestCase
      *     array<string, list<string>>,
      *     array<string, string>,
      *     4?: bool,
-     * }> uri, resource pool key => tags, ETag pool URI tag => tags, response headers, rendered with Twig
+     * }> uri, resource pool key => tags, URI tag of each entry holding an ETag => tags, response headers, rendered with Twig
      */
     public static function entryProvider(): array
     {
@@ -60,7 +62,7 @@ class GoldenEntryTest extends TestCase
                     '_dep_child-c_' => ['grp-_dep_child-c_', '_dep_child-c_'],
                     '_dep_parent-a_' => ['_dep_child-c_', 'grp-_dep_child-c_', 'grp-_dep_parent-a_', '_dep_parent-a_'],
                 ],
-                [Header::SURROGATE_KEY => '_dep_child-c_ grp-_dep_child-c_', Header::ETAG => self::ETAG, Header::LAST_MODIFIED => self::LAST_MODIFIED, Header::CACHE_CONTROL => 'max-age=0'],
+                [Header::SURROGATE_KEY => '_dep_child-c_ grp-_dep_child-c_', Header::ETAG => self::ETAG, Header::LAST_MODIFIED => self::LAST_MODIFIED, Header::CACHE_CONTROL => 'max-age=0', 'Content-Type' => 'application/json'],
                 false,
             ],
             '#[Cacheable] value with its own Surrogate-Key and an embedded child' => [
@@ -73,7 +75,7 @@ class GoldenEntryTest extends TestCase
                     '_dep_diamond-bottom_' => ['grp-_dep_diamond-bottom_', '_dep_diamond-bottom_'],
                     '_dep_tagged-parent_' => ['shared-corpus', '_dep_diamond-bottom_', 'grp-_dep_diamond-bottom_', 'grp-_dep_tagged-parent_', '_dep_tagged-parent_'],
                 ],
-                [Header::SURROGATE_KEY => 'shared-corpus _dep_diamond-bottom_ grp-_dep_diamond-bottom_', Header::ETAG => self::ETAG, Header::LAST_MODIFIED => self::LAST_MODIFIED, Header::CACHE_CONTROL => 'max-age=0'],
+                [Header::SURROGATE_KEY => 'shared-corpus _dep_diamond-bottom_ grp-_dep_diamond-bottom_', Header::ETAG => self::ETAG, Header::LAST_MODIFIED => self::LAST_MODIFIED, Header::CACHE_CONTROL => 'max-age=0', 'Content-Type' => 'application/json'],
                 false,
             ],
             '#[Cacheable(type: view)]' => [
@@ -86,7 +88,7 @@ class GoldenEntryTest extends TestCase
                 'app://self/optional-param?id=1&page=2',
                 ['ro-_optional-param_id=1_page=2' => ['_optional-param_id=1_page=2', 'grp-_optional-param_id=1']],
                 ['_optional-param_id=1_page=2' => ['grp-_optional-param_id=1', '_optional-param_id=1_page=2']],
-                [Header::ETAG => self::ETAG, Header::LAST_MODIFIED => self::LAST_MODIFIED, Header::CACHE_CONTROL => 'max-age=0'],
+                [Header::ETAG => self::ETAG, Header::LAST_MODIFIED => self::LAST_MODIFIED, Header::CACHE_CONTROL => 'max-age=0', 'Content-Type' => 'text/html; charset=utf-8'],
             ],
             '#[Cacheable] with #[HttpCache(etag:)]' => [
                 'app://self/etag?updatedAt=x',
@@ -173,24 +175,31 @@ class GoldenEntryTest extends TestCase
         $ro = $app->resource->get($uri);
 
         $this->assertSame($roEntries, $app->roEntries(), 'resource pool');
-        $this->assertSame($etagEntries, array_map(static fn (array $entry): array => $entry[1], $app->etagEntries()), 'ETag pool');
+        $this->assertEqualsCanonicalizing($etagEntries, array_map(static fn (array $entry): array => $entry[1], $app->etagEntries()), 'validated entries');
         $this->assertSame($headers, self::masked($ro->headers), 'headers');
         $this->assertEtagEntryIsTheResponseEtag($app, $ro);
     }
 
-    /** A hit answers with the stored headers and an Age */
+    /** A hit answers with the stored headers and an Age; a value entry gets its Content-Type when the hit renders */
     public function testAHitAnswersWithTheStoredHeaders(): void
     {
-        foreach (['page://self/dep/parent-a' => false, 'page://self/html/like' => true, 'page://self/html/blog-posting' => true] as $uri => $twig) {
+        $cases = [
+            'page://self/dep/parent-a' => [false, ['Content-Type' => 'application/json']],
+            'page://self/html/like' => [true, []],
+            'page://self/html/blog-posting' => [true, []],
+        ];
+        foreach ($cases as $uri => [$twig, $ofRendering]) {
             $app = new FakeObservedApp([], $twig);
             $miss = $app->resource->get($uri);
             $hit = $app->resource->get($uri);
 
-            $hitHeaders = $hit->headers;
-            $this->assertMatchesRegularExpression('/^\d+$/', $hitHeaders['Age'] ?? '');
-            $hitHeaders['Age'] = '<age>';
+            $this->assertMatchesRegularExpression('/^\d+$/', $hit->headers['Age'] ?? '');
+            $hit->headers['Age'] = '<age>';
+            $stored = [...array_diff_key($miss->headers, $ofRendering), 'Age' => '<age>'];
 
-            $this->assertSame([...$miss->headers, 'Age' => '<age>'], $hitHeaders, $uri);
+            $this->assertSame($stored, $hit->headers, $uri);
+            $this->assertSame($miss->view, (string) $hit, $uri);
+            $this->assertSame([...$stored, ...$ofRendering], $hit->headers, $uri);
         }
     }
 
@@ -254,15 +263,45 @@ class GoldenEntryTest extends TestCase
         $this->assertSame(self::etag($ro, $ro::class . serialize(['child-c' => 1])), $ro->headers[Header::ETAG]);
     }
 
-    /** An embedded child counts as an object of its class, code, and view; storing the parent has rendered it */
-    public function testTheEtagOfAValueHashesItsEmbeddedChildAsAnObject(): void
+    /** In a body that stands for the response, an embedded child counts as an object of its class, code, and view */
+    public function testTheEtagOfAValueWithNoViewHashesItsEmbeddedChildAsAnObject(): void
+    {
+        $app = new FakeObservedApp();
+        $childClass = $app->resource->newInstance('app://self/optional-param')::class;
+        $ro = $app->resource->get('page://self/variant-parent');
+        $body = (array) $ro->body;
+        $child = $body['child'];
+        $this->assertInstanceOf(AbstractRequest::class, $child);
+        $childView = (string) $child;
+        $state = ['child' => (object) [$childClass, 200, $childView], 'time' => $body['time']];
+
+        $this->assertNull($ro->view, 'no template for this page');
+        $this->assertStringStartsWith('1:2:', $childView);
+        $this->assertSame(self::etag($ro, $ro::class . serialize($state)), $ro->headers[Header::ETAG]);
+    }
+
+    /** The ETag of a value that renders is recomputed from the string the miss sends */
+    public function testTheEtagOfAValueHashesTheStringTheMissSends(): void
     {
         $app = new FakeObservedApp([], false);
-        $childClass = $app->resource->newInstance('page://self/dep/child-c')::class;
         $ro = $app->resource->get('page://self/dep/parent-a');
-        $state = ['parent-a' => 1, 'child' => (object) [$childClass, 200, "{\n    \"child-c\": 1\n}" . PHP_EOL]];
+        $sent = (string) $ro;
 
-        $this->assertSame(self::etag($ro, $ro::class . serialize($state)), $ro->headers[Header::ETAG]);
+        $this->assertSame("{\n    \"parent-a\": 1,\n    \"child\": {\n        \"child-c\": 1\n    }\n}" . PHP_EOL, $sent);
+        $this->assertSame(self::etag($ro, $ro::class . serialize($sent)), $ro->headers[Header::ETAG]);
+    }
+
+    public function testTheSameValueRenderedDifferentlyHasADifferentEtag(): void
+    {
+        $uri = 'page://self/html/plain-cacheable-child';
+        $json = (new FakeObservedApp([], false))->resource->get($uri);
+        $html = (new FakeObservedApp())->resource->get($uri);
+
+        $this->assertSame($json->body, $html->body);
+        $this->assertSame('plain-cacheable-child:plain-cacheable-child-value', $html->view);
+        $this->assertNotSame($json->view, $html->view);
+        $this->assertNotSame($json->headers[Header::ETAG], $html->headers[Header::ETAG]);
+        $this->assertSame(self::etag($html, $html::class . serialize($html->view)), $html->headers[Header::ETAG]);
     }
 
     public function testTheEtagOfAViewHashesTheView(): void
@@ -285,7 +324,9 @@ class GoldenEntryTest extends TestCase
 
     private static function etag(ResourceObject $ro, string $state): string
     {
-        return '"' . crc32($ro::class . $state . (string) $ro->uri) . '"';
+        $k = (new CacheIdentityFactory())->locator($ro->uri);
+
+        return '"' . $k . '.' . crc32($ro::class . $state . (string) $ro->uri) . '"';
     }
 
     private function assertEtagEntryIsTheResponseEtag(FakeObservedApp $app, ResourceObject $ro): void
@@ -296,7 +337,7 @@ class GoldenEntryTest extends TestCase
 
         $uriTag = (new UriTag())($ro->uri);
         $this->assertSame(trim($ro->headers[Header::ETAG], '"'), $app->etagEntries()[$uriTag][0] ?? null);
-        $this->assertMatchesRegularExpression('/^"\d+"$/', $ro->headers[Header::ETAG]);
+        $this->assertMatchesRegularExpression('/^"[\w-]{22}\.\d+"$/', $ro->headers[Header::ETAG]);
         $this->assertMatchesRegularExpression('/^[A-Z][a-z]{2}, \d{2} [A-Z][a-z]{2} \d{4} \d{2}:\d{2}:\d{2} GMT$/', $ro->headers[Header::LAST_MODIFIED] ?? '');
     }
 

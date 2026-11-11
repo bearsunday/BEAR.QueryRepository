@@ -17,13 +17,13 @@ declare(strict_types=1);
  *                                  command_result with no invalidation, save_view,
  *                                  manual_store / manual_invalidate
  *   B. Cache server down ......... cache_error{read}, request still served live
- *   C. CDN purge outcomes ........ invalidate{cdn: purged} and {cdn: failed},
- *                                  the failure propagating fail-closed
- *   D. Write-refusing pool ....... save_value / save_view saved=false and no
- *                                  save_etag, manual_store_result{failed}
- *   D2. ETag pool refuses ........ save_value stored, save_etag saved=false
+ *   C. CDN purge outcomes ........ invalidate{cdn: purged} and {cdn: failed}: a GET
+ *                                  that purges records cache_error{write}, a direct
+ *                                  purge propagates the failure fail-closed
+ *   D. Write-refusing pool ....... save_value / save_view saved=false,
+ *                                  manual_store_result{failed}
  *   E. Donut writes refused ...... save_donut / save_donut_view saved=false
- *   F. Invalidation refused ...... invalidate{roPool: failed, etagPool: failed}
+ *   F. Invalidation refused ...... invalidate{roPool: failed}
  *   G. Other command producers ... command{source: DonutCommandInterceptor} and
  *                                  command{source: RefreshInterceptor}
  *   H. Finite TTL ................ save_* with a real ttl instead of the `never`
@@ -50,7 +50,6 @@ use BEAR\QueryRepository\Cdn\AkamaiModule;
 use BEAR\QueryRepository\DonutRepositoryInterface;
 use BEAR\QueryRepository\Log\PoolErrorLogger;
 use BEAR\QueryRepository\FakeErrorCache;
-use BEAR\QueryRepository\FakeEtagPoolModule;
 use BEAR\QueryRepository\FakeRefusingPool;
 use BEAR\QueryRepository\FakeThrowingPurger;
 use BEAR\QueryRepository\ModuleFactory;
@@ -58,7 +57,6 @@ use BEAR\QueryRepository\PurgerInterface;
 use BEAR\QueryRepository\QueryRepositoryInterface;
 use BEAR\QueryRepository\ResourceStorageInterface;
 use BEAR\RepositoryModule\Annotation\CacheLog;
-use BEAR\RepositoryModule\Annotation\EtagPool;
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
@@ -105,14 +103,14 @@ A. Recorded refusals
    5. GET a view-type cacheable resource     -> save_view
    6. Direct put()/invalidateTags()          -> manual_store{,_result}, manual_invalidate
 B. Cache server down                         -> cache_error{read}, served live anyway
-C. CDN purge, both outcomes                  -> invalidate{cdn: purged} / {cdn: failed},
-                                                the failure propagating fail-closed
-D. Pool refuses writes                       -> save_value/save_view saved=false, no save_etag
-                                                (an ETag is kept only with its entry),
+C. CDN purge, both outcomes                  -> invalidate{cdn: purged} / {cdn: failed}:
+                                                a GET that purges is served and records
+                                                cache_error{write}, a direct purge
+                                                propagates the failure fail-closed
+D. Pool refuses writes                       -> save_value/save_view saved=false,
                                                 manual_store_result{failed}
-D2. ETag pool alone refuses writes           -> save_value stored, save_etag saved=false
 E. Pool refuses writes, donut page           -> save_donut/save_donut_view saved=false
-F. Pool refuses invalidation                 -> invalidate{roPool: failed, etagPool: failed}
+F. Pool refuses invalidation                 -> invalidate{roPool: failed}
 G. The other command producers               -> command{source: DonutCommandInterceptor},
                                                 command{source: RefreshInterceptor}
 H. A finite TTL under #[HttpCache]           -> save_* with requestedTtl=10, private Cache-Control
@@ -134,7 +132,7 @@ $templates = dirname(__DIR__) . '/tests/Fake/fake-app/var/templates';
  * look like a cache failure.
  */
 $newInjector = static function (AbstractModule|null $override = null, bool $twig = false) use ($namespace, $templates): Injector {
-    $module = new FakeEtagPoolModule(ModuleFactory::getInstance($namespace));
+    $module = ModuleFactory::getInstance($namespace);
     if ($twig) {
         $module->override(new TwigModule([$templates]));
     }
@@ -167,13 +165,12 @@ $report = static function (LogJson $log, string $title): void {
     validateLog($log);
 };
 
-/** Bind one pool (resource-object or ETag) to a refusing decorator. */
-$refusingModule = static function (bool $refuseSave, bool $refuseInvalidation, bool $bothPools = false): AbstractModule {
-    return new class ($refuseSave, $refuseInvalidation, $bothPools) extends AbstractModule {
+/** Bind the resource-object pool to a refusing decorator. */
+$refusingModule = static function (bool $refuseSave, bool $refuseInvalidation): AbstractModule {
+    return new class ($refuseSave, $refuseInvalidation) extends AbstractModule {
         public function __construct(
             private readonly bool $refuseSave,
             private readonly bool $refuseInvalidation,
-            private readonly bool $bothPools,
         ) {
             parent::__construct();
         }
@@ -182,12 +179,6 @@ $refusingModule = static function (bool $refuseSave, bool $refuseInvalidation, b
         {
             $pool = new FakeRefusingPool(new TagAwareAdapter(new ArrayAdapter()), $this->refuseSave, $this->refuseInvalidation);
             $this->bind(TagAwareAdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->toInstance($pool);
-            if (! $this->bothPools) {
-                return;
-            }
-
-            $etagPool = new FakeRefusingPool(new TagAwareAdapter(new ArrayAdapter()), $this->refuseSave, $this->refuseInvalidation);
-            $this->bind(TagAwareAdapterInterface::class)->annotatedWith(EtagPool::class)->toInstance($etagPool);
         }
     };
 };
@@ -276,15 +267,19 @@ $resource = $injector->getInstance(ResourceInterface::class);
 $repository = $injector->getInstance(QueryRepositoryInterface::class);
 $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
-// The populating GET already trips the CDN on its pre-write cleanup: the local pools
-// are invalidated, the outcome is logged as cdn=failed, and because the write path
-// cannot complete the failure is recorded as cache_error{write} too.
+// A GET that is not answered 200 purges its own URI. Inside a GET the CDN failure
+// degrades: the pool is invalidated, the outcome is logged as cdn=failed, the failure is
+// recorded as cache_error{write}, and the response is still served.
+$code = $resource->get('app://self/code');
+echo sprintf('C2 GET app://self/code -> %d served, the purge it triggered recorded as cache_error{write}', $code->code) . PHP_EOL;
+
+// A miss writes where nothing is stored, so this GET has nothing to purge.
 $resource->get('app://self/value');
 try {
     $repository->purge(new Uri('app://self/value'));
     echo 'C2 unexpected: the purge did not fail' . PHP_EOL;
 } catch (RuntimeException $e) {
-    // Fail-closed: local pools are invalidated first and the outcome is logged as
+    // Fail-closed: the pool is invalidated first and the outcome is logged as
     // cdn=failed, then the exception propagates so the write is not reported as done.
     echo sprintf('C2 purge propagated the CDN failure: %s', $e->getPrevious()?->getMessage()) . PHP_EOL;
 }
@@ -323,22 +318,6 @@ echo sprintf('D  direct put() against the same pool -> manual_store_result: %s',
 
 $report($logger->flush(), 'D. write-refusing pool');
 
-// ------------------------------------------- D2. the ETag pool alone refuses writes
-$injector = $newInjector(new class extends AbstractModule {
-    protected function configure(): void
-    {
-        $etagPool = new FakeRefusingPool(new TagAwareAdapter(new ArrayAdapter()));
-        $this->bind(TagAwareAdapterInterface::class)->annotatedWith(EtagPool::class)->toInstance($etagPool);
-    }
-});
-$resource = $injector->getInstance(ResourceInterface::class);
-$logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
-
-$resource->get('app://self/value');
-echo 'D2 GET a value-type resource, only the ETag pool refusing -> save_value stored, save_etag saved=false' . PHP_EOL;
-
-$report($logger->flush(), 'D2. ETag pool refuses writes');
-
 // -------------------------------------------- E. pool refuses writes, donut page
 $injector = $newInjector($refusingModule(refuseSave: true, refuseInvalidation: false), twig: true);
 $resource = $injector->getInstance(ResourceInterface::class);
@@ -350,12 +329,12 @@ echo 'E  GET donut page -> save_donut / save_donut_view saved=false' . PHP_EOL;
 $report($logger->flush(), 'E. donut writes refused');
 
 // -------------------------------------------------- F. pool refuses invalidation
-$injector = $newInjector($refusingModule(refuseSave: false, refuseInvalidation: true, bothPools: true));
+$injector = $newInjector($refusingModule(refuseSave: false, refuseInvalidation: true));
 $storage = $injector->getInstance(ResourceStorageInterface::class);
 $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
 $storage->invalidateTags(['_demo_stuck_tag_']);
-echo 'F  invalidateTags() on pools that refuse it -> roPool=failed etagPool=failed' . PHP_EOL;
+echo 'F  invalidateTags() on a pool that refuses it -> roPool=failed' . PHP_EOL;
 
 $report($logger->flush(), 'F. invalidation refused');
 
@@ -431,7 +410,7 @@ $page = $resource->get('page://self/html/blog-posting?id=0');
 $logger->flush(); // drain the GET session: this scenario is about the direct write
 $donutRepository->putStatic($page, ttl: 60, sMaxAge: 30);
 echo 'I  direct putStatic(ttl: 60, sMaxAge: 30) -> put_donut{requestedTtl: 60, sMaxAge: 30}:' . PHP_EOL;
-echo '   the template entry records requestedTtl=60 while the rendered view and its ETag record 30,' . PHP_EOL;
+echo '   the template entry records requestedTtl=60 while the rendered view records 30,' . PHP_EOL;
 echo '   and the whole write is rooted in manual_store{,_result} — cleanup invalidate included' . PHP_EOL;
 
 $report($logger->flush(), 'I. donut write through the repository API');

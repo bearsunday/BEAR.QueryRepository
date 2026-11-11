@@ -113,18 +113,20 @@ class CacheDependencyTest extends TestCase
     public function testDestroyByGrandChild(): void
     {
         $this->resource->get('page://self/dep/level-one');
-        $one1 = $this->repository->get(new Uri('page://self/dep/level-one'));
-        $this->assertInstanceOf(ResourceState::class, $one1);
+        $etags = [];
+        foreach (['level-one', 'level-two', 'level-three'] as $level) {
+            $state = $this->repository->get(new Uri('page://self/dep/' . $level));
+            $this->assertInstanceOf(ResourceState::class, $state);
+            $etags[$level] = $state->headers[Header::ETAG];
+            $this->assertTrue($this->storage->hasEtag($etags[$level]), $level);
+        }
+
         $this->repository->purge(new Uri('page://self/dep/level-three'));
-        $one2 = $this->repository->get(new Uri('page://self/dep/level-one'));
-        $this->assertNull($one2);
-        $etag1 = $one1->headers[Header::ETAG];
-        $surrogateKeys = explode(' ', $one1->headers['Surrogate-Key']);
-        $etag2 = $surrogateKeys[0];
-        $etag3 = $surrogateKeys[1];
-        $this->assertFalse($this->storage->hasEtag($etag1));
-        $this->assertFalse($this->storage->hasEtag($etag2));
-        $this->assertFalse($this->storage->hasEtag($etag3));
+
+        $this->assertNull($this->repository->get(new Uri('page://self/dep/level-one')));
+        foreach ($etags as $level => $etag) {
+            $this->assertFalse($this->storage->hasEtag($etag), $level);
+        }
     }
 
     /**
@@ -144,11 +146,34 @@ class CacheDependencyTest extends TestCase
         $this->assertNull($this->repository->get(new Uri('page://self/dep/level-one')));
         $this->assertNull($this->repository->get(new Uri('page://self/dep/level-two')));
         // The written resource is purged and refreshed right away by the command's GET, so
-        // unlike its parents it is cached again right after the write — in both pools.
+        // unlike its parents it is cached again right after the write, validator included.
         $three = $this->repository->get(new Uri('page://self/dep/level-three'));
         $this->assertInstanceOf(ResourceState::class, $three);
         $this->assertTrue($this->storage->hasEtag($three->headers[Header::ETAG]));
         $this->assertFalse($this->storage->hasEtag($etag1));
+    }
+
+    /** A miss writes where nothing is stored: it replaces no entry, so it purges no key */
+    public function testAMissPurgesNoKey(): void
+    {
+        $this->resource->get('page://self/dep/level-one');
+
+        $this->assertInstanceOf(ResourceState::class, $this->repository->get(new Uri('page://self/dep/level-three')));
+        $this->assertSame([], $this->purger->tags);
+    }
+
+    /** A put() over a stored entry drops what was built from the entry it replaces */
+    public function testAPutOverAStoredChildDropsItsParents(): void
+    {
+        $this->resource->get('page://self/dep/level-one');
+        $child = $this->resource->get('page://self/dep/level-three');
+
+        $this->assertTrue($this->repository->put($child));
+
+        $this->assertNull($this->repository->get(new Uri('page://self/dep/level-one')));
+        $this->assertNull($this->repository->get(new Uri('page://self/dep/level-two')));
+        $this->assertInstanceOf(ResourceState::class, $this->repository->get(new Uri('page://self/dep/level-three')));
+        $this->assertSame([(new UriTag())(new Uri('page://self/dep/level-three'))], $this->purger->tags);
     }
 
     /**

@@ -13,7 +13,7 @@ use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 
-/** Gives ResourceStorage an ETag pool apart from the resource pool */
+/** Binds an ETag pool of its own, as an application configured for a separate ETag store does */
 class FakeEtagPoolModule extends AbstractModule
 {
     /**

@@ -26,7 +26,7 @@ use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
  *  The following bindings are provided:
  *
  *  TagAwareAdapterInterface-ResourceObjectPool::class (NullAdapter by default)
- *  TagAwareAdapterInterface-EtagPool::class (null by default - the ResourceObjectPool is used)
+ *  TagAwareAdapterInterface-EtagPool::class (null, and read by nothing: the entry itself holds its ETag)
  *  QueryRepositoryInterface
  *  CacheDependencyInterface
  *  EtagSetterInterface
@@ -66,7 +66,7 @@ final class QueryRepositoryModule extends AbstractModule
                 'tagsPool' => TagsPool::class,
             ],
         );
-        //  When null is bound, the same adapter as the one assigned to the ResourceObjectPool is used.
+        // Read by nothing; bound so that an application module overriding it still installs.
         $this->bind(TagAwareAdapterInterface::class)->annotatedWith(EtagPool::class)->toInstance(null);
         // core
         $this->bind(QueryRepositoryInterface::class)->to(QueryRepository::class)->in(Scope::SINGLETON);

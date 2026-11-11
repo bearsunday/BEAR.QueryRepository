@@ -9,7 +9,7 @@ declare(strict_types=1);
  * - Cache hit/miss operations
  * - Dependency registration (depends-on)
  * - Command-driven invalidation (a write opens a command scope)
- * - Cascade invalidation (invalidate-etag)
+ * - Cascade invalidation (invalidate)
  * - Manual purge (a direct purge() call roots a manual_purge scope)
  *
  * Resources used (from tests/Fake/fake-app):
@@ -17,7 +17,6 @@ declare(strict_types=1);
  * - ParentA, ParentB -> ChildC (multiple parents depend on same child)
  */
 
-use BEAR\QueryRepository\FakeEtagPoolModule;
 use BEAR\QueryRepository\ModuleFactory;
 use BEAR\QueryRepository\QueryRepositoryInterface;
 use BEAR\RepositoryModule\Annotation\CacheLog;
@@ -68,10 +67,7 @@ This demo executes the following scenarios:
 SCENARIOS;
 
 $namespace = 'FakeVendor\HelloWorld';
-$injector = new Injector(
-    new FakeEtagPoolModule(ModuleFactory::getInstance($namespace)),
-    __DIR__ . '/tmp',
-);
+$injector = new Injector(ModuleFactory::getInstance($namespace), __DIR__ . '/tmp');
 
 $resource = $injector->getInstance(ResourceInterface::class);
 $repository = $injector->getInstance(QueryRepositoryInterface::class);

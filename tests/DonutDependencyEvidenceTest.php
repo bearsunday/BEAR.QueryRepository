@@ -74,7 +74,7 @@ class DonutDependencyEvidenceTest extends TestCase
         $this->assertStringContainsString('"' . self::CACHEABLE_CHILD_URI_TAG . '"', $edges[0], "the child's URI tag is what the edge carries into the parent");
     }
 
-    public function testCacheableParentTagsValueAndEtagWithTheChild(): void
+    public function testCacheableParentTagsItsEntryWithTheChild(): void
     {
         $this->bootCacheableApp();
         $this->resource->get(self::CACHEABLE);
@@ -83,10 +83,6 @@ class DonutDependencyEvidenceTest extends TestCase
         $saveValue = self::eventContextsJsonOf($tree, 'save_value', self::CACHEABLE);
         $this->assertCount(1, $saveValue);
         $this->assertStringContainsString('"' . self::CACHEABLE_CHILD_URI_TAG . '"', $saveValue[0], "the child's URI tag is on the entry a child purge has to reach");
-
-        $saveEtag = self::eventContextsJsonOf($tree, 'save_etag', self::CACHEABLE);
-        $this->assertCount(1, $saveEtag);
-        $this->assertStringContainsString('"' . self::CACHEABLE_CHILD_URI_TAG . '"', $saveEtag[0], "the child's URI tag is on the validator too");
     }
 
     public function testCacheableParentMissesAfterItsChildIsPurged(): void
@@ -115,16 +111,11 @@ class DonutDependencyEvidenceTest extends TestCase
         $this->assertSame([], self::dependsOnEdgesFrom($tree, self::CACHEABLE_RESPONSE), 'a #[CacheableResponse] write never reaches CacheDependency');
     }
 
-    public function testCacheableResponseTagsEtagAndViewWithTheChildButNotTheTemplate(): void
+    public function testCacheableResponseTagsItsViewWithTheChildButNotTheTemplate(): void
     {
         $this->bootDonutApp();
         $this->resource->get(self::CACHEABLE_RESPONSE);
         $tree = $this->flushAndValidate($this->logger);
-
-        $saveEtag = self::eventContextsJsonOf($tree, 'save_etag', self::CACHEABLE_RESPONSE);
-        $this->assertCount(1, $saveEtag);
-        $this->assertStringContainsString('"' . self::CHILD_URI_TAG . '"', $saveEtag[0], "the child's URI tag reaches the validator");
-        $this->assertStringContainsString('"' . self::CHILD_SURROGATE_KEY . '"', $saveEtag[0], "the child's declared Surrogate-Key reaches the validator");
 
         $saveDonutView = self::eventContextsJsonOf($tree, 'save_donut_view', self::CACHEABLE_RESPONSE);
         $this->assertCount(1, $saveDonutView);
@@ -164,14 +155,14 @@ class DonutDependencyEvidenceTest extends TestCase
     public function testDonutCacheKeepsTheChildTagsOutOfTheStore(): void
     {
         $this->bootDonutApp();
-        $this->resource->get(self::DONUT_CACHE);
+        $ro = $this->resource->get(self::DONUT_CACHE);
         $tree = $this->flushAndValidate($this->logger);
 
         $saveDonut = self::eventContextsJsonOf($tree, 'save_donut', self::DONUT_CACHE);
         $this->assertCount(1, $saveDonut);
         $this->assertStringNotContainsString('"' . self::CHILD_URI_TAG . '"', $saveDonut[0], 'the template is the only entry, and it is not tagged by its children');
         $this->assertStringNotContainsString('"' . self::CHILD_SURROGATE_KEY . '"', $saveDonut[0], 'the template is the only entry, and it is not tagged by its children');
-        $this->assertSame([], self::eventContextsJsonOf($tree, 'save_etag', self::DONUT_CACHE), 'no validator is stored for a page that is never stored');
+        $this->assertArrayNotHasKey(Header::ETAG, $ro->headers, 'no validator is issued for a page that is never stored');
         $this->assertSame([], self::eventContextsJsonOf($tree, 'save_donut_view', self::DONUT_CACHE), 'no page view is stored');
         $this->assertSame([], self::dependsOnEdgesFrom($tree, self::DONUT_CACHE), 'a #[DonutCache] write never reaches CacheDependency');
 

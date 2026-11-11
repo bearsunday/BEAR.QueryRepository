@@ -15,7 +15,6 @@ use BEAR\QueryRepository\Log\Context\ManualPurgeContext;
 use BEAR\QueryRepository\Log\Context\ManualPurgeResultContext;
 use BEAR\QueryRepository\Log\Context\PreWriteCleanupContext;
 use BEAR\QueryRepository\Log\Context\PutSkippedContext;
-use BEAR\QueryRepository\Log\Context\SaveEtagContext;
 use BEAR\QueryRepository\Log\Context\SaveValueContext;
 use BEAR\QueryRepository\Log\KeepMutationsAndFailures;
 use BEAR\QueryRepository\Log\SafeSemanticLogger;
@@ -55,17 +54,25 @@ class RetentionPolicyTest extends TestCase
         // The volume decision: after a deploy every request is this shape. Its tags and TTL are
         // reachable by sampling; keeping all of them would cost the most when load is highest.
         $open = $this->logger->open(new GetContext('page://self/html/blog-posting'));
+        $this->logger->event(new SaveValueContext('page://self/html/blog-posting', ['_tag_'], 60, true));
+        $this->logger->close(new CacheMissContext('view'), $open);
+
+        $this->assertFalse($this->policy->keeps($this->logger->flush()));
+    }
+
+    public function testAReadThatReplacesAnEntryIsDropped(): void
+    {
+        $open = $this->logger->open(new GetContext('page://self/html/blog-posting'));
         $this->logger->event(new PreWriteCleanupContext('page://self/html/blog-posting'));
         $this->logger->event($this->invalidate('purged'));
         $this->logger->event(new SaveValueContext('page://self/html/blog-posting', ['_tag_'], 60, true));
-        $this->logger->event(new SaveEtagContext('page://self/html/blog-posting', '"e"', ['_tag_'], 60, true));
         $this->logger->close(new CacheMissContext('view'), $open);
 
         $log = $this->logger->flush();
         $this->assertFalse($this->policy->keeps($log), 'a marker-preceded invalidate is pre-write cleanup, not an invalidation');
     }
 
-    public function testAColdReadIsStillDroppedWhenAnEmbeddedReadSitsBetweenCleanupAndInvalidate(): void
+    public function testAReplacingReadIsStillDroppedWhenAnEmbeddedReadSitsBetweenCleanupAndInvalidate(): void
     {
         // Same marker-preceded shape as above, but with a donut's embedded read recorded as a
         // nested open between the two events: adjacency must be judged among sibling events only,
@@ -76,7 +83,6 @@ class RetentionPolicyTest extends TestCase
         $this->logger->close(new CacheHitContext('view'), $embedded);
         $this->logger->event($this->invalidate('purged'));
         $this->logger->event(new SaveValueContext('page://self/html/blog-posting', ['_tag_'], 60, true));
-        $this->logger->event(new SaveEtagContext('page://self/html/blog-posting', '"e"', ['_tag_'], 60, true));
         $this->logger->close(new CacheMissContext('view'), $open);
 
         $log = $this->logger->flush();
@@ -135,7 +141,7 @@ class RetentionPolicyTest extends TestCase
     {
         $open = $this->logger->open(new GetContext('page://self/html/blog-posting'));
         $this->logger->event(new PreWriteCleanupContext('page://self/html/blog-posting'));
-        $this->logger->event(new InvalidateContext(['_tag_'], false, true, 'skipped', 0.1));
+        $this->logger->event(new InvalidateContext(['_tag_'], false, 'skipped', 0.1));
         $this->logger->close(new CacheMissContext('view'), $open);
 
         $this->assertTrue($this->policy->keeps($this->logger->flush()));
@@ -200,6 +206,6 @@ class RetentionPolicyTest extends TestCase
     /** @param 'failed'|'purged'|'skipped' $cdnStatus */
     private function invalidate(string $cdnStatus): InvalidateContext
     {
-        return new InvalidateContext(['_tag_'], true, true, $cdnStatus, 0.1);
+        return new InvalidateContext(['_tag_'], true, $cdnStatus, 0.1);
     }
 }

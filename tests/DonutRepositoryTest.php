@@ -249,7 +249,7 @@ class DonutRepositoryTest extends TestCase
         }
     }
 
-    public function testAClosureInADonutPageBodyIsNotStoredSoItNeitherFailsNorPurgesAgain(): void
+    public function testAClosureInADonutPageBodyIsNotStoredSoItNeitherFailsNorPurges(): void
     {
         $purger = new FakeCountingPurger();
         $resource = $this->getInjector($purger)->getInstance(ResourceInterface::class);
@@ -260,7 +260,7 @@ class DonutRepositoryTest extends TestCase
         }
 
         $this->assertSame(1, ClosureBodyDonut::$calls, 'the page stores its rendered view, so later requests are served from it');
-        $this->assertCount(1, $purger->tags, 'only the first write cleans up before storing');
+        $this->assertSame([], $purger->tags, 'no write replaces an entry');
     }
 
     public function testUnderMobileEtagAClosureInACacheableResponseBodyFailsBeforeAnythingIsPurged(): void
@@ -409,7 +409,7 @@ class DonutRepositoryTest extends TestCase
         // no longer roots a manual_invalidate of its own — belongs to that one scope.
         $this->assertSame([], self::rootPointTypes($tree), 'nothing is left bare at the session root');
         $this->assertSame(
-            [['put_donut', 'cdn_headers', 'pre_write_cleanup', 'invalidate', 'save_donut_view', 'save_etag', 'save_donut']],
+            [['put_donut', 'cdn_headers', 'pre_write_cleanup', 'invalidate', 'save_donut_view', 'save_donut']],
             self::scopeEventTypeSequences($tree),
         );
     }

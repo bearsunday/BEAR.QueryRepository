@@ -17,7 +17,7 @@ The previous log was a flat op-string format (`RepositoryLoggerInterface`). The 
 | 7 | 1.16.0 regression: declaring a custom `Surrogate-Key` lost embed dependency tracking (#195) | Purged children kept being served, unrecorded |
 | 8 | Logged TTL contradicting the stored TTL (negative lifetimes recorded verbatim), the misleading `sMaxAge` label | The log contradicted the store's facts |
 | 9 | Which declaration decided an entry's lifetime (preset / `expirySecond` / `expiryAt`) (#196) | The resolved number alone cannot separate `never` (live until invalidated) from a deliberate 1-year TTL |
-| 10 | The 304 decision itself (the whole request answered from the ETag pool) | Appeared in no `get` scope |
+| 10 | The 304 decision itself (the whole request answered without running the resource) | Appeared in no `get` scope |
 | 11 | Who initiated a write or invalidation — framework or application | Indistinguishable |
 | 12 | Hijack of the application's own `SemanticLoggerInterface` binding (#191) | Silently swapped depending on install order |
 
@@ -26,10 +26,10 @@ The previous log was a flat op-string format (`RepositoryLoggerInterface`). The 
 | # | Condition | Recording context |
 |---|---|---|
 | 1 | Store down | `pool_error {key, operation, error, exceptionClass}` — the adapter's own report, carried |
-| 2 | Write refused | `saved` field on all five save contexts (accept/reject) |
+| 2 | Write refused | `saved` field on all four save contexts (accept/reject) |
 | 3 | No CDN configured | `invalidate.cdn = skipped` (tri-state: `purged` / `failed` / `skipped`) |
-| 4 | CDN purge failure | `invalidate {cdn: failed}` + fail-closed (local pools first, outcome logged, then raised - reaching the caller of a command or a direct call) |
-| 5 | Store without rendering | Fixed. The value path falls back to the body with `$ro->view === null`, and the ETag follows the body |
+| 4 | CDN purge failure | `invalidate {cdn: failed}` + fail-closed (the local pool first, outcome logged, then raised - reaching the caller of a command or a direct call) |
+| 5 | Store without rendering | Fixed. When the rendering throws, the value path falls back to the body with `$ro->view === null`, and the ETag follows the body |
 | 6 | Untagged template | Fixed. Templates are stored under their own URI tag, so `purge($uri)` reaches them |
 | 7 | Lost dependency tracking | Fixed. Declared keys and embed dependencies coexist; tracking is recorded as `depends_on` |
 | 8 | TTL contradiction | Fixed. The requested lifetime is clamped where recorded; the field is `requestedTtl` — what was asked, not the store's effective lifetime |

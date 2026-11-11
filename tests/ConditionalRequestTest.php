@@ -25,12 +25,12 @@ class ConditionalRequestTest extends TestCase
     private ResourceStorage $storage;
     private RecordingSemanticLogger $logger;
     private Uri $uri;
+    private string $live;
 
     protected function setUp(): void
     {
         $this->storage = ResourceStorageTest::getResourceStorageInstance(
             roPool: new TagAwareAdapter(new ArrayAdapter()),
-            etagPool: new TagAwareAdapter(new ArrayAdapter()),
         );
         $this->logger = new RecordingSemanticLogger();
         $this->uri = new Uri('page://self/conditional');
@@ -39,12 +39,12 @@ class ConditionalRequestTest extends TestCase
         $ro->body = [];
         $ro->headers[Header::ETAG] = '"live"';
         $this->storage->saveValue($ro, 10);
-        $this->storage->saveEtag($this->uri, '"live"', '', 10);
+        $this->live = $ro->headers[Header::ETAG];
     }
 
     public function testUnscopedAnswerPreservesThePresentedValidator(): void
     {
-        $validator = '"stale", W/"live"';
+        $validator = '"stale", W/' . $this->live;
         $this->assertTrue((new ConditionalRequest($this->storage, $this->logger))->isNotModified($validator, []));
         $this->assertFalse((new ConditionalRequest($this->storage, $this->logger))->isNotModified('*', []));
         $open = $this->logger->opens[0];
@@ -57,8 +57,8 @@ class ConditionalRequestTest extends TestCase
 
     public function testScopedAnswerRejectsAnotherResource(): void
     {
-        $this->assertTrue((new ConditionalRequest($this->storage, $this->logger))->isNotModifiedFor($this->uri, 'W/"live"', []));
-        $this->assertFalse((new ConditionalRequest($this->storage, $this->logger))->isNotModifiedFor(new Uri('page://self/other'), '"live"', []));
+        $this->assertTrue((new ConditionalRequest($this->storage, $this->logger))->isNotModifiedFor($this->uri, 'W/' . $this->live, []));
+        $this->assertFalse((new ConditionalRequest($this->storage, $this->logger))->isNotModifiedFor(new Uri('page://self/other'), $this->live, []));
         $this->assertInstanceOf(CacheHitContext::class, $this->logger->closes[0]);
         $this->assertInstanceOf(CacheMissContext::class, $this->logger->closes[1]);
     }
@@ -67,7 +67,7 @@ class ConditionalRequestTest extends TestCase
     {
         $this->assertTrue((new ConditionalRequest(new FakeUnscopableStorage($this->storage), $this->logger))->isNotModifiedFor(
             new Uri('page://self/other'),
-            '"live"',
+            $this->live,
             [],
         ));
         $this->assertCount(1, $this->logger->opens);
@@ -77,7 +77,7 @@ class ConditionalRequestTest extends TestCase
 
     public function testFailureClosesBeforeWarningAndUsesTheSelectedUri(): void
     {
-        $storage = ResourceStorageTest::getResourceStorageInstance(etagPool: new TagAwareAdapter(new FakeErrorCache()));
+        $storage = ResourceStorageTest::getResourceStorageInstance(roPool: new TagAwareAdapter(new FakeErrorCache()));
         foreach ([null, $this->uri] as $uri) {
             foreach ([$storage, new FakeUnscopableStorage($storage)] as $candidate) {
                 $logger = new RecordingSemanticLogger();
@@ -93,8 +93,8 @@ class ConditionalRequestTest extends TestCase
                 try {
                     $server = ['REQUEST_URI' => '/original'];
                     $hit = $uri === null
-                        ? (new ConditionalRequest($candidate, $logger))->isNotModified('"live"', $server)
-                        : (new ConditionalRequest($candidate, $logger))->isNotModifiedFor($uri, '"live"', $server);
+                        ? (new ConditionalRequest($candidate, $logger))->isNotModified($this->live, $server)
+                        : (new ConditionalRequest($candidate, $logger))->isNotModifiedFor($uri, $this->live, $server);
                 } finally {
                     restore_error_handler();
                 }

@@ -22,14 +22,16 @@ use BEAR\Resource\ResourceObject;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 use ReflectionClass;
+use Throwable;
 
+use function array_diff_assoc;
+use function array_replace;
 use function is_array;
 use function max;
 use function serialize;
 use function sprintf;
 use function strtotime;
 use function time;
-use function trim;
 
 /** @internal */
 final readonly class QueryRepository implements QueryRepositoryInterface
@@ -41,7 +43,6 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         private ResourceStorageInterface $storage,
         private Expiry $expiry,
         private CacheDependencyCollector $dependencyCollector,
-        private BaseUriTagInterface $baseUriTag,
         private CacheTags $cacheTags,
         private DeclaredCacheControl $declaredCacheControl = new DeclaredCacheControl(),
         private ResourceBodyEvaluator $evaluateBody = new ResourceBodyEvaluator(),
@@ -81,9 +82,8 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         $httpCache = $this->getHttpCacheAnnotation($ro);
         $storesView = $cacheable instanceof Cacheable && $cacheable->type === 'view';
         if ($storesView) {
-            // Rendering is the write itself here. For a value entry it is not: a resource with no
-            // renderer in this context - an app resource under an html renderer - would throw, the
-            // interceptor would degrade it to a warning, and the entry would never be stored.
+            // The view is the entry here, so a failed rendering fails the write. A value entry is
+            // stored whether it renders or not: see renderValue().
             $ro->toString();
         }
 
@@ -96,22 +96,56 @@ final readonly class QueryRepository implements QueryRepositoryInterface
             serialize(($this->evaluateBody)($ro->body));
         }
 
-        ($this->headerSetter)($ro, $this->clientCacheControl($cacheable, $ttl), $httpCache);
-        $this->cleanUpBeforeWrite($ro, $unstorable);
+        $ofRendering = $storesView || $unstorable !== null ? [] : $this->renderValue($ro, $httpCache);
+        try {
+            ($this->headerSetter)($ro, $this->clientCacheControl($cacheable, $ttl), $httpCache);
+            $this->dropReplacedEntry($ro);
 
-        if ($unstorable !== null) {
-            $this->logger->event(new PutSkippedContext((string) $ro->uri, $unstorable));
+            if ($unstorable !== null) {
+                $this->logger->event(new PutSkippedContext((string) $ro->uri, $unstorable));
 
-            return false;
+                return false;
+            }
+
+            return $storesView ? $this->storage->saveView($ro, $ttl) : $this->storage->saveValue($ro, $ttl);
+        } finally {
+            // The response carries the headers of its rendering, such as Content-Type. A value
+            // entry does not: a hit renders again.
+            $ro->headers = array_replace($ro->headers, $ofRendering);
+        }
+    }
+
+    /**
+     * Render the response a miss answers with: the validator then stands for the string the client
+     * receives, and that string is the one transferred. A view left by an earlier run is dropped
+     * first. A resource with no representation in this context - an app resource under an html
+     * renderer has no template - stays unrendered, and its validator stands for its body.
+     *
+     * What the renderer did to the headers and the body is taken back: the entry, and a parent
+     * reading the body, get the state the resource returned. A HAL renderer moves every embedded
+     * request out of the body.
+     *
+     * @return array<string, string> the headers the renderer set, for the caller to put back on the response
+     */
+    private function renderValue(ResourceObject $ro, HttpCache|null $httpCache): array
+    {
+        if ($ro->code !== 200 || ($httpCache instanceof HttpCache && $httpCache->etag)) {
+            return []; // the validator, if any, does not stand for the view
         }
 
-        $saved = $storesView ? $this->storage->saveView($ro, $ttl) : $this->storage->saveValue($ro, $ttl);
-        // A validator without its entry would answer a conditional request 304 for a response the pool does not hold
-        if ($saved) {
-            $this->saveEtag($ro, $ttl);
+        $returned = [$ro->headers, $ro->body];
+        $ro->view = null;
+        try {
+            $ro->view = $ro->toString();
+            $ofRendering = array_diff_assoc($ro->headers, $returned[0]);
+        } catch (Throwable) {
+            $ro->view = null;
+            $ofRendering = [];
         }
 
-        return $saved;
+        [$ro->headers, $ro->body] = $returned;
+
+        return $ofRendering;
     }
 
     /** The seconds a #[Cacheable] entry lives, recorded with the declaration that decided them */
@@ -138,30 +172,19 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         return $this->headerSetter->maxAge($ttl);
     }
 
-    private function saveEtag(ResourceObject $ro, int $ttl): void
+    /**
+     * Drop the entry this write replaces or refuses to replace, and with it whatever embeds it.
+     * A write into an empty slot replaces nothing: the other variants of the URI share its tag
+     * and must outlive it.
+     */
+    private function dropReplacedEntry(ResourceObject $ro): void
     {
-        if (! isset($ro->headers[Header::ETAG])) {
+        if ($this->storage->get($ro->uri) === null) {
             return;
         }
 
-        $surrogateKeys = $ro->headers[Header::SURROGATE_KEY] ?? '';
-        // saveEtag() takes a tag list of its own, not getTags()'s.
-        $surrogateKeys = trim($surrogateKeys . ' ' . ($this->baseUriTag)($ro));
-
-        $this->storage->saveEtag($ro->uri, $ro->headers[Header::ETAG], $surrogateKeys, $ttl);
-    }
-
-    private function cleanUpBeforeWrite(ResourceObject $ro, string|null $skipReason): void
-    {
-        if ($skipReason !== null && $this->storage->get($ro->uri) === null) {
-            return;
-        }
-
-        // The writer knows its own purpose: this deleteEtag clears the entry about to be
-        // rewritten below. The marker records that, so readers never have to infer
-        // cleanup-vs-invalidation from tag correlation.
         $this->logger->event(new PreWriteCleanupContext((string) $ro->uri));
-        $this->storage->deleteEtag($ro->uri);
+        $this->storage->invalidateTags([$this->cacheTags->uriTag($ro->uri)]);
     }
 
     /**

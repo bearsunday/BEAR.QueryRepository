@@ -74,7 +74,7 @@ composer build
 
 **ResourceStorage** (`src/ResourceStorage.php`)
 - Low-level storage abstraction using Symfony Cache (TagAwareAdapter)
-- Manages two separate cache pools: Resource Object Pool and ETag Pool
+- Keeps every entry in one pool (Resource Object Pool); an entry carries its own ETag, `"K.H"`, whose `K` locates the entry
 - Handles cache keys with prefixes: `ro-` for resources, `donut-` for donut cache
 - Supports tag-based invalidation via surrogate keys
 
@@ -169,13 +169,12 @@ Located in `src-annotation/`:
 2. CommandInterceptor executes the command
 3. After successful response, annotations are processed
 4. RefreshAnnotatedCommand resolves URIs and invalidates tags
-5. ResourceStorage.invalidateTags() clears both RO and ETag pools
+5. ResourceStorage.invalidateTags() invalidates the tagged entries in the RO pool
 6. CDN purger (if configured) purges surrogate keys
 
 ### Surrogate Keys (Tags)
 
 Each cached resource has multiple tags for invalidation:
-- ETag value (unique identifier)
 - URI tag (from UriTag class)
 - Custom surrogate keys from `Header::SURROGATE_KEY`
 

@@ -143,7 +143,7 @@ class DemoLogCoverageTest extends TestCase
             $this->assertContains(false, $fields['saved'], sprintf('%s never reports a refused entry', $type));
         }
 
-        $this->assertCount(5, $saveTypes, 'expected save_value/save_view/save_etag/save_donut/save_donut_view');
+        $this->assertCount(4, $saveTypes, 'expected save_value/save_view/save_donut/save_donut_view');
     }
 
     public function testEveryCommandProducerIsDemonstrated(): void

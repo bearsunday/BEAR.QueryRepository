@@ -9,7 +9,7 @@ use Koriym\SemanticLogger\AbstractContext;
 use Override;
 
 /**
- * Close of a manual_purge scope: whether the local pools were invalidated.
+ * Close of a manual_purge scope: whether the local pool was invalidated.
  */
 final class ManualPurgeResultContext extends AbstractContext implements JsonSerializable
 {

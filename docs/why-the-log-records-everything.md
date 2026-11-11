@@ -40,12 +40,12 @@ the resulting invalidations nested beneath — cause and effect in one subtree.
 The dependency graph you must trust is the shape you see.
 
 **Every context is one decision point.** The vocabulary — `cache_hit`,
-`cache_miss`, `depends_on`, `dependency_skipped`, five `save_*` kinds, `invalidate`, `purge`,
+`cache_miss`, `depends_on`, `dependency_skipped`, four `save_*` kinds, `invalidate`, `purge`,
 `put_skipped`, `cache_error`, `pre_write_cleanup`, the `manual_*` scopes
 — is not verbosity. It enumerates the decisions the cache
 subsystem makes at the boundaries this package owns; the decisions it leaves
-silent are listed in [what-the-log-proves.md](what-the-log-proves.md). There are five save contexts because
-there are five physically different write paths; merging them would erase
+silent are listed in [what-the-log-proves.md](what-the-log-proves.md). There are four save contexts because
+there are four physically different write paths; merging them would erase
 exactly the distinction a debugging session needs. The size of the vocabulary
 is a fact about the domain, not a fault of the design.
 
@@ -62,7 +62,7 @@ them as rules, stable for as long as the code is. A body a stored entry cannot
 hold (`serialize()` refusing a closure, say) fails the request instead of
 producing a skip; `cache_error{operation: write}` records the refusal, and that
 is one of the effects that did not happen the retention policy does keep a
-session for. Invalidation reports per-target outcomes (`roPool`/`etagPool`:
+session for. Invalidation reports per-target outcomes (`roPool`:
 `invalidated`|`failed`; `cdn`: `purged`|`failed`|`skipped`) plus its
 duration. A failed write still opens a command scope, closed with its 4xx —
 recording that the purge was *correctly skipped*.
@@ -98,12 +98,12 @@ construction) — both declared in [what-the-log-proves.md](what-the-log-proves.
 ## Who reads it
 
 **Humans.** `vendor/bin/stree` renders a session as a tree
-(`php demo/run-dependency.php`): hits with no events, misses with their
-cleanup-invalidate-save sequence, dependency edges, command cascades.
+(`php demo/run-dependency.php`): hits with no events, misses with the save
+they triggered, dependency edges, command cascades.
 
 **Tests.** The tree shapes are pinned in `SemanticLogSchemaTest` and friends —
 the log doubles as regression armor. The v1.16.1 bug class is now
-structurally visible: a parent scope whose `save_etag` tags accumulate all of
+structurally visible: a parent scope whose `save_value` tags accumulate all of
 its children is one assertion away.
 
 **Machines.** This is the part built for the AI era. An agent diagnosing your
@@ -139,7 +139,7 @@ entirely out of failures, is 10% failure and 90% scaffolding. There is nothing i
 a healthy session to read.
 
 **Volume.** A pure-hit session is 698 B as one JSON line; the sessions production
-deliberately keeps — commands, cleanup-invalidate-save chains, manual calls —
+deliberately keeps — commands, invalidate-save chains, manual calls —
 measure 3.9 KB median and 21 KB worst case across the demos. At 1000 requests per
 minute, writing every session is about 1 GB per day; keeping only mutations and
 missing effects turns that into the write rate times 3.9 KB, which for an app

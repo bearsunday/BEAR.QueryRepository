@@ -7,7 +7,6 @@ namespace BEAR\QueryRepository;
 use BEAR\QueryRepository\Log\Context\InvalidateContext;
 use BEAR\QueryRepository\Log\Context\SaveDonutContext;
 use BEAR\QueryRepository\Log\Context\SaveDonutViewContext;
-use BEAR\QueryRepository\Log\Context\SaveEtagContext;
 use BEAR\QueryRepository\Log\Context\SaveValueContext;
 use BEAR\QueryRepository\Log\Context\SaveViewContext;
 use BEAR\Resource\Uri;
@@ -24,8 +23,11 @@ use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 
+use function array_keys;
 use function assert;
 use function serialize;
+use function str_repeat;
+use function trim;
 use function unserialize;
 
 class ResourceStorageTest extends TestCase
@@ -37,7 +39,6 @@ class ResourceStorageTest extends TestCase
         SemanticLoggerInterface|null $logger = null,
         PurgerInterface|null $purger = null,
         TagAwareAdapterInterface|null $roPool = null,
-        TagAwareAdapterInterface|null $etagPool = null,
     ): ResourceStorage {
         $tagAwareAdapter = new TagAwareAdapter(new FilesystemAdapter('', 0, __DIR__ . '/tmp'));
         $provider = static function (TagAwareAdapterInterface $pool): ProviderInterface {
@@ -56,11 +57,9 @@ class ResourceStorageTest extends TestCase
         return new ResourceStorage(
             $logger ?? new NullSemanticLogger(),
             $purger ?? new NullPurger(),
-            new UriTag(),
             new ResourceStorageSaver(),
             new CacheIdentityFactory(new GlobalServerContext()),
             $provider($roPool ?? $tagAwareAdapter),
-            $provider($etagPool ?? $tagAwareAdapter),
             new CacheTags(new UriTag(), new BaseUriTag(new UriTag())),
         );
     }
@@ -90,10 +89,8 @@ class ResourceStorageTest extends TestCase
         $serializable = new ResourceStorage(
             new NullSemanticLogger(),
             new NullPurger(),
-            new UriTag(),
             new ResourceStorageSaver(),
             new CacheIdentityFactory(new GlobalServerContext()),
-            new FakeArrayPoolProvider(),
             new FakeArrayPoolProvider(),
             new CacheTags(new UriTag(), new BaseUriTag(new UriTag())),
         );
@@ -109,13 +106,13 @@ class ResourceStorageTest extends TestCase
         $this->ro->headers[Header::ETAG] = '"1"';
 
         $this->assertTrue($this->storage->saveValue($this->ro, 60));
-        $this->storage->saveEtag($this->ro->uri, '"1"', 'a  b', 60);
-        $this->assertTrue($this->storage->hasEtag('"1"'));
+        $etag = $this->ro->headers[Header::ETAG];
+        $this->assertTrue($this->storage->hasEtag($etag));
 
         $this->storage->invalidateTags(['b']);
 
         $this->assertNull($this->storage->get($this->ro->uri));
-        $this->assertFalse($this->storage->hasEtag('"1"'));
+        $this->assertFalse($this->storage->hasEtag($etag));
     }
 
     public function testADonutTemplateUnderAnEmptyKeyIsStoredUnderTheRemainingKeys(): void
@@ -140,7 +137,6 @@ class ResourceStorageTest extends TestCase
         $context = $logger->events[0];
         assert($context instanceof InvalidateContext);
         $this->assertTrue($context->roPoolInvalidated);
-        $this->assertTrue($context->etagPoolInvalidated);
         // The default NullPurger is a no-op: the CDN side is "skipped", not "purged" —
         // nothing was purged, but nothing was meant to be.
         $this->assertSame('skipped', $context->cdnStatus);
@@ -178,7 +174,7 @@ class ResourceStorageTest extends TestCase
         $storage = self::getResourceStorageInstance($logger, new FakeThrowingPurger());
 
         // The CDN purge is fail-closed: a purge failure propagates so the write does not
-        // silently leave stale CDN content. The local pools are invalidated first and the
+        // silently leave stale CDN content. The local pool is invalidated first and the
         // outcome is logged as cdn=failed before the exception surfaces.
         try {
             $storage->invalidateTags(['_user_']);
@@ -190,7 +186,6 @@ class ResourceStorageTest extends TestCase
         $context = $logger->events[0];
         assert($context instanceof InvalidateContext);
         $this->assertTrue($context->roPoolInvalidated);
-        $this->assertTrue($context->etagPoolInvalidated);
         $this->assertSame('failed', $context->cdnStatus);
         $this->assertSame('failed', $context->jsonSerialize()['cdn']);
     }
@@ -199,12 +194,12 @@ class ResourceStorageTest extends TestCase
     {
         $this->ro->headers[Header::ETAG] = '"123456"';
         $this->storage->saveValue($this->ro, 10);
-        $this->storage->saveEtag($this->ro->uri, '"123456"', '', 10);
+        $tag = trim($this->ro->headers[Header::ETAG], '"');
 
-        $this->assertTrue($this->storage->hasEtag('"123456"'), 'quoted entity-tag');
-        $this->assertTrue($this->storage->hasEtag('123456'), 'bare legacy token');
-        $this->assertTrue($this->storage->hasEtag('W/"123456"'), 'weak validator');
-        $this->assertTrue($this->storage->hasEtag('"999999", "123456"'), 'entity-tag list');
+        $this->assertTrue($this->storage->hasEtag('"' . $tag . '"'), 'quoted entity-tag');
+        $this->assertTrue($this->storage->hasEtag($tag), 'bare legacy token');
+        $this->assertTrue($this->storage->hasEtag('W/"' . $tag . '"'), 'weak validator');
+        $this->assertTrue($this->storage->hasEtag('"999999", "' . $tag . '"'), 'entity-tag list');
         $this->assertFalse($this->storage->hasEtag('"999999"'), 'unknown entity-tag');
     }
 
@@ -212,41 +207,86 @@ class ResourceStorageTest extends TestCase
     {
         $this->ro->headers[Header::ETAG] = '"foo,bar"';
         $this->storage->saveValue($this->ro, 10);
-        $this->storage->saveEtag($this->ro->uri, '"foo,bar"', '', 10);
+        $tag = trim($this->ro->headers[Header::ETAG], '"');
 
-        $this->assertTrue($this->storage->hasEtag('"foo,bar"'), 'comma inside a quoted opaque-tag is data');
-        $this->assertTrue($this->storage->hasEtag('W/"foo,bar"'), 'weak validator with comma in opaque-tag');
-        $this->assertTrue($this->storage->hasEtag('"999999", "foo,bar"'), 'list with a comma-bearing entity-tag');
+        $this->assertTrue($this->storage->hasEtag('"' . $tag . '"'), 'comma inside a quoted opaque-tag is data');
+        $this->assertTrue($this->storage->hasEtag('W/"' . $tag . '"'), 'weak validator with comma in opaque-tag');
+        $this->assertTrue($this->storage->hasEtag('"999999", "' . $tag . '"'), 'list with a comma-bearing entity-tag');
         $this->assertFalse($this->storage->hasEtag('"bar"'), 'naive split fragment must not match');
         $this->assertFalse(
-            $this->storage->hasEtag('foo,bar'),
+            $this->storage->hasEtag($tag),
             'unquoted legacy value is indistinguishable from a two-element list (documented limitation)',
         );
     }
 
     public function testHasEtagRejectsMalformedFieldValues(): void
     {
-        $this->storage->saveEtag($this->ro->uri, '"123456"', '', 10);
+        $this->ro->headers[Header::ETAG] = '"123456"';
+        $this->storage->saveValue($this->ro, 10);
+        $tag = trim($this->ro->headers[Header::ETAG], '"');
+        $this->assertTrue($this->storage->hasEtag('"' . $tag . '"'));
 
-        $this->assertFalse($this->storage->hasEtag('"123456'), 'unterminated quoted entity-tag');
-        $this->assertFalse($this->storage->hasEtag('"123456" trailing'), 'trailing data after entity-tag');
-        $this->assertFalse($this->storage->hasEtag('x"123456"'), 'leading data before entity-tag');
-        $this->assertFalse($this->storage->hasEtag('"123456" "123456"'), 'missing comma separator');
-        $this->assertFalse($this->storage->hasEtag("\"123456\"\n"), 'trailing newline');
+        $this->assertFalse($this->storage->hasEtag('"' . $tag), 'unterminated quoted entity-tag');
+        $this->assertFalse($this->storage->hasEtag('"' . $tag . '" trailing'), 'trailing data after entity-tag');
+        $this->assertFalse($this->storage->hasEtag('x"' . $tag . '"'), 'leading data before entity-tag');
+        $this->assertFalse($this->storage->hasEtag('"' . $tag . '" "' . $tag . '"'), 'missing comma separator');
+        $this->assertFalse($this->storage->hasEtag('"' . $tag . "\"\n"), 'trailing newline');
     }
 
-    public function testInvalidationReachesASeparateEtagPool(): void
+    public function testAValueNotShapedLikeAStoredValidatorIsNotLookedUp(): void
     {
-        $roPool = new TagAwareAdapter(new ArrayAdapter());
-        $etagPool = new TagAwareAdapter(new ArrayAdapter());
-        $storage = self::getResourceStorageInstance(roPool: $roPool, etagPool: $etagPool);
-        $storage->saveEtag($this->ro->uri, '"123456"', '', 10);
-        $this->assertTrue($etagPool->hasItem('123456'));
-        $this->assertFalse($roPool->hasItem('123456'));
+        // Every read of this pool throws, so a false here is an answer given without one.
+        $storage = self::getResourceStorageInstance(roPool: new TagAwareAdapter(new FakeErrorCache()));
 
-        $storage->deleteEtag($this->ro->uri);
+        foreach (['"日本.語"', '"' . str_repeat('b', 1000) . '.x"', '".x"', '"abc.x"', '"ro-abc.x"', '"no-dot"'] as $etag) {
+            $this->assertFalse($storage->hasEtag($etag), $etag);
+            $this->assertFalse($storage->hasEtagFor($etag, $this->ro->uri), $etag);
+        }
+    }
 
-        $this->assertFalse($storage->hasEtag('"123456"'));
+    public function testAnotherVariantsValidatorIsNotAnsweredWhereThisVariantHasNoEntry(): void
+    {
+        $_SERVER['X_VARY'] = 'lang';
+        $_SERVER['X_LANG'] = 'en';
+        try {
+            $storage = self::getResourceStorageInstance(roPool: new TagAwareAdapter(new ArrayAdapter()));
+            $this->ro->headers[Header::ETAG] = '"1"';
+            $storage->saveValue($this->ro, 10);
+            $etag = $this->ro->headers[Header::ETAG];
+            $this->assertTrue($storage->hasEtag($etag));
+            $this->assertTrue($storage->hasEtagFor($etag, $this->ro->uri));
+
+            $_SERVER['X_LANG'] = 'ja';
+
+            $this->assertNull($storage->get($this->ro->uri));
+            $this->assertFalse($storage->hasEtag($etag), 'the entry asked about is the one this request is served from');
+            $this->assertFalse($storage->hasEtagFor($etag, $this->ro->uri));
+        } finally {
+            unset($_SERVER['X_VARY'], $_SERVER['X_LANG']);
+        }
+    }
+
+    public function testDeleteEtagDropsTheEntryThatHoldsTheEtag(): void
+    {
+        $this->ro->headers[Header::ETAG] = '"123456"';
+        $this->storage->saveValue($this->ro, 10);
+        $etag = $this->ro->headers[Header::ETAG];
+        $this->assertTrue($this->storage->hasEtag($etag));
+
+        $this->assertTrue($this->storage->deleteEtag($this->ro->uri));
+
+        $this->assertFalse($this->storage->hasEtag($etag));
+        $this->assertNull($this->storage->get($this->ro->uri));
+    }
+
+    public function testSaveEtagStoresNothing(): void
+    {
+        $items = new ArrayAdapter();
+        $storage = self::getResourceStorageInstance(roPool: new TagAwareAdapter($items));
+
+        $storage->saveEtag($this->ro->uri, '"123456"', 'a b', 10);
+
+        $this->assertSame([], $items->getValues());
     }
 
     public function testEtagIsNotRegisteredAsInvalidationTag(): void
@@ -288,10 +328,8 @@ class ResourceStorageTest extends TestCase
         $storage = new ResourceStorage(
             $logger,
             new NullPurger(),
-            new UriTag(),
             new ResourceStorageSaver(),
             new CacheIdentityFactory(new GlobalServerContext()),
-            $poolProvider,
             $poolProvider,
             new CacheTags(new UriTag(), new BaseUriTag(new UriTag())),
         );
@@ -331,10 +369,8 @@ class ResourceStorageTest extends TestCase
         $storage = new ResourceStorage(
             $logger,
             new NullPurger(),
-            new UriTag(),
             new ResourceStorageSaver(),
             new CacheIdentityFactory(new GlobalServerContext()),
-            $poolProvider,
             $poolProvider,
             new CacheTags(new UriTag(), new BaseUriTag(new UriTag())),
         );
@@ -358,11 +394,10 @@ class ResourceStorageTest extends TestCase
         // ("minimum": 0) and which no cache backend can honour anyway.
         $storage->saveValue($this->ro, -10);
         $storage->saveView($this->ro, -10);
-        $storage->saveEtag($this->ro->uri, '"123456"', '', -10);
         $storage->saveDonutView($this->ro, -10);
         $storage->saveDonut($this->ro->uri, $donut, -10, []);
 
-        $this->assertCount(5, $logger->events);
+        $this->assertCount(4, $logger->events);
         foreach ($logger->events as $event) {
             $this->assertSame(0, self::ttlOf($event), 'every store clamps a negative ttl to 0');
         }
@@ -374,7 +409,6 @@ class ResourceStorageTest extends TestCase
         assert(
             $event instanceof SaveValueContext
             || $event instanceof SaveViewContext
-            || $event instanceof SaveEtagContext
             || $event instanceof SaveDonutViewContext
             || $event instanceof SaveDonutContext,
         );
@@ -382,24 +416,18 @@ class ResourceStorageTest extends TestCase
         return $event->requestedTtl;
     }
 
-    public function testInvalidateTagsFailsWhenOnlyOnePoolRefuses(): void
+    public function testInvalidateTagsFailsWhenThePoolRefuses(): void
     {
         $logger = new RecordingSemanticLogger();
         $refusing = new FakeRefusingPool(new TagAwareAdapter(new ArrayAdapter()), refuseSave: false, refuseInvalidation: true);
         $storage = self::getResourceStorageInstance($logger, roPool: $refusing);
 
-        // Fail-closed: one pool still holding the entry means the resource is not
-        // invalidated, however well the other pool did.
         $this->assertFalse($storage->invalidateTags(['_user_']));
 
         $context = $logger->events[0];
         assert($context instanceof InvalidateContext);
         $this->assertFalse($context->roPoolInvalidated);
-        $this->assertTrue($context->etagPoolInvalidated);
-        // Both status words in one event: the pool that kept the entry must not read as
-        // invalidated, and the one that dropped it must not read as failed
-        $json = $context->jsonSerialize();
-        $this->assertSame('failed', $json['roPool']);
-        $this->assertSame('invalidated', $json['etagPool']);
+        $this->assertSame(['tags', 'roPool', 'cdn', 'durationMs'], array_keys($context->jsonSerialize()));
+        $this->assertSame('failed', $context->jsonSerialize()['roPool']);
     }
 }

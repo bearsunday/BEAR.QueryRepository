@@ -26,4 +26,4 @@ composer demo
 git diff demo/logs
 ```
 
-A context schema marks some values `x-volatile`; the trees render those (`durationMs`, `save_etag`'s `etag`) as `[volatile]`. `demo/snapshot.php` still replaces `durationMs` and `etag` in the raw `Cache Log JSON` block some demos also print, since that rendering does not reach it, and the literal `ETag`/`Last-Modified` header lines and conditional-request `ifNoneMatch`, which no schema covers at all.
+A context schema marks some values `x-volatile`; the trees render those (`durationMs`) as `[volatile]`. `demo/snapshot.php` still replaces `durationMs` in the raw `Cache Log JSON` block some demos also print, since that rendering does not reach it, and the literal `ETag`/`Last-Modified` header lines and conditional-request `ifNoneMatch`, which no schema covers at all.

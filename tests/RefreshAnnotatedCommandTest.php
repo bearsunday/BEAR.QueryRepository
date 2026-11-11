@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\QueryRepository\Log\Context\SaveEtagContext;
 use BEAR\QueryRepository\Log\Context\SaveValueContext;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\ResourceInterface;
@@ -71,15 +70,13 @@ class RefreshAnnotatedCommandTest extends TestCase
         $this->resource->put('app://self/user', ['id' => 1, 'name' => 'x', 'age' => 5]);
 
         $saveValueEvents = self::eventsOfType($this->logger, SaveValueContext::class, 'app://self/user/profile?user_id=1');
-        $saveEtagEvents = self::eventsOfType($this->logger, SaveEtagContext::class, 'app://self/user/profile?user_id=1');
         $this->assertCount(1, $saveValueEvents);
-        $this->assertCount(1, $saveEtagEvents);
 
         $profileTagPurges = array_values(array_filter(
             $this->purger->tags,
             static fn (string $tag): bool => in_array('_user_profile_user_id=1', explode(' ', $tag), true),
         ));
-        $this->assertCount(2, $profileTagPurges, 'the explicit purge plus the GET\'s own pre-write cleanup');
+        $this->assertCount(1, $profileTagPurges, 'the explicit purge; the GET that follows writes into the emptied slot');
 
         $this->assertNotNull($this->repository->get(new Uri('app://self/user/profile?user_id=1')));
     }
@@ -93,9 +90,9 @@ class RefreshAnnotatedCommandTest extends TestCase
     }
 
     /**
-     * @param class-string<SaveValueContext|SaveEtagContext> $type
+     * @param class-string<SaveValueContext> $type
      *
-     * @return list<SaveValueContext|SaveEtagContext>
+     * @return list<SaveValueContext>
      */
     private static function eventsOfType(RecordingSemanticLogger $logger, string $type, string $uri): array
     {

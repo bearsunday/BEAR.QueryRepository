@@ -43,7 +43,6 @@ class HttpCacheTest extends TestCase
         $user = $resource->get('app://self/user', ['id' => 1]);
         $storage = ResourceStorageTest::getResourceStorageInstance();
         $storage->saveValue($user, 10);
-        $storage->saveEtag($user->uri, $user->headers[Header::ETAG], '', 10);
         $httpCache = new CliHttpCache($storage);
         $server = ['HTTP_IF_NONE_MATCH' => $user->headers[Header::ETAG]];
         $this->assertTrue($httpCache->isNotModified($server));
@@ -65,7 +64,6 @@ class HttpCacheTest extends TestCase
         $user = $resource->get('app://self/user', ['id' => 1]);
         $storage = ResourceStorageTest::getResourceStorageInstance();
         $storage->saveValue($user, 10);
-        $storage->saveEtag($user->uri, $user->headers[Header::ETAG], '', 10);
         $httpCache = new CliHttpCache($storage);
         $header = 'IF_NONE_MATCH=' . $user->headers[Header::ETAG];
         $server = [
@@ -84,16 +82,16 @@ class HttpCacheTest extends TestCase
         $ro->body = [];
         $ro->headers[Header::ETAG] = '"abc"';
         $storage->saveValue($ro, 10);
-        $storage->saveEtag($ro->uri, '"abc"', '', null);
+        $etag = $ro->headers[Header::ETAG];
         $httpCache = new CliHttpCache($storage);
         $server = [
             'argc' => 4,
-            'argv' => ['bootstrap', 'get', 'page://self/x', 'If-None-Match="abc"'],
+            'argv' => ['bootstrap', 'get', 'page://self/x', 'If-None-Match=' . $etag],
         ];
 
         $this->assertTrue($httpCache->isNotModifiedFor(new Uri('page://self/x'), $server), 'the CLI argv form carries the same validator isNotModified() reads');
         $this->assertFalse($httpCache->isNotModifiedFor(new Uri('page://self/y'), $server), 'another resource\'s live validator is not an answer about this one');
-        $this->assertTrue($httpCache->isNotModifiedFor(new Uri('page://self/x'), ['HTTP_IF_NONE_MATCH' => '"abc"']), 'the HTTP form still matches');
+        $this->assertTrue($httpCache->isNotModifiedFor(new Uri('page://self/x'), ['HTTP_IF_NONE_MATCH' => $etag]), 'the HTTP form still matches');
     }
 
     public function testConditionalRequestAnswerIsRecorded(): void
@@ -103,7 +101,6 @@ class HttpCacheTest extends TestCase
         $etag = $user->headers[Header::ETAG];
         $storage = ResourceStorageTest::getResourceStorageInstance();
         $storage->saveValue($user, 10);
-        $storage->saveEtag($user->uri, $etag, '', 10);
 
         // Both transfer-boundary implementations record the same scope: the validator
         // presented, closed with the pool's answer at layer "etag". A hit is the 304
@@ -130,13 +127,13 @@ class HttpCacheTest extends TestCase
         }
     }
 
-    public function testAnUnreadableEtagPoolAnswersTheRequestInFull(): void
+    public function testAnUnreadablePoolAnswersTheRequestInFull(): void
     {
-        // The ETag pool is down: a validator that cannot be read is a validator that does not
+        // The pool is down: a validator whose entry cannot be read is a validator that does not
         // match, so the request is answered in full rather than failed (issue #190). The scope
         // still closes - an unclosed one would surface as an unclosed_at_flush diagnostic - and
         // records the outage as the established idiom reads it: cache_error + cache_miss.
-        $storage = ResourceStorageTest::getResourceStorageInstance(etagPool: new TagAwareAdapter(new class extends FakeErrorCache {
+        $storage = ResourceStorageTest::getResourceStorageInstance(roPool: new TagAwareAdapter(new class extends FakeErrorCache {
             #[Override]
             public function getItem($key): CacheItem
             {
@@ -150,6 +147,7 @@ class HttpCacheTest extends TestCase
                 throw new RuntimeException('cache server down', 0, new LogicException('driver detail'));
             }
         }));
+        $etag = '"' . (new CacheIdentityFactory())->locator(new Uri('app://self/user?id=1')) . '.any"';
 
         foreach ([HttpCache::class, CliHttpCache::class] as $class) {
             $logger = new RecordingSemanticLogger();
@@ -164,7 +162,7 @@ class HttpCacheTest extends TestCase
                 return true;
             });
             try {
-                $notModified = $httpCache->isNotModified(['HTTP_IF_NONE_MATCH' => '"any"', 'REQUEST_URI' => '/user?id=1']);
+                $notModified = $httpCache->isNotModified(['HTTP_IF_NONE_MATCH' => $etag, 'REQUEST_URI' => '/user?id=1']);
             } finally {
                 restore_error_handler();
             }
@@ -184,8 +182,6 @@ class HttpCacheTest extends TestCase
         $storage = ResourceStorageTest::getResourceStorageInstance();
         $storage->saveValue($user, 10);
         $storage->saveValue($other, 10);
-        $storage->saveEtag($user->uri, $user->headers[Header::ETAG], '', 10);
-        $storage->saveEtag($other->uri, $other->headers[Header::ETAG], '', 10);
 
         // The scoped question, asked of both transfer boundaries: this validator, for this
         // resource. Another resource's live validator is not an answer about this one.
@@ -213,7 +209,6 @@ class HttpCacheTest extends TestCase
         $etag = (string) $user->headers[Header::ETAG];
         $unscopable = new FakeUnscopableStorage(ResourceStorageTest::getResourceStorageInstance());
         $unscopable->saveValue($user, 10);
-        $unscopable->saveEtag($user->uri, $etag, '', 10);
 
         foreach ([HttpCache::class, CliHttpCache::class] as $class) {
             $httpCache = new $class($unscopable, new RecordingSemanticLogger());
@@ -224,8 +219,9 @@ class HttpCacheTest extends TestCase
     public function testTheScopedAnswerDegradesWhenTheLookupThrows(): void
     {
         // The same decision as the unscoped answer, recorded against the URI that was asked for.
-        $storage = ResourceStorageTest::getResourceStorageInstance(etagPool: new TagAwareAdapter(new FakeErrorCache()));
+        $storage = ResourceStorageTest::getResourceStorageInstance(roPool: new TagAwareAdapter(new FakeErrorCache()));
         $uri = new Uri('app://self/user?id=1');
+        $etag = '"' . (new CacheIdentityFactory())->locator($uri) . '.any"';
 
         foreach ([HttpCache::class, CliHttpCache::class] as $class) {
             $logger = new RecordingSemanticLogger();
@@ -238,7 +234,7 @@ class HttpCacheTest extends TestCase
                 return true;
             });
             try {
-                $notModified = $httpCache->isNotModifiedFor($uri, ['HTTP_IF_NONE_MATCH' => '"any"']);
+                $notModified = $httpCache->isNotModifiedFor($uri, ['HTTP_IF_NONE_MATCH' => $etag]);
             } finally {
                 restore_error_handler();
             }

@@ -11,7 +11,7 @@ use Override;
 /**
  * Close of a manual_invalidate scope: whether the invalidation took everywhere.
  *
- * The nested invalidate event carries the per-target detail (roPool/etagPool/cdn);
+ * The nested invalidate event carries the per-target detail (roPool/cdn);
  * this close is the one-word verdict, like its manual_store/manual_purge siblings.
  * Keeping the detail on the event also keeps the llms reading rule intact: every
  * invalidation - manual or framework-driven - is findable among the events, so

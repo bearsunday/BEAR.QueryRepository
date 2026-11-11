@@ -65,17 +65,23 @@ class SemanticLogSchemaTest extends TestCase
 
         // Lifecycle and dependency facts are present and schema-valid.
         $types = self::collectTypes($tree);
-        foreach (['get', 'cache_miss', 'pre_write_cleanup', 'depends_on', 'invalidate', 'save_value', 'save_etag'] as $type) {
+        foreach (['get', 'cache_miss', 'depends_on', 'save_value'] as $type) {
             $this->assertContains($type, $types);
         }
+
+        // Every level was a miss written into an empty slot: nothing was replaced.
+        $this->assertNotContains('pre_write_cleanup', $types);
+        $this->assertNotContains('invalidate', $types);
     }
 
     public function testCleanupInvalidateIsMarkerPrecededAtSource(): void
     {
-        // A miss-then-store GET chain: every invalidate here is the write path clearing
-        // the entry it is about to rewrite, and the writer records that purpose itself —
-        // each invalidate is immediately preceded by its pre_write_cleanup marker.
-        $this->resource->get('page://self/dep/level-one');
+        // A write into a slot that holds an entry clears it first, and the writer records
+        // that purpose itself: the invalidate is immediately preceded by its
+        // pre_write_cleanup marker.
+        $ro = $this->resource->get('page://self/dep/level-one');
+        $this->logger->flush();
+        $this->repository->put($ro);
         $tree = $this->flushAndValidate($this->logger);
 
         $invalidates = 0;
@@ -91,14 +97,14 @@ class SemanticLogSchemaTest extends TestCase
             }
         }
 
-        $this->assertGreaterThanOrEqual(3, $invalidates, 'each level of the chain cleans up before its store');
+        $this->assertSame(1, $invalidates, 'the replaced entry is cleaned up before its store');
     }
 
     public function testPurgeDrivenInvalidateCarriesNoCleanupMarker(): void
     {
-        // User::onPut carries #[Purge] and #[Refresh]: the purge-driven invalidate is a
-        // real invalidation (preceded by `purge`, not by the marker), while the refresh
-        // re-put still records its own marker-preceded cleanup — both shapes in one tree.
+        // User::onPut carries #[Purge] and #[Refresh]: each invalidate is a real invalidation,
+        // preceded by `purge`. The refresh re-put writes into the slot its purge emptied, so
+        // it records no cleanup.
         $this->resource->put('app://self/user', ['id' => 1, 'name' => 'bear', 'age' => 10]);
         $tree = $this->flushAndValidate($this->logger);
 
@@ -115,7 +121,8 @@ class SemanticLogSchemaTest extends TestCase
         }
 
         $this->assertGreaterThanOrEqual(1, $real, 'the #[Purge]-driven invalidate has no cleanup marker');
-        $this->assertGreaterThanOrEqual(1, $cleanup, 'the #[Refresh] re-put records its cleanup marker');
+        $this->assertSame(0, $cleanup, 'the #[Refresh] re-put replaces nothing');
+        $this->assertContains('save_value', self::collectTypes($tree), 'the #[Refresh] re-put stored its entry');
     }
 
     public function testCommandScopeRecordsCausality(): void
@@ -280,7 +287,7 @@ class SemanticLogSchemaTest extends TestCase
         $storage = $injector->getInstance(ResourceStorageInterface::class);
         $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
-        // Local pools dropped the tags but the CDN purge failed: fail-closed, and the
+        // The local pool dropped the tags but the CDN purge failed: fail-closed, and the
         // verdict must say failed - "invalidated" while the CDN still serves the content
         // would be the close contradicting its own nested event.
         try {

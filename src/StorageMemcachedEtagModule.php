@@ -23,6 +23,8 @@ use function explode;
 
 /**
  * Provides TagAwareAdapterInterface-EtagPool::class backed by Memcached servers of its own
+ *
+ * @deprecated Nothing reads the ETag pool: the entry itself holds its ETag
  */
 final class StorageMemcachedEtagModule extends AbstractModule
 {

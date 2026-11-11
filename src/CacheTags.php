@@ -33,6 +33,11 @@ final readonly class CacheTags
         return [...$ownTags, ...$declaredTags];
     }
 
+    public function uriTag(AbstractUri $uri): string
+    {
+        return ($this->uriTag)($uri);
+    }
+
     /**
      * The URI's own tag plus the group tag shared by its query variants (see BaseUriTag).
      *

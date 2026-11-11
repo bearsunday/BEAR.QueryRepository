@@ -13,12 +13,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapter;
 
-/**
- * An ETag can outlive the entry it was issued with while a newer entry sits under the same URI:
- * the invalidation that should have dropped it failed in the ETag pool alone. Neither
- * `HttpCache::isNotModified()` nor `isNotModifiedFor()` answers 304 for it - the client would
- * keep the replaced representation until the ETag's own TTL ran out.
- */
+/** An entry holds one validator: the validator of the entry a later write replaced is not answered 304 */
 class EtagOfReplacedEntryTest extends TestCase
 {
     /** @param array<string, int> $body */
@@ -40,34 +35,29 @@ class EtagOfReplacedEntryTest extends TestCase
             $storage,
             new Expiry(),
             new CacheDependencyCollector(new DependsOnTags(new UriTag()), new CacheDependency(new UriTag()), new NullSemanticLogger()),
-            new BaseUriTag(new UriTag()),
             new CacheTags(new UriTag(), new BaseUriTag(new UriTag())),
         );
     }
 
-    /** @return iterable<string, array{bool, bool}> */
-    public static function pools(): iterable
+    /** @return iterable<string, array{bool}> */
+    public static function cleanups(): iterable
     {
-        yield 'separate pools, the ETag pool refuses the cleanup' => [true, true];
-        yield 'one pool, the cleanup is refused and the save is not' => [false, true];
-        yield 'separate pools, both healthy' => [true, false];
+        yield 'the cleanup drops the replaced entry' => [false];
+        yield 'the pool refuses the cleanup and takes the save' => [true];
     }
 
-    #[DataProvider('pools')]
-    public function testTheEtagOfAnEntryASecondWriteReplacedIsNotAnswered304(bool $separate, bool $refuseCleanup): void
+    #[DataProvider('cleanups')]
+    public function testTheEtagOfAnEntryASecondWriteReplacedIsNotAnswered304(bool $refuseCleanup): void
     {
-        $roPool = new TagAwareAdapter(new ArrayAdapter());
-        $etagPool = $separate ? new TagAwareAdapter(new ArrayAdapter()) : $roPool;
-        $storage = ResourceStorageTest::getResourceStorageInstance(roPool: $roPool, etagPool: $etagPool);
+        $pool = new TagAwareAdapter(new ArrayAdapter());
+        $storage = ResourceStorageTest::getResourceStorageInstance(roPool: $pool);
 
         $ro = $this->ro('page://self/x', ['v' => 1]);
         $this->assertTrue($this->repository($storage)->put($ro));
         $replacedEtag = (string) $ro->headers[Header::ETAG];
 
-        $secondEtagPool = $refuseCleanup ? new FakeRefusingPool($etagPool, refuseSave: false, refuseInvalidation: true) : $etagPool;
         $secondStorage = ResourceStorageTest::getResourceStorageInstance(
-            roPool: $separate ? $roPool : $secondEtagPool,
-            etagPool: $secondEtagPool,
+            roPool: $refuseCleanup ? new FakeRefusingPool($pool, refuseSave: false, refuseInvalidation: true) : $pool,
         );
         $ro2 = $this->ro('page://self/x', ['v' => 2]);
         $this->assertTrue($this->repository($secondStorage)->put($ro2));
@@ -79,41 +69,30 @@ class EtagOfReplacedEntryTest extends TestCase
         $this->assertNotModified($storage, $ro->uri, $currentEtag, true);
     }
 
-    /**
-     * A donut refresh saves the recomposed view with no cleanup of its own, so the ETag an
-     * invalidation left behind is not removed by the next write even once the ETag pool is back.
-     */
-    public function testTheEtagOfAViewARefreshReplacedAfterAPurgeThatFailedInTheEtagPoolIsNotAnswered304(): void
+    /** A donut refresh saves the recomposed view with no cleanup of its own. */
+    public function testTheEtagOfAViewARefreshReplacedIsNotAnswered304(): void
     {
-        $roPool = new TagAwareAdapter(new ArrayAdapter());
-        $etagPool = new TagAwareAdapter(new ArrayAdapter());
-        $storage = ResourceStorageTest::getResourceStorageInstance(roPool: $roPool, etagPool: $etagPool);
-        $uriTag = (new UriTag())(new Uri('page://self/d'));
+        $storage = ResourceStorageTest::getResourceStorageInstance(roPool: new TagAwareAdapter(new ArrayAdapter()));
 
-        $this->saveView($storage, 'v1', '"etag-1"');
-        $purging = ResourceStorageTest::getResourceStorageInstance(
-            roPool: $roPool,
-            etagPool: new FakeRefusingPool($etagPool, refuseSave: false, refuseInvalidation: true),
-        );
-        $this->assertFalse($purging->invalidateTags([$uriTag]));
-        $this->saveView($storage, 'v2', '"etag-2"');
+        $etag1 = $this->saveView($storage, 'v1', '"etag-1"');
+        $etag2 = $this->saveView($storage, 'v2', '"etag-2"');
 
         $uri = new Uri('page://self/d');
         $this->assertSame('v2', $storage->get($uri)?->view, 'precondition: the view is the recomposed one');
-        $this->assertNotModified($storage, $uri, '"etag-1"', false);
-        $this->assertNotModified($storage, $uri, '"etag-2"', true);
-        $this->assertNotModified($storage, $uri, 'W/"etag-2"', true);
-        $this->assertNotModified($storage, $uri, '"etag-1", "etag-2"', true);
+        $this->assertNotModified($storage, $uri, $etag1, false);
+        $this->assertNotModified($storage, $uri, $etag2, true);
+        $this->assertNotModified($storage, $uri, 'W/' . $etag2, true);
+        $this->assertNotModified($storage, $uri, $etag1 . ', ' . $etag2, true);
     }
 
-    /** The two saves DonutRepository::saveView() makes */
-    private function saveView(ResourceStorage $storage, string $view, string $etag): void
+    private function saveView(ResourceStorage $storage, string $view, string $etag): string
     {
         $ro = $this->ro('page://self/d', []);
         $ro->view = $view;
         $ro->headers[Header::ETAG] = $etag;
         $this->assertTrue($storage->saveDonutView($ro, 10, []));
-        $storage->saveEtag($ro->uri, $etag, '', 10);
+
+        return (string) $ro->headers[Header::ETAG];
     }
 
     private function assertNotModified(ResourceStorage $storage, AbstractUri $uri, string $ifNoneMatch, bool $expected): void

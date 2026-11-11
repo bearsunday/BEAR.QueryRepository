@@ -29,7 +29,6 @@ vendor/bin/stree var/log/query-repository/latest.json   # 直前に走ったリ�
 | ログ上の名前 | 何か | アプリのどこで出会うか |
 |---|---|---|
 | `roPool` | **R**esource **O**bject プール: キャッシュされた body・view・donut テンプレートを保持するストア | `#[ResourceObjectPool]` で束縛するアダプタ |
-| `etagPool` | 検証子を ETag をキーに保持するストア | `#[EtagPool]` で束縛するアダプタ |
 | `tags` | エントリが保存される無効化の名前空間 — サロゲートキー | `Header::SURROGATE_KEY`、URI をタグ化するなら `UriTagInterface` |
 | URI タグ | あるリソースの URI をタグにしたもの。同時にその親が持つサロゲートキーでもある | `($this->uriTag)(new Uri('app://self/foo'))` |
 | `etag` | 表現の entity-tag。**キーではなく検証子** | `ETag` レスポンスヘッダ |
@@ -41,7 +40,7 @@ vendor/bin/stree var/log/query-repository/latest.json   # 直前に走ったリ�
 | `sMaxAge` | その書き込みが CDN に要求した共有キャッシュの寿命 | `DonutRepositoryInterface::putStatic($ro, ttl: …, sMaxAge: …)` |
 | スコープ / イベント / close | ツリーの 3 種類のノード。次節で説明 | —(ログ固有の区別) |
 
-`roPool` と `etagPool` は**プールの名前**、`layer` は**照会に答えたストア**です —
+`roPool` は**プールの名前**、`layer` は**照会に答えたストア**です —
 `cache_hit{layer: resource}` で閉じる `get` は「リソースストアが答えた」を意味します。`roPool: invalidated`
 を含む `invalidate` は「そのストアがタグを落とした」です。前者は無効化の対象、後者は照会の結果です。
 
@@ -92,7 +91,6 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 | `cache_policy` | `uri`, `expiry`, `expirySecond`, `expiryAt`, `resolvedTtl` | リソースが宣言した寿命と、それが解決した値 |
 | `save_value` | `uri`, `tags`, `requestedTtl`, `saved` | body をプールに渡した |
 | `save_view` | `uri`, `tags`, `requestedTtl`, `saved` | body + レンダリング済み view を渡した |
-| `save_etag` | `uri`, `etag`, `tags`, `requestedTtl`, `saved` | 検証子を ETag プールに渡した |
 | `save_donut` | `uri`, `tags`, `requestedTtl`, `saved` | donut テンプレートを渡した |
 | `save_donut_view` | `uri`, `tags`, `requestedTtl`, `saved` | 再合成した donut view を渡した |
 | `put_donut` | `uri`, `requestedTtl`, `sMaxAge` | donut の書き込みを要求した。要求時の lifetime つき |
@@ -100,8 +98,8 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 | `cdn_headers` | `uri`, `headers`, `surrogateKeys` | 応答に実際に付いた CDN 向けヘッダ |
 | `depends_on` | `parent`, `child`, `childTags` | 依存の辺 1 本。子のタグが親に加わった。`#[Cacheable]` の put ではタグを持つ子ごとに、donut ページの書き込みではタグを持つデータ依存(`onGet()` が読んだ子)ごとに記録する。穴はまだ実行されていないので、代わりに `dependency_skipped` を記録する。donut ページの描画中に呼んだ `CacheDependencyInterface::depends()`(テンプレートのヘルパーからなど)も、`put_donut` と `save_*` のあいだに記録する。実行された子が `#[DependsOn]` を宣言しているとき(子自身か、子が埋め込んで実行されたリクエストが)は、コードによらず記録するので、子自身の URI タグは親に届く。宣言したタグは、ここの `childTags` と、親の `save_*` の `tags` に出る |
 | `dependency_skipped` | `parent`, `child`, `reason` | キャッシュされる親の書き込み(`#[Cacheable]` の put、または donut ページの書き込み)で、body の最上位にある埋め込みリクエストを依存に入れなかった。子のタグは保存される値や donut テンプレートに加わらない。穴のタグは、穴が描画されるときに `#[CacheableResponse]` のビューには届く。配列の中のリクエストは見えず、何も記録しない |
-| `pre_write_cleanup` | `uri` | 書き込み側が、上書きするエントリを消す直前 |
-| `invalidate` | `tags`, `roPool`, `etagPool`, `cdn`, `durationMs` | タグを無効化した。対象ごとの結果つき |
+| `pre_write_cleanup` | `uri` | 書き込み側が、書き込み先に保存済みのエントリを見つけ、それを消す直前。空の場所への書き込みでは記録しない |
+| `invalidate` | `tags`, `roPool`, `cdn`, `durationMs` | タグを無効化した。対象ごとの結果つき |
 | `purge` | `uri` | URI 指定の破棄を要求した |
 | `put_skipped` | `uri`, `reason`, `code` | miss の後に書き込みを**しなかった**ことと、その理由 |
 | `cache_hit` / `cache_miss` | `layer`, `durationMs` | 内側の照会。close context では `resource`、`donut-view`、`etag` のいずれかで `durationMs` が入る。`layer: donut` の inner event では `durationMs` は null — donut テンプレートがあったかの判定だけ |
@@ -115,9 +113,9 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 
 | フィールド | 値 | 読み方 |
 |---|---|---|
-| `layer` | `resource` \| `donut` \| `donut-view` \| `etag` | どのストアに尋ねたか。`resource` = `#[Cacheable]` の値/ビューストア、`donut` = donut テンプレート(イベントとしてのみ出る)、`donut-view` = 再合成された donut ページ、`etag` = 条件付きリクエストが引く ETag プール |
+| `layer` | `resource` \| `donut` \| `donut-view` \| `etag` | どのストアに尋ねたか。`resource` = `#[Cacheable]` の値/ビューストア、`donut` = donut テンプレート(イベントとしてのみ出る)、`donut-view` = 再合成された donut ページ、`etag` = 条件付きリクエストの検証子が指す保存済みエントリ |
 | `saved` | `true` \| `false` | **`false` = プールが書き込みを拒否した。** これを記録するものは他に無い。`true` = プールが受け取った、であって残ったではない。ストアを束縛していないときの `NullAdapter` はすべての書き込みを受け取って何も残さないので、read は毎回 miss になる |
-| `roPool` / `etagPool` | `invalidated` \| `failed` | プールごとの無効化結果 |
+| `roPool` | `invalidated` \| `failed` | プールの無効化結果 |
 | `cdn` | `purged` \| `failed` \| `skipped` | `skipped` は purger 未設定 (`NullPurger`)。「やることが無かった」ではない |
 | `operation` | `read` \| `write` | キャッシュのどちら側が throw したか |
 | `reason` (`put_skipped`) | `etag-present` \| `error-code` \| `not-cacheable` \| `unstorable` | 書き込みが起きなかった理由。`etag-present` = リソースが既に ETag を持っていたので donut 層は手を出さなかった、`not-cacheable` = テンプレートから再描画された donut ページ(ページとしては保存しない)、`error-code` は応答の `code` を伴い閾値は経路で違う: `#[Cacheable]` は 200 以外すべて(`203` もここに出る)、donut は 4xx 以上、`unstorable` = このリクエスト中に producer がマークしたか、`Cache-Control` が `#[HttpCache]`/`#[NoHttpCache]` の宣言値とは別の `no-store`/`private` を含んでいた(宣言値そのものは数えない) — code や type が許す場合でも書き込みは拒否される |
@@ -135,10 +133,10 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 規則が働いたからです。その経路がキャッシュしない応答コード、既に立っている検証子、テンプレートから
 返した donut ページ、このリクエストで `unstorable` とマークされた応答 — どれだったかがイベントに入っています。
 
-**非200のdonut書き込みには `save_etag` が無く、`cdn_headers` に寿命も入りません。** donutの
-閾値は2xxと3xxを通しますが、検証子は200にしか作られないため、保存された `204` や `301` には
-保存すべきETagがありません。200では `save_donut_view` の直後に `save_etag` が出ますが、非200では
-それが無く、`save_donut_view` と `save_donut` だけが並びます。CDNの寿命も同じ規則で、与えられるのは200だけです。
+**非200のdonut書き込みは検証子を保存せず、`cdn_headers` に寿命も入りません。** donutの
+閾値は2xxと3xxを通しますが、検証子は200にしか作られないため、保存された `204` や `301` の応答に
+`ETag` は付きません。`save_donut_view` と `save_donut` は200のときと同じように並びます。
+CDNの寿命も同じ規則で、与えられるのは200だけです。
 保存された非200の `cdn_headers` にはパージキーだけが載り、`CDN-Cache-Control` は載りません。
 どちらの欠落も書き込みの失敗ではありません。
 
@@ -178,16 +176,22 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 オリジンの仕事を払います。1 件ごとの例外ではなく、`cache_error` の発生率で見る対象です。
 
 **`invalidate` が pre-write cleanup であるのは、同じスコープの直前のイベントが `pre_write_cleanup`
-マーカーであるとき、かつそのときだけです。** 書き込み側は上書きするエントリを先に消すので、本物の破棄と
-見た目が同じになります。マーカーは発生源で記録されるため、タグの相関からの推測は一切ありません。
-マーカーの無い `invalidate` は本物の無効化です。
+マーカーであるとき、かつそのときだけです。** 書き込み側は、書き込み先に保存済みのエントリがあれば
+先に消すので、本物の破棄と見た目が同じになります。マーカーは発生源で記録されるため、タグの相関からの
+推測は一切ありません。マーカーの無い `invalidate` は本物の無効化です。
+
+**空の場所への書き込みは何も消さず、マーカーも `invalidate` も記録しません。** miss の後の書き込みが
+これにあたり、同じ URI の他のバリアントと、それを埋め込む親は保存されたまま残ります。マーカーが出るのは、
+書き込みが保存済みのエントリに重なるときだけです — そこへの直接の `put()`/`putStatic()`/`putDonut()` か、
+同時に miss した 2 つのリクエストのうち後から書くほうです。この cleanup はエントリの URI タグを無効化
+するので、それを埋め込む親も一緒に落ちます。
 
 **依存が正しいかは集合の交差で決まります。** `save_*` の `tags` と、後の `invalidate` の `tags` を
 突き合わせます。交差しないタグは、その書き込みがそのエントリを残したことを意味します — これが
 内側から見た「stale を配信している」状態です。
 
 **子のタグがどのエントリに載るかは、親がその子をどう使うかで決まります。** `#[Cacheable]` の親は
-`depends_on` の辺を記録し、子のタグを自分の `save_value`/`save_view` と `save_etag` に載せます。
+`depends_on` の辺を記録し、子のタグを自分の `save_value`/`save_view` に載せます。
 だから子を purge すると親のエントリも一緒に消え、次の read は `cache_miss` で閉じます。donut の親
 （`#[CacheableResponse]`／`#[DonutCache]`）は、子の使われ方で 2 つを区別します。タグを持つ*データ依存* —
 ページの `onGet()` が既に読んだ子 — は辺を記録し、タグをテンプレートとビューの両方に載せます。
@@ -242,8 +246,8 @@ miss の隣に `pool_error` が並びます(沈黙にはなりません)。そ�
 lifetime ヘッダの無いマップは、CDN に lifetime 指示を与えなかった応答です。`surrogateKeys` と
 `invalidate` の `tags` を突き合わせると、パージがエッジの保持物に届き得たかが分かります。
 
-**`cache_hit{layer: etag}` で閉じる `conditional_request` が 304 です** — リソースを走らせずに
-ETag プールだけでリクエスト全体に答えています。304 が現れるのはここだけです。
+**`cache_hit{layer: etag}` で閉じる `conditional_request` が 304 です** — リソースを走らせずに、
+検証子が指す保存済みエントリだけでリクエスト全体に答えています。304 が現れるのはここだけです。
 アプリがどこで判定したかで、問いが変わります。`isNotModified($server)` はルーティング前に走るので
 「その検証子がどこかで生きているか」しか訊けません — 別 URI で受け取った検証子でも通ります。
 `isNotModifiedFor($uri, $server)` は「要求されたリソースに対して発行された検証子か」を訊きます
@@ -257,18 +261,17 @@ hit にし、中身を新しくするのは再合成のほうです。
 
 ## 実例
 
-`demo/run-dependency.php` の出力そのままです — 他の 2 リソースが埋め込んでいるリソースへの PUT:
+`demo/run-dependency.php` の出力から、所要時間と null のフィールドを省いたものです — 他の 2 リソースが
+埋め込んでいるリソースへの PUT:
 
 ```text
 command {"method": "onPut", "annotations": [], "source": "CommandInterceptor"}
-  get {"uri": "page://self/dep/level-three"}
-    pre_write_cleanup {"uri": "page://self/dep/level-three"}
-    invalidate {"tags": ["_dep_level-three_"], "roPool": "invalidated", "etagPool": "invalidated", "cdn": "skipped"}
-    save_value {"uri": "page://self/dep/level-three", "tags": ["_dep_level-three_"], "requestedTtl": 31536000, "saved": true}
-    save_etag {"uri": "page://self/dep/level-three", "tags": ["_dep_level-three_"], "requestedTtl": 31536000, "saved": true}
-    cache_miss {"layer": "resource"}
   purge {"uri": "page://self/dep/level-three"}
-  invalidate {"tags": ["_dep_level-three_"], "roPool": "invalidated", "etagPool": "invalidated", "cdn": "skipped"}
+  invalidate {"tags": ["_dep_level-three_", "grp-_dep_level-three_"], "roPool": "invalidated", "cdn": "skipped"}
+  get {"uri": "page://self/dep/level-three"}
+    cache_policy {"uri": "page://self/dep/level-three", "expiry": "never", "resolvedTtl": 31536000}
+    save_value {"uri": "page://self/dep/level-three", "tags": ["_dep_level-three_", "grp-_dep_level-three_"], "requestedTtl": 31536000, "saved": true}
+    cache_miss {"layer": "resource"}
   command_result {"code": 200}
 ```
 
@@ -279,17 +282,15 @@ command {"method": "onPut", "annotations": [], "source": "CommandInterceptor"}
    属性が対象を選んでいる場合、各要素は
    `{"class": "…\\Annotation\\Refresh", "uri": "app://self/refresh-dest{?id}"}` の形になる —
    class がどの属性か、uri がその対象で、`{?id}` はコマンド自身の引数から埋まる URI テンプレート。
-2. 入れ子の `get` がその refresh で、それ自体が 1 つのスコープ。リソースは実際に走り
-   (`cache_miss{layer: resource}`)、保存された(`saved: true` が 2 つ — body、続いて検証子。
-   検証子は body を保存できたときだけ保存される)。
-3. **内側**の `invalidate` は同じ URI の `pre_write_cleanup` の直後にある。これは書き手が
-   これから書き換えるエントリを消しているだけで、破棄ではない。
-4. **外側**の `invalidate` には直前のマーカーが無いので、本物の無効化。そのタグは子の URI タグであり、
-   それは同時に 2 つの親が保存されたときの surrogate key でもある — **この 1 イベントが、埋め込んでいる
-   側を stale にしている**。
-5. `cdn: skipped` が 2 つ: ここでは purger が未設定。CDN 配下のアプリなら `purged` と出て、
+2. `invalidate` は `purge` の直後にあり、直前にマーカーが無いので、本物の無効化。最初のタグは子の
+   URI タグであり、それは同時に 2 つの親が保存されたときの surrogate key でもある — **この 1 イベントが、
+   埋め込んでいる側を stale にしている**。
+3. 入れ子の `get` がその refresh で、それ自体が 1 つのスコープ。リソースは実際に走り
+   (`cache_miss{layer: resource}`)、保存された(`saved: true`)。purge が書き込み先を空にしていたので、
+   この書き込みは `pre_write_cleanup` も 2 つめの `invalidate` も記録しない。
+4. `cdn: skipped`: ここでは purger が未設定。CDN 配下のアプリなら `purged` と出て、
    `failed` ならローカルのプールは消えたがエッジは消えていないことを意味する。
-6. `command_result{code: 200}` で閉じる。ここが 4xx で上に `invalidate` が無ければ、
+5. `command_result{code: 200}` で閉じる。ここが 4xx で上に `invalidate` が無ければ、
    失敗した書き込みが正しく何も破棄していない記録になる。
 
 ## セッションを特定する

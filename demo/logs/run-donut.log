@@ -54,27 +54,11 @@ get uri=page://self/html/blog-posting
 │   │   ├── uri: page://self/html/comment
 │   │   ├── expiry: never
 │   │   └── resolvedTtl: 31536000
-│   ├── pre_write_cleanup uri=page://self/html/comment [event]
-│   │   └── uri: page://self/html/comment
-│   ├── invalidate tags=[_html_comment_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
-│   │   ├── tags[0]: _html_comment_
-│   │   ├── roPool: invalidated
-│   │   ├── etagPool: invalidated
-│   │   ├── cdn: skipped
-│   │   └── durationMs: [volatile]
 │   ├── save_value uri=page://self/html/comment tags=[_html_comment_, grp-_html_comment_ +1 items] requestedTtl=31536000 saved=true [event]
 │   │   ├── uri: page://self/html/comment
 │   │   ├── tags[0]: _html_comment_
 │   │   ├── tags[1]: grp-_html_comment_
 │   │   ├── tags[2]: comment01
-│   │   ├── requestedTtl: 31536000
-│   │   └── saved: true
-│   ├── save_etag uri=page://self/html/comment etag=[volatile] tags=[comment01, grp-_html_comment_ +1 items] requestedTtl=31536000 (+1 more) [event]
-│   │   ├── uri: page://self/html/comment
-│   │   ├── etag: [volatile]
-│   │   ├── tags[0]: comment01
-│   │   ├── tags[1]: grp-_html_comment_
-│   │   ├── tags[2]: _html_comment_
 │   │   ├── requestedTtl: 31536000
 │   │   └── saved: true
 │   └── close cache_miss
@@ -88,29 +72,11 @@ get uri=page://self/html/blog-posting
 │   ├── surrogateKeys[3]: _html_comment_
 │   ├── surrogateKeys[4]: grp-_html_comment_
 │   └── surrogateKeys[5]: comment01
-├── pre_write_cleanup uri=page://self/html/blog-posting [event]
-│   └── uri: page://self/html/blog-posting
-├── invalidate tags=[_html_blog-posting_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
-│   ├── tags[0]: _html_blog-posting_
-│   ├── roPool: invalidated
-│   ├── etagPool: invalidated
-│   ├── cdn: skipped
-│   └── durationMs: [volatile]
 ├── save_donut_view uri=page://self/html/blog-posting tags=[_html_blog-posting_ +5 items] saved=true [event]
 │   ├── uri: page://self/html/blog-posting
 │   ├── tags[0]: _html_blog-posting_
 │   ├── tags[1]: grp-_html_blog-posting_
 │   ├── tags[2]: blog-posting-page
-│   ├── tags[3]: _html_comment_
-│   ├── tags[4]: grp-_html_comment_
-│   ├── tags[5]: comment01
-│   └── saved: true
-├── save_etag uri=page://self/html/blog-posting etag=[volatile] tags=[blog-posting-page, _html_blog-posting_ +4 items] saved=true [event]
-│   ├── uri: page://self/html/blog-posting
-│   ├── etag: [volatile]
-│   ├── tags[0]: blog-posting-page
-│   ├── tags[1]: _html_blog-posting_
-│   ├── tags[2]: grp-_html_blog-posting_
 │   ├── tags[3]: _html_comment_
 │   ├── tags[4]: grp-_html_comment_
 │   ├── tags[5]: comment01
@@ -131,11 +97,10 @@ get uri=page://self/html/blog-posting
     └── durationMs: [volatile]
 manual_purge uri=page://self/html/comment
 ├── uri: page://self/html/comment
-├── invalidate tags=[_html_comment_, grp-_html_comment_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
+├── invalidate tags=[_html_comment_, grp-_html_comment_] roPool=invalidated cdn=skipped durationMs=[volatile] [event]
 │   ├── tags[0]: _html_comment_
 │   ├── tags[1]: grp-_html_comment_
 │   ├── roPool: invalidated
-│   ├── etagPool: invalidated
 │   ├── cdn: skipped
 │   └── durationMs: [volatile]
 └── close manual_purge_result
@@ -153,27 +118,11 @@ get uri=page://self/html/blog-posting
 │   │   ├── uri: page://self/html/comment
 │   │   ├── expiry: never
 │   │   └── resolvedTtl: 31536000
-│   ├── pre_write_cleanup uri=page://self/html/comment [event]
-│   │   └── uri: page://self/html/comment
-│   ├── invalidate tags=[_html_comment_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
-│   │   ├── tags[0]: _html_comment_
-│   │   ├── roPool: invalidated
-│   │   ├── etagPool: invalidated
-│   │   ├── cdn: skipped
-│   │   └── durationMs: [volatile]
 │   ├── save_value uri=page://self/html/comment tags=[_html_comment_, grp-_html_comment_ +1 items] requestedTtl=31536000 saved=true [event]
 │   │   ├── uri: page://self/html/comment
 │   │   ├── tags[0]: _html_comment_
 │   │   ├── tags[1]: grp-_html_comment_
 │   │   ├── tags[2]: comment01
-│   │   ├── requestedTtl: 31536000
-│   │   └── saved: true
-│   ├── save_etag uri=page://self/html/comment etag=[volatile] tags=[comment01, grp-_html_comment_ +1 items] requestedTtl=31536000 (+1 more) [event]
-│   │   ├── uri: page://self/html/comment
-│   │   ├── etag: [volatile]
-│   │   ├── tags[0]: comment01
-│   │   ├── tags[1]: grp-_html_comment_
-│   │   ├── tags[2]: _html_comment_
 │   │   ├── requestedTtl: 31536000
 │   │   └── saved: true
 │   └── close cache_miss
@@ -192,16 +141,6 @@ get uri=page://self/html/blog-posting
 │   ├── tags[0]: _html_blog-posting_
 │   ├── tags[1]: grp-_html_blog-posting_
 │   ├── tags[2]: blog-posting-page
-│   ├── tags[3]: _html_comment_
-│   ├── tags[4]: grp-_html_comment_
-│   ├── tags[5]: comment01
-│   └── saved: true
-├── save_etag uri=page://self/html/blog-posting etag=[volatile] tags=[blog-posting-page, _html_blog-posting_ +4 items] saved=true [event]
-│   ├── uri: page://self/html/blog-posting
-│   ├── etag: [volatile]
-│   ├── tags[0]: blog-posting-page
-│   ├── tags[1]: _html_blog-posting_
-│   ├── tags[2]: grp-_html_blog-posting_
 │   ├── tags[3]: _html_comment_
 │   ├── tags[4]: grp-_html_comment_
 │   ├── tags[5]: comment01
@@ -226,14 +165,6 @@ get uri=page://self/html/counter-donut
 │   ├── surrogateKeys[1]: grp-_html_counter-donut_
 │   ├── surrogateKeys[2]: _counter_
 │   └── surrogateKeys[3]: grp-_counter_
-├── pre_write_cleanup uri=page://self/html/counter-donut [event]
-│   └── uri: page://self/html/counter-donut
-├── invalidate tags=[_html_counter-donut_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
-│   ├── tags[0]: _html_counter-donut_
-│   ├── roPool: invalidated
-│   ├── etagPool: invalidated
-│   ├── cdn: skipped
-│   └── durationMs: [volatile]
 ├── save_donut uri=page://self/html/counter-donut tags=[_html_counter-donut_ +1 items] saved=true [event]
 │   ├── uri: page://self/html/counter-donut
 │   ├── tags[0]: _html_counter-donut_
@@ -255,27 +186,11 @@ get uri=page://self/html/render-time-dependency
 │   │   ├── uri: page://self/html/mutable-comment
 │   │   ├── expiry: never
 │   │   └── resolvedTtl: 31536000
-│   ├── pre_write_cleanup uri=page://self/html/mutable-comment [event]
-│   │   └── uri: page://self/html/mutable-comment
-│   ├── invalidate tags=[_html_mutable-comment_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
-│   │   ├── tags[0]: _html_mutable-comment_
-│   │   ├── roPool: invalidated
-│   │   ├── etagPool: invalidated
-│   │   ├── cdn: skipped
-│   │   └── durationMs: [volatile]
 │   ├── save_value uri=page://self/html/mutable-comment tags=[_html_mutable-comment_ +2 items] requestedTtl=31536000 saved=true [event]
 │   │   ├── uri: page://self/html/mutable-comment
 │   │   ├── tags[0]: _html_mutable-comment_
 │   │   ├── tags[1]: grp-_html_mutable-comment_
 │   │   ├── tags[2]: mutable-comment
-│   │   ├── requestedTtl: 31536000
-│   │   └── saved: true
-│   ├── save_etag uri=page://self/html/mutable-comment etag=[volatile] tags=[mutable-comment +2 items] requestedTtl=31536000 (+1 more) [event]
-│   │   ├── uri: page://self/html/mutable-comment
-│   │   ├── etag: [volatile]
-│   │   ├── tags[0]: mutable-comment
-│   │   ├── tags[1]: grp-_html_mutable-comment_
-│   │   ├── tags[2]: _html_mutable-comment_
 │   │   ├── requestedTtl: 31536000
 │   │   └── saved: true
 │   └── close cache_miss
@@ -294,14 +209,6 @@ get uri=page://self/html/render-time-dependency
 │   ├── surrogateKeys[2]: mutable-comment
 │   ├── surrogateKeys[3]: _html_render-time-dependency_
 │   └── surrogateKeys[4]: grp-_html_render-time-dependency_
-├── pre_write_cleanup uri=page://self/html/render-time-dependency [event]
-│   └── uri: page://self/html/render-time-dependency
-├── invalidate tags=[_html_render-time-dependency_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
-│   ├── tags[0]: _html_render-time-dependency_
-│   ├── roPool: invalidated
-│   ├── etagPool: invalidated
-│   ├── cdn: skipped
-│   └── durationMs: [volatile]
 ├── save_donut_view uri=page://self/html/render-time-dependency tags=[_html_render-time-dependency_ +4 items] saved=true [event]
 │   ├── uri: page://self/html/render-time-dependency
 │   ├── tags[0]: _html_render-time-dependency_
@@ -309,15 +216,6 @@ get uri=page://self/html/render-time-dependency
 │   ├── tags[2]: _html_mutable-comment_
 │   ├── tags[3]: grp-_html_mutable-comment_
 │   ├── tags[4]: mutable-comment
-│   └── saved: true
-├── save_etag uri=page://self/html/render-time-dependency etag=[volatile] tags=[_html_mutable-comment_ +4 items] saved=true [event]
-│   ├── uri: page://self/html/render-time-dependency
-│   ├── etag: [volatile]
-│   ├── tags[0]: _html_mutable-comment_
-│   ├── tags[1]: grp-_html_mutable-comment_
-│   ├── tags[2]: mutable-comment
-│   ├── tags[3]: _html_render-time-dependency_
-│   ├── tags[4]: grp-_html_render-time-dependency_
 │   └── saved: true
 ├── save_donut uri=page://self/html/render-time-dependency tags=[_html_render-time-dependency_ +4 items] saved=true [event]
 │   ├── uri: page://self/html/render-time-dependency
@@ -332,11 +230,10 @@ get uri=page://self/html/render-time-dependency
     └── durationMs: [volatile]
 manual_purge uri=page://self/html/mutable-comment
 ├── uri: page://self/html/mutable-comment
-├── invalidate tags=[_html_mutable-comment_ +1 items] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
+├── invalidate tags=[_html_mutable-comment_ +1 items] roPool=invalidated cdn=skipped durationMs=[volatile] [event]
 │   ├── tags[0]: _html_mutable-comment_
 │   ├── tags[1]: grp-_html_mutable-comment_
 │   ├── roPool: invalidated
-│   ├── etagPool: invalidated
 │   ├── cdn: skipped
 │   └── durationMs: [volatile]
 └── close manual_purge_result
@@ -354,27 +251,11 @@ get uri=page://self/html/render-time-dependency
 │   │   ├── uri: page://self/html/mutable-comment
 │   │   ├── expiry: never
 │   │   └── resolvedTtl: 31536000
-│   ├── pre_write_cleanup uri=page://self/html/mutable-comment [event]
-│   │   └── uri: page://self/html/mutable-comment
-│   ├── invalidate tags=[_html_mutable-comment_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
-│   │   ├── tags[0]: _html_mutable-comment_
-│   │   ├── roPool: invalidated
-│   │   ├── etagPool: invalidated
-│   │   ├── cdn: skipped
-│   │   └── durationMs: [volatile]
 │   ├── save_value uri=page://self/html/mutable-comment tags=[_html_mutable-comment_ +2 items] requestedTtl=31536000 saved=true [event]
 │   │   ├── uri: page://self/html/mutable-comment
 │   │   ├── tags[0]: _html_mutable-comment_
 │   │   ├── tags[1]: grp-_html_mutable-comment_
 │   │   ├── tags[2]: mutable-comment
-│   │   ├── requestedTtl: 31536000
-│   │   └── saved: true
-│   ├── save_etag uri=page://self/html/mutable-comment etag=[volatile] tags=[mutable-comment +2 items] requestedTtl=31536000 (+1 more) [event]
-│   │   ├── uri: page://self/html/mutable-comment
-│   │   ├── etag: [volatile]
-│   │   ├── tags[0]: mutable-comment
-│   │   ├── tags[1]: grp-_html_mutable-comment_
-│   │   ├── tags[2]: _html_mutable-comment_
 │   │   ├── requestedTtl: 31536000
 │   │   └── saved: true
 │   └── close cache_miss
@@ -393,14 +274,6 @@ get uri=page://self/html/render-time-dependency
 │   ├── surrogateKeys[2]: mutable-comment
 │   ├── surrogateKeys[3]: _html_render-time-dependency_
 │   └── surrogateKeys[4]: grp-_html_render-time-dependency_
-├── pre_write_cleanup uri=page://self/html/render-time-dependency [event]
-│   └── uri: page://self/html/render-time-dependency
-├── invalidate tags=[_html_render-time-dependency_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
-│   ├── tags[0]: _html_render-time-dependency_
-│   ├── roPool: invalidated
-│   ├── etagPool: invalidated
-│   ├── cdn: skipped
-│   └── durationMs: [volatile]
 ├── save_donut_view uri=page://self/html/render-time-dependency tags=[_html_render-time-dependency_ +4 items] saved=true [event]
 │   ├── uri: page://self/html/render-time-dependency
 │   ├── tags[0]: _html_render-time-dependency_
@@ -408,15 +281,6 @@ get uri=page://self/html/render-time-dependency
 │   ├── tags[2]: _html_mutable-comment_
 │   ├── tags[3]: grp-_html_mutable-comment_
 │   ├── tags[4]: mutable-comment
-│   └── saved: true
-├── save_etag uri=page://self/html/render-time-dependency etag=[volatile] tags=[_html_mutable-comment_ +4 items] saved=true [event]
-│   ├── uri: page://self/html/render-time-dependency
-│   ├── etag: [volatile]
-│   ├── tags[0]: _html_mutable-comment_
-│   ├── tags[1]: grp-_html_mutable-comment_
-│   ├── tags[2]: mutable-comment
-│   ├── tags[3]: _html_render-time-dependency_
-│   ├── tags[4]: grp-_html_render-time-dependency_
 │   └── saved: true
 ├── save_donut uri=page://self/html/render-time-dependency tags=[_html_render-time-dependency_ +4 items] saved=true [event]
 │   ├── uri: page://self/html/render-time-dependency
@@ -492,28 +356,6 @@ get uri=page://self/html/render-time-dependency
                             }
                         },
                         {
-                            "id": "pre_write_cleanup_1",
-                            "type": "pre_write_cleanup",
-                            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/pre_write_cleanup.json",
-                            "context": {
-                                "uri": "page://self/html/comment"
-                            }
-                        },
-                        {
-                            "id": "invalidate_1",
-                            "type": "invalidate",
-                            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/invalidate.json",
-                            "context": {
-                                "tags": [
-                                    "_html_comment_"
-                                ],
-                                "roPool": "invalidated",
-                                "etagPool": "invalidated",
-                                "cdn": "skipped",
-                                "durationMs": 0
-                            }
-                        },
-                        {
                             "id": "save_value_1",
                             "type": "save_value",
                             "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_value.json",
@@ -523,22 +365,6 @@ get uri=page://self/html/render-time-dependency
                                     "_html_comment_",
                                     "grp-_html_comment_",
                                     "comment01"
-                                ],
-                                "requestedTtl": 31536000,
-                                "saved": true
-                            }
-                        },
-                        {
-                            "id": "save_etag_1",
-                            "type": "save_etag",
-                            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
-                            "context": {
-                                "uri": "page://self/html/comment",
-                                "etag": "[volatile]",
-                                "tags": [
-                                    "comment01",
-                                    "grp-_html_comment_",
-                                    "_html_comment_"
                                 ],
                                 "requestedTtl": 31536000,
                                 "saved": true
@@ -576,28 +402,6 @@ get uri=page://self/html/render-time-dependency
                     }
                 },
                 {
-                    "id": "pre_write_cleanup_2",
-                    "type": "pre_write_cleanup",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/pre_write_cleanup.json",
-                    "context": {
-                        "uri": "page://self/html/blog-posting"
-                    }
-                },
-                {
-                    "id": "invalidate_2",
-                    "type": "invalidate",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/invalidate.json",
-                    "context": {
-                        "tags": [
-                            "_html_blog-posting_"
-                        ],
-                        "roPool": "invalidated",
-                        "etagPool": "invalidated",
-                        "cdn": "skipped",
-                        "durationMs": 0
-                    }
-                },
-                {
                     "id": "save_donut_view_1",
                     "type": "save_donut_view",
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_donut_view.json",
@@ -607,25 +411,6 @@ get uri=page://self/html/render-time-dependency
                             "_html_blog-posting_",
                             "grp-_html_blog-posting_",
                             "blog-posting-page",
-                            "_html_comment_",
-                            "grp-_html_comment_",
-                            "comment01"
-                        ],
-                        "requestedTtl": null,
-                        "saved": true
-                    }
-                },
-                {
-                    "id": "save_etag_2",
-                    "type": "save_etag",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
-                    "context": {
-                        "uri": "page://self/html/blog-posting",
-                        "etag": "[volatile]",
-                        "tags": [
-                            "blog-posting-page",
-                            "_html_blog-posting_",
-                            "grp-_html_blog-posting_",
                             "_html_comment_",
                             "grp-_html_comment_",
                             "comment01"
@@ -686,7 +471,7 @@ get uri=page://self/html/render-time-dependency
             },
             "log": [
                 {
-                    "id": "invalidate_3",
+                    "id": "invalidate_1",
                     "type": "invalidate",
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/invalidate.json",
                     "context": {
@@ -695,7 +480,6 @@ get uri=page://self/html/render-time-dependency
                             "grp-_html_comment_"
                         ],
                         "roPool": "invalidated",
-                        "etagPool": "invalidated",
                         "cdn": "skipped",
                         "durationMs": 0
                     }
@@ -756,28 +540,6 @@ get uri=page://self/html/render-time-dependency
                             }
                         },
                         {
-                            "id": "pre_write_cleanup_3",
-                            "type": "pre_write_cleanup",
-                            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/pre_write_cleanup.json",
-                            "context": {
-                                "uri": "page://self/html/comment"
-                            }
-                        },
-                        {
-                            "id": "invalidate_4",
-                            "type": "invalidate",
-                            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/invalidate.json",
-                            "context": {
-                                "tags": [
-                                    "_html_comment_"
-                                ],
-                                "roPool": "invalidated",
-                                "etagPool": "invalidated",
-                                "cdn": "skipped",
-                                "durationMs": 0
-                            }
-                        },
-                        {
                             "id": "save_value_2",
                             "type": "save_value",
                             "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_value.json",
@@ -787,22 +549,6 @@ get uri=page://self/html/render-time-dependency
                                     "_html_comment_",
                                     "grp-_html_comment_",
                                     "comment01"
-                                ],
-                                "requestedTtl": 31536000,
-                                "saved": true
-                            }
-                        },
-                        {
-                            "id": "save_etag_3",
-                            "type": "save_etag",
-                            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
-                            "context": {
-                                "uri": "page://self/html/comment",
-                                "etag": "[volatile]",
-                                "tags": [
-                                    "comment01",
-                                    "grp-_html_comment_",
-                                    "_html_comment_"
                                 ],
                                 "requestedTtl": 31536000,
                                 "saved": true
@@ -849,25 +595,6 @@ get uri=page://self/html/render-time-dependency
                             "_html_blog-posting_",
                             "grp-_html_blog-posting_",
                             "blog-posting-page",
-                            "_html_comment_",
-                            "grp-_html_comment_",
-                            "comment01"
-                        ],
-                        "requestedTtl": null,
-                        "saved": true
-                    }
-                },
-                {
-                    "id": "save_etag_4",
-                    "type": "save_etag",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
-                    "context": {
-                        "uri": "page://self/html/blog-posting",
-                        "etag": "[volatile]",
-                        "tags": [
-                            "blog-posting-page",
-                            "_html_blog-posting_",
-                            "grp-_html_blog-posting_",
                             "_html_comment_",
                             "grp-_html_comment_",
                             "comment01"
@@ -939,28 +666,6 @@ get uri=page://self/html/render-time-dependency
                             "_counter_",
                             "grp-_counter_"
                         ]
-                    }
-                },
-                {
-                    "id": "pre_write_cleanup_4",
-                    "type": "pre_write_cleanup",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/pre_write_cleanup.json",
-                    "context": {
-                        "uri": "page://self/html/counter-donut"
-                    }
-                },
-                {
-                    "id": "invalidate_5",
-                    "type": "invalidate",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/invalidate.json",
-                    "context": {
-                        "tags": [
-                            "_html_counter-donut_"
-                        ],
-                        "roPool": "invalidated",
-                        "etagPool": "invalidated",
-                        "cdn": "skipped",
-                        "durationMs": 0
                     }
                 },
                 {
@@ -1036,28 +741,6 @@ get uri=page://self/html/render-time-dependency
                             }
                         },
                         {
-                            "id": "pre_write_cleanup_5",
-                            "type": "pre_write_cleanup",
-                            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/pre_write_cleanup.json",
-                            "context": {
-                                "uri": "page://self/html/mutable-comment"
-                            }
-                        },
-                        {
-                            "id": "invalidate_6",
-                            "type": "invalidate",
-                            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/invalidate.json",
-                            "context": {
-                                "tags": [
-                                    "_html_mutable-comment_"
-                                ],
-                                "roPool": "invalidated",
-                                "etagPool": "invalidated",
-                                "cdn": "skipped",
-                                "durationMs": 0
-                            }
-                        },
-                        {
                             "id": "save_value_3",
                             "type": "save_value",
                             "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_value.json",
@@ -1067,22 +750,6 @@ get uri=page://self/html/render-time-dependency
                                     "_html_mutable-comment_",
                                     "grp-_html_mutable-comment_",
                                     "mutable-comment"
-                                ],
-                                "requestedTtl": 31536000,
-                                "saved": true
-                            }
-                        },
-                        {
-                            "id": "save_etag_5",
-                            "type": "save_etag",
-                            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
-                            "context": {
-                                "uri": "page://self/html/mutable-comment",
-                                "etag": "[volatile]",
-                                "tags": [
-                                    "mutable-comment",
-                                    "grp-_html_mutable-comment_",
-                                    "_html_mutable-comment_"
                                 ],
                                 "requestedTtl": 31536000,
                                 "saved": true
@@ -1133,28 +800,6 @@ get uri=page://self/html/render-time-dependency
                     }
                 },
                 {
-                    "id": "pre_write_cleanup_6",
-                    "type": "pre_write_cleanup",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/pre_write_cleanup.json",
-                    "context": {
-                        "uri": "page://self/html/render-time-dependency"
-                    }
-                },
-                {
-                    "id": "invalidate_7",
-                    "type": "invalidate",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/invalidate.json",
-                    "context": {
-                        "tags": [
-                            "_html_render-time-dependency_"
-                        ],
-                        "roPool": "invalidated",
-                        "etagPool": "invalidated",
-                        "cdn": "skipped",
-                        "durationMs": 0
-                    }
-                },
-                {
                     "id": "save_donut_view_3",
                     "type": "save_donut_view",
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_donut_view.json",
@@ -1166,24 +811,6 @@ get uri=page://self/html/render-time-dependency
                             "_html_mutable-comment_",
                             "grp-_html_mutable-comment_",
                             "mutable-comment"
-                        ],
-                        "requestedTtl": null,
-                        "saved": true
-                    }
-                },
-                {
-                    "id": "save_etag_6",
-                    "type": "save_etag",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
-                    "context": {
-                        "uri": "page://self/html/render-time-dependency",
-                        "etag": "[volatile]",
-                        "tags": [
-                            "_html_mutable-comment_",
-                            "grp-_html_mutable-comment_",
-                            "mutable-comment",
-                            "_html_render-time-dependency_",
-                            "grp-_html_render-time-dependency_"
                         ],
                         "requestedTtl": null,
                         "saved": true
@@ -1226,7 +853,7 @@ get uri=page://self/html/render-time-dependency
             },
             "log": [
                 {
-                    "id": "invalidate_8",
+                    "id": "invalidate_2",
                     "type": "invalidate",
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/invalidate.json",
                     "context": {
@@ -1235,7 +862,6 @@ get uri=page://self/html/render-time-dependency
                             "grp-_html_mutable-comment_"
                         ],
                         "roPool": "invalidated",
-                        "etagPool": "invalidated",
                         "cdn": "skipped",
                         "durationMs": 0
                     }
@@ -1298,28 +924,6 @@ get uri=page://self/html/render-time-dependency
                             }
                         },
                         {
-                            "id": "pre_write_cleanup_7",
-                            "type": "pre_write_cleanup",
-                            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/pre_write_cleanup.json",
-                            "context": {
-                                "uri": "page://self/html/mutable-comment"
-                            }
-                        },
-                        {
-                            "id": "invalidate_9",
-                            "type": "invalidate",
-                            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/invalidate.json",
-                            "context": {
-                                "tags": [
-                                    "_html_mutable-comment_"
-                                ],
-                                "roPool": "invalidated",
-                                "etagPool": "invalidated",
-                                "cdn": "skipped",
-                                "durationMs": 0
-                            }
-                        },
-                        {
                             "id": "save_value_4",
                             "type": "save_value",
                             "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_value.json",
@@ -1329,22 +933,6 @@ get uri=page://self/html/render-time-dependency
                                     "_html_mutable-comment_",
                                     "grp-_html_mutable-comment_",
                                     "mutable-comment"
-                                ],
-                                "requestedTtl": 31536000,
-                                "saved": true
-                            }
-                        },
-                        {
-                            "id": "save_etag_7",
-                            "type": "save_etag",
-                            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
-                            "context": {
-                                "uri": "page://self/html/mutable-comment",
-                                "etag": "[volatile]",
-                                "tags": [
-                                    "mutable-comment",
-                                    "grp-_html_mutable-comment_",
-                                    "_html_mutable-comment_"
                                 ],
                                 "requestedTtl": 31536000,
                                 "saved": true
@@ -1395,28 +983,6 @@ get uri=page://self/html/render-time-dependency
                     }
                 },
                 {
-                    "id": "pre_write_cleanup_8",
-                    "type": "pre_write_cleanup",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/pre_write_cleanup.json",
-                    "context": {
-                        "uri": "page://self/html/render-time-dependency"
-                    }
-                },
-                {
-                    "id": "invalidate_10",
-                    "type": "invalidate",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/invalidate.json",
-                    "context": {
-                        "tags": [
-                            "_html_render-time-dependency_"
-                        ],
-                        "roPool": "invalidated",
-                        "etagPool": "invalidated",
-                        "cdn": "skipped",
-                        "durationMs": 0
-                    }
-                },
-                {
                     "id": "save_donut_view_4",
                     "type": "save_donut_view",
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_donut_view.json",
@@ -1428,24 +994,6 @@ get uri=page://self/html/render-time-dependency
                             "_html_mutable-comment_",
                             "grp-_html_mutable-comment_",
                             "mutable-comment"
-                        ],
-                        "requestedTtl": null,
-                        "saved": true
-                    }
-                },
-                {
-                    "id": "save_etag_8",
-                    "type": "save_etag",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
-                    "context": {
-                        "uri": "page://self/html/render-time-dependency",
-                        "etag": "[volatile]",
-                        "tags": [
-                            "_html_mutable-comment_",
-                            "grp-_html_mutable-comment_",
-                            "mutable-comment",
-                            "_html_render-time-dependency_",
-                            "grp-_html_render-time-dependency_"
                         ],
                         "requestedTtl": null,
                         "saved": true
@@ -1481,4 +1029,4 @@ get uri=page://self/html/render-time-dependency
         }
     ]
 }
-Schema validation: OK (85 entries)
+Schema validation: OK (61 entries)

@@ -9,15 +9,14 @@ use Koriym\SemanticLogger\AbstractContext;
 use Override;
 
 /**
- * Event: tag invalidation outcome across the local pools and the CDN purger.
+ * Event: tag invalidation outcome across the local pool and the CDN purger.
  *
  * Serialized with self-describing status words rather than raw booleans:
- *   roPool/etagPool -> "invalidated" | "failed"  (Symfony tag invalidation marks
- *                       the tag version stale; it does not physically delete)
- *   cdn             -> "purged" | "failed" | "skipped"
- *                       ("skipped" = the bound purger is NullPurger, i.e. no CDN
- *                       is configured — nothing was purged, but nothing was
- *                       meant to be)
+ *   roPool -> "invalidated" | "failed"  (Symfony tag invalidation marks the tag
+ *             version stale; it does not physically delete)
+ *   cdn    -> "purged" | "failed" | "skipped"
+ *             ("skipped" = the bound purger is NullPurger, i.e. no CDN is
+ *             configured — nothing was purged, but nothing was meant to be)
  */
 final class InvalidateContext extends AbstractContext implements JsonSerializable
 {
@@ -31,7 +30,6 @@ final class InvalidateContext extends AbstractContext implements JsonSerializabl
     public function __construct(
         public readonly array $tags,
         public readonly bool $roPoolInvalidated,
-        public readonly bool $etagPoolInvalidated,
         public readonly string $cdnStatus,
         public readonly float $durationMs,
     ) {
@@ -44,7 +42,6 @@ final class InvalidateContext extends AbstractContext implements JsonSerializabl
         return [
             'tags' => $this->tags,
             'roPool' => $this->roPoolInvalidated ? 'invalidated' : 'failed',
-            'etagPool' => $this->etagPoolInvalidated ? 'invalidated' : 'failed',
             'cdn' => $this->cdnStatus,
             'durationMs' => $this->durationMs,
         ];

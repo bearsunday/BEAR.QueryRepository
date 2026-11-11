@@ -167,7 +167,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $unstorable = $this->declaredCacheControl->reason($ro);
         $surrogateKeys = $this->setHeaders($keys, $ro, $sMaxAge);
         $this->logCdnHeaders($ro);
-        $this->cleanUpBeforeWrite($ro, $unstorable);
+        $this->dropReplacedEntry($ro);
         if ($unstorable !== null) {
             $this->logger->event(new PutSkippedContext((string) $ro->uri, $unstorable));
 
@@ -197,7 +197,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         }
 
         $this->logCdnHeaders($ro);
-        $this->cleanUpBeforeWrite($ro, $unstorable);
+        $this->dropReplacedEntry($ro);
         if ($unstorable !== null) {
             $this->logger->event(new PutSkippedContext((string) $ro->uri, $unstorable));
 
@@ -207,9 +207,10 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $this->resourceStorage->saveDonut($ro->uri, $donut, $donutTtl, $templateKeys);
     }
 
-    private function cleanUpBeforeWrite(ResourceObject $ro, string|null $unstorable): void
+    /** {@see QueryRepository::dropReplacedEntry()} */
+    private function dropReplacedEntry(ResourceObject $ro): void
     {
-        if ($unstorable !== null && $this->resourceStorage->get($ro->uri) === null && $this->resourceStorage->getDonut($ro->uri) === null) {
+        if ($this->resourceStorage->get($ro->uri) === null && $this->resourceStorage->getDonut($ro->uri) === null) {
             return;
         }
 
@@ -378,13 +379,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
      */
     private function saveView(ResourceObject $ro, int|null $ttl, string $surrogateKeys): bool
     {
-        $saved = $this->resourceStorage->saveDonutView($ro, $ttl, explode(' ', $surrogateKeys));
-        // A validator without its view would answer a conditional request 304 for a page the pool does not hold
-        if ($saved && isset($ro->headers[Header::ETAG])) {
-            $this->resourceStorage->saveEtag($ro->uri, $ro->headers[Header::ETAG], $surrogateKeys, $ttl);
-        }
-
-        return $saved;
+        return $this->resourceStorage->saveDonutView($ro, $ttl, explode(' ', $surrogateKeys));
     }
 
     /**

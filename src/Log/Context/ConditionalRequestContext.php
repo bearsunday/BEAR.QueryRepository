@@ -9,11 +9,11 @@ use Koriym\SemanticLogger\AbstractContext;
 /**
  * Open: a conditional request presented a validator (If-None-Match).
  *
- * The scope closes with the ETag pool's answer as cache_hit/cache_miss at layer
- * `etag`: a hit is the 304 decision - the whole request is served without running
- * the resource, the cache event no other scope can show. Recorded by the
- * HttpCacheInterface implementations at the transfer boundary; a request without
- * the header presents nothing, so nothing is recorded.
+ * The scope closes as cache_hit/cache_miss at layer `etag`, answered by the entry
+ * the validator names: a hit is the 304 decision - the whole request is served
+ * without running the resource, the cache event no other scope can show. Recorded
+ * by the HttpCacheInterface implementations at the transfer boundary; a request
+ * without the header presents nothing, so nothing is recorded.
  */
 final class ConditionalRequestContext extends AbstractContext
 {

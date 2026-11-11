@@ -22,8 +22,6 @@ use Symfony\Component\Cache\Marshaller\MarshallerInterface;
 
 /**
  * Provides TagAwareAdapterInterface-ResourceObjectPool::class backed by Redis
- *
- * ETags share this pool unless TagAwareAdapterInterface-EtagPool::class is bound.
  */
 final class StorageRedisDsnModule extends AbstractModule
 {

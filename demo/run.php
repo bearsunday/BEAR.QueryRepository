@@ -42,9 +42,9 @@ echoRo($resource->uri('app://self/user')(['id' => 1])); // return cache
 echoRo($resource->uri('app://self/user')(['id' => 1])); // return cache
 
 // A CDN (or any client) revalidating with the validator it holds: the answer is the
-// 304 decision, served from the ETag pool without running the resource - and the log
+// 304 decision, made from the stored entry without running the resource - and the log
 // records it as its own conditional_request scope closing cache_hit{layer: etag}.
-// A validator the pool does not hold reads as a miss: the full response is built.
+// A validator no stored entry holds reads as a miss: the full response is built.
 $httpCache = $injector->getInstance(HttpCacheInterface::class);
 $user = $resource->uri('app://self/user')(['id' => 1]);
 $etag = $user->headers['ETag'];
