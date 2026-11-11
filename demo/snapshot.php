@@ -74,11 +74,7 @@ function normalizeDemoOutput(string $output): string
 
 /**
  * save_etag.etag is schema-marked x-volatile and already `[volatile]` in the tree; mask it
- * the same way in the raw JSON block, which that rendering does not reach. Without this, a
- * resource whose own ETag is computed over an embedded child's state (its clone, Last-
- * Modified included) gets a new, real ETag here whenever the child's own rebuild lands in a
- * different second than its first build - observed in run-dependency.log's parent-a/b, whose
- * body never changes, after a purge regenerates the child they embed.
+ * the same way in the raw JSON block, which that rendering does not reach.
  */
 function normalizeSaveEtagJson(string $output): string
 {
