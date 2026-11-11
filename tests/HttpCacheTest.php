@@ -10,6 +10,7 @@ use BEAR\QueryRepository\Log\Context\CacheMissContext;
 use BEAR\QueryRepository\Log\Context\ConditionalRequestContext;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
+use FakeVendor\HelloWorld\Resource\Page\Index;
 use LogicException;
 use Override;
 use PHPUnit\Framework\TestCase;
@@ -41,6 +42,7 @@ class HttpCacheTest extends TestCase
         $resource = (new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld')))->getInstance(ResourceInterface::class);
         $user = $resource->get('app://self/user', ['id' => 1]);
         $storage = ResourceStorageTest::getResourceStorageInstance();
+        $storage->saveValue($user, 10);
         $storage->saveEtag($user->uri, $user->headers[Header::ETAG], '', 10);
         $httpCache = new CliHttpCache($storage);
         $server = ['HTTP_IF_NONE_MATCH' => $user->headers[Header::ETAG]];
@@ -62,6 +64,7 @@ class HttpCacheTest extends TestCase
         $resource = (new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld')))->getInstance(ResourceInterface::class);
         $user = $resource->get('app://self/user', ['id' => 1]);
         $storage = ResourceStorageTest::getResourceStorageInstance();
+        $storage->saveValue($user, 10);
         $storage->saveEtag($user->uri, $user->headers[Header::ETAG], '', 10);
         $httpCache = new CliHttpCache($storage);
         $header = 'IF_NONE_MATCH=' . $user->headers[Header::ETAG];
@@ -76,7 +79,11 @@ class HttpCacheTest extends TestCase
     {
         $injector = new Injector(new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld')), __DIR__ . '/tmp');
         $storage = $injector->getInstance(ResourceStorageInterface::class);
-        $storage->saveEtag(new Uri('page://self/x'), '"abc"', '', null);
+        $ro = new Index();
+        $ro->uri = new Uri('page://self/x');
+        $ro->body = [];
+        $storage->saveValue($ro, 10);
+        $storage->saveEtag($ro->uri, '"abc"', '', null);
         $httpCache = new CliHttpCache($storage);
         $server = [
             'argc' => 4,
@@ -94,6 +101,7 @@ class HttpCacheTest extends TestCase
         $user = $resource->get('app://self/user', ['id' => 1]);
         $etag = $user->headers[Header::ETAG];
         $storage = ResourceStorageTest::getResourceStorageInstance();
+        $storage->saveValue($user, 10);
         $storage->saveEtag($user->uri, $etag, '', 10);
 
         // Both transfer-boundary implementations record the same scope: the validator
@@ -173,6 +181,8 @@ class HttpCacheTest extends TestCase
         $user = $resource->get('app://self/user', ['id' => 1]);
         $other = $resource->get('app://self/user', ['id' => 2]);
         $storage = ResourceStorageTest::getResourceStorageInstance();
+        $storage->saveValue($user, 10);
+        $storage->saveValue($other, 10);
         $storage->saveEtag($user->uri, $user->headers[Header::ETAG], '', 10);
         $storage->saveEtag($other->uri, $other->headers[Header::ETAG], '', 10);
 
@@ -201,6 +211,7 @@ class HttpCacheTest extends TestCase
         $user = $resource->get('app://self/user', ['id' => 1]);
         $etag = (string) $user->headers[Header::ETAG];
         $unscopable = new FakeUnscopableStorage(ResourceStorageTest::getResourceStorageInstance());
+        $unscopable->saveValue($user, 10);
         $unscopable->saveEtag($user->uri, $etag, '', 10);
 
         foreach ([HttpCache::class, CliHttpCache::class] as $class) {
