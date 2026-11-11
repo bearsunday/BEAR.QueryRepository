@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- A `#[Cacheable]` entry that embeds a child keeps its ETag when a purge rebuilds the child in a later second: the ETag covers the child's class, code and body, not its headers, which carried the child's `Last-Modified` (#287). Every such ETag changes once on upgrade, so a client revalidating with an old one gets a `200` that time.
+
 ### Changed
 - Requires `koriym/semantic-logger` 0.11.1 or later: the demos render their logs with `RenderConfig`'s `schemaDir`, which needs that version.
 

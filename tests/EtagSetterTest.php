@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\Resource\ResourceInterface;
+use BEAR\Resource\Uri;
 use FakeVendor\HelloWorld\Resource\App\Code;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
@@ -40,5 +41,54 @@ class EtagSetterTest extends TestCase
         $this->assertSame($expect, $ro->headers['Last-Modified']);
         // RFC 9110 §8.8.3: entity-tag is a DQUOTE-delimited opaque-tag
         $this->assertMatchesRegularExpression('/^"\d+"$/', $ro->headers[Header::ETAG]);
+    }
+
+    /** A child rebuilt in a later second carries a new Last-Modified; its parent's state did not change. */
+    public function testEmbeddedChildHeadersDoNotChangeTheParentTag(): void
+    {
+        $setEtag = new EtagSetter();
+
+        $this->assertSame(
+            $setEtag->getEtagByEntireView($this->parentEmbedding('Thu, 01 Jan 1970 00:00:00 GMT', ['child-c' => 1])),
+            $setEtag->getEtagByEntireView($this->parentEmbedding('Thu, 01 Jan 1970 00:00:02 GMT', ['child-c' => 1])),
+        );
+    }
+
+    public function testEmbeddedChildBodyChangesTheParentTag(): void
+    {
+        $setEtag = new EtagSetter();
+
+        $this->assertNotSame(
+            $setEtag->getEtagByEntireView($this->parentEmbedding('Thu, 01 Jan 1970 00:00:00 GMT', ['child-c' => 1])),
+            $setEtag->getEtagByEntireView($this->parentEmbedding('Thu, 01 Jan 1970 00:00:00 GMT', ['child-c' => 2])),
+        );
+    }
+
+    public function testHeadersOfAChildEmbeddedInAChildDoNotChangeTheParentTag(): void
+    {
+        $setEtag = new EtagSetter();
+        $tagOf = function (string $grandchildLastModified) use ($setEtag): string {
+            $parent = $this->parentEmbedding($grandchildLastModified, ['child-c' => 1]);
+            $parent->uri = new Uri('app://self/parent-a');
+            $top = new Code();
+            $top->body = ['top' => 1, 'parent' => $parent];
+
+            return $setEtag->getEtagByEntireView($top);
+        };
+
+        $this->assertSame($tagOf('Thu, 01 Jan 1970 00:00:00 GMT'), $tagOf('Thu, 01 Jan 1970 00:00:02 GMT'));
+    }
+
+    /** @param array<string, int> $childBody */
+    private function parentEmbedding(string $childLastModified, array $childBody): Code
+    {
+        $child = new Code();
+        $child->uri = new Uri('app://self/child-c');
+        $child->body = $childBody;
+        $child->headers[Header::LAST_MODIFIED] = $childLastModified;
+        $parent = new Code();
+        $parent->body = ['parent-a' => 1, 'child' => $child];
+
+        return $parent;
     }
 }
