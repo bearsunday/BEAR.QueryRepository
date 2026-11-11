@@ -22,7 +22,9 @@ use BEAR\Resource\ResourceObject;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 use ReflectionClass;
+use Throwable;
 
+use function array_diff_key;
 use function is_array;
 use function max;
 use function serialize;
@@ -79,9 +81,8 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         $httpCache = $this->getHttpCacheAnnotation($ro);
         $storesView = $cacheable instanceof Cacheable && $cacheable->type === 'view';
         if ($storesView) {
-            // Rendering is the write itself here. For a value entry it is not: a resource with no
-            // renderer in this context - an app resource under an html renderer - would throw, the
-            // interceptor would degrade it to a warning, and the entry would never be stored.
+            // The view is the entry here, so a failed rendering fails the write. A value entry is
+            // stored whether it renders or not: see renderValue().
             $ro->toString();
         }
 
@@ -94,8 +95,9 @@ final readonly class QueryRepository implements QueryRepositoryInterface
             serialize(($this->evaluateBody)($ro->body));
         }
 
+        $ofRendering = $storesView || $unstorable !== null ? [] : $this->renderValue($ro, $httpCache);
         ($this->headerSetter)($ro, $this->clientCacheControl($cacheable, $ttl), $httpCache);
-        $this->cleanUpBeforeWrite($ro, $unstorable);
+        $this->dropReplacedEntry($ro);
 
         if ($unstorable !== null) {
             $this->logger->event(new PutSkippedContext((string) $ro->uri, $unstorable));
@@ -103,7 +105,48 @@ final readonly class QueryRepository implements QueryRepositoryInterface
             return false;
         }
 
-        return $storesView ? $this->storage->saveView($ro, $ttl) : $this->storage->saveValue($ro, $ttl);
+        return $storesView ? $this->storage->saveView($ro, $ttl) : $this->saveValue($ro, $ttl, $ofRendering);
+    }
+
+    /**
+     * Render the response a miss answers with: the validator then stands for the string the client
+     * receives, and that string is the one transferred. A view left by an earlier run is dropped
+     * first. A resource with no representation in this context - an app resource under an html
+     * renderer has no template - stays unrendered, and its validator stands for its body.
+     *
+     * @return array<string, string> the headers the renderer added
+     */
+    private function renderValue(ResourceObject $ro, HttpCache|null $httpCache): array
+    {
+        if ($ro->code !== 200 || ($httpCache instanceof HttpCache && $httpCache->etag)) {
+            return []; // the validator, if any, does not stand for the view
+        }
+
+        $headers = $ro->headers;
+        $ro->view = null;
+        try {
+            $ro->view = $ro->toString();
+        } catch (Throwable) {
+            $ro->view = null;
+            $ro->headers = $headers;
+        }
+
+        return array_diff_key($ro->headers, $headers);
+    }
+
+    /**
+     * A value entry keeps no header of one rendering, such as Content-Type: a hit renders again
+     *
+     * @param array<string, string> $ofRendering
+     */
+    private function saveValue(ResourceObject $ro, int $ttl, array $ofRendering): bool
+    {
+        $ro->headers = array_diff_key($ro->headers, $ofRendering);
+        try {
+            return $this->storage->saveValue($ro, $ttl);
+        } finally {
+            $ro->headers += $ofRendering;
+        }
     }
 
     /** The seconds a #[Cacheable] entry lives, recorded with the declaration that decided them */
@@ -130,14 +173,17 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         return $this->headerSetter->maxAge($ttl);
     }
 
-    private function cleanUpBeforeWrite(ResourceObject $ro, string|null $skipReason): void
+    /**
+     * Drop the entry this write replaces or refuses to replace, and with it whatever embeds it.
+     * A write into an empty slot replaces nothing: the other variants of the URI share its tag
+     * and must outlive it.
+     */
+    private function dropReplacedEntry(ResourceObject $ro): void
     {
-        if ($skipReason !== null && $this->storage->get($ro->uri) === null) {
+        if ($this->storage->get($ro->uri) === null) {
             return;
         }
 
-        // The marker records that this invalidation clears the entry about to be rewritten,
-        // so readers never have to infer cleanup-vs-invalidation from tag correlation.
         $this->logger->event(new PreWriteCleanupContext((string) $ro->uri));
         $this->storage->invalidateTags([$this->cacheTags->uriTag($ro->uri)]);
     }

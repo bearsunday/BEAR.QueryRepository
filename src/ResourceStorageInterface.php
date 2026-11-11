@@ -16,15 +16,13 @@ interface ResourceStorageInterface
      */
     public function hasEtag(string $etag): bool;
 
-    /**
-     * Save Etag
-     */
+    /** @deprecated Does nothing: the entry itself holds its ETag */
     public function saveEtag(AbstractUri $uri, string $etag, string $surrogateKeys, int|null $ttl): void;
 
     /**
-     * Delete Etag
-     *
      * @return bool
+     *
+     * @deprecated Does nothing: the entry itself holds its ETag
      */
     public function deleteEtag(AbstractUri $uri);
 

@@ -96,7 +96,7 @@ final readonly class CacheIdentityFactory
         return rtrim(strtr(base64_encode(substr(hash('sha256', $material, true), 0, 16)), '+/', '-_'), '=');
     }
 
-    /** The request's vary values, each behind its length: "ja", "mobile" and "jam", "obile" must not read the same. */
+    /** The request's vary names and values, each behind its length: "ja", "mobile" and "jam", "obile" must not read the same. */
     private function vary(): string
     {
         $xvary = $this->serverContext->get('X_VARY');
@@ -112,10 +112,10 @@ final readonly class CacheIdentityFactory
                 continue;
             }
 
-            $phpVaryKey = sprintf('X_%s', strtoupper($vary));
-            $value = $this->serverContext->get($phpVaryKey);
+            $name = strtoupper($vary);
+            $value = $this->serverContext->get('X_' . $name);
             if ($value !== null) {
-                $varyString .= strlen($value) . ':' . $value;
+                $varyString .= strlen($name) . ':' . $name . strlen($value) . ':' . $value;
             }
         }
 
