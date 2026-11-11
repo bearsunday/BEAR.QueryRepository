@@ -100,6 +100,16 @@ class EtagSetterTest extends TestCase
         $this->assertSame($tagOf(['child-c' => 1]), $tagOf(null));
     }
 
+    public function testAnArrayListingAChildsStateIsNotThatChild(): void
+    {
+        $setEtag = new EtagSetter();
+        $embedding = $this->parentEmbedding('Thu, 01 Jan 1970 00:00:00 GMT', ['child-c' => 1]);
+        $listing = new Code();
+        $listing->body = ['parent-a' => 1, 'child' => [Code::class, $listing->code, ['child-c' => 1]]];
+
+        $this->assertNotSame($setEtag->getEtagByEntireView($embedding), $setEtag->getEtagByEntireView($listing));
+    }
+
     public function testHeadersOfAChildEmbeddedInAChildDoNotChangeTheParentTag(): void
     {
         $setEtag = new EtagSetter();

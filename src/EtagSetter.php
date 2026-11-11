@@ -68,11 +68,12 @@ final readonly class EtagSetter implements EtagSetterInterface
     /**
      * An embedded child counts as its parent does, by its view or else its body: its headers carry
      * the time it was built, and a child restored from the donut cache comes back as a view alone.
+     * It counts as an object, so that no array in a body serializes to the same bytes.
      */
     private function state(mixed $body): mixed
     {
         if ($body instanceof ResourceObject) {
-            return [$body::class, $body->code, $body->view ?? $this->state($body->body)];
+            return (object) [$body::class, $body->code, $body->view ?? $this->state($body->body)];
         }
 
         return is_array($body) ? array_map($this->state(...), $body) : $body;
