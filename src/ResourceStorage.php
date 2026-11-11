@@ -33,6 +33,7 @@ use function assert;
 use function explode;
 use function hrtime;
 use function implode;
+use function is_string;
 use function max;
 use function round;
 use function sprintf;
@@ -63,6 +64,13 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
      * Resource static cache prifix
      */
     private const KEY_DONUT = 'donut-';
+
+    /**
+     * The URI-tag slot of an ETag item with no resource recorded for it. There is no key to
+     * confirm an entry by, so the unscoped answer trusts the ETag's own TTL alone for it; the
+     * scoped answer is false, since it never matches a real URI tag.
+     */
+    private const LEGACY_PLACEHOLDER = 'etag';
 
     /**
      * CDN status when the purge did not throw, indexed by (int) no-CDN:
@@ -158,12 +166,35 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         return $this->findEtag($etag, null);
     }
 
-    /** Is a live entry for this validator, issued for $uriTag when one is named? */
+    /**
+     * Is a live entry for this validator, issued for $uriTag when one is named?
+     *
+     * The entry is confirmed too, because the ETag and the entry are written, expired and
+     * invalidated separately (#266). A {@see self::LEGACY_PLACEHOLDER} item is exempted: it
+     * carries no URI tag to confirm an entry by.
+     */
     private function findEtag(string $etag, string|null $uriTag): bool
     {
         foreach (EntityTags::of($etag) as $opaqueTag) {
             $item = $this->guard(fn () => $this->etagPool->getItem($opaqueTag));
-            if ($item->isHit() && ($uriTag === null || $item->get() === $uriTag)) {
+            if (! $item->isHit()) {
+                continue;
+            }
+
+            $issuedFor = $item->get();
+            if ($uriTag !== null && $issuedFor !== $uriTag) {
+                continue;
+            }
+
+            if ($issuedFor === self::LEGACY_PLACEHOLDER) {
+                // Scoped calls already filtered this out above ($uriTag never equals the
+                // placeholder); only the unscoped answer reaches here.
+                return true;
+            }
+
+            assert(is_string($issuedFor));
+            $key = self::KEY_RO . $issuedFor . $this->getVary();
+            if ($this->guard(fn (): bool => $this->roPool->hasItem($key))) {
                 return true;
             }
         }
@@ -361,13 +392,16 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
 
     private function getUriKey(AbstractUri $uri, string $type): string
     {
-        return $type . ($this->uriTag)($uri) . ($this->serverContext->has('X_VARY') ? $this->getVary() : '');
+        return $type . ($this->uriTag)($uri) . $this->getVary();
     }
 
+    /** '' when the application declares no X_VARY context */
     private function getVary(): string
     {
         $xvary = $this->serverContext->get('X_VARY');
-        assert($xvary !== null, 'getVary() is only called when X_VARY exists');
+        if ($xvary === null) {
+            return '';
+        }
 
         $varys = explode(',', $xvary);
         $varyString = '';

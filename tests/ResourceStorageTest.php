@@ -196,6 +196,7 @@ class ResourceStorageTest extends TestCase
 
     public function testHasEtagAcceptsIfNoneMatchVariants(): void
     {
+        $this->storage->saveValue($this->ro, 10);
         $this->storage->saveEtag($this->ro->uri, '"123456"', '', 10);
 
         $this->assertTrue($this->storage->hasEtag('"123456"'), 'quoted entity-tag');
@@ -207,6 +208,7 @@ class ResourceStorageTest extends TestCase
 
     public function testHasEtagSplitsOnlyOnCommasOutsideQuotes(): void
     {
+        $this->storage->saveValue($this->ro, 10);
         $this->storage->saveEtag($this->ro->uri, '"foo,bar"', '', 10);
 
         $this->assertTrue($this->storage->hasEtag('"foo,bar"'), 'comma inside a quoted opaque-tag is data');
