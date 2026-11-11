@@ -10,6 +10,11 @@ use ReflectionMethod;
 /** @internal */
 final readonly class CommandQuery
 {
+    public function __construct(
+        private CacheIdentityFactory $identityFactory = new CacheIdentityFactory(),
+    ) {
+    }
+
     /**
      * @param array<string, mixed> $getQuery
      *
@@ -40,7 +45,7 @@ final readonly class CommandQuery
         $snakeQuery = [];
         /** @psalm-suppress MixedAssignment */
         foreach ($query as $key => $value) {
-            $snakeQuery[BaseUriTag::snakeName($key)] = $value;
+            $snakeQuery[$this->identityFactory->snakeName($key)] = $value;
         }
 
         return $snakeQuery;

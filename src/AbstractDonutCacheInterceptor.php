@@ -65,7 +65,7 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
                 }
             } catch (Throwable $e) {
                 // when cache server is down: log it so a miss here is not read as a cold cache
-                $this->logger->event(self::failure((string) $ro->uri, 'read', $e));
+                $this->logger->event($this->failure((string) $ro->uri, 'read', $e));
                 if (! $e instanceof CacheStoreException) {
                     throw $e;
                 }
@@ -128,7 +128,7 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
                 $this->donutRepository->putStatic($ro, null, null) :
                 $this->donutRepository->putDonut($ro, null);
         } catch (Throwable $e) {
-            $this->logger->event(self::failure((string) $ro->uri, 'write', $e));
+            $this->logger->event($this->failure((string) $ro->uri, 'write', $e));
             if (! $e instanceof CacheStoreException) {
                 throw $e;
             }
@@ -144,7 +144,7 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
      *
      * @param 'read'|'write' $operation
      */
-    private static function failure(string $uri, string $operation, Throwable $e): CacheErrorContext
+    private function failure(string $uri, string $operation, Throwable $e): CacheErrorContext
     {
         $cause = $e instanceof CacheStoreException ? $e->getPrevious() ?? $e : $e;
 

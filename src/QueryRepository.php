@@ -135,7 +135,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
             return 'max-age=0';
         }
 
-        return HeaderSetter::maxAge($ttl);
+        return $this->headerSetter->maxAge($ttl);
     }
 
     private function saveEtag(ResourceObject $ro, int $ttl): void

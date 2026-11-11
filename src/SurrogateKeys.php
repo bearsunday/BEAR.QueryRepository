@@ -53,23 +53,23 @@ final class SurrogateKeys
      */
     public function embedded(ResourceObject $ro): bool
     {
-        if (! DependsOnTags::hasRun($ro)) {
-            return DependsOnTags::tagEmbedded($ro, null);
+        if (! $this->dependsOnTags->hasRun($ro)) {
+            return $this->dependsOnTags->tagEmbedded($ro, null);
         }
 
         // The default UriTag keeps Stringable query values apart; (string) $ro->uri, or an application's tagger, may not
         $key = $ro::class . ' ' . ($this->keyTag)($ro->uri);
         if (array_key_exists($key, $this->declared)) {
-            return DependsOnTags::tagEmbedded($ro, $this->declared[$key]);
+            return $this->dependsOnTags->tagEmbedded($ro, $this->declared[$key]);
         }
 
         $tags = $this->dependsOnTags->ran($ro);
         // A request that runs later, as it renders, may still add tags, so the answer is read again then
-        if (! DependsOnTags::awaitsRequest($ro)) {
+        if (! $this->dependsOnTags->awaitsRequest($ro)) {
             $this->declared[$key] = $tags;
         }
 
-        return DependsOnTags::tagEmbedded($ro, $tags);
+        return $this->dependsOnTags->tagEmbedded($ro, $tags);
     }
 
     public function setSurrogateHeader(ResourceObject $ro): void

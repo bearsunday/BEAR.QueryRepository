@@ -91,8 +91,8 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     #[Override]
     public function putStatic(ResourceObject $ro, int|null $ttl = null, int|null $sMaxAge = null): ResourceObject
     {
-        $ttl = self::lifetime($ttl);
-        $sMaxAge = self::lifetime($sMaxAge);
+        $ttl = $this->lifetime($ttl);
+        $sMaxAge = $this->lifetime($sMaxAge);
 
         return $this->store($ro, function () use ($ro, $ttl, $sMaxAge): void {
             $this->doPutStatic($ro, $ttl, $sMaxAge);
@@ -105,7 +105,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     #[Override]
     public function putDonut(ResourceObject $ro, int|null $donutTtl): ResourceObject
     {
-        $donutTtl = self::lifetime($donutTtl);
+        $donutTtl = $this->lifetime($donutTtl);
 
         return $this->store($ro, function () use ($ro, $donutTtl): void {
             $this->doPutDonut($ro, $donutTtl);
@@ -118,7 +118,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
      * `ResourceStorageSaver` treats zero or below as no expiry; clamping here keeps the
      * recorded lifetime at 0 instead of a negative value the entry never had.
      */
-    private static function lifetime(int|null $seconds): int|null
+    private function lifetime(int|null $seconds): int|null
     {
         return $seconds === null ? null : max(0, $seconds);
     }
@@ -288,7 +288,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         // When the recomposed content is byte-identical to the recorded one, carry over
         // the original Last-Modified instead of advancing it to the recomposition time
         $lastModified = $donut->getUnchangedLastModified((string) $ro->view);
-        ($this->headerSetter)($ro, HeaderSetter::maxAge($donut->ttl) ?? self::REVALIDATE, null, $lastModified);
+        ($this->headerSetter)($ro, $this->headerSetter->maxAge($donut->ttl) ?? self::REVALIDATE, null, $lastModified);
 
         $this->setCdnCacheControl($ro, $donut->ttl);
         $this->logCdnHeaders($ro);
@@ -397,7 +397,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $keys->setSurrogateHeader($ro);
         $surrogateKeys = $ro->headers[Header::SURROGATE_KEY] ?? '';
         $this->setCdnCacheControl($ro, $sMaxAge);
-        ($this->headerSetter)($ro, HeaderSetter::maxAge($sMaxAge) === null ? self::REVALIDATE : null, null);
+        ($this->headerSetter)($ro, $this->headerSetter->maxAge($sMaxAge) === null ? self::REVALIDATE : null, null);
 
         return $surrogateKeys;
     }

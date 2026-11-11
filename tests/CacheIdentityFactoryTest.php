@@ -22,6 +22,15 @@ final class CacheIdentityFactoryTest extends TestCase
         $this->assertSame($query, $uri->query);
     }
 
+    public function testSnakeName(): void
+    {
+        $factory = new CacheIdentityFactory();
+
+        $this->assertSame('user_id', $factory->snakeName('userId'));
+        $this->assertSame('u_r_l_value', $factory->snakeName('URLValue'));
+        $this->assertSame('token', $factory->snakeName('token'));
+    }
+
     public function testGroupTagKeepsTheSuppliedRequiredSpellingAndCustomFormatter(): void
     {
         $ro = new class extends ResourceObject {

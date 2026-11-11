@@ -11,8 +11,11 @@ use function array_walk_recursive;
 use function explode;
 use function http_build_query;
 use function ksort;
+use function ltrim;
+use function preg_replace;
 use function sprintf;
 use function str_replace;
+use function strtolower;
 use function strtoupper;
 use function trim;
 
@@ -49,6 +52,12 @@ final readonly class CacheIdentityFactory
     public function storageKey(string $exactTag, string $type): string
     {
         return $type . $exactTag . $this->vary();
+    }
+
+    /** The conversion BEAR.Resource applies when it binds a query to a parameter */
+    public function snakeName(string $name): string
+    {
+        return ltrim(strtolower((string) preg_replace('/[A-Z]/', '_\0', $name)), '_');
     }
 
     private function vary(): string

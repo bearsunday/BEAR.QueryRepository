@@ -8,10 +8,7 @@ use BEAR\Resource\ResourceObject;
 use Override;
 use ReflectionMethod;
 
-use function ltrim;
 use function method_exists;
-use function preg_replace;
-use function strtolower;
 
 /** @internal */
 final readonly class BaseUriTag implements BaseUriTagInterface
@@ -37,7 +34,7 @@ final readonly class BaseUriTag implements BaseUriTagInterface
                 continue;
             }
 
-            $key = isset($query[$parameter->name]) ? $parameter->name : self::snakeName($parameter->name);
+            $key = isset($query[$parameter->name]) ? $parameter->name : $this->identityFactory->snakeName($parameter->name);
             if (! isset($query[$key])) {
                 continue;
             }
@@ -50,11 +47,5 @@ final readonly class BaseUriTag implements BaseUriTagInterface
         $baseUri->query = $baseQuery;
 
         return $this->identityFactory->groupTag(($this->uriTag)($baseUri));
-    }
-
-    /** The conversion BEAR.Resource applies when it binds a query to a parameter */
-    public static function snakeName(string $name): string
-    {
-        return ltrim(strtolower((string) preg_replace('/[A-Z]/', '_\0', $name)), '_');
     }
 }

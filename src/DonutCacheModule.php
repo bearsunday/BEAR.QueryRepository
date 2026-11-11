@@ -72,7 +72,7 @@ final class DonutCacheModule extends AbstractModule
 
         $this->bindInterceptor(
             $this->matcher->annotatedWith(CacheableResponse::class),
-            self::commandMethods($this->matcher),
+            $this->commandMethods($this->matcher),
             [DonutCommandInterceptor::class],
         );
     }
@@ -82,7 +82,7 @@ final class DonutCacheModule extends AbstractModule
      *
      * @see \BEAR\QueryRepository\CacheableModule::installAopModule()
      */
-    private static function commandMethods(MatcherInterface $matcher): AbstractMatcher
+    private function commandMethods(MatcherInterface $matcher): AbstractMatcher
     {
         return $matcher->logicalOr(
             $matcher->startsWith('onPut'),
@@ -129,7 +129,7 @@ final class DonutCacheModule extends AbstractModule
             $writeNotDeclared,
             $this->matcher->logicalAnd(
                 $this->matcher->annotatedWith(CacheableResponse::class),
-                self::commandMethods($this->matcher),
+                $this->commandMethods($this->matcher),
             ),
             [DonutCommandInterceptor::class],
         );

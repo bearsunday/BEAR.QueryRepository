@@ -69,7 +69,7 @@ final readonly class CacheInterceptor implements MethodInterceptor
             } catch (Throwable $e) {
                 // A pool outage is swallowed and recorded, since the resource still answers
                 // correctly; anything else propagates, since a silent 200 would be invisible.
-                $this->logger->event(self::failure((string) $ro->uri, 'read', $e));
+                $this->logger->event($this->failure((string) $ro->uri, 'read', $e));
                 if (! $e instanceof CacheStoreException) {
                     throw $e;
                 }
@@ -105,7 +105,7 @@ final readonly class CacheInterceptor implements MethodInterceptor
             } catch (Throwable $e) {
                 // The store refused the write: the already-correct response is served and the
                 // failure recorded; a render/purge failure is not the store's and keeps propagating.
-                $this->logger->event(self::failure((string) $ro->uri, 'write', $e));
+                $this->logger->event($this->failure((string) $ro->uri, 'write', $e));
                 if (! $e instanceof CacheStoreException) {
                     throw $e;
                 }
@@ -130,7 +130,7 @@ final readonly class CacheInterceptor implements MethodInterceptor
      *
      * @param 'read'|'write' $operation
      */
-    private static function failure(string $uri, string $operation, Throwable $e): CacheErrorContext
+    private function failure(string $uri, string $operation, Throwable $e): CacheErrorContext
     {
         $cause = $e instanceof CacheStoreException ? $e->getPrevious() ?? $e : $e;
 

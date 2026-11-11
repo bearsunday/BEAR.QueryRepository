@@ -60,7 +60,7 @@ final readonly class HeaderSetter
     }
 
     /** The max-age directive for a lifetime, none when there is no lifetime to give */
-    public static function maxAge(int|null $seconds): string|null
+    public function maxAge(int|null $seconds): string|null
     {
         return $seconds !== null && $seconds > 0 ? sprintf('max-age=%d', $seconds) : null;
     }
