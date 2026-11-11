@@ -58,11 +58,11 @@ final class RowClassWalk
         }
 
         // An embedded request or resource is read as a dependency of its own, not as part of this body
-        if (! is_object($value) || $value instanceof AbstractRequest || $value instanceof ResourceObject || $this->seen->contains($value)) {
+        if (! is_object($value) || $value instanceof AbstractRequest || $value instanceof ResourceObject || isset($this->seen[$value])) {
             return;
         }
 
-        $this->seen->attach($value);
+        $this->seen[$value] = null;
         $properties = get_object_vars($value);
         $this->expand($value::class, $properties);
         /** @var mixed $property */
