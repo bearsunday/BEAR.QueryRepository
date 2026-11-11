@@ -534,7 +534,7 @@ get uri=page://self/html/render-time-dependency
                             "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                             "context": {
                                 "uri": "page://self/html/comment",
-                                "etag": "\"etag-1\"",
+                                "etag": "[volatile]",
                                 "tags": [
                                     "comment01",
                                     "grp-_html_comment_",
@@ -621,7 +621,7 @@ get uri=page://self/html/render-time-dependency
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                     "context": {
                         "uri": "page://self/html/blog-posting",
-                        "etag": "\"etag-2\"",
+                        "etag": "[volatile]",
                         "tags": [
                             "blog-posting-page",
                             "_html_blog-posting_",
@@ -798,7 +798,7 @@ get uri=page://self/html/render-time-dependency
                             "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                             "context": {
                                 "uri": "page://self/html/comment",
-                                "etag": "\"etag-1\"",
+                                "etag": "[volatile]",
                                 "tags": [
                                     "comment01",
                                     "grp-_html_comment_",
@@ -863,7 +863,7 @@ get uri=page://self/html/render-time-dependency
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                     "context": {
                         "uri": "page://self/html/blog-posting",
-                        "etag": "\"etag-2\"",
+                        "etag": "[volatile]",
                         "tags": [
                             "blog-posting-page",
                             "_html_blog-posting_",
@@ -1078,7 +1078,7 @@ get uri=page://self/html/render-time-dependency
                             "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                             "context": {
                                 "uri": "page://self/html/mutable-comment",
-                                "etag": "\"etag-3\"",
+                                "etag": "[volatile]",
                                 "tags": [
                                     "mutable-comment",
                                     "grp-_html_mutable-comment_",
@@ -1177,7 +1177,7 @@ get uri=page://self/html/render-time-dependency
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                     "context": {
                         "uri": "page://self/html/render-time-dependency",
-                        "etag": "\"etag-4\"",
+                        "etag": "[volatile]",
                         "tags": [
                             "_html_mutable-comment_",
                             "grp-_html_mutable-comment_",
@@ -1340,7 +1340,7 @@ get uri=page://self/html/render-time-dependency
                             "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                             "context": {
                                 "uri": "page://self/html/mutable-comment",
-                                "etag": "\"etag-5\"",
+                                "etag": "[volatile]",
                                 "tags": [
                                     "mutable-comment",
                                     "grp-_html_mutable-comment_",
@@ -1439,7 +1439,7 @@ get uri=page://self/html/render-time-dependency
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                     "context": {
                         "uri": "page://self/html/render-time-dependency",
-                        "etag": "\"etag-6\"",
+                        "etag": "[volatile]",
                         "tags": [
                             "_html_mutable-comment_",
                             "grp-_html_mutable-comment_",

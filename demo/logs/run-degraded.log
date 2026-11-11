@@ -289,7 +289,7 @@ manual_invalidate tags=[_demo_manual_tag_, _demo_second_tag_]
                             "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                             "context": {
                                 "uri": "page://self/html/comment",
-                                "etag": "\"etag-1\"",
+                                "etag": "[volatile]",
                                 "tags": [
                                     "comment01",
                                     "grp-_html_comment_",
@@ -496,7 +496,7 @@ manual_invalidate tags=[_demo_manual_tag_, _demo_second_tag_]
                             "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                             "context": {
                                 "uri": "page://self/html/comment",
-                                "etag": "\"etag-1\"",
+                                "etag": "[volatile]",
                                 "tags": [
                                     "comment01",
                                     "grp-_html_comment_",
@@ -636,7 +636,7 @@ manual_invalidate tags=[_demo_manual_tag_, _demo_second_tag_]
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                     "context": {
                         "uri": "app://self/view",
-                        "etag": "\"etag-2\"",
+                        "etag": "[volatile]",
                         "tags": [
                             "grp-_view_",
                             "_view_"
@@ -718,7 +718,7 @@ manual_invalidate tags=[_demo_manual_tag_, _demo_second_tag_]
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                     "context": {
                         "uri": "app://self/view",
-                        "etag": "\"etag-2\"",
+                        "etag": "[volatile]",
                         "tags": [
                             "grp-_view_",
                             "_view_"
@@ -901,7 +901,7 @@ manual_purge uri=app://self/value
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                     "context": {
                         "uri": "app://self/value",
-                        "etag": "\"etag-3\"",
+                        "etag": "[volatile]",
                         "tags": [
                             "grp-_value_",
                             "_value_"
@@ -1201,7 +1201,7 @@ get uri=page://self/html/blog-posting
                             "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                             "context": {
                                 "uri": "page://self/html/comment",
-                                "etag": "\"etag-1\"",
+                                "etag": "[volatile]",
                                 "tags": [
                                     "comment01",
                                     "grp-_html_comment_",
@@ -1288,7 +1288,7 @@ get uri=page://self/html/blog-posting
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                     "context": {
                         "uri": "page://self/html/blog-posting",
-                        "etag": "\"etag-4\"",
+                        "etag": "[volatile]",
                         "tags": [
                             "blog-posting-page",
                             "_html_blog-posting_",
@@ -1637,7 +1637,7 @@ get uri=app://self/value
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                     "context": {
                         "uri": "app://self/value",
-                        "etag": "\"etag-5\"",
+                        "etag": "[volatile]",
                         "tags": [
                             "grp-_value_",
                             "_value_"
@@ -2069,7 +2069,7 @@ command method=onDelete source=DonutCommandInterceptor
                             "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                             "context": {
                                 "uri": "page://self/html/comment",
-                                "etag": "\"etag-1\"",
+                                "etag": "[volatile]",
                                 "tags": [
                                     "comment01",
                                     "grp-_html_comment_",
@@ -2156,7 +2156,7 @@ command method=onDelete source=DonutCommandInterceptor
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                     "context": {
                         "uri": "page://self/html/blog-posting?id=0",
-                        "etag": "\"etag-6\"",
+                        "etag": "[volatile]",
                         "tags": [
                             "blog-posting-page",
                             "_html_blog-posting_id=0",
@@ -2348,7 +2348,7 @@ command method=onDelete source=DonutCommandInterceptor
                             "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                             "context": {
                                 "uri": "page://self/html/blog-posting?id=0",
-                                "etag": "\"etag-6\"",
+                                "etag": "[volatile]",
                                 "tags": [
                                     "blog-posting-page",
                                     "_html_blog-posting_id=0",
@@ -2496,7 +2496,7 @@ command method=onPut annotations=[1 items] source=RefreshInterceptor
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                     "context": {
                         "uri": "app://self/refresh-dest?id=1",
-                        "etag": "\"etag-7\"",
+                        "etag": "[volatile]",
                         "tags": [
                             "grp-_refresh-dest_id=1",
                             "_refresh-dest_id=1"
@@ -2688,7 +2688,7 @@ get uri=app://self/http-cache-control-with-cache...(+4)
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                     "context": {
                         "uri": "app://self/http-cache-control-with-cacheable",
-                        "etag": "\"etag-8\"",
+                        "etag": "[volatile]",
                         "tags": [
                             "grp-_http-cache-control-with-cacheable_",
                             "_http-cache-control-with-cacheable_"
@@ -2814,7 +2814,7 @@ manual_store uri=page://self/html/blog-posting?id=0
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                     "context": {
                         "uri": "page://self/html/blog-posting?id=0",
-                        "etag": "\"etag-6\"",
+                        "etag": "[volatile]",
                         "tags": [
                             "blog-posting-page",
                             "_html_blog-posting_id=0",

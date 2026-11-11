@@ -32,14 +32,16 @@ function demoScripts(): array
 /**
  * Run one demo in its own process, stderr merged into stdout as a terminal shows it
  *
- * PHP diagnostics are displayed on stderr and so reach the comparison. normalizeDemoOutput()
- * drops only those raised inside vendor/ (their wording and line float with --prefer-lowest);
- * one raised by this package or by a demo stays and fails the comparison.
+ * error_reporting is -1 (every level, including E_DEPRECATED) so a php.ini that masks a
+ * level cannot hide a real diagnostic from this package; display_errors/html_errors put
+ * it on stderr, plain text. normalizeDemoOutput() drops only a diagnostic raised inside
+ * vendor/ (its wording and line float with --prefer-lowest); one raised by this package
+ * or by a demo stays and fails the comparison.
  */
 function runDemo(string $script): string
 {
     $process = proc_open(
-        [PHP_BINARY, '-d', 'display_errors=stderr', '-d', 'log_errors=0', '-d', 'html_errors=0', $script],
+        [PHP_BINARY, '-d', 'error_reporting=-1', '-d', 'display_errors=stderr', '-d', 'log_errors=0', '-d', 'html_errors=0', $script],
         [1 => ['pipe', 'w'], 2 => ['redirect', 1]],
         $pipes,
         dirname(__DIR__),
@@ -64,9 +66,27 @@ function normalizeDemoOutput(string $output): string
     $output = (string) preg_replace('~^(?:PHP )?(?:Warning|Notice|Deprecated): .* in \S*[/\\\\]vendor[/\\\\]\S* on line \d+\n~m', '', $output);
     $output = normalizeDuration($output);
     $output = normalizePoolError($output);
+    $output = normalizeSaveEtagJson($output);
     $output = (string) preg_replace('/^Last-Modified:.*$/m', 'Last-Modified:(time)', $output);
 
     return normalizeEtags($output);
+}
+
+/**
+ * save_etag.etag is schema-marked x-volatile and already `[volatile]` in the tree; mask it
+ * the same way in the raw JSON block, which that rendering does not reach. Without this, a
+ * resource whose own ETag is computed over an embedded child's state (its clone, Last-
+ * Modified included) gets a new, real ETag here whenever the child's own rebuild lands in a
+ * different second than its first build - observed in run-dependency.log's parent-a/b, whose
+ * body never changes, after a purge regenerates the child they embed.
+ */
+function normalizeSaveEtagJson(string $output): string
+{
+    return (string) preg_replace(
+        '/("type": "save_etag"[\s\S]*?"etag": ")[^"\\\\]*(?:\\\\.[^"\\\\]*)*(")/',
+        '${1}[volatile]${2}',
+        $output,
+    );
 }
 
 /**
@@ -95,10 +115,10 @@ function normalizeDuration(string $output): string
 /**
  * Replace each ETag value with etag-1, etag-2, ... in order of first appearance
  *
- * save_etag.etag is already `[volatile]` in the tree; this still covers the same field in
- * the raw JSON block that rendering does not reach, and ifNoneMatch everywhere, which no
- * schema marks volatile since it is the client's own validator. Numbering keeps which
- * entries share one.
+ * save_etag.etag is masked everywhere by now (tree and JSON); what is left for this to match
+ * is the literal "ETag:" header line a demo prints from $ro->headers, and a conditional
+ * request's ifNoneMatch, which no schema marks volatile since it is the client's own
+ * validator. Numbering keeps which entries share one.
  */
 function normalizeEtags(string $output): string
 {

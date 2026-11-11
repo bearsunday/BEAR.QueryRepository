@@ -604,7 +604,7 @@ get uri=page://self/dep/parent-b
                                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                                     "context": {
                                         "uri": "page://self/dep/level-three",
-                                        "etag": "\"etag-1\"",
+                                        "etag": "[volatile]",
                                         "tags": [
                                             "grp-_dep_level-three_",
                                             "_dep_level-three_"
@@ -693,7 +693,7 @@ get uri=page://self/dep/parent-b
                             "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                             "context": {
                                 "uri": "page://self/dep/level-two",
-                                "etag": "\"etag-2\"",
+                                "etag": "[volatile]",
                                 "tags": [
                                     "_dep_level-three_",
                                     "grp-_dep_level-three_",
@@ -788,7 +788,7 @@ get uri=page://self/dep/parent-b
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                     "context": {
                         "uri": "page://self/dep/level-one",
-                        "etag": "\"etag-3\"",
+                        "etag": "[volatile]",
                         "tags": [
                             "_dep_level-two_",
                             "grp-_dep_level-two_",
@@ -924,7 +924,7 @@ get uri=page://self/dep/parent-b
                             "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                             "context": {
                                 "uri": "page://self/dep/level-three",
-                                "etag": "\"etag-1\"",
+                                "etag": "[volatile]",
                                 "tags": [
                                     "grp-_dep_level-three_",
                                     "_dep_level-three_"
@@ -1056,7 +1056,7 @@ get uri=page://self/dep/parent-b
                             "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                             "context": {
                                 "uri": "page://self/dep/level-two",
-                                "etag": "\"etag-4\"",
+                                "etag": "[volatile]",
                                 "tags": [
                                     "_dep_level-three_",
                                     "grp-_dep_level-three_",
@@ -1151,7 +1151,7 @@ get uri=page://self/dep/parent-b
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                     "context": {
                         "uri": "page://self/dep/level-one",
-                        "etag": "\"etag-5\"",
+                        "etag": "[volatile]",
                         "tags": [
                             "_dep_level-two_",
                             "grp-_dep_level-two_",
@@ -1245,7 +1245,7 @@ get uri=page://self/dep/parent-b
                             "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                             "context": {
                                 "uri": "page://self/dep/child-c",
-                                "etag": "\"etag-6\"",
+                                "etag": "[volatile]",
                                 "tags": [
                                     "grp-_dep_child-c_",
                                     "_dep_child-c_"
@@ -1334,7 +1334,7 @@ get uri=page://self/dep/parent-b
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                     "context": {
                         "uri": "page://self/dep/parent-a",
-                        "etag": "\"etag-7\"",
+                        "etag": "[volatile]",
                         "tags": [
                             "_dep_child-c_",
                             "grp-_dep_child-c_",
@@ -1450,7 +1450,7 @@ get uri=page://self/dep/parent-b
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                     "context": {
                         "uri": "page://self/dep/parent-b",
-                        "etag": "\"etag-8\"",
+                        "etag": "[volatile]",
                         "tags": [
                             "_dep_child-c_",
                             "grp-_dep_child-c_",
@@ -1575,7 +1575,7 @@ get uri=page://self/dep/parent-b
                             "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                             "context": {
                                 "uri": "page://self/dep/child-c",
-                                "etag": "\"etag-6\"",
+                                "etag": "[volatile]",
                                 "tags": [
                                     "grp-_dep_child-c_",
                                     "_dep_child-c_"
@@ -1664,7 +1664,7 @@ get uri=page://self/dep/parent-b
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                     "context": {
                         "uri": "page://self/dep/parent-a",
-                        "etag": "\"etag-7\"",
+                        "etag": "[volatile]",
                         "tags": [
                             "_dep_child-c_",
                             "grp-_dep_child-c_",
@@ -1780,7 +1780,7 @@ get uri=page://self/dep/parent-b
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
                     "context": {
                         "uri": "page://self/dep/parent-b",
-                        "etag": "\"etag-8\"",
+                        "etag": "[volatile]",
                         "tags": [
                             "_dep_child-c_",
                             "grp-_dep_child-c_",
