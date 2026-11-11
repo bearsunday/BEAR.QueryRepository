@@ -20,8 +20,11 @@ use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
 
 use function array_count_values;
+use function array_filter;
+use function array_values;
 use function dirname;
 use function explode;
+use function str_starts_with;
 
 /** A write to a URI that #[DependsOn] names invalidates the stored resource and every page that embeds it */
 class DependsOnTest extends TestCase
@@ -202,8 +205,8 @@ class DependsOnTest extends TestCase
         $this->assertFalse($this->isStored($uri, false));
     }
 
-    /** With a UriTagInterface of the application's own, a hole's declaration takes its format both when the page is stored and when it is refreshed */
-    public function testAHoleDeclarationTakesTheBoundUriTagFormatWhenStoredAndRefreshed(): void
+    /** With a UriTagInterface of the application's own, every tag of a donut page takes its format, when the page is stored and when it is refreshed */
+    public function testEveryTagOfADonutPageTakesTheBoundUriTagFormatWhenStoredAndRefreshed(): void
     {
         $uriTag = new class implements UriTagInterface {
             public function __invoke(AbstractUri $uri): string
@@ -232,7 +235,11 @@ class DependsOnTest extends TestCase
         });
         $resource = (new Injector($module, __DIR__ . '/tmp'))->getInstance(ResourceInterface::class);
         foreach (['stored', 'refreshed'] as $round) {
-            $this->assertContains('x-_rows_taxonomy_ulid=c1', $this->keys($resource->get('app://self/rows/page-hole')), "the {$round} page");
+            $keys = $this->keys($resource->get('app://self/rows/page-hole'));
+            $this->assertContains('x-_rows_taxonomy_ulid=c1', $keys, "the {$round} page");
+            $this->assertContains('x-_rows_page-hole_', $keys, "the {$round} page");
+            $this->assertContains('x-_rows_plain_channelId=c1', $keys, "the {$round} page");
+            $this->assertSame([], array_values(array_filter($keys, static fn (string $key): bool => ! str_starts_with($key, 'x-') && ! str_starts_with($key, 'grp-x-'))), "the {$round} page");
         }
     }
 

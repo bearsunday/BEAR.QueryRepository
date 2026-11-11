@@ -18,18 +18,19 @@ final class SurrogateKeys
     /** @var list<string> */
     private array $surrogateKeys;
     private readonly UriTagInterface $uriTag;
+    private readonly UriTag $keyTag;
     private readonly BaseUriTagInterface $baseUriTag;
     private readonly DependsOnTags $dependsOnTags;
 
     /** @var array<string, list<string>|null> */
     private array $declared = [];
 
-    /** @param UriTagInterface|null $dependsOnUriTag what #[DependsOn] declarations expand with; the repository passes its own */
-    public function __construct(AbstractUri $uri, string|null $baseTag = null, UriTagInterface|null $dependsOnUriTag = null)
+    public function __construct(AbstractUri $uri, string|null $baseTag = null, UriTagInterface|null $uriTag = null)
     {
-        $this->uriTag = new UriTag();
+        $this->uriTag = $uriTag ?? new UriTag();
+        $this->keyTag = new UriTag();
         $this->baseUriTag = new BaseUriTag($this->uriTag);
-        $this->dependsOnTags = new DependsOnTags($dependsOnUriTag ?? $this->uriTag);
+        $this->dependsOnTags = new DependsOnTags($this->uriTag);
         $this->surrogateKeys = $baseTag === null ? [($this->uriTag)($uri)] : [($this->uriTag)($uri), $baseTag];
     }
 
@@ -60,8 +61,8 @@ final class SurrogateKeys
             return DependsOnTags::tagEmbedded($ro, null);
         }
 
-        // (string) $ro->uri drops Stringable query values, so two requests could share one key
-        $key = $ro::class . ' ' . ($this->uriTag)($ro->uri);
+        // The default UriTag keeps Stringable query values apart; (string) $ro->uri, or an application's tagger, may not
+        $key = $ro::class . ' ' . ($this->keyTag)($ro->uri);
         if (array_key_exists($key, $this->declared)) {
             return DependsOnTags::tagEmbedded($ro, $this->declared[$key]);
         }

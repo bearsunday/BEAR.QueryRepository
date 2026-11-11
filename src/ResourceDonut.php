@@ -76,10 +76,9 @@ final class ResourceDonut
     ) {
     }
 
-    /** @param UriTagInterface|null $dependsOnUriTag what #[DependsOn] declarations of the holes expand with; the repository passes its own */
-    public function refresh(ResourceInterface $resource, ResourceObject $ro, UriTagInterface|null $dependsOnUriTag = null): ResourceObject
+    public function refresh(ResourceInterface $resource, ResourceObject $ro, UriTagInterface|null $uriTag = null): ResourceObject
     {
-        $etags = new SurrogateKeys($ro->uri, null, $dependsOnUriTag);
+        $etags = new SurrogateKeys($ro->uri, null, $uriTag);
         $refreshView =  preg_replace_callback(self::URI_REGEX, static function (array $matches) use ($resource, $etags): string {
             // Group 1 is "2" for a new `le2` match (its URI, group 2, is rawurlencode()'d),
             // or "" for a legacy `le` match (group 2 is its URI, used verbatim).

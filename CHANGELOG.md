@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `StorageMemcachedEtagModule` now keeps ETags in the Memcached servers it is given; since 1.11.0 they went to the resource pool, and next to `StorageMemcachedModule` both pools used whichever servers were installed last. Check that those servers are reachable before deploying: ETags (and, depending on install order, cached resources) start empty there.
 - A `Stringable` query value, such as a ULID value object, is now part of the cache key and URI tag; it was dropped, so resources requested with different values shared one entry and served each other's content, and a `#[Purge]`/`#[Refresh]` that writes the value as a string missed it. Nothing to change: entries stored after the deploy are keyed and tagged by the value.
 - A `#[Purge]`/`#[Refresh]` on a write of a resource that is not `#[Cacheable]`, called directly on an object taken from the injector (it has no URI), now expands its template from the write's body and arguments instead of failing with a `TypeError` after the write ran.
+- With an application's own `UriTagInterface`, a `#[CacheableResponse]` or `#[DonutCache]` page now carries its own URI tag and its holes' tags in that format, the one a purge sends; they were in the default format, so a purge could miss the page.
 
 ## [1.19.1] - 2026-11-07
 
