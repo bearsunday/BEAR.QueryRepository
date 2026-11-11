@@ -29,7 +29,6 @@ use function serialize;
 use function sprintf;
 use function strtotime;
 use function time;
-use function trim;
 
 /** @internal */
 final readonly class QueryRepository implements QueryRepositoryInterface
@@ -105,13 +104,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
             return false;
         }
 
-        $saved = $storesView ? $this->storage->saveView($ro, $ttl) : $this->storage->saveValue($ro, $ttl);
-        // A validator without its entry would answer a conditional request 304 for a response the pool does not hold
-        if ($saved) {
-            $this->saveEtag($ro, $ttl);
-        }
-
-        return $saved;
+        return $storesView ? $this->storage->saveView($ro, $ttl) : $this->storage->saveValue($ro, $ttl);
     }
 
     /** The seconds a #[Cacheable] entry lives, recorded with the declaration that decided them */
@@ -138,30 +131,16 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         return $this->headerSetter->maxAge($ttl);
     }
 
-    private function saveEtag(ResourceObject $ro, int $ttl): void
-    {
-        if (! isset($ro->headers[Header::ETAG])) {
-            return;
-        }
-
-        $surrogateKeys = $ro->headers[Header::SURROGATE_KEY] ?? '';
-        // saveEtag() takes a tag list of its own, not getTags()'s.
-        $surrogateKeys = trim($surrogateKeys . ' ' . ($this->baseUriTag)($ro));
-
-        $this->storage->saveEtag($ro->uri, $ro->headers[Header::ETAG], $surrogateKeys, $ttl);
-    }
-
     private function cleanUpBeforeWrite(ResourceObject $ro, string|null $skipReason): void
     {
         if ($skipReason !== null && $this->storage->get($ro->uri) === null) {
             return;
         }
 
-        // The writer knows its own purpose: this deleteEtag clears the entry about to be
-        // rewritten below. The marker records that, so readers never have to infer
-        // cleanup-vs-invalidation from tag correlation.
+        // The marker records that this invalidation clears the entry about to be rewritten,
+        // so readers never have to infer cleanup-vs-invalidation from tag correlation.
         $this->logger->event(new PreWriteCleanupContext((string) $ro->uri));
-        $this->storage->deleteEtag($ro->uri);
+        $this->storage->invalidateTags([$this->cacheTags->uriTag($ro->uri)]);
     }
 
     /**

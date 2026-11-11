@@ -378,13 +378,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
      */
     private function saveView(ResourceObject $ro, int|null $ttl, string $surrogateKeys): bool
     {
-        $saved = $this->resourceStorage->saveDonutView($ro, $ttl, explode(' ', $surrogateKeys));
-        // A validator without its view would answer a conditional request 304 for a page the pool does not hold
-        if ($saved && isset($ro->headers[Header::ETAG])) {
-            $this->resourceStorage->saveEtag($ro->uri, $ro->headers[Header::ETAG], $surrogateKeys, $ttl);
-        }
-
-        return $saved;
+        return $this->resourceStorage->saveDonutView($ro, $ttl, explode(' ', $surrogateKeys));
     }
 
     /**

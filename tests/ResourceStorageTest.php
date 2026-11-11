@@ -60,7 +60,6 @@ class ResourceStorageTest extends TestCase
             new ResourceStorageSaver(),
             new CacheIdentityFactory(new GlobalServerContext()),
             $provider($roPool ?? $tagAwareAdapter),
-            $provider($etagPool ?? $tagAwareAdapter),
             new CacheTags(new UriTag(), new BaseUriTag(new UriTag())),
         );
     }
@@ -93,7 +92,6 @@ class ResourceStorageTest extends TestCase
             new UriTag(),
             new ResourceStorageSaver(),
             new CacheIdentityFactory(new GlobalServerContext()),
-            new FakeArrayPoolProvider(),
             new FakeArrayPoolProvider(),
             new CacheTags(new UriTag(), new BaseUriTag(new UriTag())),
         );
@@ -292,7 +290,6 @@ class ResourceStorageTest extends TestCase
             new ResourceStorageSaver(),
             new CacheIdentityFactory(new GlobalServerContext()),
             $poolProvider,
-            $poolProvider,
             new CacheTags(new UriTag(), new BaseUriTag(new UriTag())),
         );
 
@@ -334,7 +331,6 @@ class ResourceStorageTest extends TestCase
             new UriTag(),
             new ResourceStorageSaver(),
             new CacheIdentityFactory(new GlobalServerContext()),
-            $poolProvider,
             $poolProvider,
             new CacheTags(new UriTag(), new BaseUriTag(new UriTag())),
         );

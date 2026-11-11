@@ -8,15 +8,20 @@ use BEAR\Resource\AbstractUri;
 use Stringable;
 
 use function array_walk_recursive;
+use function base64_encode;
+use function hash;
 use function explode;
 use function http_build_query;
 use function ksort;
 use function ltrim;
 use function preg_replace;
+use function rtrim;
 use function sprintf;
 use function str_replace;
 use function strtolower;
+use function strtr;
 use function strtoupper;
+use function substr;
 use function trim;
 
 /** @internal */
@@ -51,7 +56,15 @@ final readonly class CacheIdentityFactory
 
     public function storageKey(string $exactTag, string $type): string
     {
-        return $type . $exactTag . $this->vary();
+        return $type . $this->locator($exactTag);
+    }
+
+    /** The entry locator K that prefixes a stored ETag ("K.H"); never contains '.' */
+    public function locator(string $exactTag): string
+    {
+        $digest = substr(hash('sha256', $exactTag . $this->vary(), true), 0, 16);
+
+        return rtrim(strtr(base64_encode($digest), '+/', '-_'), '=');
     }
 
     /** The conversion BEAR.Resource applies when it binds a query to a parameter */
