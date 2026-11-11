@@ -116,7 +116,7 @@ A purge also reaches the query variants of the URI it names that differ from it 
 
 - A write method of a `#[Cacheable]` or `#[CacheableResponse]` resource, and one marked `#[RefreshCache]`, purges its own URI with default-valued parameters dropped, so it reaches every variant even when the write request supplies one. A write method of a `#[DonutCache]` resource purges its own URI only when it is marked `#[RefreshCache]`.
 - A purge URI that spells out a default-valued parameter (`app://self/articles?page=1`) is not coarsened and reaches only that URI's entries.
-- A required key keeps the spelling the request used. A purge reaches a GET's entries only when it spells each required key the same way: `?user_id=1` reaches `?user_id=1&page=2`, `?userId=1` does not. The automatic purge after a write purges both the parameter name (`userId`) and its snake_case form (`user_id`), so it reaches a GET's entries whichever spelling stored them.
+- A required key keeps the spelling the request used. A purge reaches a GET's entries only when it spells each required key the same way: `?user_id=1` reaches `?user_id=1&page=2`, `?userId=1` does not. The automatic purge after a write purges two spellings: every required key as the parameter name (`userId`), and every one in snake_case (`user_id`). A GET that mixes the two across its required keys (`?userId=1&post_id=2`) is not reached.
 - A non-200 GET response invalidates only its own URI's tag; cached variants stay.
 
 ### #[DependsOn]
