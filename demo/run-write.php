@@ -30,6 +30,7 @@ so a rebuilt entry shows the new version and an untouched one the old.
 
 A. PATCH app://self/member with member_id    -> the #[Cacheable] resource's own write
                                                 refreshes ?memberId=1 (snake_case query)
+                                                and purges ?member_id=1 as well
 B. PUT    tag-writer id=[a, b]  #[Refresh(uri: 'app://self/tag{?id*}')]
                                               -> one refresh per element: a and b rebuilt
 C. DELETE tag-writer id=[a, b]  #[Purge(uri: 'app://self/tag{?id*}')]

@@ -5,6 +5,7 @@ so a rebuilt entry shows the new version and an untouched one the old.
 
 A. PATCH app://self/member with member_id    -> the #[Cacheable] resource's own write
                                                 refreshes ?memberId=1 (snake_case query)
+                                                and purges ?member_id=1 as well
 B. PUT    tag-writer id=[a, b]  #[Refresh(uri: 'app://self/tag{?id*}')]
                                               -> one refresh per element: a and b rebuilt
 C. DELETE tag-writer id=[a, b]  #[Purge(uri: 'app://self/tag{?id*}')]
@@ -32,6 +33,15 @@ command method=onPatch source=CommandInterceptor
 ├── invalidate tags=[_member_memberId=1 +1 items] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 │   ├── tags[0]: _member_memberId=1
 │   ├── tags[1]: grp-_member_memberId=1
+│   ├── roPool: invalidated
+│   ├── etagPool: invalidated
+│   ├── cdn: skipped
+│   └── durationMs: [volatile]
+├── purge uri=app://self/member?member_id=1 [event]
+│   └── uri: app://self/member?member_id=1
+├── invalidate tags=[_member_member_id=1 +1 items] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
+│   ├── tags[0]: _member_member_id=1
+│   ├── tags[1]: grp-_member_member_id=1
 │   ├── roPool: invalidated
 │   ├── etagPool: invalidated
 │   ├── cdn: skipped
@@ -73,7 +83,7 @@ get uri=app://self/member?memberId=1
 └── close cache_hit
     ├── layer: resource
     └── durationMs: [volatile]
-Schema validation: OK (13 entries)
+Schema validation: OK (15 entries)
 B GET app://self/tag {"id":"a"} -> {"id":"a","version":2}
 B GET app://self/tag {"id":"c"} -> {"id":"c","version":1}
 
