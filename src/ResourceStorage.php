@@ -26,9 +26,7 @@ use Ray\Di\ProviderInterface;
 use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 use Throwable;
 
-use function array_filter;
 use function array_unique;
-use function array_values;
 use function assert;
 use function explode;
 use function hrtime;
@@ -36,8 +34,6 @@ use function implode;
 use function is_string;
 use function max;
 use function round;
-use function sprintf;
-use function strtoupper;
 use function trim;
 
 /**
@@ -48,8 +44,8 @@ use function trim;
  *     saver: ResourceStorageSaver,
  *     roProvider:ProviderInterface<TagAwareAdapterInterface>,
  *     etagProvider: ProviderInterface<TagAwareAdapterInterface>,
- *     serverContext: ServerContextInterface,
- *     baseUriTag: BaseUriTagInterface,
+ *     identityFactory: CacheIdentityFactory,
+ *     cacheTags: CacheTags,
  * }
  * @internal
  */
@@ -96,12 +92,12 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         private PurgerInterface $purger,
         private UriTagInterface $uriTag,
         private ResourceStorageSaver $saver,
-        private ServerContextInterface $serverContext,
+        private readonly CacheIdentityFactory $identityFactory,
         #[Set(TagAwareAdapterInterface::class, ResourceObjectPool::class)]
         ProviderInterface $roPoolProvider,
         #[Set(TagAwareAdapterInterface::class, EtagPool::class)]
         ProviderInterface $etagPoolProvider,
-        private BaseUriTagInterface $baseUriTag,
+        private readonly CacheTags $cacheTags,
         private ResourceBodyEvaluator $evaluateBody = new ResourceBodyEvaluator(),
     ) {
         $this->initializePools($roPoolProvider, $etagPoolProvider);
@@ -194,7 +190,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
             }
 
             assert(is_string($issuedFor));
-            $key = self::KEY_RO . $issuedFor . $this->getVary();
+            $key = $this->identityFactory->storageKey($issuedFor, self::KEY_RO);
             $state = $this->guard(fn () => $this->roPool->getItem($key))->get();
             assert($state instanceof ResourceState || $state === null);
             // A missing entry reads as '', which is never an opaque-tag.
@@ -305,13 +301,8 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         $ttl = max(0, $ttl);
         /** @psalm-suppress MixedAssignment $body */
         $body = ($this->evaluateBody)($ro->body);
-        $value = ResourceState::create($ro, $body, null);
-        $key = $this->getUriKey($ro->uri, self::KEY_RO);
-        $tags = $this->getTags($ro);
-        $saved = $this->guard(fn (): bool => ($this->saver)($key, $value, $this->roPool, $tags, $ttl));
-        $this->logger->event(new SaveValueContext((string) $ro->uri, $tags, $ttl, $saved));
 
-        return $saved;
+        return $this->saveResourceState($ro, $body, null, $ttl, SaveValueContext::class);
     }
 
     /**
@@ -325,13 +316,8 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         $ttl = max(0, $ttl);
         /** @psalm-suppress MixedAssignment $body */
         $body = ($this->evaluateBody)($ro->body);
-        $value = ResourceState::create($ro, $body, $ro->view);
-        $key = $this->getUriKey($ro->uri, self::KEY_RO);
-        $tags = $this->getTags($ro);
-        $saved = $this->guard(fn (): bool => ($this->saver)($key, $value, $this->roPool, $tags, $ttl));
-        $this->logger->event(new SaveViewContext((string) $ro->uri, $tags, $ttl, $saved));
 
-        return $saved;
+        return $this->saveResourceState($ro, $body, $ro->view, $ttl, SaveViewContext::class);
     }
 
     /**
@@ -344,8 +330,8 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         // template entry TTL (putStatic passes $ttl, putDonut passes $donutTtl), never a CDN s-maxage.
         $sMaxAge = $this->nonNegative($sMaxAge);
         $key = $this->getUriKey($uri, self::KEY_DONUT);
-        $headerKeys = $this->uniqueTags($headerKeys);
-        $saved = $this->guard(fn (): bool => ($this->saver)($key, $donut, $this->roPool, $headerKeys, $sMaxAge));
+        $headerKeys = (new TagSet($headerKeys))->toArray();
+        $saved = $this->saveToPool($key, $donut, $this->roPool, $headerKeys, $sMaxAge);
         // saved=false is logged, not asserted: a quiet store failure must stay observable
         // in the log (an assert here would throw AFTER the event, contradicting it).
         $this->logger->event(new SaveDonutContext((string) $uri, $headerKeys, $sMaxAge, $saved));
@@ -355,13 +341,29 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
     public function saveDonutView(ResourceObject $ro, int|null $ttl, array|null $tags = null): bool
     {
         $ttl = $this->nonNegative($ttl);
-        $resourceState = ResourceState::create($ro, [], $ro->view);
+
+        return $this->saveResourceState($ro, [], $ro->view, $ttl, SaveDonutViewContext::class, $tags);
+    }
+
+    /**
+     * @param class-string<SaveValueContext>|class-string<SaveViewContext>|class-string<SaveDonutViewContext> $contextClass
+     * @param list<string>|null                                                                               $tags
+     */
+    private function saveResourceState(ResourceObject $ro, mixed $body, string|null $view, int|null $ttl, string $contextClass, array|null $tags = null): bool
+    {
+        $resourceState = ResourceState::create($ro, $body, $view);
         $key = $this->getUriKey($ro->uri, self::KEY_RO);
         $tags = $this->getTags($ro, $tags);
-        $saved = $this->guard(fn (): bool => ($this->saver)($key, $resourceState, $this->roPool, $tags, $ttl));
-        $this->logger->event(new SaveDonutViewContext((string) $ro->uri, $tags, $ttl, $saved));
+        $saved = $this->saveToPool($key, $resourceState, $this->roPool, $tags, $ttl);
+        $this->logger->event(new $contextClass((string) $ro->uri, $tags, $ttl, $saved));
 
         return $saved;
+    }
+
+    /** @param list<string> $tags */
+    private function saveToPool(string $key, mixed $value, TagAwareAdapterInterface $pool, array $tags, int|null $ttl): bool
+    {
+        return $this->guard(fn (): bool => ($this->saver)($key, $value, $pool, $tags, $ttl));
     }
 
     /**
@@ -371,27 +373,12 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
      */
     private function getTags(ResourceObject $ro, array|null $surrogateKeys = null): array
     {
-        // ETag is intentionally NOT used as an invalidation tag. The cache entry is
-        // purged by its URI tag (deleteEtag/invalidateTags) and surrogate keys; no code
-        // path ever invalidates by ETag. Because ETag is content-versioned, registering it
-        // as a tag produced one non-volatile tag Set per content version that, under a
-        // volatile-* eviction policy, is never reclaimed - leaking memory without being read.
+        // An ETag is never an invalidation tag: it is content-versioned, so each version
+        // would leave a tag Set that nothing invalidates and a volatile-* eviction policy
+        // never reclaims.
         $surrogateKeys ??= isset($ro->headers[Header::SURROGATE_KEY]) ? explode(' ', $ro->headers[Header::SURROGATE_KEY]) : [];
 
-        // Reachable by a purge aimed at the bare URI (see BaseUriTag).
-        return $this->uniqueTags([($this->uriTag)($ro->uri), ($this->baseUriTag)($ro), ...$surrogateKeys]);
-    }
-
-    /**
-     * An empty key - an empty or double-spaced key string splits into one - is not a tag the pool accepts
-     *
-     * @param list<string> $tags
-     *
-     * @return list<string>
-     */
-    private function uniqueTags(array $tags): array
-    {
-        return array_values(array_unique(array_filter($tags, static fn (string $tag): bool => $tag !== '')));
+        return (new TagSet($this->cacheTags->tags($ro, $surrogateKeys)))->toArray();
     }
 
     private function nonNegative(int|null $ttl): int|null
@@ -401,40 +388,14 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
 
     private function getUriKey(AbstractUri $uri, string $type): string
     {
-        return $type . ($this->uriTag)($uri) . $this->getVary();
-    }
-
-    /** '' when the application declares no X_VARY context */
-    private function getVary(): string
-    {
-        $xvary = $this->serverContext->get('X_VARY');
-        if ($xvary === null) {
-            return '';
-        }
-
-        $varys = explode(',', $xvary);
-        $varyString = '';
-        foreach ($varys as $vary) {
-            $vary = trim($vary);
-            if ($vary === '') {
-                continue;
-            }
-
-            $phpVaryKey = sprintf('X_%s', strtoupper($vary));
-            $value = $this->serverContext->get($phpVaryKey);
-            if ($value !== null) {
-                $varyString .= $value;
-            }
-        }
-
-        return $varyString;
+        return $this->identityFactory->storageKey(($this->uriTag)($uri), $type);
     }
 
     #[Override]
     public function saveEtag(AbstractUri $uri, string $etag, string $surrogateKeys, int|null $ttl): void
     {
         $ttl = $this->nonNegative($ttl);
-        $uniqueTags = $this->uniqueTags([...explode(' ', $surrogateKeys), ($this->uriTag)($uri)]);
+        $uniqueTags = (new TagSet(explode(' ', $surrogateKeys)))->merge(new TagSet([($this->uriTag)($uri)]))->toArray();
         // The header value is a quoted entity-tag; the pool key is the bare opaque-tag. The entry's
         // value is the URI tag it was issued for - the field used to be the constant 'etag', which
         // is why a validator from any resource satisfied any request.
@@ -477,8 +438,8 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
             'saver' => $this->saver,
             'roProvider' => $this->roPoolProvider,
             'etagProvider' => $this->etagPoolProvider,
-            'serverContext' => $this->serverContext,
-            'baseUriTag' => $this->baseUriTag,
+            'identityFactory' => $this->identityFactory,
+            'cacheTags' => $this->cacheTags,
         ];
     }
 
@@ -493,11 +454,11 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         $this->purger = $data['purger'];
         $this->uriTag = $data['uriTag'];
         $this->saver = $data['saver'];
-        $this->serverContext = $data['serverContext'];
+        $this->identityFactory = $data['identityFactory'];
+        $this->cacheTags = $data['cacheTags'];
         // Stateless, so rebuilt rather than carried: left out of the payload it stays
         // uninitialized, and the first save after a compiled-injector restore throws.
         $this->evaluateBody = new ResourceBodyEvaluator();
-        $this->baseUriTag = $data['baseUriTag'];
         $this->initializePools($data['roProvider'], $data['etagProvider']);
     }
 }

@@ -9,7 +9,6 @@ use BEAR\QueryRepository\Cdn\FastlyCacheControlHeaderSetter;
 use BEAR\QueryRepository\Log\Context\CacheHitContext;
 use BEAR\QueryRepository\Log\Context\CacheMissContext;
 use BEAR\QueryRepository\Log\Context\CdnHeadersContext;
-use BEAR\QueryRepository\Log\Context\DependencySkippedContext;
 use BEAR\QueryRepository\Log\Context\ManualStoreContext;
 use BEAR\QueryRepository\Log\Context\ManualStoreResultContext;
 use BEAR\QueryRepository\Log\Context\PreWriteCleanupContext;
@@ -19,7 +18,6 @@ use BEAR\QueryRepository\Log\Context\RefreshDonutContext;
 use BEAR\QueryRepository\Log\Context\SaveDonutContext;
 use BEAR\QueryRepository\Log\TopLevelAwareInterface;
 use BEAR\RepositoryModule\Annotation\CacheLog;
-use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
@@ -42,6 +40,8 @@ final readonly class DonutRepository implements DonutRepositoryInterface
 
     private CacheDependencyInterface $cacheDependency;
     private DependsOnTags $dependsOnTags;
+    private CacheTags $cacheTags;
+    private CacheDependencyCollector $dependencyCollector;
 
     /** @SuppressWarnings("PHPMD.ExcessiveParameterList") */
     public function __construct(
@@ -57,10 +57,15 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         private UriTagInterface $uriTag = new UriTag(),
         CacheDependencyInterface|null $cacheDependency = null,
         private DeclaredCacheControl $declaredCacheControl = new DeclaredCacheControl(),
+        DependsOnTags|null $dependsOnTags = null,
+        CacheTags|null $cacheTags = null,
+        CacheDependencyCollector|null $dependencyCollector = null,
     ) {
         // Same UriTag as templateKeys(), so a material's tag matches the format purge() emits.
-        $this->cacheDependency = $cacheDependency ?? new CacheDependency($this->uriTag, $this->logger, $this->baseUriTag);
-        $this->dependsOnTags = new DependsOnTags($this->uriTag);
+        $this->dependsOnTags = $dependsOnTags ?? new DependsOnTags($this->uriTag);
+        $this->cacheTags = $cacheTags ?? new CacheTags($this->uriTag, $this->baseUriTag);
+        $this->cacheDependency = $cacheDependency ?? new CacheDependency($this->uriTag, $this->logger, $this->baseUriTag, $this->cacheTags);
+        $this->dependencyCollector = $dependencyCollector ?? new CacheDependencyCollector($this->dependsOnTags, $this->cacheDependency, $this->logger);
     }
 
     #[Override]
@@ -86,8 +91,8 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     #[Override]
     public function putStatic(ResourceObject $ro, int|null $ttl = null, int|null $sMaxAge = null): ResourceObject
     {
-        $ttl = self::lifetime($ttl);
-        $sMaxAge = self::lifetime($sMaxAge);
+        $ttl = $this->lifetime($ttl);
+        $sMaxAge = $this->lifetime($sMaxAge);
 
         return $this->store($ro, function () use ($ro, $ttl, $sMaxAge): void {
             $this->doPutStatic($ro, $ttl, $sMaxAge);
@@ -100,7 +105,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     #[Override]
     public function putDonut(ResourceObject $ro, int|null $donutTtl): ResourceObject
     {
-        $donutTtl = self::lifetime($donutTtl);
+        $donutTtl = $this->lifetime($donutTtl);
 
         return $this->store($ro, function () use ($ro, $donutTtl): void {
             $this->doPutDonut($ro, $donutTtl);
@@ -113,7 +118,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
      * `ResourceStorageSaver` treats zero or below as no expiry; clamping here keeps the
      * recorded lifetime at 0 instead of a negative value the entry never had.
      */
-    private static function lifetime(int|null $seconds): int|null
+    private function lifetime(int|null $seconds): int|null
     {
         return $seconds === null ? null : max(0, $seconds);
     }
@@ -150,7 +155,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
 
     private function doPutStatic(ResourceObject $ro, int|null $ttl, int|null $sMaxAge): void
     {
-        $keys = new SurrogateKeys($ro->uri, ($this->baseUriTag)($ro), $this->uriTag);
+        $keys = new SurrogateKeys($ro->uri, ($this->baseUriTag)($ro), $this->uriTag, null, $this->dependsOnTags);
         $this->classifyMaterials($ro, $keys);
         $this->logger->event(new PutDonutContext((string) $ro->uri, $ttl, $sMaxAge));
         $donut = ResourceDonut::create($ro, $this->renderer, $keys, $sMaxAge, true);
@@ -177,7 +182,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
 
     private function doPutDonut(ResourceObject $ro, int|null $donutTtl): void
     {
-        $keys = new SurrogateKeys($ro->uri, ($this->baseUriTag)($ro), $this->uriTag);
+        $keys = new SurrogateKeys($ro->uri, ($this->baseUriTag)($ro), $this->uriTag, null, $this->dependsOnTags);
         $this->classifyMaterials($ro, $keys);
         $this->logger->event(new PutDonutContext((string) $ro->uri, $donutTtl, null));
         $donut = ResourceDonut::create($ro, $this->renderer, $keys, $donutTtl, false);
@@ -222,23 +227,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
      */
     private function classifyMaterials(ResourceObject $ro, SurrogateKeys $keys): void
     {
-        ($this->dependsOnTags)($ro);
-
-        /** @var mixed $body */
-        foreach ((array) $ro->body as $body) {
-            if (! ($body instanceof AbstractRequest)) {
-                continue;
-            }
-
-            $child = $body->resourceObject;
-            if (! $keys->embedded($child)) {
-                $this->logger->event(DependencySkippedContext::of($ro, $child));
-
-                continue;
-            }
-
-            $this->cacheDependency->depends($ro, $child);
-        }
+        $this->dependencyCollector->collect($ro, $keys);
     }
 
     /**
@@ -253,7 +242,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
      */
     private function templateKeys(ResourceObject $ro, array $declaredKeys): array
     {
-        return array_values(array_unique([($this->uriTag)($ro->uri), ($this->baseUriTag)($ro), ...$declaredKeys]));
+        return array_values(array_unique($this->cacheTags->tags($ro, $declaredKeys)));
     }
 
     /**
@@ -299,7 +288,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         // When the recomposed content is byte-identical to the recorded one, carry over
         // the original Last-Modified instead of advancing it to the recomposition time
         $lastModified = $donut->getUnchangedLastModified((string) $ro->view);
-        ($this->headerSetter)($ro, HeaderSetter::maxAge($donut->ttl) ?? self::REVALIDATE, null, $lastModified);
+        ($this->headerSetter)($ro, $this->headerSetter->maxAge($donut->ttl) ?? self::REVALIDATE, null, $lastModified);
 
         $this->setCdnCacheControl($ro, $donut->ttl);
         $this->logCdnHeaders($ro);
@@ -408,7 +397,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $keys->setSurrogateHeader($ro);
         $surrogateKeys = $ro->headers[Header::SURROGATE_KEY] ?? '';
         $this->setCdnCacheControl($ro, $sMaxAge);
-        ($this->headerSetter)($ro, HeaderSetter::maxAge($sMaxAge) === null ? self::REVALIDATE : null, null);
+        ($this->headerSetter)($ro, $this->headerSetter->maxAge($sMaxAge) === null ? self::REVALIDATE : null, null);
 
         return $surrogateKeys;
     }

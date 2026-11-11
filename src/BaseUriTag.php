@@ -8,38 +8,23 @@ use BEAR\Resource\ResourceObject;
 use Override;
 use ReflectionMethod;
 
-use function ltrim;
 use function method_exists;
-use function preg_replace;
-use function strtolower;
 
-/**
- * {@inheritDoc}
- *
- * @internal
- *
- * Drops every default-valued onGet() parameter, supplied or not (MatchQuery keeps the supplied ones);
- * required parameters stay: `onGet(int $userId, int $page = 1)` maps `?userId=1&page=2` to `?userId=1`.
- * A required parameter keeps the key the request spelled, `userId` or the `user_id` BEAR.Resource also binds.
- */
-final class BaseUriTag implements BaseUriTagInterface
+/** @internal */
+final readonly class BaseUriTag implements BaseUriTagInterface
 {
-    /**
-     * Keeps the group tag distinct from a resource's own UriTag, which cleanUpBeforeWrite() invalidates.
-     *
-     * @see QueryRepository::GROUP_TAG_PREFIX
-     */
-    private const GROUP_TAG_PREFIX = 'grp-';
-
-    public function __construct(private readonly UriTagInterface $uriTag = new UriTag())
-    {
+    public function __construct(
+        private UriTagInterface $uriTag = new UriTag(),
+        private CacheIdentityFactory $identityFactory = new CacheIdentityFactory(),
+    ) {
     }
 
+    /** Defaulted parameters are excluded; required parameters retain their supplied query spelling. */
     #[Override]
     public function __invoke(ResourceObject $ro): string
     {
         if (! method_exists($ro, 'onGet')) {
-            return self::GROUP_TAG_PREFIX . ($this->uriTag)($ro->uri);
+            return $this->identityFactory->groupTag(($this->uriTag)($ro->uri));
         }
 
         $query = $ro->uri->query;
@@ -49,7 +34,7 @@ final class BaseUriTag implements BaseUriTagInterface
                 continue;
             }
 
-            $key = isset($query[$parameter->name]) ? $parameter->name : self::snakeName($parameter->name);
+            $key = isset($query[$parameter->name]) ? $parameter->name : $this->identityFactory->snakeName($parameter->name);
             if (! isset($query[$key])) {
                 continue;
             }
@@ -61,12 +46,6 @@ final class BaseUriTag implements BaseUriTagInterface
         $baseUri = clone $ro->uri;
         $baseUri->query = $baseQuery;
 
-        return self::GROUP_TAG_PREFIX . ($this->uriTag)($baseUri);
-    }
-
-    /** The conversion BEAR.Resource applies when it binds a query to a parameter */
-    public static function snakeName(string $name): string
-    {
-        return ltrim(strtolower((string) preg_replace('/[A-Z]/', '_\0', $name)), '_');
+        return $this->identityFactory->groupTag(($this->uriTag)($baseUri));
     }
 }

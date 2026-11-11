@@ -6,7 +6,6 @@ namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\ExpireAtKeyNotExists;
 use BEAR\QueryRepository\Log\Context\CachePolicyContext;
-use BEAR\QueryRepository\Log\Context\DependencySkippedContext;
 use BEAR\QueryRepository\Log\Context\ManualPurgeContext;
 use BEAR\QueryRepository\Log\Context\ManualPurgeResultContext;
 use BEAR\QueryRepository\Log\Context\ManualStoreContext;
@@ -18,7 +17,6 @@ use BEAR\QueryRepository\Log\TopLevelAwareInterface;
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\RepositoryModule\Annotation\HttpCache;
-use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceObject;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
@@ -36,24 +34,18 @@ use function trim;
 /** @internal */
 final readonly class QueryRepository implements QueryRepositoryInterface
 {
-    /** @see BaseUriTag::GROUP_TAG_PREFIX */
-    private const GROUP_TAG_PREFIX = 'grp-';
-
-    private DependsOnTags $dependsOnTags;
-
     public function __construct(
         #[CacheLog]
         private SemanticLoggerInterface $logger,
         private HeaderSetter $headerSetter,
         private ResourceStorageInterface $storage,
         private Expiry $expiry,
-        private CacheDependencyInterface $cacheDependency,
+        private CacheDependencyCollector $dependencyCollector,
         private BaseUriTagInterface $baseUriTag,
+        private CacheTags $cacheTags,
         private DeclaredCacheControl $declaredCacheControl = new DeclaredCacheControl(),
-        private UriTagInterface $uriTag = new UriTag(),
         private ResourceBodyEvaluator $evaluateBody = new ResourceBodyEvaluator(),
     ) {
-        $this->dependsOnTags = new DependsOnTags($this->uriTag);
     }
 
     /**
@@ -143,7 +135,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
             return 'max-age=0';
         }
 
-        return HeaderSetter::maxAge($ttl);
+        return $this->headerSetter->maxAge($ttl);
     }
 
     private function saveEtag(ResourceObject $ro, int $ttl): void
@@ -195,29 +187,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
 
     private function setCacheDependency(ResourceObject $ro): void
     {
-        ($this->dependsOnTags)($ro);
-
-        /** @var mixed $body */
-        foreach ((array) $ro->body as $body) {
-            if (! ($body instanceof AbstractRequest)) {
-                continue;
-            }
-
-            // Materialize the child while HAL still has the Request in body: the keys read
-            // below are set on the child resource by its own interceptor or onGet(), so they
-            // only exist once the child has run. AbstractRequest::__toString() memoizes the result,
-            // so the renderer reads this same run - but only readers that consult the memo
-            // do (see ResourceStorage::materialize(); __invoke() re-executes).
-            (string) $body;
-            $child = $body->resourceObject;
-            if (! $this->dependsOnTags->embedded($child)) {
-                $this->logger->event(DependencySkippedContext::of($ro, $child));
-
-                continue;
-            }
-
-            $this->cacheDependency->depends($ro, $child);
-        }
+        $this->dependencyCollector->collect($ro);
     }
 
     /**
@@ -246,8 +216,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
     #[Override]
     public function purge(AbstractUri $uri)
     {
-        // The URI's own tag plus the group tag shared by its query variants (see BaseUriTag).
-        $tags = [($this->uriTag)($uri), self::GROUP_TAG_PREFIX . ($this->uriTag)($uri)];
+        $tags = $this->cacheTags->forUri($uri);
 
         // A top-level purge is an application-initiated (manual) cache bust: wrap it in a
         // manual_purge scope so it stands out from automatic invalidation. A purge nested

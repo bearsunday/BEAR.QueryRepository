@@ -39,8 +39,9 @@ class EtagWithoutEntryTest extends TestCase
             new HeaderSetter(new EtagSetter()),
             $storage,
             new Expiry(),
-            new CacheDependency(new UriTag()),
+            new CacheDependencyCollector(new DependsOnTags(new UriTag()), new CacheDependency(new UriTag()), new NullSemanticLogger()),
             new BaseUriTag(new UriTag()),
+            new CacheTags(new UriTag(), new BaseUriTag(new UriTag())),
         );
     }
 

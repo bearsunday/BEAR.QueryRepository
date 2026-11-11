@@ -42,6 +42,7 @@ final class RefreshTemplateValidator
     public function __construct(
         private readonly ResourceInterface $resource,
         private readonly NamedParamMetasInterface $namedParamMetas,
+        private readonly CacheIdentityFactory $identityFactory = new CacheIdentityFactory(),
     ) {
     }
 
@@ -75,7 +76,7 @@ final class RefreshTemplateValidator
             return;
         }
 
-        $uri = uri_template($template, array_fill_keys(self::variableNames($template), '0'));
+        $uri = uri_template($template, array_fill_keys($this->variableNames($template), '0'));
         try {
             $destination = $this->resource->newInstance($uri);
         } catch (BadRequestException) {
@@ -91,7 +92,7 @@ final class RefreshTemplateValidator
         parse_str((string) parse_url($uri, PHP_URL_QUERY), $query);
         $missing = [];
         foreach (($this->namedParamMetas)($onGet) as $name => $param) {
-            if (! $param instanceof RequiredParam || array_key_exists($name, $query) || array_key_exists(BaseUriTag::snakeName($name), $query)) {
+            if (! $param instanceof RequiredParam || array_key_exists($name, $query) || array_key_exists($this->identityFactory->snakeName($name), $query)) {
                 continue;
             }
 
@@ -108,7 +109,7 @@ final class RefreshTemplateValidator
     }
 
     /** @return list<string> */
-    private static function variableNames(string $template): array
+    private function variableNames(string $template): array
     {
         preg_match_all('/\{[+#.\/;?&]?([^}]+)\}/', $template, $matches);
         $names = [];

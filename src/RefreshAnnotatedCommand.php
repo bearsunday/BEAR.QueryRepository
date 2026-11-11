@@ -33,6 +33,7 @@ final readonly class RefreshAnnotatedCommand implements CommandInterface
     public function __construct(
         private QueryRepositoryInterface $repository,
         private ResourceInterface $resource,
+        private CacheIdentityFactory $identityFactory = new CacheIdentityFactory(),
     ) {
     }
 
@@ -42,7 +43,7 @@ final readonly class RefreshAnnotatedCommand implements CommandInterface
         $method = $invocation->getMethod();
         /** @var AbstractUri|null $uri a resource object taken from the injector has none */
         $uri = $ro->uri;
-        $query = $uri === null ? self::passedArguments($invocation) : $uri->query;
+        $query = $uri === null ? $this->passedArguments($invocation) : $uri->query;
         foreach ($method->getAnnotations() as $annotation) {
             $this->request($ro, $annotation, $query);
         }
@@ -55,7 +56,7 @@ final readonly class RefreshAnnotatedCommand implements CommandInterface
      *
      * @return array<string, mixed>
      */
-    private static function passedArguments(MethodInvocation $invocation): array
+    private function passedArguments(MethodInvocation $invocation): array
     {
         $arguments = $invocation->getArguments();
         $query = [];
@@ -66,7 +67,7 @@ final readonly class RefreshAnnotatedCommand implements CommandInterface
             }
 
             $query += [$parameter->name => $arguments[$position]];
-            $query += [BaseUriTag::snakeName($parameter->name) => $arguments[$position]];
+            $query += [$this->identityFactory->snakeName($parameter->name) => $arguments[$position]];
         }
 
         return $query;
@@ -84,9 +85,9 @@ final readonly class RefreshAnnotatedCommand implements CommandInterface
         $body = is_array($ro->body) ? $ro->body : [];
         $query = $body + $query;
         $variableSets = [$query];
-        foreach (self::explodedQueryNames($annotation->uri) as $name) {
+        foreach ($this->explodedQueryNames($annotation->uri) as $name) {
             if (isset($query[$name]) && is_array($query[$name]) && array_is_list($query[$name])) {
-                $variableSets = self::fanOut($variableSets, $name, $query[$name]);
+                $variableSets = $this->fanOut($variableSets, $name, $query[$name]);
             }
         }
 
@@ -104,7 +105,7 @@ final readonly class RefreshAnnotatedCommand implements CommandInterface
      *
      * @return list<array<mixed>>
      */
-    private static function fanOut(array $variableSets, string $name, array $values): array
+    private function fanOut(array $variableSets, string $name, array $values): array
     {
         $expanded = [];
         foreach ($variableSets as $variables) {
@@ -123,7 +124,7 @@ final readonly class RefreshAnnotatedCommand implements CommandInterface
     }
 
     /** @return list<string> */
-    private static function explodedQueryNames(string $template): array
+    private function explodedQueryNames(string $template): array
     {
         preg_match_all('/\{([+#.\/;?&]?)([^}]+)\}/', $template, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE);
         $queryStart = strpos($template, '?');

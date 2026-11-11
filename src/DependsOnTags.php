@@ -7,14 +7,11 @@ namespace BEAR\QueryRepository;
 use BEAR\QueryRepository\Exception\DependsOnNotExpandable;
 use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\ResourceObject;
+use Generator;
 use ReflectionMethod;
 
-use function array_filter;
 use function array_key_exists;
-use function array_unique;
-use function array_values;
 use function explode;
-use function implode;
 use function in_array;
 use function sprintf;
 
@@ -27,13 +24,30 @@ final readonly class DependsOnTags
 {
     public function __construct(
         private UriTagInterface $uriTag,
+        private CacheIdentityFactory $identityFactory = new CacheIdentityFactory(),
     ) {
+    }
+
+    /**
+     * Enumerate only immediate values of the array-cast body, in order and with duplicates.
+     * Do not execute requests, descend into children, or consume Traversable bodies.
+     *
+     * @return Generator<AbstractRequest>
+     */
+    public function requests(ResourceObject $ro): Generator
+    {
+        /** @var mixed $body */
+        foreach ((array) $ro->body as $body) {
+            if ($body instanceof AbstractRequest) {
+                yield $body;
+            }
+        }
     }
 
     /** Tags the resource being stored with its onGet() declarations and the row classes in its body */
     public function __invoke(ResourceObject $ro): void
     {
-        self::addTags($ro, $this->declared($ro) ?? []);
+        $this->addTags($ro, $this->declared($ro) ?? []);
     }
 
     /**
@@ -43,7 +57,7 @@ final readonly class DependsOnTags
      */
     public function embedded(ResourceObject $child): bool
     {
-        return self::tagEmbedded($child, $this->ran($child));
+        return $this->tagEmbedded($child, $this->ran($child));
     }
 
     /**
@@ -51,9 +65,9 @@ final readonly class DependsOnTags
      *
      * @return bool whether its parent depends on it: a declaration was found, or it carries an ETag or a Surrogate-Key
      */
-    public static function tagEmbedded(ResourceObject $child, array|null $tags): bool
+    public function tagEmbedded(ResourceObject $child, array|null $tags): bool
     {
-        self::addTags($child, $tags ?? []);
+        $this->addTags($child, $tags ?? []);
 
         return $tags !== null || isset($child->headers[Header::ETAG]) || isset($child->headers[Header::SURROGATE_KEY]);
     }
@@ -61,17 +75,12 @@ final readonly class DependsOnTags
     /** @return list<string>|null the tags the resource and the requests it embeds and ran declare; null when none declares */
     public function ran(ResourceObject $ro): array|null
     {
-        if (! self::hasRun($ro)) {
+        if (! $this->hasRun($ro)) {
             return null;
         }
 
         $tags = $this->declared($ro);
-        /** @var mixed $body */
-        foreach ((array) $ro->body as $body) {
-            if (! $body instanceof AbstractRequest) {
-                continue;
-            }
-
+        foreach ($this->requests($ro) as $body) {
             $embedded = $this->ran($body->resourceObject);
             if ($embedded !== null) {
                 $tags = [...$tags ?? [], ...$embedded];
@@ -82,17 +91,16 @@ final readonly class DependsOnTags
     }
 
     /** A request that has not run yet, such as a hole, still has the default code and no body */
-    public static function hasRun(ResourceObject $ro): bool
+    public function hasRun(ResourceObject $ro): bool
     {
         return $ro->code !== 200 || $ro->body !== null;
     }
 
     /** Whether a request it embeds, at any depth, has not run yet: what that request declares is known only once it runs */
-    public static function awaitsRequest(ResourceObject $ro): bool
+    public function awaitsRequest(ResourceObject $ro): bool
     {
-        /** @var mixed $body */
-        foreach ((array) $ro->body as $body) {
-            if ($body instanceof AbstractRequest && (! self::hasRun($body->resourceObject) || self::awaitsRequest($body->resourceObject))) {
+        foreach ($this->requests($ro) as $body) {
+            if (! $this->hasRun($body->resourceObject) || $this->awaitsRequest($body->resourceObject)) {
                 return true;
             }
         }
@@ -132,7 +140,7 @@ final readonly class DependsOnTags
         $arguments = [];
         foreach ((new ReflectionMethod($ro, 'onGet'))->getParameters() as $parameter) {
             $parameters[] = $parameter->name;
-            $arguments += self::argument($parameter->name, $ro->uri->query);
+            $arguments += $this->argument($parameter->name, $ro->uri->query);
             if (! array_key_exists($parameter->name, $arguments) && $parameter->isDefaultValueAvailable()) {
                 /** @psalm-suppress MixedAssignment */
                 $arguments[$parameter->name] = $parameter->getDefaultValue();
@@ -161,9 +169,9 @@ final readonly class DependsOnTags
      *
      * @return array<string, mixed> the value under the parameter's name or its snake_case form; empty when the query has neither
      */
-    private static function argument(string $name, array $query): array
+    private function argument(string $name, array $query): array
     {
-        foreach ([$name, BaseUriTag::snakeName($name)] as $key) {
+        foreach ([$name, $this->identityFactory->snakeName($name)] as $key) {
             if (array_key_exists($key, $query)) {
                 return [$name => $query[$key]];
             }
@@ -173,13 +181,13 @@ final readonly class DependsOnTags
     }
 
     /** @param list<string> $tags */
-    private static function addTags(ResourceObject $ro, array $tags): void
+    private function addTags(ResourceObject $ro, array $tags): void
     {
         if ($tags === []) {
             return;
         }
 
         $existing = isset($ro->headers[Header::SURROGATE_KEY]) ? explode(' ', $ro->headers[Header::SURROGATE_KEY]) : [];
-        $ro->headers[Header::SURROGATE_KEY] = implode(' ', array_values(array_unique(array_filter([...$existing, ...$tags], static fn (string $tag): bool => $tag !== ''))));
+        $ro->headers[Header::SURROGATE_KEY] = (new TagSet([...$existing, ...$tags]))->toHeader();
     }
 }

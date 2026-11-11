@@ -71,6 +71,9 @@ final class QueryRepositoryModule extends AbstractModule
         // core
         $this->bind(QueryRepositoryInterface::class)->to(QueryRepository::class)->in(Scope::SINGLETON);
         $this->bind(CacheDependencyInterface::class)->to(CacheDependency::class);
+        $this->bind(CacheTags::class);
+        $this->bind(DependsOnTags::class);
+        $this->bind(CacheDependencyCollector::class);
         $this->bind(EtagSetterInterface::class)->to(EtagSetter::class);
         $this->bind(NamedParameterInterface::class)->to(NamedParameter::class);
         $this->bind(ResourceStorageInterface::class)->to(ResourceStorage::class)->in(Scope::SINGLETON);
@@ -78,6 +81,7 @@ final class QueryRepositoryModule extends AbstractModule
         $this->bind(MatchQueryInterface::class)->to(MatchQuery::class);
         $this->bind(RefreshAnnotatedCommand::class);
         $this->bind(RefreshSameCommand::class);
+        $this->bind(CommandQuery::class);
         $this->bind(ResourceStorageSaver::class);
         // Server context for thread safety (Swoole, RoadRunner, etc.)
         $this->bind(ServerContextInterface::class)->to(GlobalServerContext::class)->in(Scope::SINGLETON);

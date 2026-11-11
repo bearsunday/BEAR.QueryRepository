@@ -15,33 +15,26 @@ use function array_unique;
 use function array_values;
 use function explode;
 use function implode;
-use function sprintf;
 
 /** @internal */
 final readonly class CacheDependency implements CacheDependencyInterface
 {
-    private BaseUriTagInterface $baseUriTag;
+    private CacheTags $cacheTags;
 
     public function __construct(
-        private UriTagInterface $uriTag,
+        UriTagInterface $uriTag,
         #[CacheLog]
         private SemanticLoggerInterface $logger = new NullSemanticLogger(),
         BaseUriTagInterface|null $baseUriTag = null,
+        CacheTags|null $cacheTags = null,
     ) {
-        $this->baseUriTag = $baseUriTag ?? new BaseUriTag($uriTag);
+        $this->cacheTags = $cacheTags ?? new CacheTags($uriTag, $baseUriTag ?? new BaseUriTag($uriTag));
     }
 
     #[Override]
     public function depends(ResourceObject $from, ResourceObject $to): void
     {
-        // The group tag too, so a purge of the child's bare URI reaches a parent that embeds one of its variants.
-        $childTags = sprintf('%s %s', ($this->uriTag)($to->uri), ($this->baseUriTag)($to));
-        if (isset($to->headers[Header::SURROGATE_KEY])) {
-            $childTags .= sprintf(' %s', $to->headers[Header::SURROGATE_KEY]);
-        }
-
-        // A #[DonutCache] child's default Surrogate-Key equals its URI tag.
-        $childTagList = array_values(array_unique(explode(' ', $childTags)));
+        $childTagList = array_values(array_unique(explode(' ', implode(' ', $this->cacheTags->tags($to)))));
 
         // Accumulate across embedded children, deduped: #[Refresh] re-puts the instance
         // the rebuilding GET already stored, and this header ships to the CDN.

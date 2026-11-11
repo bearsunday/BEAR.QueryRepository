@@ -16,7 +16,6 @@ use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 use Ray\Aop\MethodInvocation;
 use ReflectionException;
-use ReflectionMethod;
 
 use function str_starts_with;
 
@@ -30,6 +29,7 @@ final readonly class RefreshSameCommand implements CommandInterface
         private InvokerInterface $invoker,
         #[CacheLog]
         private SemanticLoggerInterface $logger = new NullSemanticLogger(),
+        private CommandQuery $commandQuery = new CommandQuery(),
     ) {
     }
 
@@ -60,7 +60,7 @@ final readonly class RefreshSameCommand implements CommandInterface
         }
 
         $delUri = clone $ro->uri;
-        $baseQuery = $this->baseQuery($ro, $getQuery);
+        $baseQuery = $this->commandQuery->baseQuery($ro, $getQuery);
         // Default-valued parameters dropped, as BaseUriTag drops them; the refresh below still uses the exact $getQuery.
         $delUri->query = $baseQuery;
 
@@ -68,7 +68,7 @@ final readonly class RefreshSameCommand implements CommandInterface
         $this->repository->purge($delUri);
 
         // A GET stored under the snake_case key keeps that spelling in its group tag; purge it too.
-        $snakeQuery = self::snakeQuery($baseQuery);
+        $snakeQuery = $this->commandQuery->snakeQuery($baseQuery);
         if ($snakeQuery !== $baseQuery) {
             $snakeUri = clone $ro->uri;
             $snakeUri->query = $snakeQuery;
@@ -78,42 +78,6 @@ final readonly class RefreshSameCommand implements CommandInterface
         // Read to rebuild the cache entry
         $get = $this->factory->newInstance("{$ro->uri->scheme}://{$ro->uri->host}{$ro->uri->path}");
         (new Request($this->invoker, $get))($getQuery);
-    }
-
-    /**
-     * @param array<string, mixed> $getQuery
-     *
-     * @return array<string, mixed>
-     */
-    private function baseQuery(ResourceObject $ro, array $getQuery): array
-    {
-        $baseQuery = [];
-        foreach ((new ReflectionMethod($ro, 'onGet'))->getParameters() as $parameter) {
-            if ($parameter->isDefaultValueAvailable() || ! isset($getQuery[$parameter->name])) {
-                continue;
-            }
-
-            /** @psalm-suppress MixedAssignment */
-            $baseQuery[$parameter->name] = $getQuery[$parameter->name];
-        }
-
-        return $baseQuery;
-    }
-
-    /**
-     * @param array<string, mixed> $query
-     *
-     * @return array<string, mixed>
-     */
-    private static function snakeQuery(array $query): array
-    {
-        $snakeQuery = [];
-        /** @psalm-suppress MixedAssignment */
-        foreach ($query as $key => $value) {
-            $snakeQuery[BaseUriTag::snakeName($key)] = $value;
-        }
-
-        return $snakeQuery;
     }
 
     /**

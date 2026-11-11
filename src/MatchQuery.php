@@ -9,10 +9,7 @@ use BEAR\Resource\ResourceObject;
 use Override;
 use ReflectionMethod;
 
-use function ltrim;
-use function preg_replace;
 use function sprintf;
-use function strtolower;
 
 /**
  * @internal
@@ -22,6 +19,11 @@ use function strtolower;
  */
 final class MatchQuery implements MatchQueryInterface
 {
+    public function __construct(
+        private readonly CacheIdentityFactory $identityFactory = new CacheIdentityFactory(),
+    ) {
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -32,7 +34,7 @@ final class MatchQuery implements MatchQueryInterface
         $getQuery = [];
         $query = $ro->uri->query;
         foreach ($refParameters as $parameter) {
-            $key = isset($query[$parameter->name]) ? $parameter->name : self::snakeName($parameter->name);
+            $key = isset($query[$parameter->name]) ? $parameter->name : $this->identityFactory->snakeName($parameter->name);
             if (! isset($query[$key])) {
                 if ($parameter->isDefaultValueAvailable()) {
                     continue;
@@ -46,11 +48,5 @@ final class MatchQuery implements MatchQueryInterface
         }
 
         return $getQuery;
-    }
-
-    /** The conversion BEAR.Resource applies when it binds a query to a parameter */
-    private static function snakeName(string $name): string
-    {
-        return ltrim(strtolower((string) preg_replace('/[A-Z]/', '_\0', $name)), '_');
     }
 }

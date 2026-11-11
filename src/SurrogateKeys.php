@@ -19,18 +19,18 @@ final class SurrogateKeys
     private array $surrogateKeys;
     private readonly UriTagInterface $uriTag;
     private readonly UriTag $keyTag;
-    private readonly BaseUriTagInterface $baseUriTag;
+    private readonly CacheTags $cacheTags;
     private readonly DependsOnTags $dependsOnTags;
 
     /** @var array<string, list<string>|null> */
     private array $declared = [];
 
-    public function __construct(AbstractUri $uri, string|null $baseTag = null, UriTagInterface|null $uriTag = null)
+    public function __construct(AbstractUri $uri, string|null $baseTag = null, UriTagInterface|null $uriTag = null, CacheTags|null $cacheTags = null, DependsOnTags|null $dependsOnTags = null)
     {
         $this->uriTag = $uriTag ?? new UriTag();
         $this->keyTag = new UriTag();
-        $this->baseUriTag = new BaseUriTag($this->uriTag);
-        $this->dependsOnTags = new DependsOnTags($this->uriTag);
+        $this->cacheTags = $cacheTags ?? new CacheTags($this->uriTag, new BaseUriTag($this->uriTag));
+        $this->dependsOnTags = $dependsOnTags ?? new DependsOnTags($this->uriTag);
         $this->surrogateKeys = $baseTag === null ? [($this->uriTag)($uri)] : [($this->uriTag)($uri), $baseTag];
     }
 
@@ -40,11 +40,7 @@ final class SurrogateKeys
     public function addTag(ResourceObject $ro): void
     {
         $this->embedded($ro);
-        $this->surrogateKeys[] = ($this->uriTag)($ro->uri);
-        $this->surrogateKeys[] = ($this->baseUriTag)($ro);
-        if (array_key_exists(Header::SURROGATE_KEY, $ro->headers)) {
-            $this->surrogateKeys = array_merge($this->surrogateKeys, explode(' ', $ro->headers[Header::SURROGATE_KEY]));
-        }
+        $this->surrogateKeys = [...$this->surrogateKeys, ...$this->cacheTags->tags($ro)];
     }
 
     /**
@@ -57,23 +53,23 @@ final class SurrogateKeys
      */
     public function embedded(ResourceObject $ro): bool
     {
-        if (! DependsOnTags::hasRun($ro)) {
-            return DependsOnTags::tagEmbedded($ro, null);
+        if (! $this->dependsOnTags->hasRun($ro)) {
+            return $this->dependsOnTags->tagEmbedded($ro, null);
         }
 
         // The default UriTag keeps Stringable query values apart; (string) $ro->uri, or an application's tagger, may not
         $key = $ro::class . ' ' . ($this->keyTag)($ro->uri);
         if (array_key_exists($key, $this->declared)) {
-            return DependsOnTags::tagEmbedded($ro, $this->declared[$key]);
+            return $this->dependsOnTags->tagEmbedded($ro, $this->declared[$key]);
         }
 
         $tags = $this->dependsOnTags->ran($ro);
         // A request that runs later, as it renders, may still add tags, so the answer is read again then
-        if (! DependsOnTags::awaitsRequest($ro)) {
+        if (! $this->dependsOnTags->awaitsRequest($ro)) {
             $this->declared[$key] = $tags;
         }
 
-        return DependsOnTags::tagEmbedded($ro, $tags);
+        return $this->dependsOnTags->tagEmbedded($ro, $tags);
     }
 
     public function setSurrogateHeader(ResourceObject $ro): void

@@ -58,10 +58,10 @@ class ResourceStorageTest extends TestCase
             $purger ?? new NullPurger(),
             new UriTag(),
             new ResourceStorageSaver(),
-            new GlobalServerContext(),
+            new CacheIdentityFactory(new GlobalServerContext()),
             $provider($roPool ?? $tagAwareAdapter),
             $provider($etagPool ?? $tagAwareAdapter),
-            new BaseUriTag(new UriTag()),
+            new CacheTags(new UriTag(), new BaseUriTag(new UriTag())),
         );
     }
 
@@ -92,10 +92,10 @@ class ResourceStorageTest extends TestCase
             new NullPurger(),
             new UriTag(),
             new ResourceStorageSaver(),
-            new GlobalServerContext(),
+            new CacheIdentityFactory(new GlobalServerContext()),
             new FakeArrayPoolProvider(),
             new FakeArrayPoolProvider(),
-            new BaseUriTag(new UriTag()),
+            new CacheTags(new UriTag(), new BaseUriTag(new UriTag())),
         );
         $storage = unserialize(serialize($serializable));
         assert($storage instanceof ResourceStorage);
@@ -290,10 +290,10 @@ class ResourceStorageTest extends TestCase
             new NullPurger(),
             new UriTag(),
             new ResourceStorageSaver(),
-            new GlobalServerContext(),
+            new CacheIdentityFactory(new GlobalServerContext()),
             $poolProvider,
             $poolProvider,
-            new BaseUriTag(new UriTag()),
+            new CacheTags(new UriTag(), new BaseUriTag(new UriTag())),
         );
 
         $saved = $storage->saveValue($this->ro, 10);
@@ -333,10 +333,10 @@ class ResourceStorageTest extends TestCase
             new NullPurger(),
             new UriTag(),
             new ResourceStorageSaver(),
-            new GlobalServerContext(),
+            new CacheIdentityFactory(new GlobalServerContext()),
             $poolProvider,
             $poolProvider,
-            new BaseUriTag(new UriTag()),
+            new CacheTags(new UriTag(), new BaseUriTag(new UriTag())),
         );
         $donut = ResourceDonut::create($this->ro, new DonutRenderer(), new SurrogateKeys(new Uri('app://self/')), null, false);
 
