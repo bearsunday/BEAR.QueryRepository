@@ -38,6 +38,12 @@ D. DELETE tag-writer id=[]                   -> an empty list invalidates nothin
 E. GET tag with a Stringable id, then DELETE id=[x]
                                               -> the value is part of the key: x is purged
                                                  by its string, y keeps its own entry
+F. GET article-summary, which reads app://self/article directly (no #[Embed]) and
+   declares #[DependsOn(uri: 'app://self/article?id={id}')]
+                                              -> save_value/save_etag tag it with
+                                                 _article_id=1 too; stored, then hits
+G. PATCH app://self/article id=1             -> its own write invalidates article-summary
+                                                 too, by the tag #[DependsOn] added: miss
 
 === Executing... ===
 
@@ -95,3 +101,15 @@ $show('E', 'app://self/tag', ['id' => new TagId('x')]);
 $show('E', 'app://self/tag', ['id' => new TagId('y')]);
 
 reportLog($logger->flush(), 'E. Stringable query value');
+
+// ------------------------------------------------- F. #[DependsOn] without an #[Embed]
+$resource->get('app://self/article-summary', ['id' => 1]); // miss: save_value/save_etag add tag _article_id=1
+$show('F', 'app://self/article-summary', ['id' => 1]);      // hit: the stored summary
+
+reportLog($logger->flush(), 'F. #[DependsOn] reads another resource without #[Embed]');
+
+// --------------------------------------- G. a write to the declared URI invalidates it
+$resource->patch('app://self/article', ['id' => 1, 'title' => 'Big Update']);
+$show('G', 'app://self/article-summary', ['id' => 1]); // miss: rebuilt with the new title
+
+reportLog($logger->flush(), 'G. a write to the #[DependsOn] URI invalidates it');

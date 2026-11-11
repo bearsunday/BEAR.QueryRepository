@@ -39,13 +39,13 @@ get uri=app://self/code
 ├── put_skipped uri=app://self/code reason=error-code code=203 [event]
 ├── purge uri=app://self/code [event]
 ├── invalidate tags=[_code_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
-└── cache_miss layer=resource durationMs=0
+└── cache_miss layer=resource durationMs=[volatile]
 get uri=page://self/html/self-etag
-├── cache_miss layer=donut [event]
+├── cache_miss layer=donut durationMs=[volatile] [event]
 ├── put_skipped uri=page://self/html/self-etag reason=etag-present [event]
-└── cache_miss layer=donut-view durationMs=0
+└── cache_miss layer=donut-view durationMs=[volatile]
 get uri=page://self/html/blog-posting-donut
-├── cache_miss layer=donut [event]
+├── cache_miss layer=donut durationMs=[volatile] [event]
 ├── dependency_skipped parent=page://self/html/blog-posting-donut child=page://self/html/comment reason=no_body [event]
 ├── put_donut uri=page://self/html/blog-posting-donut [event]
 ├── get uri=page://self/html/comment
@@ -53,29 +53,29 @@ get uri=page://self/html/blog-posting-donut
 │   ├── pre_write_cleanup uri=page://self/html/comment [event]
 │   ├── invalidate tags=[_html_comment_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 │   ├── save_value uri=page://self/html/comment tags=[_html_comment_, grp-_html_comment_ +1 items] requestedTtl=31536000 saved=true [event]
-│   ├── save_etag uri=page://self/html/comment etag="etag-1" tags=[comment01, grp-_html_comment_ +1 items] requestedTtl=31536000 (+1 more) [event]
-│   └── cache_miss layer=resource durationMs=0
+│   ├── save_etag uri=page://self/html/comment etag=[volatile] tags=[comment01, grp-_html_comment_ +1 items] requestedTtl=31536000 (+1 more) [event]
+│   └── cache_miss layer=resource durationMs=[volatile]
 ├── cdn_headers uri=page://self/html/blog-posting-donut surrogateKeys=[_html_blog-posting-donut_ +4 items] [event]
 ├── pre_write_cleanup uri=page://self/html/blog-posting-donut [event]
 ├── invalidate tags=[_html_blog-posting-donut_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 ├── save_donut uri=page://self/html/blog-posting-donut tags=[_html_blog-posting-donut_ +1 items] saved=true [event]
-└── cache_miss layer=donut-view durationMs=0
+└── cache_miss layer=donut-view durationMs=[volatile]
 manual_purge uri=page://self/html/comment
 ├── invalidate tags=[_html_comment_, grp-_html_comment_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 └── manual_purge_result result=purged
 get uri=page://self/html/blog-posting-donut
-├── cache_hit layer=donut [event]
+├── cache_hit layer=donut durationMs=[volatile] [event]
 ├── refresh_donut uri=page://self/html/blog-posting-donut [event]
 ├── get uri=page://self/html/comment
 │   ├── cache_policy uri=page://self/html/comment expiry=never resolvedTtl=31536000 [event]
 │   ├── pre_write_cleanup uri=page://self/html/comment [event]
 │   ├── invalidate tags=[_html_comment_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 │   ├── save_value uri=page://self/html/comment tags=[_html_comment_, grp-_html_comment_ +1 items] requestedTtl=31536000 saved=true [event]
-│   ├── save_etag uri=page://self/html/comment etag="etag-1" tags=[comment01, grp-_html_comment_ +1 items] requestedTtl=31536000 (+1 more) [event]
-│   └── cache_miss layer=resource durationMs=0
+│   ├── save_etag uri=page://self/html/comment etag=[volatile] tags=[comment01, grp-_html_comment_ +1 items] requestedTtl=31536000 (+1 more) [event]
+│   └── cache_miss layer=resource durationMs=[volatile]
 ├── cdn_headers uri=page://self/html/blog-posting-donut surrogateKeys=[_html_blog-posting-donut_ +4 items] [event]
 ├── put_skipped uri=page://self/html/blog-posting-donut reason=not-cacheable [event]
-└── cache_hit layer=donut-view durationMs=0
+└── cache_hit layer=donut-view durationMs=[volatile]
 command method=onDelete source=CommandInterceptor
 └── command_result code=400
 get uri=app://self/view
@@ -83,14 +83,14 @@ get uri=app://self/view
 ├── pre_write_cleanup uri=app://self/view [event]
 ├── invalidate tags=[_view_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 ├── save_view uri=app://self/view tags=[_view_, grp-_view_] requestedTtl=31536000 saved=true [event]
-├── save_etag uri=app://self/view etag="etag-2" tags=[grp-_view_, _view_] requestedTtl=31536000 (+1 more) [event]
-└── cache_miss layer=resource durationMs=0
+├── save_etag uri=app://self/view etag=[volatile] tags=[grp-_view_, _view_] requestedTtl=31536000 (+1 more) [event]
+└── cache_miss layer=resource durationMs=[volatile]
 manual_store uri=app://self/view
 ├── cache_policy uri=app://self/view expiry=never resolvedTtl=31536000 [event]
 ├── pre_write_cleanup uri=app://self/view [event]
 ├── invalidate tags=[_view_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 ├── save_view uri=app://self/view tags=[_view_, grp-_view_] requestedTtl=31536000 saved=true [event]
-├── save_etag uri=app://self/view etag="etag-2" tags=[grp-_view_, _view_] requestedTtl=31536000 (+1 more) [event]
+├── save_etag uri=app://self/view etag=[volatile] tags=[grp-_view_, _view_] requestedTtl=31536000 (+1 more) [event]
 └── manual_store_result result=stored
 manual_invalidate tags=[_demo_manual_tag_, _demo_second_tag_]
 ├── invalidate tags=[_demo_manual_tag_, _demo_second_tag_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
@@ -782,7 +782,7 @@ B  GET app://self/value -> 200 served live; the outage is logged, not swallowed
 === Cache Log Tree — B. cache layer down ===
 get uri=app://self/value
 ├── cache_error uri=app://self/value operation=read error=cache server down exceptionClass=RuntimeException [event]
-└── cache_miss layer=resource durationMs=0
+└── cache_miss layer=resource durationMs=[volatile]
 
 === Cache Log JSON — B. cache layer down ===
 {
@@ -829,8 +829,8 @@ get uri=app://self/value
 ├── pre_write_cleanup uri=app://self/value [event]
 ├── invalidate tags=[_value_] roPool=invalidated etagPool=invalidated cdn=purged (+1 more) [event]
 ├── save_value uri=app://self/value tags=[_value_, grp-_value_] requestedTtl=31536000 saved=true [event]
-├── save_etag uri=app://self/value etag="etag-3" tags=[grp-_value_, _value_] requestedTtl=31536000 (+1 more) [event]
-└── cache_miss layer=resource durationMs=0
+├── save_etag uri=app://self/value etag=[volatile] tags=[grp-_value_, _value_] requestedTtl=31536000 (+1 more) [event]
+└── cache_miss layer=resource durationMs=[volatile]
 manual_purge uri=app://self/value
 ├── invalidate tags=[_value_, grp-_value_] roPool=invalidated etagPool=invalidated cdn=purged (+1 more) [event]
 └── manual_purge_result result=purged
@@ -966,7 +966,7 @@ get uri=app://self/value
 ├── pre_write_cleanup uri=app://self/value [event]
 ├── invalidate tags=[_value_] roPool=invalidated etagPool=invalidated cdn=failed (+1 more) [event]
 ├── cache_error uri=app://self/value operation=write error=purge failed: _value_ exceptionClass=FakeCdnPurgeFailed [event]
-└── cache_miss layer=resource durationMs=0
+└── cache_miss layer=resource durationMs=[volatile]
 manual_purge uri=app://self/value
 ├── invalidate tags=[_value_, grp-_value_] roPool=invalidated etagPool=invalidated cdn=failed (+1 more) [event]
 └── manual_purge_result result=failed
@@ -1079,7 +1079,7 @@ C3 Akamai flavor -> cdn_headers: Akamai-Cache-Control=max-age=31536000, keys in 
 
 === Cache Log Tree — C3. Akamai CDN headers ===
 get uri=page://self/html/blog-posting
-├── cache_miss layer=donut [event]
+├── cache_miss layer=donut durationMs=[volatile] [event]
 ├── dependency_skipped parent=page://self/html/blog-posting child=page://self/html/comment reason=no_body [event]
 ├── put_donut uri=page://self/html/blog-posting [event]
 ├── get uri=page://self/html/comment
@@ -1087,15 +1087,15 @@ get uri=page://self/html/blog-posting
 │   ├── pre_write_cleanup uri=page://self/html/comment [event]
 │   ├── invalidate tags=[_html_comment_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 │   ├── save_value uri=page://self/html/comment tags=[_html_comment_, grp-_html_comment_ +1 items] requestedTtl=31536000 saved=true [event]
-│   ├── save_etag uri=page://self/html/comment etag="etag-1" tags=[comment01, grp-_html_comment_ +1 items] requestedTtl=31536000 (+1 more) [event]
-│   └── cache_miss layer=resource durationMs=0
+│   ├── save_etag uri=page://self/html/comment etag=[volatile] tags=[comment01, grp-_html_comment_ +1 items] requestedTtl=31536000 (+1 more) [event]
+│   └── cache_miss layer=resource durationMs=[volatile]
 ├── cdn_headers uri=page://self/html/blog-posting surrogateKeys=[blog-posting-page, _html_blog-posting_ +4 items] [event]
 ├── pre_write_cleanup uri=page://self/html/blog-posting [event]
 ├── invalidate tags=[_html_blog-posting_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 ├── save_donut_view uri=page://self/html/blog-posting tags=[_html_blog-posting_ +5 items] saved=true [event]
-├── save_etag uri=page://self/html/blog-posting etag="etag-4" tags=[blog-posting-page, _html_blog-posting_ +4 items] saved=true [event]
+├── save_etag uri=page://self/html/blog-posting etag=[volatile] tags=[blog-posting-page, _html_blog-posting_ +4 items] saved=true [event]
 ├── save_donut uri=page://self/html/blog-posting tags=[_html_blog-posting_ +2 items] saved=true [event]
-└── cache_miss layer=donut-view durationMs=0
+└── cache_miss layer=donut-view durationMs=[volatile]
 
 === Cache Log JSON — C3. Akamai CDN headers ===
 {
@@ -1339,13 +1339,13 @@ get uri=app://self/value
 ├── pre_write_cleanup uri=app://self/value [event]
 ├── invalidate tags=[_value_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 ├── save_value uri=app://self/value tags=[_value_, grp-_value_] requestedTtl=31536000 saved=false [event]
-└── cache_miss layer=resource durationMs=0
+└── cache_miss layer=resource durationMs=[volatile]
 get uri=app://self/view
 ├── cache_policy uri=app://self/view expiry=never resolvedTtl=31536000 [event]
 ├── pre_write_cleanup uri=app://self/view [event]
 ├── invalidate tags=[_view_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 ├── save_view uri=app://self/view tags=[_view_, grp-_view_] requestedTtl=31536000 saved=false [event]
-└── cache_miss layer=resource durationMs=0
+└── cache_miss layer=resource durationMs=[volatile]
 manual_store uri=app://self/value
 ├── cache_policy uri=app://self/value expiry=never resolvedTtl=31536000 [event]
 ├── pre_write_cleanup uri=app://self/value [event]
@@ -1568,8 +1568,8 @@ get uri=app://self/value
 ├── pre_write_cleanup uri=app://self/value [event]
 ├── invalidate tags=[_value_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 ├── save_value uri=app://self/value tags=[_value_, grp-_value_] requestedTtl=31536000 saved=true [event]
-├── save_etag uri=app://self/value etag="etag-5" tags=[grp-_value_, _value_] requestedTtl=31536000 (+1 more) [event]
-└── cache_miss layer=resource durationMs=0
+├── save_etag uri=app://self/value etag=[volatile] tags=[grp-_value_, _value_] requestedTtl=31536000 (+1 more) [event]
+└── cache_miss layer=resource durationMs=[volatile]
 
 === Cache Log JSON — D2. ETag pool refuses writes ===
 {
@@ -1664,7 +1664,7 @@ E  GET donut page -> save_donut / save_donut_view saved=false
 
 === Cache Log Tree — E. donut writes refused ===
 get uri=page://self/html/blog-posting
-├── cache_miss layer=donut [event]
+├── cache_miss layer=donut durationMs=[volatile] [event]
 ├── dependency_skipped parent=page://self/html/blog-posting child=page://self/html/comment reason=no_body [event]
 ├── put_donut uri=page://self/html/blog-posting [event]
 ├── get uri=page://self/html/comment
@@ -1672,13 +1672,13 @@ get uri=page://self/html/blog-posting
 │   ├── pre_write_cleanup uri=page://self/html/comment [event]
 │   ├── invalidate tags=[_html_comment_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 │   ├── save_value uri=page://self/html/comment tags=[_html_comment_, grp-_html_comment_ +1 items] requestedTtl=31536000 saved=false [event]
-│   └── cache_miss layer=resource durationMs=0
+│   └── cache_miss layer=resource durationMs=[volatile]
 ├── cdn_headers uri=page://self/html/blog-posting surrogateKeys=[blog-posting-page, _html_blog-posting_ +4 items] [event]
 ├── pre_write_cleanup uri=page://self/html/blog-posting [event]
 ├── invalidate tags=[_html_blog-posting_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 ├── save_donut_view uri=page://self/html/blog-posting tags=[_html_blog-posting_ +5 items] saved=false [event]
 ├── save_donut uri=page://self/html/blog-posting tags=[_html_blog-posting_ +2 items] saved=false [event]
-└── cache_miss layer=donut-view durationMs=0
+└── cache_miss layer=donut-view durationMs=[volatile]
 
 === Cache Log JSON — E. donut writes refused ===
 {
@@ -1930,7 +1930,7 @@ G1 DELETE a whole-page donut resource -> command{source: DonutCommandInterceptor
 
 === Cache Log Tree — G1. donut command ===
 get uri=page://self/html/blog-posting?id=0
-├── cache_miss layer=donut [event]
+├── cache_miss layer=donut durationMs=[volatile] [event]
 ├── dependency_skipped parent=page://self/html/blog-posting?id=0 child=page://self/html/comment reason=no_body [event]
 ├── put_donut uri=page://self/html/blog-posting?id=0 [event]
 ├── get uri=page://self/html/comment
@@ -1938,31 +1938,31 @@ get uri=page://self/html/blog-posting?id=0
 │   ├── pre_write_cleanup uri=page://self/html/comment [event]
 │   ├── invalidate tags=[_html_comment_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 │   ├── save_value uri=page://self/html/comment tags=[_html_comment_, grp-_html_comment_ +1 items] requestedTtl=31536000 saved=true [event]
-│   ├── save_etag uri=page://self/html/comment etag="etag-1" tags=[comment01, grp-_html_comment_ +1 items] requestedTtl=31536000 (+1 more) [event]
-│   └── cache_miss layer=resource durationMs=0
+│   ├── save_etag uri=page://self/html/comment etag=[volatile] tags=[comment01, grp-_html_comment_ +1 items] requestedTtl=31536000 (+1 more) [event]
+│   └── cache_miss layer=resource durationMs=[volatile]
 ├── cdn_headers uri=page://self/html/blog-posting?id=0 surrogateKeys=[blog-posting-page +5 items] [event]
 ├── pre_write_cleanup uri=page://self/html/blog-posting?id=0 [event]
 ├── invalidate tags=[_html_blog-posting_id=0] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 ├── save_donut_view uri=page://self/html/blog-posting?id=0 tags=[_html_blog-posting_id=0 +5 items] saved=true [event]
-├── save_etag uri=page://self/html/blog-posting?id=0 etag="etag-6" tags=[blog-posting-page +5 items] saved=true [event]
+├── save_etag uri=page://self/html/blog-posting?id=0 etag=[volatile] tags=[blog-posting-page +5 items] saved=true [event]
 ├── save_donut uri=page://self/html/blog-posting?id=0 tags=[_html_blog-posting_id=0 +2 items] saved=true [event]
-└── cache_miss layer=donut-view durationMs=0
+└── cache_miss layer=donut-view durationMs=[volatile]
 command method=onDelete source=DonutCommandInterceptor
 ├── purge uri=page://self/html/blog-posting [event]
 ├── invalidate tags=[_html_blog-posting_ +1 items] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 ├── get uri=page://self/html/blog-posting?id=0
-│   ├── cache_miss layer=donut [event]
+│   ├── cache_miss layer=donut durationMs=[volatile] [event]
 │   ├── dependency_skipped parent=page://self/html/blog-posting?id=0 child=page://self/html/comment reason=no_body [event]
 │   ├── put_donut uri=page://self/html/blog-posting?id=0 [event]
 │   ├── get uri=page://self/html/comment
-│   │   └── cache_hit layer=resource durationMs=0
+│   │   └── cache_hit layer=resource durationMs=[volatile]
 │   ├── cdn_headers uri=page://self/html/blog-posting?id=0 surrogateKeys=[blog-posting-page +5 items] [event]
 │   ├── pre_write_cleanup uri=page://self/html/blog-posting?id=0 [event]
 │   ├── invalidate tags=[_html_blog-posting_id=0] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 │   ├── save_donut_view uri=page://self/html/blog-posting?id=0 tags=[_html_blog-posting_id=0 +5 items] saved=true [event]
-│   ├── save_etag uri=page://self/html/blog-posting?id=0 etag="etag-6" tags=[blog-posting-page +5 items] saved=true [event]
+│   ├── save_etag uri=page://self/html/blog-posting?id=0 etag=[volatile] tags=[blog-posting-page +5 items] saved=true [event]
 │   ├── save_donut uri=page://self/html/blog-posting?id=0 tags=[_html_blog-posting_id=0 +2 items] saved=true [event]
-│   └── cache_miss layer=donut-view durationMs=0
+│   └── cache_miss layer=donut-view durationMs=[volatile]
 └── command_result code=200
 
 === Cache Log JSON — G1. donut command ===
@@ -2409,7 +2409,7 @@ command method=onPut annotations=[1 items] source=RefreshInterceptor
 ├── pre_write_cleanup uri=app://self/refresh-dest?id=1 [event]
 ├── invalidate tags=[_refresh-dest_id=1] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 ├── save_value uri=app://self/refresh-dest?id=1 tags=[_refresh-dest_id=1 +1 items] saved=true [event]
-├── save_etag uri=app://self/refresh-dest?id=1 etag="etag-7" tags=[grp-_refresh-dest_id=1 +1 items] saved=true [event]
+├── save_etag uri=app://self/refresh-dest?id=1 etag=[volatile] tags=[grp-_refresh-dest_id=1 +1 items] saved=true [event]
 └── command_result code=200
 
 === Cache Log JSON — G2. refresh command ===
@@ -2619,8 +2619,8 @@ get uri=app://self/http-cache-control-with-cache...(+4)
 ├── pre_write_cleanup uri=app://self/http-cache-control-with-cache...(+4) [event]
 ├── invalidate tags=[_http-cache-control-with-cacheable_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 ├── save_value uri=app://self/http-cache-control-with-cache...(+4) tags=[_http-cache-control-with-cacheable_ +1 items] requestedTtl=10 saved=true [event]
-├── save_etag uri=app://self/http-cache-control-with-cache...(+4) etag="etag-8" tags=[grp-_http-cache-control-with-cacheable_ +1 items] requestedTtl=10 (+1 more) [event]
-└── cache_miss layer=resource durationMs=0
+├── save_etag uri=app://self/http-cache-control-with-cache...(+4) etag=[volatile] tags=[grp-_http-cache-control-with-cacheable_ +1 items] requestedTtl=10 (+1 more) [event]
+└── cache_miss layer=resource durationMs=[volatile]
 
 === Cache Log JSON — H. finite TTL ===
 {
@@ -2722,7 +2722,7 @@ manual_store uri=page://self/html/blog-posting?id=0
 ├── pre_write_cleanup uri=page://self/html/blog-posting?id=0 [event]
 ├── invalidate tags=[_html_blog-posting_id=0] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 ├── save_donut_view uri=page://self/html/blog-posting?id=0 tags=[_html_blog-posting_id=0 +5 items] requestedTtl=30 saved=true [event]
-├── save_etag uri=page://self/html/blog-posting?id=0 etag="etag-6" tags=[blog-posting-page +5 items] requestedTtl=30 (+1 more) [event]
+├── save_etag uri=page://self/html/blog-posting?id=0 etag=[volatile] tags=[blog-posting-page +5 items] requestedTtl=30 (+1 more) [event]
 ├── save_donut uri=page://self/html/blog-posting?id=0 tags=[_html_blog-posting_id=0 +5 items] requestedTtl=60 saved=true [event]
 └── manual_store_result result=stored
 
@@ -2872,7 +2872,7 @@ get uri=app://self/value
 ├── pool_error key=ro-_value_ operation=read error=Redis connection failed: Connection refu...(+3) exceptionClass=InvalidArgumentException [event]
 ├── pool_error key=ro-_value_ operation=write error=Redis connection failed: Connection refu...(+3) exceptionClass=InvalidArgumentException [event]
 ├── save_value uri=app://self/value tags=[_value_, grp-_value_] requestedTtl=31536000 saved=false [event]
-└── cache_miss layer=resource durationMs=0
+└── cache_miss layer=resource durationMs=[volatile]
 
 === Cache Log JSON — J. the store is down and says so ===
 {
@@ -2999,13 +2999,13 @@ K2 GET a marked #[CacheableResponse] donut -> Cache-Control: private, CDN-Cache-
 get uri=app://self/unstorable-value
 ├── cache_policy uri=app://self/unstorable-value expirySecond=60 resolvedTtl=60 [event]
 ├── put_skipped uri=app://self/unstorable-value reason=unstorable [event]
-└── cache_miss layer=resource durationMs=0
+└── cache_miss layer=resource durationMs=[volatile]
 get uri=page://self/html/unstorable-donut
-├── cache_miss layer=donut [event]
+├── cache_miss layer=donut durationMs=[volatile] [event]
 ├── put_donut uri=page://self/html/unstorable-donut [event]
 ├── cdn_headers uri=page://self/html/unstorable-donut [event]
 ├── put_skipped uri=page://self/html/unstorable-donut reason=unstorable [event]
-└── cache_miss layer=donut-view durationMs=0
+└── cache_miss layer=donut-view durationMs=[volatile]
 
 === Cache Log JSON — K. unstorable response ===
 {

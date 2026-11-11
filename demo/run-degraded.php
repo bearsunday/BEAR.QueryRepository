@@ -64,8 +64,6 @@ use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
 use Koriym\SemanticLogger\LogJson;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
-use Koriym\SemanticLogger\Stree\RenderConfig;
-use Koriym\SemanticLogger\Stree\TreeRenderer;
 use Madapaja\TwigModule\TwigModule;
 use Psr\Log\LoggerInterface;
 use Ray\Di\InjectionPoints;
@@ -163,7 +161,7 @@ set_error_handler(static function (int $errno, string $message): bool {
 /** Print the session as a tree plus its schema-conforming JSON, then validate it offline. */
 $report = static function (LogJson $log, string $title): void {
     echo PHP_EOL . "=== Cache Log Tree — {$title} ===" . PHP_EOL;
-    echo (new TreeRenderer(new RenderConfig(false, 0.0, 1000, true, snapshot: true)))->render($log) . PHP_EOL;
+    echo renderTree($log, full: false) . PHP_EOL;
     echo PHP_EOL . "=== Cache Log JSON — {$title} ===" . PHP_EOL;
     echo json_encode($log, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL;
     validateLog($log);

@@ -77,10 +77,16 @@ function countLogEntries(array $node): int
     return $count;
 }
 
+/** Render a log as a tree with RenderConfig's schema-driven x-volatile masking, for snapshot-stable output */
+function renderTree(LogJson $log, bool $full = true): string
+{
+    return (new TreeRenderer(new RenderConfig($full, 0.0, 1000, true, snapshot: true, schemaDir: dirname(__DIR__) . '/docs/schemas/context')))->render($log);
+}
+
 /** Print the session's log tree, then validate it */
 function reportLog(LogJson $log, string $title): void
 {
     echo PHP_EOL . "=== Cache Log Tree — {$title} ===" . PHP_EOL;
-    echo (new TreeRenderer(new RenderConfig(true, 0.0, 1000, true, snapshot: true)))->render($log) . PHP_EOL;
+    echo renderTree($log) . PHP_EOL;
     validateLog($log);
 }

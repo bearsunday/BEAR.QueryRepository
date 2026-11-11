@@ -49,23 +49,23 @@ get uri=page://self/dep/level-one
 │   │   │   ├── roPool: invalidated
 │   │   │   ├── etagPool: invalidated
 │   │   │   ├── cdn: skipped
-│   │   │   └── durationMs: 0
+│   │   │   └── durationMs: [volatile]
 │   │   ├── save_value uri=page://self/dep/level-three tags=[_dep_level-three_, grp-_dep_level-three_] requestedTtl=31536000 saved=true [event]
 │   │   │   ├── uri: page://self/dep/level-three
 │   │   │   ├── tags[0]: _dep_level-three_
 │   │   │   ├── tags[1]: grp-_dep_level-three_
 │   │   │   ├── requestedTtl: 31536000
 │   │   │   └── saved: true
-│   │   ├── save_etag uri=page://self/dep/level-three etag="etag-1" tags=[grp-_dep_level-three_, _dep_level-three_] requestedTtl=31536000 (+1 more) [event]
+│   │   ├── save_etag uri=page://self/dep/level-three etag=[volatile] tags=[grp-_dep_level-three_, _dep_level-three_] requestedTtl=31536000 (+1 more) [event]
 │   │   │   ├── uri: page://self/dep/level-three
-│   │   │   ├── etag: "etag-1"
+│   │   │   ├── etag: [volatile]
 │   │   │   ├── tags[0]: grp-_dep_level-three_
 │   │   │   ├── tags[1]: _dep_level-three_
 │   │   │   ├── requestedTtl: 31536000
 │   │   │   └── saved: true
 │   │   └── close cache_miss
 │   │       ├── layer: resource
-│   │       └── durationMs: 0
+│   │       └── durationMs: [volatile]
 │   ├── depends_on parent=page://self/dep/level-two child=page://self/dep/level-three childTags=[_dep_level-three_, grp-_dep_level-three_] [event]
 │   │   ├── parent: page://self/dep/level-two
 │   │   ├── child: page://self/dep/level-three
@@ -82,7 +82,7 @@ get uri=page://self/dep/level-one
 │   │   ├── roPool: invalidated
 │   │   ├── etagPool: invalidated
 │   │   ├── cdn: skipped
-│   │   └── durationMs: 0
+│   │   └── durationMs: [volatile]
 │   ├── save_value uri=page://self/dep/level-two tags=[_dep_level-two_, grp-_dep_level-two_ +2 items] requestedTtl=31536000 saved=true [event]
 │   │   ├── uri: page://self/dep/level-two
 │   │   ├── tags[0]: _dep_level-two_
@@ -91,9 +91,9 @@ get uri=page://self/dep/level-one
 │   │   ├── tags[3]: grp-_dep_level-three_
 │   │   ├── requestedTtl: 31536000
 │   │   └── saved: true
-│   ├── save_etag uri=page://self/dep/level-two etag="etag-2" tags=[_dep_level-three_, grp-_dep_level-three_ +2 items] requestedTtl=31536000 (+1 more) [event]
+│   ├── save_etag uri=page://self/dep/level-two etag=[volatile] tags=[_dep_level-three_, grp-_dep_level-three_ +2 items] requestedTtl=31536000 (+1 more) [event]
 │   │   ├── uri: page://self/dep/level-two
-│   │   ├── etag: "etag-2"
+│   │   ├── etag: [volatile]
 │   │   ├── tags[0]: _dep_level-three_
 │   │   ├── tags[1]: grp-_dep_level-three_
 │   │   ├── tags[2]: grp-_dep_level-two_
@@ -102,7 +102,7 @@ get uri=page://self/dep/level-one
 │   │   └── saved: true
 │   └── close cache_miss
 │       ├── layer: resource
-│       └── durationMs: 0
+│       └── durationMs: [volatile]
 ├── depends_on parent=page://self/dep/level-one child=page://self/dep/level-two childTags=[_dep_level-two_, grp-_dep_level-two_ +2 items] [event]
 │   ├── parent: page://self/dep/level-one
 │   ├── child: page://self/dep/level-two
@@ -121,7 +121,7 @@ get uri=page://self/dep/level-one
 │   ├── roPool: invalidated
 │   ├── etagPool: invalidated
 │   ├── cdn: skipped
-│   └── durationMs: 0
+│   └── durationMs: [volatile]
 ├── save_value uri=page://self/dep/level-one tags=[_dep_level-one_, grp-_dep_level-one_ +4 items] requestedTtl=31536000 saved=true [event]
 │   ├── uri: page://self/dep/level-one
 │   ├── tags[0]: _dep_level-one_
@@ -132,9 +132,9 @@ get uri=page://self/dep/level-one
 │   ├── tags[5]: grp-_dep_level-three_
 │   ├── requestedTtl: 31536000
 │   └── saved: true
-├── save_etag uri=page://self/dep/level-one etag="etag-3" tags=[_dep_level-two_, grp-_dep_level-two_ +4 items] requestedTtl=31536000 (+1 more) [event]
+├── save_etag uri=page://self/dep/level-one etag=[volatile] tags=[_dep_level-two_, grp-_dep_level-two_ +4 items] requestedTtl=31536000 (+1 more) [event]
 │   ├── uri: page://self/dep/level-one
-│   ├── etag: "etag-3"
+│   ├── etag: [volatile]
 │   ├── tags[0]: _dep_level-two_
 │   ├── tags[1]: grp-_dep_level-two_
 │   ├── tags[2]: _dep_level-three_
@@ -145,12 +145,12 @@ get uri=page://self/dep/level-one
 │   └── saved: true
 └── close cache_miss
     ├── layer: resource
-    └── durationMs: 0
+    └── durationMs: [volatile]
 get uri=page://self/dep/level-one
 ├── uri: page://self/dep/level-one
 └── close cache_hit
     ├── layer: resource
-    └── durationMs: 0
+    └── durationMs: [volatile]
 command method=onPut source=CommandInterceptor
 ├── method: onPut
 ├── source: CommandInterceptor
@@ -162,7 +162,7 @@ command method=onPut source=CommandInterceptor
 │   ├── roPool: invalidated
 │   ├── etagPool: invalidated
 │   ├── cdn: skipped
-│   └── durationMs: 0
+│   └── durationMs: [volatile]
 ├── get uri=page://self/dep/level-three
 │   ├── uri: page://self/dep/level-three
 │   ├── cache_policy uri=page://self/dep/level-three expiry=never resolvedTtl=31536000 [event]
@@ -176,23 +176,23 @@ command method=onPut source=CommandInterceptor
 │   │   ├── roPool: invalidated
 │   │   ├── etagPool: invalidated
 │   │   ├── cdn: skipped
-│   │   └── durationMs: 0
+│   │   └── durationMs: [volatile]
 │   ├── save_value uri=page://self/dep/level-three tags=[_dep_level-three_, grp-_dep_level-three_] requestedTtl=31536000 saved=true [event]
 │   │   ├── uri: page://self/dep/level-three
 │   │   ├── tags[0]: _dep_level-three_
 │   │   ├── tags[1]: grp-_dep_level-three_
 │   │   ├── requestedTtl: 31536000
 │   │   └── saved: true
-│   ├── save_etag uri=page://self/dep/level-three etag="etag-1" tags=[grp-_dep_level-three_, _dep_level-three_] requestedTtl=31536000 (+1 more) [event]
+│   ├── save_etag uri=page://self/dep/level-three etag=[volatile] tags=[grp-_dep_level-three_, _dep_level-three_] requestedTtl=31536000 (+1 more) [event]
 │   │   ├── uri: page://self/dep/level-three
-│   │   ├── etag: "etag-1"
+│   │   ├── etag: [volatile]
 │   │   ├── tags[0]: grp-_dep_level-three_
 │   │   ├── tags[1]: _dep_level-three_
 │   │   ├── requestedTtl: 31536000
 │   │   └── saved: true
 │   └── close cache_miss
 │       ├── layer: resource
-│       └── durationMs: 0
+│       └── durationMs: [volatile]
 └── close command_result
     └── code: 200
 get uri=page://self/dep/level-one
@@ -203,7 +203,7 @@ get uri=page://self/dep/level-one
 │   │   ├── uri: page://self/dep/level-three
 │   │   └── close cache_hit
 │   │       ├── layer: resource
-│   │       └── durationMs: 0
+│   │       └── durationMs: [volatile]
 │   ├── depends_on parent=page://self/dep/level-two child=page://self/dep/level-three childTags=[_dep_level-three_, grp-_dep_level-three_] [event]
 │   │   ├── parent: page://self/dep/level-two
 │   │   ├── child: page://self/dep/level-three
@@ -220,7 +220,7 @@ get uri=page://self/dep/level-one
 │   │   ├── roPool: invalidated
 │   │   ├── etagPool: invalidated
 │   │   ├── cdn: skipped
-│   │   └── durationMs: 0
+│   │   └── durationMs: [volatile]
 │   ├── save_value uri=page://self/dep/level-two tags=[_dep_level-two_, grp-_dep_level-two_ +2 items] requestedTtl=31536000 saved=true [event]
 │   │   ├── uri: page://self/dep/level-two
 │   │   ├── tags[0]: _dep_level-two_
@@ -229,9 +229,9 @@ get uri=page://self/dep/level-one
 │   │   ├── tags[3]: grp-_dep_level-three_
 │   │   ├── requestedTtl: 31536000
 │   │   └── saved: true
-│   ├── save_etag uri=page://self/dep/level-two etag="etag-4" tags=[_dep_level-three_, grp-_dep_level-three_ +2 items] requestedTtl=31536000 (+1 more) [event]
+│   ├── save_etag uri=page://self/dep/level-two etag=[volatile] tags=[_dep_level-three_, grp-_dep_level-three_ +2 items] requestedTtl=31536000 (+1 more) [event]
 │   │   ├── uri: page://self/dep/level-two
-│   │   ├── etag: "etag-4"
+│   │   ├── etag: [volatile]
 │   │   ├── tags[0]: _dep_level-three_
 │   │   ├── tags[1]: grp-_dep_level-three_
 │   │   ├── tags[2]: grp-_dep_level-two_
@@ -240,7 +240,7 @@ get uri=page://self/dep/level-one
 │   │   └── saved: true
 │   └── close cache_miss
 │       ├── layer: resource
-│       └── durationMs: 0
+│       └── durationMs: [volatile]
 ├── depends_on parent=page://self/dep/level-one child=page://self/dep/level-two childTags=[_dep_level-two_, grp-_dep_level-two_ +2 items] [event]
 │   ├── parent: page://self/dep/level-one
 │   ├── child: page://self/dep/level-two
@@ -259,7 +259,7 @@ get uri=page://self/dep/level-one
 │   ├── roPool: invalidated
 │   ├── etagPool: invalidated
 │   ├── cdn: skipped
-│   └── durationMs: 0
+│   └── durationMs: [volatile]
 ├── save_value uri=page://self/dep/level-one tags=[_dep_level-one_, grp-_dep_level-one_ +4 items] requestedTtl=31536000 saved=true [event]
 │   ├── uri: page://self/dep/level-one
 │   ├── tags[0]: _dep_level-one_
@@ -270,9 +270,9 @@ get uri=page://self/dep/level-one
 │   ├── tags[5]: grp-_dep_level-three_
 │   ├── requestedTtl: 31536000
 │   └── saved: true
-├── save_etag uri=page://self/dep/level-one etag="etag-5" tags=[_dep_level-two_, grp-_dep_level-two_ +4 items] requestedTtl=31536000 (+1 more) [event]
+├── save_etag uri=page://self/dep/level-one etag=[volatile] tags=[_dep_level-two_, grp-_dep_level-two_ +4 items] requestedTtl=31536000 (+1 more) [event]
 │   ├── uri: page://self/dep/level-one
-│   ├── etag: "etag-5"
+│   ├── etag: [volatile]
 │   ├── tags[0]: _dep_level-two_
 │   ├── tags[1]: grp-_dep_level-two_
 │   ├── tags[2]: _dep_level-three_
@@ -283,7 +283,7 @@ get uri=page://self/dep/level-one
 │   └── saved: true
 └── close cache_miss
     ├── layer: resource
-    └── durationMs: 0
+    └── durationMs: [volatile]
 get uri=page://self/dep/parent-a
 ├── uri: page://self/dep/parent-a
 ├── get uri=page://self/dep/child-c
@@ -299,23 +299,23 @@ get uri=page://self/dep/parent-a
 │   │   ├── roPool: invalidated
 │   │   ├── etagPool: invalidated
 │   │   ├── cdn: skipped
-│   │   └── durationMs: 0
+│   │   └── durationMs: [volatile]
 │   ├── save_value uri=page://self/dep/child-c tags=[_dep_child-c_, grp-_dep_child-c_] requestedTtl=31536000 saved=true [event]
 │   │   ├── uri: page://self/dep/child-c
 │   │   ├── tags[0]: _dep_child-c_
 │   │   ├── tags[1]: grp-_dep_child-c_
 │   │   ├── requestedTtl: 31536000
 │   │   └── saved: true
-│   ├── save_etag uri=page://self/dep/child-c etag="etag-6" tags=[grp-_dep_child-c_, _dep_child-c_] requestedTtl=31536000 (+1 more) [event]
+│   ├── save_etag uri=page://self/dep/child-c etag=[volatile] tags=[grp-_dep_child-c_, _dep_child-c_] requestedTtl=31536000 (+1 more) [event]
 │   │   ├── uri: page://self/dep/child-c
-│   │   ├── etag: "etag-6"
+│   │   ├── etag: [volatile]
 │   │   ├── tags[0]: grp-_dep_child-c_
 │   │   ├── tags[1]: _dep_child-c_
 │   │   ├── requestedTtl: 31536000
 │   │   └── saved: true
 │   └── close cache_miss
 │       ├── layer: resource
-│       └── durationMs: 0
+│       └── durationMs: [volatile]
 ├── depends_on parent=page://self/dep/parent-a child=page://self/dep/child-c childTags=[_dep_child-c_, grp-_dep_child-c_] [event]
 │   ├── parent: page://self/dep/parent-a
 │   ├── child: page://self/dep/child-c
@@ -332,7 +332,7 @@ get uri=page://self/dep/parent-a
 │   ├── roPool: invalidated
 │   ├── etagPool: invalidated
 │   ├── cdn: skipped
-│   └── durationMs: 0
+│   └── durationMs: [volatile]
 ├── save_value uri=page://self/dep/parent-a tags=[_dep_parent-a_, grp-_dep_parent-a_ +2 items] requestedTtl=31536000 saved=true [event]
 │   ├── uri: page://self/dep/parent-a
 │   ├── tags[0]: _dep_parent-a_
@@ -341,9 +341,9 @@ get uri=page://self/dep/parent-a
 │   ├── tags[3]: grp-_dep_child-c_
 │   ├── requestedTtl: 31536000
 │   └── saved: true
-├── save_etag uri=page://self/dep/parent-a etag="etag-7" tags=[_dep_child-c_, grp-_dep_child-c_ +2 items] requestedTtl=31536000 (+1 more) [event]
+├── save_etag uri=page://self/dep/parent-a etag=[volatile] tags=[_dep_child-c_, grp-_dep_child-c_ +2 items] requestedTtl=31536000 (+1 more) [event]
 │   ├── uri: page://self/dep/parent-a
-│   ├── etag: "etag-7"
+│   ├── etag: [volatile]
 │   ├── tags[0]: _dep_child-c_
 │   ├── tags[1]: grp-_dep_child-c_
 │   ├── tags[2]: grp-_dep_parent-a_
@@ -352,14 +352,14 @@ get uri=page://self/dep/parent-a
 │   └── saved: true
 └── close cache_miss
     ├── layer: resource
-    └── durationMs: 0
+    └── durationMs: [volatile]
 get uri=page://self/dep/parent-b
 ├── uri: page://self/dep/parent-b
 ├── get uri=page://self/dep/child-c
 │   ├── uri: page://self/dep/child-c
 │   └── close cache_hit
 │       ├── layer: resource
-│       └── durationMs: 0
+│       └── durationMs: [volatile]
 ├── depends_on parent=page://self/dep/parent-b child=page://self/dep/child-c childTags=[_dep_child-c_, grp-_dep_child-c_] [event]
 │   ├── parent: page://self/dep/parent-b
 │   ├── child: page://self/dep/child-c
@@ -376,7 +376,7 @@ get uri=page://self/dep/parent-b
 │   ├── roPool: invalidated
 │   ├── etagPool: invalidated
 │   ├── cdn: skipped
-│   └── durationMs: 0
+│   └── durationMs: [volatile]
 ├── save_value uri=page://self/dep/parent-b tags=[_dep_parent-b_, grp-_dep_parent-b_ +2 items] requestedTtl=31536000 saved=true [event]
 │   ├── uri: page://self/dep/parent-b
 │   ├── tags[0]: _dep_parent-b_
@@ -385,9 +385,9 @@ get uri=page://self/dep/parent-b
 │   ├── tags[3]: grp-_dep_child-c_
 │   ├── requestedTtl: 31536000
 │   └── saved: true
-├── save_etag uri=page://self/dep/parent-b etag="etag-8" tags=[_dep_child-c_, grp-_dep_child-c_ +2 items] requestedTtl=31536000 (+1 more) [event]
+├── save_etag uri=page://self/dep/parent-b etag=[volatile] tags=[_dep_child-c_, grp-_dep_child-c_ +2 items] requestedTtl=31536000 (+1 more) [event]
 │   ├── uri: page://self/dep/parent-b
-│   ├── etag: "etag-8"
+│   ├── etag: [volatile]
 │   ├── tags[0]: _dep_child-c_
 │   ├── tags[1]: grp-_dep_child-c_
 │   ├── tags[2]: grp-_dep_parent-b_
@@ -396,7 +396,7 @@ get uri=page://self/dep/parent-b
 │   └── saved: true
 └── close cache_miss
     ├── layer: resource
-    └── durationMs: 0
+    └── durationMs: [volatile]
 manual_purge uri=page://self/dep/child-c
 ├── uri: page://self/dep/child-c
 ├── invalidate tags=[_dep_child-c_, grp-_dep_child-c_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
@@ -405,7 +405,7 @@ manual_purge uri=page://self/dep/child-c
 │   ├── roPool: invalidated
 │   ├── etagPool: invalidated
 │   ├── cdn: skipped
-│   └── durationMs: 0
+│   └── durationMs: [volatile]
 └── close manual_purge_result
     └── result: purged
 get uri=page://self/dep/parent-a
@@ -423,23 +423,23 @@ get uri=page://self/dep/parent-a
 │   │   ├── roPool: invalidated
 │   │   ├── etagPool: invalidated
 │   │   ├── cdn: skipped
-│   │   └── durationMs: 0
+│   │   └── durationMs: [volatile]
 │   ├── save_value uri=page://self/dep/child-c tags=[_dep_child-c_, grp-_dep_child-c_] requestedTtl=31536000 saved=true [event]
 │   │   ├── uri: page://self/dep/child-c
 │   │   ├── tags[0]: _dep_child-c_
 │   │   ├── tags[1]: grp-_dep_child-c_
 │   │   ├── requestedTtl: 31536000
 │   │   └── saved: true
-│   ├── save_etag uri=page://self/dep/child-c etag="etag-6" tags=[grp-_dep_child-c_, _dep_child-c_] requestedTtl=31536000 (+1 more) [event]
+│   ├── save_etag uri=page://self/dep/child-c etag=[volatile] tags=[grp-_dep_child-c_, _dep_child-c_] requestedTtl=31536000 (+1 more) [event]
 │   │   ├── uri: page://self/dep/child-c
-│   │   ├── etag: "etag-6"
+│   │   ├── etag: [volatile]
 │   │   ├── tags[0]: grp-_dep_child-c_
 │   │   ├── tags[1]: _dep_child-c_
 │   │   ├── requestedTtl: 31536000
 │   │   └── saved: true
 │   └── close cache_miss
 │       ├── layer: resource
-│       └── durationMs: 0
+│       └── durationMs: [volatile]
 ├── depends_on parent=page://self/dep/parent-a child=page://self/dep/child-c childTags=[_dep_child-c_, grp-_dep_child-c_] [event]
 │   ├── parent: page://self/dep/parent-a
 │   ├── child: page://self/dep/child-c
@@ -456,7 +456,7 @@ get uri=page://self/dep/parent-a
 │   ├── roPool: invalidated
 │   ├── etagPool: invalidated
 │   ├── cdn: skipped
-│   └── durationMs: 0
+│   └── durationMs: [volatile]
 ├── save_value uri=page://self/dep/parent-a tags=[_dep_parent-a_, grp-_dep_parent-a_ +2 items] requestedTtl=31536000 saved=true [event]
 │   ├── uri: page://self/dep/parent-a
 │   ├── tags[0]: _dep_parent-a_
@@ -465,9 +465,9 @@ get uri=page://self/dep/parent-a
 │   ├── tags[3]: grp-_dep_child-c_
 │   ├── requestedTtl: 31536000
 │   └── saved: true
-├── save_etag uri=page://self/dep/parent-a etag="etag-7" tags=[_dep_child-c_, grp-_dep_child-c_ +2 items] requestedTtl=31536000 (+1 more) [event]
+├── save_etag uri=page://self/dep/parent-a etag=[volatile] tags=[_dep_child-c_, grp-_dep_child-c_ +2 items] requestedTtl=31536000 (+1 more) [event]
 │   ├── uri: page://self/dep/parent-a
-│   ├── etag: "etag-7"
+│   ├── etag: [volatile]
 │   ├── tags[0]: _dep_child-c_
 │   ├── tags[1]: grp-_dep_child-c_
 │   ├── tags[2]: grp-_dep_parent-a_
@@ -476,14 +476,14 @@ get uri=page://self/dep/parent-a
 │   └── saved: true
 └── close cache_miss
     ├── layer: resource
-    └── durationMs: 0
+    └── durationMs: [volatile]
 get uri=page://self/dep/parent-b
 ├── uri: page://self/dep/parent-b
 ├── get uri=page://self/dep/child-c
 │   ├── uri: page://self/dep/child-c
 │   └── close cache_hit
 │       ├── layer: resource
-│       └── durationMs: 0
+│       └── durationMs: [volatile]
 ├── depends_on parent=page://self/dep/parent-b child=page://self/dep/child-c childTags=[_dep_child-c_, grp-_dep_child-c_] [event]
 │   ├── parent: page://self/dep/parent-b
 │   ├── child: page://self/dep/child-c
@@ -500,7 +500,7 @@ get uri=page://self/dep/parent-b
 │   ├── roPool: invalidated
 │   ├── etagPool: invalidated
 │   ├── cdn: skipped
-│   └── durationMs: 0
+│   └── durationMs: [volatile]
 ├── save_value uri=page://self/dep/parent-b tags=[_dep_parent-b_, grp-_dep_parent-b_ +2 items] requestedTtl=31536000 saved=true [event]
 │   ├── uri: page://self/dep/parent-b
 │   ├── tags[0]: _dep_parent-b_
@@ -509,9 +509,9 @@ get uri=page://self/dep/parent-b
 │   ├── tags[3]: grp-_dep_child-c_
 │   ├── requestedTtl: 31536000
 │   └── saved: true
-├── save_etag uri=page://self/dep/parent-b etag="etag-8" tags=[_dep_child-c_, grp-_dep_child-c_ +2 items] requestedTtl=31536000 (+1 more) [event]
+├── save_etag uri=page://self/dep/parent-b etag=[volatile] tags=[_dep_child-c_, grp-_dep_child-c_ +2 items] requestedTtl=31536000 (+1 more) [event]
 │   ├── uri: page://self/dep/parent-b
-│   ├── etag: "etag-8"
+│   ├── etag: [volatile]
 │   ├── tags[0]: _dep_child-c_
 │   ├── tags[1]: grp-_dep_child-c_
 │   ├── tags[2]: grp-_dep_parent-b_
@@ -520,7 +520,7 @@ get uri=page://self/dep/parent-b
 │   └── saved: true
 └── close cache_miss
     ├── layer: resource
-    └── durationMs: 0
+    └── durationMs: [volatile]
 
 === Cache Log JSON ===
 {

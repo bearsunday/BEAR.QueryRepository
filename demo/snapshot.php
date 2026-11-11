@@ -5,9 +5,14 @@ declare(strict_types=1);
 /**
  * Snapshot helpers for the demo logs in demo/logs
  *
- * The trees are rendered with RenderConfig snapshot: true, which leaves out the logger's
- * own timings. What this package itself records per run is replaced here, so a
- * difference against the stored log is a change in behaviour.
+ * The trees are rendered with RenderConfig snapshot: true, schemaDir: docs/schemas/context,
+ * which renders a context schema's "x-volatile" values (durationMs of cache_hit/cache_miss/
+ * invalidate; save_etag's etag) as `[volatile]` inside the tree. The functions below still
+ * normalize the same fields in the raw "Cache Log JSON" block some demos also print, since
+ * stree --snapshot cannot combine with --json (semantic-logger 0.11.1 CHANGELOG) and that
+ * rendering never reaches it, plus a value no schema marks volatile at all: the literal
+ * ETag/Last-Modified header lines a script prints from $ro->headers, and a conditional
+ * request's ifNoneMatch, the client's own validator rather than a value this package made.
  */
 
 /** @return array<string, string> demo name => script path */
@@ -49,7 +54,7 @@ function normalizeDemoOutput(string $output): string
     return normalizeEtags($output);
 }
 
-/** The durationMs that cache_hit, cache_miss and invalidate record in their context */
+/** The durationMs that cache_hit, cache_miss and invalidate record, still a real number in the raw JSON block */
 function normalizeDuration(string $output): string
 {
     return (string) preg_replace('/(durationMs"?[:=] ?)[0-9.]+/', '${1}0', $output);
@@ -58,8 +63,10 @@ function normalizeDuration(string $output): string
 /**
  * Replace each ETag value with etag-1, etag-2, ... in order of first appearance
  *
- * An ETag hashes a view that can hold an embedded child's Last-Modified, so it
- * changes with the clock. Numbering keeps which entries share a validator.
+ * save_etag.etag is already `[volatile]` in the tree; this still covers the same field in
+ * the raw JSON block that rendering does not reach, and ifNoneMatch everywhere, which no
+ * schema marks volatile since it is the client's own validator. Numbering keeps which
+ * entries share one.
  */
 function normalizeEtags(string $output): string
 {

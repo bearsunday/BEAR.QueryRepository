@@ -34,33 +34,33 @@ get uri=app://self/article?id=1
 │   ├── roPool: invalidated
 │   ├── etagPool: invalidated
 │   ├── cdn: skipped
-│   └── durationMs: 0
+│   └── durationMs: [volatile]
 ├── save_value uri=app://self/article?id=1 tags=[_article_id=1, grp-_article_id=1] requestedTtl=31536000 saved=true [event]
 │   ├── uri: app://self/article?id=1
 │   ├── tags[0]: _article_id=1
 │   ├── tags[1]: grp-_article_id=1
 │   ├── requestedTtl: 31536000
 │   └── saved: true
-├── save_etag uri=app://self/article?id=1 etag="etag-1" tags=[grp-_article_id=1, _article_id=1] requestedTtl=31536000 (+1 more) [event]
+├── save_etag uri=app://self/article?id=1 etag=[volatile] tags=[grp-_article_id=1, _article_id=1] requestedTtl=31536000 (+1 more) [event]
 │   ├── uri: app://self/article?id=1
-│   ├── etag: "etag-1"
+│   ├── etag: [volatile]
 │   ├── tags[0]: grp-_article_id=1
 │   ├── tags[1]: _article_id=1
 │   ├── requestedTtl: 31536000
 │   └── saved: true
 └── close cache_miss
     ├── layer: resource
-    └── durationMs: 0
+    └── durationMs: [volatile]
 get uri=app://self/article?id=1
 ├── uri: app://self/article?id=1
 └── close cache_hit
     ├── layer: resource
-    └── durationMs: 0
+    └── durationMs: [volatile]
 conditional_request ifNoneMatch="etag-1"
 ├── ifNoneMatch: "etag-1"
 └── close cache_hit
     ├── layer: etag
-    └── durationMs: 0
+    └── durationMs: [volatile]
 get uri=app://self/article-view?id=1
 ├── uri: app://self/article-view?id=1
 ├── cache_policy uri=app://self/article-view?id=1 expiry=never resolvedTtl=31536000 [event]
@@ -74,33 +74,33 @@ get uri=app://self/article-view?id=1
 │   ├── roPool: invalidated
 │   ├── etagPool: invalidated
 │   ├── cdn: skipped
-│   └── durationMs: 0
+│   └── durationMs: [volatile]
 ├── save_view uri=app://self/article-view?id=1 tags=[_article-view_id=1 +1 items] requestedTtl=31536000 saved=true [event]
 │   ├── uri: app://self/article-view?id=1
 │   ├── tags[0]: _article-view_id=1
 │   ├── tags[1]: grp-_article-view_id=1
 │   ├── requestedTtl: 31536000
 │   └── saved: true
-├── save_etag uri=app://self/article-view?id=1 etag="etag-2" tags=[grp-_article-view_id=1 +1 items] requestedTtl=31536000 (+1 more) [event]
+├── save_etag uri=app://self/article-view?id=1 etag=[volatile] tags=[grp-_article-view_id=1 +1 items] requestedTtl=31536000 (+1 more) [event]
 │   ├── uri: app://self/article-view?id=1
-│   ├── etag: "etag-2"
+│   ├── etag: [volatile]
 │   ├── tags[0]: grp-_article-view_id=1
 │   ├── tags[1]: _article-view_id=1
 │   ├── requestedTtl: 31536000
 │   └── saved: true
 └── close cache_miss
     ├── layer: resource
-    └── durationMs: 0
+    └── durationMs: [volatile]
 get uri=app://self/article-view?id=1
 ├── uri: app://self/article-view?id=1
 └── close cache_hit
     ├── layer: resource
-    └── durationMs: 0
+    └── durationMs: [volatile]
 conditional_request ifNoneMatch="etag-2"
 ├── ifNoneMatch: "etag-2"
 └── close cache_hit
     ├── layer: etag
-    └── durationMs: 0
+    └── durationMs: [volatile]
 get uri=app://self/report
 ├── uri: app://self/report
 ├── cache_policy uri=app://self/report expiry=never resolvedTtl=31536000 [event]
@@ -114,7 +114,7 @@ get uri=app://self/report
 │   └── exceptionClass: Exception
 └── close cache_miss
     ├── layer: resource
-    └── durationMs: 0
+    └── durationMs: [volatile]
 Schema validation: OK (26 entries)
 D GET page://self/html/blog-posting (miss) -> 200, Cache-Control: max-age=0
 D GET page://self/html/blog-posting (hit)  -> 200, Cache-Control: max-age=0
@@ -126,8 +126,9 @@ E no ETag to revalidate with
 === Cache Log Tree — D-E. donut pages ===
 get uri=page://self/html/blog-posting
 ├── uri: page://self/html/blog-posting
-├── cache_miss layer=donut [event]
-│   └── layer: donut
+├── cache_miss layer=donut durationMs=[volatile] [event]
+│   ├── layer: donut
+│   └── durationMs: [volatile]
 ├── dependency_skipped parent=page://self/html/blog-posting child=page://self/html/comment reason=no_body [event]
 │   ├── parent: page://self/html/blog-posting
 │   ├── child: page://self/html/comment
@@ -147,7 +148,7 @@ get uri=page://self/html/blog-posting
 │   │   ├── roPool: invalidated
 │   │   ├── etagPool: invalidated
 │   │   ├── cdn: skipped
-│   │   └── durationMs: 0
+│   │   └── durationMs: [volatile]
 │   ├── save_value uri=page://self/html/comment tags=[_html_comment_, grp-_html_comment_ +1 items] requestedTtl=31536000 saved=true [event]
 │   │   ├── uri: page://self/html/comment
 │   │   ├── tags[0]: _html_comment_
@@ -155,9 +156,9 @@ get uri=page://self/html/blog-posting
 │   │   ├── tags[2]: comment01
 │   │   ├── requestedTtl: 31536000
 │   │   └── saved: true
-│   ├── save_etag uri=page://self/html/comment etag="etag-3" tags=[comment01, grp-_html_comment_ +1 items] requestedTtl=31536000 (+1 more) [event]
+│   ├── save_etag uri=page://self/html/comment etag=[volatile] tags=[comment01, grp-_html_comment_ +1 items] requestedTtl=31536000 (+1 more) [event]
 │   │   ├── uri: page://self/html/comment
-│   │   ├── etag: "etag-3"
+│   │   ├── etag: [volatile]
 │   │   ├── tags[0]: comment01
 │   │   ├── tags[1]: grp-_html_comment_
 │   │   ├── tags[2]: _html_comment_
@@ -165,7 +166,7 @@ get uri=page://self/html/blog-posting
 │   │   └── saved: true
 │   └── close cache_miss
 │       ├── layer: resource
-│       └── durationMs: 0
+│       └── durationMs: [volatile]
 ├── cdn_headers uri=page://self/html/blog-posting surrogateKeys=[blog-posting-page, _html_blog-posting_ +4 items] [event]
 │   ├── uri: page://self/html/blog-posting
 │   ├── surrogateKeys[0]: blog-posting-page
@@ -181,7 +182,7 @@ get uri=page://self/html/blog-posting
 │   ├── roPool: invalidated
 │   ├── etagPool: invalidated
 │   ├── cdn: skipped
-│   └── durationMs: 0
+│   └── durationMs: [volatile]
 ├── save_donut_view uri=page://self/html/blog-posting tags=[_html_blog-posting_ +5 items] saved=true [event]
 │   ├── uri: page://self/html/blog-posting
 │   ├── tags[0]: _html_blog-posting_
@@ -191,9 +192,9 @@ get uri=page://self/html/blog-posting
 │   ├── tags[4]: grp-_html_comment_
 │   ├── tags[5]: comment01
 │   └── saved: true
-├── save_etag uri=page://self/html/blog-posting etag="etag-4" tags=[blog-posting-page, _html_blog-posting_ +4 items] saved=true [event]
+├── save_etag uri=page://self/html/blog-posting etag=[volatile] tags=[blog-posting-page, _html_blog-posting_ +4 items] saved=true [event]
 │   ├── uri: page://self/html/blog-posting
-│   ├── etag: "etag-4"
+│   ├── etag: [volatile]
 │   ├── tags[0]: blog-posting-page
 │   ├── tags[1]: _html_blog-posting_
 │   ├── tags[2]: grp-_html_blog-posting_
@@ -209,21 +210,22 @@ get uri=page://self/html/blog-posting
 │   └── saved: true
 └── close cache_miss
     ├── layer: donut-view
-    └── durationMs: 0
+    └── durationMs: [volatile]
 get uri=page://self/html/blog-posting
 ├── uri: page://self/html/blog-posting
 └── close cache_hit
     ├── layer: donut-view
-    └── durationMs: 0
-conditional_request ifNoneMatch="etag-4"
-├── ifNoneMatch: "etag-4"
+    └── durationMs: [volatile]
+conditional_request ifNoneMatch="etag-3"
+├── ifNoneMatch: "etag-3"
 └── close cache_hit
     ├── layer: etag
-    └── durationMs: 0
+    └── durationMs: [volatile]
 get uri=page://self/html/blog-posting-donut
 ├── uri: page://self/html/blog-posting-donut
-├── cache_miss layer=donut [event]
-│   └── layer: donut
+├── cache_miss layer=donut durationMs=[volatile] [event]
+│   ├── layer: donut
+│   └── durationMs: [volatile]
 ├── dependency_skipped parent=page://self/html/blog-posting-donut child=page://self/html/comment reason=no_body [event]
 │   ├── parent: page://self/html/blog-posting-donut
 │   ├── child: page://self/html/comment
@@ -234,7 +236,7 @@ get uri=page://self/html/blog-posting-donut
 │   ├── uri: page://self/html/comment
 │   └── close cache_hit
 │       ├── layer: resource
-│       └── durationMs: 0
+│       └── durationMs: [volatile]
 ├── cdn_headers uri=page://self/html/blog-posting-donut surrogateKeys=[_html_blog-posting-donut_ +4 items] [event]
 │   ├── uri: page://self/html/blog-posting-donut
 │   ├── surrogateKeys[0]: _html_blog-posting-donut_
@@ -249,7 +251,7 @@ get uri=page://self/html/blog-posting-donut
 │   ├── roPool: invalidated
 │   ├── etagPool: invalidated
 │   ├── cdn: skipped
-│   └── durationMs: 0
+│   └── durationMs: [volatile]
 ├── save_donut uri=page://self/html/blog-posting-donut tags=[_html_blog-posting-donut_ +1 items] saved=true [event]
 │   ├── uri: page://self/html/blog-posting-donut
 │   ├── tags[0]: _html_blog-posting-donut_
@@ -257,18 +259,19 @@ get uri=page://self/html/blog-posting-donut
 │   └── saved: true
 └── close cache_miss
     ├── layer: donut-view
-    └── durationMs: 0
+    └── durationMs: [volatile]
 get uri=page://self/html/blog-posting-donut
 ├── uri: page://self/html/blog-posting-donut
-├── cache_hit layer=donut [event]
-│   └── layer: donut
+├── cache_hit layer=donut durationMs=[volatile] [event]
+│   ├── layer: donut
+│   └── durationMs: [volatile]
 ├── refresh_donut uri=page://self/html/blog-posting-donut [event]
 │   └── uri: page://self/html/blog-posting-donut
 ├── get uri=page://self/html/comment
 │   ├── uri: page://self/html/comment
 │   └── close cache_hit
 │       ├── layer: resource
-│       └── durationMs: 0
+│       └── durationMs: [volatile]
 ├── cdn_headers uri=page://self/html/blog-posting-donut surrogateKeys=[_html_blog-posting-donut_ +4 items] [event]
 │   ├── uri: page://self/html/blog-posting-donut
 │   ├── surrogateKeys[0]: _html_blog-posting-donut_
@@ -281,5 +284,5 @@ get uri=page://self/html/blog-posting-donut
 │   └── reason: not-cacheable
 └── close cache_hit
     ├── layer: donut-view
-    └── durationMs: 0
+    └── durationMs: [volatile]
 Schema validation: OK (41 entries)

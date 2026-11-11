@@ -23,8 +23,6 @@ use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
-use Koriym\SemanticLogger\Stree\RenderConfig;
-use Koriym\SemanticLogger\Stree\TreeRenderer;
 use FakeVendor\HelloWorld\Resource\Page\Html\MutableComment;
 use Madapaja\TwigModule\TwigModule;
 use Ray\Di\Injector;
@@ -99,7 +97,7 @@ $log = $logger->flush();
 
 // Human/AI-readable tree (open = embed scope, close = hit/miss, events = saves/invalidations)
 echo '=== Cache Log Tree ===' . PHP_EOL;
-echo (new TreeRenderer(new RenderConfig(true, 0.0, 1000, true, snapshot: true)))->render($log) . PHP_EOL;
+echo renderTree($log) . PHP_EOL;
 
 // Machine-readable JSON conforming to the published schemas (validated below
 // against the local schema files; also: `vendor/bin/stree <file>`)

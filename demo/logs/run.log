@@ -67,28 +67,28 @@ get uri=app://self/user?id=1
 │   ├── roPool: invalidated
 │   ├── etagPool: invalidated
 │   ├── cdn: skipped
-│   └── durationMs: 0
+│   └── durationMs: [volatile]
 ├── save_value uri=app://self/user?id=1 tags=[_user_id=1, grp-_user_id=1] requestedTtl=31536000 saved=true [event]
 │   ├── uri: app://self/user?id=1
 │   ├── tags[0]: _user_id=1
 │   ├── tags[1]: grp-_user_id=1
 │   ├── requestedTtl: 31536000
 │   └── saved: true
-├── save_etag uri=app://self/user?id=1 etag="etag-1" tags=[grp-_user_id=1, _user_id=1] requestedTtl=31536000 (+1 more) [event]
+├── save_etag uri=app://self/user?id=1 etag=[volatile] tags=[grp-_user_id=1, _user_id=1] requestedTtl=31536000 (+1 more) [event]
 │   ├── uri: app://self/user?id=1
-│   ├── etag: "etag-1"
+│   ├── etag: [volatile]
 │   ├── tags[0]: grp-_user_id=1
 │   ├── tags[1]: _user_id=1
 │   ├── requestedTtl: 31536000
 │   └── saved: true
 └── close cache_miss
     ├── layer: resource
-    └── durationMs: 0
+    └── durationMs: [volatile]
 get uri=app://self/user?id=1
 ├── uri: app://self/user?id=1
 └── close cache_hit
     ├── layer: resource
-    └── durationMs: 0
+    └── durationMs: [volatile]
 command method=onPatch source=CommandInterceptor
 ├── method: onPatch
 ├── source: CommandInterceptor
@@ -100,7 +100,7 @@ command method=onPatch source=CommandInterceptor
 │   ├── roPool: invalidated
 │   ├── etagPool: invalidated
 │   ├── cdn: skipped
-│   └── durationMs: 0
+│   └── durationMs: [volatile]
 ├── get uri=app://self/user?id=1
 │   ├── uri: app://self/user?id=1
 │   ├── cache_policy uri=app://self/user?id=1 expiry=never resolvedTtl=31536000 [event]
@@ -114,50 +114,50 @@ command method=onPatch source=CommandInterceptor
 │   │   ├── roPool: invalidated
 │   │   ├── etagPool: invalidated
 │   │   ├── cdn: skipped
-│   │   └── durationMs: 0
+│   │   └── durationMs: [volatile]
 │   ├── save_value uri=app://self/user?id=1 tags=[_user_id=1, grp-_user_id=1] requestedTtl=31536000 saved=true [event]
 │   │   ├── uri: app://self/user?id=1
 │   │   ├── tags[0]: _user_id=1
 │   │   ├── tags[1]: grp-_user_id=1
 │   │   ├── requestedTtl: 31536000
 │   │   └── saved: true
-│   ├── save_etag uri=app://self/user?id=1 etag="etag-2" tags=[grp-_user_id=1, _user_id=1] requestedTtl=31536000 (+1 more) [event]
+│   ├── save_etag uri=app://self/user?id=1 etag=[volatile] tags=[grp-_user_id=1, _user_id=1] requestedTtl=31536000 (+1 more) [event]
 │   │   ├── uri: app://self/user?id=1
-│   │   ├── etag: "etag-2"
+│   │   ├── etag: [volatile]
 │   │   ├── tags[0]: grp-_user_id=1
 │   │   ├── tags[1]: _user_id=1
 │   │   ├── requestedTtl: 31536000
 │   │   └── saved: true
 │   └── close cache_miss
 │       ├── layer: resource
-│       └── durationMs: 0
+│       └── durationMs: [volatile]
 └── close command_result
     └── code: 200
 get uri=app://self/user?id=1
 ├── uri: app://self/user?id=1
 └── close cache_hit
     ├── layer: resource
-    └── durationMs: 0
+    └── durationMs: [volatile]
 get uri=app://self/user?id=1
 ├── uri: app://self/user?id=1
 └── close cache_hit
     ├── layer: resource
-    └── durationMs: 0
+    └── durationMs: [volatile]
 get uri=app://self/user?id=1
 ├── uri: app://self/user?id=1
 └── close cache_hit
     ├── layer: resource
-    └── durationMs: 0
+    └── durationMs: [volatile]
 conditional_request ifNoneMatch="etag-2"
 ├── ifNoneMatch: "etag-2"
 └── close cache_hit
     ├── layer: etag
-    └── durationMs: 0
+    └── durationMs: [volatile]
 conditional_request ifNoneMatch="stale"
 ├── ifNoneMatch: "stale"
 └── close cache_miss
     ├── layer: etag
-    └── durationMs: 0
+    └── durationMs: [volatile]
 
 === Cache Log JSON ===
 {
