@@ -36,9 +36,6 @@ use function trim;
 /** @internal */
 final readonly class QueryRepository implements QueryRepositoryInterface
 {
-    /** @see BaseUriTag::GROUP_TAG_PREFIX */
-    private const GROUP_TAG_PREFIX = 'grp-';
-
     private DependsOnTags $dependsOnTags;
 
     public function __construct(
@@ -247,7 +244,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
     public function purge(AbstractUri $uri)
     {
         // The URI's own tag plus the group tag shared by its query variants (see BaseUriTag).
-        $tags = [($this->uriTag)($uri), self::GROUP_TAG_PREFIX . ($this->uriTag)($uri)];
+        $tags = [($this->uriTag)($uri), CacheIdentityFactory::groupTag(($this->uriTag)($uri))];
 
         // A top-level purge is an application-initiated (manual) cache bust: wrap it in a
         // manual_purge scope so it stands out from automatic invalidation. A purge nested

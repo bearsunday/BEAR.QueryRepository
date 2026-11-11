@@ -36,8 +36,6 @@ use function implode;
 use function is_string;
 use function max;
 use function round;
-use function sprintf;
-use function strtoupper;
 use function trim;
 
 /**
@@ -194,7 +192,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
             }
 
             assert(is_string($issuedFor));
-            $key = self::KEY_RO . $issuedFor . $this->getVary();
+            $key = CacheIdentityFactory::storageKey($issuedFor, self::KEY_RO, $this->serverContext);
             $state = $this->guard(fn () => $this->roPool->getItem($key))->get();
             assert($state instanceof ResourceState || $state === null);
             // A missing entry reads as '', which is never an opaque-tag.
@@ -401,33 +399,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
 
     private function getUriKey(AbstractUri $uri, string $type): string
     {
-        return $type . ($this->uriTag)($uri) . $this->getVary();
-    }
-
-    /** '' when the application declares no X_VARY context */
-    private function getVary(): string
-    {
-        $xvary = $this->serverContext->get('X_VARY');
-        if ($xvary === null) {
-            return '';
-        }
-
-        $varys = explode(',', $xvary);
-        $varyString = '';
-        foreach ($varys as $vary) {
-            $vary = trim($vary);
-            if ($vary === '') {
-                continue;
-            }
-
-            $phpVaryKey = sprintf('X_%s', strtoupper($vary));
-            $value = $this->serverContext->get($phpVaryKey);
-            if ($value !== null) {
-                $varyString .= $value;
-            }
-        }
-
-        return $varyString;
+        return CacheIdentityFactory::storageKey(($this->uriTag)($uri), $type, $this->serverContext);
     }
 
     #[Override]
