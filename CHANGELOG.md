@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- A `#[Cacheable]` entry that embeds a child keeps its ETag when the child is rebuilt with the same content (#287). The ETag of each such entry changes once, the first time the entry is rebuilt after the upgrade; a client revalidating with the old one gets a `200` that time.
+
 ### Changed
 - Requires `koriym/semantic-logger` 0.11.1 or later: the demos render their logs with `RenderConfig`'s `schemaDir`, which needs that version.
 

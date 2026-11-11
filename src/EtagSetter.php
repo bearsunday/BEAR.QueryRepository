@@ -8,6 +8,7 @@ use BEAR\RepositoryModule\Annotation\HttpCache;
 use BEAR\Resource\ResourceObject;
 use Override;
 
+use function array_map;
 use function assert;
 use function crc32;
 use function gmdate;
@@ -61,7 +62,21 @@ final readonly class EtagSetter implements EtagSetterInterface
     {
         // A body may still hold embedded requests, which refuse to serialize; the evaluator
         // materializes the runs that already happened, as copies, without touching this response.
-        return $ro::class . serialize($ro->view ?? ($this->evaluateBody)($ro->body));
+        return $ro::class . serialize($ro->view ?? $this->state(($this->evaluateBody)($ro->body)));
+    }
+
+    /**
+     * An embedded child counts as its parent does, by its view or else its body: its headers carry
+     * the time it was built, and a child restored from the donut cache comes back as a view alone.
+     * It counts as an object, so that no array in a body serializes to the same bytes.
+     */
+    private function state(mixed $body): mixed
+    {
+        if ($body instanceof ResourceObject) {
+            return (object) [$body::class, $body->code, $body->view ?? $this->state($body->body)];
+        }
+
+        return is_array($body) ? array_map($this->state(...), $body) : $body;
     }
 
     /**
