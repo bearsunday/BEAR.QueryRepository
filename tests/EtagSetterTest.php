@@ -82,6 +82,24 @@ class EtagSetterTest extends TestCase
         $this->assertNotSame($tagOf('child-v1'), $tagOf('child-v2'));
     }
 
+    /** The same child, once just built (body and view) and once restored from the donut cache (view alone). */
+    public function testADonutChildRestoredWithoutItsBodyKeepsTheParentTag(): void
+    {
+        $setEtag = new EtagSetter();
+        $tagOf = static function (mixed $childBody) use ($setEtag): string {
+            $child = new Code();
+            $child->uri = new Uri('app://self/child-c');
+            $child->body = $childBody;
+            $child->view = '{"child-c":1}';
+            $parent = new Code();
+            $parent->body = ['parent-a' => 1, 'child' => $child];
+
+            return $setEtag->getEtagByEntireView($parent);
+        };
+
+        $this->assertSame($tagOf(['child-c' => 1]), $tagOf(null));
+    }
+
     public function testHeadersOfAChildEmbeddedInAChildDoNotChangeTheParentTag(): void
     {
         $setEtag = new EtagSetter();
