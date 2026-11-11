@@ -45,6 +45,7 @@
         },
         "durationMs": {
             "description": "Wall-clock duration of the invalidation in milliseconds",
+            "x-volatile": true,
             "type": "number",
             "minimum": 0
         }

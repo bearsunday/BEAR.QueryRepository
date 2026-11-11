@@ -16,7 +16,8 @@
             "type": "string"
         },
         "etag": {
-            "type": "string"
+            "type": "string",
+            "x-volatile": true
         },
         "tags": {
             "description": "invalidation tags registered with the entry, including the resource's own URI tag",
