@@ -72,6 +72,23 @@ class GoldenStorageKeyTest extends TestCase
         }
     }
 
+    public function testUrisSharingATagAreEachReadBackAsStored(): void
+    {
+        $storage = (new FakeObservedApp())->injector->getInstance(ResourceStorageInterface::class);
+        $uris = ['app://self/a/b', 'app://self/a_b', 'page://self/a/b'];
+        foreach ($uris as $uri) {
+            $ro = new class extends ResourceObject {
+            };
+            $ro->uri = new Uri($uri);
+            $ro->body = ['stored-as' => $uri];
+            $this->assertTrue($storage->saveValue($ro, 0));
+        }
+
+        foreach ($uris as $uri) {
+            $this->assertSame(['stored-as' => $uri], $storage->get(new Uri($uri))?->body, $uri);
+        }
+    }
+
     public function testVaryValuesAreAppendedToTheResourcePoolKeysOnly(): void
     {
         $app = new FakeObservedApp(['X_VARY' => 'lang, , device', 'X_LANG' => 'ja', 'X_DEVICE' => 'mobile']);

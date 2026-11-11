@@ -8,16 +8,12 @@ use BEAR\Resource\AbstractUri;
 use BEAR\Resource\Uri;
 use FakeVendor\HelloWorld\Resource\Page\Index;
 use Koriym\SemanticLogger\NullSemanticLogger;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapter;
 
-/**
- * An ETag can outlive the entry it was issued with while a newer entry sits under the same URI:
- * the invalidation that should have dropped it failed in the ETag pool alone. Neither
- * `HttpCache::isNotModified()` nor `isNotModifiedFor()` answers 304 for it - the client would
- * keep the replaced representation until the ETag's own TTL ran out.
- */
+/** An entry holds one validator: the validator of the entry a later write replaced is not answered 304 */
 class EtagOfReplacedEntryTest extends TestCase
 {
     /** @param array<string, int> $body */
@@ -43,18 +39,32 @@ class EtagOfReplacedEntryTest extends TestCase
         );
     }
 
-    public function testTheEtagOfAnEntryASecondWriteReplacedIsNotAnswered304(): void
+    /** @return iterable<string, array{bool}> */
+    public static function cleanups(): iterable
     {
-        $storage = ResourceStorageTest::getResourceStorageInstance(roPool: new TagAwareAdapter(new ArrayAdapter()));
+        yield 'the cleanup drops the replaced entry' => [false];
+        yield 'the pool refuses the cleanup and takes the save' => [true];
+    }
+
+    #[DataProvider('cleanups')]
+    public function testTheEtagOfAnEntryASecondWriteReplacedIsNotAnswered304(bool $refuseCleanup): void
+    {
+        $pool = new TagAwareAdapter(new ArrayAdapter());
+        $storage = ResourceStorageTest::getResourceStorageInstance(roPool: $pool);
 
         $ro = $this->ro('page://self/x', ['v' => 1]);
         $this->assertTrue($this->repository($storage)->put($ro));
         $replacedEtag = (string) $ro->headers[Header::ETAG];
+
+        $secondStorage = ResourceStorageTest::getResourceStorageInstance(
+            roPool: $refuseCleanup ? new FakeRefusingPool($pool, refuseSave: false, refuseInvalidation: true) : $pool,
+        );
         $ro2 = $this->ro('page://self/x', ['v' => 2]);
-        $this->assertTrue($this->repository($storage)->put($ro2));
+        $this->assertTrue($this->repository($secondStorage)->put($ro2));
         $currentEtag = (string) $ro2->headers[Header::ETAG];
 
         $this->assertNotSame($replacedEtag, $currentEtag);
+        $this->assertSame(['v' => 2], $storage->get($ro->uri)?->body, 'precondition: the entry is the second write');
         $this->assertNotModified($storage, $ro->uri, $replacedEtag, false);
         $this->assertNotModified($storage, $ro->uri, $currentEtag, true);
     }

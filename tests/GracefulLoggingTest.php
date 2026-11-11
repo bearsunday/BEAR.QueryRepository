@@ -553,9 +553,9 @@ class GracefulLoggingTest extends TestCase
         $this->assertTrue($threw, 'expected the same failure requesting the hole directly');
     }
 
-    public function testAValueEntryIsStoredWithoutRenderingTheResource(): void
+    public function testAValueEntryIsStoredWhenTheResourceCannotBeRendered(): void
     {
-        // An app resource has no template under an html renderer, so any render attempt throws.
+        // An app resource has no template under an html renderer, so rendering it throws.
         $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
         $module->override(new class extends AbstractModule {
             protected function configure(): void
@@ -580,7 +580,8 @@ class GracefulLoggingTest extends TestCase
         }
 
         $this->assertSame(200, $ro->code);
-        $this->assertFalse($warned, 'a value entry has no reason to render, so nothing degraded');
+        $this->assertNull($ro->view);
+        $this->assertFalse($warned, 'a value that cannot be rendered is stored all the same, so nothing degraded');
 
         $tree = $this->flushAndValidate($logger);
         $this->assertNull(self::eventContextJsonOf($tree, 'cache_error'), 'no write failure to record');

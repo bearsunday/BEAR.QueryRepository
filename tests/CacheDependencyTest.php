@@ -151,6 +151,29 @@ class CacheDependencyTest extends TestCase
         $this->assertFalse($this->storage->hasEtag($etag1));
     }
 
+    /** A miss writes where nothing is stored: it replaces no entry, so it purges no key */
+    public function testAMissPurgesNoKey(): void
+    {
+        $this->resource->get('page://self/dep/level-one');
+
+        $this->assertInstanceOf(ResourceState::class, $this->repository->get(new Uri('page://self/dep/level-three')));
+        $this->assertSame([], $this->purger->tags);
+    }
+
+    /** A put() over a stored entry drops what was built from the entry it replaces */
+    public function testAPutOverAStoredChildDropsItsParents(): void
+    {
+        $this->resource->get('page://self/dep/level-one');
+        $child = $this->resource->get('page://self/dep/level-three');
+
+        $this->assertTrue($this->repository->put($child));
+
+        $this->assertNull($this->repository->get(new Uri('page://self/dep/level-one')));
+        $this->assertNull($this->repository->get(new Uri('page://self/dep/level-two')));
+        $this->assertInstanceOf(ResourceState::class, $this->repository->get(new Uri('page://self/dep/level-three')));
+        $this->assertSame([(new UriTag())(new Uri('page://self/dep/level-three'))], $this->purger->tags);
+    }
+
     /**
      * Test that resources in unrelated dependency chains are independent.
      *
