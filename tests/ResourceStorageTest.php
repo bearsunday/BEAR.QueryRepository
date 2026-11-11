@@ -106,6 +106,7 @@ class ResourceStorageTest extends TestCase
     public function testADoubleSpacedSurrogateKeyStoresTheEntryAndItsEtagUnderTheRemainingKeys(): void
     {
         $this->ro->headers[Header::SURROGATE_KEY] = 'a  b';
+        $this->ro->headers[Header::ETAG] = '"1"';
 
         $this->assertTrue($this->storage->saveValue($this->ro, 60));
         $this->storage->saveEtag($this->ro->uri, '"1"', 'a  b', 60);
@@ -196,6 +197,7 @@ class ResourceStorageTest extends TestCase
 
     public function testHasEtagAcceptsIfNoneMatchVariants(): void
     {
+        $this->ro->headers[Header::ETAG] = '"123456"';
         $this->storage->saveValue($this->ro, 10);
         $this->storage->saveEtag($this->ro->uri, '"123456"', '', 10);
 
@@ -208,6 +210,7 @@ class ResourceStorageTest extends TestCase
 
     public function testHasEtagSplitsOnlyOnCommasOutsideQuotes(): void
     {
+        $this->ro->headers[Header::ETAG] = '"foo,bar"';
         $this->storage->saveValue($this->ro, 10);
         $this->storage->saveEtag($this->ro->uri, '"foo,bar"', '', 10);
 

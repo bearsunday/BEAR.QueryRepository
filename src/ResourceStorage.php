@@ -169,13 +169,14 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
     /**
      * Is a live entry for this validator, issued for $uriTag when one is named?
      *
-     * The entry is confirmed too, because the ETag and the entry are written, expired and
-     * invalidated separately (#266). A {@see self::LEGACY_PLACEHOLDER} item is exempted: it
-     * carries no URI tag to confirm an entry by.
+     * The entry must carry the same validator, because the ETag and the entry are written,
+     * expired and invalidated separately (#266): an ETag item can outlive its entry, and a newer
+     * entry can sit under the same URI. A {@see self::LEGACY_PLACEHOLDER} item is exempted: it
+     * carries no URI tag to find an entry by.
      */
     private function findEtag(string $etag, string|null $uriTag): bool
     {
-        foreach (EntityTags::of($etag) as $opaqueTag) {
+        foreach (array_unique(EntityTags::of($etag)) as $opaqueTag) {
             $item = $this->guard(fn () => $this->etagPool->getItem($opaqueTag));
             if (! $item->isHit()) {
                 continue;
@@ -194,7 +195,10 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
 
             assert(is_string($issuedFor));
             $key = self::KEY_RO . $issuedFor . $this->getVary();
-            if ($this->guard(fn (): bool => $this->roPool->hasItem($key))) {
+            $state = $this->guard(fn () => $this->roPool->getItem($key))->get();
+            assert($state instanceof ResourceState || $state === null);
+            // A missing entry reads as '', which is never an opaque-tag.
+            if (trim($state?->headers[Header::ETAG] ?? '', '"') === $opaqueTag) {
                 return true;
             }
         }
@@ -338,7 +342,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
     {
         // Despite the legacy parameter name (kept for BC), this argument carries the donut
         // template entry TTL (putStatic passes $ttl, putDonut passes $donutTtl), never a CDN s-maxage.
-        $sMaxAge = $sMaxAge === null ? null : max(0, $sMaxAge);
+        $sMaxAge = $this->nonNegative($sMaxAge);
         $key = $this->getUriKey($uri, self::KEY_DONUT);
         $headerKeys = $this->uniqueTags($headerKeys);
         $saved = $this->guard(fn (): bool => ($this->saver)($key, $donut, $this->roPool, $headerKeys, $sMaxAge));
@@ -350,7 +354,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
     #[Override]
     public function saveDonutView(ResourceObject $ro, int|null $ttl, array|null $tags = null): bool
     {
-        $ttl = $ttl === null ? null : max(0, $ttl);
+        $ttl = $this->nonNegative($ttl);
         $resourceState = ResourceState::create($ro, [], $ro->view);
         $key = $this->getUriKey($ro->uri, self::KEY_RO);
         $tags = $this->getTags($ro, $tags);
@@ -390,6 +394,11 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         return array_values(array_unique(array_filter($tags, static fn (string $tag): bool => $tag !== '')));
     }
 
+    private function nonNegative(int|null $ttl): int|null
+    {
+        return $ttl === null ? null : max(0, $ttl);
+    }
+
     private function getUriKey(AbstractUri $uri, string $type): string
     {
         return $type . ($this->uriTag)($uri) . $this->getVary();
@@ -424,7 +433,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
     #[Override]
     public function saveEtag(AbstractUri $uri, string $etag, string $surrogateKeys, int|null $ttl): void
     {
-        $ttl = $ttl === null ? null : max(0, $ttl);
+        $ttl = $this->nonNegative($ttl);
         $uniqueTags = $this->uniqueTags([...explode(' ', $surrogateKeys), ($this->uriTag)($uri)]);
         // The header value is a quoted entity-tag; the pool key is the bare opaque-tag. The entry's
         // value is the URI tag it was issued for - the field used to be the constant 'etag', which
