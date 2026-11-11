@@ -301,13 +301,8 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         $ttl = max(0, $ttl);
         /** @psalm-suppress MixedAssignment $body */
         $body = ($this->evaluateBody)($ro->body);
-        $value = ResourceState::create($ro, $body, null);
-        $key = $this->getUriKey($ro->uri, self::KEY_RO);
-        $tags = $this->getTags($ro);
-        $saved = $this->guard(fn (): bool => ($this->saver)($key, $value, $this->roPool, $tags, $ttl));
-        $this->logger->event(new SaveValueContext((string) $ro->uri, $tags, $ttl, $saved));
 
-        return $saved;
+        return $this->saveResourceState($ro, $body, null, $ttl, SaveValueContext::class);
     }
 
     /**
@@ -321,13 +316,8 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         $ttl = max(0, $ttl);
         /** @psalm-suppress MixedAssignment $body */
         $body = ($this->evaluateBody)($ro->body);
-        $value = ResourceState::create($ro, $body, $ro->view);
-        $key = $this->getUriKey($ro->uri, self::KEY_RO);
-        $tags = $this->getTags($ro);
-        $saved = $this->guard(fn (): bool => ($this->saver)($key, $value, $this->roPool, $tags, $ttl));
-        $this->logger->event(new SaveViewContext((string) $ro->uri, $tags, $ttl, $saved));
 
-        return $saved;
+        return $this->saveResourceState($ro, $body, $ro->view, $ttl, SaveViewContext::class);
     }
 
     /**
@@ -341,7 +331,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         $sMaxAge = $this->nonNegative($sMaxAge);
         $key = $this->getUriKey($uri, self::KEY_DONUT);
         $headerKeys = (new TagSet($headerKeys))->toArray();
-        $saved = $this->guard(fn (): bool => ($this->saver)($key, $donut, $this->roPool, $headerKeys, $sMaxAge));
+        $saved = $this->saveToPool($key, $donut, $this->roPool, $headerKeys, $sMaxAge);
         // saved=false is logged, not asserted: a quiet store failure must stay observable
         // in the log (an assert here would throw AFTER the event, contradicting it).
         $this->logger->event(new SaveDonutContext((string) $uri, $headerKeys, $sMaxAge, $saved));
@@ -351,13 +341,29 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
     public function saveDonutView(ResourceObject $ro, int|null $ttl, array|null $tags = null): bool
     {
         $ttl = $this->nonNegative($ttl);
-        $resourceState = ResourceState::create($ro, [], $ro->view);
+
+        return $this->saveResourceState($ro, [], $ro->view, $ttl, SaveDonutViewContext::class, $tags);
+    }
+
+    /**
+     * @param class-string<SaveValueContext>|class-string<SaveViewContext>|class-string<SaveDonutViewContext> $contextClass
+     * @param list<string>|null                                                                               $tags
+     */
+    private function saveResourceState(ResourceObject $ro, mixed $body, string|null $view, int|null $ttl, string $contextClass, array|null $tags = null): bool
+    {
+        $resourceState = ResourceState::create($ro, $body, $view);
         $key = $this->getUriKey($ro->uri, self::KEY_RO);
         $tags = $this->getTags($ro, $tags);
-        $saved = $this->guard(fn (): bool => ($this->saver)($key, $resourceState, $this->roPool, $tags, $ttl));
-        $this->logger->event(new SaveDonutViewContext((string) $ro->uri, $tags, $ttl, $saved));
+        $saved = $this->saveToPool($key, $resourceState, $this->roPool, $tags, $ttl);
+        $this->logger->event(new $contextClass((string) $ro->uri, $tags, $ttl, $saved));
 
         return $saved;
+    }
+
+    /** @param list<string> $tags */
+    private function saveToPool(string $key, mixed $value, TagAwareAdapterInterface $pool, array $tags, int|null $ttl): bool
+    {
+        return $this->guard(fn (): bool => ($this->saver)($key, $value, $pool, $tags, $ttl));
     }
 
     /**
