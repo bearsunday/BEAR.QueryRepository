@@ -5,10 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.20.1] - 2026-11-11
+## [Unreleased]
 
 ### Changed
 - Requires `koriym/semantic-logger` 0.11.1 or later: the demos render their logs with `RenderConfig`'s `schemaDir`, which needs that version.
+
+## [1.20.1] - 2026-11-11
 
 ### Fixed
 - A write now invalidates a `#[Cacheable]`/`#[CacheableResponse]` entry a GET stored with an `onGet()` parameter's snake_case query key (`?user_id=1` for `$userId`), not only the parameter's own spelling (`?userId=1`); it was left stale. A GET that mixes both spellings across its required keys (`?userId=1&post_id=2`) is still not reached (#275).
