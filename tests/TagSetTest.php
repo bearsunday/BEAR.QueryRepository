@@ -6,6 +6,8 @@ namespace BEAR\QueryRepository;
 
 use PHPUnit\Framework\TestCase;
 
+use function explode;
+
 class TagSetTest extends TestCase
 {
     public function testKeepsFirstOccurrenceOrderAndRemovesOnlyEmptyStrings(): void
@@ -16,10 +18,10 @@ class TagSetTest extends TestCase
         $this->assertSame('b a 0  ', $tags->toHeader());
     }
 
-    public function testHeaderUsesSpaceAsItsOnlySeparator(): void
+    public function testSpaceSplitHeaderKeepsOtherWhitespaceAndDropsEmptyKeys(): void
     {
-        $this->assertSame(["a\tb", 'c'], TagSet::fromHeader(" a\tb  c ")->toArray());
-        $this->assertSame([], TagSet::fromHeader('')->toArray());
+        $this->assertSame(["a\tb", 'c'], (new TagSet(explode(' ', " a\tb  c ")))->toArray());
+        $this->assertSame([], (new TagSet(explode(' ', '')))->toArray());
     }
 
     public function testTemplateViewAndResponseCanKeepSeparateOrders(): void

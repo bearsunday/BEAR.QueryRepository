@@ -7,7 +7,6 @@ namespace BEAR\QueryRepository;
 use function array_filter;
 use function array_unique;
 use function array_values;
-use function explode;
 use function implode;
 
 /** @internal */
@@ -25,11 +24,6 @@ final readonly class TagSet
     public function __construct(array $values)
     {
         $this->values = array_values(array_unique(array_filter($values, static fn (string $tag): bool => $tag !== '')));
-    }
-
-    public static function fromHeader(string $header): self
-    {
-        return new self(explode(' ', $header));
     }
 
     /** @return list<string> */

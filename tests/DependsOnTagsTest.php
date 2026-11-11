@@ -35,11 +35,12 @@ class DependsOnTagsTest extends TestCase
         $first = new Request($invoker, $child);
         $second = new Request($invoker, clone $child);
         $parent = clone $child;
+        $tags = new DependsOnTags(new UriTag());
         $child->body = [$second];
         $parent->body = (object) ['second' => $second, 'nested' => [$first], 'child' => $child, 'first' => $first, 'again' => $second];
 
         // INV-08: enumeration preserves order and multiplicity without running a child.
-        $this->assertSame([$second, $first, $second], iterator_to_array(DependsOnTags::requests($parent)));
+        $this->assertSame([$second, $first, $second], iterator_to_array($tags->requests($parent)));
         $this->assertSame(0, $invoker->calls);
 
         $parent->body = (static function () use ($first, $invoker) {
@@ -47,7 +48,7 @@ class DependsOnTagsTest extends TestCase
             yield $first;
         })();
 
-        $this->assertSame([], iterator_to_array(DependsOnTags::requests($parent)));
+        $this->assertSame([], iterator_to_array($tags->requests($parent)));
         $this->assertSame(0, $invoker->calls);
     }
 }

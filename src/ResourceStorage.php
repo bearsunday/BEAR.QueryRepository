@@ -395,7 +395,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
     public function saveEtag(AbstractUri $uri, string $etag, string $surrogateKeys, int|null $ttl): void
     {
         $ttl = $this->nonNegative($ttl);
-        $uniqueTags = TagSet::fromHeader($surrogateKeys)->merge(new TagSet([($this->uriTag)($uri)]))->toArray();
+        $uniqueTags = (new TagSet(explode(' ', $surrogateKeys)))->merge(new TagSet([($this->uriTag)($uri)]))->toArray();
         // The header value is a quoted entity-tag; the pool key is the bare opaque-tag. The entry's
         // value is the URI tag it was issued for - the field used to be the constant 'etag', which
         // is why a validator from any resource satisfied any request.

@@ -32,7 +32,7 @@ final readonly class CacheDependencyCollector
         SurrogateKeys|null $materialKeys = null,
     ): void {
         ($this->dependsOnTags)($ro);
-        foreach (DependsOnTags::requests($ro) as $request) {
+        foreach ($this->dependsOnTags->requests($ro) as $request) {
             if ($materialKeys === null) {
                 (string) $request;
             }

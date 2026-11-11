@@ -33,7 +33,7 @@ final readonly class DependsOnTags
      *
      * @return Generator<AbstractRequest>
      */
-    public static function requests(ResourceObject $ro): Generator
+    public function requests(ResourceObject $ro): Generator
     {
         /** @var mixed $body */
         foreach ((array) $ro->body as $body) {
@@ -79,7 +79,7 @@ final readonly class DependsOnTags
         }
 
         $tags = $this->declared($ro);
-        foreach (self::requests($ro) as $body) {
+        foreach ($this->requests($ro) as $body) {
             $embedded = $this->ran($body->resourceObject);
             if ($embedded !== null) {
                 $tags = [...$tags ?? [], ...$embedded];
@@ -98,8 +98,9 @@ final readonly class DependsOnTags
     /** Whether a request it embeds, at any depth, has not run yet: what that request declares is known only once it runs */
     public static function awaitsRequest(ResourceObject $ro): bool
     {
-        foreach (self::requests($ro) as $body) {
-            if (! self::hasRun($body->resourceObject) || self::awaitsRequest($body->resourceObject)) {
+        /** @var mixed $body */
+        foreach ((array) $ro->body as $body) {
+            if ($body instanceof AbstractRequest && (! self::hasRun($body->resourceObject) || self::awaitsRequest($body->resourceObject))) {
                 return true;
             }
         }

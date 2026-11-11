@@ -45,7 +45,7 @@ class CacheDependencyCollectorTest extends TestCase
         $dependency = new CacheDependency(new UriTag());
         $logger = new NullSemanticLogger();
 
-        $this->assertSame([$request], iterator_to_array(DependsOnTags::requests($parent)));
+        $this->assertSame([$request], iterator_to_array($tags->requests($parent)));
         $this->assertSame(0, $invoker->calls);
         (new CacheDependencyCollector($tags, $dependency, $logger))->collect($parent);
         $this->assertSame(1, $invoker->calls);
