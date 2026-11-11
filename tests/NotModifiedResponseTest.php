@@ -118,6 +118,17 @@ class NotModifiedResponseTest extends TestCase
         $this->assertSame('', $notModified['body']);
     }
 
+    public function testAContentTypeTheApplicationRepeatsInIts304IsSent(): void
+    {
+        $etag = $this->get()['headers']['etag'] ?? '';
+
+        $notModified = $this->get($etag, '/?repeat=content-type');
+
+        $this->assertSame(304, $notModified['status'], self::$server->getErrorOutput());
+        $this->assertSame($etag, $notModified['headers']['etag'] ?? null);
+        $this->assertSame('application/json', $notModified['headers']['content-type'] ?? null);
+    }
+
     public function testAValidatorThatDoesNotMatchIsAnsweredInFull(): void
     {
         $ok = $this->get('"stale"');
@@ -128,12 +139,12 @@ class NotModifiedResponseTest extends TestCase
     }
 
     /** @return array{status: int, headers: array<string, string>, body: string} header names in lower case */
-    private function get(string|null $ifNoneMatch = null): array
+    private function get(string|null $ifNoneMatch = null, string $target = '/'): array
     {
         $socket = stream_socket_client('tcp://' . self::$address, $errno, $error, 5);
         $this->assertIsResource($socket, (string) $error);
         stream_set_timeout($socket, 10);
-        fwrite($socket, "GET / HTTP/1.0\r\nHost: " . self::$address . "\r\n" . ($ifNoneMatch === null ? '' : "If-None-Match: {$ifNoneMatch}\r\n") . "\r\n");
+        fwrite($socket, "GET {$target} HTTP/1.0\r\nHost: " . self::$address . "\r\n" . ($ifNoneMatch === null ? '' : "If-None-Match: {$ifNoneMatch}\r\n") . "\r\n");
         $response = (string) stream_get_contents($socket);
         fclose($socket);
 

@@ -41,17 +41,17 @@ final class ConditionalRequest
     /**
      * The headers of the 304 answering the request last found not modified
      *
-     * They are those of the entry that validated it: the 304 says what a 200 from that entry
-     * would. Taken once, and none when the storage cannot hand the entry over.
+     * Those of the entry that validated it, taken once; none when the storage cannot hand the
+     * entry over.
      *
      * @return array<string, string>
      */
     public function notModifiedHeaders(): array
     {
-        $headers = $this->conditionalResponse->getOutput($this->validated)->headers;
+        $validated = $this->validated;
         $this->validated = [];
 
-        return $headers;
+        return $this->conditionalResponse->getOutput($validated)->headers;
     }
 
     private function validate(string $ifNoneMatch, AbstractUri|null $uri): bool
@@ -78,9 +78,15 @@ final class ConditionalRequest
      * @param array<array-key, mixed> $server
      */
     public function isNotModified(
-        string $ifNoneMatch,
+        string|null $ifNoneMatch,
         array $server,
     ): bool {
+        if ($ifNoneMatch === null) {
+            $this->validated = [];
+
+            return false;
+        }
+
         // What answering without running the resource cost: this is the whole request on a hit.
         $openId = $this->logger->open(new ConditionalRequestContext($ifNoneMatch));
         $start = hrtime(true);
@@ -111,12 +117,13 @@ final class ConditionalRequest
      */
     public function isNotModifiedFor(
         AbstractUri $uri,
-        string $ifNoneMatch,
+        string|null $ifNoneMatch,
         array $server,
     ): bool {
-        if (! $this->storage instanceof ScopedValidatorInterface) {
-            // A storage that cannot scope answers the older question; a reader of the log can
-            // still see which validator was presented, but not which question was asked.
+        if ($ifNoneMatch === null || ! $this->storage instanceof ScopedValidatorInterface) {
+            // No validator leaves nothing to scope. A storage that cannot scope answers the older
+            // question; a reader of the log can still see which validator was presented, but not
+            // which question was asked.
             return $this->isNotModified($ifNoneMatch, $server);
         }
 

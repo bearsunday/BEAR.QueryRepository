@@ -13,9 +13,11 @@ use BEAR\Sunday\Provide\Transfer\Output;
 use FakeVendor\HelloWorld\Resource\Page\Index;
 use Koriym\SemanticLogger\NullSemanticLogger;
 use Override;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
+use RuntimeException;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapter;
 
@@ -30,12 +32,7 @@ use function sort;
 
 use const PHP_EOL;
 
-/**
- * A 304 says about caching what a 200 from the entry that validated the request would
- *
- * - its headers are that entry's, and only those a 304 is to repeat
- * - a request that did not validate leaves none, and so does a storage that cannot hand the entry over
- */
+/** A 304 says about caching what a 200 from the entry that validated the request would */
 class NotModifiedHeadersTest extends TestCase
 {
     private const SHARED = 'app://self/cacheable-with-shared-lifetime';
@@ -110,6 +107,66 @@ class NotModifiedHeadersTest extends TestCase
         $this->assertTrue($conditionalRequest->isNotModified($this->etag, []));
         $this->assertFalse($conditionalRequest->isNotModified('"stale"', []));
         $this->assertSame([], $conditionalRequest->notModifiedHeaders(), 'the request before validated, this one did not');
+    }
+
+    /** @return iterable<string, array{class-string<HttpCache|CliHttpCache>}> */
+    public static function httpCaches(): iterable
+    {
+        yield 'web' => [HttpCache::class];
+        yield 'cli' => [CliHttpCache::class];
+    }
+
+    /** @param class-string<HttpCache|CliHttpCache> $httpCacheClass */
+    #[DataProvider('httpCaches')]
+    public function testARequestWithoutAValidatorDropsTheHeadersOfTheOneBefore(string $httpCacheClass): void
+    {
+        $conditionalRequest = new ConditionalRequest($this->storage, new NullSemanticLogger());
+        $httpCache = new $httpCacheClass($this->storage, new NullSemanticLogger(), $conditionalRequest);
+        $validating = [Header::HTTP_IF_NONE_MATCH => $this->etag];
+
+        $this->assertTrue($httpCache->isNotModified($validating));
+        $this->assertFalse($httpCache->isNotModified([]));
+        $this->assertSame([], $conditionalRequest->notModifiedHeaders());
+
+        $this->assertTrue($httpCache->isNotModifiedFor($this->uri, $validating));
+        $this->assertFalse($httpCache->isNotModifiedFor($this->uri, []));
+        $this->assertSame([], $conditionalRequest->notModifiedHeaders());
+    }
+
+    public function testAFilterThatFailsDoesNotKeepTheHeadersForALaterRequest(): void
+    {
+        $filter = new class implements ConditionalResponseInterface {
+            private bool $failed = false;
+
+            /** @inheritDoc */
+            #[Override]
+            public function isModified(ResourceObject $ro, array $server): bool
+            {
+                return true;
+            }
+
+            /** @inheritDoc */
+            #[Override]
+            public function getOutput(array $headers): Output
+            {
+                if (! $this->failed) {
+                    $this->failed = true;
+
+                    throw new RuntimeException('filter');
+                }
+
+                return new Output(304, $headers, '');
+            }
+        };
+        $conditionalRequest = new ConditionalRequest($this->storage, new NullSemanticLogger(), $filter);
+        $this->assertTrue($conditionalRequest->isNotModified($this->etag, []));
+
+        try {
+            $conditionalRequest->notModifiedHeaders();
+            $this->fail('the filter throws');
+        } catch (RuntimeException) {
+            $this->assertSame([], $conditionalRequest->notModifiedHeaders());
+        }
     }
 
     public function testTheScopedAnswerCarriesTheEntryOfTheUriAskedFor(): void

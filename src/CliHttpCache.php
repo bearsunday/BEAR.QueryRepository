@@ -42,12 +42,7 @@ final readonly class CliHttpCache implements HttpCacheInterface, UriScopedHttpCa
     #[Override]
     public function isNotModified(array $server): bool
     {
-        $etag = $this->getEtag($server);
-        if ($etag === null) {
-            return false;
-        }
-
-        return $this->conditionalRequest->isNotModified($etag, $server);
+        return $this->conditionalRequest->isNotModified($this->getEtag($server), $server);
     }
 
     /**
@@ -59,12 +54,7 @@ final readonly class CliHttpCache implements HttpCacheInterface, UriScopedHttpCa
     #[Override]
     public function isNotModifiedFor(AbstractUri $uri, array $server): bool
     {
-        $ifNoneMatch = $this->getEtag($server);
-        if ($ifNoneMatch === null) {
-            return false;
-        }
-
-        return $this->conditionalRequest->isNotModifiedFor($uri, $ifNoneMatch, $server);
+        return $this->conditionalRequest->isNotModifiedFor($uri, $this->getEtag($server), $server);
     }
 
     /**
