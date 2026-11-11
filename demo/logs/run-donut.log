@@ -69,14 +69,6 @@ get uri=page://self/html/blog-posting
 │   │   ├── tags[2]: comment01
 │   │   ├── requestedTtl: 31536000
 │   │   └── saved: true
-│   ├── save_etag uri=page://self/html/comment etag=[volatile] tags=[comment01, grp-_html_comment_ +1 items] requestedTtl=31536000 (+1 more) [event]
-│   │   ├── uri: page://self/html/comment
-│   │   ├── etag: [volatile]
-│   │   ├── tags[0]: comment01
-│   │   ├── tags[1]: grp-_html_comment_
-│   │   ├── tags[2]: _html_comment_
-│   │   ├── requestedTtl: 31536000
-│   │   └── saved: true
 │   └── close cache_miss
 │       ├── layer: resource
 │       └── durationMs: [volatile]
@@ -101,16 +93,6 @@ get uri=page://self/html/blog-posting
 │   ├── tags[0]: _html_blog-posting_
 │   ├── tags[1]: grp-_html_blog-posting_
 │   ├── tags[2]: blog-posting-page
-│   ├── tags[3]: _html_comment_
-│   ├── tags[4]: grp-_html_comment_
-│   ├── tags[5]: comment01
-│   └── saved: true
-├── save_etag uri=page://self/html/blog-posting etag=[volatile] tags=[blog-posting-page, _html_blog-posting_ +4 items] saved=true [event]
-│   ├── uri: page://self/html/blog-posting
-│   ├── etag: [volatile]
-│   ├── tags[0]: blog-posting-page
-│   ├── tags[1]: _html_blog-posting_
-│   ├── tags[2]: grp-_html_blog-posting_
 │   ├── tags[3]: _html_comment_
 │   ├── tags[4]: grp-_html_comment_
 │   ├── tags[5]: comment01
@@ -168,14 +150,6 @@ get uri=page://self/html/blog-posting
 │   │   ├── tags[2]: comment01
 │   │   ├── requestedTtl: 31536000
 │   │   └── saved: true
-│   ├── save_etag uri=page://self/html/comment etag=[volatile] tags=[comment01, grp-_html_comment_ +1 items] requestedTtl=31536000 (+1 more) [event]
-│   │   ├── uri: page://self/html/comment
-│   │   ├── etag: [volatile]
-│   │   ├── tags[0]: comment01
-│   │   ├── tags[1]: grp-_html_comment_
-│   │   ├── tags[2]: _html_comment_
-│   │   ├── requestedTtl: 31536000
-│   │   └── saved: true
 │   └── close cache_miss
 │       ├── layer: resource
 │       └── durationMs: [volatile]
@@ -192,16 +166,6 @@ get uri=page://self/html/blog-posting
 │   ├── tags[0]: _html_blog-posting_
 │   ├── tags[1]: grp-_html_blog-posting_
 │   ├── tags[2]: blog-posting-page
-│   ├── tags[3]: _html_comment_
-│   ├── tags[4]: grp-_html_comment_
-│   ├── tags[5]: comment01
-│   └── saved: true
-├── save_etag uri=page://self/html/blog-posting etag=[volatile] tags=[blog-posting-page, _html_blog-posting_ +4 items] saved=true [event]
-│   ├── uri: page://self/html/blog-posting
-│   ├── etag: [volatile]
-│   ├── tags[0]: blog-posting-page
-│   ├── tags[1]: _html_blog-posting_
-│   ├── tags[2]: grp-_html_blog-posting_
 │   ├── tags[3]: _html_comment_
 │   ├── tags[4]: grp-_html_comment_
 │   ├── tags[5]: comment01
@@ -270,14 +234,6 @@ get uri=page://self/html/render-time-dependency
 │   │   ├── tags[2]: mutable-comment
 │   │   ├── requestedTtl: 31536000
 │   │   └── saved: true
-│   ├── save_etag uri=page://self/html/mutable-comment etag=[volatile] tags=[mutable-comment +2 items] requestedTtl=31536000 (+1 more) [event]
-│   │   ├── uri: page://self/html/mutable-comment
-│   │   ├── etag: [volatile]
-│   │   ├── tags[0]: mutable-comment
-│   │   ├── tags[1]: grp-_html_mutable-comment_
-│   │   ├── tags[2]: _html_mutable-comment_
-│   │   ├── requestedTtl: 31536000
-│   │   └── saved: true
 │   └── close cache_miss
 │       ├── layer: resource
 │       └── durationMs: [volatile]
@@ -309,15 +265,6 @@ get uri=page://self/html/render-time-dependency
 │   ├── tags[2]: _html_mutable-comment_
 │   ├── tags[3]: grp-_html_mutable-comment_
 │   ├── tags[4]: mutable-comment
-│   └── saved: true
-├── save_etag uri=page://self/html/render-time-dependency etag=[volatile] tags=[_html_mutable-comment_ +4 items] saved=true [event]
-│   ├── uri: page://self/html/render-time-dependency
-│   ├── etag: [volatile]
-│   ├── tags[0]: _html_mutable-comment_
-│   ├── tags[1]: grp-_html_mutable-comment_
-│   ├── tags[2]: mutable-comment
-│   ├── tags[3]: _html_render-time-dependency_
-│   ├── tags[4]: grp-_html_render-time-dependency_
 │   └── saved: true
 ├── save_donut uri=page://self/html/render-time-dependency tags=[_html_render-time-dependency_ +4 items] saved=true [event]
 │   ├── uri: page://self/html/render-time-dependency
@@ -369,14 +316,6 @@ get uri=page://self/html/render-time-dependency
 │   │   ├── tags[2]: mutable-comment
 │   │   ├── requestedTtl: 31536000
 │   │   └── saved: true
-│   ├── save_etag uri=page://self/html/mutable-comment etag=[volatile] tags=[mutable-comment +2 items] requestedTtl=31536000 (+1 more) [event]
-│   │   ├── uri: page://self/html/mutable-comment
-│   │   ├── etag: [volatile]
-│   │   ├── tags[0]: mutable-comment
-│   │   ├── tags[1]: grp-_html_mutable-comment_
-│   │   ├── tags[2]: _html_mutable-comment_
-│   │   ├── requestedTtl: 31536000
-│   │   └── saved: true
 │   └── close cache_miss
 │       ├── layer: resource
 │       └── durationMs: [volatile]
@@ -408,15 +347,6 @@ get uri=page://self/html/render-time-dependency
 │   ├── tags[2]: _html_mutable-comment_
 │   ├── tags[3]: grp-_html_mutable-comment_
 │   ├── tags[4]: mutable-comment
-│   └── saved: true
-├── save_etag uri=page://self/html/render-time-dependency etag=[volatile] tags=[_html_mutable-comment_ +4 items] saved=true [event]
-│   ├── uri: page://self/html/render-time-dependency
-│   ├── etag: [volatile]
-│   ├── tags[0]: _html_mutable-comment_
-│   ├── tags[1]: grp-_html_mutable-comment_
-│   ├── tags[2]: mutable-comment
-│   ├── tags[3]: _html_render-time-dependency_
-│   ├── tags[4]: grp-_html_render-time-dependency_
 │   └── saved: true
 ├── save_donut uri=page://self/html/render-time-dependency tags=[_html_render-time-dependency_ +4 items] saved=true [event]
 │   ├── uri: page://self/html/render-time-dependency
@@ -527,22 +457,6 @@ get uri=page://self/html/render-time-dependency
                                 "requestedTtl": 31536000,
                                 "saved": true
                             }
-                        },
-                        {
-                            "id": "save_etag_1",
-                            "type": "save_etag",
-                            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
-                            "context": {
-                                "uri": "page://self/html/comment",
-                                "etag": "[volatile]",
-                                "tags": [
-                                    "comment01",
-                                    "grp-_html_comment_",
-                                    "_html_comment_"
-                                ],
-                                "requestedTtl": 31536000,
-                                "saved": true
-                            }
                         }
                     ],
                     "close": {
@@ -607,25 +521,6 @@ get uri=page://self/html/render-time-dependency
                             "_html_blog-posting_",
                             "grp-_html_blog-posting_",
                             "blog-posting-page",
-                            "_html_comment_",
-                            "grp-_html_comment_",
-                            "comment01"
-                        ],
-                        "requestedTtl": null,
-                        "saved": true
-                    }
-                },
-                {
-                    "id": "save_etag_2",
-                    "type": "save_etag",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
-                    "context": {
-                        "uri": "page://self/html/blog-posting",
-                        "etag": "[volatile]",
-                        "tags": [
-                            "blog-posting-page",
-                            "_html_blog-posting_",
-                            "grp-_html_blog-posting_",
                             "_html_comment_",
                             "grp-_html_comment_",
                             "comment01"
@@ -791,22 +686,6 @@ get uri=page://self/html/render-time-dependency
                                 "requestedTtl": 31536000,
                                 "saved": true
                             }
-                        },
-                        {
-                            "id": "save_etag_3",
-                            "type": "save_etag",
-                            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
-                            "context": {
-                                "uri": "page://self/html/comment",
-                                "etag": "[volatile]",
-                                "tags": [
-                                    "comment01",
-                                    "grp-_html_comment_",
-                                    "_html_comment_"
-                                ],
-                                "requestedTtl": 31536000,
-                                "saved": true
-                            }
                         }
                     ],
                     "close": {
@@ -849,25 +728,6 @@ get uri=page://self/html/render-time-dependency
                             "_html_blog-posting_",
                             "grp-_html_blog-posting_",
                             "blog-posting-page",
-                            "_html_comment_",
-                            "grp-_html_comment_",
-                            "comment01"
-                        ],
-                        "requestedTtl": null,
-                        "saved": true
-                    }
-                },
-                {
-                    "id": "save_etag_4",
-                    "type": "save_etag",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
-                    "context": {
-                        "uri": "page://self/html/blog-posting",
-                        "etag": "[volatile]",
-                        "tags": [
-                            "blog-posting-page",
-                            "_html_blog-posting_",
-                            "grp-_html_blog-posting_",
                             "_html_comment_",
                             "grp-_html_comment_",
                             "comment01"
@@ -1071,22 +931,6 @@ get uri=page://self/html/render-time-dependency
                                 "requestedTtl": 31536000,
                                 "saved": true
                             }
-                        },
-                        {
-                            "id": "save_etag_5",
-                            "type": "save_etag",
-                            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
-                            "context": {
-                                "uri": "page://self/html/mutable-comment",
-                                "etag": "[volatile]",
-                                "tags": [
-                                    "mutable-comment",
-                                    "grp-_html_mutable-comment_",
-                                    "_html_mutable-comment_"
-                                ],
-                                "requestedTtl": 31536000,
-                                "saved": true
-                            }
                         }
                     ],
                     "close": {
@@ -1166,24 +1010,6 @@ get uri=page://self/html/render-time-dependency
                             "_html_mutable-comment_",
                             "grp-_html_mutable-comment_",
                             "mutable-comment"
-                        ],
-                        "requestedTtl": null,
-                        "saved": true
-                    }
-                },
-                {
-                    "id": "save_etag_6",
-                    "type": "save_etag",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
-                    "context": {
-                        "uri": "page://self/html/render-time-dependency",
-                        "etag": "[volatile]",
-                        "tags": [
-                            "_html_mutable-comment_",
-                            "grp-_html_mutable-comment_",
-                            "mutable-comment",
-                            "_html_render-time-dependency_",
-                            "grp-_html_render-time-dependency_"
                         ],
                         "requestedTtl": null,
                         "saved": true
@@ -1333,22 +1159,6 @@ get uri=page://self/html/render-time-dependency
                                 "requestedTtl": 31536000,
                                 "saved": true
                             }
-                        },
-                        {
-                            "id": "save_etag_7",
-                            "type": "save_etag",
-                            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
-                            "context": {
-                                "uri": "page://self/html/mutable-comment",
-                                "etag": "[volatile]",
-                                "tags": [
-                                    "mutable-comment",
-                                    "grp-_html_mutable-comment_",
-                                    "_html_mutable-comment_"
-                                ],
-                                "requestedTtl": 31536000,
-                                "saved": true
-                            }
                         }
                     ],
                     "close": {
@@ -1434,24 +1244,6 @@ get uri=page://self/html/render-time-dependency
                     }
                 },
                 {
-                    "id": "save_etag_8",
-                    "type": "save_etag",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
-                    "context": {
-                        "uri": "page://self/html/render-time-dependency",
-                        "etag": "[volatile]",
-                        "tags": [
-                            "_html_mutable-comment_",
-                            "grp-_html_mutable-comment_",
-                            "mutable-comment",
-                            "_html_render-time-dependency_",
-                            "grp-_html_render-time-dependency_"
-                        ],
-                        "requestedTtl": null,
-                        "saved": true
-                    }
-                },
-                {
                     "id": "save_donut_4",
                     "type": "save_donut",
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_donut.json",
@@ -1481,4 +1273,4 @@ get uri=page://self/html/render-time-dependency
         }
     ]
 }
-Schema validation: OK (85 entries)
+Schema validation: OK (77 entries)

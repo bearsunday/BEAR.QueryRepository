@@ -9,11 +9,8 @@ use BEAR\Resource\Uri;
 use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
-use ReflectionProperty;
-use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 
 use function assert;
-use function trim;
 
 /**
  * Whose validator is this?
@@ -99,26 +96,5 @@ class ScopedValidatorTest extends TestCase
             new Uri('app://self/user?foo=bar&id=3'),
             ['HTTP_IF_NONE_MATCH' => (string) $ro->headers[Header::ETAG]],
         ));
-    }
-
-    public function testAPlaceholderEntryFromAnOlderVersionAnswersFalseScoped(): void
-    {
-        // Upgrading writes new entries with the URI tag, but entries from before still carry the
-        // constant 'etag' placeholder. The scoped answer must be false for those - one full
-        // response per client after upgrade, once - while the unscoped answer stays true.
-        $storage = ResourceStorageTest::getResourceStorageInstance();
-        $user = $this->resource->get('app://self/user', ['id' => 5]);
-        $etag = (string) $user->headers[Header::ETAG];
-        $opaqueTag = trim($etag, '"');
-
-        $refl = new ReflectionProperty($storage, 'etagPool');
-        $pool = $refl->getValue($storage);
-        assert($pool instanceof TagAwareAdapterInterface);
-        $item = $pool->getItem($opaqueTag);
-        $item->set('etag'); // pre-PR201 format: constant placeholder, no URI tag
-        $pool->save($item);
-
-        $this->assertTrue($storage->hasEtag($etag));
-        $this->assertFalse($storage->hasEtagFor($etag, new Uri('app://self/user?id=5')));
     }
 }

@@ -15,6 +15,7 @@ use Ray\Di\Injector;
 
 use function assert;
 use function dirname;
+use function explode;
 use function trim;
 
 class DonutQueryInterceptorTest extends TestCase
@@ -66,8 +67,8 @@ class DonutQueryInterceptorTest extends TestCase
         // test surrogate key
         $comment = $this->resource->get('page://self/html/comment');
         assert($comment instanceof Comment && isset($comment->headers[Header::ETAG]));
-        // DevEtagSetter uses the URI tag as ETag; strip the entity-tag DQUOTEs to compare with surrogate keys
-        $commentEtag = trim($comment->headers[Header::ETAG], '"');
+        // DevEtagSetter uses the URI tag as ETag; strip the DQUOTEs and the entry locator to compare with surrogate keys
+        $commentEtag = explode('.', trim($comment->headers[Header::ETAG], '"'), 2)[1];
         $this->assertStringContainsString($commentEtag, $surrogateKey);
     }
 

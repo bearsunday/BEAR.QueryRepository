@@ -83,10 +83,6 @@ class DonutDependencyEvidenceTest extends TestCase
         $saveValue = self::eventContextsJsonOf($tree, 'save_value', self::CACHEABLE);
         $this->assertCount(1, $saveValue);
         $this->assertStringContainsString('"' . self::CACHEABLE_CHILD_URI_TAG . '"', $saveValue[0], "the child's URI tag is on the entry a child purge has to reach");
-
-        $saveEtag = self::eventContextsJsonOf($tree, 'save_etag', self::CACHEABLE);
-        $this->assertCount(1, $saveEtag);
-        $this->assertStringContainsString('"' . self::CACHEABLE_CHILD_URI_TAG . '"', $saveEtag[0], "the child's URI tag is on the validator too");
     }
 
     public function testCacheableParentMissesAfterItsChildIsPurged(): void
@@ -120,11 +116,6 @@ class DonutDependencyEvidenceTest extends TestCase
         $this->bootDonutApp();
         $this->resource->get(self::CACHEABLE_RESPONSE);
         $tree = $this->flushAndValidate($this->logger);
-
-        $saveEtag = self::eventContextsJsonOf($tree, 'save_etag', self::CACHEABLE_RESPONSE);
-        $this->assertCount(1, $saveEtag);
-        $this->assertStringContainsString('"' . self::CHILD_URI_TAG . '"', $saveEtag[0], "the child's URI tag reaches the validator");
-        $this->assertStringContainsString('"' . self::CHILD_SURROGATE_KEY . '"', $saveEtag[0], "the child's declared Surrogate-Key reaches the validator");
 
         $saveDonutView = self::eventContextsJsonOf($tree, 'save_donut_view', self::CACHEABLE_RESPONSE);
         $this->assertCount(1, $saveDonutView);

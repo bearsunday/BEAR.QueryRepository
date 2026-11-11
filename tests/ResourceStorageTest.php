@@ -26,6 +26,7 @@ use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 
 use function assert;
 use function serialize;
+use function trim;
 use function unserialize;
 
 class ResourceStorageTest extends TestCase
@@ -37,7 +38,6 @@ class ResourceStorageTest extends TestCase
         SemanticLoggerInterface|null $logger = null,
         PurgerInterface|null $purger = null,
         TagAwareAdapterInterface|null $roPool = null,
-        TagAwareAdapterInterface|null $etagPool = null,
     ): ResourceStorage {
         $tagAwareAdapter = new TagAwareAdapter(new FilesystemAdapter('', 0, __DIR__ . '/tmp'));
         $provider = static function (TagAwareAdapterInterface $pool): ProviderInterface {
@@ -107,13 +107,13 @@ class ResourceStorageTest extends TestCase
         $this->ro->headers[Header::ETAG] = '"1"';
 
         $this->assertTrue($this->storage->saveValue($this->ro, 60));
-        $this->storage->saveEtag($this->ro->uri, '"1"', 'a  b', 60);
-        $this->assertTrue($this->storage->hasEtag('"1"'));
+        $etag = $this->ro->headers[Header::ETAG];
+        $this->assertTrue($this->storage->hasEtag($etag));
 
         $this->storage->invalidateTags(['b']);
 
         $this->assertNull($this->storage->get($this->ro->uri));
-        $this->assertFalse($this->storage->hasEtag('"1"'));
+        $this->assertFalse($this->storage->hasEtag($etag));
     }
 
     public function testADonutTemplateUnderAnEmptyKeyIsStoredUnderTheRemainingKeys(): void
@@ -197,12 +197,12 @@ class ResourceStorageTest extends TestCase
     {
         $this->ro->headers[Header::ETAG] = '"123456"';
         $this->storage->saveValue($this->ro, 10);
-        $this->storage->saveEtag($this->ro->uri, '"123456"', '', 10);
+        $tag = trim($this->ro->headers[Header::ETAG], '"');
 
-        $this->assertTrue($this->storage->hasEtag('"123456"'), 'quoted entity-tag');
-        $this->assertTrue($this->storage->hasEtag('123456'), 'bare legacy token');
-        $this->assertTrue($this->storage->hasEtag('W/"123456"'), 'weak validator');
-        $this->assertTrue($this->storage->hasEtag('"999999", "123456"'), 'entity-tag list');
+        $this->assertTrue($this->storage->hasEtag('"' . $tag . '"'), 'quoted entity-tag');
+        $this->assertTrue($this->storage->hasEtag($tag), 'bare legacy token');
+        $this->assertTrue($this->storage->hasEtag('W/"' . $tag . '"'), 'weak validator');
+        $this->assertTrue($this->storage->hasEtag('"999999", "' . $tag . '"'), 'entity-tag list');
         $this->assertFalse($this->storage->hasEtag('"999999"'), 'unknown entity-tag');
     }
 
@@ -210,41 +210,30 @@ class ResourceStorageTest extends TestCase
     {
         $this->ro->headers[Header::ETAG] = '"foo,bar"';
         $this->storage->saveValue($this->ro, 10);
-        $this->storage->saveEtag($this->ro->uri, '"foo,bar"', '', 10);
+        $tag = trim($this->ro->headers[Header::ETAG], '"');
 
-        $this->assertTrue($this->storage->hasEtag('"foo,bar"'), 'comma inside a quoted opaque-tag is data');
-        $this->assertTrue($this->storage->hasEtag('W/"foo,bar"'), 'weak validator with comma in opaque-tag');
-        $this->assertTrue($this->storage->hasEtag('"999999", "foo,bar"'), 'list with a comma-bearing entity-tag');
+        $this->assertTrue($this->storage->hasEtag('"' . $tag . '"'), 'comma inside a quoted opaque-tag is data');
+        $this->assertTrue($this->storage->hasEtag('W/"' . $tag . '"'), 'weak validator with comma in opaque-tag');
+        $this->assertTrue($this->storage->hasEtag('"999999", "' . $tag . '"'), 'list with a comma-bearing entity-tag');
         $this->assertFalse($this->storage->hasEtag('"bar"'), 'naive split fragment must not match');
         $this->assertFalse(
-            $this->storage->hasEtag('foo,bar'),
+            $this->storage->hasEtag($tag),
             'unquoted legacy value is indistinguishable from a two-element list (documented limitation)',
         );
     }
 
     public function testHasEtagRejectsMalformedFieldValues(): void
     {
-        $this->storage->saveEtag($this->ro->uri, '"123456"', '', 10);
+        $this->ro->headers[Header::ETAG] = '"123456"';
+        $this->storage->saveValue($this->ro, 10);
+        $tag = trim($this->ro->headers[Header::ETAG], '"');
+        $this->assertTrue($this->storage->hasEtag('"' . $tag . '"'));
 
-        $this->assertFalse($this->storage->hasEtag('"123456'), 'unterminated quoted entity-tag');
-        $this->assertFalse($this->storage->hasEtag('"123456" trailing'), 'trailing data after entity-tag');
-        $this->assertFalse($this->storage->hasEtag('x"123456"'), 'leading data before entity-tag');
-        $this->assertFalse($this->storage->hasEtag('"123456" "123456"'), 'missing comma separator');
-        $this->assertFalse($this->storage->hasEtag("\"123456\"\n"), 'trailing newline');
-    }
-
-    public function testInvalidationReachesASeparateEtagPool(): void
-    {
-        $roPool = new TagAwareAdapter(new ArrayAdapter());
-        $etagPool = new TagAwareAdapter(new ArrayAdapter());
-        $storage = self::getResourceStorageInstance(roPool: $roPool, etagPool: $etagPool);
-        $storage->saveEtag($this->ro->uri, '"123456"', '', 10);
-        $this->assertTrue($etagPool->hasItem('123456'));
-        $this->assertFalse($roPool->hasItem('123456'));
-
-        $storage->deleteEtag($this->ro->uri);
-
-        $this->assertFalse($storage->hasEtag('"123456"'));
+        $this->assertFalse($this->storage->hasEtag('"' . $tag), 'unterminated quoted entity-tag');
+        $this->assertFalse($this->storage->hasEtag('"' . $tag . '" trailing'), 'trailing data after entity-tag');
+        $this->assertFalse($this->storage->hasEtag('x"' . $tag . '"'), 'leading data before entity-tag');
+        $this->assertFalse($this->storage->hasEtag('"' . $tag . '" "' . $tag . '"'), 'missing comma separator');
+        $this->assertFalse($this->storage->hasEtag('"' . $tag . "\"\n"), 'trailing newline');
     }
 
     public function testEtagIsNotRegisteredAsInvalidationTag(): void
@@ -354,11 +343,10 @@ class ResourceStorageTest extends TestCase
         // ("minimum": 0) and which no cache backend can honour anyway.
         $storage->saveValue($this->ro, -10);
         $storage->saveView($this->ro, -10);
-        $storage->saveEtag($this->ro->uri, '"123456"', '', -10);
         $storage->saveDonutView($this->ro, -10);
         $storage->saveDonut($this->ro->uri, $donut, -10, []);
 
-        $this->assertCount(5, $logger->events);
+        $this->assertCount(4, $logger->events);
         foreach ($logger->events as $event) {
             $this->assertSame(0, self::ttlOf($event), 'every store clamps a negative ttl to 0');
         }

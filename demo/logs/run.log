@@ -1,7 +1,7 @@
 *** onGet() method invoked ***
 get
 200
-ETag:"etag-1"
+ETag:"Q7TcM9vmFSALhI_2FIAH_Q.1611202115"
 Last-Modified:(time)
 Cache-Control:max-age=0
 {
@@ -11,7 +11,7 @@ Cache-Control:max-age=0
 
 get
 200
-ETag:"etag-1"
+ETag:"Q7TcM9vmFSALhI_2FIAH_Q.1611202115"
 Last-Modified:(time)
 Cache-Control:max-age=0
 Age:0
@@ -30,7 +30,7 @@ patch
 
 get
 200
-ETag:"etag-2"
+ETag:"Q7TcM9vmFSALhI_2FIAH_Q.2821468644"
 Last-Modified:(time)
 Cache-Control:max-age=0
 Age:0
@@ -41,7 +41,7 @@ Age:0
 
 get
 200
-ETag:"etag-2"
+ETag:"Q7TcM9vmFSALhI_2FIAH_Q.2821468644"
 Last-Modified:(time)
 Cache-Control:max-age=0
 Age:0
@@ -72,13 +72,6 @@ get uri=app://self/user?id=1
 │   ├── uri: app://self/user?id=1
 │   ├── tags[0]: _user_id=1
 │   ├── tags[1]: grp-_user_id=1
-│   ├── requestedTtl: 31536000
-│   └── saved: true
-├── save_etag uri=app://self/user?id=1 etag=[volatile] tags=[grp-_user_id=1, _user_id=1] requestedTtl=31536000 (+1 more) [event]
-│   ├── uri: app://self/user?id=1
-│   ├── etag: [volatile]
-│   ├── tags[0]: grp-_user_id=1
-│   ├── tags[1]: _user_id=1
 │   ├── requestedTtl: 31536000
 │   └── saved: true
 └── close cache_miss
@@ -121,13 +114,6 @@ command method=onPatch source=CommandInterceptor
 │   │   ├── tags[1]: grp-_user_id=1
 │   │   ├── requestedTtl: 31536000
 │   │   └── saved: true
-│   ├── save_etag uri=app://self/user?id=1 etag=[volatile] tags=[grp-_user_id=1, _user_id=1] requestedTtl=31536000 (+1 more) [event]
-│   │   ├── uri: app://self/user?id=1
-│   │   ├── etag: [volatile]
-│   │   ├── tags[0]: grp-_user_id=1
-│   │   ├── tags[1]: _user_id=1
-│   │   ├── requestedTtl: 31536000
-│   │   └── saved: true
 │   └── close cache_miss
 │       ├── layer: resource
 │       └── durationMs: [volatile]
@@ -148,8 +134,8 @@ get uri=app://self/user?id=1
 └── close cache_hit
     ├── layer: resource
     └── durationMs: [volatile]
-conditional_request ifNoneMatch="etag-2"
-├── ifNoneMatch: "etag-2"
+conditional_request ifNoneMatch="Q7TcM9vmFSALhI_2FIAH_Q.2821468644"
+├── ifNoneMatch: "Q7TcM9vmFSALhI_2FIAH_Q.2821468644"
 └── close cache_hit
     ├── layer: etag
     └── durationMs: [volatile]
@@ -214,21 +200,6 @@ conditional_request ifNoneMatch="stale"
                         "tags": [
                             "_user_id=1",
                             "grp-_user_id=1"
-                        ],
-                        "requestedTtl": 31536000,
-                        "saved": true
-                    }
-                },
-                {
-                    "id": "save_etag_1",
-                    "type": "save_etag",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
-                    "context": {
-                        "uri": "app://self/user?id=1",
-                        "etag": "[volatile]",
-                        "tags": [
-                            "grp-_user_id=1",
-                            "_user_id=1"
                         ],
                         "requestedTtl": 31536000,
                         "saved": true
@@ -350,21 +321,6 @@ conditional_request ifNoneMatch="stale"
                                 "requestedTtl": 31536000,
                                 "saved": true
                             }
-                        },
-                        {
-                            "id": "save_etag_2",
-                            "type": "save_etag",
-                            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
-                            "context": {
-                                "uri": "app://self/user?id=1",
-                                "etag": "[volatile]",
-                                "tags": [
-                                    "grp-_user_id=1",
-                                    "_user_id=1"
-                                ],
-                                "requestedTtl": 31536000,
-                                "saved": true
-                            }
                         }
                     ],
                     "close": {
@@ -443,7 +399,7 @@ conditional_request ifNoneMatch="stale"
             "type": "conditional_request",
             "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/conditional_request.json",
             "context": {
-                "ifNoneMatch": "\"etag-2\""
+                "ifNoneMatch": "\"Q7TcM9vmFSALhI_2FIAH_Q.2821468644\""
             },
             "close": {
                 "id": "cache_hit_5",
@@ -474,4 +430,4 @@ conditional_request ifNoneMatch="stale"
         }
     ]
 }
-Schema validation: OK (30 entries)
+Schema validation: OK (28 entries)

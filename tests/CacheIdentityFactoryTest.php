@@ -10,6 +10,12 @@ use BEAR\Resource\Uri;
 use Override;
 use PHPUnit\Framework\TestCase;
 
+use function base64_encode;
+use function hash;
+use function rtrim;
+use function strtr;
+use function substr;
+
 final class CacheIdentityFactoryTest extends TestCase
 {
     public function testExactTagNormalizesStringablesWithoutChangingTheQuery(): void
@@ -75,9 +81,15 @@ final class CacheIdentityFactoryTest extends TestCase
     {
         $context = new FakeServerContext(['X_VARY' => 'device, , missing, lang, device', 'X_LANG' => 'ja', 'X_DEVICE' => 'mobile']);
 
-        $this->assertSame('ro-custom-mobilejamobile', (new CacheIdentityFactory($context))->storageKey('custom-', 'ro-'));
-        $this->assertSame('donut-custom-mobilejamobile', (new CacheIdentityFactory($context))->storageKey('custom-', 'donut-'));
-        $this->assertSame('ro-custom-', (new CacheIdentityFactory(new FakeServerContext([])))->storageKey('custom-', 'ro-'));
-        $this->assertSame('ro-custom-', (new CacheIdentityFactory(new FakeServerContext(['X_VARY' => ''])))->storageKey('custom-', 'ro-'));
+        $this->assertSame('ro-' . self::k('custom-mobilejamobile'), (new CacheIdentityFactory($context))->storageKey('custom-', 'ro-'));
+        $this->assertSame('donut-' . self::k('custom-mobilejamobile'), (new CacheIdentityFactory($context))->storageKey('custom-', 'donut-'));
+        $this->assertSame('ro-' . self::k('custom-'), (new CacheIdentityFactory(new FakeServerContext([])))->storageKey('custom-', 'ro-'));
+        $this->assertSame('ro-' . self::k('custom-'), (new CacheIdentityFactory(new FakeServerContext(['X_VARY' => ''])))->storageKey('custom-', 'ro-'));
+    }
+
+    /** The locator K of an exact tag followed by its vary values */
+    public static function k(string $material): string
+    {
+        return rtrim(strtr(base64_encode(substr(hash('sha256', $material, true), 0, 16)), '+/', '-_'), '=');
     }
 }

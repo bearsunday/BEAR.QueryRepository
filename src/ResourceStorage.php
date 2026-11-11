@@ -69,7 +69,6 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
 
     /** @var ProviderInterface<TagAwareAdapterInterface> */
     private ProviderInterface $roPoolProvider;
-
     private TagAwareAdapterInterface $roPool;
 
     /** @param ProviderInterface<TagAwareAdapterInterface> $roPoolProvider */
@@ -158,8 +157,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
 
             $state = $this->guard(fn () => $this->roPool->getItem(self::KEY_RO . $entryLocator))->get();
             assert($state instanceof ResourceState || $state === null);
-            // A missing entry reads as '', which is never an opaque-tag.
-            if (trim($state?->headers[Header::ETAG] ?? '', '"') === $opaqueTag) {
+            if (EntityTags::of($state?->headers[Header::ETAG] ?? '') === [$opaqueTag]) {
                 return true;
             }
         }

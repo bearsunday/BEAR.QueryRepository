@@ -65,7 +65,7 @@ class SemanticLogSchemaTest extends TestCase
 
         // Lifecycle and dependency facts are present and schema-valid.
         $types = self::collectTypes($tree);
-        foreach (['get', 'cache_miss', 'pre_write_cleanup', 'depends_on', 'invalidate', 'save_value', 'save_etag'] as $type) {
+        foreach (['get', 'cache_miss', 'pre_write_cleanup', 'depends_on', 'invalidate', 'save_value'] as $type) {
             $this->assertContains($type, $types);
         }
     }

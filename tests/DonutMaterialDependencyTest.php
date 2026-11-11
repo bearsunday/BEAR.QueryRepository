@@ -192,9 +192,9 @@ class DonutMaterialDependencyTest extends TestCase
         $this->assertCount(1, $saveDonut);
         $this->assertStringContainsString('"' . $childUriTag . '"', $saveDonut[0], "the child's URI tag reaches the stored template");
 
-        $saveEtag = self::eventContextsJsonOf($tree, 'save_etag', self::PAGE_RESPONSE_WITH_MUTABLE_MATERIAL);
-        $this->assertCount(1, $saveEtag);
-        $this->assertStringContainsString('"' . $childUriTag . '"', $saveEtag[0], "the child's URI tag reaches the response's own validator too");
+        $saveView = self::eventContextsJsonOf($tree, 'save_donut_view', self::PAGE_RESPONSE_WITH_MUTABLE_MATERIAL);
+        $this->assertCount(1, $saveView);
+        $this->assertStringContainsString('"' . $childUriTag . '"', $saveView[0], "the child's URI tag reaches the response's own entry too");
 
         $this->assertNotSame([], self::dependsOnEdgesFrom($tree, self::PAGE_RESPONSE_WITH_MUTABLE_MATERIAL));
     }
@@ -275,10 +275,10 @@ class DonutMaterialDependencyTest extends TestCase
         $edges = self::dependsOnEdgesFrom($tree, self::PAGE_WITH_TAGGED_HEADER_HOLE);
         $this->assertCount(1, $edges, 'the property-default header makes this pure hole look like a material');
 
-        $saveEtag = self::eventContextsJsonOf($tree, 'save_etag', self::TAGGED_HEADER_CHILD);
-        $this->assertCount(1, $saveEtag);
-        $this->assertStringContainsString('"' . self::TAGGED_HEADER_CHILD_SURROGATE_KEY . '"', $saveEtag[0], "the child's own key must survive depends() to reach its own save_etag");
-        $this->assertStringContainsString('"' . self::TAGGED_HEADER_CHILD_URI_TAG . '"', $saveEtag[0]);
+        $saveValue = self::eventContextsJsonOf($tree, 'save_value', self::TAGGED_HEADER_CHILD);
+        $this->assertCount(1, $saveValue);
+        $this->assertStringContainsString('"' . self::TAGGED_HEADER_CHILD_SURROGATE_KEY . '"', $saveValue[0], "the child's own key must survive depends() to reach its own entry");
+        $this->assertStringContainsString('"' . self::TAGGED_HEADER_CHILD_URI_TAG . '"', $saveValue[0]);
 
         $direct = $this->resource->get(self::TAGGED_HEADER_CHILD);
         $this->assertSame(self::TAGGED_HEADER_CHILD_SURROGATE_KEY, $direct->headers[Header::SURROGATE_KEY] ?? null, "the child's own response keeps its own key too");

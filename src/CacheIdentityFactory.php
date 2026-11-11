@@ -9,8 +9,8 @@ use Stringable;
 
 use function array_walk_recursive;
 use function base64_encode;
-use function hash;
 use function explode;
+use function hash;
 use function http_build_query;
 use function ksort;
 use function ltrim;
@@ -19,8 +19,8 @@ use function rtrim;
 use function sprintf;
 use function str_replace;
 use function strtolower;
-use function strtr;
 use function strtoupper;
+use function strtr;
 use function substr;
 use function trim;
 

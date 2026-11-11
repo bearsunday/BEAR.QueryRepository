@@ -56,13 +56,6 @@ get uri=page://self/dep/level-one
 │   │   │   ├── tags[1]: grp-_dep_level-three_
 │   │   │   ├── requestedTtl: 31536000
 │   │   │   └── saved: true
-│   │   ├── save_etag uri=page://self/dep/level-three etag=[volatile] tags=[grp-_dep_level-three_, _dep_level-three_] requestedTtl=31536000 (+1 more) [event]
-│   │   │   ├── uri: page://self/dep/level-three
-│   │   │   ├── etag: [volatile]
-│   │   │   ├── tags[0]: grp-_dep_level-three_
-│   │   │   ├── tags[1]: _dep_level-three_
-│   │   │   ├── requestedTtl: 31536000
-│   │   │   └── saved: true
 │   │   └── close cache_miss
 │   │       ├── layer: resource
 │   │       └── durationMs: [volatile]
@@ -89,15 +82,6 @@ get uri=page://self/dep/level-one
 │   │   ├── tags[1]: grp-_dep_level-two_
 │   │   ├── tags[2]: _dep_level-three_
 │   │   ├── tags[3]: grp-_dep_level-three_
-│   │   ├── requestedTtl: 31536000
-│   │   └── saved: true
-│   ├── save_etag uri=page://self/dep/level-two etag=[volatile] tags=[_dep_level-three_, grp-_dep_level-three_ +2 items] requestedTtl=31536000 (+1 more) [event]
-│   │   ├── uri: page://self/dep/level-two
-│   │   ├── etag: [volatile]
-│   │   ├── tags[0]: _dep_level-three_
-│   │   ├── tags[1]: grp-_dep_level-three_
-│   │   ├── tags[2]: grp-_dep_level-two_
-│   │   ├── tags[3]: _dep_level-two_
 │   │   ├── requestedTtl: 31536000
 │   │   └── saved: true
 │   └── close cache_miss
@@ -130,17 +114,6 @@ get uri=page://self/dep/level-one
 │   ├── tags[3]: grp-_dep_level-two_
 │   ├── tags[4]: _dep_level-three_
 │   ├── tags[5]: grp-_dep_level-three_
-│   ├── requestedTtl: 31536000
-│   └── saved: true
-├── save_etag uri=page://self/dep/level-one etag=[volatile] tags=[_dep_level-two_, grp-_dep_level-two_ +4 items] requestedTtl=31536000 (+1 more) [event]
-│   ├── uri: page://self/dep/level-one
-│   ├── etag: [volatile]
-│   ├── tags[0]: _dep_level-two_
-│   ├── tags[1]: grp-_dep_level-two_
-│   ├── tags[2]: _dep_level-three_
-│   ├── tags[3]: grp-_dep_level-three_
-│   ├── tags[4]: grp-_dep_level-one_
-│   ├── tags[5]: _dep_level-one_
 │   ├── requestedTtl: 31536000
 │   └── saved: true
 └── close cache_miss
@@ -183,13 +156,6 @@ command method=onPut source=CommandInterceptor
 │   │   ├── tags[1]: grp-_dep_level-three_
 │   │   ├── requestedTtl: 31536000
 │   │   └── saved: true
-│   ├── save_etag uri=page://self/dep/level-three etag=[volatile] tags=[grp-_dep_level-three_, _dep_level-three_] requestedTtl=31536000 (+1 more) [event]
-│   │   ├── uri: page://self/dep/level-three
-│   │   ├── etag: [volatile]
-│   │   ├── tags[0]: grp-_dep_level-three_
-│   │   ├── tags[1]: _dep_level-three_
-│   │   ├── requestedTtl: 31536000
-│   │   └── saved: true
 │   └── close cache_miss
 │       ├── layer: resource
 │       └── durationMs: [volatile]
@@ -229,15 +195,6 @@ get uri=page://self/dep/level-one
 │   │   ├── tags[3]: grp-_dep_level-three_
 │   │   ├── requestedTtl: 31536000
 │   │   └── saved: true
-│   ├── save_etag uri=page://self/dep/level-two etag=[volatile] tags=[_dep_level-three_, grp-_dep_level-three_ +2 items] requestedTtl=31536000 (+1 more) [event]
-│   │   ├── uri: page://self/dep/level-two
-│   │   ├── etag: [volatile]
-│   │   ├── tags[0]: _dep_level-three_
-│   │   ├── tags[1]: grp-_dep_level-three_
-│   │   ├── tags[2]: grp-_dep_level-two_
-│   │   ├── tags[3]: _dep_level-two_
-│   │   ├── requestedTtl: 31536000
-│   │   └── saved: true
 │   └── close cache_miss
 │       ├── layer: resource
 │       └── durationMs: [volatile]
@@ -270,17 +227,6 @@ get uri=page://self/dep/level-one
 │   ├── tags[5]: grp-_dep_level-three_
 │   ├── requestedTtl: 31536000
 │   └── saved: true
-├── save_etag uri=page://self/dep/level-one etag=[volatile] tags=[_dep_level-two_, grp-_dep_level-two_ +4 items] requestedTtl=31536000 (+1 more) [event]
-│   ├── uri: page://self/dep/level-one
-│   ├── etag: [volatile]
-│   ├── tags[0]: _dep_level-two_
-│   ├── tags[1]: grp-_dep_level-two_
-│   ├── tags[2]: _dep_level-three_
-│   ├── tags[3]: grp-_dep_level-three_
-│   ├── tags[4]: grp-_dep_level-one_
-│   ├── tags[5]: _dep_level-one_
-│   ├── requestedTtl: 31536000
-│   └── saved: true
 └── close cache_miss
     ├── layer: resource
     └── durationMs: [volatile]
@@ -304,13 +250,6 @@ get uri=page://self/dep/parent-a
 │   │   ├── uri: page://self/dep/child-c
 │   │   ├── tags[0]: _dep_child-c_
 │   │   ├── tags[1]: grp-_dep_child-c_
-│   │   ├── requestedTtl: 31536000
-│   │   └── saved: true
-│   ├── save_etag uri=page://self/dep/child-c etag=[volatile] tags=[grp-_dep_child-c_, _dep_child-c_] requestedTtl=31536000 (+1 more) [event]
-│   │   ├── uri: page://self/dep/child-c
-│   │   ├── etag: [volatile]
-│   │   ├── tags[0]: grp-_dep_child-c_
-│   │   ├── tags[1]: _dep_child-c_
 │   │   ├── requestedTtl: 31536000
 │   │   └── saved: true
 │   └── close cache_miss
@@ -339,15 +278,6 @@ get uri=page://self/dep/parent-a
 │   ├── tags[1]: grp-_dep_parent-a_
 │   ├── tags[2]: _dep_child-c_
 │   ├── tags[3]: grp-_dep_child-c_
-│   ├── requestedTtl: 31536000
-│   └── saved: true
-├── save_etag uri=page://self/dep/parent-a etag=[volatile] tags=[_dep_child-c_, grp-_dep_child-c_ +2 items] requestedTtl=31536000 (+1 more) [event]
-│   ├── uri: page://self/dep/parent-a
-│   ├── etag: [volatile]
-│   ├── tags[0]: _dep_child-c_
-│   ├── tags[1]: grp-_dep_child-c_
-│   ├── tags[2]: grp-_dep_parent-a_
-│   ├── tags[3]: _dep_parent-a_
 │   ├── requestedTtl: 31536000
 │   └── saved: true
 └── close cache_miss
@@ -383,15 +313,6 @@ get uri=page://self/dep/parent-b
 │   ├── tags[1]: grp-_dep_parent-b_
 │   ├── tags[2]: _dep_child-c_
 │   ├── tags[3]: grp-_dep_child-c_
-│   ├── requestedTtl: 31536000
-│   └── saved: true
-├── save_etag uri=page://self/dep/parent-b etag=[volatile] tags=[_dep_child-c_, grp-_dep_child-c_ +2 items] requestedTtl=31536000 (+1 more) [event]
-│   ├── uri: page://self/dep/parent-b
-│   ├── etag: [volatile]
-│   ├── tags[0]: _dep_child-c_
-│   ├── tags[1]: grp-_dep_child-c_
-│   ├── tags[2]: grp-_dep_parent-b_
-│   ├── tags[3]: _dep_parent-b_
 │   ├── requestedTtl: 31536000
 │   └── saved: true
 └── close cache_miss
@@ -430,13 +351,6 @@ get uri=page://self/dep/parent-a
 │   │   ├── tags[1]: grp-_dep_child-c_
 │   │   ├── requestedTtl: 31536000
 │   │   └── saved: true
-│   ├── save_etag uri=page://self/dep/child-c etag=[volatile] tags=[grp-_dep_child-c_, _dep_child-c_] requestedTtl=31536000 (+1 more) [event]
-│   │   ├── uri: page://self/dep/child-c
-│   │   ├── etag: [volatile]
-│   │   ├── tags[0]: grp-_dep_child-c_
-│   │   ├── tags[1]: _dep_child-c_
-│   │   ├── requestedTtl: 31536000
-│   │   └── saved: true
 │   └── close cache_miss
 │       ├── layer: resource
 │       └── durationMs: [volatile]
@@ -463,15 +377,6 @@ get uri=page://self/dep/parent-a
 │   ├── tags[1]: grp-_dep_parent-a_
 │   ├── tags[2]: _dep_child-c_
 │   ├── tags[3]: grp-_dep_child-c_
-│   ├── requestedTtl: 31536000
-│   └── saved: true
-├── save_etag uri=page://self/dep/parent-a etag=[volatile] tags=[_dep_child-c_, grp-_dep_child-c_ +2 items] requestedTtl=31536000 (+1 more) [event]
-│   ├── uri: page://self/dep/parent-a
-│   ├── etag: [volatile]
-│   ├── tags[0]: _dep_child-c_
-│   ├── tags[1]: grp-_dep_child-c_
-│   ├── tags[2]: grp-_dep_parent-a_
-│   ├── tags[3]: _dep_parent-a_
 │   ├── requestedTtl: 31536000
 │   └── saved: true
 └── close cache_miss
@@ -507,15 +412,6 @@ get uri=page://self/dep/parent-b
 │   ├── tags[1]: grp-_dep_parent-b_
 │   ├── tags[2]: _dep_child-c_
 │   ├── tags[3]: grp-_dep_child-c_
-│   ├── requestedTtl: 31536000
-│   └── saved: true
-├── save_etag uri=page://self/dep/parent-b etag=[volatile] tags=[_dep_child-c_, grp-_dep_child-c_ +2 items] requestedTtl=31536000 (+1 more) [event]
-│   ├── uri: page://self/dep/parent-b
-│   ├── etag: [volatile]
-│   ├── tags[0]: _dep_child-c_
-│   ├── tags[1]: grp-_dep_child-c_
-│   ├── tags[2]: grp-_dep_parent-b_
-│   ├── tags[3]: _dep_parent-b_
 │   ├── requestedTtl: 31536000
 │   └── saved: true
 └── close cache_miss
@@ -597,21 +493,6 @@ get uri=page://self/dep/parent-b
                                         "requestedTtl": 31536000,
                                         "saved": true
                                     }
-                                },
-                                {
-                                    "id": "save_etag_1",
-                                    "type": "save_etag",
-                                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
-                                    "context": {
-                                        "uri": "page://self/dep/level-three",
-                                        "etag": "[volatile]",
-                                        "tags": [
-                                            "grp-_dep_level-three_",
-                                            "_dep_level-three_"
-                                        ],
-                                        "requestedTtl": 31536000,
-                                        "saved": true
-                                    }
                                 }
                             ],
                             "close": {
@@ -682,23 +563,6 @@ get uri=page://self/dep/parent-b
                                     "grp-_dep_level-two_",
                                     "_dep_level-three_",
                                     "grp-_dep_level-three_"
-                                ],
-                                "requestedTtl": 31536000,
-                                "saved": true
-                            }
-                        },
-                        {
-                            "id": "save_etag_2",
-                            "type": "save_etag",
-                            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
-                            "context": {
-                                "uri": "page://self/dep/level-two",
-                                "etag": "[volatile]",
-                                "tags": [
-                                    "_dep_level-three_",
-                                    "grp-_dep_level-three_",
-                                    "grp-_dep_level-two_",
-                                    "_dep_level-two_"
                                 ],
                                 "requestedTtl": 31536000,
                                 "saved": true
@@ -777,25 +641,6 @@ get uri=page://self/dep/parent-b
                             "grp-_dep_level-two_",
                             "_dep_level-three_",
                             "grp-_dep_level-three_"
-                        ],
-                        "requestedTtl": 31536000,
-                        "saved": true
-                    }
-                },
-                {
-                    "id": "save_etag_3",
-                    "type": "save_etag",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
-                    "context": {
-                        "uri": "page://self/dep/level-one",
-                        "etag": "[volatile]",
-                        "tags": [
-                            "_dep_level-two_",
-                            "grp-_dep_level-two_",
-                            "_dep_level-three_",
-                            "grp-_dep_level-three_",
-                            "grp-_dep_level-one_",
-                            "_dep_level-one_"
                         ],
                         "requestedTtl": 31536000,
                         "saved": true
@@ -917,21 +762,6 @@ get uri=page://self/dep/parent-b
                                 "requestedTtl": 31536000,
                                 "saved": true
                             }
-                        },
-                        {
-                            "id": "save_etag_4",
-                            "type": "save_etag",
-                            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
-                            "context": {
-                                "uri": "page://self/dep/level-three",
-                                "etag": "[volatile]",
-                                "tags": [
-                                    "grp-_dep_level-three_",
-                                    "_dep_level-three_"
-                                ],
-                                "requestedTtl": 31536000,
-                                "saved": true
-                            }
                         }
                     ],
                     "close": {
@@ -1049,23 +879,6 @@ get uri=page://self/dep/parent-b
                                 "requestedTtl": 31536000,
                                 "saved": true
                             }
-                        },
-                        {
-                            "id": "save_etag_5",
-                            "type": "save_etag",
-                            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
-                            "context": {
-                                "uri": "page://self/dep/level-two",
-                                "etag": "[volatile]",
-                                "tags": [
-                                    "_dep_level-three_",
-                                    "grp-_dep_level-three_",
-                                    "grp-_dep_level-two_",
-                                    "_dep_level-two_"
-                                ],
-                                "requestedTtl": 31536000,
-                                "saved": true
-                            }
                         }
                     ],
                     "close": {
@@ -1140,25 +953,6 @@ get uri=page://self/dep/parent-b
                             "grp-_dep_level-two_",
                             "_dep_level-three_",
                             "grp-_dep_level-three_"
-                        ],
-                        "requestedTtl": 31536000,
-                        "saved": true
-                    }
-                },
-                {
-                    "id": "save_etag_6",
-                    "type": "save_etag",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
-                    "context": {
-                        "uri": "page://self/dep/level-one",
-                        "etag": "[volatile]",
-                        "tags": [
-                            "_dep_level-two_",
-                            "grp-_dep_level-two_",
-                            "_dep_level-three_",
-                            "grp-_dep_level-three_",
-                            "grp-_dep_level-one_",
-                            "_dep_level-one_"
                         ],
                         "requestedTtl": 31536000,
                         "saved": true
@@ -1238,21 +1032,6 @@ get uri=page://self/dep/parent-b
                                 "requestedTtl": 31536000,
                                 "saved": true
                             }
-                        },
-                        {
-                            "id": "save_etag_7",
-                            "type": "save_etag",
-                            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
-                            "context": {
-                                "uri": "page://self/dep/child-c",
-                                "etag": "[volatile]",
-                                "tags": [
-                                    "grp-_dep_child-c_",
-                                    "_dep_child-c_"
-                                ],
-                                "requestedTtl": 31536000,
-                                "saved": true
-                            }
                         }
                     ],
                     "close": {
@@ -1323,23 +1102,6 @@ get uri=page://self/dep/parent-b
                             "grp-_dep_parent-a_",
                             "_dep_child-c_",
                             "grp-_dep_child-c_"
-                        ],
-                        "requestedTtl": 31536000,
-                        "saved": true
-                    }
-                },
-                {
-                    "id": "save_etag_8",
-                    "type": "save_etag",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
-                    "context": {
-                        "uri": "page://self/dep/parent-a",
-                        "etag": "[volatile]",
-                        "tags": [
-                            "_dep_child-c_",
-                            "grp-_dep_child-c_",
-                            "grp-_dep_parent-a_",
-                            "_dep_parent-a_"
                         ],
                         "requestedTtl": 31536000,
                         "saved": true
@@ -1439,23 +1201,6 @@ get uri=page://self/dep/parent-b
                             "grp-_dep_parent-b_",
                             "_dep_child-c_",
                             "grp-_dep_child-c_"
-                        ],
-                        "requestedTtl": 31536000,
-                        "saved": true
-                    }
-                },
-                {
-                    "id": "save_etag_9",
-                    "type": "save_etag",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
-                    "context": {
-                        "uri": "page://self/dep/parent-b",
-                        "etag": "[volatile]",
-                        "tags": [
-                            "_dep_child-c_",
-                            "grp-_dep_child-c_",
-                            "grp-_dep_parent-b_",
-                            "_dep_parent-b_"
                         ],
                         "requestedTtl": 31536000,
                         "saved": true
@@ -1568,21 +1313,6 @@ get uri=page://self/dep/parent-b
                                 "requestedTtl": 31536000,
                                 "saved": true
                             }
-                        },
-                        {
-                            "id": "save_etag_10",
-                            "type": "save_etag",
-                            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
-                            "context": {
-                                "uri": "page://self/dep/child-c",
-                                "etag": "[volatile]",
-                                "tags": [
-                                    "grp-_dep_child-c_",
-                                    "_dep_child-c_"
-                                ],
-                                "requestedTtl": 31536000,
-                                "saved": true
-                            }
                         }
                     ],
                     "close": {
@@ -1653,23 +1383,6 @@ get uri=page://self/dep/parent-b
                             "grp-_dep_parent-a_",
                             "_dep_child-c_",
                             "grp-_dep_child-c_"
-                        ],
-                        "requestedTtl": 31536000,
-                        "saved": true
-                    }
-                },
-                {
-                    "id": "save_etag_11",
-                    "type": "save_etag",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
-                    "context": {
-                        "uri": "page://self/dep/parent-a",
-                        "etag": "[volatile]",
-                        "tags": [
-                            "_dep_child-c_",
-                            "grp-_dep_child-c_",
-                            "grp-_dep_parent-a_",
-                            "_dep_parent-a_"
                         ],
                         "requestedTtl": 31536000,
                         "saved": true
@@ -1773,23 +1486,6 @@ get uri=page://self/dep/parent-b
                         "requestedTtl": 31536000,
                         "saved": true
                     }
-                },
-                {
-                    "id": "save_etag_12",
-                    "type": "save_etag",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
-                    "context": {
-                        "uri": "page://self/dep/parent-b",
-                        "etag": "[volatile]",
-                        "tags": [
-                            "_dep_child-c_",
-                            "grp-_dep_child-c_",
-                            "grp-_dep_parent-b_",
-                            "_dep_parent-b_"
-                        ],
-                        "requestedTtl": 31536000,
-                        "saved": true
-                    }
                 }
             ],
             "close": {
@@ -1804,4 +1500,4 @@ get uri=page://self/dep/parent-b
         }
     ]
 }
-Schema validation: OK (107 entries)
+Schema validation: OK (95 entries)

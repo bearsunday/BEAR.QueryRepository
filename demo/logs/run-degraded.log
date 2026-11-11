@@ -53,7 +53,6 @@ get uri=page://self/html/blog-posting-donut
 │   ├── pre_write_cleanup uri=page://self/html/comment [event]
 │   ├── invalidate tags=[_html_comment_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 │   ├── save_value uri=page://self/html/comment tags=[_html_comment_, grp-_html_comment_ +1 items] requestedTtl=31536000 saved=true [event]
-│   ├── save_etag uri=page://self/html/comment etag=[volatile] tags=[comment01, grp-_html_comment_ +1 items] requestedTtl=31536000 (+1 more) [event]
 │   └── cache_miss layer=resource durationMs=[volatile]
 ├── cdn_headers uri=page://self/html/blog-posting-donut surrogateKeys=[_html_blog-posting-donut_ +4 items] [event]
 ├── pre_write_cleanup uri=page://self/html/blog-posting-donut [event]
@@ -71,7 +70,6 @@ get uri=page://self/html/blog-posting-donut
 │   ├── pre_write_cleanup uri=page://self/html/comment [event]
 │   ├── invalidate tags=[_html_comment_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 │   ├── save_value uri=page://self/html/comment tags=[_html_comment_, grp-_html_comment_ +1 items] requestedTtl=31536000 saved=true [event]
-│   ├── save_etag uri=page://self/html/comment etag=[volatile] tags=[comment01, grp-_html_comment_ +1 items] requestedTtl=31536000 (+1 more) [event]
 │   └── cache_miss layer=resource durationMs=[volatile]
 ├── cdn_headers uri=page://self/html/blog-posting-donut surrogateKeys=[_html_blog-posting-donut_ +4 items] [event]
 ├── put_skipped uri=page://self/html/blog-posting-donut reason=not-cacheable [event]
@@ -83,14 +81,12 @@ get uri=app://self/view
 ├── pre_write_cleanup uri=app://self/view [event]
 ├── invalidate tags=[_view_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 ├── save_view uri=app://self/view tags=[_view_, grp-_view_] requestedTtl=31536000 saved=true [event]
-├── save_etag uri=app://self/view etag=[volatile] tags=[grp-_view_, _view_] requestedTtl=31536000 (+1 more) [event]
 └── cache_miss layer=resource durationMs=[volatile]
 manual_store uri=app://self/view
 ├── cache_policy uri=app://self/view expiry=never resolvedTtl=31536000 [event]
 ├── pre_write_cleanup uri=app://self/view [event]
 ├── invalidate tags=[_view_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 ├── save_view uri=app://self/view tags=[_view_, grp-_view_] requestedTtl=31536000 saved=true [event]
-├── save_etag uri=app://self/view etag=[volatile] tags=[grp-_view_, _view_] requestedTtl=31536000 (+1 more) [event]
 └── manual_store_result result=stored
 manual_invalidate tags=[_demo_manual_tag_, _demo_second_tag_]
 ├── invalidate tags=[_demo_manual_tag_, _demo_second_tag_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
@@ -278,22 +274,6 @@ manual_invalidate tags=[_demo_manual_tag_, _demo_second_tag_]
                                     "_html_comment_",
                                     "grp-_html_comment_",
                                     "comment01"
-                                ],
-                                "requestedTtl": 31536000,
-                                "saved": true
-                            }
-                        },
-                        {
-                            "id": "save_etag_1",
-                            "type": "save_etag",
-                            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
-                            "context": {
-                                "uri": "page://self/html/comment",
-                                "etag": "[volatile]",
-                                "tags": [
-                                    "comment01",
-                                    "grp-_html_comment_",
-                                    "_html_comment_"
                                 ],
                                 "requestedTtl": 31536000,
                                 "saved": true
@@ -489,22 +469,6 @@ manual_invalidate tags=[_demo_manual_tag_, _demo_second_tag_]
                                 "requestedTtl": 31536000,
                                 "saved": true
                             }
-                        },
-                        {
-                            "id": "save_etag_2",
-                            "type": "save_etag",
-                            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
-                            "context": {
-                                "uri": "page://self/html/comment",
-                                "etag": "[volatile]",
-                                "tags": [
-                                    "comment01",
-                                    "grp-_html_comment_",
-                                    "_html_comment_"
-                                ],
-                                "requestedTtl": 31536000,
-                                "saved": true
-                            }
                         }
                     ],
                     "close": {
@@ -629,21 +593,6 @@ manual_invalidate tags=[_demo_manual_tag_, _demo_second_tag_]
                         "requestedTtl": 31536000,
                         "saved": true
                     }
-                },
-                {
-                    "id": "save_etag_3",
-                    "type": "save_etag",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
-                    "context": {
-                        "uri": "app://self/view",
-                        "etag": "[volatile]",
-                        "tags": [
-                            "grp-_view_",
-                            "_view_"
-                        ],
-                        "requestedTtl": 31536000,
-                        "saved": true
-                    }
                 }
             ],
             "close": {
@@ -711,21 +660,6 @@ manual_invalidate tags=[_demo_manual_tag_, _demo_second_tag_]
                         "requestedTtl": 31536000,
                         "saved": true
                     }
-                },
-                {
-                    "id": "save_etag_4",
-                    "type": "save_etag",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
-                    "context": {
-                        "uri": "app://self/view",
-                        "etag": "[volatile]",
-                        "tags": [
-                            "grp-_view_",
-                            "_view_"
-                        ],
-                        "requestedTtl": 31536000,
-                        "saved": true
-                    }
                 }
             ],
             "close": {
@@ -775,7 +709,7 @@ manual_invalidate tags=[_demo_manual_tag_, _demo_second_tag_]
         }
     ]
 }
-Schema validation: OK (60 entries)
+Schema validation: OK (56 entries)
    (warning) RuntimeException: cache server down
 B  GET app://self/value -> 200 served live; the outage is logged, not swallowed
 
@@ -829,7 +763,6 @@ get uri=app://self/value
 ├── pre_write_cleanup uri=app://self/value [event]
 ├── invalidate tags=[_value_] roPool=invalidated etagPool=invalidated cdn=purged (+1 more) [event]
 ├── save_value uri=app://self/value tags=[_value_, grp-_value_] requestedTtl=31536000 saved=true [event]
-├── save_etag uri=app://self/value etag=[volatile] tags=[grp-_value_, _value_] requestedTtl=31536000 (+1 more) [event]
 └── cache_miss layer=resource durationMs=[volatile]
 manual_purge uri=app://self/value
 ├── invalidate tags=[_value_, grp-_value_] roPool=invalidated etagPool=invalidated cdn=purged (+1 more) [event]
@@ -894,21 +827,6 @@ manual_purge uri=app://self/value
                         "requestedTtl": 31536000,
                         "saved": true
                     }
-                },
-                {
-                    "id": "save_etag_1",
-                    "type": "save_etag",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
-                    "context": {
-                        "uri": "app://self/value",
-                        "etag": "[volatile]",
-                        "tags": [
-                            "grp-_value_",
-                            "_value_"
-                        ],
-                        "requestedTtl": 31536000,
-                        "saved": true
-                    }
                 }
             ],
             "close": {
@@ -956,7 +874,7 @@ manual_purge uri=app://self/value
         }
     ]
 }
-Schema validation: OK (10 entries)
+Schema validation: OK (9 entries)
    (warning) BEAR\QueryRepository\FakeCdnPurgeFailed: purge failed: _value_
 C2 purge propagated the CDN failure: purge failed: _value_ grp-_value_
 
@@ -1087,13 +1005,11 @@ get uri=page://self/html/blog-posting
 │   ├── pre_write_cleanup uri=page://self/html/comment [event]
 │   ├── invalidate tags=[_html_comment_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 │   ├── save_value uri=page://self/html/comment tags=[_html_comment_, grp-_html_comment_ +1 items] requestedTtl=31536000 saved=true [event]
-│   ├── save_etag uri=page://self/html/comment etag=[volatile] tags=[comment01, grp-_html_comment_ +1 items] requestedTtl=31536000 (+1 more) [event]
 │   └── cache_miss layer=resource durationMs=[volatile]
 ├── cdn_headers uri=page://self/html/blog-posting surrogateKeys=[blog-posting-page, _html_blog-posting_ +4 items] [event]
 ├── pre_write_cleanup uri=page://self/html/blog-posting [event]
 ├── invalidate tags=[_html_blog-posting_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 ├── save_donut_view uri=page://self/html/blog-posting tags=[_html_blog-posting_ +5 items] saved=true [event]
-├── save_etag uri=page://self/html/blog-posting etag=[volatile] tags=[blog-posting-page, _html_blog-posting_ +4 items] saved=true [event]
 ├── save_donut uri=page://self/html/blog-posting tags=[_html_blog-posting_ +2 items] saved=true [event]
 └── cache_miss layer=donut-view durationMs=[volatile]
 
@@ -1194,22 +1110,6 @@ get uri=page://self/html/blog-posting
                                 "requestedTtl": 31536000,
                                 "saved": true
                             }
-                        },
-                        {
-                            "id": "save_etag_1",
-                            "type": "save_etag",
-                            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
-                            "context": {
-                                "uri": "page://self/html/comment",
-                                "etag": "[volatile]",
-                                "tags": [
-                                    "comment01",
-                                    "grp-_html_comment_",
-                                    "_html_comment_"
-                                ],
-                                "requestedTtl": 31536000,
-                                "saved": true
-                            }
                         }
                     ],
                     "close": {
@@ -1283,25 +1183,6 @@ get uri=page://self/html/blog-posting
                     }
                 },
                 {
-                    "id": "save_etag_2",
-                    "type": "save_etag",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
-                    "context": {
-                        "uri": "page://self/html/blog-posting",
-                        "etag": "[volatile]",
-                        "tags": [
-                            "blog-posting-page",
-                            "_html_blog-posting_",
-                            "grp-_html_blog-posting_",
-                            "_html_comment_",
-                            "grp-_html_comment_",
-                            "comment01"
-                        ],
-                        "requestedTtl": null,
-                        "saved": true
-                    }
-                },
-                {
                     "id": "save_donut_1",
                     "type": "save_donut",
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_donut.json",
@@ -1329,7 +1210,7 @@ get uri=page://self/html/blog-posting
         }
     ]
 }
-Schema validation: OK (18 entries)
+Schema validation: OK (16 entries)
 D  GET a value-type and a view-type resource -> save_value / save_view saved=false
 D  direct put() against the same pool -> manual_store_result: failed
 
@@ -1568,7 +1449,6 @@ get uri=app://self/value
 ├── pre_write_cleanup uri=app://self/value [event]
 ├── invalidate tags=[_value_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 ├── save_value uri=app://self/value tags=[_value_, grp-_value_] requestedTtl=31536000 saved=true [event]
-├── save_etag uri=app://self/value etag=[volatile] tags=[grp-_value_, _value_] requestedTtl=31536000 (+1 more) [event]
 └── cache_miss layer=resource durationMs=[volatile]
 
 === Cache Log JSON — D2. ETag pool refuses writes ===
@@ -1630,21 +1510,6 @@ get uri=app://self/value
                         "requestedTtl": 31536000,
                         "saved": true
                     }
-                },
-                {
-                    "id": "save_etag_1",
-                    "type": "save_etag",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
-                    "context": {
-                        "uri": "app://self/value",
-                        "etag": "[volatile]",
-                        "tags": [
-                            "grp-_value_",
-                            "_value_"
-                        ],
-                        "requestedTtl": 31536000,
-                        "saved": false
-                    }
                 }
             ],
             "close": {
@@ -1659,7 +1524,7 @@ get uri=app://self/value
         }
     ]
 }
-Schema validation: OK (7 entries)
+Schema validation: OK (6 entries)
 E  GET donut page -> save_donut / save_donut_view saved=false
 
 === Cache Log Tree — E. donut writes refused ===
@@ -1882,7 +1747,7 @@ F  invalidateTags() on pools that refuse it -> roPool=failed etagPool=failed
 
 === Cache Log Tree — F. invalidation refused ===
 manual_invalidate tags=[_demo_stuck_tag_]
-├── invalidate tags=[_demo_stuck_tag_] roPool=failed etagPool=failed cdn=skipped (+1 more) [event]
+├── invalidate tags=[_demo_stuck_tag_] roPool=failed etagPool=invalidated cdn=skipped (+1 more) [event]
 └── manual_invalidate_result result=failed
 
 === Cache Log JSON — F. invalidation refused ===
@@ -1908,7 +1773,7 @@ manual_invalidate tags=[_demo_stuck_tag_]
                             "_demo_stuck_tag_"
                         ],
                         "roPool": "failed",
-                        "etagPool": "failed",
+                        "etagPool": "invalidated",
                         "cdn": "skipped",
                         "durationMs": 0
                     }
@@ -1938,13 +1803,11 @@ get uri=page://self/html/blog-posting?id=0
 │   ├── pre_write_cleanup uri=page://self/html/comment [event]
 │   ├── invalidate tags=[_html_comment_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 │   ├── save_value uri=page://self/html/comment tags=[_html_comment_, grp-_html_comment_ +1 items] requestedTtl=31536000 saved=true [event]
-│   ├── save_etag uri=page://self/html/comment etag=[volatile] tags=[comment01, grp-_html_comment_ +1 items] requestedTtl=31536000 (+1 more) [event]
 │   └── cache_miss layer=resource durationMs=[volatile]
 ├── cdn_headers uri=page://self/html/blog-posting?id=0 surrogateKeys=[blog-posting-page +5 items] [event]
 ├── pre_write_cleanup uri=page://self/html/blog-posting?id=0 [event]
 ├── invalidate tags=[_html_blog-posting_id=0] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 ├── save_donut_view uri=page://self/html/blog-posting?id=0 tags=[_html_blog-posting_id=0 +5 items] saved=true [event]
-├── save_etag uri=page://self/html/blog-posting?id=0 etag=[volatile] tags=[blog-posting-page +5 items] saved=true [event]
 ├── save_donut uri=page://self/html/blog-posting?id=0 tags=[_html_blog-posting_id=0 +2 items] saved=true [event]
 └── cache_miss layer=donut-view durationMs=[volatile]
 command method=onDelete source=DonutCommandInterceptor
@@ -1960,7 +1823,6 @@ command method=onDelete source=DonutCommandInterceptor
 │   ├── pre_write_cleanup uri=page://self/html/blog-posting?id=0 [event]
 │   ├── invalidate tags=[_html_blog-posting_id=0] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 │   ├── save_donut_view uri=page://self/html/blog-posting?id=0 tags=[_html_blog-posting_id=0 +5 items] saved=true [event]
-│   ├── save_etag uri=page://self/html/blog-posting?id=0 etag=[volatile] tags=[blog-posting-page +5 items] saved=true [event]
 │   ├── save_donut uri=page://self/html/blog-posting?id=0 tags=[_html_blog-posting_id=0 +2 items] saved=true [event]
 │   └── cache_miss layer=donut-view durationMs=[volatile]
 └── command_result code=200
@@ -2062,22 +1924,6 @@ command method=onDelete source=DonutCommandInterceptor
                                 "requestedTtl": 31536000,
                                 "saved": true
                             }
-                        },
-                        {
-                            "id": "save_etag_1",
-                            "type": "save_etag",
-                            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
-                            "context": {
-                                "uri": "page://self/html/comment",
-                                "etag": "[volatile]",
-                                "tags": [
-                                    "comment01",
-                                    "grp-_html_comment_",
-                                    "_html_comment_"
-                                ],
-                                "requestedTtl": 31536000,
-                                "saved": true
-                            }
                         }
                     ],
                     "close": {
@@ -2142,25 +1988,6 @@ command method=onDelete source=DonutCommandInterceptor
                             "_html_blog-posting_id=0",
                             "grp-_html_blog-posting_",
                             "blog-posting-page",
-                            "_html_comment_",
-                            "grp-_html_comment_",
-                            "comment01"
-                        ],
-                        "requestedTtl": null,
-                        "saved": true
-                    }
-                },
-                {
-                    "id": "save_etag_2",
-                    "type": "save_etag",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
-                    "context": {
-                        "uri": "page://self/html/blog-posting?id=0",
-                        "etag": "[volatile]",
-                        "tags": [
-                            "blog-posting-page",
-                            "_html_blog-posting_id=0",
-                            "grp-_html_blog-posting_",
                             "_html_comment_",
                             "grp-_html_comment_",
                             "comment01"
@@ -2343,25 +2170,6 @@ command method=onDelete source=DonutCommandInterceptor
                             }
                         },
                         {
-                            "id": "save_etag_3",
-                            "type": "save_etag",
-                            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
-                            "context": {
-                                "uri": "page://self/html/blog-posting?id=0",
-                                "etag": "[volatile]",
-                                "tags": [
-                                    "blog-posting-page",
-                                    "_html_blog-posting_id=0",
-                                    "grp-_html_blog-posting_",
-                                    "_html_comment_",
-                                    "grp-_html_comment_",
-                                    "comment01"
-                                ],
-                                "requestedTtl": null,
-                                "saved": true
-                            }
-                        },
-                        {
                             "id": "save_donut_2",
                             "type": "save_donut",
                             "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_donut.json",
@@ -2399,7 +2207,7 @@ command method=onDelete source=DonutCommandInterceptor
         }
     ]
 }
-Schema validation: OK (35 entries)
+Schema validation: OK (32 entries)
 G2 PUT a non-cacheable #[Refresh] resource -> command{source: RefreshInterceptor}
 
 === Cache Log Tree — G2. refresh command ===
@@ -2409,7 +2217,6 @@ command method=onPut annotations=[1 items] source=RefreshInterceptor
 ├── pre_write_cleanup uri=app://self/refresh-dest?id=1 [event]
 ├── invalidate tags=[_refresh-dest_id=1] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 ├── save_value uri=app://self/refresh-dest?id=1 tags=[_refresh-dest_id=1 +1 items] saved=true [event]
-├── save_etag uri=app://self/refresh-dest?id=1 etag=[volatile] tags=[grp-_refresh-dest_id=1 +1 items] saved=true [event]
 └── command_result code=200
 
 === Cache Log JSON — G2. refresh command ===
@@ -2489,21 +2296,6 @@ command method=onPut annotations=[1 items] source=RefreshInterceptor
                         "requestedTtl": 0,
                         "saved": true
                     }
-                },
-                {
-                    "id": "save_etag_1",
-                    "type": "save_etag",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
-                    "context": {
-                        "uri": "app://self/refresh-dest?id=1",
-                        "etag": "[volatile]",
-                        "tags": [
-                            "grp-_refresh-dest_id=1",
-                            "_refresh-dest_id=1"
-                        ],
-                        "requestedTtl": 0,
-                        "saved": true
-                    }
                 }
             ],
             "close": {
@@ -2517,7 +2309,7 @@ command method=onPut annotations=[1 items] source=RefreshInterceptor
         }
     ]
 }
-Schema validation: OK (8 entries)
+Schema validation: OK (7 entries)
 G3 PUT a #[Purge]-only resource -> command.annotations lists Annotation\Purge x2, level-two purged: true
 
 === Cache Log Tree — G3. purge-only command ===
@@ -2619,7 +2411,6 @@ get uri=app://self/http-cache-control-with-cache...(+4)
 ├── pre_write_cleanup uri=app://self/http-cache-control-with-cache...(+4) [event]
 ├── invalidate tags=[_http-cache-control-with-cacheable_] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 ├── save_value uri=app://self/http-cache-control-with-cache...(+4) tags=[_http-cache-control-with-cacheable_ +1 items] requestedTtl=10 saved=true [event]
-├── save_etag uri=app://self/http-cache-control-with-cache...(+4) etag=[volatile] tags=[grp-_http-cache-control-with-cacheable_ +1 items] requestedTtl=10 (+1 more) [event]
 └── cache_miss layer=resource durationMs=[volatile]
 
 === Cache Log JSON — H. finite TTL ===
@@ -2681,21 +2472,6 @@ get uri=app://self/http-cache-control-with-cache...(+4)
                         "requestedTtl": 10,
                         "saved": true
                     }
-                },
-                {
-                    "id": "save_etag_1",
-                    "type": "save_etag",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
-                    "context": {
-                        "uri": "app://self/http-cache-control-with-cacheable",
-                        "etag": "[volatile]",
-                        "tags": [
-                            "grp-_http-cache-control-with-cacheable_",
-                            "_http-cache-control-with-cacheable_"
-                        ],
-                        "requestedTtl": 10,
-                        "saved": true
-                    }
                 }
             ],
             "close": {
@@ -2710,7 +2486,7 @@ get uri=app://self/http-cache-control-with-cache...(+4)
         }
     ]
 }
-Schema validation: OK (7 entries)
+Schema validation: OK (6 entries)
 I  direct putStatic(ttl: 60, sMaxAge: 30) -> put_donut{requestedTtl: 60, sMaxAge: 30}:
    the template entry records requestedTtl=60 while the rendered view and its ETag record 30,
    and the whole write is rooted in manual_store{,_result} — cleanup invalidate included
@@ -2722,7 +2498,6 @@ manual_store uri=page://self/html/blog-posting?id=0
 ├── pre_write_cleanup uri=page://self/html/blog-posting?id=0 [event]
 ├── invalidate tags=[_html_blog-posting_id=0] roPool=invalidated etagPool=invalidated cdn=skipped (+1 more) [event]
 ├── save_donut_view uri=page://self/html/blog-posting?id=0 tags=[_html_blog-posting_id=0 +5 items] requestedTtl=30 saved=true [event]
-├── save_etag uri=page://self/html/blog-posting?id=0 etag=[volatile] tags=[blog-posting-page +5 items] requestedTtl=30 (+1 more) [event]
 ├── save_donut uri=page://self/html/blog-posting?id=0 tags=[_html_blog-posting_id=0 +5 items] requestedTtl=60 saved=true [event]
 └── manual_store_result result=stored
 
@@ -2809,25 +2584,6 @@ manual_store uri=page://self/html/blog-posting?id=0
                     }
                 },
                 {
-                    "id": "save_etag_1",
-                    "type": "save_etag",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_etag.json",
-                    "context": {
-                        "uri": "page://self/html/blog-posting?id=0",
-                        "etag": "[volatile]",
-                        "tags": [
-                            "blog-posting-page",
-                            "_html_blog-posting_id=0",
-                            "grp-_html_blog-posting_",
-                            "_html_comment_",
-                            "grp-_html_comment_",
-                            "comment01"
-                        ],
-                        "requestedTtl": 30,
-                        "saved": true
-                    }
-                },
-                {
                     "id": "save_donut_1",
                     "type": "save_donut",
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_donut.json",
@@ -2857,20 +2613,20 @@ manual_store uri=page://self/html/blog-posting?id=0
         }
     ]
 }
-Schema validation: OK (9 entries)
+Schema validation: OK (8 entries)
 J  GET app://self/value -> 200 served live while the store is unreachable:
    pool_error{read} for the lookup and pool_error{write} for the store, with the
    backend's own message - without them the miss reads exactly like a cold one
 
 === Cache Log Tree — J. the store is down and says so ===
 get uri=app://self/value
-├── pool_error key=ro-_value_ operation=read error=(redis client message) exceptionClass=(redis client exception) [event]
+├── pool_error key=ro-J727EpEt6m8iCZS4f6if4g operation=read error=(redis client message) exceptionClass=(redis client exception) [event]
 ├── cache_policy uri=app://self/value expiry=never resolvedTtl=31536000 [event]
 ├── pre_write_cleanup uri=app://self/value [event]
 ├── pool_error operation=write error=(redis client message) exceptionClass=(redis client exception) [event]
 ├── invalidate tags=[_value_] roPool=failed etagPool=invalidated cdn=skipped (+1 more) [event]
-├── pool_error key=ro-_value_ operation=read error=(redis client message) exceptionClass=(redis client exception) [event]
-├── pool_error key=ro-_value_ operation=write error=(redis client message) exceptionClass=(redis client exception) [event]
+├── pool_error key=ro-J727EpEt6m8iCZS4f6if4g operation=read error=(redis client message) exceptionClass=(redis client exception) [event]
+├── pool_error key=ro-J727EpEt6m8iCZS4f6if4g operation=write error=(redis client message) exceptionClass=(redis client exception) [event]
 ├── save_value uri=app://self/value tags=[_value_, grp-_value_] requestedTtl=31536000 saved=false [event]
 └── cache_miss layer=resource durationMs=[volatile]
 
@@ -2891,7 +2647,7 @@ get uri=app://self/value
                     "type": "pool_error",
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/pool_error.json",
                     "context": {
-                        "key": "ro-_value_",
+                        "key": "ro-J727EpEt6m8iCZS4f6if4g",
                         "operation": "read",
                         "error": "(redis client message)",
                         "exceptionClass": "(redis client exception)"
@@ -2947,7 +2703,7 @@ get uri=app://self/value
                     "type": "pool_error",
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/pool_error.json",
                     "context": {
-                        "key": "ro-_value_",
+                        "key": "ro-J727EpEt6m8iCZS4f6if4g",
                         "operation": "read",
                         "error": "(redis client message)",
                         "exceptionClass": "(redis client exception)"
@@ -2958,7 +2714,7 @@ get uri=app://self/value
                     "type": "pool_error",
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/pool_error.json",
                     "context": {
-                        "key": "ro-_value_",
+                        "key": "ro-J727EpEt6m8iCZS4f6if4g",
                         "operation": "write",
                         "error": "(redis client message)",
                         "exceptionClass": "(redis client exception)"

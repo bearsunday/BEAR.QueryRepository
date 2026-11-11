@@ -173,7 +173,7 @@ class GoldenEntryTest extends TestCase
         $ro = $app->resource->get($uri);
 
         $this->assertSame($roEntries, $app->roEntries(), 'resource pool');
-        $this->assertSame($etagEntries, array_map(static fn (array $entry): array => $entry[1], $app->etagEntries()), 'ETag pool');
+        $this->assertEqualsCanonicalizing($etagEntries, array_map(static fn (array $entry): array => $entry[1], $app->etagEntries()), 'validated entries');
         $this->assertSame($headers, self::masked($ro->headers), 'headers');
         $this->assertEtagEntryIsTheResponseEtag($app, $ro);
     }
@@ -285,7 +285,9 @@ class GoldenEntryTest extends TestCase
 
     private static function etag(ResourceObject $ro, string $state): string
     {
-        return '"' . crc32($ro::class . $state . (string) $ro->uri) . '"';
+        $k = (new CacheIdentityFactory(new FakeServerContext([])))->locator((new UriTag())($ro->uri));
+
+        return '"' . $k . '.' . crc32($ro::class . $state . (string) $ro->uri) . '"';
     }
 
     private function assertEtagEntryIsTheResponseEtag(FakeObservedApp $app, ResourceObject $ro): void
@@ -296,7 +298,7 @@ class GoldenEntryTest extends TestCase
 
         $uriTag = (new UriTag())($ro->uri);
         $this->assertSame(trim($ro->headers[Header::ETAG], '"'), $app->etagEntries()[$uriTag][0] ?? null);
-        $this->assertMatchesRegularExpression('/^"\d+"$/', $ro->headers[Header::ETAG]);
+        $this->assertMatchesRegularExpression('/^"[\w-]{22}\.\d+"$/', $ro->headers[Header::ETAG]);
         $this->assertMatchesRegularExpression('/^[A-Z][a-z]{2}, \d{2} [A-Z][a-z]{2} \d{4} \d{2}:\d{2}:\d{2} GMT$/', $ro->headers[Header::LAST_MODIFIED] ?? '');
     }
 

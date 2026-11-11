@@ -41,13 +41,6 @@ get uri=app://self/article?id=1
 │   ├── tags[1]: grp-_article_id=1
 │   ├── requestedTtl: 31536000
 │   └── saved: true
-├── save_etag uri=app://self/article?id=1 etag=[volatile] tags=[grp-_article_id=1, _article_id=1] requestedTtl=31536000 (+1 more) [event]
-│   ├── uri: app://self/article?id=1
-│   ├── etag: [volatile]
-│   ├── tags[0]: grp-_article_id=1
-│   ├── tags[1]: _article_id=1
-│   ├── requestedTtl: 31536000
-│   └── saved: true
 └── close cache_miss
     ├── layer: resource
     └── durationMs: [volatile]
@@ -56,8 +49,8 @@ get uri=app://self/article?id=1
 └── close cache_hit
     ├── layer: resource
     └── durationMs: [volatile]
-conditional_request ifNoneMatch="etag-1"
-├── ifNoneMatch: "etag-1"
+conditional_request ifNoneMatch="UwyizhapTrRJhydFdHzPCA.3399129766"
+├── ifNoneMatch: "UwyizhapTrRJhydFdHzPCA.3399129766"
 └── close cache_hit
     ├── layer: etag
     └── durationMs: [volatile]
@@ -81,13 +74,6 @@ get uri=app://self/article-view?id=1
 │   ├── tags[1]: grp-_article-view_id=1
 │   ├── requestedTtl: 31536000
 │   └── saved: true
-├── save_etag uri=app://self/article-view?id=1 etag=[volatile] tags=[grp-_article-view_id=1 +1 items] requestedTtl=31536000 (+1 more) [event]
-│   ├── uri: app://self/article-view?id=1
-│   ├── etag: [volatile]
-│   ├── tags[0]: grp-_article-view_id=1
-│   ├── tags[1]: _article-view_id=1
-│   ├── requestedTtl: 31536000
-│   └── saved: true
 └── close cache_miss
     ├── layer: resource
     └── durationMs: [volatile]
@@ -96,8 +82,8 @@ get uri=app://self/article-view?id=1
 └── close cache_hit
     ├── layer: resource
     └── durationMs: [volatile]
-conditional_request ifNoneMatch="etag-2"
-├── ifNoneMatch: "etag-2"
+conditional_request ifNoneMatch="TZhhuCo-jnUfMPNC-PsmGw.707500951"
+├── ifNoneMatch: "TZhhuCo-jnUfMPNC-PsmGw.707500951"
 └── close cache_hit
     ├── layer: etag
     └── durationMs: [volatile]
@@ -115,7 +101,7 @@ get uri=app://self/report
 └── close cache_miss
     ├── layer: resource
     └── durationMs: [volatile]
-Schema validation: OK (26 entries)
+Schema validation: OK (24 entries)
 D GET page://self/html/blog-posting (miss) -> 200, Cache-Control: max-age=0
 D GET page://self/html/blog-posting (hit)  -> 200, Cache-Control: max-age=0
 D conditional GET with the held ETag -> 304
@@ -156,14 +142,6 @@ get uri=page://self/html/blog-posting
 │   │   ├── tags[2]: comment01
 │   │   ├── requestedTtl: 31536000
 │   │   └── saved: true
-│   ├── save_etag uri=page://self/html/comment etag=[volatile] tags=[comment01, grp-_html_comment_ +1 items] requestedTtl=31536000 (+1 more) [event]
-│   │   ├── uri: page://self/html/comment
-│   │   ├── etag: [volatile]
-│   │   ├── tags[0]: comment01
-│   │   ├── tags[1]: grp-_html_comment_
-│   │   ├── tags[2]: _html_comment_
-│   │   ├── requestedTtl: 31536000
-│   │   └── saved: true
 │   └── close cache_miss
 │       ├── layer: resource
 │       └── durationMs: [volatile]
@@ -192,16 +170,6 @@ get uri=page://self/html/blog-posting
 │   ├── tags[4]: grp-_html_comment_
 │   ├── tags[5]: comment01
 │   └── saved: true
-├── save_etag uri=page://self/html/blog-posting etag=[volatile] tags=[blog-posting-page, _html_blog-posting_ +4 items] saved=true [event]
-│   ├── uri: page://self/html/blog-posting
-│   ├── etag: [volatile]
-│   ├── tags[0]: blog-posting-page
-│   ├── tags[1]: _html_blog-posting_
-│   ├── tags[2]: grp-_html_blog-posting_
-│   ├── tags[3]: _html_comment_
-│   ├── tags[4]: grp-_html_comment_
-│   ├── tags[5]: comment01
-│   └── saved: true
 ├── save_donut uri=page://self/html/blog-posting tags=[_html_blog-posting_ +2 items] saved=true [event]
 │   ├── uri: page://self/html/blog-posting
 │   ├── tags[0]: _html_blog-posting_
@@ -216,8 +184,8 @@ get uri=page://self/html/blog-posting
 └── close cache_hit
     ├── layer: donut-view
     └── durationMs: [volatile]
-conditional_request ifNoneMatch="etag-3"
-├── ifNoneMatch: "etag-3"
+conditional_request ifNoneMatch="4MLGFjAV4fpiS9wgelCLRg.1846589429"
+├── ifNoneMatch: "4MLGFjAV4fpiS9wgelCLRg.1846589429"
 └── close cache_hit
     ├── layer: etag
     └── durationMs: [volatile]
@@ -285,4 +253,4 @@ get uri=page://self/html/blog-posting-donut
 └── close cache_hit
     ├── layer: donut-view
     └── durationMs: [volatile]
-Schema validation: OK (41 entries)
+Schema validation: OK (39 entries)

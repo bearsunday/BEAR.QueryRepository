@@ -69,13 +69,6 @@ command method=onPatch source=CommandInterceptor
 │   │   ├── tags[1]: grp-_member_memberId=1
 │   │   ├── requestedTtl: 31536000
 │   │   └── saved: true
-│   ├── save_etag uri=app://self/member?memberId=1 etag=[volatile] tags=[grp-_member_memberId=1 +1 items] requestedTtl=31536000 (+1 more) [event]
-│   │   ├── uri: app://self/member?memberId=1
-│   │   ├── etag: [volatile]
-│   │   ├── tags[0]: grp-_member_memberId=1
-│   │   ├── tags[1]: _member_memberId=1
-│   │   ├── requestedTtl: 31536000
-│   │   └── saved: true
 │   └── close cache_miss
 │       ├── layer: resource
 │       └── durationMs: [volatile]
@@ -106,17 +99,10 @@ get uri=app://self/member?member_id=1
 │   ├── tags[1]: grp-_member_member_id=1
 │   ├── requestedTtl: 31536000
 │   └── saved: true
-├── save_etag uri=app://self/member?member_id=1 etag=[volatile] tags=[grp-_member_member_id=1 +1 items] requestedTtl=31536000 (+1 more) [event]
-│   ├── uri: app://self/member?member_id=1
-│   ├── etag: [volatile]
-│   ├── tags[0]: grp-_member_member_id=1
-│   ├── tags[1]: _member_member_id=1
-│   ├── requestedTtl: 31536000
-│   └── saved: true
 └── close cache_miss
     ├── layer: resource
     └── durationMs: [volatile]
-Schema validation: OK (22 entries)
+Schema validation: OK (20 entries)
 B GET app://self/tag {"id":"a"} -> {"id":"a","version":2}
 B GET app://self/tag {"id":"c"} -> {"id":"c","version":1}
 
@@ -162,13 +148,6 @@ command method=onPut annotations=[1 items] source=RefreshInterceptor
 │   │   ├── tags[1]: grp-_tag_id=a
 │   │   ├── requestedTtl: 31536000
 │   │   └── saved: true
-│   ├── save_etag uri=app://self/tag?id=a etag=[volatile] tags=[grp-_tag_id=a, _tag_id=a] requestedTtl=31536000 (+1 more) [event]
-│   │   ├── uri: app://self/tag?id=a
-│   │   ├── etag: [volatile]
-│   │   ├── tags[0]: grp-_tag_id=a
-│   │   ├── tags[1]: _tag_id=a
-│   │   ├── requestedTtl: 31536000
-│   │   └── saved: true
 │   └── close cache_miss
 │       ├── layer: resource
 │       └── durationMs: [volatile]
@@ -192,13 +171,6 @@ command method=onPut annotations=[1 items] source=RefreshInterceptor
 │   │   ├── tags[1]: grp-_tag_id=b
 │   │   ├── requestedTtl: 31536000
 │   │   └── saved: true
-│   ├── save_etag uri=app://self/tag?id=b etag=[volatile] tags=[grp-_tag_id=b, _tag_id=b] requestedTtl=31536000 (+1 more) [event]
-│   │   ├── uri: app://self/tag?id=b
-│   │   ├── etag: [volatile]
-│   │   ├── tags[0]: grp-_tag_id=b
-│   │   ├── tags[1]: _tag_id=b
-│   │   ├── requestedTtl: 31536000
-│   │   └── saved: true
 │   └── close cache_miss
 │       ├── layer: resource
 │       └── durationMs: [volatile]
@@ -214,7 +186,7 @@ get uri=app://self/tag?id=c
 └── close cache_hit
     ├── layer: resource
     └── durationMs: [volatile]
-Schema validation: OK (24 entries)
+Schema validation: OK (22 entries)
 C GET app://self/tag {"id":"a"} -> {"id":"a","version":3}
 
 === Cache Log Tree — C. #[Purge] with a list ===
@@ -261,17 +233,10 @@ get uri=app://self/tag?id=a
 │   ├── tags[1]: grp-_tag_id=a
 │   ├── requestedTtl: 31536000
 │   └── saved: true
-├── save_etag uri=app://self/tag?id=a etag=[volatile] tags=[grp-_tag_id=a, _tag_id=a] requestedTtl=31536000 (+1 more) [event]
-│   ├── uri: app://self/tag?id=a
-│   ├── etag: [volatile]
-│   ├── tags[0]: grp-_tag_id=a
-│   ├── tags[1]: _tag_id=a
-│   ├── requestedTtl: 31536000
-│   └── saved: true
 └── close cache_miss
     ├── layer: resource
     └── durationMs: [volatile]
-Schema validation: OK (13 entries)
+Schema validation: OK (12 entries)
 D GET app://self/tag {"id":"c"} -> {"id":"c","version":1}
 
 === Cache Log Tree — D. #[Purge] with an empty list ===
@@ -310,13 +275,6 @@ get uri=app://self/tag?
 │   ├── tags[1]: grp-_tag_id=x
 │   ├── requestedTtl: 31536000
 │   └── saved: true
-├── save_etag uri=app://self/tag? etag=[volatile] tags=[grp-_tag_id=x, _tag_id=x] requestedTtl=31536000 (+1 more) [event]
-│   ├── uri: app://self/tag?
-│   ├── etag: [volatile]
-│   ├── tags[0]: grp-_tag_id=x
-│   ├── tags[1]: _tag_id=x
-│   ├── requestedTtl: 31536000
-│   └── saved: true
 └── close cache_miss
     ├── layer: resource
     └── durationMs: [volatile]
@@ -338,13 +296,6 @@ get uri=app://self/tag?
 │   ├── uri: app://self/tag?
 │   ├── tags[0]: _tag_id=y
 │   ├── tags[1]: grp-_tag_id=y
-│   ├── requestedTtl: 31536000
-│   └── saved: true
-├── save_etag uri=app://self/tag? etag=[volatile] tags=[grp-_tag_id=y, _tag_id=y] requestedTtl=31536000 (+1 more) [event]
-│   ├── uri: app://self/tag?
-│   ├── etag: [volatile]
-│   ├── tags[0]: grp-_tag_id=y
-│   ├── tags[1]: _tag_id=y
 │   ├── requestedTtl: 31536000
 │   └── saved: true
 └── close cache_miss
@@ -384,13 +335,6 @@ get uri=app://self/tag?
 │   ├── tags[1]: grp-_tag_id=x
 │   ├── requestedTtl: 31536000
 │   └── saved: true
-├── save_etag uri=app://self/tag? etag=[volatile] tags=[grp-_tag_id=x, _tag_id=x] requestedTtl=31536000 (+1 more) [event]
-│   ├── uri: app://self/tag?
-│   ├── etag: [volatile]
-│   ├── tags[0]: grp-_tag_id=x
-│   ├── tags[1]: _tag_id=x
-│   ├── requestedTtl: 31536000
-│   └── saved: true
 └── close cache_miss
     ├── layer: resource
     └── durationMs: [volatile]
@@ -399,7 +343,7 @@ get uri=app://self/tag?
 └── close cache_hit
     ├── layer: resource
     └── durationMs: [volatile]
-Schema validation: OK (27 entries)
+Schema validation: OK (24 entries)
 F GET app://self/article-summary {"id":1} -> {"id":1,"summary":"ARTICLE 1"}
 
 === Cache Log Tree — F. #[DependsOn] reads another resource without #[Embed] ===
@@ -425,13 +369,6 @@ get uri=app://self/article-summary?id=1
 │   │   ├── tags[1]: grp-_article_id=1
 │   │   ├── requestedTtl: 31536000
 │   │   └── saved: true
-│   ├── save_etag uri=app://self/article?id=1 etag=[volatile] tags=[grp-_article_id=1, _article_id=1] requestedTtl=31536000 (+1 more) [event]
-│   │   ├── uri: app://self/article?id=1
-│   │   ├── etag: [volatile]
-│   │   ├── tags[0]: grp-_article_id=1
-│   │   ├── tags[1]: _article_id=1
-│   │   ├── requestedTtl: 31536000
-│   │   └── saved: true
 │   └── close cache_miss
 │       ├── layer: resource
 │       └── durationMs: [volatile]
@@ -454,14 +391,6 @@ get uri=app://self/article-summary?id=1
 │   ├── tags[2]: _article_id=1
 │   ├── requestedTtl: 31536000
 │   └── saved: true
-├── save_etag uri=app://self/article-summary?id=1 etag=[volatile] tags=[_article_id=1, grp-_article-summary_id=1 +1 items] requestedTtl=31536000 (+1 more) [event]
-│   ├── uri: app://self/article-summary?id=1
-│   ├── etag: [volatile]
-│   ├── tags[0]: _article_id=1
-│   ├── tags[1]: grp-_article-summary_id=1
-│   ├── tags[2]: _article-summary_id=1
-│   ├── requestedTtl: 31536000
-│   └── saved: true
 └── close cache_miss
     ├── layer: resource
     └── durationMs: [volatile]
@@ -470,7 +399,7 @@ get uri=app://self/article-summary?id=1
 └── close cache_hit
     ├── layer: resource
     └── durationMs: [volatile]
-Schema validation: OK (16 entries)
+Schema validation: OK (14 entries)
 G GET app://self/article-summary {"id":1} -> {"id":1,"summary":"BIG UPDATE"}
 
 === Cache Log Tree — G. a write to the #[DependsOn] URI invalidates it ===
@@ -506,13 +435,6 @@ command method=onPatch source=CommandInterceptor
 │   │   ├── tags[1]: grp-_article_id=1
 │   │   ├── requestedTtl: 31536000
 │   │   └── saved: true
-│   ├── save_etag uri=app://self/article?id=1 etag=[volatile] tags=[grp-_article_id=1, _article_id=1] requestedTtl=31536000 (+1 more) [event]
-│   │   ├── uri: app://self/article?id=1
-│   │   ├── etag: [volatile]
-│   │   ├── tags[0]: grp-_article_id=1
-│   │   ├── tags[1]: _article_id=1
-│   │   ├── requestedTtl: 31536000
-│   │   └── saved: true
 │   └── close cache_miss
 │       ├── layer: resource
 │       └── durationMs: [volatile]
@@ -544,15 +466,7 @@ get uri=app://self/article-summary?id=1
 │   ├── tags[2]: _article_id=1
 │   ├── requestedTtl: 31536000
 │   └── saved: true
-├── save_etag uri=app://self/article-summary?id=1 etag=[volatile] tags=[_article_id=1, grp-_article-summary_id=1 +1 items] requestedTtl=31536000 (+1 more) [event]
-│   ├── uri: app://self/article-summary?id=1
-│   ├── etag: [volatile]
-│   ├── tags[0]: _article_id=1
-│   ├── tags[1]: grp-_article-summary_id=1
-│   ├── tags[2]: _article-summary_id=1
-│   ├── requestedTtl: 31536000
-│   └── saved: true
 └── close cache_miss
     ├── layer: resource
     └── durationMs: [volatile]
-Schema validation: OK (20 entries)
+Schema validation: OK (18 entries)
