@@ -12,8 +12,8 @@ declare(strict_types=1);
  * stree --snapshot cannot combine with --json (semantic-logger 0.11.1 CHANGELOG) and that
  * rendering never reaches it, plus a value no schema marks volatile at all: the literal
  * ETag/Last-Modified header lines a script prints from $ro->headers, a conditional request's
- * ifNoneMatch, a `--prefer-lowest` dependency's own warning text, and scene J's Redis-client-
- * specific wording. A Windows PHP_EOL is CRLF; it is folded to LF before any of the above.
+ * ifNoneMatch, and scene J's Redis-client-specific wording. A Windows PHP_EOL is CRLF; it is
+ * folded to LF before any of the above.
  */
 
 /** @return array<string, string> demo name => script path */
@@ -29,10 +29,22 @@ function demoScripts(): array
     return $scripts;
 }
 
-/** Run one demo in its own process, stderr merged into stdout as a terminal shows it */
+/**
+ * Run one demo in its own process, stderr merged into stdout as a terminal shows it
+ *
+ * display_errors/log_errors are off: a dependency's own PHP warning or deprecation (its
+ * line and version float with --prefer-lowest) would otherwise ride along, twice (once via
+ * each setting). A demo's explicit error_log() call, such as User.php's "*** onGet() method
+ * invoked ***", is a direct write and reaches stderr regardless of either setting.
+ */
 function runDemo(string $script): string
 {
-    $process = proc_open([PHP_BINARY, $script], [1 => ['pipe', 'w'], 2 => ['redirect', 1]], $pipes, dirname(__DIR__));
+    $process = proc_open(
+        [PHP_BINARY, '-d', 'display_errors=0', '-d', 'log_errors=0', $script],
+        [1 => ['pipe', 'w'], 2 => ['redirect', 1]],
+        $pipes,
+        dirname(__DIR__),
+    );
     if (! is_resource($process)) {
         throw new RuntimeException("Cannot run {$script}");
     }
@@ -50,18 +62,11 @@ function runDemo(string $script): string
 function normalizeDemoOutput(string $output): string
 {
     $output = (string) str_replace("\r\n", "\n", $output); // a Windows PHP_EOL is CRLF; the stored snapshot is LF
-    $output = normalizeDiagnostics($output);
     $output = normalizeDuration($output);
     $output = normalizePoolError($output);
     $output = (string) preg_replace('/^Last-Modified:.*$/m', 'Last-Modified:(time)', $output);
 
     return normalizeEtags($output);
-}
-
-/** A dependency's own PHP warning/deprecation (its line and version float with --prefer-lowest), not a value this package or a demo prints */
-function normalizeDiagnostics(string $output): string
-{
-    return (string) preg_replace('/^(?:PHP )?(?:Warning|Deprecated|Notice|Parse error|Fatal error):.*\n(?:\n)?/m', '', $output);
 }
 
 /**
