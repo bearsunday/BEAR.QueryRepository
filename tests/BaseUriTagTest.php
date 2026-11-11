@@ -11,9 +11,31 @@ use PHPUnit\Framework\TestCase;
 
 use function restore_error_handler;
 use function set_error_handler;
+use function unserialize;
 
 class BaseUriTagTest extends TestCase
 {
+    public function testLegacySerializedTagStillInvokes(): void
+    {
+        $tag = unserialize("O:31:\"BEAR\\QueryRepository\\BaseUriTag\":1:{s:39:\"\0BEAR\\QueryRepository\\BaseUriTag\0uriTag\";O:27:\"BEAR\\QueryRepository\\UriTag\":0:{}}");
+        $this->assertInstanceOf(BaseUriTag::class, $tag);
+        $ro = new class extends ResourceObject {
+            public function onGet(string $id, int $page = 1): static
+            {
+                unset($id, $page);
+
+                return $this;
+            }
+        };
+        $ro->uri = new Uri('app://self/item?id=a&page=2');
+
+        $this->assertSame('grp-_item_id=a', $tag($ro));
+        $ro = new class extends ResourceObject {
+        };
+        $ro->uri = new Uri('page://self/item?page=2');
+        $this->assertSame('grp-_item_page=2', $tag($ro));
+    }
+
     /**
      * A required parameter bound from outside the query (e.g. #[ResourceParam]) is not part of the URI, so not of
      * the group. Reading it from the query would raise a warning, which an app's error handler may turn into an exception.

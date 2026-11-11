@@ -71,10 +71,4 @@ final class CacheIdentityFactoryTest extends TestCase
         $this->assertSame('ro-custom-', (new CacheIdentityFactory(new FakeServerContext([])))->storageKey('custom-', 'ro-'));
         $this->assertSame('ro-custom-', (new CacheIdentityFactory(new FakeServerContext(['X_VARY' => ''])))->storageKey('custom-', 'ro-'));
     }
-
-    public function testSnakeNameKeepsTheExistingAcronymConversion(): void
-    {
-        $this->assertSame('u_r_l_value', (new CacheIdentityFactory())->snakeName('URLValue'));
-        $this->assertSame('user_id', (new CacheIdentityFactory())->snakeName('user_id'));
-    }
 }

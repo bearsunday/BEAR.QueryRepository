@@ -155,7 +155,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
 
     private function doPutStatic(ResourceObject $ro, int|null $ttl, int|null $sMaxAge): void
     {
-        $keys = new SurrogateKeys($ro->uri, ($this->baseUriTag)($ro), $this->uriTag, $this->cacheTags, $this->dependsOnTags);
+        $keys = new SurrogateKeys($ro->uri, ($this->baseUriTag)($ro), $this->uriTag, null, $this->dependsOnTags);
         $this->classifyMaterials($ro, $keys);
         $this->logger->event(new PutDonutContext((string) $ro->uri, $ttl, $sMaxAge));
         $donut = ResourceDonut::create($ro, $this->renderer, $keys, $sMaxAge, true);
@@ -182,7 +182,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
 
     private function doPutDonut(ResourceObject $ro, int|null $donutTtl): void
     {
-        $keys = new SurrogateKeys($ro->uri, ($this->baseUriTag)($ro), $this->uriTag, $this->cacheTags, $this->dependsOnTags);
+        $keys = new SurrogateKeys($ro->uri, ($this->baseUriTag)($ro), $this->uriTag, null, $this->dependsOnTags);
         $this->classifyMaterials($ro, $keys);
         $this->logger->event(new PutDonutContext((string) $ro->uri, $donutTtl, null));
         $donut = ResourceDonut::create($ro, $this->renderer, $keys, $donutTtl, false);

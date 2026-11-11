@@ -14,12 +14,15 @@ use function preg_replace;
 use function strtolower;
 
 /** @internal */
-final readonly class BaseUriTag implements BaseUriTagInterface
+final class BaseUriTag implements BaseUriTagInterface
 {
+    private CacheIdentityFactory|null $identityFactory = null;
+
     public function __construct(
-        private UriTagInterface $uriTag = new UriTag(),
-        private CacheIdentityFactory $identityFactory = new CacheIdentityFactory(),
+        private readonly UriTagInterface $uriTag = new UriTag(),
+        CacheIdentityFactory $identityFactory = new CacheIdentityFactory(),
     ) {
+        $this->identityFactory = $identityFactory;
     }
 
     /** Defaulted parameters are excluded; required parameters retain their supplied query spelling. */
@@ -27,7 +30,7 @@ final readonly class BaseUriTag implements BaseUriTagInterface
     public function __invoke(ResourceObject $ro): string
     {
         if (! method_exists($ro, 'onGet')) {
-            return $this->identityFactory->groupTag(($this->uriTag)($ro->uri));
+            return $this->identityFactory()->groupTag(($this->uriTag)($ro->uri));
         }
 
         $query = $ro->uri->query;
@@ -49,7 +52,12 @@ final readonly class BaseUriTag implements BaseUriTagInterface
         $baseUri = clone $ro->uri;
         $baseUri->query = $baseQuery;
 
-        return $this->identityFactory->groupTag(($this->uriTag)($baseUri));
+        return $this->identityFactory()->groupTag(($this->uriTag)($baseUri));
+    }
+
+    private function identityFactory(): CacheIdentityFactory
+    {
+        return $this->identityFactory ?? new CacheIdentityFactory();
     }
 
     /** The conversion BEAR.Resource applies when it binds a query to a parameter */

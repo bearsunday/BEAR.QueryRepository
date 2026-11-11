@@ -11,11 +11,8 @@ use function array_walk_recursive;
 use function explode;
 use function http_build_query;
 use function ksort;
-use function ltrim;
-use function preg_replace;
 use function sprintf;
 use function str_replace;
-use function strtolower;
 use function strtoupper;
 use function trim;
 
@@ -47,11 +44,6 @@ final readonly class CacheIdentityFactory
     public function groupTag(string $exactTag): string
     {
         return 'grp-' . $exactTag;
-    }
-
-    public function snakeName(string $name): string
-    {
-        return ltrim(strtolower((string) preg_replace('/[A-Z]/', '_\0', $name)), '_');
     }
 
     public function storageKey(string $exactTag, string $type): string

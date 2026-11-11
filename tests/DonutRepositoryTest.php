@@ -9,6 +9,7 @@ use BEAR\QueryRepository\Cdn\FastlyCacheControlHeaderSetter;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\Resource\ResourceInterface;
+use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
 use FakeVendor\HelloWorld\Resource\Page\Html\ClosureBodyDonut;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
@@ -32,6 +33,7 @@ use function dirname;
 use function glob;
 use function is_string;
 use function is_subclass_of;
+use function str_replace;
 use function time;
 
 class DonutRepositoryTest extends TestCase
@@ -82,6 +84,35 @@ class DonutRepositoryTest extends TestCase
         }
 
         return new Injector($module, __DIR__ . '/tmp');
+    }
+
+    public function testDonutMissKeepsStandardChildGroupTagWithCustomBaseBinding(): void
+    {
+        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module->override(new TwigModule([__DIR__ . '/Fake/fake-app/var/templates']));
+        $module->override(new class extends AbstractModule {
+            #[Override]
+            protected function configure(): void
+            {
+                $this->bind(BaseUriTagInterface::class)->toInstance(new class implements BaseUriTagInterface {
+                    #[Override]
+                    public function __invoke(ResourceObject $ro): string
+                    {
+                        return 'CB' . str_replace('/', '_', $ro->uri->path);
+                    }
+                });
+            }
+        });
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        $repository = $injector->getInstance(QueryRepositoryInterface::class);
+        $this->assertNull($repository->get($this->uri));
+        $page = $injector->getInstance(ResourceInterface::class)->get((string) $this->uri);
+        $page->toString();
+
+        $this->assertSame(
+            'blog-posting-page _html_blog-posting_ CB_html_blog-posting _html_comment_ grp-_html_comment_ comment01',
+            $page->headers[Header::SURROGATE_KEY],
+        );
     }
 
     public function testCreateDonut(): void
