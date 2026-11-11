@@ -7,18 +7,8 @@ namespace BEAR\QueryRepository;
 use BEAR\Resource\Uri;
 use PHPUnit\Framework\TestCase;
 
-use function unserialize;
-
 class UriTagTest extends TestCase
 {
-    public function testLegacySerializedTagStillInvokes(): void
-    {
-        $tag = unserialize('O:27:"BEAR\QueryRepository\UriTag":0:{}');
-        $this->assertInstanceOf(UriTag::class, $tag);
-
-        $this->assertSame('_article_page=1_ulid=01ABC', $tag(new Uri('app://self/article?ulid=01ABC&page=1')));
-    }
-
     public function testScalarQueryTag(): void
     {
         $uri = new Uri('app://self/article');

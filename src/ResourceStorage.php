@@ -44,10 +44,8 @@ use function trim;
  *     saver: ResourceStorageSaver,
  *     roProvider:ProviderInterface<TagAwareAdapterInterface>,
  *     etagProvider: ProviderInterface<TagAwareAdapterInterface>,
- *     identityFactory?: CacheIdentityFactory,
- *     cacheTags?: CacheTags,
- *     serverContext?: ServerContextInterface,
- *     baseUriTag?: BaseUriTagInterface,
+ *     identityFactory: CacheIdentityFactory,
+ *     cacheTags: CacheTags,
  * }
  * @internal
  */
@@ -456,16 +454,6 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         $this->purger = $data['purger'];
         $this->uriTag = $data['uriTag'];
         $this->saver = $data['saver'];
-        if (! isset($data['identityFactory'])) {
-            assert(isset($data['serverContext']));
-            $data['identityFactory'] = new CacheIdentityFactory($data['serverContext']);
-        }
-
-        if (! isset($data['cacheTags'])) {
-            assert(isset($data['baseUriTag']));
-            $data['cacheTags'] = new CacheTags($this->uriTag, $data['baseUriTag']);
-        }
-
         $this->identityFactory = $data['identityFactory'];
         $this->cacheTags = $data['cacheTags'];
         // Stateless, so rebuilt rather than carried: left out of the payload it stays

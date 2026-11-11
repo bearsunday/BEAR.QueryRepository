@@ -18,7 +18,6 @@ use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\ProviderInterface;
-use ReflectionClass;
 use RuntimeException;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
@@ -102,29 +101,6 @@ class ResourceStorageTest extends TestCase
         assert($storage instanceof ResourceStorage);
 
         $this->assertTrue($storage->saveValue($this->ro, 60));
-    }
-
-    public function testAStorageRestoredFromLegacyPropertiesStillWrites(): void
-    {
-        $data = [
-            'logger' => new NullSemanticLogger(),
-            'purger' => new NullPurger(),
-            'uriTag' => new UriTag(),
-            'saver' => new ResourceStorageSaver(),
-            'roProvider' => new FakeArrayPoolProvider(),
-            'etagProvider' => new FakeArrayPoolProvider(),
-            'serverContext' => new GlobalServerContext(),
-            'baseUriTag' => new BaseUriTag(new UriTag()),
-        ];
-        $storage = (new ReflectionClass(ResourceStorage::class))->newInstanceWithoutConstructor();
-        $storage->__unserialize($data);
-
-        $this->assertTrue($storage->saveValue($this->ro, 60));
-        $this->assertSame($this->ro->body, $storage->get($this->ro->uri)?->body);
-        $this->assertArrayHasKey('identityFactory', $storage->__serialize());
-        $this->assertArrayHasKey('cacheTags', $storage->__serialize());
-        $storage->invalidateTags(['grp-_user_']);
-        $this->assertNull($storage->get($this->ro->uri));
     }
 
     public function testADoubleSpacedSurrogateKeyStoresTheEntryAndItsEtagUnderTheRemainingKeys(): void

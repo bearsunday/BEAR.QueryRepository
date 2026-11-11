@@ -13,16 +13,8 @@ use function uri_template;
 
 final class UriTag implements UriTagInterface
 {
-    private CacheIdentityFactory|null $identityFactory = null;
-
-    public function __construct(CacheIdentityFactory $identityFactory = new CacheIdentityFactory())
+    public function __construct(private readonly CacheIdentityFactory $identityFactory = new CacheIdentityFactory())
     {
-        $this->identityFactory = $identityFactory;
-    }
-
-    private function identityFactory(): CacheIdentityFactory
-    {
-        return $this->identityFactory ?? new CacheIdentityFactory();
     }
 
     /**
@@ -31,7 +23,7 @@ final class UriTag implements UriTagInterface
     #[Override]
     public function __invoke(AbstractUri $uri): string
     {
-        return $this->identityFactory()->exactTag($uri);
+        return $this->identityFactory->exactTag($uri);
     }
 
     /**
