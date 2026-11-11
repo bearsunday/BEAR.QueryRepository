@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\ResourceObject;
 use FakeVendor\HelloWorld\Entity\Catalog;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -269,7 +270,9 @@ class GoldenEntryTest extends TestCase
         $childClass = $app->resource->newInstance('app://self/optional-param')::class;
         $ro = $app->resource->get('page://self/variant-parent');
         $body = (array) $ro->body;
-        $childView = (string) $body['child'];
+        $child = $body['child'];
+        $this->assertInstanceOf(AbstractRequest::class, $child);
+        $childView = (string) $child;
         $state = ['child' => (object) [$childClass, 200, $childView], 'time' => $body['time']];
 
         $this->assertNull($ro->view, 'no template for this page');
