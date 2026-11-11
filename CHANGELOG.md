@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- `isNotModified()`/`isNotModifiedFor()` no longer answer `304` for an ETag whose entry a pre-write cleanup failure, a write-time race, or a shorter entry TTL already dropped from the pool; both now confirm the entry before trusting the ETag (#266). No action needed.
+
 ## [1.20.0] - 2026-11-11
 
 ### Added
