@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- A write now invalidates a `#[Cacheable]`/`#[CacheableResponse]` entry a GET stored with an `onGet()` parameter's snake_case query key (`?user_id=1` for `$userId`), not only the parameter's own spelling (`?userId=1`); it was left stale (#275).
+
 ## [1.20.0] - 2026-11-11
 
 ### Added
