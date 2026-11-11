@@ -15,6 +15,8 @@ use function crc32;
 use function serialize;
 use function trim;
 
+use const PHP_EOL;
+
 /**
  * What each cache kind stores, under which tags, and the headers it answers with
  *
@@ -258,7 +260,7 @@ class GoldenEntryTest extends TestCase
         $app = new FakeObservedApp([], false);
         $childClass = $app->resource->newInstance('page://self/dep/child-c')::class;
         $ro = $app->resource->get('page://self/dep/parent-a');
-        $state = ['parent-a' => 1, 'child' => (object) [$childClass, 200, "{\n    \"child-c\": 1\n}\n"]];
+        $state = ['parent-a' => 1, 'child' => (object) [$childClass, 200, "{\n    \"child-c\": 1\n}" . PHP_EOL]];
 
         $this->assertSame(self::etag($ro, $ro::class . serialize($state)), $ro->headers[Header::ETAG]);
     }
