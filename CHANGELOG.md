@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Deprecated
 - `StorageMemcachedEtagModule` and `ResourceStorageInterface::saveEtag()`: the stored entry holds its own ETag, so the ETag pool is no longer read or written. Remove the module and the calls; an `EtagPool` binding of your own is no longer used.
-- `ResourceStorageInterface::deleteEtag()`: call `invalidateTags()` with the URI's tag instead.
+- `ResourceStorageInterface::deleteEtag()`: call `invalidateTags()` with the URI's tag instead. The library no longer calls it or `saveEtag()`, so a `ResourceStorageInterface` implementation of your own has to answer `hasEtag()` from the entries it saves.
 
 ### Removed
 - The `save_etag` log entry with its schema `save_etag.json`, and the `etagPool` field of `invalidate`.
@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A `#[Cacheable]` entry that embeds a child keeps its ETag when the child is rebuilt with the same content (#287). The ETag of each such entry changes once, the first time the entry is rebuilt after the upgrade; a client revalidating with the old one gets a `200` that time.
 - `isNotModified()`/`isNotModifiedFor()` no longer answer `304` for the ETag of an entry a later write replaced, left behind when an invalidation failed in the ETag pool alone; the ETag must now be the one the stored entry carries.
 - Responses of one URI stored for different `X_VARY` values no longer drop each other on a miss. The key also holds the name of each varying value, so a request with `X_LANG=x` and one with `X_DEVICE=x` no longer share an entry.
+- A `304` from `HttpCache::transfer()`/`CliHttpCache::transfer()` now carries the `ETag`, `Cache-Control`, `Vary` and the other headers a `304` repeats, taken from the stored entry, and no longer PHP's default `Content-Type`. With a `ResourceStorageInterface` implementation of your own it carries none of them.
 
 ## [1.20.1] - 2026-11-11
 
