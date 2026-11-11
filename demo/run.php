@@ -9,8 +9,6 @@ use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
 use Composer\Autoload\ClassLoader;
 use FakeVendor\DemoApp\AppModule;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
-use Koriym\SemanticLogger\Stree\RenderConfig;
-use Koriym\SemanticLogger\Stree\TreeRenderer;
 use Ray\Di\Injector;
 
 function echoRo(ResourceObject $ro): void
@@ -60,7 +58,7 @@ echo 'conditional GET with a stale validator    -> ' . ($httpCache->isNotModifie
 $log = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class)->flush();
 
 echo PHP_EOL . '=== Cache Log Tree ===' . PHP_EOL;
-echo (new TreeRenderer(new RenderConfig(true, 0.0, 1000, true)))->render($log) . PHP_EOL;
+echo renderTree($log) . PHP_EOL;
 
 echo PHP_EOL . '=== Cache Log JSON ===' . PHP_EOL;
 echo json_encode($log, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL;

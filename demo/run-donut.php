@@ -23,8 +23,7 @@ use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
-use Koriym\SemanticLogger\Stree\RenderConfig;
-use Koriym\SemanticLogger\Stree\TreeRenderer;
+use FakeVendor\HelloWorld\Resource\Page\Html\MutableComment;
 use Madapaja\TwigModule\TwigModule;
 use Ray\Di\Injector;
 
@@ -58,6 +57,11 @@ This demo executes the following scenarios:
    - dependency_skipped says so (reason: no_etag_or_surrogate_key), unlike
      blog-posting's comment, a hole with no body yet (reason: no_body)
 
+6. A page that pulls its child while rendering, as a template helper does
+   - depends() during render records depends_on for the stored page
+   - a purge of the child drops the page, so the next GET rebuilds it with
+     the new comment instead of recomposing the stored one
+
 Every donut write and refresh also records what it told the CDN (cdn_headers):
 the literal CDN-Cache-Control the response carries - including the setter's
 default of 10 that no put_donut field reveals - and the Surrogate-Key list a
@@ -83,12 +87,17 @@ $resource->get('page://self/html/blog-posting');     // 2. Re-access (cache-hit)
 $repository->purge(new Uri('page://self/html/comment')); // 3. Manual purge of comment (top-level)
 $resource->get('page://self/html/blog-posting');     // 4. Access after invalidation
 $resource->get('page://self/html/counter-donut');    // 5. A page that reads an untagged child
+$renderTime = 'page://self/html/render-time-dependency';
+echo '6. ' . $resource->get($renderTime)->view . PHP_EOL;        // 6. depends() while rendering
+MutableComment::$comment = 'comment-b';
+$repository->purge(new Uri('page://self/html/mutable-comment'));
+echo '6. after the purge: ' . $resource->get($renderTime)->view . PHP_EOL;
 
 $log = $logger->flush();
 
 // Human/AI-readable tree (open = embed scope, close = hit/miss, events = saves/invalidations)
 echo '=== Cache Log Tree ===' . PHP_EOL;
-echo (new TreeRenderer(new RenderConfig(true, 0.0, 1000, true)))->render($log) . PHP_EOL;
+echo renderTree($log) . PHP_EOL;
 
 // Machine-readable JSON conforming to the published schemas (validated below
 // against the local schema files; also: `vendor/bin/stree <file>`)
