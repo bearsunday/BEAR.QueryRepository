@@ -53,7 +53,7 @@ final readonly class DependsOnTags
         $this->addTags($ro, $this->declared($ro) ?? []);
     }
 
-    /** @return list<ResourceObject> the stored resources its #[ResourceParam] declarations read: {@see ResourceParamSources} */
+    /** @return list<ResourceObject> the resources its #[ResourceParam] declarations read: {@see ResourceParamSources} */
     public function resourceParamSources(ResourceObject $ro): array
     {
         return $this->resourceParamSources === null ? [] : ($this->resourceParamSources)($ro);

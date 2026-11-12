@@ -27,7 +27,8 @@ final readonly class CacheDependencyCollector
      *
      * With $materialKeys (donut), only children that already ran are inspected.
      *
-     * A resource a #[ResourceParam] read ran before onGet() and is gone, so the dependency is taken from its stored entry.
+     * A resource a #[ResourceParam] read ran before onGet() and is gone, so the dependency is built from its URI, with the
+     * Surrogate-Key of its stored entry when it has one.
      */
     public function collect(
         ResourceObject $ro,

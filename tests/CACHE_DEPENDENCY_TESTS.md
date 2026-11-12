@@ -121,7 +121,7 @@ PUT article?ulid=a7 → the page stays stored
 
 ### Resources Read Through `#[ResourceParam]`
 
-The resource a `#[ResourceParam]` reads an argument from is a dependency of the reader, like an `#[Embed]` child, when it has a stored entry.
+The resource a `#[ResourceParam]` reads an argument from is a dependency of the reader, like an `#[Embed]` child: its URI tag and group tag always, and the `Surrogate-Key` of its stored entry when it has one.
 
 ```text
 AssistedPage onGet(id, #[ResourceParam('user?id=1#name')] owner)
@@ -129,7 +129,7 @@ PATCH user?id=1 → AssistedPage invalidated, and the next GET answers the new n
 PATCH user?id=2 → AssistedPage stays stored
 ```
 
-**Test:** `ResourceParamDependencyTest` — the declaration on the parameter, on the method and on both (the method's wins), the cache declaration shapes of the reader, readers embedded uncached through one and two levels, a `templated` URI, a write that invalidates what the source depends on, a recomposed view, and a source that is not cached
+**Test:** `ResourceParamDependencyTest` — the declaration on the parameter, on the method and on both (the method's wins), the cache declaration shapes of the reader, readers embedded uncached through one and two levels, a `templated` URI, a write that invalidates what the source depends on, a recomposed view, a source that is not cached, and a source purged between the read and the store
 
 ## Component Unit Tests
 

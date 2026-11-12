@@ -15,7 +15,7 @@ use function method_exists;
 use function uri_template;
 
 /**
- * The stored resources that the #[ResourceParam] declarations of a resource's onGet() read
+ * The resources that the #[ResourceParam] declarations of a resource's onGet() read
  *
  * @internal
  */
@@ -28,18 +28,17 @@ final readonly class ResourceParamSources
     ) {
     }
 
-    /** @return list<ResourceObject> each a new instance that has not run, carrying the headers of its stored entry; one with no stored entry is left out */
+    /** @return list<ResourceObject> each a new instance that has not run, carrying the headers of its stored entry when it has one */
     public function __invoke(ResourceObject $ro): array
     {
         $sources = [];
         foreach ($this->uris($ro) as $uri) {
             $source = $this->resource->newInstance($uri);
             $state = $this->storage->get($source->uri);
-            if (! $state instanceof ResourceState) {
-                continue;
+            if ($state instanceof ResourceState) {
+                $source->headers = $state->headers;
             }
 
-            $source->headers = $state->headers;
             $sources[] = $source;
         }
 

@@ -115,7 +115,7 @@ class ResourceParamDependencyTest extends TestCase
         }
     }
 
-    /** A resource it reads that is not cached gives no signal, so the reader is stored and served as it was stored */
+    /** A resource it reads that is not cached gives no signal of its own, so the reader is served as it was stored until that URI is purged */
     public function testAReaderOfAResourceThatIsNotCachedIsStoredAsASnapshot(): void
     {
         $uri = 'app://self/assisted/from-uncached?id=a';
@@ -123,6 +123,20 @@ class ResourceParamDependencyTest extends TestCase
         $this->assertTrue($this->isStored($uri, false));
 
         $this->assertSame($first->body, $this->resource->get($uri)->body, 'the stored entry answers, though the counter it read has moved on');
+
+        $this->repository->purge(new Uri('app://self/counter'));
+        $this->assertFalse($this->isStored($uri, false), 'the URI it read from is still a dependency');
+    }
+
+    /** The dependency comes from the declaration, not from whether the resource read has a stored entry when the reader is stored */
+    public function testAResourcePurgedBetweenTheReadAndTheStoreIsStillADependency(): void
+    {
+        $uri = 'app://self/assisted/racing?id=a';
+        $this->resource->get($uri);
+        $this->assertTrue($this->isStored($uri, false));
+
+        $this->resource->patch('app://self/user', ['id' => 1, 'name' => 'koala']);
+        $this->assertFalse($this->isStored($uri, false));
     }
 
     private function isStored(string $uri, bool $isDonut): bool
