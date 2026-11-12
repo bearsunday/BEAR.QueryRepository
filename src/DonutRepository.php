@@ -224,7 +224,8 @@ final readonly class DonutRepository implements DonutRepositoryInterface
      * A child carrying an ETag or Surrogate-Key already ran during onGet() (a material); a hole has not run yet.
      * Headers only: running a child here would execute a hole outside its hole scope. A child left out is logged
      * as `dependency_skipped` with what its body shows: none yet (a hole, or a run that left none), or one without a tag.
-     * A child that ran counts as well when it, or a request it embeds and ran, declares #[DependsOn].
+     * A child that ran counts as well when it, or a request it embeds and ran, declares #[DependsOn] or reads an onGet()
+     * argument through #[ResourceParam].
      */
     private function classifyMaterials(ResourceObject $ro, SurrogateKeys $keys): void
     {
