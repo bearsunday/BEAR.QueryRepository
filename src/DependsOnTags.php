@@ -6,8 +6,10 @@ namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\DependsOnNotExpandable;
 use BEAR\Resource\AbstractRequest;
+use BEAR\Resource\Annotation\ResourceParam;
 use BEAR\Resource\ResourceObject;
 use Generator;
+use ReflectionClass;
 use ReflectionMethod;
 
 use function array_key_exists;
@@ -136,6 +138,7 @@ final readonly class DependsOnTags
     private function fromArguments(ResourceObject $ro, array $templates): array
     {
         $source = sprintf('%s onGet()', (string) $ro->uri);
+        $bound = $this->resourceParams($ro);
         $parameters = [];
         $arguments = [];
         foreach ((new ReflectionMethod($ro, 'onGet'))->getParameters() as $parameter) {
@@ -153,6 +156,10 @@ final readonly class DependsOnTags
                 if (! in_array($variable, $parameters, true)) {
                     throw new DependsOnNotExpandable($source, DependsOnTemplates::declaration($template), sprintf("'%s' is not an onGet() parameter", $variable));
                 }
+
+                if (in_array($variable, $bound, true)) {
+                    throw new DependsOnNotExpandable($source, DependsOnTemplates::declaration($template), sprintf("'%s' is bound by #[ResourceParam]", $variable));
+                }
             }
 
             $tag = DependsOnTemplates::tag($this->uriTag, $template, $arguments, $source);
@@ -162,6 +169,30 @@ final readonly class DependsOnTags
         }
 
         return $tags;
+    }
+
+    /**
+     * #[ResourceParam] fills these from another resource whatever the query holds, so their value cannot be read back
+     *
+     * @return list<string> the onGet() parameters it binds, declared on the method or on the parameter
+     */
+    private function resourceParams(ResourceObject $ro): array
+    {
+        $names = [];
+        for ($ref = new ReflectionClass($ro); $ref !== false && $ref->hasMethod('onGet'); $ref = $ref->getParentClass()) {
+            $onGet = $ref->getMethod('onGet');
+            foreach ($onGet->getAttributes(ResourceParam::class) as $attribute) {
+                $names[] = $attribute->newInstance()->param;
+            }
+
+            foreach ($onGet->getParameters() as $parameter) {
+                if ($parameter->getAttributes(ResourceParam::class) !== []) {
+                    $names[] = $parameter->name;
+                }
+            }
+        }
+
+        return $names;
     }
 
     /**

@@ -156,7 +156,7 @@ final class Entry
 }
 ```
 
-- The arguments are read back from the request query, under the parameter name or its snake_case form, then from the parameter default. A value bound by `#[ResourceParam]` or another provider is not in the query: with a default, the URI silently expands from the default instead of the bound value; without one, the declaration fails. A query value is the string the request sent, so an `int` argument expands as written and a `BackedEnum` default fails as not scalar.
+- The arguments are read back from the request query, under the parameter name or its snake_case form, then from the parameter default. A parameter bound by `#[ResourceParam]`, on the parameter or on the method, takes its value from another resource whatever the query holds, so a declaration that uses it fails. A value another provider binds (a web context attribute) is not in the query either: with a default, the URI silently expands from the default instead of the bound value; without one, the declaration fails. A query value is the string the request sent, so an `int` argument expands as written and a `BackedEnum` default fails as not scalar.
 - The body is walked through arrays and public properties only: rows inside a `Traversable` (`ArrayObject`, a collection, a `Generator`) are not found. An embedded request or resource object is not entered: it is read as a dependency of its own. Each object is read once, so rows that refer to each other are safe.
 - Each row adds a tag to the `Surrogate-Key` header: 1,000 rows make it about 24 KB, beyond Fastly's 16,384-byte header limit.
 - A declaration on a parent class, or on the `onGet()` a child class overrides, applies as well.
@@ -164,7 +164,7 @@ final class Entry
 - Rows held as arrays have no class to declare on: tag them by hand with `UriTagInterface::fromAssoc()`. A URI tagged both ways is tagged once.
 - `#[DependsOn]` only adds the tag. The URI is invalidated by the named resource's own write when it is `#[Cacheable]`, or by a `#[Purge]`/`#[Refresh]` that names it.
 
-A declaration that cannot expand fails the GET with `BEAR\QueryRepository\Exception\DependsOnNotExpandable`, and nothing is stored. Its `reason` is `no '<variable>'` (no such argument or public property), `'<variable>' is not an onGet() parameter`, `'<variable>' is <type>` (neither scalar, `Stringable` nor `null`) or `declared on a resource class` (declare it on `onGet()`).
+A declaration that cannot expand fails the GET with `BEAR\QueryRepository\Exception\DependsOnNotExpandable`, and nothing is stored. Its `reason` is `no '<variable>'` (no such argument or public property), `'<variable>' is not an onGet() parameter`, `'<variable>' is bound by #[ResourceParam]`, `'<variable>' is <type>` (neither scalar, `Stringable` nor `null`) or `declared on a resource class` (declare it on `onGet()`).
 
 A row added to a list is caught by the write that adds it, not by the row tags: that write must invalidate the list's own URI, or a URI the list's `onGet()` declares. The list's own URI reaches a page only when the page embeds the list directly; below an uncached resource in between, only declared tags reach the page, so declare on the list's `onGet()` a URI the adding write invalidates. A list with no rows carries no row tag either, so the same applies.
 

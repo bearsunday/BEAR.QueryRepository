@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Behaviour change**: the ETag of a stored response is `"<locator>.<hash>"`, where the locator is made from the URI. An ETag issued by an earlier version is not answered `304`, so each client revalidates once with a `200`.
 - **Behaviour change**: storing a response invalidates its URI tag and purges it at the CDN only when it replaces a stored entry. A GET that misses stores where nothing is stored, so it no longer purges the CDN, drops the entries that embed the resource, or records `pre_write_cleanup` and `invalidate`; a write or a purge does, as before.
 - **Behaviour change**: the ETag of a `#[Cacheable]` value follows the string its renderer produces, and a miss renders the response when it stores the entry, so the response already holds its `view`. A body changed after that GET returns is not in the response.
+- **Behaviour change**: a `#[DependsOn]` on `onGet()` whose template uses a parameter bound by `#[ResourceParam]` now fails the GET with `DependsOnNotExpandable`. Tag that dependency by hand with `UriTagInterface`.
 
 ### Deprecated
 - `StorageMemcachedEtagModule` and `ResourceStorageInterface::saveEtag()`: the stored entry holds its own ETag, so the ETag pool is no longer read or written. Remove the module and the calls; an `EtagPool` binding of your own is no longer used.
