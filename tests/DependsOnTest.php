@@ -267,6 +267,9 @@ class DependsOnTest extends TestCase
             'array property' => ['app://self/rows/array-row', 'app://self/rows/array-row ' . ArrayUlid::class, "'ulid' is array"],
             'variable not an onGet() parameter' => ['app://self/rows/not-parameter?channelId=c1', 'app://self/rows/not-parameter?channelId=c1 onGet()', "'ulid' is not an onGet() parameter"],
             'declared on a resource class' => ['app://self/rows/class-declared?channelId=c1', 'app://self/rows/class-declared?channelId=c1', 'declared on a resource class'],
+            'variable bound by #[ResourceParam]' => ['app://self/rows/resource-param-bound', 'app://self/rows/resource-param-bound onGet()', "'channelId' is bound by #[ResourceParam]"],
+            'variable bound by #[ResourceParam] and also in the query' => ['app://self/rows/resource-param-bound?channelId=c1', 'app://self/rows/resource-param-bound?channelId=c1 onGet()', "'channelId' is bound by #[ResourceParam]"],
+            'variable bound by a method-level #[ResourceParam]' => ['app://self/rows/method-resource-param-bound', 'app://self/rows/method-resource-param-bound onGet()', "'channelId' is bound by #[ResourceParam]"],
         ];
     }
 
@@ -281,6 +284,17 @@ class DependsOnTest extends TestCase
             $this->assertSame($reason, $e->reason);
         }
 
+        $this->assertFalse($this->isStored($uri, false));
+    }
+
+    /** As BEAR.Resource binds, only the onGet() that runs counts: a #[ResourceParam] on the one it overrides binds nothing */
+    public function testAParameterOfAnOverridingOnGetExpandsFromTheQuery(): void
+    {
+        $uri = 'app://self/rows/resource-param-override?channelId=c1';
+        $this->resource->get($uri);
+        $this->assertTrue($this->isStored($uri, false));
+
+        $this->resource->put('app://self/rows/taxonomy?ulid=c1');
         $this->assertFalse($this->isStored($uri, false));
     }
 

@@ -44,8 +44,8 @@ final class SurrogateKeys
     }
 
     /**
-     * Tags the embedded resource with what it declares in #[DependsOn], reading each URI once: a page's material is
-     * classified before the page renders and rendered again as a request of its own
+     * Tags the embedded resource with what it declares in #[DependsOn] and what its #[ResourceParam] read, reading each
+     * URI once: a page's material is classified before the page renders and rendered again as a request of its own
      *
      * @return bool whether the page depends on it
      *

@@ -26,12 +26,19 @@ final readonly class CacheDependencyCollector
      * memoizes that run for the renderer; __invoke() would execute the child again.
      *
      * With $materialKeys (donut), only children that already ran are inspected.
+     *
+     * A resource a #[ResourceParam] read ran before onGet() and is gone, so the dependency is built from its URI, with the
+     * Surrogate-Key of its stored entry when it has one.
      */
     public function collect(
         ResourceObject $ro,
         SurrogateKeys|null $materialKeys = null,
     ): void {
         ($this->dependsOnTags)($ro);
+        foreach ($this->dependsOnTags->resourceParamSources($ro) as $source) {
+            $this->cacheDependency->depends($ro, $source);
+        }
+
         foreach ($this->dependsOnTags->requests($ro) as $request) {
             if ($materialKeys === null) {
                 (string) $request;

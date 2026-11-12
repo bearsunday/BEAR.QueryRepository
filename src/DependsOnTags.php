@@ -11,12 +11,14 @@ use Generator;
 use ReflectionMethod;
 
 use function array_key_exists;
+use function array_keys;
 use function explode;
 use function in_array;
 use function sprintf;
 
 /**
- * Adds to a resource's Surrogate-Key the tag of each URI its #[DependsOn] declarations expand to
+ * Adds to a resource's Surrogate-Key the tag of each URI its #[DependsOn] declarations expand to, and for a child that
+ * ran inside its parent, the tags of the resources its #[ResourceParam] declarations read
  *
  * @internal
  */
@@ -25,6 +27,7 @@ final readonly class DependsOnTags
     public function __construct(
         private UriTagInterface $uriTag,
         private CacheIdentityFactory $identityFactory = new CacheIdentityFactory(),
+        private ResourceParamSources|null $resourceParamSources = null,
     ) {
     }
 
@@ -50,6 +53,12 @@ final readonly class DependsOnTags
         $this->addTags($ro, $this->declared($ro) ?? []);
     }
 
+    /** @return list<ResourceObject> the resources its #[ResourceParam] declarations read: {@see ResourceParamSources} */
+    public function resourceParamSources(ResourceObject $ro): array
+    {
+        return $this->resourceParamSources === null ? [] : ($this->resourceParamSources)($ro);
+    }
+
     /**
      * Tags a child that ran inside its parent, adding what the requests it embeds and ran declare
      *
@@ -72,7 +81,10 @@ final readonly class DependsOnTags
         return $tags !== null || isset($child->headers[Header::ETAG]) || isset($child->headers[Header::SURROGATE_KEY]);
     }
 
-    /** @return list<string>|null the tags the resource and the requests it embeds and ran declare; null when none declares */
+    /**
+     * @return list<string>|null the tags the resource and the requests it embeds and ran declare, with those of the
+     *                           resources their #[ResourceParam] read; null when there is none
+     */
     public function ran(ResourceObject $ro): array|null
     {
         if (! $this->hasRun($ro)) {
@@ -80,6 +92,11 @@ final readonly class DependsOnTags
         }
 
         $tags = $this->declared($ro);
+        $read = $this->resourceParamSources?->tags($ro) ?? [];
+        if ($read !== []) {
+            $tags = [...$tags ?? [], ...$read];
+        }
+
         foreach ($this->requests($ro) as $body) {
             $embedded = $this->ran($body->resourceObject);
             if ($embedded !== null) {
@@ -136,9 +153,12 @@ final readonly class DependsOnTags
     private function fromArguments(ResourceObject $ro, array $templates): array
     {
         $source = sprintf('%s onGet()', (string) $ro->uri);
+        $onGet = new ReflectionMethod($ro, 'onGet');
+        // #[ResourceParam] fills these from another resource whatever the query holds, so their value cannot be read back
+        $bound = array_keys(ResourceParamSources::declared($onGet));
         $parameters = [];
         $arguments = [];
-        foreach ((new ReflectionMethod($ro, 'onGet'))->getParameters() as $parameter) {
+        foreach ($onGet->getParameters() as $parameter) {
             $parameters[] = $parameter->name;
             $arguments += $this->argument($parameter->name, $ro->uri->query);
             if (! array_key_exists($parameter->name, $arguments) && $parameter->isDefaultValueAvailable()) {
@@ -152,6 +172,10 @@ final readonly class DependsOnTags
             foreach (DependsOnTemplates::variables($template) as $variable) {
                 if (! in_array($variable, $parameters, true)) {
                     throw new DependsOnNotExpandable($source, DependsOnTemplates::declaration($template), sprintf("'%s' is not an onGet() parameter", $variable));
+                }
+
+                if (in_array($variable, $bound, true)) {
+                    throw new DependsOnNotExpandable($source, DependsOnTemplates::declaration($template), sprintf("'%s' is bound by #[ResourceParam]", $variable));
                 }
             }
 

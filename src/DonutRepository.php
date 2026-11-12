@@ -62,8 +62,8 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         CacheDependencyCollector|null $dependencyCollector = null,
     ) {
         // Same UriTag as templateKeys(), so a material's tag matches the format purge() emits.
-        $this->dependsOnTags = $dependsOnTags ?? new DependsOnTags($this->uriTag);
         $this->cacheTags = $cacheTags ?? new CacheTags($this->uriTag, $this->baseUriTag);
+        $this->dependsOnTags = $dependsOnTags ?? new DependsOnTags($this->uriTag, new CacheIdentityFactory(), new ResourceParamSources($this->resource, $this->resourceStorage, $this->cacheTags));
         $this->cacheDependency = $cacheDependency ?? new CacheDependency($this->uriTag, $this->logger, $this->baseUriTag, $this->cacheTags);
         $this->dependencyCollector = $dependencyCollector ?? new CacheDependencyCollector($this->dependsOnTags, $this->cacheDependency, $this->logger);
     }
@@ -224,7 +224,8 @@ final readonly class DonutRepository implements DonutRepositoryInterface
      * A child carrying an ETag or Surrogate-Key already ran during onGet() (a material); a hole has not run yet.
      * Headers only: running a child here would execute a hole outside its hole scope. A child left out is logged
      * as `dependency_skipped` with what its body shows: none yet (a hole, or a run that left none), or one without a tag.
-     * A child that ran counts as well when it, or a request it embeds and ran, declares #[DependsOn].
+     * A child that ran counts as well when it, or a request it embeds and ran, declares #[DependsOn] or reads an onGet()
+     * argument through #[ResourceParam].
      */
     private function classifyMaterials(ResourceObject $ro, SurrogateKeys $keys): void
     {
@@ -275,7 +276,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
 
         $this->logger->event(new CacheHitContext('donut'));
         $this->logger->event(new RefreshDonutContext((string) $ro->uri));
-        $donut->refresh($this->resource, $ro, $this->uriTag);
+        $donut->refresh($this->resource, $ro, $this->uriTag, $this->dependsOnTags);
         $surrogateKeys = $ro->headers[Header::SURROGATE_KEY] ?? '';
 
         if (! $donut->isCacheble) {

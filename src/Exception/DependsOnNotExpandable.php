@@ -11,6 +11,7 @@ use function sprintf;
  *
  * `source` is the stored resource's URI and where the values were read: `<uri> onGet()` or `<uri> <row class>`. `reason` is one of
  * `no '<variable>'` (no such parameter value or public property), `'<variable>' is not an onGet() parameter`,
+ * `'<variable>' is bound by #[ResourceParam]` (its value comes from another resource, not the query),
  * `'<variable>' is <type>` (neither scalar, Stringable nor null) and `declared on a resource class` (declare it on onGet()).
  * Nothing is stored. A dependency the declaration cannot express is tagged by hand with UriTagInterface::fromAssoc().
  */
