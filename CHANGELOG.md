@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `#[Refresh]` no longer stores an error the destination answers, and no longer breaks a `#[DonutCache]` page it names.
 - A page that embeds a resource through resources that are not cached now takes that resource's tags: a write to it, or to a URI declared below it, invalidates the page. The page's `Surrogate-Key` grows by those tags.
 - A child embedded in a `#[Cacheable]` resource whose `onGet()` throws now fails the GET with that exception; it ended the script with a fatal error.
+- Under a renderer that encodes the body as JSON, such as the JSON and HAL renderers, a `#[CacheableResponse]` or `#[DonutCache]` page shows its embedded resources as it does without the attribute and takes their tags; each was rendered as `{}`.
 
 ## [1.20.1] - 2026-11-11
 

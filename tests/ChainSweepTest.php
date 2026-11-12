@@ -13,7 +13,7 @@ class ChainSweepTest extends TestCase
     /** @return iterable<string, array{'json'|'string', list<key-of<ChainSweep::TOPS>>}> renderer, the kinds of page */
     public static function renderers(): iterable
     {
-        yield 'json' => ['json', ['value']];
+        yield 'json' => ['json', ['value', 'response', 'donut']];
         yield 'string' => ['string', ['value', 'response', 'donut']];
     }
 

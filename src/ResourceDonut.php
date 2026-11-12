@@ -15,6 +15,7 @@ use function assert;
 use function explode;
 use function hash;
 use function implode;
+use function is_array;
 use function is_iterable;
 use function max;
 use function preg_replace_callback;
@@ -54,11 +55,21 @@ final class ResourceDonut
         return sprintf(self::FORMAT, rawurlencode($uri));
     }
 
+    /** @var array<array-key, mixed>|null The body the page returned, each hole null, when its renderer prints no placeholder; null when the template holds the page */
+    private array|null $body = null;
+
+    /** @var array<array-key, string> URI of each hole in the body, by its key */
+    private array $holes = [];
+
     /**
-     * @param array<string, string> $headers
-     * @param int|null              $lastModified Time when the composed content last actually changed
-     * @param list<string>|null     $storageTags  Original invalidation tags for the donut template entry
-     * @param int|null              $code         Status code the page was stored with; null in entries saved before this field existed
+     * @param array<string, string>        $headers
+     * @param int|null                     $lastModified Time when the composed content last actually changed
+     * @param list<string>|null            $storageTags  Original invalidation tags for the donut template entry
+     * @param int|null                     $code         Status code the page was stored with; null in entries saved before this field existed
+     * @param array<array-key, mixed>|null $body
+     * @param array<array-key, string>     $holes
+     *
+     * @SuppressWarnings("PHPMD.ExcessiveParameterList")
      */
     public function __construct(
         private readonly string $template,
@@ -73,33 +84,19 @@ final class ResourceDonut
         private readonly int|null $templateExpiresAt = null,
         private readonly array|null $storageTags = null,
         private readonly int|null $code = null,
+        array|null $body = null,
+        array $holes = [],
     ) {
+        $this->body = $body;
+        $this->holes = $holes;
     }
 
     /** @param DependsOnTags|null $dependsOnTags reads what each hole declares as it is rendered again; null reads its #[DependsOn] only */
     public function refresh(ResourceInterface $resource, ResourceObject $ro, UriTagInterface|null $uriTag = null, DependsOnTags|null $dependsOnTags = null): ResourceObject
     {
         $etags = new SurrogateKeys($ro->uri, null, $uriTag, null, $dependsOnTags);
-        $refreshView =  preg_replace_callback(self::URI_REGEX, static function (array $matches) use ($resource, $etags): string {
-            // Group 1 is "2" for a new `le2` match (its URI, group 2, is rawurlencode()'d),
-            // or "" for a legacy `le` match (group 2 is its URI, used verbatim).
-            $uri = $matches[1] === '2' ? rawurldecode($matches[2]) : $matches[2];
-            try {
-                $ro = $resource->get($uri);
-                $ro->toString();
-            } catch (Throwable $e) {
-                // toString() lets a render failure travel uncaught; wrapped here so a HIT's
-                // re-fetch degrades to a fresh render instead of surfacing a broken response.
-                throw new CacheStoreException(previous: $e);
-            }
-
-            $etags->addTag($ro);
-
-            return (string) $ro->view;
-        }, $this->template);
-
         $ro->headers = $this->headers;
-        $ro->view = $refreshView;
+        $ro->view = $this->body === null ? $this->compose($resource, $etags) : $this->renderBody($this->body, $resource, $ro, $etags);
         // isset() also guards entries serialized before this property existed
         if (isset($this->code)) {
             $ro->code = $this->code;
@@ -117,8 +114,64 @@ final class ResourceDonut
         return $ro;
     }
 
+    /** The template with the view of each hole, read again, in the hole's place */
+    private function compose(ResourceInterface $resource, SurrogateKeys $etags): string|null
+    {
+        return preg_replace_callback(self::URI_REGEX, static function (array $matches) use ($resource, $etags): string {
+            // Group 1 is "2" for a new `le2` match (its URI, group 2, is rawurlencode()'d),
+            // or "" for a legacy `le` match (group 2 is its URI, used verbatim).
+            $uri = $matches[1] === '2' ? rawurldecode($matches[2]) : $matches[2];
+            try {
+                $ro = $resource->get($uri);
+                $ro->toString();
+            } catch (Throwable $e) {
+                // toString() lets a render failure travel uncaught; wrapped here so a HIT's
+                // re-fetch degrades to a fresh render instead of surfacing a broken response.
+                throw new CacheStoreException(previous: $e);
+            }
+
+            $etags->addTag($ro);
+
+            return (string) $ro->view;
+        }, $this->template);
+    }
+
+    /**
+     * The stored body rendered by the page's own renderer, each hole a request again
+     *
+     * @param array<array-key, mixed> $body
+     */
+    private function renderBody(array $body, ResourceInterface $resource, ResourceObject $ro, SurrogateKeys $etags): string
+    {
+        $requests = [];
+        foreach ($this->holes as $key => $uri) {
+            $request = $resource->uri($uri);
+            assert($request instanceof AbstractRequest);
+            $requests[] = $body[$key] = $request;
+        }
+
+        $ro->body = $body;
+        $ro->view = null;
+        try {
+            $view = $ro->toString();
+            foreach ($requests as $request) {
+                $etags->addTag(DonutRequest::resultOf($request));
+            }
+        } catch (Throwable $e) {
+            // As in compose(): a hole that fails degrades the hit to a fresh render
+            throw new CacheStoreException(previous: $e);
+        }
+
+        return $view;
+    }
+
     public function render(ResourceObject $ro, DonutRendererInterface $storage): ResourceObject
     {
+        // A page stored as its body was rendered when the donut was created
+        if ($this->body !== null) {
+            return $ro;
+        }
+
         $view = $storage->render($this->template);
         $ro->view = $view;
 
@@ -167,6 +220,8 @@ final class ResourceDonut
             $templateExpiresAt,
             $storageTags,
             $this->code ?? null,
+            $this->body,
+            $this->holes,
         );
     }
 
@@ -191,6 +246,8 @@ final class ResourceDonut
             $templateExpiresAt,
             $tags,
             $this->code ?? null,
+            $this->body,
+            $this->holes,
         );
     }
 
@@ -231,11 +288,15 @@ final class ResourceDonut
         // an #[Embed] would have made it an array - and a null body holds no embedded request
         // to wrap. It is composed as an empty one rather than refused.
         assert(is_iterable($ro->body) || $ro->body === null);
+        $holes = [];
         if (is_iterable($ro->body)) {
-            /** @var mixed $maybeRequest */
-            foreach ($ro->body as &$maybeRequest) {
+            /**
+             * @var array-key $key
+             * @var mixed     $maybeRequest
+             */
+            foreach ($ro->body as $key => &$maybeRequest) {
                 if ($maybeRequest instanceof AbstractRequest) {
-                    $maybeRequest = new DonutRequest($maybeRequest, $storage, $etags);
+                    $maybeRequest = $holes[$key] = new DonutRequest($maybeRequest, $storage, $etags);
                 }
             }
 
@@ -243,7 +304,38 @@ final class ResourceDonut
         }
 
         $donutTemplate = $ro->toString();
+        foreach ($holes as $hole) {
+            if ($hole->isEncoded && is_array($ro->body)) {
+                return self::ofBody($ro, $holes, $etags, $ttl, $isCacheble);
+            }
+        }
 
         return new self($donutTemplate, $ro->headers, $ttl, $isCacheble, code: $ro->code);
+    }
+
+    /**
+     * A renderer that encodes a hole as JSON prints no placeholder for it. The page is stored as the body it returned
+     * and rendered again on each hit, every hole a request, so it shows what it shows without the donut.
+     *
+     * @param array<array-key, DonutRequest> $holes
+     */
+    private static function ofBody(ResourceObject $ro, array $holes, SurrogateKeys $etags, int|null $ttl, bool $isCacheble): self
+    {
+        assert(is_array($ro->body));
+        $body = $ro->body;
+        $uris = [];
+        foreach ($holes as $key => $hole) {
+            $ro->body[$key] = $hole->request;
+            $body[$key] = null;
+            $uris[$key] = $hole->request->toUri();
+        }
+
+        $ro->view = null;
+        $ro->toString();
+        foreach ($holes as $hole) {
+            $etags->addTag(DonutRequest::resultOf($hole->request));
+        }
+
+        return new self('', $ro->headers, $ttl, $isCacheble, code: $ro->code, body: $body, holes: $uris);
     }
 }
