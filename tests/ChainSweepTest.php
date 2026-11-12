@@ -10,15 +10,15 @@ use PHPUnit\Framework\TestCase;
 /** A hit answers as the miss did, whatever the chain of resources below the page looks like */
 class ChainSweepTest extends TestCase
 {
-    /** @return iterable<string, array{'json'|'twig', list<key-of<ChainSweep::TOPS>>}> renderer, the kinds of page */
+    /** @return iterable<string, array{'json'|'string', list<key-of<ChainSweep::TOPS>>}> renderer, the kinds of page */
     public static function renderers(): iterable
     {
         yield 'json' => ['json', ['value']];
-        yield 'twig' => ['twig', ['value', 'response', 'donut']];
+        yield 'string' => ['string', ['value', 'response', 'donut']];
     }
 
     /**
-     * @param 'json'|'twig'                  $renderer
+     * @param 'json'|'string'                $renderer
      * @param list<key-of<ChainSweep::TOPS>> $tops
      */
     #[DataProvider('renderers')]

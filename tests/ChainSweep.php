@@ -8,10 +8,10 @@ use ArrayAccess;
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\Resource\Module\HalModule;
 use BEAR\Resource\Module\ResourceModule;
+use BEAR\Resource\RenderInterface;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
-use Madapaja\TwigModule\TwigModule;
 use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
@@ -21,7 +21,6 @@ use Throwable;
 
 use function array_fill;
 use function array_filter;
-use function array_keys;
 use function array_map;
 use function array_reverse;
 use function array_values;
@@ -85,7 +84,7 @@ final class ChainSweep
     private ArrayAdapter $pool;
 
     /**
-     * @param 'hal'|'json'|'twig'      $renderer
+     * @param 'hal'|'json'|'string'    $renderer 'string' prints each body value by casting it, as a template does
      * @param list<key-of<self::TOPS>> $tops     the kinds of page to read
      * @param string                   $dir      where the generated resources go
      */
@@ -101,12 +100,8 @@ final class ChainSweep
             $module->override(new HalModule());
         }
 
-        if ($renderer === 'twig') {
-            $module->override(new TwigModule([$dir . '/templates']));
-        }
-
-        $module->override(new class ($this->pool) extends AbstractModule {
-            public function __construct(private ArrayAdapter $pool)
+        $module->override(new class ($this->pool, $renderer === 'string') extends AbstractModule {
+            public function __construct(private ArrayAdapter $pool, private bool $casts)
             {
                 parent::__construct();
             }
@@ -114,6 +109,9 @@ final class ChainSweep
             protected function configure(): void
             {
                 $this->bind(TagAwareAdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->toInstance(new TagAwareAdapter($this->pool));
+                if ($this->casts) {
+                    $this->bind(RenderInterface::class)->to(FakeCastingRenderer::class);
+                }
             }
         });
         $compiled = "{$dir}/di-{$renderer}";
@@ -280,55 +278,43 @@ final class ChainSweep
         return is_array($body) && ! isset($body['_embedded']);
     }
 
-    /** @return list<Chain> */
+    /**
+     * Writes one class per level, and one page per kind over the levels they share
+     *
+     * @return list<Chain>
+     */
     private static function generate(string $dir): array
     {
         $chains = [];
         $files = [];
-        foreach (self::shapes() as $i => [$top, $cached, $schemes, $uses]) {
+        foreach (self::shapes() as $i => [$cached, $schemes, $uses]) {
             $depth = count($cached) + 1;
-            $uris = ["page://self/s{$i}/n0"];
+            $below = [];
             $label = [];
             foreach (range(1, $depth - 1) as $level) {
-                $uris[] = "{$schemes[$level - 1]}://self/s{$i}/n{$level}";
+                $below[] = "{$schemes[$level - 1]}://self/s{$i}/n{$level}";
                 $label[] = $uses[$level - 1] . '> ' . ($cached[$level - 1] ? 'C' : 'u') . ':' . $schemes[$level - 1];
             }
 
             $target = "app://self/s{$i}/target";
-            foreach (range(0, $depth - 1) as $level) {
-                $scheme = ucfirst($level === 0 ? 'page' : $schemes[$level - 1]);
-                $attribute = $level === 0 ? self::TOPS[$top] : ($cached[$level - 1] ? 'Cacheable' : null);
+            foreach (range(1, $depth - 1) as $level) {
                 $isLeaf = $level === $depth - 1;
-                $statements = "        \$this->body['v'] = 'n{$level}';\n";
-                $template = "N{$level}[{{ v }}]";
-                if ($isLeaf) {
-                    $statements .= "        \$this->body['ver'] = \\" . self::class . "::\$version;\n";
-                    $template .= ' ver={{ ver }}';
-                }
-
-                if (! $isLeaf) {
-                    $template .= '<c>{{ c|raw }}</c>';
-                    if ($uses[$level] === 'cast') {
-                        $statements .= "        \$this->body['read'] = (string) \$this->body['c'];\n";
-                        $template .= '<read>{{ read|raw }}</read>';
-                    }
-
-                    if ($uses[$level] === 'read') {
-                        $statements .= "        \$this->body['got'] = \$this->body['c']['v'];\n";
-                        $template .= '<got>{{ got }}</got>';
-                    }
-                }
-
-                $files["src/Resource/{$scheme}/S{$i}/N{$level}.php"] = "<?php\n\nnamespace " . self::NAMESPACE . "\\Resource\\{$scheme}\\S{$i};\n\n"
-                    . ($attribute === null ? '' : "#[\\BEAR\\RepositoryModule\\Annotation\\{$attribute}]\n")
-                    . "class N{$level} extends \\BEAR\\Resource\\ResourceObject\n{\n"
-                    . ($isLeaf ? "    #[\\BEAR\\RepositoryModule\\Annotation\\DependsOn(uri: '{$target}')]\n" : "    #[\\BEAR\\Resource\\Annotation\\Embed(rel: 'c', src: '{$uris[$level + 1]}')]\n")
-                    . "    public function onGet(): static\n    {\n{$statements}        return \$this;\n    }\n}\n";
-                $files["templates/{$scheme}/S{$i}/N{$level}.html.twig"] = $template;
+                $files['src/Resource/' . ucfirst($schemes[$level - 1]) . "/S{$i}/N{$level}.php"] = self::classCode(
+                    ucfirst($schemes[$level - 1]) . "\\S{$i}",
+                    "N{$level}",
+                    $cached[$level - 1] ? 'Cacheable' : null,
+                    "n{$level}",
+                    $isLeaf ? null : $below[$level],
+                    $isLeaf ? null : $uses[$level],
+                    $target,
+                );
             }
 
             $cacheable = array_values(array_filter(range(1, $depth - 1), static fn (int $level): bool => $cached[$level - 1]));
-            $chains[] = ['top' => $top, 'label' => "{$top} page " . implode(' ', $label), 'uris' => $uris, 'cacheable' => $cacheable, 'warms' => self::warms($cacheable), 'target' => $target];
+            foreach (self::TOPS as $top => $attribute) {
+                $files["src/Resource/Page/S{$i}/" . ucfirst($top) . '.php'] = self::classCode("Page\\S{$i}", ucfirst($top), $attribute, 'n0', $below[0], $uses[0], $target);
+                $chains[] = ['top' => $top, 'label' => "{$top} page " . implode(' ', $label), 'uris' => ["page://self/s{$i}/{$top}", ...$below], 'cacheable' => $cacheable, 'warms' => self::warms($cacheable), 'target' => $target];
+            }
         }
 
         foreach ($files as $path => $code) {
@@ -351,25 +337,50 @@ final class ChainSweep
     }
 
     /**
-     * The page kind, then per level below it: cacheable or not, the scheme, and how its parent uses it
+     * @param string|null $attribute the cache declaration on the class
+     * @param string|null $child     the URI it embeds as 'c'; the leaf has none and declares $target instead
+     * @param string|null $use       what onGet() does with 'c'
+     */
+    private static function classCode(string $namespace, string $class, string|null $attribute, string $name, string|null $child, string|null $use, string $target): string
+    {
+        $statements = "        \$this->body['v'] = '{$name}';\n";
+        if ($child === null) {
+            $statements .= "        \$this->body['ver'] = \\" . self::class . "::\$version;\n";
+        }
+
+        if ($use === 'cast') {
+            $statements .= "        \$this->body['read'] = (string) \$this->body['c'];\n";
+        }
+
+        if ($use === 'read') {
+            $statements .= "        \$this->body['got'] = \$this->body['c']['v'];\n";
+        }
+
+        return "<?php\n\nnamespace " . self::NAMESPACE . "\\Resource\\{$namespace};\n\n"
+            . ($attribute === null ? '' : "#[\\BEAR\\RepositoryModule\\Annotation\\{$attribute}]\n")
+            . "class {$class} extends \\BEAR\\Resource\\ResourceObject\n{\n"
+            . ($child === null ? "    #[\\BEAR\\RepositoryModule\\Annotation\\DependsOn(uri: '{$target}')]\n" : "    #[\\BEAR\\Resource\\Annotation\\Embed(rel: 'c', src: '{$child}')]\n")
+            . "    public function onGet(): static\n    {\n{$statements}        return \$this;\n    }\n}\n";
+    }
+
+    /**
+     * Per level below the page: cacheable or not, the scheme, and how its parent uses it
      *
-     * @return list<array{key-of<self::TOPS>, list<bool>, list<string>, list<string>}>
+     * @return list<array{list<bool>, list<string>, list<string>}>
      */
     private static function shapes(): array
     {
         $shapes = [];
         foreach (range(2, self::MAX_DEPTH) as $depth) {
             $below = $depth - 1;
-            // Four levels would be 5,832 chains per page kind; the schemes and the uses are thinned there
+            // Four levels would be 5,832 chains; the schemes and the uses are thinned there
             $full = $depth < self::MAX_DEPTH;
             $schemes = $full ? self::product(array_fill(0, $below, ['page', 'app'])) : [['page', 'page', 'page'], ['app', 'app', 'app'], ['app', 'page', 'app']];
             $uses = self::product(array_fill(0, $below, $full ? self::USES : ['embed', 'cast']));
-            foreach (array_keys(self::TOPS) as $top) {
-                foreach (self::product(array_fill(0, $below, [true, false])) as $cached) {
-                    foreach ($schemes as $scheme) {
-                        foreach ($uses as $use) {
-                            $shapes[] = [$top, $cached, $scheme, $use];
-                        }
+            foreach (self::product(array_fill(0, $below, [true, false])) as $cached) {
+                foreach ($schemes as $scheme) {
+                    foreach ($uses as $use) {
+                        $shapes[] = [$cached, $scheme, $use];
                     }
                 }
             }
