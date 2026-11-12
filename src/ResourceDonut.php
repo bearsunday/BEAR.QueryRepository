@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\CacheStoreException;
 use BEAR\Resource\AbstractRequest;
+use BEAR\Resource\Request;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use Throwable;
@@ -167,7 +168,8 @@ final class ResourceDonut
         try {
             $ro->toString();
             foreach ($requests as $request) {
-                $etags->addTag($request->resourceObject);
+                // After rendering: what a hole passes up from the requests it embeds is known once those have run
+                $etags->addTag(DonutRequest::resultOf($request));
             }
         } catch (Throwable $e) {
             // As in compose(), a hole that fails degrades the hit to a fresh render: onGet() then runs on the resource as it came in
@@ -345,11 +347,20 @@ final class ResourceDonut
 
         // The body is what the store keeps, so it must serialize: a refusal surfaces here, before anything is written or purged
         serialize($body);
+        // A request that is not a Request, such as bear/async's AsyncRequest, hands out its resource only when invoked.
+        // Invoked before the renderer reads it, it is rendered from that run and not run a second time.
+        $invoked = [];
+        foreach ($holes as $key => $hole) {
+            if (! $hole->request instanceof Request) {
+                $invoked[$key] = ($hole->request)();
+            }
+        }
+
         $ro->view = null;
         $ro->toString();
-        foreach ($holes as $hole) {
-            // The renderer ran the hole on its resource object; asking the request for a result could run it a second time
-            $etags->addTag($hole->request->resourceObject);
+        foreach ($holes as $key => $hole) {
+            // After rendering: what a hole passes up from the requests it embeds is known once those have run
+            $etags->addTag($invoked[$key] ?? DonutRequest::resultOf($hole->request));
         }
 
         return new self('', $ro->headers, $ttl, $isCacheble, code: $ro->code, body: $body, holes: $uris);

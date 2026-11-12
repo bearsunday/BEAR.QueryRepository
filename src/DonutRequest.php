@@ -30,16 +30,28 @@ final class DonutRequest implements Stringable, JsonSerializable
     ) {
     }
 
+    /**
+     * Runs the hole and answers its resource
+     *
+     * A Request answers its memoized result, so a child onGet() already read is not run again (#226). Other requests
+     * are invoked directly: bear/async's AsyncRequest keeps its result only for its own rendering, and that rendering
+     * uses a result it was invoked for instead of running the request again.
+     */
+    public static function resultOf(AbstractRequest $request): ResourceObject
+    {
+        /** @psalm-suppress MixedAssignment $executed - Request::jsonSerialize() answers its memoized ResourceObject */
+        $executed = $request instanceof Request ? $request->jsonSerialize() : $request();
+        assert($executed instanceof ResourceObject);
+
+        return $executed;
+    }
+
     #[Override]
     public function __toString(): string
     {
         // Includes the query, so sibling holes on one path get distinct cache entries
         $uri = $this->request->toUri();
-        // A Request answers its memoized result, so a child onGet() already read is not run again (#226).
-        // Other requests are invoked directly: AsyncRequest's jsonSerialize() flushes its batch.
-        /** @psalm-suppress MixedAssignment $executed - Request::jsonSerialize() answers its memoized ResourceObject */
-        $executed = $this->request instanceof Request ? $this->request->jsonSerialize() : ($this->request)();
-        assert($executed instanceof ResourceObject);
+        $executed = self::resultOf($this->request);
         // Not (string): the cast turns a render failure into '', which would be stored (#237)
         $view = $executed->toString();
 

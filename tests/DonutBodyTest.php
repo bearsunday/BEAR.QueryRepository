@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\Resource\AbstractRequest;
-use BEAR\Resource\InvokerInterface;
 use BEAR\Resource\JsonRenderer;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
@@ -90,33 +88,22 @@ class DonutBodyTest extends TestCase
         $this->assertSame($expected, json_decode($this->resource->get($uri)->toString(), true, 512, JSON_THROW_ON_ERROR), 'the fresh run is what is stored');
     }
 
-    public function testAHoleThatIsNoRequestIsNotRunAgainForItsTags(): void
+    public function testAHoleWhoseResultComesOnlyFromInvokingItRunsOnceAndGivesItsTags(): void
     {
         $child = new class extends ResourceObject {
         };
-        $child->uri = new Uri('app://self/non-request');
+        $child->uri = new Uri('app://self/deferred');
+        $child->body = ['hole' => 1];
         $child->headers[Header::SURROGATE_KEY] = 'hole-tag';
-        $invoker = new class ($child) implements InvokerInterface {
-            public int $calls = 0;
-
-            public function __construct(private readonly ResourceObject $ro)
-            {
-            }
-
-            public function invoke(AbstractRequest $request): ResourceObject
-            {
-                $this->calls++;
-
-                return $this->ro;
-            }
-        };
-        $page = self::jsonPage(['hole' => new FakeNonRequestHole($invoker, $child)]);
+        $hole = new FakeDeferredHole($child);
+        $page = self::jsonPage(['hole' => $hole]);
         $keys = new SurrogateKeys($page->uri);
 
         ResourceDonut::create($page, new DonutRenderer(), $keys, null, false);
         $keys->setSurrogateHeader($page);
 
-        $this->assertSame(0, $invoker->calls, 'the renderer read the hole; asking it again would run it a second time');
+        $this->assertSame(1, $hole->runs);
+        $this->assertSame(['hole' => ['hole' => 1]], json_decode((string) $page->view, true, 512, JSON_THROW_ON_ERROR));
         $this->assertContains('hole-tag', explode(' ', $page->headers[Header::SURROGATE_KEY] ?? ''));
     }
 
