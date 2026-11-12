@@ -13,12 +13,12 @@ use LogicException;
 use Override;
 
 /**
- * A hole shaped like bear/async's AsyncRequest over a deferred request
+ * A request shaped like bear/async's AsyncRequest over a deferred request
  *
  * Its resource object is a stand-in that never runs. Its result comes from invoking it, and encoding it runs it
  * unless it has been invoked.
  */
-final class FakeDeferredHole extends AbstractRequest
+final class FakeDeferredRequest extends AbstractRequest
 {
     public int $runs = 0;
     private bool $invoked = false;

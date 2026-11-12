@@ -23,10 +23,10 @@ use function set_error_handler;
 use const JSON_THROW_ON_ERROR;
 
 /**
- * A renderer that encodes the body as JSON prints no placeholder for a hole
+ * A renderer that encodes the body as JSON prints no placeholder for an embedded request
  *
- * - the page shows each hole as it does without the donut, and takes the hole's tags
- * - a hit reads the holes again and does not run the page
+ * - the page shows each embedded request as it does without the donut, and takes its tags
+ * - a hit reads them again and does not run the page
  */
 class DonutBodyTest extends TestCase
 {
@@ -46,7 +46,7 @@ class DonutBodyTest extends TestCase
     }
 
     #[DataProvider('pages')]
-    public function testTheHoleIsShownAndItsTagsReachThePage(string $uri): void
+    public function testAnEmbeddedRequestIsShownAndItsTagsReachThePage(string $uri): void
     {
         foreach (['miss', 'hit'] as $read) {
             $ro = $this->resource->get($uri);
@@ -88,21 +88,21 @@ class DonutBodyTest extends TestCase
         $this->assertSame($expected, json_decode($this->resource->get($uri)->toString(), true, 512, JSON_THROW_ON_ERROR), 'the fresh run is what is stored');
     }
 
-    public function testAHoleWhoseResultComesOnlyFromInvokingItRunsOnceAndGivesItsTags(): void
+    public function testARequestWhoseResultComesOnlyFromInvokingItRunsOnceAndGivesItsTags(): void
     {
         $child = new class extends ResourceObject {
         };
         $child->uri = new Uri('app://self/deferred');
         $child->body = ['hole' => 1];
         $child->headers[Header::SURROGATE_KEY] = 'hole-tag';
-        $hole = new FakeDeferredHole($child);
-        $page = self::jsonPage(['hole' => $hole]);
+        $request = new FakeDeferredRequest($child);
+        $page = self::jsonPage(['hole' => $request]);
         $keys = new SurrogateKeys($page->uri);
 
         ResourceDonut::create($page, new DonutRenderer(), $keys, null, false);
         $keys->setSurrogateHeader($page);
 
-        $this->assertSame(1, $hole->runs);
+        $this->assertSame(1, $request->runs);
         $this->assertSame(['hole' => ['hole' => 1]], json_decode((string) $page->view, true, 512, JSON_THROW_ON_ERROR));
         $this->assertContains('hole-tag', explode(' ', $page->headers[Header::SURROGATE_KEY] ?? ''));
     }

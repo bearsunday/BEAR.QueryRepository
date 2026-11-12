@@ -20,7 +20,7 @@ use function assert;
  */
 final class DonutRequest implements Stringable, JsonSerializable
 {
-    /** Whether the renderer encoded this hole as JSON, where no placeholder can stand for it */
+    /** Whether the renderer encoded this request as JSON, where no placeholder can stand for it */
     public bool $isEncoded = false;
 
     public function __construct(
@@ -49,8 +49,8 @@ final class DonutRequest implements Stringable, JsonSerializable
     #[Override]
     public function __toString(): string
     {
-        // Includes the query and the links, so sibling holes on one path get distinct cache entries
-        $reference = HoleReference::of($this->request);
+        // Includes the query and the links, so sibling requests on one path get distinct cache entries
+        $reference = EmbedReference::of($this->request);
         $executed = self::resultOf($this->request);
         // Not (string): the cast turns a render failure into '', which would be stored (#237)
         $view = $executed->toString();

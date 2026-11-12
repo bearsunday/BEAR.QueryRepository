@@ -220,7 +220,7 @@ new AkamaiModule();
 
 A `#[Cacheable]` body is checked by serializing it before its own entry is stored or its pre-write cleanup runs; an embedded child has run by then, and a cached child has stored its own entry. A value `serialize()` refuses (a closure, a PDO connection, a DOM node, an object whose `__serialize()` throws) fails the request in every environment with the exception `serialize()` throws, unwrapped, and the log records it as `cache_error{operation: write}` with that exception's class and message. A write fails the same way when the GET that refreshes its entry builds such a body, after the write and the purge of its entry, including any CDN purge, have run. A PHP resource such as a stream is not refused: `serialize()` turns it into `0`, so the check passes and the stored copy loses it (`0`, or `null` with a deprecation notice under igbinary); keep resources out of a cached body. A `#[CacheableResponse]`/`#[DonutCache]` page stores its rendered view, so its body is not checked; under the deprecated `MobileEtagModule` a `#[CacheableResponse]` page's body must serialize too, since its ETag serializes it.
 
-The exception is a page whose renderer encodes the body as JSON: its template is the body it returned (see Donut Caching), so that body, without its holes, is checked the same way when the page is stored. A request nested in an array of that body is refused too, as `serialize()` refuses a request.
+The exception is a page whose renderer encodes the body as JSON: its template is the body it returned (see Donut Caching), so that body, without its embedded requests, is checked the same way when the page is stored. A request nested in an array of that body is refused too, as `serialize()` refuses a request.
 
 ### Client Cache-Control of a #[Cacheable] response
 
@@ -325,7 +325,7 @@ class BlogPage extends ResourceObject
 - `#[DonutCache]`: stores the template only; holes run on every request. For per-user holes.
 - `#[CacheableResponse]`: also stores the composed page; a hole's purge recomposes it from the template. A write method of the class purges and rebuilds the page.
 - `#[CacheableResponse]` on `onGet()` alone stores the template only, as `#[DonutCache]` does. A write method marked `#[RefreshCache]` purges and rebuilds its own URI.
-- Under a renderer that encodes the body as JSON, such as the JSON and HAL renderers, the template is the body the page returned, with each hole left out: a hit renders that body again, each hole a request, and does not run `onGet()`. The page shows what it shows without the attribute.
+- Under a renderer that encodes the body as JSON, such as the JSON and HAL renderers, the template is the body the page returned, with each embedded request left out: a hit renders that body again with those requests put back, and does not run `onGet()`. The page shows what it shows without the attribute.
 
 ## Cache Log (Semantic Log)
 

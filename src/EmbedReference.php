@@ -22,11 +22,11 @@ use function strpos;
 use function substr;
 
 /**
- * The URI of a hole and the links its request carries, as the one string a hit reads the same hole from
+ * The URI of an embedded request and the links it carries, as the one string a hit builds the same request from
  *
  * @internal
  */
-final class HoleReference
+final class EmbedReference
 {
     /** Separates the URI from the links. A URI holds no '#': its query is percent-encoded. */
     private const LINKS = '#link:';
@@ -55,7 +55,7 @@ final class HoleReference
         return $request;
     }
 
-    /** Reads the hole. One without links is read with get(), as a placeholder that holds a bare URI always was. */
+    /** The resource the reference names. One without links needs no request built: get() reads it. */
     public static function get(ResourceInterface $resource, string $reference): ResourceObject
     {
         return str_contains($reference, self::LINKS) ? self::request($resource, $reference)() : $resource->get($reference);

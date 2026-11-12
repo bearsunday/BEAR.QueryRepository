@@ -57,11 +57,11 @@ final class ResourceDonut
         return sprintf(self::FORMAT, rawurlencode($reference));
     }
 
-    /** @var array<array-key, mixed>|null The body the page returned, each hole null, when its renderer prints no placeholder; null when the template holds the page */
+    /** @var array<array-key, mixed>|null The body the page returned, each embedded request null, when its renderer prints no placeholder; null when the template holds the page */
     private array|null $body = null;
 
-    /** @var array<array-key, string> HoleReference of each hole in the body, by its key */
-    private array $holes = [];
+    /** @var array<array-key, string> EmbedReference of each request embedded in the body, by its key */
+    private array $embeds = [];
 
     /**
      * @param array<string, string>        $headers
@@ -69,7 +69,7 @@ final class ResourceDonut
      * @param list<string>|null            $storageTags  Original invalidation tags for the donut template entry
      * @param int|null                     $code         Status code the page was stored with; null in entries saved before this field existed
      * @param array<array-key, mixed>|null $body
-     * @param array<array-key, string>     $holes
+     * @param array<array-key, string>     $embeds
      *
      * @SuppressWarnings("PHPMD.ExcessiveParameterList")
      */
@@ -87,10 +87,10 @@ final class ResourceDonut
         private readonly array|null $storageTags = null,
         private readonly int|null $code = null,
         array|null $body = null,
-        array $holes = [],
+        array $embeds = [],
     ) {
         $this->body = $body;
-        $this->holes = $holes;
+        $this->embeds = $embeds;
     }
 
     /** @param DependsOnTags|null $dependsOnTags reads what each hole declares as it is rendered again; null reads its #[DependsOn] only */
@@ -124,7 +124,7 @@ final class ResourceDonut
         return $ro;
     }
 
-    /** The template with the view of each hole, read again, in the hole's place */
+    /** The template with the view of each embedded request, read again, in its place */
     private function compose(ResourceInterface $resource, SurrogateKeys $etags): string|null
     {
         return preg_replace_callback(self::URI_REGEX, static function (array $matches) use ($resource, $etags): string {
@@ -132,7 +132,7 @@ final class ResourceDonut
             // or "" for a legacy `le` match (group 2 is its URI, used verbatim).
             $reference = $matches[1] === '2' ? rawurldecode($matches[2]) : $matches[2];
             try {
-                $ro = HoleReference::get($resource, $reference);
+                $ro = EmbedReference::get($resource, $reference);
                 $ro->toString();
             } catch (Throwable $e) {
                 // toString() lets a render failure travel uncaught; wrapped here so a HIT's
@@ -147,15 +147,15 @@ final class ResourceDonut
     }
 
     /**
-     * Renders the stored body with the page's own renderer, each hole a request again
+     * Renders the stored body with the page's own renderer, its embedded requests put back
      *
      * @param array<array-key, mixed> $body
      */
     private function renderBody(array $body, ResourceInterface $resource, ResourceObject $ro, SurrogateKeys $etags): void
     {
         $requests = [];
-        foreach ($this->holes as $key => $reference) {
-            $requests[] = $body[$key] = HoleReference::request($resource, $reference);
+        foreach ($this->embeds as $key => $reference) {
+            $requests[] = $body[$key] = EmbedReference::request($resource, $reference);
         }
 
         $live = [$ro->body, $ro->headers, $ro->code];
@@ -166,11 +166,11 @@ final class ResourceDonut
         try {
             $ro->toString();
             foreach ($requests as $request) {
-                // After rendering: what a hole passes up from the requests it embeds is known once those have run
+                // After rendering: what a request passes up from the requests it embeds itself is known once those have run
                 $etags->addTag(DonutRequest::resultOf($request));
             }
         } catch (Throwable $e) {
-            // As in compose(), a hole that fails degrades the hit to a fresh render: onGet() then runs on the resource as it came in
+            // As in compose(), an embedded request that fails degrades the hit to a fresh render: onGet() then runs on the resource as it came in
             [$ro->body, $ro->headers, $ro->code] = $live;
             $ro->view = null;
 
@@ -234,7 +234,7 @@ final class ResourceDonut
             $storageTags,
             $this->code ?? null,
             $this->body,
-            $this->holes,
+            $this->embeds,
         );
     }
 
@@ -260,7 +260,7 @@ final class ResourceDonut
             $tags,
             $this->code ?? null,
             $this->body,
-            $this->holes,
+            $this->embeds,
         );
     }
 
@@ -301,7 +301,7 @@ final class ResourceDonut
         // an #[Embed] would have made it an array - and a null body holds no embedded request
         // to wrap. It is composed as an empty one rather than refused.
         assert(is_iterable($ro->body) || $ro->body === null);
-        $holes = [];
+        $embeds = [];
         if (is_iterable($ro->body)) {
             /**
              * @var array-key $key
@@ -309,7 +309,7 @@ final class ResourceDonut
              */
             foreach ($ro->body as $key => &$maybeRequest) {
                 if ($maybeRequest instanceof AbstractRequest) {
-                    $maybeRequest = $holes[$key] = new DonutRequest($maybeRequest, $storage, $etags);
+                    $maybeRequest = $embeds[$key] = new DonutRequest($maybeRequest, $storage, $etags);
                 }
             }
 
@@ -317,9 +317,9 @@ final class ResourceDonut
         }
 
         $donutTemplate = $ro->toString();
-        foreach ($holes as $hole) {
-            if ($hole->isEncoded && is_array($ro->body)) {
-                return self::ofBody($ro, $holes, $etags, $ttl, $isCacheble);
+        foreach ($embeds as $embed) {
+            if ($embed->isEncoded && is_array($ro->body)) {
+                return self::ofBody($ro, $embeds, $etags, $ttl, $isCacheble);
             }
         }
 
@@ -327,20 +327,20 @@ final class ResourceDonut
     }
 
     /**
-     * A renderer that encodes a hole as JSON prints no placeholder for it. The page is stored as the body it returned
-     * and rendered again on each hit, every hole a request, so it shows what it shows without the donut.
+     * A renderer that encodes an embedded request as JSON prints no placeholder for it. The page is stored as the body
+     * it returned and rendered again on each hit with those requests put back, so it shows what it shows without the donut.
      *
-     * @param array<array-key, DonutRequest> $holes
+     * @param array<array-key, DonutRequest> $embeds
      */
-    private static function ofBody(ResourceObject $ro, array $holes, SurrogateKeys $etags, int|null $ttl, bool $isCacheble): self
+    private static function ofBody(ResourceObject $ro, array $embeds, SurrogateKeys $etags, int|null $ttl, bool $isCacheble): self
     {
         assert(is_array($ro->body));
         $body = $ro->body;
         $references = [];
-        foreach ($holes as $key => $hole) {
-            $ro->body[$key] = $hole->request;
+        foreach ($embeds as $key => $embed) {
+            $ro->body[$key] = $embed->request;
             $body[$key] = null;
-            $references[$key] = HoleReference::of($hole->request);
+            $references[$key] = EmbedReference::of($embed->request);
         }
 
         // The body is what the store keeps, so it must serialize: a refusal surfaces here, before anything is written or purged
@@ -348,19 +348,19 @@ final class ResourceDonut
         // A request that is not a Request, such as bear/async's AsyncRequest, hands out its resource only when invoked.
         // Invoked before the renderer reads it, it is rendered from that run and not run a second time.
         $invoked = [];
-        foreach ($holes as $key => $hole) {
-            if (! $hole->request instanceof Request) {
-                $invoked[$key] = ($hole->request)();
+        foreach ($embeds as $key => $embed) {
+            if (! $embed->request instanceof Request) {
+                $invoked[$key] = ($embed->request)();
             }
         }
 
         $ro->view = null;
         $ro->toString();
-        foreach ($holes as $key => $hole) {
-            // After rendering: what a hole passes up from the requests it embeds is known once those have run
-            $etags->addTag($invoked[$key] ?? DonutRequest::resultOf($hole->request));
+        foreach ($embeds as $key => $embed) {
+            // After rendering: what a request passes up from the requests it embeds itself is known once those have run
+            $etags->addTag($invoked[$key] ?? DonutRequest::resultOf($embed->request));
         }
 
-        return new self('', $ro->headers, $ttl, $isCacheble, code: $ro->code, body: $body, holes: $references);
+        return new self('', $ro->headers, $ttl, $isCacheble, code: $ro->code, body: $body, embeds: $references);
     }
 }
