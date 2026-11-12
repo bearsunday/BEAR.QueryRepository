@@ -30,7 +30,7 @@ final class SurrogateKeys
         $this->uriTag = $uriTag ?? new UriTag();
         $this->keyTag = new UriTag();
         $this->cacheTags = $cacheTags ?? new CacheTags($this->uriTag, new BaseUriTag($this->uriTag));
-        $this->dependsOnTags = $dependsOnTags ?? new DependsOnTags($this->uriTag, cacheTags: $this->cacheTags);
+        $this->dependsOnTags = $dependsOnTags ?? new DependsOnTags($this->uriTag, new CacheIdentityFactory(), null, $this->cacheTags);
         $this->surrogateKeys = $baseTag === null ? [($this->uriTag)($uri)] : [($this->uriTag)($uri), $baseTag];
     }
 
