@@ -46,16 +46,10 @@ final class RowClassWalk
         return $walk->tags;
     }
 
-    /** Only an array or an object can hold a row, so a scalar is skipped before the call */
     private function visit(mixed $value): void
     {
         if (is_array($value)) {
-            /** @var mixed $item */
-            foreach ($value as $item) {
-                if (is_array($item) || is_object($item)) {
-                    $this->visit($item);
-                }
-            }
+            $this->visitEach($value);
 
             return;
         }
@@ -68,10 +62,20 @@ final class RowClassWalk
         $this->seen[$value] = null;
         $properties = get_object_vars($value);
         $this->expand($value::class, $properties);
-        /** @var mixed $property */
-        foreach ($properties as $property) {
-            if (is_array($property) || is_object($property)) {
-                $this->visit($property);
+        $this->visitEach($properties);
+    }
+
+    /**
+     * Only an array or an object can hold a row, so a scalar is skipped before the call
+     *
+     * @param array<array-key, mixed> $values
+     */
+    private function visitEach(array $values): void
+    {
+        /** @var mixed $value */
+        foreach ($values as $value) {
+            if (is_array($value) || is_object($value)) {
+                $this->visit($value);
             }
         }
     }
