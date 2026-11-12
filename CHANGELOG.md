@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A stored resource whose `onGet()` takes an argument through `#[ResourceParam]` is now invalidated when the resource that argument was read from is, as with an `#[Embed]` child; it used to keep the value it was stored with. Nothing needs to change in the application.
 - A cache hit of a `#[Cacheable]` resource is rendered as the miss was. Under a HAL renderer the hit answered the same ETag without `_embedded` and the embedded children's `_links`.
 - `#[Refresh]` no longer stores an error the destination answers, which was then served until the entry expired, and no longer breaks a `#[DonutCache]` page it names: the page lost its content afterwards, or the write failed with a `LogicException` when the page embeds a resource.
+- A write to a `#[Cacheable]` resource, or to a URI declared below it, now invalidates a page that embeds it through resources that are not cached. The page was stored without those tags when the `#[Cacheable]` resource was a hit, and never with the resource's own tag; its `Surrogate-Key` is longer for it.
 
 ## [1.20.1] - 2026-11-11
 

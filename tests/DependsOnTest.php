@@ -129,6 +129,38 @@ class DependsOnTest extends TestCase
         }
     }
 
+    /** @return array<string, array{0: string, 1: bool, 2: bool, 3: string}> uri, donut-stored, whether the shelf is stored before the page, the write */
+    public static function belowAnUncachedResourceProvider(): array
+    {
+        $declared = 'app://self/rows/taxonomy?ulid=c1';
+        $shelf = 'app://self/rows/shelf';
+
+        return [
+            'page, shelf a hit, a URI its list declares' => ['app://self/rows/page-aisle', false, true, $declared],
+            'page, shelf a miss, the shelf' => ['app://self/rows/page-aisle', false, false, $shelf],
+            'donut page, shelf a hit, a URI its list declares' => ['app://self/rows/page-aisle-donut', true, true, $declared],
+            'donut page, shelf a miss, the shelf' => ['app://self/rows/page-aisle-donut', true, false, $shelf],
+        ];
+    }
+
+    /** A cached resource below an uncached one is a dependency of the page, whether the page's GET ran it or read its entry */
+    #[DataProvider('belowAnUncachedResourceProvider')]
+    public function testAWriteReachesThePageThroughACachedResourceBelowAnUncachedOne(string $uri, bool $isDonut, bool $shelfIsStored, string $write): void
+    {
+        if ($shelfIsStored) {
+            $this->resource->get('app://self/rows/shelf');
+        }
+
+        $this->resource->get($uri);
+        $this->assertTrue($this->isStored($uri, $isDonut));
+
+        $this->resource->put('app://self/rows/article?ulid=a7');
+        $this->assertTrue($this->isStored($uri, $isDonut));
+
+        $this->resource->put($write);
+        $this->assertFalse($this->isStored($uri, $isDonut));
+    }
+
     public function testAListThatAnswers404IsStillADependencyOfItsPage(): void
     {
         $uri = 'app://self/rows/page404';

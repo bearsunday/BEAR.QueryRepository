@@ -24,11 +24,15 @@ use function sprintf;
  */
 final readonly class DependsOnTags
 {
+    private CacheTags $cacheTags;
+
     public function __construct(
         private UriTagInterface $uriTag,
         private CacheIdentityFactory $identityFactory = new CacheIdentityFactory(),
         private ResourceParamSources|null $resourceParamSources = null,
+        CacheTags|null $cacheTags = null,
     ) {
+        $this->cacheTags = $cacheTags ?? new CacheTags($uriTag, new BaseUriTag($uriTag));
     }
 
     /**
@@ -60,7 +64,7 @@ final readonly class DependsOnTags
     }
 
     /**
-     * Tags a child that ran inside its parent, adding what the requests it embeds and ran declare
+     * Tags a child that ran inside its parent with what ran() finds for it
      *
      * @return bool whether its parent depends on it: a declaration was found, or it carries an ETag or a Surrogate-Key
      */
@@ -82,8 +86,8 @@ final readonly class DependsOnTags
     }
 
     /**
-     * @return list<string>|null the tags the resource and the requests it embeds and ran declare, with those of the
-     *                           resources their #[ResourceParam] read; null when there is none
+     * @return list<string>|null what the resource declares and what its #[ResourceParam] read, with the tags of each
+     *                           request it embeds and ran that it depends on; null when there is none
      */
     public function ran(ResourceObject $ro): array|null
     {
@@ -98,9 +102,8 @@ final readonly class DependsOnTags
         }
 
         foreach ($this->requests($ro) as $body) {
-            $embedded = $this->ran($body->resourceObject);
-            if ($embedded !== null) {
-                $tags = [...$tags ?? [], ...$embedded];
+            if ($this->embedded($body->resourceObject)) {
+                $tags = [...$tags ?? [], ...$this->cacheTags->tags($body->resourceObject)];
             }
         }
 
