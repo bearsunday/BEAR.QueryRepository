@@ -13,6 +13,7 @@ use FakeVendor\HelloWorld\Resource\Page\Dep\CountingChild;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 use ReflectionMethod;
+use RuntimeException;
 
 use function assert;
 use function is_array;
@@ -45,6 +46,15 @@ class EmbeddedChildMaterializationTest extends TestCase
         $this->resource->get('page://self/dep/parent-of-counting');
 
         $this->assertSame(1, CountingChild::$count);
+    }
+
+    /** The store runs the child before it casts it: a cast alone turns what the child throws into a fatal error */
+    public function testAChildThatThrowsFailsTheGetWithItsException(): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('the hole blew up mid-render');
+
+        $this->resource->get('page://self/dep/parent-of-throwing');
     }
 
     /**
