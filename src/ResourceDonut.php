@@ -52,15 +52,15 @@ final class ResourceDonut
     /**
      * Build the placeholder DonutRequest::__toString() embeds and DonutRenderer matches
      */
-    public static function placeholder(string $uri): string
+    public static function placeholder(string $reference): string
     {
-        return sprintf(self::FORMAT, rawurlencode($uri));
+        return sprintf(self::FORMAT, rawurlencode($reference));
     }
 
     /** @var array<array-key, mixed>|null The body the page returned, each hole null, when its renderer prints no placeholder; null when the template holds the page */
     private array|null $body = null;
 
-    /** @var array<array-key, string> URI of each hole in the body, by its key */
+    /** @var array<array-key, string> HoleReference of each hole in the body, by its key */
     private array $holes = [];
 
     /**
@@ -128,11 +128,11 @@ final class ResourceDonut
     private function compose(ResourceInterface $resource, SurrogateKeys $etags): string|null
     {
         return preg_replace_callback(self::URI_REGEX, static function (array $matches) use ($resource, $etags): string {
-            // Group 1 is "2" for a new `le2` match (its URI, group 2, is rawurlencode()'d),
+            // Group 1 is "2" for a new `le2` match (its reference, group 2, is rawurlencode()'d),
             // or "" for a legacy `le` match (group 2 is its URI, used verbatim).
-            $uri = $matches[1] === '2' ? rawurldecode($matches[2]) : $matches[2];
+            $reference = $matches[1] === '2' ? rawurldecode($matches[2]) : $matches[2];
             try {
-                $ro = $resource->get($uri);
+                $ro = HoleReference::get($resource, $reference);
                 $ro->toString();
             } catch (Throwable $e) {
                 // toString() lets a render failure travel uncaught; wrapped here so a HIT's
@@ -154,10 +154,8 @@ final class ResourceDonut
     private function renderBody(array $body, ResourceInterface $resource, ResourceObject $ro, SurrogateKeys $etags): void
     {
         $requests = [];
-        foreach ($this->holes as $key => $uri) {
-            $request = $resource->uri($uri);
-            assert($request instanceof AbstractRequest);
-            $requests[] = $body[$key] = $request;
+        foreach ($this->holes as $key => $reference) {
+            $requests[] = $body[$key] = HoleReference::request($resource, $reference);
         }
 
         $live = [$ro->body, $ro->headers, $ro->code];
@@ -338,11 +336,11 @@ final class ResourceDonut
     {
         assert(is_array($ro->body));
         $body = $ro->body;
-        $uris = [];
+        $references = [];
         foreach ($holes as $key => $hole) {
             $ro->body[$key] = $hole->request;
             $body[$key] = null;
-            $uris[$key] = $hole->request->toUri();
+            $references[$key] = HoleReference::of($hole->request);
         }
 
         // The body is what the store keeps, so it must serialize: a refusal surfaces here, before anything is written or purged
@@ -363,6 +361,6 @@ final class ResourceDonut
             $etags->addTag($invoked[$key] ?? DonutRequest::resultOf($hole->request));
         }
 
-        return new self('', $ro->headers, $ttl, $isCacheble, code: $ro->code, body: $body, holes: $uris);
+        return new self('', $ro->headers, $ttl, $isCacheble, code: $ro->code, body: $body, holes: $references);
     }
 }

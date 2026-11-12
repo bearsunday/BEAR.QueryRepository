@@ -49,16 +49,16 @@ final class DonutRequest implements Stringable, JsonSerializable
     #[Override]
     public function __toString(): string
     {
-        // Includes the query, so sibling holes on one path get distinct cache entries
-        $uri = $this->request->toUri();
+        // Includes the query and the links, so sibling holes on one path get distinct cache entries
+        $reference = HoleReference::of($this->request);
         $executed = self::resultOf($this->request);
         // Not (string): the cast turns a render failure into '', which would be stored (#237)
         $view = $executed->toString();
 
         $this->etags->addTag($executed);
-        $this->donutStorage->setView($uri, $view);
+        $this->donutStorage->setView($reference, $view);
 
-        return ResourceDonut::placeholder($uri);
+        return ResourceDonut::placeholder($reference);
     }
 
     #[Override]
