@@ -80,7 +80,7 @@ use BEAR\RepositoryModule\Annotation\NoHttpCache;
 
 ### #[Refresh]
 
-After a write that answers below 400, purges the URI and rebuilds it with a GET (and stores it if that GET did not). The URI template expands from the write's body, then its query.
+After a write that answers below 400, purges the URI and reads it again with a GET, which stores what any GET of that resource stores. The URI template expands from the write's body, then its query.
 
 ```php
 use BEAR\RepositoryModule\Annotation\Refresh;

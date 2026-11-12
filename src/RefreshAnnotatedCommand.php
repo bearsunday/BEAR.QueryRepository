@@ -166,11 +166,7 @@ final readonly class RefreshAnnotatedCommand implements CommandInterface
 
         // Every URI is purged before the first GET, so a GET that throws leaves misses behind, not stale entries.
         foreach ($uris as $uri) {
-            $refreshed = $this->resource->get((string) $uri);
-            // A #[Cacheable] destination stored itself during the GET; a second put would purge the CDN again.
-            if ($this->repository->get($uri) === null) {
-                $this->repository->put($refreshed);
-            }
+            $this->resource->get((string) $uri);
         }
     }
 }

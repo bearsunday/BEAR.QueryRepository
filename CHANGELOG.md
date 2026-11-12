@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Behaviour change**: storing a response invalidates its URI tag and purges it at the CDN only when it replaces a stored entry. A GET that misses stores where nothing is stored, so it no longer purges the CDN, drops the entries that embed the resource, or records `pre_write_cleanup` and `invalidate`; a write or a purge does, as before.
 - **Behaviour change**: the ETag of a `#[Cacheable]` value follows the string its renderer produces, and a miss renders the response when it stores the entry, so the response already holds its `view`. A body changed after that GET returns is not in the response.
 - **Behaviour change**: a `#[DependsOn]` on `onGet()` whose template uses a parameter bound by `#[ResourceParam]` now fails the GET with `DependsOnNotExpandable`. Tag that dependency by hand with `UriTagInterface`.
+- **Behaviour change**: `#[Refresh]` stores only what the GET it makes stores. A destination that declares no cache is no longer stored; no GET read that entry.
 
 ### Deprecated
 - `StorageMemcachedEtagModule` and `ResourceStorageInterface::saveEtag()`: the stored entry holds its own ETag, so the ETag pool is no longer read or written. Remove the module and the calls; an `EtagPool` binding of your own is no longer used.
@@ -29,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A `304` from `HttpCache::transfer()`/`CliHttpCache::transfer()` now carries the `ETag`, `Cache-Control`, `Vary` and the other headers a `304` repeats, taken from the stored entry, and no longer PHP's default `Content-Type`. With a `ResourceStorageInterface` implementation of your own it carries none of them.
 - A stored resource whose `onGet()` takes an argument through `#[ResourceParam]` is now invalidated when the resource that argument was read from is, as with an `#[Embed]` child; it used to keep the value it was stored with. Nothing needs to change in the application.
 - A cache hit of a `#[Cacheable]` resource is rendered as the miss was. Under a HAL renderer the hit answered the same ETag without `_embedded` and the embedded children's `_links`.
+- `#[Refresh]` no longer stores an error the destination answers, which was then served until the entry expired, and no longer breaks a `#[DonutCache]` page it names: the page lost its content afterwards, or the write failed with a `LogicException` when the page embeds a resource.
 
 ## [1.20.1] - 2026-11-11
 
