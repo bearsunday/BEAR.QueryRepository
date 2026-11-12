@@ -62,8 +62,8 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         CacheDependencyCollector|null $dependencyCollector = null,
     ) {
         // Same UriTag as templateKeys(), so a material's tag matches the format purge() emits.
-        $this->dependsOnTags = $dependsOnTags ?? new DependsOnTags($this->uriTag);
         $this->cacheTags = $cacheTags ?? new CacheTags($this->uriTag, $this->baseUriTag);
+        $this->dependsOnTags = $dependsOnTags ?? new DependsOnTags($this->uriTag, new CacheIdentityFactory(), new ResourceParamSources($this->resource, $this->resourceStorage, $this->cacheTags));
         $this->cacheDependency = $cacheDependency ?? new CacheDependency($this->uriTag, $this->logger, $this->baseUriTag, $this->cacheTags);
         $this->dependencyCollector = $dependencyCollector ?? new CacheDependencyCollector($this->dependsOnTags, $this->cacheDependency, $this->logger);
     }
@@ -275,7 +275,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
 
         $this->logger->event(new CacheHitContext('donut'));
         $this->logger->event(new RefreshDonutContext((string) $ro->uri));
-        $donut->refresh($this->resource, $ro, $this->uriTag);
+        $donut->refresh($this->resource, $ro, $this->uriTag, $this->dependsOnTags);
         $surrogateKeys = $ro->headers[Header::SURROGATE_KEY] ?? '';
 
         if (! $donut->isCacheble) {

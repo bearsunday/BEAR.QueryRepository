@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `isNotModified()`/`isNotModifiedFor()` no longer answer `304` for the ETag of an entry a later write replaced, left behind when an invalidation failed in the ETag pool alone; the ETag must now be the one the stored entry carries.
 - Responses of one URI stored for different `X_VARY` values no longer drop each other on a miss. The key also holds the name of each varying value, so a request with `X_LANG=x` and one with `X_DEVICE=x` no longer share an entry.
 - A `304` from `HttpCache::transfer()`/`CliHttpCache::transfer()` now carries the `ETag`, `Cache-Control`, `Vary` and the other headers a `304` repeats, taken from the stored entry, and no longer PHP's default `Content-Type`. With a `ResourceStorageInterface` implementation of your own it carries none of them.
+- A stored resource whose `onGet()` takes an argument through `#[ResourceParam]` is now invalidated by a write to the cached resource that argument was read from, as with an `#[Embed]` child; it used to keep the value it was stored with. Nothing needs to change in the application.
 
 ## [1.20.1] - 2026-11-11
 

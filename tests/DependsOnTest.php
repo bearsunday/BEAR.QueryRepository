@@ -287,6 +287,17 @@ class DependsOnTest extends TestCase
         $this->assertFalse($this->isStored($uri, false));
     }
 
+    /** As BEAR.Resource binds, only the onGet() that runs counts: a #[ResourceParam] on the one it overrides binds nothing */
+    public function testAParameterOfAnOverridingOnGetExpandsFromTheQuery(): void
+    {
+        $uri = 'app://self/rows/resource-param-override?channelId=c1';
+        $this->resource->get($uri);
+        $this->assertTrue($this->isStored($uri, false));
+
+        $this->resource->put('app://self/rows/taxonomy?ulid=c1');
+        $this->assertFalse($this->isStored($uri, false));
+    }
+
     /** @return array<string, array{0: string}> */
     public static function storeProvider(): array
     {
