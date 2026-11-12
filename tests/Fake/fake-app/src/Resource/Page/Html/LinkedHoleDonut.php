@@ -13,12 +13,15 @@ use BEAR\Resource\ResourceObject;
 #[DonutCache]
 class LinkedHoleDonut extends ResourceObject
 {
+    public static int $runs = 0;
+
     public function __construct(private readonly ResourceInterface $resource)
     {
     }
 
     public function onGet(string $link): static
     {
+        self::$runs++;
         $author = $this->resource->newRequest(Method::GET, 'app://self/linked/author', ['id' => 1]);
         $this->body = [
             'hole' => match ($link) {
