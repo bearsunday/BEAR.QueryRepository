@@ -33,7 +33,7 @@ final class ResourceState
     /** @var int|null Unix time when this state was stored; null in entries saved before this field existed */
     public $storedAt;
 
-    /** @var list<int|string> Body keys whose request the entry holds as its result */
+    /** @var array<int|string, array<string, mixed>> The query of each request the body held when it was stored, by body key */
     private array $requests = [];
 
     public static function create(ResourceObject $ro, mixed $body, string|null $view): self
@@ -52,7 +52,7 @@ final class ResourceState
         /** @psalm-suppress MixedAssignment */
         foreach ($ro->body as $key => $item) {
             if ($item instanceof AbstractRequest && ($body[$key] ?? null) instanceof ResourceObject) {
-                $state->requests[] = $key;
+                $state->requests[$key] = $item->query;
             }
         }
 
@@ -76,11 +76,11 @@ final class ResourceState
             return $body;
         }
 
-        foreach ($this->requests as $key) {
+        foreach ($this->requests as $key => $query) {
             /** @psalm-suppress MixedAssignment */
             $result = $body[$key] ?? null;
             if ($result instanceof ResourceObject) {
-                $body[$key] = new Request(new StoredResult(), $result, query: $result->uri->query);
+                $body[$key] = new Request(new StoredResult(), $result, query: $query);
             }
         }
 

@@ -28,7 +28,6 @@ use function array_keys;
 class RenderedValueTest extends TestCase
 {
     private const HAL_PARENT = 'page://self/hal/parent-resource';
-    private const PAGED_PARENT = 'page://self/paged-value-parent';
     private const URI = 'page://self/rendered-value';
     private const RETURNED_HEADERS = ['Content-Type' => 'text/plain', 'X-Returned' => '1'];
     private const RETURNED_BODY = ['returned' => true];
@@ -96,16 +95,27 @@ class RenderedValueTest extends TestCase
         }
     }
 
-    /** A request gives its own query to the resource it holds */
-    public function testTheEmbeddedRequestOfAHitKeepsItsQuery(): void
+    /** @return iterable<string, array{string}> */
+    public static function parentsOfAQueriedChild(): iterable
+    {
+        yield 'the query in the #[Embed] src' => ['page://self/variant-parent'];
+        yield 'the query onGet() adds' => ['page://self/adds-query-parent'];
+    }
+
+    /** A hit holds the request onGet() left in the body, whatever spelling its result was stored under */
+    #[DataProvider('parentsOfAQueriedChild')]
+    public function testTheEmbeddedRequestOfAHitIsTheOneOnGetLeft(string $uri): void
     {
         $resource = $this->injector()->getInstance(ResourceInterface::class);
-        $resource->get(self::PAGED_PARENT);
+        $resource->get('app://self/optional-param?page=2&id=1');
 
-        $hit = $resource->get(self::PAGED_PARENT);
+        $miss = self::embeddedChild($resource->get($uri));
+        $hit = $resource->get($uri);
 
         $this->assertArrayHasKey(Header::AGE, $hit->headers, 'the second read is a hit');
-        $this->assertSame('app://self/paged-value?page=2', self::embeddedChild($hit)->toUri());
+        $this->assertSame('app://self/optional-param?id=1&page=2', $miss->toUri());
+        $this->assertSame($miss->toUri(), self::embeddedChild($hit)->toUri());
+        $this->assertSame($miss->body, self::embeddedChild($hit)->body);
     }
 
     public function testTheEntryHoldsTheHeadersAndTheBodyTheResourceReturned(): void
