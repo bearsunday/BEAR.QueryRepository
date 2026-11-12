@@ -6,7 +6,6 @@ namespace BEAR\QueryRepository;
 
 use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\AbstractUri;
-use BEAR\Resource\Method;
 use BEAR\Resource\Request;
 use BEAR\Resource\ResourceObject;
 
@@ -81,7 +80,7 @@ final class ResourceState
             /** @psalm-suppress MixedAssignment */
             $result = $body[$key] ?? null;
             if ($result instanceof ResourceObject) {
-                $body[$key] = new Request(new StoredResult(), $result, Method::GET, $query);
+                $body[$key] = new Request(new StoredResult(), $result, query: $query);
             }
         }
 
