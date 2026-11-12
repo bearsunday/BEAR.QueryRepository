@@ -10,6 +10,7 @@ use BEAR\Resource\Module\HalModule;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
@@ -22,10 +23,12 @@ use function array_keys;
  *
  * - the response keeps the view and the headers of that rendering
  * - the entry, and whoever reads the body, get the headers and the body the resource returned
+ * - a hit renders the entry to the same view, so it hands the renderer what the miss did
  */
 class RenderedValueTest extends TestCase
 {
     private const HAL_PARENT = 'page://self/hal/parent-resource';
+    private const PAGED_PARENT = 'page://self/paged-value-parent';
     private const URI = 'page://self/rendered-value';
     private const RETURNED_HEADERS = ['Content-Type' => 'text/plain', 'X-Returned' => '1'];
     private const RETURNED_BODY = ['returned' => true];
@@ -39,7 +42,7 @@ class RenderedValueTest extends TestCase
 
         $this->assertStringContainsString('"_embedded"', (string) $miss->view);
         $this->assertSame('application/hal+json', $miss->headers['Content-Type'] ?? null);
-        $this->assertSame(['child' => 'hal'], self::embeddedChildBody($miss), 'miss');
+        $this->assertSame(['child' => 'hal'], self::embeddedChild($miss)->body, 'miss');
 
         $state = $injector->getInstance(QueryRepositoryInterface::class)->get(new Uri(self::HAL_PARENT));
         $this->assertInstanceOf(ResourceState::class, $state);
@@ -47,7 +50,41 @@ class RenderedValueTest extends TestCase
         $this->assertArrayNotHasKey('Content-Type', $state->headers);
         $this->assertNull($state->view);
 
-        $this->assertSame(['child' => 'hal'], self::embeddedChildBody($resource->get(self::HAL_PARENT)), 'hit');
+        $this->assertSame(['child' => 'hal'], self::embeddedChild($resource->get(self::HAL_PARENT))->body, 'hit');
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function halParents(): iterable
+    {
+        yield 'an embedded child' => [self::HAL_PARENT];
+        yield 'beside a child the resource placed itself' => ['page://self/hal/placed'];
+        yield 'a child that embeds its own' => ['page://self/hal/nested'];
+    }
+
+    /** One ETag names one view: the renderer has to move the same children out of the body on a hit */
+    #[DataProvider('halParents')]
+    public function testAHitIsRenderedAsTheMissWas(string $uri): void
+    {
+        $resource = $this->injector(new HalModule())->getInstance(ResourceInterface::class);
+
+        $miss = $resource->get($uri);
+        $hit = $resource->get($uri);
+
+        $this->assertArrayHasKey(Header::AGE, $hit->headers, 'the second read is a hit');
+        $this->assertSame($miss->headers[Header::ETAG], $hit->headers[Header::ETAG]);
+        $this->assertSame($miss->view, $hit->toString());
+    }
+
+    /** A request gives its own query to the resource it holds */
+    public function testTheEmbeddedRequestOfAHitKeepsItsQuery(): void
+    {
+        $resource = $this->injector()->getInstance(ResourceInterface::class);
+        $resource->get(self::PAGED_PARENT);
+
+        $hit = $resource->get(self::PAGED_PARENT);
+
+        $this->assertArrayHasKey(Header::AGE, $hit->headers, 'the second read is a hit');
+        $this->assertSame('app://self/paged-value?page=2', self::embeddedChild($hit)->toUri());
     }
 
     public function testTheEntryHoldsTheHeadersAndTheBodyTheResourceReturned(): void
@@ -115,13 +152,13 @@ class RenderedValueTest extends TestCase
         return $ro;
     }
 
-    /** What a parent reading the embedded child gets: its request on a miss, its stored result on a hit */
-    private static function embeddedChildBody(ResourceObject $ro): mixed
+    /** What a parent reading the embedded child gets */
+    private static function embeddedChild(ResourceObject $ro): AbstractRequest
     {
         $child = ((array) $ro->body)['child'] ?? null;
-        self::assertTrue($child instanceof AbstractRequest || $child instanceof ResourceObject, 'the embed key is in the body');
+        self::assertInstanceOf(AbstractRequest::class, $child, 'the embed key holds a request');
 
-        return $child->body;
+        return $child;
     }
 
     /**
