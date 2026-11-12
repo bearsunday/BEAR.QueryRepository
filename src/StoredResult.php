@@ -10,7 +10,7 @@ use BEAR\Resource\ResourceObject;
 use Override;
 
 /**
- * Answers a request with the result an entry stored for it
+ * Answers a request with the result an entry stored for it, whatever query the call adds
  *
  * @internal
  */

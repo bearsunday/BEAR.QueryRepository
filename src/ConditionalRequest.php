@@ -94,7 +94,7 @@ final class ConditionalRequest
             $hit = $this->validate($ifNoneMatch, null);
         } catch (CacheStoreException $e) {
             // An unreadable validator does not match: serve the request in full rather than
-            // fail it with a 500 for a down ETag store.
+            // fail it with a 500 for a store that is down.
             $cause = $e->getPrevious() ?? $e;
             $this->logger->event(new CacheErrorContext($this->requestUri($server), 'read', $cause->getMessage(), $cause::class));
             $this->logger->close(new CacheMissContext('etag', round((hrtime(true) - $start) / 1_000_000, 3)), $openId);

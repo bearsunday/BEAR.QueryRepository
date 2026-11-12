@@ -36,8 +36,8 @@ final readonly class CacheDependency implements CacheDependencyInterface
     {
         $childTagList = array_values(array_unique(explode(' ', implode(' ', $this->cacheTags->tags($to)))));
 
-        // Accumulate across embedded children, deduped: #[Refresh] re-puts the instance
-        // the rebuilding GET already stored, and this header ships to the CDN.
+        // Accumulate across embedded children, deduped: the same child may be depended on again,
+        // and this header ships to the CDN.
         $existing = isset($from->headers[Header::SURROGATE_KEY])
             ? explode(' ', $from->headers[Header::SURROGATE_KEY])
             : [];

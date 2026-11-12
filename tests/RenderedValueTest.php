@@ -53,19 +53,24 @@ class RenderedValueTest extends TestCase
         $this->assertSame(['child' => 'hal'], self::embeddedChild($resource->get(self::HAL_PARENT))->body, 'hit');
     }
 
-    /** @return iterable<string, array{string}> */
+    /** @return iterable<string, array{0: string, 1?: string}> uri, the child stored before it */
     public static function halParents(): iterable
     {
         yield 'an embedded child' => [self::HAL_PARENT];
         yield 'beside a child the resource placed itself' => ['page://self/hal/placed'];
         yield 'a child that embeds its own' => ['page://self/hal/nested'];
+        yield 'a child of another scheme that embeds its own, read from its entry' => ['page://self/hal/cross-scheme', 'app://self/hal/branch'];
+        yield 'an uncached child of another scheme that embeds its own' => ['page://self/hal/cross-scheme-plain'];
     }
 
     /** One ETag names one view: the renderer has to move the same children out of the body on a hit */
     #[DataProvider('halParents')]
-    public function testAHitIsRenderedAsTheMissWas(string $uri): void
+    public function testAHitIsRenderedAsTheMissWas(string $uri, string|null $storedFirst = null): void
     {
         $resource = $this->injector(new HalModule())->getInstance(ResourceInterface::class);
+        if ($storedFirst !== null) {
+            $resource->get($storedFirst);
+        }
 
         $miss = $resource->get($uri);
         $hit = $resource->get($uri);
@@ -73,6 +78,22 @@ class RenderedValueTest extends TestCase
         $this->assertArrayHasKey(Header::AGE, $hit->headers, 'the second read is a hit');
         $this->assertSame($miss->headers[Header::ETAG], $hit->headers[Header::ETAG]);
         $this->assertSame($miss->view, $hit->toString());
+    }
+
+    /** Rendering a child inside its parent leaves the body the child returned, so its own child stays readable */
+    public function testAChildReadFromItsEntryKeepsItsBodyUnderItsParent(): void
+    {
+        $resource = $this->injector(new HalModule())->getInstance(ResourceInterface::class);
+        $resource->get(self::HAL_PARENT);
+
+        foreach (['miss', 'hit'] as $read) {
+            $parent = ((array) $resource->get('page://self/hal/nested')->body)['parent'] ?? null;
+            $this->assertInstanceOf(AbstractRequest::class, $parent);
+            /** @psalm-suppress MixedAssignment */
+            $child = $parent['child'];
+            $this->assertTrue($child instanceof AbstractRequest || $child instanceof ResourceObject, $read);
+            $this->assertSame(['child' => 'hal'], $child->body, $read);
+        }
     }
 
     /** A request gives its own query to the resource it holds */

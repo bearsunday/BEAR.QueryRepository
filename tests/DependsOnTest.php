@@ -137,8 +137,10 @@ class DependsOnTest extends TestCase
 
         return [
             'page, shelf a hit, a URI its list declares' => ['app://self/rows/page-aisle', false, true, $declared],
+            'page, shelf a hit, the shelf' => ['app://self/rows/page-aisle', false, true, $shelf],
             'page, shelf a miss, the shelf' => ['app://self/rows/page-aisle', false, false, $shelf],
             'donut page, shelf a hit, a URI its list declares' => ['app://self/rows/page-aisle-donut', true, true, $declared],
+            'donut page, shelf a hit, the shelf' => ['app://self/rows/page-aisle-donut', true, true, $shelf],
             'donut page, shelf a miss, the shelf' => ['app://self/rows/page-aisle-donut', true, false, $shelf],
         ];
     }
