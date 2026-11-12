@@ -169,8 +169,9 @@ jobs:
           coverage: pcov
           ini-values: zend.assertions=1
           tools: composer
-          # Windows runs the 2016 Redis 3.0 port; the Redis suite is exercised on Ubuntu and macOS
-          extensions: ${{ matrix.os != 'windows-latest' && matrix.php-version != '8.6' && 'redis, memcached' || '' }}
+          # Windows runs the 2016 Redis 3.0 port; the Redis suite is exercised on Ubuntu and macOS.
+          # bear/resource 1.27+ requires ext-fileinfo, which the Windows build does not enable by default.
+          extensions: ${{ matrix.os != 'windows-latest' && matrix.php-version != '8.6' && 'redis, memcached' || 'fileinfo' }}
 
       - name: Cache Composer dependencies
         uses: actions/cache@v4
