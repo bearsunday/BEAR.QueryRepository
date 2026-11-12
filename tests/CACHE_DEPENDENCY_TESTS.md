@@ -119,6 +119,18 @@ PUT article?ulid=a7 → the page stays stored
 
 **Test:** `DependsOnTest` — the four cache declaration shapes, pages through zero, one and two uncached resources, a 404 list, a hole, defaults, snake_case queries, null and Stringable values, cycles, inheritance, a doubly declared URI, and each reason of `DependsOnNotExpandable`
 
+### Resources Read Through `#[ResourceParam]`
+
+The resource a `#[ResourceParam]` reads an argument from is a dependency of the reader, like an `#[Embed]` child, when it has a stored entry.
+
+```text
+AssistedPage onGet(id, #[ResourceParam('user?id=1#name')] owner)
+PATCH user?id=1 → AssistedPage invalidated, and the next GET answers the new name
+PATCH user?id=2 → AssistedPage stays stored
+```
+
+**Test:** `ResourceParamDependencyTest` — the declaration on the parameter, on the method and on both (the method's wins), the cache declaration shapes of the reader, readers embedded uncached through one and two levels, a `templated` URI, a write that invalidates what the source depends on, a recomposed view, and a source that is not cached
+
 ## Component Unit Tests
 
 | Component | Test File | Coverage |

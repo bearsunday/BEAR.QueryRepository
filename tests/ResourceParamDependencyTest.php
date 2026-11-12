@@ -42,6 +42,7 @@ class ResourceParamDependencyTest extends TestCase
         return [
             'class #[Cacheable], on the parameter' => ['app://self/assisted-page?id=a', false],
             'class #[Cacheable], on the method' => ['app://self/assisted/on-method?id=a', false],
+            'class #[Cacheable], on the method and on the parameter' => ['app://self/assisted/on-both?id=a', false],
             'method #[CacheableResponse]' => ['app://self/assisted/mr?id=a', true],
             'putStatic() in onGet()' => ['app://self/assisted/ps?id=a', true],
             '#[Cacheable] page embedding an uncached reader' => ['app://self/assisted/page', false],

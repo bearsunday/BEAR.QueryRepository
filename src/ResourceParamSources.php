@@ -70,7 +70,7 @@ final readonly class ResourceParamSources
 
         $uris = [];
         foreach (self::declared(new ReflectionMethod($ro, 'onGet')) as $resourceParam) {
-            $uri = $resourceParam->templated ? uri_template($resourceParam->uri, $ro->uri->query) : $resourceParam->uri;
+            $uri = $resourceParam->templated === true ? uri_template($resourceParam->uri, $ro->uri->query) : $resourceParam->uri;
             $uris[explode('#', $uri, 2)[0]] = true;
         }
 
