@@ -21,6 +21,7 @@ use function max;
 use function preg_replace_callback;
 use function rawurldecode;
 use function rawurlencode;
+use function serialize;
 use function sprintf;
 use function strtotime;
 use function time;
@@ -95,8 +96,16 @@ final class ResourceDonut
     public function refresh(ResourceInterface $resource, ResourceObject $ro, UriTagInterface|null $uriTag = null, DependsOnTags|null $dependsOnTags = null): ResourceObject
     {
         $etags = new SurrogateKeys($ro->uri, null, $uriTag, null, $dependsOnTags);
-        $ro->headers = $this->headers;
-        $ro->view = $this->body === null ? $this->compose($resource, $etags) : $this->renderBody($this->body, $resource, $ro, $etags);
+        if ($this->body === null) {
+            $view = $this->compose($resource, $etags);
+            $ro->headers = $this->headers;
+            $ro->view = $view;
+        }
+
+        if ($this->body !== null) {
+            $this->renderBody($this->body, $resource, $ro, $etags);
+        }
+
         // isset() also guards entries serialized before this property existed
         if (isset($this->code)) {
             $ro->code = $this->code;
@@ -137,11 +146,11 @@ final class ResourceDonut
     }
 
     /**
-     * The stored body rendered by the page's own renderer, each hole a request again
+     * Renders the stored body with the page's own renderer, each hole a request again
      *
      * @param array<array-key, mixed> $body
      */
-    private function renderBody(array $body, ResourceInterface $resource, ResourceObject $ro, SurrogateKeys $etags): string
+    private function renderBody(array $body, ResourceInterface $resource, ResourceObject $ro, SurrogateKeys $etags): void
     {
         $requests = [];
         foreach ($this->holes as $key => $uri) {
@@ -150,19 +159,23 @@ final class ResourceDonut
             $requests[] = $body[$key] = $request;
         }
 
+        $live = [$ro->body, $ro->headers, $ro->code];
         $ro->body = $body;
+        $ro->headers = $this->headers;
+        $ro->code = $this->code ?? $ro->code;
         $ro->view = null;
         try {
-            $view = $ro->toString();
+            $ro->toString();
             foreach ($requests as $request) {
-                $etags->addTag(DonutRequest::resultOf($request));
+                $etags->addTag($request->resourceObject);
             }
         } catch (Throwable $e) {
-            // As in compose(): a hole that fails degrades the hit to a fresh render
+            // As in compose(), a hole that fails degrades the hit to a fresh render: onGet() then runs on the resource as it came in
+            [$ro->body, $ro->headers, $ro->code] = $live;
+            $ro->view = null;
+
             throw new CacheStoreException(previous: $e);
         }
-
-        return $view;
     }
 
     public function render(ResourceObject $ro, DonutRendererInterface $storage): ResourceObject
@@ -330,10 +343,13 @@ final class ResourceDonut
             $uris[$key] = $hole->request->toUri();
         }
 
+        // The body is what the store keeps, so it must serialize: a refusal surfaces here, before anything is written or purged
+        serialize($body);
         $ro->view = null;
         $ro->toString();
         foreach ($holes as $hole) {
-            $etags->addTag(DonutRequest::resultOf($hole->request));
+            // The renderer ran the hole on its resource object; asking the request for a result could run it a second time
+            $etags->addTag($hole->request->resourceObject);
         }
 
         return new self('', $ro->headers, $ttl, $isCacheble, code: $ro->code, body: $body, holes: $uris);

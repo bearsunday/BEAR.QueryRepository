@@ -4,9 +4,15 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\Resource\AbstractRequest;
+use BEAR\Resource\InvokerInterface;
+use BEAR\Resource\JsonRenderer;
 use BEAR\Resource\ResourceInterface;
+use BEAR\Resource\ResourceObject;
+use BEAR\Resource\Uri;
 use FakeVendor\HelloWorld\Resource\App\Counter;
 use FakeVendor\HelloWorld\Resource\App\FlakyHole;
+use FakeVendor\HelloWorld\Resource\Page\Html\RunCountingFlakyDonut;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
@@ -63,21 +69,75 @@ class DonutBodyTest extends TestCase
         $this->assertSame(['label' => 'counter-donut', 'counter' => ['call' => 2, 'tag' => null], 'read' => 1], $hit);
     }
 
-    public function testAHoleThatFailsOnAHitFallsBackToAFreshRender(): void
+    public function testAHoleThatFailsOnAHitFallsBackToAFreshRunOfThePage(): void
     {
-        $uri = 'page://self/html/donut-cache-with-flaky-hole';
+        $uri = 'page://self/html/run-counting-flaky-donut';
+        RunCountingFlakyDonut::$runs = 0;
         FlakyHole::$failureCount = 0;
         $this->resource->get($uri);
 
         FlakyHole::$failureCount = 1;
         set_error_handler(static fn (): bool => true); // the fallback warns
         try {
-            $hit = $this->resource->get($uri);
+            $failedHit = $this->resource->get($uri);
         } finally {
             restore_error_handler();
         }
 
-        $this->assertSame(200, $hit->code);
-        $this->assertSame(['flaky' => ['value' => 'healthy']], json_decode($hit->toString(), true, 512, JSON_THROW_ON_ERROR));
+        $expected = ['flaky' => ['value' => 'healthy'], 'run' => 2];
+        $this->assertSame(200, $failedHit->code);
+        $this->assertSame($expected, json_decode($failedHit->toString(), true, 512, JSON_THROW_ON_ERROR), 'onGet() ran on the resource as it came in, not on the stored body');
+        $this->assertSame($expected, json_decode($this->resource->get($uri)->toString(), true, 512, JSON_THROW_ON_ERROR), 'the fresh run is what is stored');
+    }
+
+    public function testAHoleThatIsNoRequestIsNotRunAgainForItsTags(): void
+    {
+        $child = new class extends ResourceObject {
+        };
+        $child->uri = new Uri('app://self/non-request');
+        $child->headers[Header::SURROGATE_KEY] = 'hole-tag';
+        $invoker = new class ($child) implements InvokerInterface {
+            public int $calls = 0;
+
+            public function __construct(private readonly ResourceObject $ro)
+            {
+            }
+
+            public function invoke(AbstractRequest $request): ResourceObject
+            {
+                $this->calls++;
+
+                return $this->ro;
+            }
+        };
+        $page = self::jsonPage(['hole' => new FakeNonRequestHole($invoker, $child)]);
+        $keys = new SurrogateKeys($page->uri);
+
+        ResourceDonut::create($page, new DonutRenderer(), $keys, null, false);
+        $keys->setSurrogateHeader($page);
+
+        $this->assertSame(0, $invoker->calls, 'the renderer read the hole; asking it again would run it a second time');
+        $this->assertContains('hole-tag', explode(' ', $page->headers[Header::SURROGATE_KEY] ?? ''));
+    }
+
+    public function testABodyThatCannotBeStoredIsRefused(): void
+    {
+        $page = self::jsonPage(['hole' => $this->resource->uri('page://self/html/comment'), 'handler' => static fn () => null]);
+
+        $this->expectExceptionMessage("Serialization of 'Closure' is not allowed");
+
+        ResourceDonut::create($page, new DonutRenderer(), new SurrogateKeys($page->uri), null, false);
+    }
+
+    /** @param array<string, mixed> $body */
+    private static function jsonPage(array $body): ResourceObject
+    {
+        $page = new class extends ResourceObject {
+        };
+        $page->uri = new Uri('page://self/json-page');
+        $page->body = $body;
+        $page->setRenderer(new JsonRenderer());
+
+        return $page;
     }
 }
