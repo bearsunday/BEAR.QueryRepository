@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\Request;
-use BEAR\Resource\RequestInterface;
 use BEAR\Resource\ResourceObject;
 
 use function is_array;
@@ -51,7 +51,7 @@ final class ResourceState
 
         /** @psalm-suppress MixedAssignment */
         foreach ($ro->body as $key => $item) {
-            if ($item instanceof RequestInterface && ($body[$key] ?? null) instanceof ResourceObject) {
+            if ($item instanceof AbstractRequest && ($body[$key] ?? null) instanceof ResourceObject) {
                 $state->requests[] = $key;
             }
         }
