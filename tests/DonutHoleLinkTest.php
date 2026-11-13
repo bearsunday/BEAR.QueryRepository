@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\Resource\RenderInterface;
 use BEAR\Resource\ResourceInterface;
+use FakeVendor\HelloWorld\Resource\App\Linked\Blog;
 use FakeVendor\HelloWorld\Resource\Page\Html\LinkedHoleDonut;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -40,8 +41,13 @@ class DonutHoleLinkTest extends TestCase
         $resource = (new Injector($module, __DIR__ . '/tmp'))->getInstance(ResourceInterface::class);
         LinkedHoleDonut::$runs = 0;
 
+        Blog::$runs = 0;
         $miss = $resource->get('page://self/html/linked-hole-donut', ['link' => $link])->toString();
+        $this->assertSame(1, Blog::$runs, 'the miss follows the link once');
+
+        Blog::$runs = 0;
         $hit = $resource->get('page://self/html/linked-hole-donut', ['link' => $link])->toString();
+        $this->assertSame(1, Blog::$runs, 'the hit follows the link once, not twice');
 
         $this->assertMatchesRegularExpression('/blog\W+12/', $miss, 'the hole shows the blog the author links to');
         $this->assertSame($miss, $hit);
