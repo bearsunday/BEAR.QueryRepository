@@ -79,9 +79,9 @@ class CacheDependencyCollectorTest extends TestCase
         };
         $parent->uri = new Uri('app://self/parent');
         $parent->body = [new Request($invoker, $hole), new Request($invoker, $material)];
-        $collector = new CacheDependencyCollector(new DependsOnTags(new UriTag()), new CacheDependency(new UriTag()), new NullSemanticLogger());
+        $keys = new SurrogateKeys($parent->uri);
 
-        $collector->dependOnMaterials($parent, $collector->materials($parent), new SurrogateKeys($parent->uri));
+        (new CacheDependencyCollector(new DependsOnTags(new UriTag()), new CacheDependency(new UriTag()), new NullSemanticLogger()))->collect($parent, $keys);
 
         $this->assertSame(0, $invoker->calls);
         $this->assertSame('_material_ grp-_material_ material-data', $parent->headers[Header::SURROGATE_KEY]);

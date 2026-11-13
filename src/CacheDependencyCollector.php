@@ -23,74 +23,39 @@ final readonly class CacheDependencyCollector
     }
 
     /**
-     * Materializes each child first: the keys read from it are set by its own interceptor or onGet(), so they exist only
-     * once it has run. AbstractRequest::__toString() memoizes that run for the renderer; __invoke() would execute the
-     * child again.
-     */
-    public function collect(ResourceObject $ro): void
-    {
-        $this->dependOnItsOwn($ro);
-        foreach ($this->dependsOnTags->requests($ro) as $request) {
-            $this->materialize($request);
-            $child = $request->resourceObject;
-            $this->depends($ro, $child, $this->dependsOnTags->embedded($child));
-        }
-    }
-
-    /**
-     * Picks the children that already ran, a donut page's materials; what they pass up is read once the page has
-     * rendered ({@see dependOnMaterials()}), when the requests below them have run too
+     * Null $materialKeys materializes each child first: the keys read from it are set by its own
+     * interceptor or onGet(), so they exist only once it has run. AbstractRequest::__toString()
+     * memoizes that run for the renderer; __invoke() would execute the child again.
      *
-     * @return list<AbstractRequest>
-     */
-    public function materials(ResourceObject $ro): array
-    {
-        $this->dependOnItsOwn($ro);
-        $materials = [];
-        foreach ($this->dependsOnTags->requests($ro) as $request) {
-            $child = $request->resourceObject;
-            if ($this->dependsOnTags->hasRun($child)) {
-                $materials[] = $request;
-
-                continue;
-            }
-
-            $this->depends($ro, $child, $this->dependsOnTags->embedded($child));
-        }
-
-        return $materials;
-    }
-
-    /** @param list<AbstractRequest> $materials {@see materials()} */
-    public function dependOnMaterials(ResourceObject $ro, array $materials, SurrogateKeys $keys): void
-    {
-        foreach ($materials as $request) {
-            $child = $request->resourceObject;
-            $this->depends($ro, $child, $keys->embedded($child));
-        }
-    }
-
-    /**
+     * With $materialKeys (donut), only children that already ran are inspected.
+     *
      * A resource a #[ResourceParam] read ran before onGet() and is gone, so the dependency is built from its URI, with the
      * Surrogate-Key of its stored entry when it has one.
      */
-    private function dependOnItsOwn(ResourceObject $ro): void
-    {
+    public function collect(
+        ResourceObject $ro,
+        SurrogateKeys|null $materialKeys = null,
+    ): void {
         ($this->dependsOnTags)($ro);
         foreach ($this->dependsOnTags->resourceParamSources($ro) as $source) {
             $this->cacheDependency->depends($ro, $source);
         }
-    }
 
-    private function depends(ResourceObject $ro, ResourceObject $child, bool $depends): void
-    {
-        if (! $depends) {
-            $this->logger->event(DependencySkippedContext::of($ro, $child));
+        foreach ($this->dependsOnTags->requests($ro) as $request) {
+            if ($materialKeys === null) {
+                $this->materialize($request);
+            }
 
-            return;
+            $child = $request->resourceObject;
+            $depends = $materialKeys === null ? $this->dependsOnTags->embedded($child) : $materialKeys->embedded($child);
+            if (! $depends) {
+                $this->logger->event(DependencySkippedContext::of($ro, $child));
+
+                continue;
+            }
+
+            $this->cacheDependency->depends($ro, $child);
         }
-
-        $this->cacheDependency->depends($ro, $child);
     }
 
     /**

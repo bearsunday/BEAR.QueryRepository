@@ -18,7 +18,6 @@ use BEAR\QueryRepository\Log\Context\RefreshDonutContext;
 use BEAR\QueryRepository\Log\Context\SaveDonutContext;
 use BEAR\QueryRepository\Log\TopLevelAwareInterface;
 use BEAR\RepositoryModule\Annotation\CacheLog;
-use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
@@ -166,10 +165,9 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     private function doPutStatic(ResourceObject $ro, int|null $ttl, int|null $sMaxAge): void
     {
         $keys = new SurrogateKeys($ro->uri, ($this->baseUriTag)($ro), $this->uriTag, null, $this->dependsOnTags);
-        $materials = $this->classifyMaterials($ro);
+        $this->classifyMaterials($ro, $keys);
         $this->logger->event(new PutDonutContext((string) $ro->uri, $ttl, $sMaxAge));
         $donut = ResourceDonut::create($ro, $this->renderer, $keys, $sMaxAge, true);
-        $this->dependencyCollector->dependOnMaterials($ro, $materials, $keys);
         // Read after rendering, see templateKeys()
         $templateKeys = $this->templateKeys($ro, $this->getHeaderKeys($ro));
         $donut = $donut->withStorageState($ttl, $templateKeys);
@@ -194,10 +192,9 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     private function doPutDonut(ResourceObject $ro, int|null $donutTtl): void
     {
         $keys = new SurrogateKeys($ro->uri, ($this->baseUriTag)($ro), $this->uriTag, null, $this->dependsOnTags);
-        $materials = $this->classifyMaterials($ro);
+        $this->classifyMaterials($ro, $keys);
         $this->logger->event(new PutDonutContext((string) $ro->uri, $donutTtl, null));
         $donut = ResourceDonut::create($ro, $this->renderer, $keys, $donutTtl, false);
-        $this->dependencyCollector->dependOnMaterials($ro, $materials, $keys);
         // Read after rendering, see templateKeys()
         $templateKeys = $this->templateKeys($ro, $this->getHeaderKeys($ro));
         $donut = $donut->withStorageState($donutTtl, $templateKeys);
@@ -231,25 +228,24 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     }
 
     /**
-     * The body children the page's onGet() already ran, its materials, before the page renders and runs its holes
+     * Register body children the page's onGet() already ran as dependencies, before the template keys read the header
      *
-     * A child that has run carries the code or body its run left; a hole has not run yet. Headers only: running a child
-     * here would execute a hole outside its hole scope. A child left out is logged as `dependency_skipped` with what its
-     * body shows. The materials become dependencies of the template once the page has rendered, with what they and the
-     * requests they embed declare in #[DependsOn] or read through #[ResourceParam]: by then those requests have run.
-     *
-     * @return list<AbstractRequest>
+     * A child carrying an ETag or Surrogate-Key already ran during onGet() (a material); a hole has not run yet.
+     * Headers only: running a child here would execute a hole outside its hole scope. A child left out is logged
+     * as `dependency_skipped` with what its body shows: none yet (a hole, or a run that left none), or one without a tag.
+     * A child that ran counts as well when it, or a request it embeds and ran, declares #[DependsOn] or reads an onGet()
+     * argument through #[ResourceParam].
      */
-    private function classifyMaterials(ResourceObject $ro): array
+    private function classifyMaterials(ResourceObject $ro, SurrogateKeys $keys): void
     {
-        return $this->dependencyCollector->materials($ro);
+        $this->dependencyCollector->collect($ro, $keys);
     }
 
     /**
      * The template's own URI tag (so `purge($uri)` reaches it, #185) and the declared keys: material children's tags
-     * (CacheDependencyCollector::dependOnMaterials()) and the dependencies declared while the page rendered, such as
-     * depends() from a template helper, so they are read after ResourceDonut::create(). Holes are left out: their write
-     * drops only the content and the shell is recomposed.
+     * (classifyMaterials()) and the dependencies declared while the page rendered, such as depends() from a template
+     * helper, so they are read after ResourceDonut::create(). Holes are left out: their write drops only the content and
+     * the shell is recomposed.
      *
      * @param list<string> $declaredKeys
      *

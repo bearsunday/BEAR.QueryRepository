@@ -158,7 +158,7 @@ class GoldenEntryTest extends TestCase
                     'ro-_html_comment_' => ['_html_comment_', 'grp-_html_comment_', 'comment01'],
                 ],
                 ['_html_comment_' => ['comment01', 'grp-_html_comment_', '_html_comment_']],
-                ['Content-Type' => 'text/html; charset=utf-8', Header::SURROGATE_KEY => '_html_comment_ grp-_html_comment_ comment01 _html_donut-cache-with-material_ grp-_html_donut-cache-with-material_'],
+                [Header::SURROGATE_KEY => '_html_comment_ grp-_html_comment_ comment01 _html_donut-cache-with-material_ grp-_html_donut-cache-with-material_', 'Content-Type' => 'text/html; charset=utf-8'],
             ],
         ];
     }

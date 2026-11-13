@@ -7,6 +7,7 @@ namespace BEAR\QueryRepository;
 use BEAR\QueryRepository\Exception\DependsOnNotExpandable;
 use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\ResourceObject;
+use Closure;
 use Generator;
 use ReflectionMethod;
 
@@ -70,7 +71,7 @@ final readonly class DependsOnTags
      */
     public function embedded(ResourceObject $child): bool
     {
-        return $this->tagEmbedded($child, $this->ran($child));
+        return $this->tagEmbedded($child, $this->hasRun($child) ? $this->ran($child) : null);
     }
 
     /**
@@ -86,24 +87,40 @@ final readonly class DependsOnTags
     }
 
     /**
+     * Reads a resource that has run
+     *
+     * @param (Closure(ResourceObject): bool)|null $embedded reads a request it embeds; null reads it with embedded()
+     *
      * @return list<string>|null what the resource declares and what its #[ResourceParam] read, with the tags of each
      *                           request it embeds and ran that it depends on; null when there is none
      */
-    public function ran(ResourceObject $ro): array|null
+    public function ran(ResourceObject $ro, Closure|null $embedded = null): array|null
     {
-        if (! $this->hasRun($ro)) {
-            return null;
-        }
-
         $tags = $this->declared($ro);
         $read = $this->resourceParamSources?->tags($ro) ?? [];
         if ($read !== []) {
             $tags = [...$tags ?? [], ...$read];
         }
 
+        $passedUp = $this->passedUp($ro, $embedded);
+
+        return $passedUp === [] ? $tags : [...$tags ?? [], ...$passedUp];
+    }
+
+    /**
+     * The tags of each request the resource embeds and ran that it depends on
+     *
+     * @param (Closure(ResourceObject): bool)|null $embedded reads a request it embeds; null reads it with embedded()
+     *
+     * @return list<string>
+     */
+    public function passedUp(ResourceObject $ro, Closure|null $embedded = null): array
+    {
+        $embedded ??= $this->embedded(...);
+        $tags = [];
         foreach ($this->requests($ro) as $body) {
-            if ($this->embedded($body->resourceObject)) {
-                $tags = [...$tags ?? [], ...$this->cacheTags->tags($body->resourceObject)];
+            if ($embedded($body->resourceObject)) {
+                $tags = [...$tags, ...$this->cacheTags->tags($body->resourceObject)];
             }
         }
 

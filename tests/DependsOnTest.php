@@ -91,6 +91,7 @@ class DependsOnTest extends TestCase
             '#[Cacheable] page' => ['app://self/rows/page-value', false],
             'class #[CacheableResponse] page reading the list' => ['app://self/rows/page-view', true],
             'method #[CacheableResponse] page reading the list' => ['app://self/rows/page-donut', true],
+            'method #[CacheableResponse] page reading a list its renderer turns into arrays' => ['app://self/rows/page-flattened-donut', true],
             'page <- mid <- list' => ['app://self/rows/page-chain', false],
             'donut page <- mid <- list' => ['app://self/rows/page-chain-donut', true],
             'page <- outer <- mid <- list' => ['app://self/rows/page-deep-chain', false],
