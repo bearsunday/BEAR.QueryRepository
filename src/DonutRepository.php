@@ -23,6 +23,7 @@ use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
+use Throwable;
 
 use function array_unique;
 use function array_values;
@@ -63,7 +64,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     ) {
         // Same UriTag as templateKeys(), so a material's tag matches the format purge() emits.
         $this->cacheTags = $cacheTags ?? new CacheTags($this->uriTag, $this->baseUriTag);
-        $this->dependsOnTags = $dependsOnTags ?? new DependsOnTags($this->uriTag, new CacheIdentityFactory(), new ResourceParamSources($this->resource, $this->resourceStorage, $this->cacheTags));
+        $this->dependsOnTags = $dependsOnTags ?? new DependsOnTags($this->uriTag, new CacheIdentityFactory(), new ResourceParamSources($this->resource, $this->resourceStorage, $this->cacheTags), $this->cacheTags);
         $this->cacheDependency = $cacheDependency ?? new CacheDependency($this->uriTag, $this->logger, $this->baseUriTag, $this->cacheTags);
         $this->dependencyCollector = $dependencyCollector ?? new CacheDependencyCollector($this->dependsOnTags, $this->cacheDependency, $this->logger);
     }
@@ -71,18 +72,26 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     #[Override]
     public function get(ResourceObject $ro): ResourceObject|null
     {
-        $maybeState = $this->queryRepository->get($ro->uri);
-        if ($maybeState instanceof ResourceState) {
-            // Field by field, not visit(): a stored donut view's empty body and unserialized
-            // uri would clobber the live null body and uri object.
-            $ro->code = $maybeState->code;
-            $ro->headers = $maybeState->headers;
-            $ro->view = $maybeState->view;
+        // A read that fails hands the resource back as it came in, so the page can run on it as on a miss
+        $incoming = [$ro->body, $ro->headers, $ro->code, $ro->view];
+        try {
+            $maybeState = $this->queryRepository->get($ro->uri);
+            if ($maybeState instanceof ResourceState) {
+                // Field by field, not visit(): a stored donut view's empty body and unserialized
+                // uri would clobber the live null body and uri object.
+                $ro->code = $maybeState->code;
+                $ro->headers = $maybeState->headers;
+                $ro->view = $maybeState->view;
 
-            return $ro;
+                return $ro;
+            }
+
+            return $this->refreshDonut($ro);
+        } catch (Throwable $e) {
+            [$ro->body, $ro->headers, $ro->code, $ro->view] = $incoming;
+
+            throw $e;
         }
-
-        return $this->refreshDonut($ro);
     }
 
     /**

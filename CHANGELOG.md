@@ -9,11 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Requires `koriym/semantic-logger` 0.11.1 or later: the demos render their logs with `RenderConfig`'s `schemaDir`, which needs that version.
-- Requires `bear/resource` 1.27 or later: a `#[ResourceParam]` source is tracked as that version binds it, the method's declaration before the parameter's.
+- Requires `bear/resource` 1.34.2 or later: a `#[ResourceParam]` source is tracked as 1.27 binds it, a cache hit is rendered as HAL the way 1.32 renders an embedded request, and 1.34.2 renders HAL without rewriting the body the page stores.
 - **Behaviour change**: the ETag of a stored response is `"<locator>.<hash>"`, where the locator is made from the URI. An ETag issued by an earlier version is not answered `304`, so each client revalidates once with a `200`.
 - **Behaviour change**: storing a response invalidates its URI tag and purges it at the CDN only when it replaces a stored entry. A GET that misses stores where nothing is stored, so it no longer purges the CDN, drops the entries that embed the resource, or records `pre_write_cleanup` and `invalidate`; a write or a purge does, as before.
 - **Behaviour change**: the ETag of a `#[Cacheable]` value follows the string its renderer produces, and a miss renders the response when it stores the entry, so the response already holds its `view`. A body changed after that GET returns is not in the response.
 - **Behaviour change**: a `#[DependsOn]` on `onGet()` whose template uses a parameter bound by `#[ResourceParam]` now fails the GET with `DependsOnNotExpandable`. Tag that dependency by hand with `UriTagInterface`.
+- **Behaviour change**: `#[Refresh]` stores only what the GET it makes stores. A destination that declares no cache is no longer stored, and a store that throws on the write is reported as a warning, as on any GET, instead of failing the command.
+- **Behaviour change**: under a renderer that encodes the body as JSON, such as the JSON and HAL renderers, a `#[CacheableResponse]` or `#[DonutCache]` page is stored as its body, so a body that does not serialize fails the request, as a `#[Cacheable]` body does; it was answered from the stored view. Keep closures, connections and requests nested in an array out of such a body.
 
 ### Deprecated
 - `StorageMemcachedEtagModule` and `ResourceStorageInterface::saveEtag()`: the stored entry holds its own ETag, so the ETag pool is no longer read or written. Remove the module and the calls; an `EtagPool` binding of your own is no longer used.
@@ -28,6 +30,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Responses of one URI stored for different `X_VARY` values no longer drop each other on a miss. The key also holds the name of each varying value, so a request with `X_LANG=x` and one with `X_DEVICE=x` no longer share an entry.
 - A `304` from `HttpCache::transfer()`/`CliHttpCache::transfer()` now carries the `ETag`, `Cache-Control`, `Vary` and the other headers a `304` repeats, taken from the stored entry, and no longer PHP's default `Content-Type`. With a `ResourceStorageInterface` implementation of your own it carries none of them.
 - A stored resource whose `onGet()` takes an argument through `#[ResourceParam]` is now invalidated when the resource that argument was read from is, as with an `#[Embed]` child; it used to keep the value it was stored with. Nothing needs to change in the application.
+- Under a HAL renderer, a cache hit of a `#[Cacheable]` resource keeps `_embedded` and the embedded children's `_links`; it answered the same ETag without them. A child of another scheme can still be rendered differently on a hit when it sits three levels down or `onGet()` casts it to a string.
+- `#[Refresh]` no longer stores an error the destination answers, and no longer breaks a `#[DonutCache]` page it names.
+- A page that embeds a resource through resources that are not cached now takes that resource's tags: a write to it, or to a URI declared below it, invalidates the page. The page's `Surrogate-Key` grows by those tags.
+- A child embedded in a `#[Cacheable]` resource whose `onGet()` throws now fails the GET with that exception; it ended the script with a fatal error.
+- Under a renderer that encodes the body as JSON, such as the JSON and HAL renderers, a `#[CacheableResponse]` or `#[DonutCache]` page shows its embedded resources as it does without the attribute and takes their tags; each was rendered as `{}`.
+- On a `#[CacheableResponse]` or `#[DonutCache]` page, an embedded request that follows a link (`linkSelf()`, `linkNew()`, `linkCrawl()`) shows the linked resource on a hit as it does on the miss; a hit read it without its links.
+- A cache hit of a `#[CacheableResponse]` or `#[DonutCache]` page that fails while answering the page again, or while storing it again, now runs the page on the resource as it came in; a failure in rebuilding an embedded request or in storing the rebuilt view could fail the request or run `onGet()` on the stored body.
+- A `#[CacheableResponse]` or `#[DonutCache]` page whose embedded resource is not cached but embeds a cached one is invalidated when that cached resource is; when the embedded resource's class gave it a body before it ran, the page kept the old content.
 
 ## [1.20.1] - 2026-11-11
 

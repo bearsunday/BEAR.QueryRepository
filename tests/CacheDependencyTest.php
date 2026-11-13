@@ -319,8 +319,7 @@ class CacheDependencyTest extends TestCase
      * depends() no longer unsets the child's own Surrogate-Key: a child that is both a
      * material and a hole must keep its own key for its own independent cache entry
      * (DonutMaterialDependencyTest covers that end to end). Repeated calls for the same
-     * child - #[Refresh] re-puts an instance that was already depended on - must not
-     * duplicate the parent's tags either.
+     * child must not duplicate the parent's tags either.
      */
     public function testDependsLeavesTheChildsOwnKeyIntactAndDedupesTheParent(): void
     {

@@ -7,6 +7,7 @@ namespace BEAR\QueryRepository;
 use BEAR\QueryRepository\Exception\DependsOnNotExpandable;
 use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\ResourceObject;
+use Closure;
 use Generator;
 use ReflectionMethod;
 
@@ -24,11 +25,15 @@ use function sprintf;
  */
 final readonly class DependsOnTags
 {
+    private CacheTags $cacheTags;
+
     public function __construct(
         private UriTagInterface $uriTag,
         private CacheIdentityFactory $identityFactory = new CacheIdentityFactory(),
         private ResourceParamSources|null $resourceParamSources = null,
+        CacheTags|null $cacheTags = null,
     ) {
+        $this->cacheTags = $cacheTags ?? new CacheTags($uriTag, new BaseUriTag($uriTag));
     }
 
     /**
@@ -60,13 +65,13 @@ final readonly class DependsOnTags
     }
 
     /**
-     * Tags a child that ran inside its parent, adding what the requests it embeds and ran declare
+     * Tags a child that ran inside its parent with what ran() finds for it
      *
      * @return bool whether its parent depends on it: a declaration was found, or it carries an ETag or a Surrogate-Key
      */
     public function embedded(ResourceObject $child): bool
     {
-        return $this->tagEmbedded($child, $this->ran($child));
+        return $this->tagEmbedded($child, $this->hasRun($child) ? $this->ran($child) : null);
     }
 
     /**
@@ -82,25 +87,40 @@ final readonly class DependsOnTags
     }
 
     /**
-     * @return list<string>|null the tags the resource and the requests it embeds and ran declare, with those of the
-     *                           resources their #[ResourceParam] read; null when there is none
+     * Reads a resource that has run
+     *
+     * @param (Closure(ResourceObject): bool)|null $embedded reads a request it embeds; null reads it with embedded()
+     *
+     * @return list<string>|null what the resource declares and what its #[ResourceParam] read, with the tags of each
+     *                           request it embeds and ran that it depends on; null when there is none
      */
-    public function ran(ResourceObject $ro): array|null
+    public function ran(ResourceObject $ro, Closure|null $embedded = null): array|null
     {
-        if (! $this->hasRun($ro)) {
-            return null;
-        }
-
         $tags = $this->declared($ro);
         $read = $this->resourceParamSources?->tags($ro) ?? [];
         if ($read !== []) {
             $tags = [...$tags ?? [], ...$read];
         }
 
+        $passedUp = $this->passedUp($ro, $embedded);
+
+        return $passedUp === [] ? $tags : [...$tags ?? [], ...$passedUp];
+    }
+
+    /**
+     * The tags of each request the resource embeds and ran that it depends on
+     *
+     * @param (Closure(ResourceObject): bool)|null $embedded reads a request it embeds; null reads it with embedded()
+     *
+     * @return list<string>
+     */
+    public function passedUp(ResourceObject $ro, Closure|null $embedded = null): array
+    {
+        $embedded ??= $this->embedded(...);
+        $tags = [];
         foreach ($this->requests($ro) as $body) {
-            $embedded = $this->ran($body->resourceObject);
-            if ($embedded !== null) {
-                $tags = [...$tags ?? [], ...$embedded];
+            if ($embedded($body->resourceObject)) {
+                $tags = [...$tags, ...$this->cacheTags->tags($body->resourceObject)];
             }
         }
 
@@ -111,18 +131,6 @@ final readonly class DependsOnTags
     public function hasRun(ResourceObject $ro): bool
     {
         return $ro->code !== 200 || $ro->body !== null;
-    }
-
-    /** Whether a request it embeds, at any depth, has not run yet: what that request declares is known only once it runs */
-    public function awaitsRequest(ResourceObject $ro): bool
-    {
-        foreach ($this->requests($ro) as $body) {
-            if (! $this->hasRun($body->resourceObject) || $this->awaitsRequest($body->resourceObject)) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     /** @return list<string>|null null when neither onGet() nor a row class in the body declares */

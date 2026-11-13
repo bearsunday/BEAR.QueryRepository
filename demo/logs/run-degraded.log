@@ -1809,7 +1809,6 @@ G2 PUT a non-cacheable #[Refresh] resource -> command{source: RefreshInterceptor
 command method=onPut annotations=[1 items] source=RefreshInterceptor
 ├── purge uri=app://self/refresh-dest?id=1 [event]
 ├── invalidate tags=[_refresh-dest_id=1 +1 items] roPool=invalidated cdn=skipped durationMs=[volatile] [event]
-├── save_value uri=app://self/refresh-dest?id=1 tags=[_refresh-dest_id=1 +1 items] saved=true [event]
 └── command_result code=200
 
 === Cache Log JSON — G2. refresh command ===
@@ -1852,20 +1851,6 @@ command method=onPut annotations=[1 items] source=RefreshInterceptor
                         "cdn": "skipped",
                         "durationMs": 0
                     }
-                },
-                {
-                    "id": "save_value_1",
-                    "type": "save_value",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_value.json",
-                    "context": {
-                        "uri": "app://self/refresh-dest?id=1",
-                        "tags": [
-                            "_refresh-dest_id=1",
-                            "grp-_refresh-dest_id=1"
-                        ],
-                        "requestedTtl": 0,
-                        "saved": true
-                    }
                 }
             ],
             "close": {
@@ -1879,7 +1864,7 @@ command method=onPut annotations=[1 items] source=RefreshInterceptor
         }
     ]
 }
-Schema validation: OK (5 entries)
+Schema validation: OK (4 entries)
 G3 PUT a #[Purge]-only resource -> command.annotations lists Annotation\Purge x2, level-two purged: true
 
 === Cache Log Tree — G3. purge-only command ===

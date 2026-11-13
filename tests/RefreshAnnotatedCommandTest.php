@@ -8,9 +8,11 @@ use BEAR\QueryRepository\Log\Context\SaveValueContext;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
+use FakeVendor\HelloWorld\Resource\App\PagedErrorOnBare;
 use FakeVendor\HelloWorld\Resource\App\User;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
@@ -81,12 +83,44 @@ class RefreshAnnotatedCommandTest extends TestCase
         $this->assertNotNull($this->repository->get(new Uri('app://self/user/profile?user_id=1')));
     }
 
-    public function testRefreshToNonCacheableDestinationStillWritesOnce(): void
+    public function testRefreshStoresNothingForADestinationThatDeclaresNoCaching(): void
     {
         $this->resource->put('app://self/refresh-src', ['id' => 1]);
 
-        $saveValueEvents = self::eventsOfType($this->logger, SaveValueContext::class, 'app://self/refresh-dest?id=1');
-        $this->assertCount(1, $saveValueEvents);
+        $this->assertNull($this->repository->get(new Uri('app://self/refresh-dest?id=1')));
+    }
+
+    public function testRefreshStoresNoErrorTheDestinationAnswers(): void
+    {
+        $uri = 'app://self/paged-error-on-bare';
+        $this->resource->get($uri);
+        PagedErrorOnBare::$fail = true;
+        try {
+            $this->resource->put('app://self/refresh-to', ['uri' => $uri]);
+        } finally {
+            PagedErrorOnBare::$fail = false;
+        }
+
+        $this->assertNull($this->repository->get(new Uri($uri)));
+        $this->assertSame(200, $this->resource->get($uri)->code, 'the next read asks the resource');
+    }
+
+    /** @return iterable<string, array{string, string}> */
+    public static function donutPages(): iterable
+    {
+        yield 'with a hole' => ['page://self/html/counter-donut', 'counter-donut'];
+        yield 'without a hole' => ['page://self/html/plain-donut-hole', 'plain'];
+    }
+
+    /** Only the page's own GET can store a donut: its body holds requests, and it is read back without a body */
+    #[DataProvider('donutPages')]
+    public function testADonutPageKeepsItsContentAcrossARefresh(string $uri, string $content): void
+    {
+        $this->resource->get($uri);
+
+        $this->resource->put('app://self/refresh-to', ['uri' => $uri]);
+
+        $this->assertStringContainsString($content, $this->resource->get($uri)->toString());
     }
 
     /**

@@ -7,6 +7,7 @@ namespace BEAR\QueryRepository;
 use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\Request;
 use BEAR\Resource\ResourceObject;
+use JsonSerializable;
 use Override;
 use Stringable;
 
@@ -17,31 +18,54 @@ use function assert;
  *
  * @internal
  */
-final readonly class DonutRequest implements Stringable
+final class DonutRequest implements Stringable, JsonSerializable
 {
+    /** Whether the renderer encoded this request as JSON, where no placeholder can stand for it */
+    public bool $isEncoded = false;
+
     public function __construct(
-        private AbstractRequest $request,
-        private DonutRendererInterface $donutStorage,
-        private SurrogateKeys $etags,
+        public readonly AbstractRequest $request,
+        private readonly DonutRendererInterface $donutStorage,
+        private readonly SurrogateKeys $etags,
     ) {
+    }
+
+    /**
+     * Runs the hole and answers its resource
+     *
+     * A Request answers its memoized result, so a child onGet() already read is not run again (#226). Other requests
+     * are invoked directly: bear/async's AsyncRequest keeps its result only for its own rendering, and that rendering
+     * uses a result it was invoked for instead of running the request again.
+     */
+    public static function resultOf(AbstractRequest $request): ResourceObject
+    {
+        /** @psalm-suppress MixedAssignment $executed - Request::jsonSerialize() answers its memoized ResourceObject */
+        $executed = $request instanceof Request ? $request->jsonSerialize() : $request();
+        assert($executed instanceof ResourceObject);
+
+        return $executed;
     }
 
     #[Override]
     public function __toString(): string
     {
-        // Includes the query, so sibling holes on one path get distinct cache entries
-        $uri = $this->request->toUri();
-        // A Request answers its memoized result, so a child onGet() already read is not run again (#226).
-        // Other requests are invoked directly: AsyncRequest's jsonSerialize() flushes its batch.
-        /** @psalm-suppress MixedAssignment $executed - Request::jsonSerialize() answers its memoized ResourceObject */
-        $executed = $this->request instanceof Request ? $this->request->jsonSerialize() : ($this->request)();
-        assert($executed instanceof ResourceObject);
+        // Includes the query and the links, so sibling requests on one path get distinct cache entries
+        $reference = EmbedReference::of($this->request);
+        $executed = self::resultOf($this->request);
         // Not (string): the cast turns a render failure into '', which would be stored (#237)
         $view = $executed->toString();
 
         $this->etags->addTag($executed);
-        $this->donutStorage->setView($uri, $view);
+        $this->donutStorage->setView($reference, $view);
 
-        return ResourceDonut::placeholder($uri);
+        return ResourceDonut::placeholder($reference);
+    }
+
+    #[Override]
+    public function jsonSerialize(): null
+    {
+        $this->isEncoded = true;
+
+        return null;
     }
 }
