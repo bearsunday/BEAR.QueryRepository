@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.20.2] - 2026-11-13
 
 ### Changed
 - Requires `koriym/semantic-logger` 0.11.1 or later: the demos render their logs with `RenderConfig`'s `schemaDir`, which needs that version.
@@ -30,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Responses of one URI stored for different `X_VARY` values no longer drop each other on a miss. The key also holds the name of each varying value, so a request with `X_LANG=x` and one with `X_DEVICE=x` no longer share an entry.
 - A `304` from `HttpCache::transfer()`/`CliHttpCache::transfer()` now carries the `ETag`, `Cache-Control`, `Vary` and the other headers a `304` repeats, taken from the stored entry, and no longer PHP's default `Content-Type`. With a `ResourceStorageInterface` implementation of your own it carries none of them.
 - A stored resource whose `onGet()` takes an argument through `#[ResourceParam]` is now invalidated when the resource that argument was read from is, as with an `#[Embed]` child; it used to keep the value it was stored with. Nothing needs to change in the application.
-- Under a HAL renderer, a cache hit of a `#[Cacheable]` resource keeps `_embedded` and the embedded children's `_links`; it answered the same ETag without them. A child of another scheme can still be rendered differently on a hit when it sits three levels down or `onGet()` casts it to a string.
+- Under a HAL renderer, a cache hit of a `#[Cacheable]` resource keeps `_embedded` and the embedded children's `_links`; it answered the same ETag without them.
 - `#[Refresh]` no longer stores an error the destination answers, and no longer breaks a `#[DonutCache]` page it names.
 - A page that embeds a resource through resources that are not cached now takes that resource's tags: a write to it, or to a URI declared below it, invalidates the page. The page's `Surrogate-Key` grows by those tags.
 - A child embedded in a `#[Cacheable]` resource whose `onGet()` throws now fails the GET with that exception; it ended the script with a fatal error.
