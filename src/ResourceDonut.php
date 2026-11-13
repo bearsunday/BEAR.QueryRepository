@@ -60,7 +60,7 @@ final class ResourceDonut
     /** @var array<array-key, mixed>|null The body the page returned, each embedded request null, when its renderer prints no placeholder; null when the template holds the page */
     private array|null $body = null;
 
-    /** @var array<array-key, string> EmbedReference of each request embedded in the body, by its key */
+    /** @var array<array-key, string> toUri() of each request embedded in the body, by its key */
     private array $embeds = [];
 
     /**
@@ -140,7 +140,7 @@ final class ResourceDonut
             // or "" for a legacy `le` match (group 2 is its URI, used verbatim).
             $reference = $matches[1] === '2' ? rawurldecode($matches[2]) : $matches[2];
             // toString(), not (string): the cast turns a render failure into '', which would be served
-            $ro = EmbedReference::get($resource, $reference);
+            $ro = $resource->get($reference);
             $ro->toString();
             $etags->addTag($ro);
 
@@ -157,7 +157,9 @@ final class ResourceDonut
     {
         $requests = [];
         foreach ($this->embeds as $key => $reference) {
-            $requests[] = $body[$key] = EmbedReference::request($resource, $reference);
+            $request = $resource->uri($reference);
+            assert($request instanceof AbstractRequest);
+            $requests[] = $body[$key] = $request;
         }
 
         $ro->body = $body;
@@ -333,7 +335,7 @@ final class ResourceDonut
         foreach ($embeds as $key => $embed) {
             $ro->body[$key] = $embed->request;
             $body[$key] = null;
-            $references[$key] = EmbedReference::of($embed->request);
+            $references[$key] = $embed->request->toUri();
         }
 
         // The body is what the store keeps, so it must serialize: a refusal surfaces here, before anything is written or purged
