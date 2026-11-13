@@ -8,8 +8,10 @@ use BEAR\Resource\JsonRenderer;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
+use Closure;
 use FakeVendor\HelloWorld\Resource\App\Counter;
 use FakeVendor\HelloWorld\Resource\App\FlakyHole;
+use FakeVendor\HelloWorld\Resource\App\UnbuildableHole;
 use FakeVendor\HelloWorld\Resource\Page\Html\RunCountingFlakyDonut;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -67,14 +69,34 @@ class DonutBodyTest extends TestCase
         $this->assertSame(['label' => 'counter-donut', 'counter' => ['call' => 2, 'tag' => null], 'read' => 1], $hit);
     }
 
-    public function testAHoleThatFailsOnAHitFallsBackToAFreshRunOfThePage(): void
+    /** @return iterable<string, array{string, Closure(): void}> */
+    public static function holesThatFailOnAHit(): iterable
     {
-        $uri = 'page://self/html/run-counting-flaky-donut';
+        yield 'the hole fails to run' => [
+            'page://self/html/run-counting-flaky-donut',
+            static function (): void {
+                FlakyHole::$failureCount = 1;
+            },
+        ];
+
+        yield 'the hole cannot be built' => [
+            'page://self/html/run-counting-unbuildable-donut',
+            static function (): void {
+                UnbuildableHole::$failureCount = 1;
+            },
+        ];
+    }
+
+    /** @param Closure(): void $failNextTime */
+    #[DataProvider('holesThatFailOnAHit')]
+    public function testAHoleThatFailsOnAHitFallsBackToAFreshRunOfThePage(string $uri, Closure $failNextTime): void
+    {
         RunCountingFlakyDonut::$runs = 0;
         FlakyHole::$failureCount = 0;
+        UnbuildableHole::$failureCount = 0;
         $this->resource->get($uri);
 
-        FlakyHole::$failureCount = 1;
+        $failNextTime();
         set_error_handler(static fn (): bool => true); // the fallback warns
         try {
             $failedHit = $this->resource->get($uri);

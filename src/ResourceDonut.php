@@ -153,17 +153,17 @@ final class ResourceDonut
      */
     private function renderBody(array $body, ResourceInterface $resource, ResourceObject $ro, SurrogateKeys $etags): void
     {
-        $requests = [];
-        foreach ($this->embeds as $key => $reference) {
-            $requests[] = $body[$key] = EmbedReference::request($resource, $reference);
-        }
-
         $live = [$ro->body, $ro->headers, $ro->code];
-        $ro->body = $body;
-        $ro->headers = $this->headers;
-        $ro->code = $this->code ?? $ro->code;
-        $ro->view = null;
         try {
+            $requests = [];
+            foreach ($this->embeds as $key => $reference) {
+                $requests[] = $body[$key] = EmbedReference::request($resource, $reference);
+            }
+
+            $ro->body = $body;
+            $ro->headers = $this->headers;
+            $ro->code = $this->code ?? $ro->code;
+            $ro->view = null;
             $ro->toString();
             foreach ($requests as $request) {
                 // After rendering: what a request passes up from the requests it embeds itself is known once those have run
