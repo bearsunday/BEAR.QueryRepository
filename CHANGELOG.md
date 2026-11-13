@@ -36,6 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A child embedded in a `#[Cacheable]` resource whose `onGet()` throws now fails the GET with that exception; it ended the script with a fatal error.
 - Under a renderer that encodes the body as JSON, such as the JSON and HAL renderers, a `#[CacheableResponse]` or `#[DonutCache]` page shows its embedded resources as it does without the attribute and takes their tags; each was rendered as `{}`.
 - On a `#[CacheableResponse]` or `#[DonutCache]` page, an embedded request that follows a link (`linkSelf()`, `linkNew()`, `linkCrawl()`) shows the linked resource on a hit as it does on the miss; a hit read it without its links.
+- A cache hit of a `#[CacheableResponse]` or `#[DonutCache]` page that fails while answering the page again, or while storing it again, now runs the page on the resource as it came in; a failure in rebuilding an embedded request or in storing the rebuilt view could fail the request or run `onGet()` on the stored body.
+- A `#[CacheableResponse]` or `#[DonutCache]` page whose embedded resource is not cached but embeds a cached one is invalidated when that cached resource is; when the embedded resource's class gave it a body before it ran, the page kept the old content. Under the HAL renderer this needs a bear/resource release with bearsunday/BEAR.Resource#386.
 
 ## [1.20.1] - 2026-11-11
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\Resource\JsonRenderer;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
@@ -13,9 +14,14 @@ use FakeVendor\HelloWorld\Resource\App\Counter;
 use FakeVendor\HelloWorld\Resource\App\FlakyHole;
 use FakeVendor\HelloWorld\Resource\App\UnbuildableHole;
 use FakeVendor\HelloWorld\Resource\Page\Html\RunCountingFlakyDonut;
+use FakeVendor\HelloWorld\Resource\Page\Html\RunCountingFlakyResponse;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
+use Symfony\Component\Cache\Adapter\ArrayAdapter;
+use Symfony\Component\Cache\Adapter\TagAwareAdapter;
+use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 
 use function explode;
 use function json_decode;
@@ -108,6 +114,42 @@ class DonutBodyTest extends TestCase
         $this->assertSame(200, $failedHit->code);
         $this->assertSame($expected, json_decode($failedHit->toString(), true, 512, JSON_THROW_ON_ERROR), 'onGet() ran on the resource as it came in, not on the stored body');
         $this->assertSame($expected, json_decode($this->resource->get($uri)->toString(), true, 512, JSON_THROW_ON_ERROR), 'the fresh run is what is stored');
+    }
+
+    public function testAHitThatCannotStoreThePageAgainFallsBackToAFreshRunOfThePage(): void
+    {
+        $pool = new FakeRefusingPool(new TagAwareAdapter(new ArrayAdapter()), refuseSave: false);
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
+        $module->override(new class ($pool) extends AbstractModule {
+            public function __construct(private TagAwareAdapterInterface $pool)
+            {
+                parent::__construct();
+            }
+
+            protected function configure(): void
+            {
+                $this->bind(TagAwareAdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->toInstance($this->pool);
+            }
+        });
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $uri = 'page://self/html/run-counting-flaky-response';
+        RunCountingFlakyResponse::$runs = 0;
+        FlakyHole::$failureCount = 0;
+        $resource->get($uri);
+        // The view goes, the page's donut stays: the next read rebuilds the view and stores it again
+        $injector->getInstance(QueryRepositoryInterface::class)->purge(new Uri('app://self/flaky-hole'));
+
+        $pool->throwOnSave = true;
+        set_error_handler(static fn (): bool => true); // the fallback and its store warn
+        try {
+            $failedHit = $resource->get($uri);
+        } finally {
+            restore_error_handler();
+        }
+
+        $this->assertSame(200, $failedHit->code);
+        $this->assertSame(['flaky' => ['value' => 'healthy'], 'run' => 2], json_decode($failedHit->toString(), true, 512, JSON_THROW_ON_ERROR), 'onGet() ran on the resource as it came in, not on the rebuilt body');
     }
 
     public function testARequestWhoseResultComesOnlyFromInvokingItRunsOnceAndGivesItsTags(): void

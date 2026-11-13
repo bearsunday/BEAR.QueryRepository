@@ -93,33 +93,41 @@ final class ResourceDonut
         $this->embeds = $embeds;
     }
 
-    /** @param DependsOnTags|null $dependsOnTags reads what each hole declares as it is rendered again; null reads its #[DependsOn] only */
+    /**
+     * Answers the page again from what was stored. Whatever fails on the way degrades the hit to a fresh run of the page.
+     *
+     * @param DependsOnTags|null $dependsOnTags reads what each hole declares as it is rendered again; null reads its #[DependsOn] only
+     */
     public function refresh(ResourceInterface $resource, ResourceObject $ro, UriTagInterface|null $uriTag = null, DependsOnTags|null $dependsOnTags = null): ResourceObject
     {
-        $etags = new SurrogateKeys($ro->uri, null, $uriTag, null, $dependsOnTags);
-        if ($this->body === null) {
-            $view = $this->compose($resource, $etags);
-            $ro->headers = $this->headers;
-            $ro->view = $view;
-        }
+        try {
+            $etags = new SurrogateKeys($ro->uri, null, $uriTag, null, $dependsOnTags);
+            if ($this->body === null) {
+                $view = $this->compose($resource, $etags);
+                $ro->headers = $this->headers;
+                $ro->view = $view;
+            }
 
-        if ($this->body !== null) {
-            $this->renderBody($this->body, $resource, $ro, $etags);
-        }
+            if ($this->body !== null) {
+                $this->renderBody($this->body, $resource, $ro, $etags);
+            }
 
-        // isset() also guards entries serialized before this property existed
-        if (isset($this->code)) {
-            $ro->code = $this->code;
-        }
+            // isset() also guards entries serialized before this property existed
+            if (isset($this->code)) {
+                $ro->code = $this->code;
+            }
 
-        // $this->headers lacks the group tag; add the stored tags.
-        $storedTags = $this->getStorageTags();
-        if ($storedTags !== []) {
-            $existing = isset($ro->headers[Header::SURROGATE_KEY]) ? explode(' ', $ro->headers[Header::SURROGATE_KEY]) : [];
-            $ro->headers[Header::SURROGATE_KEY] = implode(' ', array_unique([...$existing, ...$storedTags]));
-        }
+            // $this->headers lacks the group tag; add the stored tags.
+            $storedTags = $this->getStorageTags();
+            if ($storedTags !== []) {
+                $existing = isset($ro->headers[Header::SURROGATE_KEY]) ? explode(' ', $ro->headers[Header::SURROGATE_KEY]) : [];
+                $ro->headers[Header::SURROGATE_KEY] = implode(' ', array_unique([...$existing, ...$storedTags]));
+            }
 
-        $etags->setSurrogateHeader($ro);
+            $etags->setSurrogateHeader($ro);
+        } catch (Throwable $e) {
+            throw new CacheStoreException(previous: $e);
+        }
 
         return $ro;
     }
@@ -131,15 +139,9 @@ final class ResourceDonut
             // Group 1 is "2" for a new `le2` match (its reference, group 2, is rawurlencode()'d),
             // or "" for a legacy `le` match (group 2 is its URI, used verbatim).
             $reference = $matches[1] === '2' ? rawurldecode($matches[2]) : $matches[2];
-            try {
-                $ro = EmbedReference::get($resource, $reference);
-                $ro->toString();
-            } catch (Throwable $e) {
-                // toString() lets a render failure travel uncaught; wrapped here so a HIT's
-                // re-fetch degrades to a fresh render instead of surfacing a broken response.
-                throw new CacheStoreException(previous: $e);
-            }
-
+            // toString(), not (string): the cast turns a render failure into '', which would be served
+            $ro = EmbedReference::get($resource, $reference);
+            $ro->toString();
             $etags->addTag($ro);
 
             return (string) $ro->view;
@@ -153,28 +155,19 @@ final class ResourceDonut
      */
     private function renderBody(array $body, ResourceInterface $resource, ResourceObject $ro, SurrogateKeys $etags): void
     {
-        $live = [$ro->body, $ro->headers, $ro->code];
-        try {
-            $requests = [];
-            foreach ($this->embeds as $key => $reference) {
-                $requests[] = $body[$key] = EmbedReference::request($resource, $reference);
-            }
+        $requests = [];
+        foreach ($this->embeds as $key => $reference) {
+            $requests[] = $body[$key] = EmbedReference::request($resource, $reference);
+        }
 
-            $ro->body = $body;
-            $ro->headers = $this->headers;
-            $ro->code = $this->code ?? $ro->code;
-            $ro->view = null;
-            $ro->toString();
-            foreach ($requests as $request) {
-                // After rendering: what a request passes up from the requests it embeds itself is known once those have run
-                $etags->addTag(DonutRequest::resultOf($request));
-            }
-        } catch (Throwable $e) {
-            // As in compose(), an embedded request that fails degrades the hit to a fresh render: onGet() then runs on the resource as it came in
-            [$ro->body, $ro->headers, $ro->code] = $live;
-            $ro->view = null;
-
-            throw new CacheStoreException(previous: $e);
+        $ro->body = $body;
+        $ro->headers = $this->headers;
+        $ro->code = $this->code ?? $ro->code;
+        $ro->view = null;
+        $ro->toString();
+        foreach ($requests as $request) {
+            // After rendering: what a request passes up from the requests it embeds itself is known once those have run
+            $etags->addTag(DonutRequest::resultOf($request));
         }
     }
 

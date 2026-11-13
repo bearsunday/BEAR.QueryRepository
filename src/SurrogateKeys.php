@@ -45,7 +45,8 @@ final class SurrogateKeys
 
     /**
      * Tags the embedded resource with what it declares in #[DependsOn] and what its #[ResourceParam] read, reading each
-     * URI once: a page's material is classified before the page renders and rendered again as a request of its own
+     * URI once. It is read once the page has rendered, when the requests it embeds have run; a page's material is read
+     * again as the request of its own the page renders.
      *
      * @return bool whether the page depends on it
      *
@@ -59,17 +60,11 @@ final class SurrogateKeys
 
         // The default UriTag keeps Stringable query values apart; (string) $ro->uri, or an application's tagger, may not
         $key = $ro::class . ' ' . ($this->keyTag)($ro->uri);
-        if (array_key_exists($key, $this->declared)) {
-            return $this->dependsOnTags->tagEmbedded($ro, $this->declared[$key]);
+        if (! array_key_exists($key, $this->declared)) {
+            $this->declared[$key] = $this->dependsOnTags->ran($ro);
         }
 
-        $tags = $this->dependsOnTags->ran($ro);
-        // A request that runs later, as it renders, may still add tags, so the answer is read again then
-        if (! $this->dependsOnTags->awaitsRequest($ro)) {
-            $this->declared[$key] = $tags;
-        }
-
-        return $this->dependsOnTags->tagEmbedded($ro, $tags);
+        return $this->dependsOnTags->tagEmbedded($ro, $this->declared[$key]);
     }
 
     public function setSurrogateHeader(ResourceObject $ro): void

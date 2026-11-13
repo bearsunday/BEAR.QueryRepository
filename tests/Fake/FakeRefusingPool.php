@@ -29,7 +29,7 @@ final class FakeRefusingPool implements TagAwareAdapterInterface
         private readonly TagAwareAdapterInterface $pool,
         private readonly bool $refuseSave = true,
         private readonly bool $refuseInvalidation = false,
-        private readonly bool $throwOnSave = false,
+        public bool $throwOnSave = false,
         private readonly string $refusedKeyPrefix = '',
     ) {
     }

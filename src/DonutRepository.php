@@ -18,11 +18,13 @@ use BEAR\QueryRepository\Log\Context\RefreshDonutContext;
 use BEAR\QueryRepository\Log\Context\SaveDonutContext;
 use BEAR\QueryRepository\Log\TopLevelAwareInterface;
 use BEAR\RepositoryModule\Annotation\CacheLog;
+use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
+use Throwable;
 
 use function array_unique;
 use function array_values;
@@ -71,18 +73,26 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     #[Override]
     public function get(ResourceObject $ro): ResourceObject|null
     {
-        $maybeState = $this->queryRepository->get($ro->uri);
-        if ($maybeState instanceof ResourceState) {
-            // Field by field, not visit(): a stored donut view's empty body and unserialized
-            // uri would clobber the live null body and uri object.
-            $ro->code = $maybeState->code;
-            $ro->headers = $maybeState->headers;
-            $ro->view = $maybeState->view;
+        // A read that fails hands the resource back as it came in, so the page can run on it as on a miss
+        $incoming = [$ro->body, $ro->headers, $ro->code, $ro->view];
+        try {
+            $maybeState = $this->queryRepository->get($ro->uri);
+            if ($maybeState instanceof ResourceState) {
+                // Field by field, not visit(): a stored donut view's empty body and unserialized
+                // uri would clobber the live null body and uri object.
+                $ro->code = $maybeState->code;
+                $ro->headers = $maybeState->headers;
+                $ro->view = $maybeState->view;
 
-            return $ro;
+                return $ro;
+            }
+
+            return $this->refreshDonut($ro);
+        } catch (Throwable $e) {
+            [$ro->body, $ro->headers, $ro->code, $ro->view] = $incoming;
+
+            throw $e;
         }
-
-        return $this->refreshDonut($ro);
     }
 
     /**
@@ -156,9 +166,10 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     private function doPutStatic(ResourceObject $ro, int|null $ttl, int|null $sMaxAge): void
     {
         $keys = new SurrogateKeys($ro->uri, ($this->baseUriTag)($ro), $this->uriTag, null, $this->dependsOnTags);
-        $this->classifyMaterials($ro, $keys);
+        $materials = $this->classifyMaterials($ro);
         $this->logger->event(new PutDonutContext((string) $ro->uri, $ttl, $sMaxAge));
         $donut = ResourceDonut::create($ro, $this->renderer, $keys, $sMaxAge, true);
+        $this->dependencyCollector->dependOnMaterials($ro, $materials, $keys);
         // Read after rendering, see templateKeys()
         $templateKeys = $this->templateKeys($ro, $this->getHeaderKeys($ro));
         $donut = $donut->withStorageState($ttl, $templateKeys);
@@ -183,9 +194,10 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     private function doPutDonut(ResourceObject $ro, int|null $donutTtl): void
     {
         $keys = new SurrogateKeys($ro->uri, ($this->baseUriTag)($ro), $this->uriTag, null, $this->dependsOnTags);
-        $this->classifyMaterials($ro, $keys);
+        $materials = $this->classifyMaterials($ro);
         $this->logger->event(new PutDonutContext((string) $ro->uri, $donutTtl, null));
         $donut = ResourceDonut::create($ro, $this->renderer, $keys, $donutTtl, false);
+        $this->dependencyCollector->dependOnMaterials($ro, $materials, $keys);
         // Read after rendering, see templateKeys()
         $templateKeys = $this->templateKeys($ro, $this->getHeaderKeys($ro));
         $donut = $donut->withStorageState($donutTtl, $templateKeys);
@@ -219,24 +231,25 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     }
 
     /**
-     * Register body children the page's onGet() already ran as dependencies, before the template keys read the header
+     * The body children the page's onGet() already ran, its materials, before the page renders and runs its holes
      *
-     * A child carrying an ETag or Surrogate-Key already ran during onGet() (a material); a hole has not run yet.
-     * Headers only: running a child here would execute a hole outside its hole scope. A child left out is logged
-     * as `dependency_skipped` with what its body shows: none yet (a hole, or a run that left none), or one without a tag.
-     * A child that ran counts as well when it, or a request it embeds and ran, declares #[DependsOn] or reads an onGet()
-     * argument through #[ResourceParam].
+     * A child that has run carries the code or body its run left; a hole has not run yet. Headers only: running a child
+     * here would execute a hole outside its hole scope. A child left out is logged as `dependency_skipped` with what its
+     * body shows. The materials become dependencies of the template once the page has rendered, with what they and the
+     * requests they embed declare in #[DependsOn] or read through #[ResourceParam]: by then those requests have run.
+     *
+     * @return list<AbstractRequest>
      */
-    private function classifyMaterials(ResourceObject $ro, SurrogateKeys $keys): void
+    private function classifyMaterials(ResourceObject $ro): array
     {
-        $this->dependencyCollector->collect($ro, $keys);
+        return $this->dependencyCollector->materials($ro);
     }
 
     /**
      * The template's own URI tag (so `purge($uri)` reaches it, #185) and the declared keys: material children's tags
-     * (classifyMaterials()) and the dependencies declared while the page rendered, such as depends() from a template
-     * helper, so they are read after ResourceDonut::create(). Holes are left out: their write drops only the content and
-     * the shell is recomposed.
+     * (CacheDependencyCollector::dependOnMaterials()) and the dependencies declared while the page rendered, such as
+     * depends() from a template helper, so they are read after ResourceDonut::create(). Holes are left out: their write
+     * drops only the content and the shell is recomposed.
      *
      * @param list<string> $declaredKeys
      *

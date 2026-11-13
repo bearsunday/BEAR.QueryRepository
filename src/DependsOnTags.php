@@ -116,18 +116,6 @@ final readonly class DependsOnTags
         return $ro->code !== 200 || $ro->body !== null;
     }
 
-    /** Whether a request it embeds, at any depth, has not run yet: what that request declares is known only once it runs */
-    public function awaitsRequest(ResourceObject $ro): bool
-    {
-        foreach ($this->requests($ro) as $body) {
-            if (! $this->hasRun($body->resourceObject) || $this->awaitsRequest($body->resourceObject)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     /** @return list<string>|null null when neither onGet() nor a row class in the body declares */
     private function declared(ResourceObject $ro): array|null
     {

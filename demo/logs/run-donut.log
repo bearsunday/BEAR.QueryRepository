@@ -153,12 +153,12 @@ get uri=page://self/html/counter-donut
 ├── cache_miss layer=donut durationMs=[volatile] [event]
 │   ├── layer: donut
 │   └── durationMs: [volatile]
+├── put_donut uri=page://self/html/counter-donut [event]
+│   └── uri: page://self/html/counter-donut
 ├── dependency_skipped parent=page://self/html/counter-donut child=app://self/counter reason=no_etag_or_surrogate_key [event]
 │   ├── parent: page://self/html/counter-donut
 │   ├── child: app://self/counter
 │   └── reason: no_etag_or_surrogate_key
-├── put_donut uri=page://self/html/counter-donut [event]
-│   └── uri: page://self/html/counter-donut
 ├── cdn_headers uri=page://self/html/counter-donut surrogateKeys=[_html_counter-donut_ +3 items] [event]
 │   ├── uri: page://self/html/counter-donut
 │   ├── surrogateKeys[0]: _html_counter-donut_
@@ -632,16 +632,6 @@ get uri=page://self/html/render-time-dependency
                     }
                 },
                 {
-                    "id": "dependency_skipped_2",
-                    "type": "dependency_skipped",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/dependency_skipped.json",
-                    "context": {
-                        "parent": "page://self/html/counter-donut",
-                        "child": "app://self/counter",
-                        "reason": "no_etag_or_surrogate_key"
-                    }
-                },
-                {
                     "id": "put_donut_2",
                     "type": "put_donut",
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/put_donut.json",
@@ -649,6 +639,16 @@ get uri=page://self/html/render-time-dependency
                         "uri": "page://self/html/counter-donut",
                         "requestedTtl": null,
                         "sMaxAge": null
+                    }
+                },
+                {
+                    "id": "dependency_skipped_2",
+                    "type": "dependency_skipped",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/dependency_skipped.json",
+                    "context": {
+                        "parent": "page://self/html/counter-donut",
+                        "child": "app://self/counter",
+                        "reason": "no_etag_or_surrogate_key"
                     }
                 },
                 {
