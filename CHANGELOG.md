@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Requires `koriym/semantic-logger` 0.11.1 or later: the demos render their logs with `RenderConfig`'s `schemaDir`, which needs that version.
-- Requires `bear/resource` 1.32 or later: a `#[ResourceParam]` source is tracked as 1.27 binds it, and a cache hit is rendered as HAL the way 1.32 renders an embedded request.
+- Requires `bear/resource` 1.34.2 or later: a `#[ResourceParam]` source is tracked as 1.27 binds it, a cache hit is rendered as HAL the way 1.32 renders an embedded request, and 1.34.2 renders HAL without rewriting the body the page stores.
 - **Behaviour change**: the ETag of a stored response is `"<locator>.<hash>"`, where the locator is made from the URI. An ETag issued by an earlier version is not answered `304`, so each client revalidates once with a `200`.
 - **Behaviour change**: storing a response invalidates its URI tag and purges it at the CDN only when it replaces a stored entry. A GET that misses stores where nothing is stored, so it no longer purges the CDN, drops the entries that embed the resource, or records `pre_write_cleanup` and `invalidate`; a write or a purge does, as before.
 - **Behaviour change**: the ETag of a `#[Cacheable]` value follows the string its renderer produces, and a miss renders the response when it stores the entry, so the response already holds its `view`. A body changed after that GET returns is not in the response.
@@ -37,7 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Under a renderer that encodes the body as JSON, such as the JSON and HAL renderers, a `#[CacheableResponse]` or `#[DonutCache]` page shows its embedded resources as it does without the attribute and takes their tags; each was rendered as `{}`.
 - On a `#[CacheableResponse]` or `#[DonutCache]` page, an embedded request that follows a link (`linkSelf()`, `linkNew()`, `linkCrawl()`) shows the linked resource on a hit as it does on the miss; a hit read it without its links.
 - A cache hit of a `#[CacheableResponse]` or `#[DonutCache]` page that fails while answering the page again, or while storing it again, now runs the page on the resource as it came in; a failure in rebuilding an embedded request or in storing the rebuilt view could fail the request or run `onGet()` on the stored body.
-- A `#[CacheableResponse]` or `#[DonutCache]` page whose embedded resource is not cached but embeds a cached one is invalidated when that cached resource is; when the embedded resource's class gave it a body before it ran, the page kept the old content. Under the HAL renderer this needs a bear/resource release with bearsunday/BEAR.Resource#386.
+- A `#[CacheableResponse]` or `#[DonutCache]` page whose embedded resource is not cached but embeds a cached one is invalidated when that cached resource is; when the embedded resource's class gave it a body before it ran, the page kept the old content.
 
 ## [1.20.1] - 2026-11-11
 
