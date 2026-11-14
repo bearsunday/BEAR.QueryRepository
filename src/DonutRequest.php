@@ -50,7 +50,7 @@ final class DonutRequest implements Stringable, JsonSerializable
     public function __toString(): string
     {
         // Includes the query and the links, so sibling requests on one path get distinct cache entries
-        $reference = EmbedReference::of($this->request);
+        $reference = $this->request->toUri();
         $executed = self::resultOf($this->request);
         // Not (string): the cast turns a render failure into '', which would be stored (#237)
         $view = $executed->toString();
