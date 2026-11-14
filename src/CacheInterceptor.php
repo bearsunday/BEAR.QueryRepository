@@ -29,7 +29,7 @@ use function trigger_error;
 use const E_USER_WARNING;
 
 /**
- * Interceptor that caches the value of CQRS queries with #[Cacheable]
+ * Interceptor for TTL-based caching on CQRS queries with #[Cacheable]
  *
  * Bound to query methods (onGet) of classes marked with #[Cacheable].
  *

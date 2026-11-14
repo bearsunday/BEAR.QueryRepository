@@ -7,7 +7,7 @@ namespace BEAR\RepositoryModule\Annotation;
 use Attribute;
 
 /**
- * Caches the resource's value (its body)
+ * Caches the resource's value (its body), and with type: 'view' its view as well
  *
  * Example:
  * ```php
