@@ -8,13 +8,12 @@ use Attribute;
 use BEAR\QueryRepository\DonutCacheModule;
 
 /**
- * Enables event-driven cache invalidation for fully cacheable responses
+ * Caches the response (its representation, without the body)
  *
  * For content that is fundamentally static but changes predictably via resource
- * methods (onPut, onDelete, etc.). Unlike #[Cacheable] which uses TTL-based
- * expiration, this enables tag-based invalidation driven by resource dependencies.
- * The entire response is cached and receives an ETag for conditional requests,
- * enabling 304 (Not Modified) responses to reduce network transfer costs.
+ * methods (onPut, onDelete, etc.). The entire response is cached and receives an ETag
+ * for conditional requests, enabling 304 (Not Modified) responses to reduce network
+ * transfer costs.
  *
  * Example:
  * ```php
