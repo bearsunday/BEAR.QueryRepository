@@ -8,7 +8,7 @@ use Attribute;
 use BEAR\QueryRepository\DonutCacheModule;
 
 /**
- * Caches the response (its representation, without the body)
+ * Caches the response (its representation)
  *
  * For content that is fundamentally static but changes predictably via resource
  * methods (onPut, onDelete, etc.). The entire response is cached and receives an ETag
