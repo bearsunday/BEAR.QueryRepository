@@ -7,11 +7,7 @@ namespace BEAR\RepositoryModule\Annotation;
 use Attribute;
 
 /**
- * Marks a resource class as cacheable with TTL-based expiration
- *
- * Traditional time-based caching where cache expires after a specified duration.
- * For event-driven cache invalidation based on resource dependencies, use
- * #[CacheableResponse] or #[DonutCache] instead.
+ * Caches the resource's value (its body), and with type: 'view' its view as well
  *
  * Example:
  * ```php

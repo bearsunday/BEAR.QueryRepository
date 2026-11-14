@@ -11,9 +11,8 @@ use BEAR\QueryRepository\DonutCacheModule;
  * Enables event-driven donut caching for resources with non-cacheable embedded content
  *
  * For content that is fundamentally static but changes predictably via resource
- * methods, with some embedded resources that cannot be cached. Unlike #[Cacheable]
- * which uses TTL-based expiration, this enables tag-based invalidation. Only
- * cacheable portions are stored; no ETag is generated for the entire response.
+ * methods, with some embedded resources that cannot be cached. Only cacheable
+ * portions are stored; no ETag is generated for the entire response.
  *
  * Example:
  * ```php
