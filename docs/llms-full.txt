@@ -232,6 +232,10 @@ A child taken in with `#[Embed]` becomes a dependency of its parent when the chi
 
 A resource that `#[ResourceParam]` reads an `onGet()` argument from, declared on the parameter or on the method (the method's when both name the parameter, as BEAR.Resource binds it), is a dependency like an `#[Embed]` child: the resource that read it takes its URI tag and its group tag, and the `Surrogate-Key` of its stored entry when it has one. Its own write invalidates the reader when it is `#[Cacheable]`; one that is not cached is invalidated only by a `#[Purge]`/`#[Refresh]` or a `purge()` that names it, so until then the reader is served as it was stored. The URI is the one the argument was read from: a `templated` one is expanded from the request query. A reader that is not cached itself passes these tags to the parent that embeds it, as it passes its `#[DependsOn]` declarations. A source's own `#[DependsOn]` declarations reach the reader only through its stored entry. Cache such a source with `#[Cacheable]`: a `#[CacheableResponse]` or `#[DonutCache]` resource answers a cache hit without its body, so `#[ResourceParam]` cannot read the field from it.
 
+A `#[Cacheable]` resource is stored with what it embeds and what `#[ResourceParam]` reads, as they were at that moment; a class-level `#[CacheableResponse]` page is stored the same way, together with what its holes rendered. Each serves that until a dependency is invalidated or the entry expires. The template of a `#[DonutCache]` page is kept likewise; only its holes run on every request. Keep what differs per user, such as the session, out of what is stored: one user's result would be served to every other. A per-user child belongs in a hole of a `#[DonutCache]` page.
+
+A stored value can be built again at any time: after a deploy, an eviction or its expiry, it is made from what its sources hold then. A value that must be kept, such as the day's highest temperature, is saved by a write, not left to the cache.
+
 ```php
 #[Cacheable]
 class BlogPost extends ResourceObject
@@ -252,7 +256,7 @@ On a `#[CacheableResponse]`/`#[DonutCache]` page the same rule applies to a chil
 A child a cached parent embeds is safe in one of two shapes:
 
 - **A tagged data dependency**: the parent reads the child, and the child carries tags - it is cached, or names its data with its own `Surrogate-Key` - so a change to it invalidates the parent. A non-cached child in between takes the tags of the tagged children below it and passes them on with its own, so a change below it reaches the parent too.
-- **A hole**: on a `#[CacheableResponse]`/`#[DonutCache]` page, a child the page only renders. It is never part of the stored template, so per-user or per-request values belong here.
+- **A hole**: on a `#[CacheableResponse]`/`#[DonutCache]` page, a child the page only renders. It is never part of the stored template. On a `#[DonutCache]` page it runs on every request, so per-user or per-request values belong there; a class-level `#[CacheableResponse]` page stores what the hole rendered until the hole is purged.
 
 An untagged data dependency - a child the parent reads or stores that carries no tag - is the one shape that goes stale: the parent's cache holds the child's data, while a change to the child never reaches the parent before the parent's own TTL. Caching the parent caches such a child too, even though the child declares no cache. While it stays at the top level of the body, the log records it as `dependency_skipped` (reason `no_etag_or_surrogate_key`, or `no_body` when its run left a null body); make the child cacheable or render it as a hole.
 
@@ -304,7 +308,7 @@ On a donut page a top-level embedded request becomes a hole that can only be pri
 
 ## Donut Caching
 
-A page stores its rendered template; each child it takes in with `#[Embed]` and only renders is a hole, rendered into the template on every read. A value fetched in `onGet()` with `$this->resource->get()` is part of the template, not a hole.
+A page stores its rendered template; each child it takes in with `#[Embed]` and only renders is a hole. A `#[DonutCache]` page runs its holes and renders them into the template on every request. A class-level `#[CacheableResponse]` page also stores the page as its holes rendered it, and answers with that stored page without running them. A value fetched in `onGet()` with `$this->resource->get()` is part of the template, not a hole.
 
 ```php
 use BEAR\RepositoryModule\Annotation\DonutCache;
@@ -325,7 +329,7 @@ class BlogPage extends ResourceObject
 - `#[DonutCache]`: stores the template only; holes run on every request. For per-user holes.
 - `#[CacheableResponse]`: also stores the composed page; a hole's purge recomposes it from the template. A write method of the class purges and rebuilds the page.
 - `#[CacheableResponse]` on `onGet()` alone stores the template only, as `#[DonutCache]` does. A write method marked `#[RefreshCache]` purges and rebuilds its own URI.
-- Under a renderer that encodes the body as JSON, such as the JSON and HAL renderers, the template is the body the page returned, with each embedded request left out: a hit renders that body again with those requests put back, and does not run `onGet()`. The page shows what it shows without the attribute.
+- Under a renderer that encodes the body as JSON, such as the JSON and HAL renderers, the template is the body the page returned, with each embedded request left out: a template hit renders that body again with those requests put back, and does not run `onGet()`. The page shows what it shows without the attribute.
 
 ## Cache Log (Semantic Log)
 
