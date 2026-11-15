@@ -308,7 +308,7 @@ On a donut page a top-level embedded request becomes a hole that can only be pri
 
 ## Donut Caching
 
-A page stores its rendered template; each child it takes in with `#[Embed]` and only renders is a hole, rendered into the template on every read. A value fetched in `onGet()` with `$this->resource->get()` is part of the template, not a hole.
+A page stores its rendered template; each child it takes in with `#[Embed]` and only renders is a hole. A `#[DonutCache]` page runs its holes into the template on every request. A class-level `#[CacheableResponse]` page also stores the page as its holes rendered it, and answers with that stored page without running them. A value fetched in `onGet()` with `$this->resource->get()` is part of the template, not a hole.
 
 ```php
 use BEAR\RepositoryModule\Annotation\DonutCache;
