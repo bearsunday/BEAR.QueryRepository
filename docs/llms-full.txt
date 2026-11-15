@@ -232,6 +232,10 @@ A child taken in with `#[Embed]` becomes a dependency of its parent when the chi
 
 A resource that `#[ResourceParam]` reads an `onGet()` argument from, declared on the parameter or on the method (the method's when both name the parameter, as BEAR.Resource binds it), is a dependency like an `#[Embed]` child: the resource that read it takes its URI tag and its group tag, and the `Surrogate-Key` of its stored entry when it has one. Its own write invalidates the reader when it is `#[Cacheable]`; one that is not cached is invalidated only by a `#[Purge]`/`#[Refresh]` or a `purge()` that names it, so until then the reader is served as it was stored. The URI is the one the argument was read from: a `templated` one is expanded from the request query. A reader that is not cached itself passes these tags to the parent that embeds it, as it passes its `#[DependsOn]` declarations. A source's own `#[DependsOn]` declarations reach the reader only through its stored entry. Cache such a source with `#[Cacheable]`: a `#[CacheableResponse]` or `#[DonutCache]` resource answers a cache hit without its body, so `#[ResourceParam]` cannot read the field from it.
 
+A `#[Cacheable]` resource, and a class-level `#[CacheableResponse]` page with what its holes rendered, is stored with what it embeds and what `#[ResourceParam]` reads as they were when it was stored, and serves that until a dependency is invalidated or the entry expires. Keep what differs per user, such as the session, out of it: one user's result would be served to every other. A per-user child belongs in a hole of a `#[DonutCache]` page, which runs it on every request.
+
+A stored value can be built again at any time: after a deploy, an eviction or its expiry, it is made from what its sources hold then. A value that must be kept, such as the day's highest temperature, is saved by a write, not left to the cache.
+
 ```php
 #[Cacheable]
 class BlogPost extends ResourceObject
