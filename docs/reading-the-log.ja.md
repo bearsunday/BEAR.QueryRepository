@@ -205,7 +205,9 @@ purge するとビューが落ち、次の read は `cache_hit{layer: donut-view
 取得して埋め込んでいる場合、その子について何も書かれないので、purge しても保存済みのページは
 保持している合成結果を配信し続けます。そうした子は、`#[Embed]` で、または `#[Embed]` と同じように
 リクエストを置くインターセプターで、ページの body の最上位に埋め込みます。テンプレートが描画中に
-宣言した依存(`CacheDependencyInterface::depends()` など)は集めません。
+宣言した依存(`CacheDependencyInterface::depends()` など)はサポートしません。`depends_on` は記録
+されますが、その `childTags` は `save_donut` に入りません。そのため子を purge すると、ページは古い
+テンプレートから作り直されます。ログは上の健全な形と同じですが、中身は古いままです。
 
 **エントリが期限切れになる設計かどうかは、TTL ではなく `cache_policy.expiry` を読みます。**
 `expiry: "never"` は「無効化が届くまで」という意図です。解決した数値は保険であり、アプリが `Expiry` を

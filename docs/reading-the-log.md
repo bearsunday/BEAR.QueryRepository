@@ -212,7 +212,8 @@ inlines a child by other means writes nothing for it, so purging that child leav
 serving the composition it holds. Embed such a child at the top level of the page body instead, with
 `#[Embed]` or an interceptor that puts the request there as `#[Embed]` does. A dependency the
 template declares while rendering, with `CacheDependencyInterface::depends()` for example, is not
-collected.
+supported. It still logs `depends_on`, but its `childTags` are missing from `save_donut`, so purging
+the child refreshes the page from the old template: the healthy shape above, serving stale content.
 
 **Read `cache_policy.expiry`, not a TTL, to learn whether an entry is meant to expire.**
 `expiry: "never"` means until invalidation; the number it resolves to is a backstop and depends on
