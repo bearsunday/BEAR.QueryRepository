@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
-- On a `#[Cacheable]` page, a dependency that an embedded non-cached child's template declares on that child while rendering now reaches the page, as it already did on a `#[CacheableResponse]` page; it was dropped, so purging it left the page stored.
+- On a `#[Cacheable]` page, a dependency that a non-cached child the page embeds directly declares on itself from its template now reaches the page, as it already did on a `#[CacheableResponse]` page; it was dropped, so purging it left the page stored.
 
 ## [1.20.2] - 2026-11-13
 
