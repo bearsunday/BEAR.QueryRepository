@@ -54,6 +54,32 @@ class CacheDependencyCollectorTest extends TestCase
         $this->assertSame(1, $invoker->calls);
     }
 
+    public function testAChildRequestOfAnotherKindIsReadFromItsResourceObject(): void
+    {
+        $child = new class extends ResourceObject {
+        };
+        $child->uri = new Uri('app://self/other-kind');
+        $child->view = 'other-kind';
+        $invoker = new class implements InvokerInterface {
+            #[Override]
+            public function invoke(AbstractRequest $request): ResourceObject
+            {
+                $request->resourceObject->body = [];
+                $request->resourceObject->headers[Header::SURROGATE_KEY] = 'data';
+
+                return $request->resourceObject;
+            }
+        };
+        $parent = new class extends ResourceObject {
+        };
+        $parent->uri = new Uri('app://self/parent');
+        $parent->body = ['child' => new FakeNonRequestHole($invoker, $child)];
+
+        (new CacheDependencyCollector(new DependsOnTags(new UriTag()), new CacheDependency(new UriTag()), new NullSemanticLogger()))->collect($parent);
+
+        $this->assertSame('_other-kind_ grp-_other-kind_ data', $parent->headers[Header::SURROGATE_KEY]);
+    }
+
     public function testMaterialCollectionDoesNotRunAHoleAndLeavesItsTagsOut(): void
     {
         $hole = new class extends ResourceObject {

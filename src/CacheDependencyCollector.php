@@ -42,11 +42,8 @@ final readonly class CacheDependencyCollector
         }
 
         foreach ($this->dependsOnTags->requests($ro) as $request) {
-            if ($materialKeys === null) {
-                $this->materialize($request);
-            }
-
-            $child = $request->resourceObject;
+            $rendered = $materialKeys === null ? $this->materialize($request) : null;
+            $child = $rendered ?? $request->resourceObject;
             $depends = $materialKeys === null ? $this->dependsOnTags->embedded($child) : $materialKeys->embedded($child);
             if (! $depends) {
                 $this->logger->event(DependencySkippedContext::of($ro, $child));
@@ -61,16 +58,23 @@ final readonly class CacheDependencyCollector
     /**
      * Runs the child once and renders it, then gives it back the body it returned: its entry in the parent, and whoever
      * reads it through the parent, get that body. A HAL renderer moves every embedded request out of the body it renders.
+     *
+     * Returns the copy that rendered, null when there is none: what the child's template declared while rendering is on
+     * that copy only, not on $request->resourceObject.
      */
-    private function materialize(AbstractRequest $request): void
+    private function materialize(AbstractRequest $request): ResourceObject|null
     {
         /** @psalm-suppress MixedAssignment */
         $child = $request instanceof Request ? $request->jsonSerialize() : null;
         /** @psalm-suppress MixedAssignment */
         $returned = $child instanceof ResourceObject ? $child->body : null;
         (string) $request;
-        if ($child instanceof ResourceObject) {
-            $child->body = $returned;
+        if (! $child instanceof ResourceObject) {
+            return null;
         }
+
+        $child->body = $returned;
+
+        return $child;
     }
 }
