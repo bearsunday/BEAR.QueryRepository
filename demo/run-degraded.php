@@ -25,7 +25,8 @@ declare(strict_types=1);
  *   E. Donut writes refused ...... save_donut / save_donut_view saved=false
  *   F. Invalidation refused ...... invalidate{roPool: failed}
  *   G. Other command producers ... command{source: DonutCommandInterceptor} and
- *                                  command{source: RefreshInterceptor}
+ *                                  command{source: RefreshInterceptor}, and a creating
+ *                                  write's purge_skipped
  *   H. Finite TTL ................ save_* with a real ttl instead of the `never`
  *                                  placeholder, under #[HttpCache]
  *   I. Direct donut write ........ a donut entry with real TTLs, rooted in
@@ -112,7 +113,8 @@ D. Pool refuses writes                       -> save_value/save_view saved=false
 E. Pool refuses writes, donut page           -> save_donut/save_donut_view saved=false
 F. Pool refuses invalidation                 -> invalidate{roPool: failed}
 G. The other command producers               -> command{source: DonutCommandInterceptor},
-                                                command{source: RefreshInterceptor}
+                                                command{source: RefreshInterceptor}, and a
+                                                POST that creates: purge_skipped, then its #[Purge]
 H. A finite TTL under #[HttpCache]           -> save_* with requestedTtl=10, private Cache-Control
 I. Direct putStatic(ttl, sMaxAge)            -> manual_store{,_result} rooting a donut
                                                 write with real ttl/sMaxAge
@@ -378,6 +380,18 @@ $levelTwoGone = $repository->get(new Uri('page://self/dep/level-two')) === null;
 echo sprintf('G3 PUT a #[Purge]-only resource -> command.annotations lists Annotation\Purge x2, level-two purged: %s', $levelTwoGone ? 'true' : 'false') . PHP_EOL;
 
 $report($logger->flush(), 'G3. purge-only command');
+
+$injector = $newInjector();
+$resource = $injector->getInstance(ResourceInterface::class);
+$logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
+
+// CreatingWriter declares no cache, and its POST carries no id for the onGet(string $id) that
+// would address its own key: the key is skipped as purge_skipped, not reported as a cache_error,
+// and the #[Purge] it declares still runs.
+$resource->post('app://self/creating-writer', ['title' => 'new']);
+echo 'G4 POST a creating write -> purge_skipped, then its #[Purge] of level-two' . PHP_EOL;
+
+$report($logger->flush(), 'G4. creating write');
 
 // ---------------------------------------------------------------- H. finite TTL
 $injector = $newInjector();

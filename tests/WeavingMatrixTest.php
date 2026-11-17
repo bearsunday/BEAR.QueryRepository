@@ -64,6 +64,7 @@ class WeavingMatrixTest extends TestCase
             'DCNone' => [[RefreshInterceptor::class], 1],
             'DCPurge' => [[RefreshInterceptor::class], 1],
             'DCRefresh' => [[DonutCommandInterceptor::class], 1],
+            'DCRefreshPurge' => [[DonutCommandInterceptor::class, RefreshInterceptor::class], 2],
             'DCMR' => [[RefreshInterceptor::class], 1],
         ];
         $cases = [];

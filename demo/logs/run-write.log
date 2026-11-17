@@ -94,17 +94,13 @@ command method=onPut annotations=[1 items] source=RefreshInterceptor
 ├── source: RefreshInterceptor
 ├── purge uri=app://self/tag?id=a [event]
 │   └── uri: app://self/tag?id=a
-├── invalidate tags=[_tag_id=a, grp-_tag_id=a] roPool=invalidated cdn=skipped durationMs=[volatile] [event]
-│   ├── tags[0]: _tag_id=a
-│   ├── tags[1]: grp-_tag_id=a
-│   ├── roPool: invalidated
-│   ├── cdn: skipped
-│   └── durationMs: [volatile]
 ├── purge uri=app://self/tag?id=b [event]
 │   └── uri: app://self/tag?id=b
-├── invalidate tags=[_tag_id=b, grp-_tag_id=b] roPool=invalidated cdn=skipped durationMs=[volatile] [event]
-│   ├── tags[0]: _tag_id=b
-│   ├── tags[1]: grp-_tag_id=b
+├── invalidate tags=[_tag_id=a, grp-_tag_id=a, _tag_id=b +1 items] roPool=invalidated cdn=skipped durationMs=[volatile] [event]
+│   ├── tags[0]: _tag_id=a
+│   ├── tags[1]: grp-_tag_id=a
+│   ├── tags[2]: _tag_id=b
+│   ├── tags[3]: grp-_tag_id=b
 │   ├── roPool: invalidated
 │   ├── cdn: skipped
 │   └── durationMs: [volatile]
@@ -150,7 +146,7 @@ get uri=app://self/tag?id=c
 └── close cache_hit
     ├── layer: resource
     └── durationMs: [volatile]
-Schema validation: OK (18 entries)
+Schema validation: OK (17 entries)
 C GET app://self/tag {"id":"a"} -> {"id":"a","version":3}
 
 === Cache Log Tree — C. #[Purge] with a list ===
@@ -159,17 +155,13 @@ command method=onDelete annotations=[1 items] source=RefreshInterceptor
 ├── source: RefreshInterceptor
 ├── purge uri=app://self/tag?id=a [event]
 │   └── uri: app://self/tag?id=a
-├── invalidate tags=[_tag_id=a, grp-_tag_id=a] roPool=invalidated cdn=skipped durationMs=[volatile] [event]
-│   ├── tags[0]: _tag_id=a
-│   ├── tags[1]: grp-_tag_id=a
-│   ├── roPool: invalidated
-│   ├── cdn: skipped
-│   └── durationMs: [volatile]
 ├── purge uri=app://self/tag?id=b [event]
 │   └── uri: app://self/tag?id=b
-├── invalidate tags=[_tag_id=b, grp-_tag_id=b] roPool=invalidated cdn=skipped durationMs=[volatile] [event]
-│   ├── tags[0]: _tag_id=b
-│   ├── tags[1]: grp-_tag_id=b
+├── invalidate tags=[_tag_id=a, grp-_tag_id=a, _tag_id=b +1 items] roPool=invalidated cdn=skipped durationMs=[volatile] [event]
+│   ├── tags[0]: _tag_id=a
+│   ├── tags[1]: grp-_tag_id=a
+│   ├── tags[2]: _tag_id=b
+│   ├── tags[3]: grp-_tag_id=b
 │   ├── roPool: invalidated
 │   ├── cdn: skipped
 │   └── durationMs: [volatile]
@@ -190,7 +182,7 @@ get uri=app://self/tag?id=a
 └── close cache_miss
     ├── layer: resource
     └── durationMs: [volatile]
-Schema validation: OK (10 entries)
+Schema validation: OK (9 entries)
 D GET app://self/tag {"id":"c"} -> {"id":"c","version":1}
 
 === Cache Log Tree — D. #[Purge] with an empty list ===

@@ -7,6 +7,7 @@ namespace BEAR\QueryRepository;
 use BEAR\QueryRepository\Exception\UnmatchedQuery;
 use BEAR\QueryRepository\Log\Context\CacheErrorContext;
 use BEAR\RepositoryModule\Annotation\CacheLog;
+use BEAR\Resource\AbstractUri;
 use BEAR\Resource\FactoryInterface;
 use BEAR\Resource\InvokerInterface;
 use BEAR\Resource\Request;
@@ -36,25 +37,6 @@ final readonly class RefreshSameCommand implements CommandInterface
     #[Override]
     public function command(MethodInvocation $invocation, ResourceObject $ro): void
     {
-        $getQuery = $this->purge($invocation, $ro);
-        if ($getQuery === null) {
-            return;
-        }
-
-        // Read to rebuild the cache entry
-        $get = $this->factory->newInstance("{$ro->uri->scheme}://{$ro->uri->host}{$ro->uri->path}");
-        (new Request($this->invoker, $get))($getQuery);
-    }
-
-    /**
-     * Purges the resource's own URI tag and group tag
-     *
-     * @param MethodInvocation<object> $invocation
-     *
-     * @return array<string, mixed>|null the query its onGet() reads; null when an onPost() query does not address it
-     */
-    public function purge(MethodInvocation $invocation, ResourceObject $ro): array|null
-    {
         try {
             $getQuery = $this->getQuery($ro);
         } catch (UnmatchedQuery $e) {
@@ -75,26 +57,42 @@ final readonly class RefreshSameCommand implements CommandInterface
 
             $this->logger->event(new CacheErrorContext((string) $ro->uri, 'write', $e->getMessage(), $e::class));
 
-            return null;
+            return;
         }
-
-        $delUri = clone $ro->uri;
-        $baseQuery = $this->commandQuery->baseQuery($ro, $getQuery);
-        // Default-valued parameters dropped, as BaseUriTag drops them; the refresh below still uses the exact $getQuery.
-        $delUri->query = $baseQuery;
 
         // delete data in repository
-        $this->repository->purge($delUri);
-
-        // A GET stored under the snake_case key keeps that spelling in its group tag; purge it too.
-        $snakeQuery = $this->commandQuery->snakeQuery($baseQuery);
-        if ($snakeQuery !== $baseQuery) {
-            $snakeUri = clone $ro->uri;
-            $snakeUri->query = $snakeQuery;
-            $this->repository->purge($snakeUri);
+        foreach ($this->ownUris($ro, $getQuery) as $uri) {
+            $this->repository->purge($uri);
         }
 
-        return $getQuery;
+        // Read to rebuild the cache entry; with the exact $getQuery, default-valued parameters included
+        $get = $this->factory->newInstance("{$ro->uri->scheme}://{$ro->uri->host}{$ro->uri->path}");
+        (new Request($this->invoker, $get))($getQuery);
+    }
+
+    /**
+     * The URIs whose tags are the resource's own key: its onGet() query without the default-valued parameters, as
+     * BaseUriTag drops them, and its snake_case spelling, which a GET stored under the snake_case key keeps in its
+     * group tag
+     *
+     * @param array<string, mixed> $getQuery what MatchQueryInterface read from the resource's URI
+     *
+     * @return list<AbstractUri>
+     */
+    public function ownUris(ResourceObject $ro, array $getQuery): array
+    {
+        $delUri = clone $ro->uri;
+        $baseQuery = $this->commandQuery->baseQuery($ro, $getQuery);
+        $delUri->query = $baseQuery;
+        $snakeQuery = $this->commandQuery->snakeQuery($baseQuery);
+        if ($snakeQuery === $baseQuery) {
+            return [$delUri];
+        }
+
+        $snakeUri = clone $ro->uri;
+        $snakeUri->query = $snakeQuery;
+
+        return [$delUri, $snakeUri];
     }
 
     /**

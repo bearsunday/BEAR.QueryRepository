@@ -7,8 +7,8 @@
 
 A [CQRS](http://martinfowler.com/bliki/CQRS.html)-style read side for BEAR.Sunday: the results of cacheable GETs are kept as read models. On a miss, `onGet` builds one on demand; the commands that change it refresh or purge it. A resource declares this with attributes and AOP does the rest - storing, answering conditional requests, and invalidating. By default an entry lives until a write invalidates it; a TTL is available for data that may simply go stale.
 
-- **The resource graph is the dependency graph**: a cached child taken in with `#[Embed]` becomes a dependency of the parent, and `#[DependsOn]` ties a resource to the URIs its `onGet()` arguments or its row classes name, without embedding each one.
-- **Writes invalidate**: a command (`onPut`, `onPatch`, ...) invalidates what it changes with `#[Purge]`, `#[Refresh]` or `#[RefreshCache]`, rather than waiting for expiry.
+- **The resource graph is the dependency graph**: a child taken in with `#[Embed]` that ran before the parent was stored becomes a dependency of the parent, cached or not, and `#[DependsOn]` ties a resource to the URIs its `onGet()` arguments or the rows it read name, without embedding each one.
+- **Writes invalidate**: a command (`onPut`, `onPatch`, ...) invalidates its own resource, and what else it changes with `#[Purge]`, `#[Refresh]` or `#[RefreshCache]`, rather than waiting for expiry.
 - **One tag crosses every layer**: the origin cache, the validator behind `304 Not Modified`, and the CDN's `Surrogate-Key` are invalidated by the same tags.
 - **Three uses of a child**: a per-user hole (`#[DonutCache]`), a hole rebuilt on events (`#[CacheableResponse]`), and material the page reads.
 - **Verifiable**: the semantic log records each store, hit, dependency and invalidation.

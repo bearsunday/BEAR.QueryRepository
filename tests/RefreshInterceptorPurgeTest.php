@@ -18,8 +18,8 @@ use Ray\Di\Injector;
  *
  * Every other #[Purge] fixture is #[Cacheable], so its annotation is processed by
  * CommandInterceptor alongside RefreshSameCommand. Here the class is not #[Cacheable]:
- * RefreshInterceptor is the only interceptor bound, RefreshAnnotatedCommand the only
- * command, and nothing purges the written resource implicitly.
+ * RefreshInterceptor is the only interceptor bound, and it invalidates the written
+ * resource's own key together with what the annotations name.
  */
 class RefreshInterceptorPurgeTest extends TestCase
 {
@@ -61,8 +61,7 @@ class RefreshInterceptorPurgeTest extends TestCase
 
         $this->resource->put('page://self/dep/purge-src', ['id' => '1']);
 
-        // Self-targeting #[Purge]: the write purges its own key first, as RefreshSameCommand does on a #[Cacheable]
-        // class, and the annotation purges it again.
+        // Self-targeting #[Purge]: the write's own key, which it invalidates anyway.
         $this->assertNull($this->repository->get($selfUri));
         $this->assertFalse($this->storage->hasEtag($selfEtag));
 
@@ -84,12 +83,13 @@ class RefreshInterceptorPurgeTest extends TestCase
         $this->assertNotNull($close);
         $this->assertStringContainsString('"code":200', $close);
 
-        // One purge event for its own key, then one per annotation, each immediately followed by its invalidation and
-        // by no pre_write_cleanup marker: these delete entries, they do not precede a rewrite.
+        // One purge event per URI the write names, its own key and the #[Purge] of itself being one, then a single
+        // invalidation for all their tags, and no pre_write_cleanup marker: these delete entries, they do not precede a
+        // rewrite.
         $this->assertContains(
-            ['purge', 'invalidate', 'purge', 'invalidate', 'purge', 'invalidate'],
+            ['purge', 'purge', 'invalidate'],
             self::scopeEventTypeSequences($tree),
-            'the command scope holds its own key\'s purge, then both annotation-driven purges in declaration order',
+            'the command scope purges its own key and level-two in one invalidation',
         );
     }
 

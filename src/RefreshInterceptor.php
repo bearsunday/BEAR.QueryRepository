@@ -5,9 +5,13 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\ReturnValueIsNotResourceObjectException;
+use BEAR\QueryRepository\Exception\UnmatchedQuery;
 use BEAR\QueryRepository\Log\Context\CommandResultContext;
+use BEAR\QueryRepository\Log\Context\PurgeContext;
+use BEAR\QueryRepository\Log\Context\PurgeSkippedContext;
 use BEAR\RepositoryModule\Annotation\CacheableResponse;
 use BEAR\RepositoryModule\Annotation\CacheLog;
+use BEAR\RepositoryModule\Annotation\RefreshCache;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\Code;
 use BEAR\Resource\ResourceObject;
@@ -18,13 +22,16 @@ use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
 use ReflectionClass;
 
+use function array_unique;
+use function array_values;
 use function method_exists;
 
 /**
  * Interceptor for the writes of a class that does not store its GET: #[Purge]/#[Refresh], and its own key
  *
  * Bound to #[Purge]/#[Refresh] methods of non-Cacheable classes and to every command method of a class with neither
- * #[Cacheable] nor #[CacheableResponse]. It purges without a GET, as nothing stores the resource.
+ * #[Cacheable] nor #[CacheableResponse]. Its own key and what #[Purge]/#[Refresh] name are invalidated at once; it GETs
+ * only what #[Refresh] names, as nothing stores the resource.
  *
  * @see \BEAR\RepositoryModule\Annotation\Purge
  * @see \BEAR\RepositoryModule\Annotation\Refresh
@@ -38,6 +45,9 @@ final readonly class RefreshInterceptor implements MethodInterceptor
     public function __construct(
         private RefreshAnnotatedCommand $command,
         private RefreshSameCommand $refreshSameCommand,
+        private MatchQueryInterface $matchQuery,
+        private ResourceStorageInterface $storage,
+        private CacheTags $cacheTags,
         private RefreshTemplateValidator $refreshTemplateValidator,
         #[CacheLog]
         private SemanticLoggerInterface $logger = new NullSemanticLogger(),
@@ -60,8 +70,18 @@ final readonly class RefreshInterceptor implements MethodInterceptor
         $openId = $this->logger->open(($this->commandContextFactory)($invocation, 'RefreshInterceptor'));
         try {
             if ($ro->code < Code::BAD_REQUEST) {
-                $this->purgeSelf($invocation, $ro);
-                $this->command->command($invocation, $ro);
+                $declared = $this->command->declared($invocation, $ro);
+                $uris = $this->ownUris($invocation, $ro);
+                foreach ($declared as [$named]) {
+                    $uris = [...$uris, ...$named];
+                }
+
+                $this->purge($uris);
+                foreach ($declared as [$named, $refresh]) {
+                    if ($refresh) {
+                        $this->command->refresh($named);
+                    }
+                }
             }
         } finally {
             $this->logger->close(new CommandResultContext($ro->code), $openId);
@@ -71,18 +91,61 @@ final readonly class RefreshInterceptor implements MethodInterceptor
     }
 
     /**
-     * Skipped where DonutCommandInterceptor does it (#[CacheableResponse]) or where there is no key (no onGet(), no URI)
+     * None where DonutCommandInterceptor refreshes the resource, or where it has no key: no URI, no onGet(), or a query
+     * its onGet() cannot read
      *
      * @param MethodInvocation<object> $invocation
+     *
+     * @return list<AbstractUri>
      */
-    private function purgeSelf(MethodInvocation $invocation, ResourceObject $ro): void
+    private function ownUris(MethodInvocation $invocation, ResourceObject $ro): array
     {
         /** @var AbstractUri|null $uri a resource object taken from the injector has none */
         $uri = $ro->uri;
-        if ($uri === null || ! method_exists($ro, 'onGet') || (new ReflectionClass($ro))->getAttributes(CacheableResponse::class) !== []) {
+        if ($uri === null || ! method_exists($ro, 'onGet') || $this->refreshedByDonut($invocation, $ro)) {
+            return [];
+        }
+
+        try {
+            return $this->refreshSameCommand->ownUris($ro, ($this->matchQuery)($ro));
+        } catch (UnmatchedQuery) {
+            $this->logger->event(new PurgeSkippedContext((string) $uri));
+
+            return [];
+        }
+    }
+
+    /** @param MethodInvocation<object> $invocation */
+    private function refreshedByDonut(MethodInvocation $invocation, ResourceObject $ro): bool
+    {
+        return (new ReflectionClass($ro))->getAttributes(CacheableResponse::class) !== []
+            || $invocation->getMethod()->getAnnotation(RefreshCache::class) !== null;
+    }
+
+    /**
+     * One purge event per URI and one invalidation for all their tags, so a tag two of them share is invalidated once
+     *
+     * @param list<AbstractUri> $uris
+     */
+    private function purge(array $uris): void
+    {
+        $purged = [];
+        $tags = [];
+        foreach ($uris as $uri) {
+            $key = (string) $uri;
+            if (isset($purged[$key])) {
+                continue;
+            }
+
+            $purged[$key] = true;
+            $this->logger->event(new PurgeContext($key));
+            $tags = [...$tags, ...$this->cacheTags->forUri($uri)];
+        }
+
+        if ($tags === []) {
             return;
         }
 
-        $this->refreshSameCommand->purge($invocation, $ro);
+        $this->storage->invalidateTags(array_values(array_unique($tags)));
     }
 }
