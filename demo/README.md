@@ -8,7 +8,7 @@ Each script runs a set of requests and prints the cache log they produced as a t
 | `run-kinds.php` | `#[Cacheable]` value and view, `#[CacheableResponse]`, `#[DonutCache]`: store, hit, 304; `Cache-Control: max-age=0`; a body that cannot be stored |
 | `run-write.php` | `#[Refresh]` and `#[Purge]` with a list for an exploded variable, an empty list, a snake_case write query, a `Stringable` query value, `#[DependsOn]` on a resource that reads another without `#[Embed]` |
 | `run-dependency.php` | Embedded children (`depends_on`) and the cascade a write or purge causes |
-| `run-donut.php` | Donut pages: holes (`dependency_skipped`), refresh, `depends()` while rendering |
+| `run-donut.php` | Donut pages: holes (`dependency_skipped`), refresh |
 | `run-degraded.php` | Refusals and failures: unstorable responses, a pool or CDN that fails |
 
 ```bash

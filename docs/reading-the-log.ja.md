@@ -96,7 +96,7 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 | `put_donut` | `uri`, `requestedTtl`, `sMaxAge` | donut の書き込みを要求した。要求時の lifetime つき |
 | `refresh_donut` | `uri` | キャッシュ済み donut をそのまま返さず再合成した |
 | `cdn_headers` | `uri`, `headers`, `surrogateKeys` | 応答に実際に付いた CDN 向けヘッダ |
-| `depends_on` | `parent`, `child`, `childTags` | 依存の辺 1 本。子のタグが親に加わった。`#[Cacheable]` の put ではタグを持つ子ごとに、donut ページの書き込みではタグを持つデータ依存(`onGet()` が読んだ子)ごとに記録する。穴はまだ実行されていないので、代わりに `dependency_skipped` を記録する。donut ページの描画中に呼んだ `CacheDependencyInterface::depends()`(テンプレートのヘルパーからなど)も、`put_donut` と `save_*` のあいだに記録する。実行された子が `#[DependsOn]` を宣言しているとき、または子が埋め込んで実行されたリクエストがタグを持つときは、コードによらず記録するので、子自身の URI タグは親に届く。宣言したタグと、そのリクエストのタグは、ここの `childTags` と、親の `save_*` の `tags` に出る。保存するリソースが `#[ResourceParam]` で `onGet()` の引数を読んだときは、その取得元を `child` として記録する。キャッシュせずに埋め込まれた読み手では記録せず、取得元のタグは読み手の `childTags` に出る |
+| `depends_on` | `parent`, `child`, `childTags` | 依存の辺 1 本。子のタグが親に加わった。`#[Cacheable]` の put ではタグを持つ子ごとに、donut ページの書き込みではタグを持つデータ依存(`onGet()` が読んだ子)ごとに記録する。穴はまだ実行されていないので、代わりに `dependency_skipped` を記録する。実行された子が `#[DependsOn]` を宣言しているとき、または子が埋め込んで実行されたリクエストがタグを持つときは、コードによらず記録するので、子自身の URI タグは親に届く。宣言したタグと、そのリクエストのタグは、ここの `childTags` と、親の `save_*` の `tags` に出る。保存するリソースが `#[ResourceParam]` で `onGet()` の引数を読んだときは、その取得元を `child` として記録する。キャッシュせずに埋め込まれた読み手では記録せず、取得元のタグは読み手の `childTags` に出る |
 | `dependency_skipped` | `parent`, `child`, `reason` | キャッシュされる親の書き込み(`#[Cacheable]` の put、または donut ページの書き込み)で、body の最上位にある埋め込みリクエストを依存に入れなかった。子のタグは保存される値や donut テンプレートに加わらない。穴のタグは、穴が描画されるときに `#[CacheableResponse]` のビューには届く。配列の中のリクエストは見えず、何も記録しない |
 | `pre_write_cleanup` | `uri` | 書き込み側が、書き込み先に保存済みのエントリを見つけ、それを消す直前。空の場所への書き込みでは記録しない |
 | `invalidate` | `tags`, `roPool`, `cdn`, `durationMs` | タグを無効化した。対象ごとの結果つき |
@@ -203,11 +203,11 @@ purge するとビューが落ち、次の read は `cache_hit{layer: donut-view
 
 穴が追跡されるのは、レンダラが実行する埋め込みリクエストである間だけです。ページが別の手段で子を
 取得して埋め込んでいる場合、その子について何も書かれないので、purge しても保存済みのページは
-保持している合成結果を配信し続けます。そうした子は、ページの描画中に
-`$cacheDependency->depends($page, $child)` で宣言します(`$cacheDependency` は注入した
-`CacheDependencyInterface`)。宣言した子はデータ依存と同じく記録され、
-`put_donut` と `save_*` のあいだに `depends_on` の辺が出て、タグはテンプレートとビューの両方に載ります。
-だから purge すると両方が落ち、次の read は `cache_miss` で閉じます。
+保持している合成結果を配信し続けます。そうした子は、`#[Embed]` で、または `#[Embed]` と同じように
+リクエストを置くインターセプターで、ページの body の最上位に埋め込みます。テンプレートが描画中に
+宣言した依存(`CacheDependencyInterface::depends()` など)はサポートしません。`depends_on` は記録
+されますが、その `childTags` は `save_donut` に入りません。そのため子を purge すると、ページは古い
+テンプレートから作り直されます。ログは上の健全な形と同じですが、中身は古いままです。
 
 **エントリが期限切れになる設計かどうかは、TTL ではなく `cache_policy.expiry` を読みます。**
 `expiry: "never"` は「無効化が届くまで」という意図です。解決した数値は保険であり、アプリが `Expiry` を

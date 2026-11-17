@@ -5,15 +5,12 @@ declare(strict_types=1);
 namespace BEAR\RepositoryModule\Annotation;
 
 use Attribute;
-use BEAR\QueryRepository\HttpCacheInterceptor;
 
 use function implode;
 use function sprintf;
 
 /**
- * HTTP Cache Control
- *
- * Builds a complex Cache-Control header
+ * Sets the Cache-Control header of an onGet() response with status 200 from these directives
  *
  * Example:
  * ```php
@@ -28,15 +25,11 @@ use function sprintf;
  *
  * // CDN cache for 1 hour, browser cache for 5 minutes
  * #[HttpCache(maxAge: 300, sMaxAge: 3600)]
- *
- * // For disabling cache, use #[NoHttpCache] instead
  * ```
  *
- * Interceptors bound:
- * - HttpCacheInterceptor (onGet methods)
+ * `#[NoHttpCache]` tells clients not to cache.
  *
- * @see HttpCacheInterceptor
- * @see https://bearsunday.github.io/manuals/1.0/en/cache.html
+ * @see \BEAR\QueryRepository\HttpCacheInterceptor
  */
 #[Attribute(Attribute::TARGET_CLASS)]
 final class HttpCache extends AbstractCacheControl
