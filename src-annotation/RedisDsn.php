@@ -7,6 +7,9 @@ namespace BEAR\RepositoryModule\Annotation;
 use Attribute;
 use Ray\Di\Di\Qualifier;
 
+/**
+ * The Redis DSN of `StorageRedisDsnModule`
+ */
 #[Attribute(Attribute::TARGET_PARAMETER)]
 #[Qualifier]
 final class RedisDsn

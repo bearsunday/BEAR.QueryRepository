@@ -5,18 +5,13 @@ declare(strict_types=1);
 namespace BEAR\RepositoryModule\Annotation;
 
 use Attribute;
-use BEAR\QueryRepository\HttpCacheInterceptor;
 
 /**
- * HTTP Cache Control
+ * Sets `Cache-Control: private, no-store, no-cache, must-revalidate` on an onGet() response with status 200
  *
- * Simplified notation to say that you don't want anything cached
+ * A server-side cache attribute such as #[Cacheable] still stores the response.
  *
- * Interceptors bound:
- * - HttpCacheInterceptor (onGet methods)
- *
- * @see HttpCacheInterceptor
- * @see https://bearsunday.github.io/manuals/1.0/en/cache.html
+ * @see \BEAR\QueryRepository\HttpCacheInterceptor
  */
 #[Attribute(Attribute::TARGET_CLASS)]
 final class NoHttpCache extends AbstractCacheControl
