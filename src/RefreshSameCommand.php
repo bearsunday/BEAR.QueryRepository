@@ -36,6 +36,25 @@ final readonly class RefreshSameCommand implements CommandInterface
     #[Override]
     public function command(MethodInvocation $invocation, ResourceObject $ro): void
     {
+        $getQuery = $this->purge($invocation, $ro);
+        if ($getQuery === null) {
+            return;
+        }
+
+        // Read to rebuild the cache entry
+        $get = $this->factory->newInstance("{$ro->uri->scheme}://{$ro->uri->host}{$ro->uri->path}");
+        (new Request($this->invoker, $get))($getQuery);
+    }
+
+    /**
+     * Purges the resource's own URI tag and group tag
+     *
+     * @param MethodInvocation<object> $invocation
+     *
+     * @return array<string, mixed>|null the query its onGet() reads; null when an onPost() query does not address it
+     */
+    public function purge(MethodInvocation $invocation, ResourceObject $ro): array|null
+    {
         try {
             $getQuery = $this->getQuery($ro);
         } catch (UnmatchedQuery $e) {
@@ -56,7 +75,7 @@ final readonly class RefreshSameCommand implements CommandInterface
 
             $this->logger->event(new CacheErrorContext((string) $ro->uri, 'write', $e->getMessage(), $e::class));
 
-            return;
+            return null;
         }
 
         $delUri = clone $ro->uri;
@@ -75,9 +94,7 @@ final readonly class RefreshSameCommand implements CommandInterface
             $this->repository->purge($snakeUri);
         }
 
-        // Read to rebuild the cache entry
-        $get = $this->factory->newInstance("{$ro->uri->scheme}://{$ro->uri->host}{$ro->uri->path}");
-        (new Request($this->invoker, $get))($getQuery);
+        return $getQuery;
     }
 
     /**

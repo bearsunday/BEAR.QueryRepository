@@ -6,9 +6,12 @@ namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\AbstractCacheControl;
 use BEAR\RepositoryModule\Annotation\Cacheable;
+use BEAR\RepositoryModule\Annotation\CacheableResponse;
 use BEAR\RepositoryModule\Annotation\Commands;
 use BEAR\RepositoryModule\Annotation\Purge;
 use BEAR\RepositoryModule\Annotation\Refresh;
+use BEAR\RepositoryModule\Annotation\RefreshCache;
+use BEAR\Resource\ResourceObject;
 use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
 use Override;
 use Ray\Di\AbstractModule;
@@ -70,6 +73,40 @@ final class CacheableModule extends AbstractModule
             $this->matcher->logicalOr(
                 $this->matcher->annotatedWith(Purge::class),
                 $this->matcher->annotatedWith(Refresh::class),
+            ),
+            [RefreshInterceptor::class],
+        );
+        // A write with neither attribute invalidates its own key too, unless the class stores its GET or #[RefreshCache] does
+        $this->bindInterceptor(
+            $this->matcher->logicalAnd(
+                $this->matcher->subclassesOf(ResourceObject::class),
+                $this->matcher->logicalNot(
+                    $this->matcher->logicalOr(
+                        $this->matcher->annotatedWith(Cacheable::class),
+                        $this->matcher->annotatedWith(CacheableResponse::class),
+                    ),
+                ),
+            ),
+            $this->matcher->logicalAnd(
+                $this->matcher->logicalOr(
+                    $this->matcher->startsWith('onPut'),
+                    $this->matcher->logicalOr(
+                        $this->matcher->startsWith('onPost'),
+                        $this->matcher->logicalOr(
+                            $this->matcher->startsWith('onPatch'),
+                            $this->matcher->startsWith('onDelete'),
+                        ),
+                    ),
+                ),
+                $this->matcher->logicalNot(
+                    $this->matcher->logicalOr(
+                        $this->matcher->annotatedWith(Purge::class),
+                        $this->matcher->logicalOr(
+                            $this->matcher->annotatedWith(Refresh::class),
+                            $this->matcher->annotatedWith(RefreshCache::class),
+                        ),
+                    ),
+                ),
             ),
             [RefreshInterceptor::class],
         );

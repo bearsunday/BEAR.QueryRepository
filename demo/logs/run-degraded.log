@@ -1871,6 +1871,8 @@ G3 PUT a #[Purge]-only resource -> command.annotations lists Annotation\Purge x2
 command method=onPut annotations=[2 items] source=RefreshInterceptor
 ├── purge uri=page://self/dep/purge-src?id=1 [event]
 ├── invalidate tags=[_dep_purge-src_id=1 +1 items] roPool=invalidated cdn=skipped durationMs=[volatile] [event]
+├── purge uri=page://self/dep/purge-src?id=1 [event]
+├── invalidate tags=[_dep_purge-src_id=1 +1 items] roPool=invalidated cdn=skipped durationMs=[volatile] [event]
 ├── purge uri=page://self/dep/level-two [event]
 ├── invalidate tags=[_dep_level-two_, grp-_dep_level-two_] roPool=invalidated cdn=skipped durationMs=[volatile] [event]
 └── command_result code=200
@@ -1925,11 +1927,33 @@ command method=onPut annotations=[2 items] source=RefreshInterceptor
                     "type": "purge",
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/purge.json",
                     "context": {
-                        "uri": "page://self/dep/level-two"
+                        "uri": "page://self/dep/purge-src?id=1"
                     }
                 },
                 {
                     "id": "invalidate_2",
+                    "type": "invalidate",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/invalidate.json",
+                    "context": {
+                        "tags": [
+                            "_dep_purge-src_id=1",
+                            "grp-_dep_purge-src_id=1"
+                        ],
+                        "roPool": "invalidated",
+                        "cdn": "skipped",
+                        "durationMs": 0
+                    }
+                },
+                {
+                    "id": "purge_3",
+                    "type": "purge",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/purge.json",
+                    "context": {
+                        "uri": "page://self/dep/level-two"
+                    }
+                },
+                {
+                    "id": "invalidate_3",
                     "type": "invalidate",
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/invalidate.json",
                     "context": {
@@ -1954,7 +1978,7 @@ command method=onPut annotations=[2 items] source=RefreshInterceptor
         }
     ]
 }
-Schema validation: OK (6 entries)
+Schema validation: OK (8 entries)
 H  GET a #[Cacheable(expirySecond: 10), HttpCache(isPrivate: true)] resource -> Cache-Control: private, max-age=10
    the save events carry requestedTtl=10, not the 31536000 `never` placeholder
 

@@ -37,9 +37,9 @@ class WeavingMatrixTest extends TestCase
      * Every shape an application can write: the chain its write carries, and the scopes it opens
      *
      * The chain is the contract, order included - the defect this test exists for was a query
-     * interceptor sitting first, answering the write from the store. An empty chain means the
-     * declaration sits on `onGet` alone, so nothing names the write: invalidating what it changed
-     * needs `#[Purge]`/`#[Refresh]` on the write itself, which no matcher can supply.
+     * interceptor sitting first, answering the write from the store. A write on a class that does
+     * not store its GET, with no attribute of its own, carries `RefreshInterceptor`: it purges the
+     * resource's own key, which whatever embedded the resource holds.
      * `CRPurge` carries two interceptors with different jobs - `RefreshInterceptor` purges the URI
      * the attribute names, `DonutCommandInterceptor` refreshes the resource - so two scopes are
      * correct there and nowhere else. `CARefresh` shows `#[RefreshCache]` adding nothing to a
@@ -58,13 +58,13 @@ class WeavingMatrixTest extends TestCase
             'CRPurge' => [[RefreshInterceptor::class, DonutCommandInterceptor::class], 2],
             'CRRefresh' => [[DonutCommandInterceptor::class], 1],
             'CRBoth' => [[DonutCommandInterceptor::class], 1],
-            'MRNone' => [[], 0],
+            'MRNone' => [[RefreshInterceptor::class], 1],
             'MRPurge' => [[RefreshInterceptor::class], 1],
             'MRRefresh' => [[DonutCommandInterceptor::class], 1],
-            'DCNone' => [[], 0],
+            'DCNone' => [[RefreshInterceptor::class], 1],
             'DCPurge' => [[RefreshInterceptor::class], 1],
             'DCRefresh' => [[DonutCommandInterceptor::class], 1],
-            'DCMR' => [[], 0],
+            'DCMR' => [[RefreshInterceptor::class], 1],
         ];
         $cases = [];
         foreach ($expected as $shape => [$chain, $scopes]) {

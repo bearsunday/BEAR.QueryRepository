@@ -67,7 +67,7 @@ final readonly class DependsOnTags
     /**
      * Tags a child that ran inside its parent with what ran() finds for it
      *
-     * @return bool whether its parent depends on it: a declaration was found, or it carries an ETag or a Surrogate-Key
+     * @return bool whether its parent depends on it: see tagEmbedded()
      */
     public function embedded(ResourceObject $child): bool
     {
@@ -77,13 +77,14 @@ final readonly class DependsOnTags
     /**
      * @param list<string>|null $tags what ran() found for the child
      *
-     * @return bool whether its parent depends on it: a declaration was found, or it carries an ETag or a Surrogate-Key
+     * @return bool whether its parent depends on it: it has a body, a declaration was found, or it carries an ETag or a
+     *              Surrogate-Key. A hole has not run yet and has no body.
      */
     public function tagEmbedded(ResourceObject $child, array|null $tags): bool
     {
         $this->addTags($child, $tags ?? []);
 
-        return $tags !== null || isset($child->headers[Header::ETAG]) || isset($child->headers[Header::SURROGATE_KEY]);
+        return $child->body !== null || $tags !== null || isset($child->headers[Header::ETAG]) || isset($child->headers[Header::SURROGATE_KEY]);
     }
 
     /**

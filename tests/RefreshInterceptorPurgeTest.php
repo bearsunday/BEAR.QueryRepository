@@ -61,8 +61,8 @@ class RefreshInterceptorPurgeTest extends TestCase
 
         $this->resource->put('page://self/dep/purge-src', ['id' => '1']);
 
-        // Self-targeting #[Purge]: on a #[Cacheable] class RefreshSameCommand would have
-        // done this, here the annotation is the only thing that does.
+        // Self-targeting #[Purge]: the write purges its own key first, as RefreshSameCommand does on a #[Cacheable]
+        // class, and the annotation purges it again.
         $this->assertNull($this->repository->get($selfUri));
         $this->assertFalse($this->storage->hasEtag($selfEtag));
 
@@ -84,12 +84,12 @@ class RefreshInterceptorPurgeTest extends TestCase
         $this->assertNotNull($close);
         $this->assertStringContainsString('"code":200', $close);
 
-        // One purge event per annotation, each immediately followed by its invalidation and
+        // One purge event for its own key, then one per annotation, each immediately followed by its invalidation and
         // by no pre_write_cleanup marker: these delete entries, they do not precede a rewrite.
         $this->assertContains(
-            ['purge', 'invalidate', 'purge', 'invalidate'],
+            ['purge', 'invalidate', 'purge', 'invalidate', 'purge', 'invalidate'],
             self::scopeEventTypeSequences($tree),
-            'the command scope holds both annotation-driven purges in declaration order',
+            'the command scope holds its own key\'s purge, then both annotation-driven purges in declaration order',
         );
     }
 
