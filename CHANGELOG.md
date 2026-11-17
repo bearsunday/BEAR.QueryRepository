@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- **Behaviour change**: on a `#[CacheableResponse]` or `#[DonutCache]` page, `CacheDependencyInterface::depends()` called from a template while it renders no longer tags the stored template (as before 1.20.0), so purging that child leaves the page's old content in the template. Embed such a part at the top level of the page body instead, with `#[Embed]` or an interceptor that puts the request there.
+
 ## [1.20.2] - 2026-11-13
 
 ### Changed

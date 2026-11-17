@@ -167,10 +167,8 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $keys = new SurrogateKeys($ro->uri, ($this->baseUriTag)($ro), $this->uriTag, null, $this->dependsOnTags);
         $this->classifyMaterials($ro, $keys);
         $this->logger->event(new PutDonutContext((string) $ro->uri, $ttl, $sMaxAge));
-        $donut = ResourceDonut::create($ro, $this->renderer, $keys, $sMaxAge, true);
-        // Read after rendering, see templateKeys()
         $templateKeys = $this->templateKeys($ro, $this->getHeaderKeys($ro));
-        $donut = $donut->withStorageState($ttl, $templateKeys);
+        $donut = ResourceDonut::create($ro, $this->renderer, $keys, $sMaxAge, true)->withStorageState($ttl, $templateKeys);
         $donut->render($ro, $this->renderer);
         // Checked on the rendered response before setHeaders() mutates it
         $unstorable = $this->declaredCacheControl->reason($ro);
@@ -194,10 +192,8 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $keys = new SurrogateKeys($ro->uri, ($this->baseUriTag)($ro), $this->uriTag, null, $this->dependsOnTags);
         $this->classifyMaterials($ro, $keys);
         $this->logger->event(new PutDonutContext((string) $ro->uri, $donutTtl, null));
-        $donut = ResourceDonut::create($ro, $this->renderer, $keys, $donutTtl, false);
-        // Read after rendering, see templateKeys()
         $templateKeys = $this->templateKeys($ro, $this->getHeaderKeys($ro));
-        $donut = $donut->withStorageState($donutTtl, $templateKeys);
+        $donut = ResourceDonut::create($ro, $this->renderer, $keys, $donutTtl, false)->withStorageState($donutTtl, $templateKeys);
         $donut->render($ro, $this->renderer);
         $unstorable = $this->declaredCacheControl->reason($ro);
         $keys->setSurrogateHeader($ro);
@@ -243,9 +239,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
 
     /**
      * The template's own URI tag (so `purge($uri)` reaches it, #185) and the declared keys: material children's tags
-     * (classifyMaterials()) and the dependencies declared while the page rendered, such as depends() from a template
-     * helper, so they are read after ResourceDonut::create(). Holes are left out: their write drops only the content and
-     * the shell is recomposed.
+     * (classifyMaterials()). Holes are left out: their write drops only the content and the shell is recomposed.
      *
      * @param list<string> $declaredKeys
      *
