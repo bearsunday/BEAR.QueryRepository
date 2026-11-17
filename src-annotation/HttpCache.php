@@ -10,7 +10,7 @@ use function implode;
 use function sprintf;
 
 /**
- * Sets the Cache-Control header of the onGet() response from these directives
+ * Sets the Cache-Control header of an onGet() response with status 200 from these directives
  *
  * Example:
  * ```php
@@ -27,7 +27,7 @@ use function sprintf;
  * #[HttpCache(maxAge: 300, sMaxAge: 3600)]
  * ```
  *
- * `#[NoHttpCache]` disables caching.
+ * `#[NoHttpCache]` tells clients not to cache.
  *
  * @see \BEAR\QueryRepository\HttpCacheInterceptor
  */

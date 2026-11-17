@@ -10,6 +10,7 @@ use Attribute;
  * Purges the cache of the URI that `uri` expands to after the method runs
  *
  * `uri` is a URI template expanded with the body the method set and the request query.
+ * On a #[Cacheable] class, only onPost(), onPut(), onPatch() and onDelete() run it.
  *
  * Example:
  * ```php

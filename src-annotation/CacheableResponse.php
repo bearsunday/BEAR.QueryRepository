@@ -10,6 +10,7 @@ use Attribute;
  * Caches the response (its representation) and gives it an ETag
  *
  * The ETag lets a conditional request get 304 (Not Modified), which saves network transfer.
+ * Placed on the onGet() method, it caches the response without an ETag.
  *
  * @see https://bearsunday.github.io/manuals/1.0/en/cache.html#usage
  */
