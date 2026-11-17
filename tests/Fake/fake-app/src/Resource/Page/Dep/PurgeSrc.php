@@ -13,8 +13,8 @@ use BEAR\Resource\ResourceObject;
  * Non-Cacheable writer carrying #[Purge], so RefreshInterceptor runs instead of CommandInterceptor
  *
  * The targets:
- *  - its own URI: the write's own key, which RefreshInterceptor invalidates anyway, so the two
- *    share one invalidation. An entry stored for this resource (here by a direct
+ *  - its own URI: the write's own key, which RefreshInterceptor purges anyway, so the two are
+ *    one purge. An entry stored for this resource (here by a direct
  *    QueryRepository::put) is dropped by the write.
  *  - page://self/dep/level-two: level-one embeds it, so the purge cascades to the parent.
  */

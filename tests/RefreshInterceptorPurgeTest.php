@@ -83,13 +83,13 @@ class RefreshInterceptorPurgeTest extends TestCase
         $this->assertNotNull($close);
         $this->assertStringContainsString('"code":200', $close);
 
-        // One purge event per URI the write names, its own key and the #[Purge] of itself being one, then a single
-        // invalidation for all their tags, and no pre_write_cleanup marker: these delete entries, they do not precede a
+        // One purge per URI the write names, its own key and the #[Purge] of itself being one, each immediately
+        // followed by its invalidation and by no pre_write_cleanup marker: these delete entries, they do not precede a
         // rewrite.
         $this->assertContains(
-            ['purge', 'purge', 'invalidate'],
+            ['purge', 'invalidate', 'purge', 'invalidate'],
             self::scopeEventTypeSequences($tree),
-            'the command scope purges its own key and level-two in one invalidation',
+            'the command scope purges its own key once, then level-two',
         );
     }
 

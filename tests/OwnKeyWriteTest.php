@@ -9,7 +9,9 @@ use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
 use FakeVendor\HelloWorld\Resource\Page\Mx\DCRefreshPurge;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
+use Override;
 use PHPUnit\Framework\TestCase;
+use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
 
 /**
@@ -59,19 +61,33 @@ class OwnKeyWriteTest extends TestCase
         $this->assertContains(['purge_skipped'], self::scopeEventTypeSequences($tree), 'nothing else to purge, so no invalidation');
     }
 
-    public function testAPurgeOfItselfSharesTheInvalidationOfItsOwnKey(): void
+    public function testAPurgeOfItselfIsOnePurgeOfItsOwnKey(): void
     {
-        $this->resource->put('page://self/dep/purge-src', ['id' => '1']);
+        $this->resource->put('app://self/self-purge-writer', ['id' => '1']);
 
         $tree = $this->flushAndValidate($this->logger);
-        $this->assertSame(
-            ['{"uri":"page://self/dep/purge-src?id=1"}', '{"uri":"page://self/dep/level-two"}'],
-            self::eventContextsJsonOf($tree, 'purge'),
-            'its own key and the #[Purge] of itself name one URI',
-        );
+        $this->assertSame(['{"uri":"app://self/self-purge-writer?id=1"}'], self::eventContextsJsonOf($tree, 'purge'), 'its own key and the #[Purge] of itself name one URI');
         $invalidations = self::eventContextsJsonOf($tree, 'invalidate');
         $this->assertCount(1, $invalidations);
-        $this->assertStringContainsString('"tags":["_dep_purge-src_id=1","grp-_dep_purge-src_id=1","_dep_level-two_","grp-_dep_level-two_"]', $invalidations[0]);
+        $this->assertStringContainsString('"tags":["_self-purge-writer_id=1","grp-_self-purge-writer_id=1"]', $invalidations[0]);
+    }
+
+    public function testAQueryRepositoryOfTheApplicationsOwnIsTheOneThatPurges(): void
+    {
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
+        $module->override(new class extends AbstractModule {
+            #[Override]
+            protected function configure(): void
+            {
+                $this->bind(QueryRepositoryInterface::class)->to(FakePurgeRecordingQueryRepository::class);
+            }
+        });
+        $resource = (new Injector($module, __DIR__ . '/tmp'))->getInstance(ResourceInterface::class);
+        FakePurgeRecordingQueryRepository::$purged = [];
+
+        $resource->put('app://self/self-purge-writer', ['id' => '1']);
+
+        $this->assertSame(['app://self/self-purge-writer?id=1'], FakePurgeRecordingQueryRepository::$purged);
     }
 
     /** DonutCommandInterceptor purges and refreshes the resource; RefreshInterceptor purges only what #[Purge] names */

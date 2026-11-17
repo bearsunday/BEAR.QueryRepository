@@ -1871,8 +1871,9 @@ G3 PUT a #[Purge]-only resource -> command.annotations lists Annotation\Purge x2
 === Cache Log Tree — G3. purge-only command ===
 command method=onPut annotations=[2 items] source=RefreshInterceptor
 ├── purge uri=page://self/dep/purge-src?id=1 [event]
+├── invalidate tags=[_dep_purge-src_id=1 +1 items] roPool=invalidated cdn=skipped durationMs=[volatile] [event]
 ├── purge uri=page://self/dep/level-two [event]
-├── invalidate tags=[_dep_purge-src_id=1 +3 items] roPool=invalidated cdn=skipped durationMs=[volatile] [event]
+├── invalidate tags=[_dep_level-two_, grp-_dep_level-two_] roPool=invalidated cdn=skipped durationMs=[volatile] [event]
 └── command_result code=200
 
 === Cache Log JSON — G3. purge-only command ===
@@ -1907,6 +1908,20 @@ command method=onPut annotations=[2 items] source=RefreshInterceptor
                     }
                 },
                 {
+                    "id": "invalidate_1",
+                    "type": "invalidate",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/invalidate.json",
+                    "context": {
+                        "tags": [
+                            "_dep_purge-src_id=1",
+                            "grp-_dep_purge-src_id=1"
+                        ],
+                        "roPool": "invalidated",
+                        "cdn": "skipped",
+                        "durationMs": 0
+                    }
+                },
+                {
                     "id": "purge_2",
                     "type": "purge",
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/purge.json",
@@ -1915,13 +1930,11 @@ command method=onPut annotations=[2 items] source=RefreshInterceptor
                     }
                 },
                 {
-                    "id": "invalidate_1",
+                    "id": "invalidate_2",
                     "type": "invalidate",
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/invalidate.json",
                     "context": {
                         "tags": [
-                            "_dep_purge-src_id=1",
-                            "grp-_dep_purge-src_id=1",
                             "_dep_level-two_",
                             "grp-_dep_level-two_"
                         ],
@@ -1942,7 +1955,7 @@ command method=onPut annotations=[2 items] source=RefreshInterceptor
         }
     ]
 }
-Schema validation: OK (5 entries)
+Schema validation: OK (6 entries)
 G4 POST a creating write -> purge_skipped, then its #[Purge] of level-two
 
 === Cache Log Tree — G4. creating write ===
