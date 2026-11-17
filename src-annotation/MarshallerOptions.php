@@ -8,10 +8,9 @@ use Attribute;
 use Ray\Di\Di\Qualifier;
 
 /**
- * Annotation for marshaller options configuration
+ * The marshalling options of `StorageRedisDsnModule`: `enabled`, `type` ('default' or 'deflate') and `use_igbinary`
  *
- * Used to inject marshalling configuration options for Redis cache adapters.
- * Supports compression, encryption, and serialization options.
+ * @see https://bearsunday.github.io/manuals/1.0/en/cache.html#redis-marshaller
  */
 #[Attribute]
 #[Qualifier]

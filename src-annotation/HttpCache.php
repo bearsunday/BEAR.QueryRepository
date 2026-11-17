@@ -5,38 +5,14 @@ declare(strict_types=1);
 namespace BEAR\RepositoryModule\Annotation;
 
 use Attribute;
-use BEAR\QueryRepository\HttpCacheInterceptor;
 
 use function implode;
 use function sprintf;
 
 /**
- * HTTP Cache Control
+ * Sets the Cache-Control header of the onGet() response from these directives
  *
- * Builds a complex Cache-Control header
- *
- * Example:
- * ```php
- * // Cache for 1 hour
- * #[HttpCache(maxAge: 3600)]
- *
- * // Cache with revalidation when stale
- * #[HttpCache(maxAge: 3600, mustRevalidate: true)]
- *
- * // Private cache (not shared cache like CDN)
- * #[HttpCache(isPrivate: true, maxAge: 300)]
- *
- * // CDN cache for 1 hour, browser cache for 5 minutes
- * #[HttpCache(maxAge: 300, sMaxAge: 3600)]
- *
- * // For disabling cache, use #[NoHttpCache] instead
- * ```
- *
- * Interceptors bound:
- * - HttpCacheInterceptor (onGet methods)
- *
- * @see HttpCacheInterceptor
- * @see https://bearsunday.github.io/manuals/1.0/en/cache.html
+ * @see https://bearsunday.github.io/manuals/1.0/en/cache.html#do-not-cache
  */
 #[Attribute(Attribute::TARGET_CLASS)]
 final class HttpCache extends AbstractCacheControl

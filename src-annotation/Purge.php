@@ -7,25 +7,11 @@ namespace BEAR\RepositoryModule\Annotation;
 use Attribute;
 
 /**
- * Purges cache for specified URI after command execution
+ * Purges the cache of the URI that `uri` expands to after the method runs
  *
- * Behavior differs based on class attributes:
- * - **#[Cacheable] classes**: CommandInterceptor automatically binds to all
- *   command methods (onPut/onPatch/onDelete) and processes #[Purge] annotations
- * - **Non-Cacheable classes**: RefreshInterceptor binds only to methods explicitly
- *   marked with #[Purge] or #[Refresh]
+ * `uri` is a URI template expanded with the body the method set and the request query.
  *
- * Example:
- * ```php
- * #[Purge(uri: 'app://self/user/profile?user_id={id}')]
- * #[Purge(uri: 'app://self/user/friend?user_id={id}')]
- * public function onDelete(int $id): static
- * {
- *     // ...
- * }
- * ```
- *
- * @see https://bearsunday.github.io/manuals/1.0/en/cache.html#tag-based-cache-invalidation
+ * @see https://bearsunday.github.io/manuals/1.0/en/cache.html#invalidate-by-uri
  */
 #[Attribute(Attribute::TARGET_METHOD | Attribute::IS_REPEATABLE)]
 final class Purge extends AbstractCommand

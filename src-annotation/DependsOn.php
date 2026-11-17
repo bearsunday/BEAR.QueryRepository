@@ -10,6 +10,8 @@ use Attribute;
  * Tags the stored resource with the URI `uri` expands to, so a write to that URI invalidates it and every page that embeds it
  *
  * On a resource's onGet(), every template variable must be an onGet() parameter. On a row class, the variables are its public properties.
+ *
+ * @see https://bearsunday.github.io/manuals/1.0/en/cache.html#dependson
  */
 #[Attribute(Attribute::TARGET_METHOD | Attribute::TARGET_CLASS | Attribute::IS_REPEATABLE)]
 final class DependsOn
