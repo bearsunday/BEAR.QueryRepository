@@ -86,7 +86,7 @@ class DonutRepositoryTest extends TestCase
         return new Injector($module, __DIR__ . '/tmp');
     }
 
-    public function testDonutMissTagsEachChildWithTheBoundBaseUriTag(): void
+    public function testDonutMissKeepsStandardChildGroupTagWithCustomBaseBinding(): void
     {
         $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
         $module->override(new TwigModule([__DIR__ . '/Fake/fake-app/var/templates']));
@@ -110,7 +110,7 @@ class DonutRepositoryTest extends TestCase
         $page->toString();
 
         $this->assertSame(
-            'blog-posting-page _html_blog-posting_ CB_html_blog-posting _html_comment_ CB_html_comment comment01',
+            'blog-posting-page _html_blog-posting_ CB_html_blog-posting _html_comment_ grp-_html_comment_ comment01',
             $page->headers[Header::SURROGATE_KEY],
         );
     }
