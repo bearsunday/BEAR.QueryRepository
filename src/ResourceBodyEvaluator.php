@@ -46,9 +46,17 @@ final class ResourceBodyEvaluator
      * writes into must not be shared with the live response graph the renderer and the
      * transfer still read. `clone` is shallow, so every level needs its own copy: a
      * materialized parent shares the objects sitting inside its body with the memo.
+     *
+     * A #[CacheableResponse] or #[DonutCache] child stored on its way into this body
+     * leaves each request it embeds wrapped in a DonutRequest, which is materialized as
+     * the request it wraps.
      */
     private function copyForStore(mixed $item): mixed
     {
+        if ($item instanceof DonutRequest) {
+            return $this->materialize($item->request);
+        }
+
         if ($item instanceof RequestInterface) {
             return $this->materialize($item); // the memoized run, copied
         }
