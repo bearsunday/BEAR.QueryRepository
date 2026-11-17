@@ -5,18 +5,13 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\Resource\ResourceObject;
+use Override;
 use ReflectionMethod;
 
 use function method_exists;
 
-/**
- * The group tag of a GET resource: its URI tag without the default-valued onGet() parameters
- *
- * A query-variant cache entry carries it besides its own tag, and a purge of the bare URI targets it.
- *
- * @internal
- */
-final readonly class BaseUriTag
+/** @internal */
+final readonly class BaseUriTag implements BaseUriTagInterface
 {
     public function __construct(
         private UriTagInterface $uriTag = new UriTag(),
@@ -24,7 +19,8 @@ final readonly class BaseUriTag
     ) {
     }
 
-    /** Defaulted parameters are excluded; required parameters retain their supplied query spelling. Without onGet(), the group tag is derived from the full URI. */
+    /** Defaulted parameters are excluded; required parameters retain their supplied query spelling. */
+    #[Override]
     public function __invoke(ResourceObject $ro): string
     {
         if (! method_exists($ro, 'onGet')) {

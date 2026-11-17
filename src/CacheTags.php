@@ -14,7 +14,7 @@ final readonly class CacheTags
 {
     public function __construct(
         private UriTagInterface $uriTag,
-        private BaseUriTag $baseUriTag,
+        private BaseUriTagInterface $baseUriTag,
         private CacheIdentityFactory $identityFactory = new CacheIdentityFactory(),
     ) {
     }
