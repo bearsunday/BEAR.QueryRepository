@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
-- Requires `bear/resource` 1.35 or later: a donut hole's links travel in its `toUri()` fragment, so a stored hole no longer carries its own `EmbedReference` string.
+- Requires `bear/resource` 1.36 or later: a donut hole's links are carried in its `toUri()` fragment.
 - **Behaviour change**: on a `#[CacheableResponse]` or `#[DonutCache]` page, `CacheDependencyInterface::depends()` called from a template while it renders no longer tags the stored template (as before 1.20.0), so purging that child leaves the page's old content in the template. Embed such a part at the top level of the page body instead, with `#[Embed]` or an interceptor that puts the request there.
 
 ## [1.20.2] - 2026-11-13
