@@ -25,7 +25,7 @@ final readonly class CacheDependency implements CacheDependencyInterface
         UriTagInterface $uriTag,
         #[CacheLog]
         private SemanticLoggerInterface $logger = new NullSemanticLogger(),
-        BaseUriTagInterface|null $baseUriTag = null,
+        BaseUriTag|null $baseUriTag = null,
         CacheTags|null $cacheTags = null,
     ) {
         $this->cacheTags = $cacheTags ?? new CacheTags($uriTag, $baseUriTag ?? new BaseUriTag($uriTag));
