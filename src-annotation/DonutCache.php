@@ -11,6 +11,19 @@ use Attribute;
  *
  * No ETag is given to the whole response.
  *
+ * Example:
+ * ```php
+ * #[DonutCache]
+ * class BlogPosting extends ResourceObject
+ * {
+ *     #[Embed(rel: 'comment', src: 'app://self/comments')]
+ *     public function onGet(int $id): static
+ *     {
+ *         // ...
+ *     }
+ * }
+ * ```
+ *
  * @see https://bearsunday.github.io/manuals/1.0/en/cache.html#usage
  * @see \BEAR\QueryRepository\DonutCacheInterceptor
  */

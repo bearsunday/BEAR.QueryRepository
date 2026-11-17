@@ -7,7 +7,9 @@ namespace BEAR\RepositoryModule\Annotation;
 use Attribute;
 
 /**
- * Sets `Cache-Control: private, no-store, no-cache, must-revalidate` on the onGet() response
+ * Says that nothing is cached: sets `Cache-Control: private, no-store, no-cache, must-revalidate` on the onGet() response
+ *
+ * @see \BEAR\QueryRepository\HttpCacheInterceptor
  */
 #[Attribute(Attribute::TARGET_CLASS)]
 final class NoHttpCache extends AbstractCacheControl

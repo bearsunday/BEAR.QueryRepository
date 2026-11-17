@@ -12,7 +12,24 @@ use function sprintf;
 /**
  * Sets the Cache-Control header of the onGet() response from these directives
  *
- * @see https://bearsunday.github.io/manuals/1.0/en/cache.html#do-not-cache
+ * Example:
+ * ```php
+ * // Cache for 1 hour
+ * #[HttpCache(maxAge: 3600)]
+ *
+ * // Cache with revalidation when stale
+ * #[HttpCache(maxAge: 3600, mustRevalidate: true)]
+ *
+ * // Private cache (not shared cache like CDN)
+ * #[HttpCache(isPrivate: true, maxAge: 300)]
+ *
+ * // CDN cache for 1 hour, browser cache for 5 minutes
+ * #[HttpCache(maxAge: 300, sMaxAge: 3600)]
+ * ```
+ *
+ * `#[NoHttpCache]` disables caching.
+ *
+ * @see \BEAR\QueryRepository\HttpCacheInterceptor
  */
 #[Attribute(Attribute::TARGET_CLASS)]
 final class HttpCache extends AbstractCacheControl

@@ -10,8 +10,10 @@ use Ray\Di\Di\Qualifier;
 /**
  * The logger this package records the cache session into
  *
- * It has a name of its own so that an application's own `SemanticLoggerInterface` binding stays
- * untouched; bind this key to that logger to record both in one tree.
+ * `Koriym\SemanticLogger\SemanticLoggerInterface` is not ours: an application may already bind it
+ * for its own session (Be Framework records a becoming tree into the same interface), and Ray.Di
+ * keeps the binding that lands first. The cache log therefore has a name of its own, and an
+ * application that wants both trees in one session binds this key to its logger.
  *
  * @see https://bearsunday.github.io/manuals/1.0/en/event-sourcing.html#one-tree-with-bearqueryrepository
  */
