@@ -10,9 +10,11 @@ use function sprintf;
  * Thrown while a resource is stored when one of its #[DependsOn] declarations cannot be expanded to a URI
  *
  * `source` is the stored resource's URI and where the values were read: `<uri> onGet()` or `<uri> <row class>`. `reason` is one of
- * `no '<variable>'` (no such parameter value or public property), `'<variable>' is not an onGet() parameter`,
- * `'<variable>' is bound by #[ResourceParam]` (its value comes from another resource, not the query),
- * `'<variable>' is <type>` (neither scalar, Stringable nor null) and `declared on a resource class` (declare it on onGet()).
+ * `no '<variable>'` (no such parameter value or public property), `'<variable>' is not an onGet() parameter` (nor a key of the row
+ * or the body), `'<variable>' is bound by #[ResourceParam]` (not a key of the row or the body, and its value comes from another
+ * resource, not the query),
+ * `'<variable>' is <type>` (neither scalar, Stringable nor null; a list only under an exploded query variable) and
+ * `declared on a resource class` (declare it on onGet()).
  * Nothing is stored. A dependency the declaration cannot express is tagged by hand with UriTagInterface::fromAssoc().
  */
 final class DependsOnNotExpandable extends LogicException

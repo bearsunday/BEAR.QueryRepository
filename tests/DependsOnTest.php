@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use ArrayIterator;
 use BEAR\QueryRepository\Exception\DependsOnNotExpandable;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceInterface;
@@ -21,6 +22,7 @@ use Ray\Di\Injector;
 
 use function array_count_values;
 use function array_filter;
+use function array_map;
 use function array_values;
 use function dirname;
 use function explode;
@@ -164,11 +166,13 @@ class DependsOnTest extends TestCase
         $this->assertFalse($this->isStored($uri, $isDonut));
     }
 
+    /** Its null body holds no row, so a template the arguments do not fill names nothing and does not fail */
     public function testAListThatAnswers404IsStillADependencyOfItsPage(): void
     {
         $uri = 'app://self/rows/page404';
-        $this->resource->get($uri);
+        $page = $this->resource->get($uri);
         $this->assertTrue($this->isStored($uri, false));
+        $this->assertSame([], $this->itemTags($page));
 
         $this->resource->put('app://self/rows/taxonomy?ulid=c1');
         $this->assertFalse($this->isStored($uri, false));
@@ -191,6 +195,193 @@ class DependsOnTest extends TestCase
         $keys = $this->keys($page);
         $this->assertContains($this->tag('app://self/rows/taxonomy?ulid=c1'), $keys);
         $this->assertContains($this->tag('app://self/rows/article?ulid=a3'), $keys);
+    }
+
+    /** As #[Link] expands its href from the body, a variable onGet() puts in the body names the URI; one the body lacks is read from the arguments */
+    public function testAVariableExpandsFromTheBodyThenFromTheArguments(): void
+    {
+        $uri = 'app://self/rows/body-declared?articleId=a3';
+        $keys = $this->keys($this->resource->get($uri));
+        $this->assertContains($this->tag('app://self/rows/taxonomy?ulid=c2'), $keys);
+        $this->assertContains($this->tag('app://self/rows/article?ulid=a3'), $keys);
+
+        $this->resource->put('app://self/rows/taxonomy?ulid=c1');
+        $this->assertTrue($this->isStored($uri, false), 'a write to another channel must not invalidate the article');
+
+        $this->resource->put('app://self/rows/taxonomy?ulid=c2');
+        $this->assertFalse($this->isStored($uri, false));
+
+        $this->resource->get($uri);
+        $this->resource->put('app://self/rows/article?ulid=a3');
+        $this->assertFalse($this->isStored($uri, false));
+    }
+
+    public function testABodyValueTakesPrecedenceOverTheArgument(): void
+    {
+        $uri = 'app://self/rows/body-over-argument?channelId=news';
+        $keys = $this->keys($this->resource->get($uri));
+        $this->assertContains($this->tag('app://self/rows/taxonomy?ulid=c1'), $keys);
+        $this->assertNotContains($this->tag('app://self/rows/taxonomy?ulid=news'), $keys);
+
+        $this->resource->put('app://self/rows/taxonomy?ulid=c1');
+        $this->assertFalse($this->isStored($uri, false));
+    }
+
+    /** The query does not hold a value #[ResourceParam] binds, but the body onGet() returns does */
+    public function testAVariableBoundByResourceParamExpandsFromTheBody(): void
+    {
+        $uri = 'app://self/rows/bound-in-body?channelId=c1';
+        $keys = $this->keys($this->resource->get($uri));
+        $this->assertContains($this->tag('app://self/rows/taxonomy?ulid=bear'), $keys);
+        $this->assertNotContains($this->tag('app://self/rows/taxonomy?ulid=c1'), $keys);
+
+        $this->resource->put('app://self/rows/taxonomy?ulid=bear');
+        $this->assertFalse($this->isStored($uri, false));
+    }
+
+    /** @return array<string, array{0: string, 1: list<int>}> uri, the IDs of the items it is tagged with */
+    public static function rowsProvider(): array
+    {
+        return [
+            "array rows under key: 'articles'" => ['app://self/rows/row-list', [1, 2]],
+            'a row without the variable among the rows is skipped' => ['app://self/rows/mixed-rows', [1, 2]],
+            "object rows in a Traversable under key: 'entries'" => ['app://self/rows/entry-rows', [1, 2]],
+            "one object row under key: 'detail'" => ['app://self/rows/detail', [3]],
+            'without a key, a body that is one object row' => ['app://self/rows/body-object', [7]],
+            'without a key, a body that is an IteratorAggregate of object rows' => ['app://self/rows/body-iterable', [1, 2]],
+            'without a key, a body that is a list of array rows' => ['app://self/rows/body-rows', [1, 2]],
+            'an empty list of rows' => ['app://self/rows/empty-rows?channelId=c1', []],
+            'an empty list of rows under a key, beside an argument of the same name' => ['app://self/rows/category?id=3', []],
+            'a row without the variable, beside an argument of the same name, is skipped' => ['app://self/rows/category?id=9', [1, 2]],
+            'without a key, an empty body' => ['app://self/rows/empty-body?channelId=c1', []],
+            'without a key, a top-level scalar' => ['app://self/rows/top-level-id', [5]],
+            'without a key, {?id*} and a top-level list under id' => ['app://self/rows/body-list', [1, 2, 3, 5]],
+            'without a key, ?id={ids*} and a top-level list under ids' => ['app://self/rows/renamed-list', [1, 2, 3, 5]],
+            'without a key, an empty list' => ['app://self/rows/sparse-list?shape=empty', []],
+            'without a key, a list with a null' => ['app://self/rows/sparse-list?shape=null', [1]],
+            'without a key, an array under the variable yields to the argument' => ['app://self/rows/nested-user?user=7', [7]],
+            'one template without a key and with the empty key' => ['app://self/rows/empty-key', [1, 2]],
+        ];
+    }
+
+    /**
+     * Each row under the key names one URI from its values, as UriTagInterface::fromAssoc() does, and a list under an exploded query
+     * variable one per element, as #[Purge] does
+     *
+     * @param list<int> $ids
+     */
+    #[DataProvider('rowsProvider')]
+    public function testEachRowOrIdNamesOneUri(string $uri, array $ids): void
+    {
+        $expected = array_map(fn (int $id): string => $this->tag("app://self/rows/item?id={$id}"), $ids);
+        $this->assertSame($expected, $this->itemTags($this->resource->get($uri)));
+        $this->assertTrue($this->isStored($uri, false));
+
+        $this->resource->put('app://self/rows/item?id=4');
+        $this->assertTrue($this->isStored($uri, false), 'a write to an item not in the list must not invalidate it');
+
+        foreach ($ids as $id) {
+            $this->resource->get($uri);
+            $this->resource->put("app://self/rows/item?id={$id}");
+            $this->assertFalse($this->isStored($uri, false));
+        }
+    }
+
+    /** @return array<string, array{0: string}> */
+    public static function constantUriProvider(): array
+    {
+        return [
+            'a list of array rows' => ['app://self/rows/body-rows'],
+            'one object' => ['app://self/rows/body-object'],
+            'an IteratorAggregate of objects' => ['app://self/rows/body-iterable'],
+            'an empty list' => ['app://self/rows/empty-body?channelId=c1'],
+            'a page embedding a 404 with a null body' => ['app://self/rows/page404'],
+        ];
+    }
+
+    /** A URI without a variable is named once whatever the body holds */
+    #[DataProvider('constantUriProvider')]
+    public function testAUriWithoutAVariableIsNamedWhateverTheBodyHolds(string $uri): void
+    {
+        $this->assertSame(1, array_count_values($this->keys($this->resource->get($uri)))[$this->tag('app://self/rows/shelf')] ?? 0);
+    }
+
+    /** @return array<string, array{0: string, 1: array<array-key, array{id: int}>}> uri, the rows the body holds */
+    public static function oneShotBodyProvider(): array
+    {
+        return [
+            'a generator under list keys' => ['app://self/rows/generator-body', [['id' => 1], ['id' => 2]]],
+            'a generator under keys of its own' => ['app://self/rows/generator-body?keyed=1', ['a' => ['id' => 1], 'b' => ['id' => 2]]],
+        ];
+    }
+
+    /**
+     * A body that can be read only once is read once for every declaration, and the response holds the same rows and keys
+     *
+     * @param array<array-key, array{id: int}> $rows
+     */
+    #[DataProvider('oneShotBodyProvider')]
+    public function testABodyThatCanBeReadOnceKeepsItsRowsForEachDeclaration(string $uri, array $rows): void
+    {
+        $ro = $this->resource->get($uri);
+        $this->assertSame([$this->tag('app://self/rows/item?id=1'), $this->tag('app://self/rows/item?id=2')], $this->itemTags($ro));
+        $this->assertContains($this->tag('app://self/rows/shelf'), $this->keys($ro));
+        $this->assertInstanceOf(ArrayIterator::class, $ro->body);
+        $this->assertSame($rows, $ro->body->getArrayCopy());
+    }
+
+    /** @return array<string, array{0: string}> */
+    public static function oneShotRowsProvider(): array
+    {
+        return [
+            'a generator' => ['app://self/rows/generator-rows'],
+            'a generator that yields the same key twice, kept as a list' => ['app://self/rows/generator-repeated-keys'],
+        ];
+    }
+
+    #[DataProvider('oneShotRowsProvider')]
+    public function testRowsUnderAKeyThatCanBeReadOnceStayInTheBody(string $uri): void
+    {
+        $ro = $this->resource->get($uri);
+        $this->assertSame([$this->tag('app://self/rows/item?id=1'), $this->tag('app://self/rows/item?id=2')], $this->itemTags($ro));
+        $this->assertIsArray($ro->body);
+        $this->assertInstanceOf(ArrayIterator::class, $ro->body['articles']);
+        $this->assertSame([['id' => 1], ['id' => 2]], $ro->body['articles']->getArrayCopy());
+
+        $this->resource->put('app://self/rows/item?id=1');
+        $this->assertFalse($this->isStored($uri, false));
+    }
+
+    /** A variable the row lacks is read from the body's top level, then from the arguments */
+    public function testAVariableTheRowLacksIsReadFromTheTopLevelThenTheArguments(): void
+    {
+        $uri = 'app://self/rows/row-fallback?channelId=c2';
+        $keys = $this->keys($this->resource->get($uri));
+        $this->assertSame(1, array_count_values($keys)[$this->tag('app://self/rows/taxonomy?ulid=c1')] ?? 0);
+        $this->assertContains($this->tag('app://self/rows/article?ulid=c2-1'), $keys);
+        $this->assertContains($this->tag('app://self/rows/article?ulid=c2-2'), $keys);
+
+        $this->resource->put('app://self/rows/article?ulid=c2-2');
+        $this->assertFalse($this->isStored($uri, false));
+    }
+
+    /** @return array<string, array{0: string}> */
+    public static function emptyListProvider(): array
+    {
+        return [
+            'under a key' => ['app://self/rows/empty-rows?channelId=c1'],
+            'the body itself' => ['app://self/rows/empty-body?channelId=c1'],
+        ];
+    }
+
+    /** An empty list has no row: a template the arguments fill still names its URI, and one they do not names none */
+    #[DataProvider('emptyListProvider')]
+    public function testATemplateTheArgumentsFillNamesItsUriBesideAnEmptyList(string $uri): void
+    {
+        $this->assertContains($this->tag('app://self/rows/taxonomy?ulid=c1'), $this->keys($this->resource->get($uri)));
+
+        $this->resource->put('app://self/rows/taxonomy?ulid=c1');
+        $this->assertFalse($this->isStored($uri, false));
     }
 
     public function testAnArgumentOmittedFromTheQueryExpandsFromItsDefault(): void
@@ -301,6 +492,8 @@ class DependsOnTest extends TestCase
             'private property' => ['app://self/rows/private-row', 'app://self/rows/private-row ' . PrivateUlid::class, "no 'ulid'"],
             'array property' => ['app://self/rows/array-row', 'app://self/rows/array-row ' . ArrayUlid::class, "'ulid' is array"],
             'variable not an onGet() parameter' => ['app://self/rows/not-parameter?channelId=c1', 'app://self/rows/not-parameter?channelId=c1 onGet()', "'ulid' is not an onGet() parameter"],
+            'variable whose only value is an array' => ['app://self/rows/nested-only', 'app://self/rows/nested-only onGet()', "'user' is array"],
+            'variable in neither the rows, the top level nor the arguments' => ['app://self/rows/row-missing', 'app://self/rows/row-missing onGet()', "'ulid' is not an onGet() parameter"],
             'declared on a resource class' => ['app://self/rows/class-declared?channelId=c1', 'app://self/rows/class-declared?channelId=c1', 'declared on a resource class'],
             'variable bound by #[ResourceParam]' => ['app://self/rows/resource-param-bound', 'app://self/rows/resource-param-bound onGet()', "'channelId' is bound by #[ResourceParam]"],
             'variable bound by #[ResourceParam] and also in the query' => ['app://self/rows/resource-param-bound?channelId=c1', 'app://self/rows/resource-param-bound?channelId=c1 onGet()', "'channelId' is bound by #[ResourceParam]"],
@@ -370,6 +563,14 @@ class DependsOnTest extends TestCase
     private function keys(ResourceObject $ro): array
     {
         return explode(' ', $ro->headers[Header::SURROGATE_KEY] ?? '');
+    }
+
+    /** @return list<string> the tags of rows/item URIs, in order */
+    private function itemTags(ResourceObject $ro): array
+    {
+        $item = $this->tag('app://self/rows/item');
+
+        return array_values(array_filter($this->keys($ro), static fn (string $key): bool => str_starts_with($key, $item)));
     }
 
     private function tag(string $uri): string

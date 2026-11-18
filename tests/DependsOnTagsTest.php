@@ -35,7 +35,7 @@ class DependsOnTagsTest extends TestCase
         $first = new Request($invoker, $child);
         $second = new Request($invoker, clone $child);
         $parent = clone $child;
-        $tags = new DependsOnTags(new UriTag());
+        $tags = new DependsOnTags(new UriTag(), new DependsOnRows());
         $child->body = [$second];
         $parent->body = (object) ['second' => $second, 'nested' => [$first], 'child' => $child, 'first' => $first, 'again' => $second];
 

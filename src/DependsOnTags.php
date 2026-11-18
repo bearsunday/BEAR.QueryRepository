@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\DependsOnNotExpandable;
+use BEAR\RepositoryModule\Annotation\DependsOn;
 use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\ResourceObject;
 use Closure;
@@ -15,6 +16,7 @@ use function array_key_exists;
 use function array_keys;
 use function explode;
 use function in_array;
+use function is_array;
 use function sprintf;
 
 /**
@@ -29,6 +31,7 @@ final readonly class DependsOnTags
 
     public function __construct(
         private UriTagInterface $uriTag,
+        private DependsOnRows $rows,
         private CacheIdentityFactory $identityFactory = new CacheIdentityFactory(),
         private ResourceParamSources|null $resourceParamSources = null,
         CacheTags|null $cacheTags = null,
@@ -142,7 +145,7 @@ final readonly class DependsOnTags
         }
 
         $onGet = DependsOnTemplates::ofOnGet($ro);
-        $tags = $onGet === [] ? null : $this->fromArguments($ro, $onGet);
+        $tags = $onGet === [] ? null : $this->fromResult($ro, $onGet);
         $rows = RowClassWalk::tags($ro->body, $this->uriTag, (string) $ro->uri);
         if ($rows === null) {
             return $tags;
@@ -152,15 +155,15 @@ final readonly class DependsOnTags
     }
 
     /**
-     * The call's arguments are not on the write path, so they are rebuilt from the request query and the defaults
+     * Each declaration expands with the rows it reads and the arguments, which are not on the write path, so they are rebuilt from
+     * the request query and the defaults: {@see DependsOnExpansion::tags()}
      *
-     * @param list<string> $templates
+     * @param list<DependsOn> $declarations
      *
      * @return list<string>
      */
-    private function fromArguments(ResourceObject $ro, array $templates): array
+    private function fromResult(ResourceObject $ro, array $declarations): array
     {
-        $source = sprintf('%s onGet()', (string) $ro->uri);
         $onGet = new ReflectionMethod($ro, 'onGet');
         // #[ResourceParam] fills these from another resource whatever the query holds, so their value cannot be read back
         $bound = array_keys(ResourceParamSources::declared($onGet));
@@ -168,6 +171,10 @@ final readonly class DependsOnTags
         $arguments = [];
         foreach ($onGet->getParameters() as $parameter) {
             $parameters[] = $parameter->name;
+            if (in_array($parameter->name, $bound, true)) {
+                continue;
+            }
+
             $arguments += $this->argument($parameter->name, $ro->uri->query);
             if (! array_key_exists($parameter->name, $arguments) && $parameter->isDefaultValueAvailable()) {
                 /** @psalm-suppress MixedAssignment */
@@ -175,22 +182,11 @@ final readonly class DependsOnTags
             }
         }
 
+        $source = sprintf('%s onGet()', (string) $ro->uri);
+        $expansion = new DependsOnExpansion($this->uriTag, $source, is_array($ro->body) ? $ro->body : [], $arguments, $parameters, $bound);
         $tags = [];
-        foreach ($templates as $template) {
-            foreach (DependsOnTemplates::variables($template) as $variable) {
-                if (! in_array($variable, $parameters, true)) {
-                    throw new DependsOnNotExpandable($source, DependsOnTemplates::declaration($template), sprintf("'%s' is not an onGet() parameter", $variable));
-                }
-
-                if (in_array($variable, $bound, true)) {
-                    throw new DependsOnNotExpandable($source, DependsOnTemplates::declaration($template), sprintf("'%s' is bound by #[ResourceParam]", $variable));
-                }
-            }
-
-            $tag = DependsOnTemplates::tag($this->uriTag, $template, $arguments, $source);
-            if ($tag !== null) {
-                $tags[] = $tag;
-            }
+        foreach ($declarations as $dependsOn) {
+            $tags = [...$tags, ...$expansion->tags($dependsOn, $this->rows->of($ro, $dependsOn->key))];
         }
 
         return $tags;

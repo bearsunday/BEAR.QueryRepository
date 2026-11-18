@@ -49,7 +49,7 @@ class ResourceRepositoryTest extends TestCase
                 new CacheTags(new UriTag(), new BaseUriTag(new UriTag())),
             ),
             new Expiry(0, 0, 0),
-            new CacheDependencyCollector(new DependsOnTags(new UriTag()), new CacheDependency(new UriTag()), new NullSemanticLogger()),
+            new CacheDependencyCollector(new DependsOnTags(new UriTag(), new DependsOnRows()), new CacheDependency(new UriTag()), new NullSemanticLogger()),
             new CacheTags(new UriTag(), new BaseUriTag(new UriTag())),
         );
         $this->ro = new Index();
@@ -131,7 +131,7 @@ class ResourceRepositoryTest extends TestCase
                 new CacheTags(new UriTag(), new BaseUriTag(new UriTag())),
             ),
             new Expiry(0, 0, 0),
-            new CacheDependencyCollector(new DependsOnTags(new UriTag()), new CacheDependency(new UriTag()), new NullSemanticLogger()),
+            new CacheDependencyCollector(new DependsOnTags(new UriTag(), new DependsOnRows()), new CacheDependency(new UriTag()), new NullSemanticLogger()),
             new CacheTags(new UriTag(), new BaseUriTag(new UriTag())),
         );
         $this->assertInstanceOf(Repository::class, $repository);

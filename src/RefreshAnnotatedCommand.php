@@ -14,19 +14,10 @@ use BEAR\Resource\Uri;
 use Override;
 use Ray\Aop\MethodInvocation;
 
-use function array_is_list;
 use function array_unique;
 use function array_values;
-use function explode;
 use function is_array;
-use function preg_match_all;
-use function str_ends_with;
-use function strpos;
-use function substr;
 use function uri_template;
-
-use const PREG_OFFSET_CAPTURE;
-use const PREG_SET_ORDER;
 
 final readonly class RefreshAnnotatedCommand implements CommandInterface
 {
@@ -117,7 +108,7 @@ final readonly class RefreshAnnotatedCommand implements CommandInterface
     }
 
     /**
-     * One URI per element of each list given to an exploded query variable (`{?id*}`, `?id={ids*}`), the product when there are several
+     * One URI per element of each list given to an exploded query variable: {@see DependsOnTemplates::variableSets()}
      *
      * @param array<mixed> $query
      *
@@ -126,66 +117,11 @@ final readonly class RefreshAnnotatedCommand implements CommandInterface
     private function getUris(ResourceObject $ro, AbstractCommand $annotation, array $query): array
     {
         $body = is_array($ro->body) ? $ro->body : [];
-        $query = $body + $query;
-        $variableSets = [$query];
-        foreach ($this->explodedQueryNames($annotation->uri) as $name) {
-            if (isset($query[$name]) && is_array($query[$name]) && array_is_list($query[$name])) {
-                $variableSets = $this->fanOut($variableSets, $name, $query[$name]);
-            }
-        }
-
         $uris = [];
-        foreach ($variableSets as $variables) {
+        foreach (DependsOnTemplates::variableSets($annotation->uri, $body + $query) as $variables) {
             $uris[] = uri_template($annotation->uri, $variables);
         }
 
         return array_values(array_unique($uris));
-    }
-
-    /**
-     * @param list<array<mixed>> $variableSets
-     * @param list<mixed>        $values
-     *
-     * @return list<array<mixed>>
-     */
-    private function fanOut(array $variableSets, string $name, array $values): array
-    {
-        $expanded = [];
-        foreach ($variableSets as $variables) {
-            /** @psalm-suppress MixedAssignment */
-            foreach ($values as $value) {
-                // A null would drop the variable, and the bare URI's group tag reaches every variant.
-                if ($value === null) {
-                    continue;
-                }
-
-                $expanded[] = [$name => $value] + $variables;
-            }
-        }
-
-        return $expanded;
-    }
-
-    /** @return list<string> */
-    private function explodedQueryNames(string $template): array
-    {
-        preg_match_all('/\{([+#.\/;?&]?)([^}]+)\}/', $template, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE);
-        $queryStart = strpos($template, '?');
-        $names = [];
-        foreach ($matches as $match) {
-            $operator = $match[1][0];
-            $inQuery = $operator === '?' || $operator === '&' || ($operator === '' && $queryStart !== false && $match[0][1] > $queryStart);
-            if (! $inQuery) {
-                continue;
-            }
-
-            foreach (explode(',', $match[2][0]) as $varSpec) {
-                if (str_ends_with($varSpec, '*')) {
-                    $names[] = substr($varSpec, 0, -1);
-                }
-            }
-        }
-
-        return array_values(array_unique($names));
     }
 }

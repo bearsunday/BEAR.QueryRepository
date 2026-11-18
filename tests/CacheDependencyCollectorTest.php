@@ -41,7 +41,7 @@ class CacheDependencyCollectorTest extends TestCase
         };
         $parent->uri = new Uri('app://self/parent');
         $parent->body = ['scalar', $child, [$request], $request];
-        $tags = new DependsOnTags(new UriTag());
+        $tags = new DependsOnTags(new UriTag(), new DependsOnRows());
         $dependency = new CacheDependency(new UriTag());
         $logger = new NullSemanticLogger();
 
@@ -81,7 +81,7 @@ class CacheDependencyCollectorTest extends TestCase
         $parent->body = [new Request($invoker, $hole), new Request($invoker, $material)];
         $keys = new SurrogateKeys($parent->uri);
 
-        (new CacheDependencyCollector(new DependsOnTags(new UriTag()), new CacheDependency(new UriTag()), new NullSemanticLogger()))->collect($parent, $keys);
+        (new CacheDependencyCollector(new DependsOnTags(new UriTag(), new DependsOnRows()), new CacheDependency(new UriTag()), new NullSemanticLogger()))->collect($parent, $keys);
 
         $this->assertSame(0, $invoker->calls);
         $this->assertSame('_material_ grp-_material_ material-data', $parent->headers[Header::SURROGATE_KEY]);

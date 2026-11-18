@@ -8,14 +8,14 @@ use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\DependsOn;
 use BEAR\Resource\ResourceObject;
 
-/** An onGet() declaration whose variable is a key of the rows, not a parameter */
+/** An onGet() declaration whose variable is neither a key of the body nor a parameter */
 #[Cacheable]
 class NotParameter extends ResourceObject
 {
     #[DependsOn(uri: 'app://self/rows/article?ulid={ulid}')]
     public function onGet(string $channelId): static
     {
-        $this->body = [['ulid' => 'a1'], ['ulid' => $channelId]];
+        $this->body = ['channel' => $channelId];
 
         return $this;
     }
