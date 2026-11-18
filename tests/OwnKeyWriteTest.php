@@ -117,7 +117,7 @@ class OwnKeyWriteTest extends TestCase
         $this->assertSame(1, DCRefreshPurge::$gets, 'only the refresh ran onGet()');
         $tree = $this->flushAndValidate($this->logger);
         $this->assertSame(
-            ['{"uri":"page://self/dep/level-two"}', '{"uri":"page://self/mx/DCRefreshPurge"}'],
+            ['{"uri":"page://self/mx/DCRefreshPurge"}', '{"uri":"page://self/dep/level-two"}'],
             self::eventContextsJsonOf($tree, 'purge'),
             'its own key is purged once, by the donut command',
         );

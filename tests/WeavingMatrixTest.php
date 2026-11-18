@@ -42,7 +42,8 @@ class WeavingMatrixTest extends TestCase
      * resource's own key, which whatever embedded the resource holds.
      * `CRPurge` carries two interceptors with different jobs - `RefreshInterceptor` purges the URI
      * the attribute names, `DonutCommandInterceptor` refreshes the resource - so two scopes are
-     * correct there and nowhere else. `CARefresh` shows `#[RefreshCache]` adding nothing to a
+     * correct there and on `DCRefreshPurge`, which carries them in the same order: the query is
+     * matched before the named URI is purged. `CARefresh` shows `#[RefreshCache]` adding nothing to a
      * `#[Cacheable]` class: `CommandInterceptor` already purges and regenerates, and weaving the
      * donut command interceptor beside it did the same work twice.
      *
@@ -64,7 +65,7 @@ class WeavingMatrixTest extends TestCase
             'DCNone' => [[RefreshInterceptor::class], 1],
             'DCPurge' => [[RefreshInterceptor::class], 1],
             'DCRefresh' => [[DonutCommandInterceptor::class], 1],
-            'DCRefreshPurge' => [[DonutCommandInterceptor::class, RefreshInterceptor::class], 2],
+            'DCRefreshPurge' => [[RefreshInterceptor::class, DonutCommandInterceptor::class], 2],
             'DCMR' => [[RefreshInterceptor::class], 1],
         ];
         $cases = [];

@@ -103,9 +103,11 @@ final class DonutCacheModule extends AbstractModule
             ),
             [DonutCommandInterceptor::class],
         );
+        // Not an annotation matcher alone, which is woven in attribute order, outside RefreshInterceptor: in binding
+        // order, the query is matched before a #[Purge] beside #[RefreshCache] runs, as on a #[CacheableResponse] class
         $this->bindInterceptor(
             $writeNotDeclared,
-            $this->matcher->annotatedWith(RefreshCache::class),
+            $this->matcher->logicalAnd($this->matcher->annotatedWith(RefreshCache::class), $this->matcher->any()),
             [DonutCommandInterceptor::class],
         );
     }

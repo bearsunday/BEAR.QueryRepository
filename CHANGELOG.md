@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A write to a `#[Cacheable]` resource whose `onGet()` reads an argument through `#[ResourceParam]` no longer fails with `UnmatchedQuery` when its query lacks that argument, which is not in the URI a GET is stored under; its entry is purged and read again.
 - A POST that cannot address its own key no longer writes the values it was sent into the cache log: `cache_error` records its URI without the query, and the `UnmatchedQuery` message names the missing `onGet()` parameter instead of quoting the query.
 - A write whose query carries `null` for an `onGet()` parameter that allows null now addresses its own key, as BEAR.Resource binds that parameter; the key was taken as missing, so the write threw `UnmatchedQuery` or skipped its own key.
+- A PUT, PATCH or DELETE handler with both `#[RefreshCache]` and `#[Purge]`/`#[Refresh]`, on a class that is neither `#[Cacheable]` nor `#[CacheableResponse]`, whose query lacks a parameter its `onGet()` requires now throws `UnmatchedQuery` before the URIs it names are purged, as on a `#[CacheableResponse]` class: `#[RefreshCache]` is woven inside `RefreshInterceptor`, so the resource is refreshed before those URIs are purged.
 
 ## [1.20.2] - 2026-11-13
 

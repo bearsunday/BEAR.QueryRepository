@@ -94,4 +94,46 @@ class DonutUnmatchedQueryRefreshTest extends TestCase
 
         $this->assertNotNull($this->repository->get($dest), 'DonutCommandInterceptor throws inside RefreshInterceptor, so #[Purge] does not run');
     }
+
+    /** A #[RefreshCache] write keeps the same promise: its #[Purge] runs only once its query addresses onGet() */
+    public function testARefreshCachePutThatThrowsDoesNotRunThePurgeWrittenOnIt(): void
+    {
+        $dest = $this->storeRefreshDest();
+
+        try {
+            $this->resource->put('page://self/html/mismatched-refresh-cache-writer', ['title' => 'new']);
+            $this->fail('a PUT whose query lacks onGet()\'s required parameter throws');
+        } catch (UnmatchedQuery) {
+        }
+
+        $this->assertNotNull($this->repository->get($dest), 'the PUT failed before its #[Purge] ran');
+    }
+
+    public function testARefreshCachePutWhoseQueryAddressesOnGetRunsThePurgeWrittenOnIt(): void
+    {
+        $dest = $this->storeRefreshDest();
+
+        $this->resource->put('page://self/html/mismatched-refresh-cache-writer', ['id' => '1', 'title' => 'new']);
+
+        $this->assertNull($this->repository->get($dest));
+    }
+
+    public function testARefreshCachePostRunsThePurgeWrittenOnIt(): void
+    {
+        $dest = $this->storeRefreshDest();
+
+        $ro = $this->resource->post('page://self/html/mismatched-refresh-cache-writer', ['title' => 'new']);
+
+        $this->assertSame(200, $ro->code);
+        $this->assertNull($this->repository->get($dest));
+    }
+
+    private function storeRefreshDest(): Uri
+    {
+        $dest = new Uri('app://self/refresh-dest?id=1');
+        $this->repository->put($this->resource->get('app://self/refresh-dest', ['id' => '1']));
+        $this->assertNotNull($this->repository->get($dest));
+
+        return $dest;
+    }
 }
