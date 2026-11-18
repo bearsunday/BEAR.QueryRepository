@@ -13,6 +13,7 @@ use BEAR\Resource\ResourceObject;
 class BodyRows extends ResourceObject
 {
     #[DependsOn(uri: 'app://self/rows/item?id={id}')]
+    #[DependsOn(uri: 'app://self/rows/shelf')]
     public function onGet(): static
     {
         $this->body = [['id' => 1, 'title' => 'aaa'], ['id' => 2, 'title' => 'bbb']];

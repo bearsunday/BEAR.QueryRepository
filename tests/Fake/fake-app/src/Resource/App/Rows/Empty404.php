@@ -12,6 +12,7 @@ class Empty404 extends ResourceObject
 {
     #[DependsOn(uri: 'app://self/rows/taxonomy?ulid={channelId}')]
     #[DependsOn(uri: 'app://self/rows/item?id={id}')]
+    #[DependsOn(uri: 'app://self/rows/shelf')]
     public function onGet(string $channelId): static
     {
         unset($channelId);

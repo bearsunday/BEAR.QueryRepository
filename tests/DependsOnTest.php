@@ -282,6 +282,25 @@ class DependsOnTest extends TestCase
         }
     }
 
+    /** @return array<string, array{0: string}> */
+    public static function constantUriProvider(): array
+    {
+        return [
+            'a list of array rows' => ['app://self/rows/body-rows'],
+            'one object' => ['app://self/rows/body-object'],
+            'an IteratorAggregate of objects' => ['app://self/rows/body-iterable'],
+            'an empty list' => ['app://self/rows/empty-body?channelId=c1'],
+            'a page embedding a 404 with a null body' => ['app://self/rows/page404'],
+        ];
+    }
+
+    /** A URI without a variable is named once whatever the body holds */
+    #[DataProvider('constantUriProvider')]
+    public function testAUriWithoutAVariableIsNamedWhateverTheBodyHolds(string $uri): void
+    {
+        $this->assertSame(1, array_count_values($this->keys($this->resource->get($uri)))[$this->tag('app://self/rows/shelf')] ?? 0);
+    }
+
     /** A variable the row lacks is read from the body's top level, then from the arguments */
     public function testAVariableTheRowLacksIsReadFromTheTopLevelThenTheArguments(): void
     {

@@ -14,6 +14,7 @@ use FakeVendor\HelloWorld\Entity\Entry;
 class BodyObject extends ResourceObject
 {
     #[DependsOn(uri: 'app://self/rows/item?id={id}')]
+    #[DependsOn(uri: 'app://self/rows/shelf')]
     public function onGet(): static
     {
         $this->body = new Entry(7, 'ggg');

@@ -15,6 +15,7 @@ use FakeVendor\HelloWorld\Entity\EntryList;
 class BodyIterable extends ResourceObject
 {
     #[DependsOn(uri: 'app://self/rows/item?id={id}')]
+    #[DependsOn(uri: 'app://self/rows/shelf')]
     public function onGet(): static
     {
         $this->body = new EntryList([new Entry(1, 'aaa'), new Entry(2, 'bbb')]);
