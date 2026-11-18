@@ -210,19 +210,16 @@ final readonly class DependsOnTags
     }
 
     /**
-     * The rows under the key: each element of a list (an array list, or a Traversable read with foreach), or the array or object
-     * itself. An object row is read as `(array)`. Without a key, the body's top level is the one row.
+     * The rows under the key, or in the body itself without a key: each array or object of a list (an array list, or a Traversable
+     * read with foreach), or the array or object itself. An object row is read as `(array)`. Without a key, a body that holds no
+     * row is the one row with no values, so its variables are read from the top level and the arguments.
      *
      * @return list<array<array-key, mixed>>
      */
     private function rows(mixed $body, string|null $key): array
     {
-        if ($key === null) {
-            return [[]];
-        }
-
         /** @var mixed $value */
-        $value = is_array($body) && array_key_exists($key, $body) ? $body[$key] : null;
+        $value = $key === null ? $body : (is_array($body) && array_key_exists($key, $body) ? $body[$key] : null);
         $isList = is_array($value) ? array_is_list($value) : $value instanceof Traversable;
         if (! $isList && (is_array($value) || is_object($value))) {
             return [(array) $value];
@@ -236,7 +233,7 @@ final readonly class DependsOnTags
             }
         }
 
-        return $rows;
+        return $rows === [] && $key === null ? [[]] : $rows;
     }
 
     /**

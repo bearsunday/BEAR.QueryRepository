@@ -121,7 +121,7 @@ PUT taxonomy?ulid=c1 / article?ulid=a3 / taxonomy?ulid=s1 → the page embedding
 PUT article?ulid=a7 → the page stays stored
 ```
 
-**Test:** `DependsOnTest` — rows under a key (arrays, objects in a `Traversable`, one object, an empty list), a variable the row lacks read from the top level and the arguments, a top-level scalar or list of IDs without a key, under the query's name or another, a value read from the body then the arguments, the body over an argument, a `#[ResourceParam]` value in the body, the four cache declaration shapes, pages through zero, one and two uncached resources, a 404 list, a hole, defaults, snake_case queries, null and Stringable values, cycles, inheritance, a doubly declared URI, and each reason of `DependsOnNotExpandable`
+**Test:** `DependsOnTest` — rows under a key (arrays, objects in a `Traversable`, one object, an empty list), rows that are the body itself without a key (one object, an `IteratorAggregate` of objects, a list of arrays), a variable the row lacks read from the top level and the arguments, a top-level scalar or list of IDs without a key, under the query's name or another, a value read from the body then the arguments, the body over an argument, a `#[ResourceParam]` value in the body, the four cache declaration shapes, pages through zero, one and two uncached resources, a 404 list, a hole, defaults, snake_case queries, null and Stringable values, cycles, inheritance, a doubly declared URI, and each reason of `DependsOnNotExpandable`
 
 ### Resources Read Through `#[ResourceParam]`
 
