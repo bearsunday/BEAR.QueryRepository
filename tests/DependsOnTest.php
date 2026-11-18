@@ -329,13 +329,26 @@ class DependsOnTest extends TestCase
         $this->assertSame($rows, $ro->body->getArrayCopy());
     }
 
-    public function testRowsUnderAKeyThatCanBeReadOnceStayInTheBody(): void
+    /** @return array<string, array{0: string}> */
+    public static function oneShotRowsProvider(): array
     {
-        $ro = $this->resource->get('app://self/rows/generator-rows');
+        return [
+            'a generator' => ['app://self/rows/generator-rows'],
+            'a generator that yields the same key twice, kept as a list' => ['app://self/rows/generator-repeated-keys'],
+        ];
+    }
+
+    #[DataProvider('oneShotRowsProvider')]
+    public function testRowsUnderAKeyThatCanBeReadOnceStayInTheBody(string $uri): void
+    {
+        $ro = $this->resource->get($uri);
         $this->assertSame([$this->tag('app://self/rows/item?id=1'), $this->tag('app://self/rows/item?id=2')], $this->itemTags($ro));
         $this->assertIsArray($ro->body);
         $this->assertInstanceOf(ArrayIterator::class, $ro->body['articles']);
         $this->assertSame([['id' => 1], ['id' => 2]], $ro->body['articles']->getArrayCopy());
+
+        $this->resource->put('app://self/rows/item?id=1');
+        $this->assertFalse($this->isStored($uri, false));
     }
 
     /** A variable the row lacks is read from the body's top level, then from the arguments */

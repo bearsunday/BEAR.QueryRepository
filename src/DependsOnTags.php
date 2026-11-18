@@ -27,7 +27,6 @@ use function in_array;
 use function is_array;
 use function is_iterable;
 use function is_object;
-use function iterator_to_array;
 use function sprintf;
 
 /**
@@ -264,7 +263,7 @@ final readonly class DependsOnTags
 
     /**
      * The rows under the key, or the body itself without a key: each array or object of a list, or the array or object itself, read
-     * as `(array)`. A Traversable that may not rewind is read once and put back as an ArrayIterator with its keys.
+     * as `(array)`. A Traversable that may not rewind is read once and put back as an ArrayIterator: {@see self::readOnce()}.
      *
      * @return list<array<array-key, mixed>>
      */
@@ -273,7 +272,7 @@ final readonly class DependsOnTags
         /** @var mixed $value */
         $value = $key === null ? $ro->body : (is_array($ro->body) && array_key_exists($key, $ro->body) ? $ro->body[$key] : null);
         if ($value instanceof Traversable && ! $value instanceof IteratorAggregate && ! $value instanceof ArrayIterator) {
-            $value = new ArrayIterator(iterator_to_array($value, preserve_keys: true));
+            $value = $this->readOnce($value);
             if ($key === null) {
                 $ro->body = $value;
             } elseif (is_array($ro->body)) {
@@ -295,6 +294,30 @@ final readonly class DependsOnTags
         }
 
         return $rows;
+    }
+
+    /**
+     * @param Traversable<mixed, mixed> $iterator
+     *
+     * @return ArrayIterator<array-key, mixed> each value under the key it was yielded with, or as a list when a key repeats, as
+     *                                         `yield from` gives, so that no row is lost
+     */
+    private function readOnce(Traversable $iterator): ArrayIterator
+    {
+        $keyed = [];
+        $list = [];
+        $unique = true;
+        /**
+         * @var array-key $key
+         * @var mixed     $value
+         */
+        foreach ($iterator as $key => $value) {
+            $unique = $unique && ! array_key_exists($key, $keyed);
+            /** @psalm-suppress MixedAssignment */
+            $keyed[$key] = $list[] = $value;
+        }
+
+        return new ArrayIterator($unique ? $keyed : $list);
     }
 
     /**
