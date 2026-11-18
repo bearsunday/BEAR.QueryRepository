@@ -6,9 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\AbstractCacheControl;
 use BEAR\RepositoryModule\Annotation\Cacheable;
-use BEAR\RepositoryModule\Annotation\CacheableResponse;
 use BEAR\RepositoryModule\Annotation\Commands;
-use BEAR\RepositoryModule\Annotation\RefreshCache;
 use BEAR\Resource\ResourceObject;
 use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
 use Override;
@@ -69,18 +67,7 @@ final class CacheableModule extends AbstractModule
                 $this->matcher->subclassesOf(ResourceObject::class),
                 $this->matcher->logicalNot(new CacheableClassMatcher()),
             ),
-            $this->matcher->logicalAnd(
-                new UnsafeMethodMatcher(),
-                $this->matcher->logicalNot(
-                    $this->matcher->logicalOr(
-                        new CommandMethodMatcher(),
-                        $this->matcher->logicalOr(
-                            $this->matcher->annotatedWith(RefreshCache::class),
-                            $this->matcher->annotatedWith(CacheableResponse::class),
-                        ),
-                    ),
-                ),
-            ),
+            new UndeclaredWriteMatcher(),
             [RefreshInterceptor::class],
         );
 
