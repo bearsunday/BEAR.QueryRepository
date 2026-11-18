@@ -20,7 +20,7 @@ use function dirname;
  * The same gap as `UnmatchedQueryRefreshTest`, on the donut command path:
  * `DonutCommandInterceptor::refreshDonutAndState()` calls `MatchQuery` with no catch, inside
  * an `invoke()` whose `try` is `finally`-only. `DonutCacheModule` binds this interceptor to
- * `onPost` too (`commandMethods()`), so a `#[CacheableResponse]` collection POST whose
+ * `onPost` too (`UnsafeMethodMatcher`), so a `#[CacheableResponse]` collection POST whose
  * parameters do not cover `onGet`'s required ones threw uncaught here as well.
  */
 class DonutUnmatchedQueryRefreshTest extends TestCase

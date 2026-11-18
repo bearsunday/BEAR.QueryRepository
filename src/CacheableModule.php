@@ -54,16 +54,7 @@ final class CacheableModule extends AbstractModule
         );
         $this->bindInterceptor(
             $this->matcher->annotatedWith(Cacheable::class),
-            $this->matcher->logicalOr(
-                $this->matcher->startsWith('onPut'),
-                $this->matcher->logicalOr(
-                    $this->matcher->startsWith('onPost'),
-                    $this->matcher->logicalOr(
-                        $this->matcher->startsWith('onPatch'),
-                        $this->matcher->startsWith('onDelete'),
-                    ),
-                ),
-            ),
+            new UnsafeMethodMatcher(),
             [CommandInterceptor::class],
         );
         $this->bindInterceptor(
@@ -88,16 +79,7 @@ final class CacheableModule extends AbstractModule
                 ),
             ),
             $this->matcher->logicalAnd(
-                $this->matcher->logicalOr(
-                    $this->matcher->startsWith('onPut'),
-                    $this->matcher->logicalOr(
-                        $this->matcher->startsWith('onPost'),
-                        $this->matcher->logicalOr(
-                            $this->matcher->startsWith('onPatch'),
-                            $this->matcher->startsWith('onDelete'),
-                        ),
-                    ),
-                ),
+                new UnsafeMethodMatcher(),
                 $this->matcher->logicalNot(
                     $this->matcher->logicalOr(
                         $this->matcher->annotatedWith(Purge::class),

@@ -9,8 +9,6 @@ use BEAR\RepositoryModule\Annotation\CacheableResponse;
 use BEAR\RepositoryModule\Annotation\DonutCache;
 use BEAR\RepositoryModule\Annotation\RefreshCache;
 use Override;
-use Ray\Aop\AbstractMatcher;
-use Ray\Aop\MatcherInterface;
 use Ray\Di\AbstractModule;
 use Ray\Di\Scope;
 
@@ -72,27 +70,8 @@ final class DonutCacheModule extends AbstractModule
 
         $this->bindInterceptor(
             $this->matcher->annotatedWith(CacheableResponse::class),
-            $this->commandMethods($this->matcher),
+            new UnsafeMethodMatcher(),
             [DonutCommandInterceptor::class],
-        );
-    }
-
-    /**
-     * onPost writes too: a POST that changes state must refresh the donut it invalidates
-     *
-     * @see \BEAR\QueryRepository\CacheableModule::installAopModule()
-     */
-    private function commandMethods(MatcherInterface $matcher): AbstractMatcher
-    {
-        return $matcher->logicalOr(
-            $matcher->startsWith('onPut'),
-            $matcher->logicalOr(
-                $matcher->startsWith('onPost'),
-                $matcher->logicalOr(
-                    $matcher->startsWith('onPatch'),
-                    $matcher->startsWith('onDelete'),
-                ),
-            ),
         );
     }
 
@@ -129,7 +108,7 @@ final class DonutCacheModule extends AbstractModule
             $writeNotDeclared,
             $this->matcher->logicalAnd(
                 $this->matcher->annotatedWith(CacheableResponse::class),
-                $this->commandMethods($this->matcher),
+                new UnsafeMethodMatcher(),
             ),
             [DonutCommandInterceptor::class],
         );
