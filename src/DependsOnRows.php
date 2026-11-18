@@ -28,10 +28,10 @@ final class DependsOnRows
      *
      * @return list<array<array-key, mixed>>
      */
-    public static function of(ResourceObject $ro, string|null $key): array
+    public function of(ResourceObject $ro, string|null $key): array
     {
         /** @var mixed $value */
-        $value = self::value($ro, $key);
+        $value = $this->value($ro, $key);
         $isList = is_array($value) ? array_is_list($value) : $value instanceof Traversable;
         if (! $isList) {
             return is_array($value) || is_object($value) ? [(array) $value] : [];
@@ -49,7 +49,7 @@ final class DependsOnRows
     }
 
     /** The value under the key, or the body without one, put back read once when it may not rewind */
-    private static function value(ResourceObject $ro, string|null $key): mixed
+    private function value(ResourceObject $ro, string|null $key): mixed
     {
         /** @var mixed $value */
         $value = $key === null ? $ro->body : (is_array($ro->body) && array_key_exists($key, $ro->body) ? $ro->body[$key] : null);
@@ -57,7 +57,7 @@ final class DependsOnRows
             return $value;
         }
 
-        $value = self::readOnce($value);
+        $value = $this->readOnce($value);
         if ($key === null) {
             $ro->body = $value;
 
@@ -78,7 +78,7 @@ final class DependsOnRows
      * @return ArrayIterator<array-key, mixed> each value under the key it was yielded with, or as a list when a key repeats, as
      *                                         `yield from` gives, so that no row is lost
      */
-    private static function readOnce(Traversable $iterator): ArrayIterator
+    private function readOnce(Traversable $iterator): ArrayIterator
     {
         $keyed = [];
         $list = [];

@@ -31,6 +31,7 @@ final readonly class DependsOnTags
 
     public function __construct(
         private UriTagInterface $uriTag,
+        private DependsOnRows $rows,
         private CacheIdentityFactory $identityFactory = new CacheIdentityFactory(),
         private ResourceParamSources|null $resourceParamSources = null,
         CacheTags|null $cacheTags = null,
@@ -185,7 +186,7 @@ final readonly class DependsOnTags
         $expansion = new DependsOnExpansion($this->uriTag, $source, is_array($ro->body) ? $ro->body : [], $arguments, $parameters, $bound);
         $tags = [];
         foreach ($declarations as $dependsOn) {
-            $tags = [...$tags, ...$expansion->tags($dependsOn, DependsOnRows::of($ro, $dependsOn->key))];
+            $tags = [...$tags, ...$expansion->tags($dependsOn, $this->rows->of($ro, $dependsOn->key))];
         }
 
         return $tags;

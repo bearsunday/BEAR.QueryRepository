@@ -58,11 +58,11 @@ final readonly class DependsOnExpansion
         $template = $dependsOn->uri;
         $variables = DependsOnTemplates::variables($template);
         $exploded = DependsOnTemplates::explodedQueryNames($template);
-        $fromRows = array_map(static fn (array $row): array => self::expandable($variables, $exploded, $row), $rows);
+        $fromRows = array_map(fn (array $row): array => $this->expandable($variables, $exploded, $row), $rows);
         $carried = $dependsOn->key === null ? [] : array_merge(...$fromRows);
         $outside = array_diff_key($this->top, $carried);
         $given = array_diff_key($this->arguments, $carried);
-        $fallback = self::expandable($variables, $exploded, $outside) + self::expandable($variables, $exploded, $given);
+        $fallback = $this->expandable($variables, $exploded, $outside) + $this->expandable($variables, $exploded, $given);
         if ($rows === []) {
             $named = $dependsOn->key === null && $this->missing($variables, $fallback, $outside + $given) === null;
 
@@ -99,7 +99,7 @@ final readonly class DependsOnExpansion
      * @return array<string, mixed> the values the variables can expand with: a scalar, a Stringable or null, or a list of those under
      *                              an exploded query variable
      */
-    private static function expandable(array $variables, array $exploded, array $values): array
+    private function expandable(array $variables, array $exploded, array $values): array
     {
         $expandable = [];
         foreach ($variables as $variable) {
@@ -110,7 +110,7 @@ final readonly class DependsOnExpansion
             /** @var mixed $value */
             $value = $values[$variable];
             $elements = is_array($value) && array_is_list($value) && in_array($variable, $exploded, true) ? $value : [$value];
-            if (array_filter($elements, static fn (mixed $element): bool => ! self::isValue($element)) === []) {
+            if (array_filter($elements, fn (mixed $element): bool => ! $this->isValue($element)) === []) {
                 /** @psalm-suppress MixedAssignment */
                 $expandable[$variable] = $value;
             }
@@ -119,7 +119,7 @@ final readonly class DependsOnExpansion
         return $expandable;
     }
 
-    private static function isValue(mixed $value): bool
+    private function isValue(mixed $value): bool
     {
         return $value === null || is_scalar($value) || $value instanceof Stringable;
     }
