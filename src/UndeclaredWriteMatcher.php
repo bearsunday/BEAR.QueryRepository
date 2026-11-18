@@ -12,6 +12,9 @@ use ReflectionAttribute;
 use ReflectionClass;
 use ReflectionMethod;
 
+use function in_array;
+use function strtolower;
+
 /**
  * Matches a write (onPut, onPost, onPatch, onDelete) with none of #[Purge], #[Refresh], #[RefreshCache] and
  * #[CacheableResponse]; it matches no class
@@ -20,14 +23,15 @@ use ReflectionMethod;
  */
 final class UndeclaredWriteMatcher extends AbstractMatcher
 {
-    private readonly UnsafeMethodMatcher $write;
+    /** The write handlers BEAR.Resource dispatches to, lowercased; PHP method names are case-insensitive */
+    private const WRITES = ['onput', 'onpost', 'onpatch', 'ondelete'];
+
     private readonly CommandMethodMatcher $command;
 
     public function __construct()
     {
         parent::__construct();
 
-        $this->write = new UnsafeMethodMatcher();
         $this->command = new CommandMethodMatcher();
     }
 
@@ -46,7 +50,7 @@ final class UndeclaredWriteMatcher extends AbstractMatcher
     #[Override]
     public function matchesMethod(ReflectionMethod $method, array $arguments): bool
     {
-        return $this->write->matchesMethod($method, [])
+        return in_array(strtolower($method->name), self::WRITES, true)
             && ! $this->command->matchesMethod($method, [])
             && $method->getAttributes(RefreshCache::class, ReflectionAttribute::IS_INSTANCEOF) === []
             && $method->getAttributes(CacheableResponse::class, ReflectionAttribute::IS_INSTANCEOF) === [];

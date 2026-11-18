@@ -38,6 +38,23 @@ class UndeclaredWriteMatcherTest extends TestCase
         );
     }
 
+    public function testMatchesTheHandlerNamesOnlyInAnyCase(): void
+    {
+        $resource = new class {
+            public function onPUT(): void
+            {
+            }
+
+            public function onPostProcess(): void
+            {
+            }
+        };
+        $matcher = new UndeclaredWriteMatcher();
+
+        $this->assertTrue($matcher->matchesMethod(new ReflectionMethod($resource, 'onPUT'), []));
+        $this->assertFalse($matcher->matchesMethod(new ReflectionMethod($resource, 'onPostProcess'), []));
+    }
+
     public function testMatchesNoClass(): void
     {
         /** @var ReflectionClass<object> $class */
