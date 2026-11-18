@@ -78,6 +78,8 @@ final readonly class QueryRepository implements QueryRepositoryInterface
             $this->setCacheDependency($ro);
         }
 
+        $this->cacheTags->tagHeader($ro);
+
         $cacheable = $this->getCacheableAnnotation($ro);
         $httpCache = $this->getHttpCacheAnnotation($ro);
         $storesView = $cacheable instanceof Cacheable && $cacheable->type === 'view';

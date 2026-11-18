@@ -212,6 +212,7 @@ new AkamaiModule();
 ### Other modules
 
 - `CacheVersionModule($version)`: the cache namespace. Deploy with a new version so entries stored by the previous one are not read.
+- `AppSurrogateKeyModule($key)`: every entry is stored with the key and every `Surrogate-Key` carries it, so `invalidateTags([$key])` and a CDN purge by the key clear the whole application. Install it before or after `QueryRepositoryModule`.
 - `StorageExpiryModule($short, $medium, $long)`: the `short`/`medium`/`long` presets (60/3600/86400 by default); bind `Expiry` to change `never` too.
 - `DevEtagModule`: ETags derived from the URI instead of the content, for debugging.
 - `DevQueryRepositoryLogModule` / `ProdQueryRepositoryLogModule`: turn the cache log on (see below).

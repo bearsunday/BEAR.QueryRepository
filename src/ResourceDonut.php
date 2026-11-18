@@ -97,11 +97,12 @@ final class ResourceDonut
      * Answers the page again from what was stored. Whatever fails on the way degrades the hit to a fresh run of the page.
      *
      * @param DependsOnTags|null $dependsOnTags reads what each hole declares as it is rendered again; null reads its #[DependsOn] only
+     * @param CacheTags|null     $cacheTags     the tags each hole and the page's Surrogate-Key take
      */
-    public function refresh(ResourceInterface $resource, ResourceObject $ro, UriTagInterface|null $uriTag = null, DependsOnTags|null $dependsOnTags = null): ResourceObject
+    public function refresh(ResourceInterface $resource, ResourceObject $ro, UriTagInterface|null $uriTag = null, DependsOnTags|null $dependsOnTags = null, CacheTags|null $cacheTags = null): ResourceObject
     {
         try {
-            $etags = new SurrogateKeys($ro->uri, null, $uriTag, null, $dependsOnTags);
+            $etags = new SurrogateKeys($ro->uri, null, $uriTag, $cacheTags, $dependsOnTags);
             if ($this->body === null) {
                 $view = $this->compose($resource, $etags);
                 $ro->headers = $this->headers;

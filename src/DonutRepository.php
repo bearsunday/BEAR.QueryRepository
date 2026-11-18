@@ -164,7 +164,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
 
     private function doPutStatic(ResourceObject $ro, int|null $ttl, int|null $sMaxAge): void
     {
-        $keys = new SurrogateKeys($ro->uri, ($this->baseUriTag)($ro), $this->uriTag, null, $this->dependsOnTags);
+        $keys = new SurrogateKeys($ro->uri, ($this->baseUriTag)($ro), $this->uriTag, $this->cacheTags->withStandardBaseUriTag(), $this->dependsOnTags);
         $this->classifyMaterials($ro, $keys);
         $this->logger->event(new PutDonutContext((string) $ro->uri, $ttl, $sMaxAge));
         $templateKeys = $this->templateKeys($ro, $this->getHeaderKeys($ro));
@@ -189,7 +189,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
 
     private function doPutDonut(ResourceObject $ro, int|null $donutTtl): void
     {
-        $keys = new SurrogateKeys($ro->uri, ($this->baseUriTag)($ro), $this->uriTag, null, $this->dependsOnTags);
+        $keys = new SurrogateKeys($ro->uri, ($this->baseUriTag)($ro), $this->uriTag, $this->cacheTags->withStandardBaseUriTag(), $this->dependsOnTags);
         $this->classifyMaterials($ro, $keys);
         $this->logger->event(new PutDonutContext((string) $ro->uri, $donutTtl, null));
         $templateKeys = $this->templateKeys($ro, $this->getHeaderKeys($ro));
@@ -279,7 +279,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
 
         $this->logger->event(new CacheHitContext('donut'));
         $this->logger->event(new RefreshDonutContext((string) $ro->uri));
-        $donut->refresh($this->resource, $ro, $this->uriTag, $this->dependsOnTags);
+        $donut->refresh($this->resource, $ro, $this->uriTag, $this->dependsOnTags, $this->cacheTags->withStandardBaseUriTag());
         $surrogateKeys = $ro->headers[Header::SURROGATE_KEY] ?? '';
 
         if (! $donut->isCacheble) {

@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - The `purge_skipped` log entry (fields `uri` and `reason`, `unmatched_query`), recorded when a write on a resource without a cache attribute cannot address its own key because its query lacks a required `onGet()` parameter.
+- `AppSurrogateKeyModule($key)` adds the key to every entry this package stores and to every `Surrogate-Key` it sets, so invalidating the key on the server and at the CDN clears the whole application. Install it before or after `QueryRepositoryModule`.
 
 ### Changed
 - Requires `bear/resource` 1.36 or later: a donut hole's links are carried in its `toUri()` fragment.
