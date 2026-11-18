@@ -4,23 +4,30 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use ArrayIterator;
 use BEAR\QueryRepository\Exception\DependsOnNotExpandable;
 use BEAR\RepositoryModule\Annotation\DependsOn;
 use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\ResourceObject;
 use Closure;
 use Generator;
+use IteratorAggregate;
 use ReflectionMethod;
 use Traversable;
 
+use function array_diff_key;
 use function array_is_list;
 use function array_key_exists;
 use function array_keys;
+use function array_map;
+use function array_merge;
 use function explode;
+use function get_debug_type;
 use function in_array;
 use function is_array;
 use function is_iterable;
 use function is_object;
+use function iterator_to_array;
 use function sprintf;
 
 /**
@@ -159,9 +166,10 @@ final readonly class DependsOnTags
 
     /**
      * Each variable is read from the row, then from the body's top level, as #[Link] expands its href, then from the arguments, which
-     * are not on the write path, so they are rebuilt from the request query and the defaults: {@see DependsOn}. A row that lacks a
-     * variable is skipped, and a template no row fills is a mistake. Without a row, as a 404 has, a template the top level and the
-     * arguments fill names its URI, and one they do not names none.
+     * are not on the write path, so they are rebuilt from the request query and the defaults: {@see DependsOn}. A value that cannot
+     * expand counts as absent, so the next source is read. A row that lacks a variable is skipped, and a template no row fills is a
+     * mistake. With `key`, a variable one row carries is read from the rows alone, and no row names no URI; without `key` and without a
+     * row, as a 404 has, a template the top level and the arguments fill names its URI, and one they do not names none.
      *
      * @param list<DependsOn> $declarations
      *
@@ -193,12 +201,22 @@ final readonly class DependsOnTags
         foreach ($declarations as $dependsOn) {
             $template = $dependsOn->uri;
             $variables = DependsOnTemplates::variables($template);
-            $rows = $this->rows($ro->body, $dependsOn->key);
+            $rows = $this->rows($ro, $dependsOn->key);
+            $fromRows = array_map(static fn (array $row): array => DependsOnTemplates::expandable($template, $row), $rows);
+            $carried = $dependsOn->key === null ? [] : array_merge(...$fromRows);
+            $outside = array_diff_key($top, $carried);
+            $given = array_diff_key($arguments, $carried);
+            $fallback = DependsOnTemplates::expandable($template, $outside) + DependsOnTemplates::expandable($template, $given);
+            $rowless = $rows === [];
+            if ($rowless && $dependsOn->key === null) {
+                $rows = $fromRows = [[]];
+            }
+
             $missing = '';
             $expanded = false;
-            foreach ($rows === [] ? [[]] : $rows as $row) {
-                $values = $row + $top + $arguments;
-                $reason = $this->missing($variables, $values, $parameters, $bound);
+            foreach ($rows as $i => $row) {
+                $values = $fromRows[$i] + $fallback;
+                $reason = $this->missing($variables, $values, $row + $outside + $given, $parameters, $bound);
                 if ($reason !== null) {
                     $missing = $reason;
                     continue;
@@ -208,7 +226,7 @@ final readonly class DependsOnTags
                 $tags = [...$tags, ...DependsOnTemplates::tags($this->uriTag, $template, $values, $source)];
             }
 
-            if ($rows !== [] && ! $expanded) {
+            if (! $rowless && ! $expanded) {
                 throw new DependsOnNotExpandable($source, DependsOnTemplates::declaration($template), $missing);
             }
         }
@@ -218,17 +236,22 @@ final readonly class DependsOnTags
 
     /**
      * @param list<string>            $variables
-     * @param array<array-key, mixed> $values
+     * @param array<array-key, mixed> $values     the values that can expand
+     * @param array<array-key, mixed> $read       the values as read
      * @param list<string>            $parameters
      * @param list<string>            $bound
      *
      * @return string|null why a variable has no value; null when each has one
      */
-    private function missing(array $variables, array $values, array $parameters, array $bound): string|null
+    private function missing(array $variables, array $values, array $read, array $parameters, array $bound): string|null
     {
         foreach ($variables as $variable) {
             if (array_key_exists($variable, $values)) {
                 continue;
+            }
+
+            if (array_key_exists($variable, $read)) {
+                return sprintf("'%s' is %s", $variable, get_debug_type($read[$variable]));
             }
 
             if (! in_array($variable, $parameters, true)) {
@@ -244,14 +267,24 @@ final readonly class DependsOnTags
     /**
      * The rows under the key, or in the body itself without a key: each array or object of a list (an array list, or a Traversable
      * read with foreach), or the array or object itself. An object row is read as `(array)`. A body or value that is neither, such
-     * as the null of a 404, or an empty list, holds none.
+     * as the null of a 404, or an empty list, holds none. A Traversable that may not rewind, such as a Generator, is read once and
+     * put back as an ArrayIterator with its keys, so the next declaration and the response read the same rows.
      *
      * @return list<array<array-key, mixed>>
      */
-    private function rows(mixed $body, string|null $key): array
+    private function rows(ResourceObject $ro, string|null $key): array
     {
         /** @var mixed $value */
-        $value = $key === null ? $body : (is_array($body) && array_key_exists($key, $body) ? $body[$key] : null);
+        $value = $key === null ? $ro->body : (is_array($ro->body) && array_key_exists($key, $ro->body) ? $ro->body[$key] : null);
+        if ($value instanceof Traversable && ! $value instanceof IteratorAggregate && ! $value instanceof ArrayIterator) {
+            $value = new ArrayIterator(iterator_to_array($value, preserve_keys: true));
+            if ($key === null) {
+                $ro->body = $value;
+            } elseif (is_array($ro->body)) {
+                $ro->body[$key] = $value;
+            }
+        }
+
         $isList = is_array($value) ? array_is_list($value) : $value instanceof Traversable;
         if (! $isList && (is_array($value) || is_object($value))) {
             return [(array) $value];

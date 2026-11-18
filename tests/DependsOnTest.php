@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use ArrayIterator;
 use BEAR\QueryRepository\Exception\DependsOnNotExpandable;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceInterface;
@@ -250,12 +251,15 @@ class DependsOnTest extends TestCase
             'without a key, a body that is an IteratorAggregate of object rows' => ['app://self/rows/body-iterable', [1, 2]],
             'without a key, a body that is a list of array rows' => ['app://self/rows/body-rows', [1, 2]],
             'an empty list of rows' => ['app://self/rows/empty-rows?channelId=c1', []],
+            'an empty list of rows under a key, beside an argument of the same name' => ['app://self/rows/category?id=3', []],
+            'a row without the variable, beside an argument of the same name, is skipped' => ['app://self/rows/category?id=9', [1, 2]],
             'without a key, an empty body' => ['app://self/rows/empty-body?channelId=c1', []],
             'without a key, a top-level scalar' => ['app://self/rows/top-level-id', [5]],
             'without a key, {?id*} and a top-level list under id' => ['app://self/rows/body-list', [1, 2, 3, 5]],
             'without a key, ?id={ids*} and a top-level list under ids' => ['app://self/rows/renamed-list', [1, 2, 3, 5]],
             'without a key, an empty list' => ['app://self/rows/sparse-list?shape=empty', []],
             'without a key, a list with a null' => ['app://self/rows/sparse-list?shape=null', [1]],
+            'without a key, an array under the variable yields to the argument' => ['app://self/rows/nested-user?user=7', [7]],
         ];
     }
 
@@ -299,6 +303,39 @@ class DependsOnTest extends TestCase
     public function testAUriWithoutAVariableIsNamedWhateverTheBodyHolds(string $uri): void
     {
         $this->assertSame(1, array_count_values($this->keys($this->resource->get($uri)))[$this->tag('app://self/rows/shelf')] ?? 0);
+    }
+
+    /** @return array<string, array{0: string, 1: array<array-key, array{id: int}>}> uri, the rows the body holds */
+    public static function oneShotBodyProvider(): array
+    {
+        return [
+            'a generator under list keys' => ['app://self/rows/generator-body', [['id' => 1], ['id' => 2]]],
+            'a generator under keys of its own' => ['app://self/rows/generator-body?keyed=1', ['a' => ['id' => 1], 'b' => ['id' => 2]]],
+        ];
+    }
+
+    /**
+     * A body that can be read only once is read once for every declaration, and the response holds the same rows and keys
+     *
+     * @param array<array-key, array{id: int}> $rows
+     */
+    #[DataProvider('oneShotBodyProvider')]
+    public function testABodyThatCanBeReadOnceKeepsItsRowsForEachDeclaration(string $uri, array $rows): void
+    {
+        $ro = $this->resource->get($uri);
+        $this->assertSame([$this->tag('app://self/rows/item?id=1'), $this->tag('app://self/rows/item?id=2')], $this->itemTags($ro));
+        $this->assertContains($this->tag('app://self/rows/shelf'), $this->keys($ro));
+        $this->assertInstanceOf(ArrayIterator::class, $ro->body);
+        $this->assertSame($rows, $ro->body->getArrayCopy());
+    }
+
+    public function testRowsUnderAKeyThatCanBeReadOnceStayInTheBody(): void
+    {
+        $ro = $this->resource->get('app://self/rows/generator-rows');
+        $this->assertSame([$this->tag('app://self/rows/item?id=1'), $this->tag('app://self/rows/item?id=2')], $this->itemTags($ro));
+        $this->assertIsArray($ro->body);
+        $this->assertInstanceOf(ArrayIterator::class, $ro->body['articles']);
+        $this->assertSame([['id' => 1], ['id' => 2]], $ro->body['articles']->getArrayCopy());
     }
 
     /** A variable the row lacks is read from the body's top level, then from the arguments */
@@ -441,6 +478,7 @@ class DependsOnTest extends TestCase
             'private property' => ['app://self/rows/private-row', 'app://self/rows/private-row ' . PrivateUlid::class, "no 'ulid'"],
             'array property' => ['app://self/rows/array-row', 'app://self/rows/array-row ' . ArrayUlid::class, "'ulid' is array"],
             'variable not an onGet() parameter' => ['app://self/rows/not-parameter?channelId=c1', 'app://self/rows/not-parameter?channelId=c1 onGet()', "'ulid' is not an onGet() parameter"],
+            'variable whose only value is an array' => ['app://self/rows/nested-only', 'app://self/rows/nested-only onGet()', "'user' is array"],
             'variable in neither the rows, the top level nor the arguments' => ['app://self/rows/row-missing', 'app://self/rows/row-missing onGet()', "'ulid' is not an onGet() parameter"],
             'declared on a resource class' => ['app://self/rows/class-declared?channelId=c1', 'app://self/rows/class-declared?channelId=c1', 'declared on a resource class'],
             'variable bound by #[ResourceParam]' => ['app://self/rows/resource-param-bound', 'app://self/rows/resource-param-bound onGet()', "'channelId' is bound by #[ResourceParam]"],

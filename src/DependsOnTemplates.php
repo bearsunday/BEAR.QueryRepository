@@ -18,6 +18,7 @@ use function array_unique;
 use function array_values;
 use function explode;
 use function get_debug_type;
+use function in_array;
 use function is_array;
 use function is_scalar;
 use function preg_match_all;
@@ -162,6 +163,38 @@ final class DependsOnTemplates
         }
 
         return $uriTag(new Uri(uri_template($template, $variables)));
+    }
+
+    /**
+     * @param array<array-key, mixed> $values
+     *
+     * @return array<string, mixed> the values the template's variables can expand with: a scalar, a Stringable or null, or a list of
+     *                              those under an exploded query variable
+     */
+    public static function expandable(string $template, array $values): array
+    {
+        $exploded = self::explodedQueryNames($template);
+        $expandable = [];
+        foreach (self::variables($template) as $variable) {
+            if (! array_key_exists($variable, $values)) {
+                continue;
+            }
+
+            /** @var mixed $value */
+            $value = $values[$variable];
+            $elements = is_array($value) && array_is_list($value) && in_array($variable, $exploded, true) ? $value : [$value];
+            /** @var mixed $element */
+            foreach ($elements as $element) {
+                if ($element !== null && ! is_scalar($element) && ! $element instanceof Stringable) {
+                    continue 2;
+                }
+            }
+
+            /** @psalm-suppress MixedAssignment */
+            $expandable[$variable] = $value;
+        }
+
+        return $expandable;
     }
 
     /** @return list<string> the RFC 6570 variable names in the template */
