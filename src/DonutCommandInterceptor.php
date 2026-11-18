@@ -41,6 +41,7 @@ final readonly class DonutCommandInterceptor implements MethodInterceptor
         private MatchQueryInterface $matchQuery,
         private FactoryInterface $factory,
         private InvokerInterface $invoker,
+        private UnsafeMethodMatcher $unsafeMethod,
         #[CacheLog]
         private SemanticLoggerInterface $logger = new NullSemanticLogger(),
         private CommandQuery $commandQuery = new CommandQuery(),
@@ -64,7 +65,7 @@ final readonly class DonutCommandInterceptor implements MethodInterceptor
                 } catch (UnmatchedQuery $e) {
                     // onPost-bound classes often lack a parameter onGet requires (#219); the
                     // write already ran, so this is recorded, not thrown. Other methods still throw.
-                    if (! UnsafeMethodMatcher::isPost($invocation->getMethod())) {
+                    if (! $this->unsafeMethod->isPost($invocation->getMethod())) {
                         throw $e;
                     }
 

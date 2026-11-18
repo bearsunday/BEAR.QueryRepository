@@ -28,7 +28,7 @@ final class UnsafeMethodMatcher extends AbstractMatcher
     private const WRITES = ['onput', self::POST, 'onpatch', 'ondelete'];
 
     /** Whether the method is the POST handler, in any letter case */
-    public static function isPost(ReflectionMethod $method): bool
+    public function isPost(ReflectionMethod $method): bool
     {
         return strtolower($method->name) === self::POST;
     }

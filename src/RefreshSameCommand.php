@@ -26,6 +26,7 @@ final readonly class RefreshSameCommand implements CommandInterface
         private MatchQueryInterface $matchQuery,
         private FactoryInterface $factory,
         private InvokerInterface $invoker,
+        private UnsafeMethodMatcher $unsafeMethod,
         #[CacheLog]
         private SemanticLoggerInterface $logger = new NullSemanticLogger(),
         private CommandQuery $commandQuery = new CommandQuery(),
@@ -49,7 +50,7 @@ final readonly class RefreshSameCommand implements CommandInterface
             // onPut/onPatch/onDelete keep throwing: those act on an entity onGet already
             // addresses, so a required parameter missing there is a real signature mismatch, not
             // this case (BehaviorTest::testUnMatchQuery pins that).
-            if (! UnsafeMethodMatcher::isPost($invocation->getMethod())) {
+            if (! $this->unsafeMethod->isPost($invocation->getMethod())) {
                 throw $e;
             }
 
