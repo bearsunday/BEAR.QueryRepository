@@ -165,11 +165,9 @@ final readonly class DependsOnTags
     }
 
     /**
-     * Each variable is read from the row, then from the body's top level, as #[Link] expands its href, then from the arguments, which
-     * are not on the write path, so they are rebuilt from the request query and the defaults: {@see DependsOn}. A value that cannot
-     * expand counts as absent, so the next source is read. A row that lacks a variable is skipped, and a template no row fills is a
-     * mistake. With `key`, a variable one row carries is read from the rows alone, and no row names no URI; without `key` and without a
-     * row, as a 404 has, a template the top level and the arguments fill names its URI, and one they do not names none.
+     * Each variable is read from the row, then the body's top level, then the arguments rebuilt from the request query and the
+     * defaults, past a value that cannot expand; with `key`, one any row holds is read from the rows alone: {@see DependsOn}. A row
+     * that lacks a variable is skipped, and the declaration fails when every row does.
      *
      * @param list<DependsOn> $declarations
      *
@@ -265,10 +263,8 @@ final readonly class DependsOnTags
     }
 
     /**
-     * The rows under the key, or in the body itself without a key: each array or object of a list (an array list, or a Traversable
-     * read with foreach), or the array or object itself. An object row is read as `(array)`. A body or value that is neither, such
-     * as the null of a 404, or an empty list, holds none. A Traversable that may not rewind, such as a Generator, is read once and
-     * put back as an ArrayIterator with its keys, so the next declaration and the response read the same rows.
+     * The rows under the key, or the body itself without a key: each array or object of a list, or the array or object itself, read
+     * as `(array)`. A Traversable that may not rewind is read once and put back as an ArrayIterator with its keys.
      *
      * @return list<array<array-key, mixed>>
      */
