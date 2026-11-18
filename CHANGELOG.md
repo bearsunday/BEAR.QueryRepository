@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - The `purge_skipped` log entry (fields `uri`, the write's URI without its query, and `reason`, `unmatched_query`), recorded when a write on a resource without a cache attribute cannot address its own key because its query lacks a required `onGet()` parameter.
 - `AppSurrogateKeyModule($key)` adds the key to every entry this package stores and to every `Surrogate-Key` it sets, so invalidating the key on the server and at the CDN clears the whole application. Install it before or after `QueryRepositoryModule`.
+- `#[DependsOn(uri: ..., key: ...)]`: `key` names the rows in the body `onGet()` returns, so `#[DependsOn(uri: 'app://self/article?id={id}', key: 'articles')]` with `$this->body['articles'] = [['id' => 1, ...], ['id' => 2, ...]]` depends on `?id=1` and `?id=2`. A list (an array list or a `Traversable`) names one URI per row, one array or object one URI; an object row is read as `(array)`. A variable the row lacks is read from the body's top level, then from the arguments.
 
 ### Changed
 - Requires `bear/resource` 1.36 or later: a donut hole's links are carried in its `toUri()` fragment.
@@ -21,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Deprecated
 - `DependencySkippedContext::NO_ETAG_OR_SURROGATE_KEY` and the `dependency_skipped` schema value `no_etag_or_surrogate_key`: no longer emitted, since an embedded child with a body is always a dependency. They are kept for compatibility with 1.20.2.
-- `#[DependsOn]` on a row class: put the values in the body from `onGet()` instead.
+- `#[DependsOn]` on a row class: put the rows in the body under `key` from `onGet()` instead.
 
 ### Fixed
 - A `#[Cacheable]` page that embeds a `#[CacheableResponse]` or `#[DonutCache]` page which itself embeds a resource is now stored; since 1.17.0 the GET failed with `AbstractRequest::__serialize not supported`, and before that the page was silently not stored. The page carries the tags of the part and of the resource the part embeds, so purging either drops the page.

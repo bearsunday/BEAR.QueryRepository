@@ -41,7 +41,7 @@ final class DependsOnTemplates
     /** @var array<class-string, list<string>> */
     private static array $onClass = [];
 
-    /** @var array<class-string, list<string>> */
+    /** @var array<class-string, list<DependsOn>> */
     private static array $onGet = [];
 
     /**
@@ -63,19 +63,22 @@ final class DependsOnTemplates
         return self::$onClass[$class] = array_values(array_unique($templates));
     }
 
-    /** @return list<string> the templates declared on onGet(), including an onGet() the class overrides */
+    /** @return list<DependsOn> the declarations on onGet(), including an onGet() the class overrides, each URI and key once */
     public static function ofOnGet(ResourceObject $ro): array
     {
         if (isset(self::$onGet[$ro::class])) {
             return self::$onGet[$ro::class];
         }
 
-        $templates = [];
+        $declarations = [];
         for ($ref = new ReflectionClass($ro); $ref !== false && $ref->hasMethod('onGet'); $ref = $ref->getParentClass()) {
-            $templates = [...$templates, ...self::uris($ref->getMethod('onGet')->getAttributes(DependsOn::class))];
+            foreach ($ref->getMethod('onGet')->getAttributes(DependsOn::class) as $attribute) {
+                $dependsOn = $attribute->newInstance();
+                $declarations[$dependsOn->uri . "\n" . (string) $dependsOn->key] ??= $dependsOn;
+            }
         }
 
-        return self::$onGet[$ro::class] = array_values(array_unique($templates));
+        return self::$onGet[$ro::class] = array_values($declarations);
     }
 
     /**

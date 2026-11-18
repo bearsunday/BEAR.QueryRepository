@@ -108,19 +108,20 @@ invalidateTags([uriTag('page://self/html/blog-posting')]) → BlogPosting invali
 
 ### Row Dependencies (`#[DependsOn]`)
 
-A declaration on `onGet()` expands from the body `onGet()` returns, as `#[Link]` does, then from the call's arguments; a list under an exploded query variable names one URI per element. One on a row class (deprecated) expands from each instance's public properties. A write to a declared URI invalidates the resource and every page that embeds it.
+A declaration on `onGet()` expands once per row under its `key`, from the row, then the body's top level, then the call's arguments; without `key`, from the top level, as `#[Link]` does, then the arguments, and a list under an exploded query variable names one URI per element. One on a row class (deprecated) expands from each instance's public properties. A write to a declared URI invalidates the resource and every page that embeds it.
 
 ```text
-BodyList onGet() body ['id' => [1, 2, 3, 5]], #[DependsOn('item{?id*}')] → tags item?id=1, 2, 3, 5
-RenamedList body ['ids' => [1, 2, 3, 5]], #[DependsOn('item?id={ids*}')] → the same tags
-PUT item?id=3 → both invalidated; PUT item?id=4 → both stay stored
+RowList body['articles'] = [['id' => 1, ...], ['id' => 2, ...]], #[DependsOn('item?id={id}', key: 'articles')] → tags item?id=1, 2
+EntryRows body['entries'] = EntryList(Entry(1), Entry(2)), a Traversable of objects → the same tags; Detail body['detail'] = Entry(3) → item?id=3
+BodyList body ['id' => [1, 2, 3, 5]], #[DependsOn('item{?id*}')] → tags item?id=1, 2, 3, 5
+PUT item?id=<a tagged ID> → invalidated; PUT item?id=4 → stays stored
 Plain onGet(channelId) #[DependsOn('taxonomy?ulid={channelId}')], rows Item(a1, s1), Item(a3, s1)
 Item #[DependsOn('article?ulid={ulid}')] #[DependsOn('taxonomy?ulid={seriesId}')]
 PUT taxonomy?ulid=c1 / article?ulid=a3 / taxonomy?ulid=s1 → the page embedding Plain invalidated
 PUT article?ulid=a7 → the page stays stored
 ```
 
-**Test:** `DependsOnTest` — a list of IDs in the body, under the query's name or another, a value read from the body then the arguments, the body over an argument, a `#[ResourceParam]` value in the body, the four cache declaration shapes, pages through zero, one and two uncached resources, a 404 list, a hole, defaults, snake_case queries, null and Stringable values, cycles, inheritance, a doubly declared URI, and each reason of `DependsOnNotExpandable`
+**Test:** `DependsOnTest` — rows under a key (arrays, objects in a `Traversable`, one object, an empty list), a variable the row lacks read from the top level and the arguments, a top-level scalar or list of IDs without a key, under the query's name or another, a value read from the body then the arguments, the body over an argument, a `#[ResourceParam]` value in the body, the four cache declaration shapes, pages through zero, one and two uncached resources, a 404 list, a hole, defaults, snake_case queries, null and Stringable values, cycles, inheritance, a doubly declared URI, and each reason of `DependsOnNotExpandable`
 
 ### Resources Read Through `#[ResourceParam]`
 

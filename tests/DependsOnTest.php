@@ -21,6 +21,7 @@ use Ray\Di\Injector;
 
 use function array_count_values;
 use function array_filter;
+use function array_map;
 use function array_values;
 use function dirname;
 use function explode;
@@ -235,28 +236,65 @@ class DependsOnTest extends TestCase
         $this->assertFalse($this->isStored($uri, false));
     }
 
-    /** @return array<string, array{0: string}> */
-    public static function idListProvider(): array
+    /** @return array<string, array{0: string, 1: list<int>}> uri, the IDs of the items it is tagged with */
+    public static function rowsProvider(): array
     {
         return [
-            "{?id*}, the body's id" => ['app://self/rows/body-list'],
-            "?id={ids*}, the body's ids" => ['app://self/rows/renamed-list'],
+            "array rows under key: 'articles'" => ['app://self/rows/row-list', [1, 2]],
+            "object rows in a Traversable under key: 'entries'" => ['app://self/rows/entry-rows', [1, 2]],
+            "one object row under key: 'detail'" => ['app://self/rows/detail', [3]],
+            'an empty list of rows' => ['app://self/rows/empty-rows?channelId=c1', []],
+            'without a key, a top-level scalar' => ['app://self/rows/top-level-id', [5]],
+            'without a key, {?id*} and a top-level list under id' => ['app://self/rows/body-list', [1, 2, 3, 5]],
+            'without a key, ?id={ids*} and a top-level list under ids' => ['app://self/rows/renamed-list', [1, 2, 3, 5]],
+            'without a key, an empty list' => ['app://self/rows/sparse-list?shape=empty', []],
+            'without a key, a list with a null' => ['app://self/rows/sparse-list?shape=null', [1]],
         ];
     }
 
-    /** As #[Purge] does, an exploded query variable given a list in the body names one URI per element */
-    #[DataProvider('idListProvider')]
-    public function testAListOfIdsInTheBodyNamesOneUriPerId(string $uri): void
+    /**
+     * Each row under the key names one URI from its values, as UriTagInterface::fromAssoc() does, and a list under an exploded query
+     * variable one per element, as #[Purge] does
+     *
+     * @param list<int> $ids
+     */
+    #[DataProvider('rowsProvider')]
+    public function testEachRowOrIdNamesOneUri(string $uri, array $ids): void
     {
-        $keys = $this->keys($this->resource->get($uri));
-        $item = $this->tag('app://self/rows/item');
-        $items = array_values(array_filter($keys, static fn (string $key): bool => str_starts_with($key, $item)));
-        $this->assertSame([$this->tag('app://self/rows/item?id=1'), $this->tag('app://self/rows/item?id=2'), $this->tag('app://self/rows/item?id=3'), $this->tag('app://self/rows/item?id=5')], $items);
+        $expected = array_map(fn (int $id): string => $this->tag("app://self/rows/item?id={$id}"), $ids);
+        $this->assertSame($expected, $this->itemTags($this->resource->get($uri)));
+        $this->assertTrue($this->isStored($uri, false));
 
         $this->resource->put('app://self/rows/item?id=4');
         $this->assertTrue($this->isStored($uri, false), 'a write to an item not in the list must not invalidate it');
 
-        $this->resource->put('app://self/rows/item?id=3');
+        foreach ($ids as $id) {
+            $this->resource->get($uri);
+            $this->resource->put("app://self/rows/item?id={$id}");
+            $this->assertFalse($this->isStored($uri, false));
+        }
+    }
+
+    /** A variable the row lacks is read from the body's top level, then from the arguments */
+    public function testAVariableTheRowLacksIsReadFromTheTopLevelThenTheArguments(): void
+    {
+        $uri = 'app://self/rows/row-fallback?channelId=c2';
+        $keys = $this->keys($this->resource->get($uri));
+        $this->assertSame(1, array_count_values($keys)[$this->tag('app://self/rows/taxonomy?ulid=c1')] ?? 0);
+        $this->assertContains($this->tag('app://self/rows/article?ulid=c2-1'), $keys);
+        $this->assertContains($this->tag('app://self/rows/article?ulid=c2-2'), $keys);
+
+        $this->resource->put('app://self/rows/article?ulid=c2-2');
+        $this->assertFalse($this->isStored($uri, false));
+    }
+
+    /** An empty list has no row, and a template without a key still expands from the arguments */
+    public function testATemplateTheArgumentsFillNamesItsUriBesideAnEmptyList(): void
+    {
+        $uri = 'app://self/rows/empty-rows?channelId=c1';
+        $this->assertContains($this->tag('app://self/rows/taxonomy?ulid=c1'), $this->keys($this->resource->get($uri)));
+
+        $this->resource->put('app://self/rows/taxonomy?ulid=c1');
         $this->assertFalse($this->isStored($uri, false));
     }
 
@@ -368,6 +406,7 @@ class DependsOnTest extends TestCase
             'private property' => ['app://self/rows/private-row', 'app://self/rows/private-row ' . PrivateUlid::class, "no 'ulid'"],
             'array property' => ['app://self/rows/array-row', 'app://self/rows/array-row ' . ArrayUlid::class, "'ulid' is array"],
             'variable not an onGet() parameter' => ['app://self/rows/not-parameter?channelId=c1', 'app://self/rows/not-parameter?channelId=c1 onGet()', "'ulid' is not an onGet() parameter"],
+            'variable in neither the rows, the top level nor the arguments' => ['app://self/rows/row-missing', 'app://self/rows/row-missing onGet()', "'ulid' is not an onGet() parameter"],
             'declared on a resource class' => ['app://self/rows/class-declared?channelId=c1', 'app://self/rows/class-declared?channelId=c1', 'declared on a resource class'],
             'variable bound by #[ResourceParam]' => ['app://self/rows/resource-param-bound', 'app://self/rows/resource-param-bound onGet()', "'channelId' is bound by #[ResourceParam]"],
             'variable bound by #[ResourceParam] and also in the query' => ['app://self/rows/resource-param-bound?channelId=c1', 'app://self/rows/resource-param-bound?channelId=c1 onGet()', "'channelId' is bound by #[ResourceParam]"],
@@ -437,6 +476,14 @@ class DependsOnTest extends TestCase
     private function keys(ResourceObject $ro): array
     {
         return explode(' ', $ro->headers[Header::SURROGATE_KEY] ?? '');
+    }
+
+    /** @return list<string> the tags of rows/item URIs, in order */
+    private function itemTags(ResourceObject $ro): array
+    {
+        $item = $this->tag('app://self/rows/item');
+
+        return array_values(array_filter($this->keys($ro), static fn (string $key): bool => str_starts_with($key, $item)));
     }
 
     private function tag(string $uri): string

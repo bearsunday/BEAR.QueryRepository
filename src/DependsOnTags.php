@@ -5,17 +5,22 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\DependsOnNotExpandable;
+use BEAR\RepositoryModule\Annotation\DependsOn;
 use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\ResourceObject;
 use Closure;
 use Generator;
 use ReflectionMethod;
+use Traversable;
 
+use function array_is_list;
 use function array_key_exists;
 use function array_keys;
 use function explode;
 use function in_array;
 use function is_array;
+use function is_iterable;
+use function is_object;
 use function sprintf;
 
 /**
@@ -153,14 +158,14 @@ final readonly class DependsOnTags
     }
 
     /**
-     * Each variable is read from the body onGet() returned, as #[Link] expands its href, and one the body lacks from the arguments.
-     * The call's arguments are not on the write path, so they are rebuilt from the request query and the defaults.
+     * Each variable is read from the row, then from the body's top level, as #[Link] expands its href, then from the arguments, which
+     * are not on the write path, so they are rebuilt from the request query and the defaults: {@see DependsOn}
      *
-     * @param list<string> $templates
+     * @param list<DependsOn> $declarations
      *
      * @return list<string>
      */
-    private function fromResult(ResourceObject $ro, array $templates): array
+    private function fromResult(ResourceObject $ro, array $declarations): array
     {
         $source = sprintf('%s onGet()', (string) $ro->uri);
         $onGet = new ReflectionMethod($ro, 'onGet');
@@ -177,27 +182,61 @@ final readonly class DependsOnTags
             }
         }
 
-        $body = is_array($ro->body) ? $ro->body : [];
+        $top = is_array($ro->body) ? $ro->body : [];
         $tags = [];
-        foreach ($templates as $template) {
-            foreach (DependsOnTemplates::variables($template) as $variable) {
-                if (array_key_exists($variable, $body)) {
-                    continue;
+        foreach ($declarations as $dependsOn) {
+            $template = $dependsOn->uri;
+            foreach ($this->rows($ro->body, $dependsOn->key) as $row) {
+                $values = $row + $top;
+                foreach (DependsOnTemplates::variables($template) as $variable) {
+                    if (array_key_exists($variable, $values)) {
+                        continue;
+                    }
+
+                    if (! in_array($variable, $parameters, true)) {
+                        throw new DependsOnNotExpandable($source, DependsOnTemplates::declaration($template), sprintf("'%s' is not an onGet() parameter", $variable));
+                    }
+
+                    if (in_array($variable, $bound, true)) {
+                        throw new DependsOnNotExpandable($source, DependsOnTemplates::declaration($template), sprintf("'%s' is bound by #[ResourceParam]", $variable));
+                    }
                 }
 
-                if (! in_array($variable, $parameters, true)) {
-                    throw new DependsOnNotExpandable($source, DependsOnTemplates::declaration($template), sprintf("'%s' is not an onGet() parameter", $variable));
-                }
-
-                if (in_array($variable, $bound, true)) {
-                    throw new DependsOnNotExpandable($source, DependsOnTemplates::declaration($template), sprintf("'%s' is bound by #[ResourceParam]", $variable));
-                }
+                $tags = [...$tags, ...DependsOnTemplates::tags($this->uriTag, $template, $values + $arguments, $source)];
             }
-
-            $tags = [...$tags, ...DependsOnTemplates::tags($this->uriTag, $template, $body + $arguments, $source)];
         }
 
         return $tags;
+    }
+
+    /**
+     * The rows under the key: each element of a list (an array list, or a Traversable read with foreach), or the array or object
+     * itself. An object row is read as `(array)`. Without a key, the body's top level is the one row.
+     *
+     * @return list<array<array-key, mixed>>
+     */
+    private function rows(mixed $body, string|null $key): array
+    {
+        if ($key === null) {
+            return [[]];
+        }
+
+        /** @var mixed $value */
+        $value = is_array($body) && array_key_exists($key, $body) ? $body[$key] : null;
+        $isList = is_array($value) ? array_is_list($value) : $value instanceof Traversable;
+        if (! $isList && (is_array($value) || is_object($value))) {
+            return [(array) $value];
+        }
+
+        $rows = [];
+        /** @var mixed $row */
+        foreach (is_iterable($value) ? $value : [] as $row) {
+            if (is_array($row) || is_object($row)) {
+                $rows[] = (array) $row;
+            }
+        }
+
+        return $rows;
     }
 
     /**
