@@ -103,7 +103,7 @@ operation inside a GET or a command is an ordinary event there instead.
 | `pre_write_cleanup` | `uri` | the writer found a stored entry where it writes and is about to clear it; a write into an empty slot records none |
 | `invalidate` | `tags`, `roPool`, `cdn`, `durationMs` | tags were invalidated, with a result per target |
 | `purge` | `uri` | a URI-targeted bust was requested |
-| `purge_skipped` | `uri`, `reason` | a write on a resource with neither `#[Cacheable]` nor `#[CacheableResponse]` did not invalidate its own key, and why. `uri` is the write's URI. Its `#[Purge]`/`#[Refresh]` still run |
+| `purge_skipped` | `uri`, `reason` | a write on a resource with neither `#[Cacheable]` nor `#[CacheableResponse]` did not invalidate its own key, and why. `uri` is the write's URI without its query, which holds the values the write was sent. Its `#[Purge]`/`#[Refresh]` still run |
 | `put_skipped` | `uri`, `reason`, `code` | a miss was **not** followed by a write, and why |
 | `cache_hit` / `cache_miss` | `layer`, `durationMs` | an inner lookup, always `layer: donut` — whether the donut template was there. `durationMs` is null here: an event has no scope to measure |
 | `cache_error` | `uri`, `operation`, `error`, `exceptionClass` | the cache path threw |
@@ -333,7 +333,7 @@ absence does mean the code decided not to act — that is where the "no silent p
 | | Under PHP-FPM `php://stdout` reaches the pool's output only with `catch_workers_output = yes`; in a container it goes to the collector. Transport, rotation and retention are the host's | |
 | `PsrLogWriter` | the app's PSR-3 logger, tree in `context['log']` | whatever writer it wraps |
 
-A session carries request URIs **with their query strings**, the client's `If-None-Match`, cache
+A session carries request URIs **with their query strings** (a write that cannot address its own key is recorded without its query), the client's `If-None-Match`, cache
 tags, CDN header values and raw exception text. Treat a written session as an application log:
 `LogFileWriter` creates 0700 directories and 0600 files. To scrub or rate-limit, decorate
 `LogWriterInterface` — that is the seam, and it is also the answer to a pool outage, during which

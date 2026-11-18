@@ -69,7 +69,8 @@ final readonly class DonutCommandInterceptor implements MethodInterceptor
                         throw $e;
                     }
 
-                    $this->logger->event(new CacheErrorContext((string) $ro->uri, 'write', $e->getMessage(), $e::class));
+                    // Without the query, which holds the values the write was sent
+                    $this->logger->event(new CacheErrorContext("{$ro->uri->scheme}://{$ro->uri->host}{$ro->uri->path}", 'write', $e->getMessage(), $e::class));
                 }
             }
         } finally {

@@ -43,7 +43,8 @@ final class MatchQuery implements MatchQueryInterface
                     continue;
                 }
 
-                throw new UnmatchedQuery(sprintf('%s %s', $ro->uri->method, (string) $ro->uri));
+                // The parameter named, not the query quoted: a write's query holds the values it was sent
+                throw new UnmatchedQuery(sprintf("%s %s://%s%s has no '%s'", $ro->uri->method, $ro->uri->scheme, $ro->uri->host, $ro->uri->path, $parameter->name));
             }
 
             /** @psalm-suppress MixedAssignment */

@@ -57,6 +57,7 @@ class DonutUnmatchedQueryRefreshTest extends TestCase
         $this->assertNotNull($error, 'the skip is a recorded event, not a silent one');
         $this->assertStringContainsString('"operation":"write"', $error);
         $this->assertStringContainsString('"exceptionClass":"BEAR\\\\QueryRepository\\\\Exception\\\\UnmatchedQuery"', $error);
+        $this->assertStringNotContainsString('title', $error, 'the values the write was sent are not recorded');
     }
 
     public function testPutStillThrowsForAGenuineMismatch(): void

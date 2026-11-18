@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- The `purge_skipped` log entry (fields `uri` and `reason`, `unmatched_query`), recorded when a write on a resource without a cache attribute cannot address its own key because its query lacks a required `onGet()` parameter.
+- The `purge_skipped` log entry (fields `uri`, the write's URI without its query, and `reason`, `unmatched_query`), recorded when a write on a resource without a cache attribute cannot address its own key because its query lacks a required `onGet()` parameter.
 - `AppSurrogateKeyModule($key)` adds the key to every entry this package stores and to every `Surrogate-Key` it sets, so invalidating the key on the server and at the CDN clears the whole application. Install it before or after `QueryRepositoryModule`.
 
 ### Changed
@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - A `#[Cacheable]` page that embeds a `#[CacheableResponse]` or `#[DonutCache]` page which itself embeds a resource is now stored; since 1.17.0 the GET failed with `AbstractRequest::__serialize not supported`, and before that the page was silently not stored. The page carries the tags of the part and of the resource the part embeds, so purging either drops the page.
 - A write to a `#[Cacheable]` resource whose `onGet()` reads an argument through `#[ResourceParam]` no longer fails with `UnmatchedQuery` when its query lacks that argument, which is not in the URI a GET is stored under; its entry is purged and read again.
+- A POST that cannot address its own key no longer writes the values it was sent into the cache log: `cache_error` records its URI without the query, and the `UnmatchedQuery` message names the missing `onGet()` parameter instead of quoting the query.
 
 ## [1.20.2] - 2026-11-13
 

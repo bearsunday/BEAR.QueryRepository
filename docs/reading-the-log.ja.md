@@ -101,7 +101,7 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 | `pre_write_cleanup` | `uri` | 書き込み側が、書き込み先に保存済みのエントリを見つけ、それを消す直前。空の場所への書き込みでは記録しない |
 | `invalidate` | `tags`, `roPool`, `cdn`, `durationMs` | タグを無効化した。対象ごとの結果つき |
 | `purge` | `uri` | URI 指定の破棄を要求した |
-| `purge_skipped` | `uri`, `reason` | `#[Cacheable]` も `#[CacheableResponse]` も持たないリソースへの書き込みで、自身のキーを無効化しなかったことと、その理由。`uri` は書き込みの URI。`#[Purge]`/`#[Refresh]` はそのまま実行する |
+| `purge_skipped` | `uri`, `reason` | `#[Cacheable]` も `#[CacheableResponse]` も持たないリソースへの書き込みで、自身のキーを無効化しなかったことと、その理由。`uri` は書き込みの URI で、書き込みに送られた値を含むクエリは除く。`#[Purge]`/`#[Refresh]` はそのまま実行する |
 | `put_skipped` | `uri`, `reason`, `code` | miss の後に書き込みを**しなかった**ことと、その理由 |
 | `cache_hit` / `cache_miss` | `layer`, `durationMs` | 内側の照会。close context では `resource`、`donut-view`、`etag` のいずれかで `durationMs` が入る。`layer: donut` の inner event では `durationMs` は null — donut テンプレートがあったかの判定だけ |
 | `cache_error` | `uri`, `operation`, `error`, `exceptionClass` | キャッシュ経路が throw した |
@@ -322,7 +322,7 @@ command {"method": "onPut", "annotations": [], "source": "CommandInterceptor"}
 | | PHP-FPM では `php://stdout` はプールの出力に届くのに `catch_workers_output = yes` が必要。コンテナならそのまま収集基盤へ。転送・ローテーション・保管期間はホストの責務 | |
 | `PsrLogWriter` | アプリの PSR-3 ロガー。ツリーは `context['log']` に入る | 包んだ writer のポリシー |
 
-セッションは URI(**クエリ文字列込み**)、クライアントの `If-None-Match`、キャッシュタグ、CDN ヘッダの値、
+セッションは URI(**クエリ文字列込み**。ただし自身のキーを指せなかった書き込みはクエリを除く)、クライアントの `If-None-Match`、キャッシュタグ、CDN ヘッダの値、
 生の例外文を含みます。書き出されたセッションはアプリケーションログと同じ扱いにしてください:
 `LogFileWriter` はディレクトリを 0700、ファイルを 0600 で作ります。マスキングや流量制限が必要なら
 `LogWriterInterface` を decorate します — それがその seam であり、プール障害時(全リクエストが

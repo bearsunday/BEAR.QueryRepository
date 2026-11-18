@@ -99,7 +99,8 @@ final readonly class RefreshInterceptor implements MethodInterceptor
         try {
             return $this->refreshSameCommand->ownUris($ro, ($this->matchQuery)($ro));
         } catch (UnmatchedQuery) {
-            $this->logger->event(new PurgeSkippedContext((string) $uri, PurgeSkippedContext::UNMATCHED_QUERY));
+            // Without the query, which holds the values the write was sent
+            $this->logger->event(new PurgeSkippedContext("{$uri->scheme}://{$uri->host}{$uri->path}", PurgeSkippedContext::UNMATCHED_QUERY));
 
             return [];
         }
