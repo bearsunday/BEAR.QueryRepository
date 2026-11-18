@@ -164,7 +164,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
 
     private function doPutStatic(ResourceObject $ro, int|null $ttl, int|null $sMaxAge): void
     {
-        $keys = new SurrogateKeys($ro->uri, ($this->baseUriTag)($ro), $this->uriTag, $this->cacheTags->withStandardBaseUriTag(), $this->dependsOnTags);
+        $keys = new SurrogateKeys($ro->uri, ($this->baseUriTag)($ro), $this->uriTag, null, $this->dependsOnTags);
         $this->classifyMaterials($ro, $keys);
         $this->logger->event(new PutDonutContext((string) $ro->uri, $ttl, $sMaxAge));
         $templateKeys = $this->templateKeys($ro, $this->getHeaderKeys($ro));
@@ -189,7 +189,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
 
     private function doPutDonut(ResourceObject $ro, int|null $donutTtl): void
     {
-        $keys = new SurrogateKeys($ro->uri, ($this->baseUriTag)($ro), $this->uriTag, $this->cacheTags->withStandardBaseUriTag(), $this->dependsOnTags);
+        $keys = new SurrogateKeys($ro->uri, ($this->baseUriTag)($ro), $this->uriTag, null, $this->dependsOnTags);
         $this->classifyMaterials($ro, $keys);
         $this->logger->event(new PutDonutContext((string) $ro->uri, $donutTtl, null));
         $templateKeys = $this->templateKeys($ro, $this->getHeaderKeys($ro));
@@ -197,6 +197,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $donut->render($ro, $this->renderer);
         $unstorable = $this->declaredCacheControl->reason($ro);
         $keys->setSurrogateHeader($ro);
+        $this->cacheTags->tagHeader($ro);
         if ($unstorable !== null) {
             ($this->headerSetter)($ro, null, null);
         }
@@ -279,7 +280,8 @@ final readonly class DonutRepository implements DonutRepositoryInterface
 
         $this->logger->event(new CacheHitContext('donut'));
         $this->logger->event(new RefreshDonutContext((string) $ro->uri));
-        $donut->refresh($this->resource, $ro, $this->uriTag, $this->dependsOnTags, $this->cacheTags->withStandardBaseUriTag());
+        $donut->refresh($this->resource, $ro, $this->uriTag, $this->dependsOnTags);
+        $this->cacheTags->tagHeader($ro);
         $surrogateKeys = $ro->headers[Header::SURROGATE_KEY] ?? '';
 
         if (! $donut->isCacheble) {
@@ -394,6 +396,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     private function setHeaders(SurrogateKeys $keys, ResourceObject $ro, int|null $sMaxAge): string
     {
         $keys->setSurrogateHeader($ro);
+        $this->cacheTags->tagHeader($ro);
         $surrogateKeys = $ro->headers[Header::SURROGATE_KEY] ?? '';
         $this->setCdnCacheControl($ro, $sMaxAge);
         ($this->headerSetter)($ro, $this->headerSetter->maxAge($sMaxAge) === null ? self::REVALIDATE : null, null);

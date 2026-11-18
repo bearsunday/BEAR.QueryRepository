@@ -85,6 +85,5 @@ final class SurrogateKeys
         }
 
         $ro->headers[Header::SURROGATE_KEY] = implode(' ', array_unique($keys));
-        $this->cacheTags->tagHeader($ro);
     }
 }

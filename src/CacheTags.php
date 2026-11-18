@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\RepositoryModule\Annotation\AppSurrogateKey;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceObject;
 
@@ -14,12 +15,13 @@ use function in_array;
 /** @internal */
 final readonly class CacheTags
 {
-    /** @param AppSurrogateKey|null $appKey null unless AppSurrogateKeyModule binds one */
+    /** @param string|null $appKey null unless AppSurrogateKeyModule binds one */
     public function __construct(
         private UriTagInterface $uriTag,
         private BaseUriTagInterface $baseUriTag,
         private CacheIdentityFactory $identityFactory = new CacheIdentityFactory(),
-        private AppSurrogateKey|null $appKey = null,
+        #[AppSurrogateKey]
+        private string|null $appKey = null,
     ) {
     }
 
@@ -47,12 +49,6 @@ final readonly class CacheTags
         }
     }
 
-    /** These tags with the standard group tag, whatever BaseUriTagInterface is bound to */
-    public function withStandardBaseUriTag(): self
-    {
-        return new self($this->uriTag, new BaseUriTag($this->uriTag), $this->identityFactory, $this->appKey);
-    }
-
     public function uriTag(AbstractUri $uri): string
     {
         return ($this->uriTag)($uri);
@@ -75,10 +71,10 @@ final readonly class CacheTags
      */
     private function withAppKey(array $tags): array
     {
-        if ($this->appKey === null || in_array($this->appKey->key, $tags, true)) {
+        if ($this->appKey === null || in_array($this->appKey, $tags, true)) {
             return $tags;
         }
 
-        return [...$tags, $this->appKey->key];
+        return [...$tags, $this->appKey];
     }
 }

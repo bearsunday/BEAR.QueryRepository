@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\RepositoryModule\Annotation\AppSurrogateKey;
 use Override;
 use Ray\Di\AbstractModule;
 
@@ -26,6 +27,6 @@ final class AppSurrogateKeyModule extends AbstractModule
     #[Override]
     protected function configure(): void
     {
-        $this->bind(AppSurrogateKey::class)->toInstance(new AppSurrogateKey($this->key));
+        $this->bind()->annotatedWith(AppSurrogateKey::class)->toInstance($this->key);
     }
 }
