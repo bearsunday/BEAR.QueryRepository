@@ -9,14 +9,14 @@ use BEAR\RepositoryModule\Annotation\DependsOn;
 use BEAR\Resource\Annotation\ResourceParam;
 use BEAR\Resource\ResourceObject;
 
-/** An onGet() declaration whose variable #[ResourceParam] binds from another resource */
+/** An onGet() declaration whose variable #[ResourceParam] binds from another resource, and that the body lacks */
 #[Cacheable]
 class ResourceParamBound extends ResourceObject
 {
     #[DependsOn(uri: 'app://self/rows/taxonomy?ulid={channelId}')]
     public function onGet(#[ResourceParam(uri: 'app://self/user?id=1#name', param: 'channelId')] string $channelId = 'c9'): static
     {
-        $this->body = ['channelId' => $channelId];
+        $this->body = ['channel' => $channelId];
 
         return $this;
     }

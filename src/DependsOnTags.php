@@ -15,6 +15,7 @@ use function array_key_exists;
 use function array_keys;
 use function explode;
 use function in_array;
+use function is_array;
 use function sprintf;
 
 /**
@@ -142,7 +143,7 @@ final readonly class DependsOnTags
         }
 
         $onGet = DependsOnTemplates::ofOnGet($ro);
-        $tags = $onGet === [] ? null : $this->fromArguments($ro, $onGet);
+        $tags = $onGet === [] ? null : $this->fromResult($ro, $onGet);
         $rows = RowClassWalk::tags($ro->body, $this->uriTag, (string) $ro->uri);
         if ($rows === null) {
             return $tags;
@@ -152,13 +153,14 @@ final readonly class DependsOnTags
     }
 
     /**
-     * The call's arguments are not on the write path, so they are rebuilt from the request query and the defaults
+     * Each variable is read from the body onGet() returned, as #[Link] expands its href, and one the body lacks from the arguments.
+     * The call's arguments are not on the write path, so they are rebuilt from the request query and the defaults.
      *
      * @param list<string> $templates
      *
      * @return list<string>
      */
-    private function fromArguments(ResourceObject $ro, array $templates): array
+    private function fromResult(ResourceObject $ro, array $templates): array
     {
         $source = sprintf('%s onGet()', (string) $ro->uri);
         $onGet = new ReflectionMethod($ro, 'onGet');
@@ -175,9 +177,14 @@ final readonly class DependsOnTags
             }
         }
 
+        $body = is_array($ro->body) ? $ro->body : [];
         $tags = [];
         foreach ($templates as $template) {
             foreach (DependsOnTemplates::variables($template) as $variable) {
+                if (array_key_exists($variable, $body)) {
+                    continue;
+                }
+
                 if (! in_array($variable, $parameters, true)) {
                     throw new DependsOnNotExpandable($source, DependsOnTemplates::declaration($template), sprintf("'%s' is not an onGet() parameter", $variable));
                 }
@@ -187,10 +194,7 @@ final readonly class DependsOnTags
                 }
             }
 
-            $tag = DependsOnTemplates::tag($this->uriTag, $template, $arguments, $source);
-            if ($tag !== null) {
-                $tags[] = $tag;
-            }
+            $tags = [...$tags, ...DependsOnTemplates::tags($this->uriTag, $template, $body + $arguments, $source)];
         }
 
         return $tags;

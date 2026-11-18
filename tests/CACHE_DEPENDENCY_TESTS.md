@@ -108,16 +108,19 @@ invalidateTags([uriTag('page://self/html/blog-posting')]) → BlogPosting invali
 
 ### Row Dependencies (`#[DependsOn]`)
 
-A declaration on `onGet()` expands from the call's arguments; one on a row class expands from each instance's public properties. A write to a declared URI invalidates the resource and every page that embeds it.
+A declaration on `onGet()` expands from the body `onGet()` returns, as `#[Link]` does, then from the call's arguments; a list under an exploded query variable names one URI per element. One on a row class (deprecated) expands from each instance's public properties. A write to a declared URI invalidates the resource and every page that embeds it.
 
 ```text
+BodyList onGet() body ['id' => [1, 2, 3, 5]], #[DependsOn('item{?id*}')] → tags item?id=1, 2, 3, 5
+RenamedList body ['ids' => [1, 2, 3, 5]], #[DependsOn('item?id={ids*}')] → the same tags
+PUT item?id=3 → both invalidated; PUT item?id=4 → both stay stored
 Plain onGet(channelId) #[DependsOn('taxonomy?ulid={channelId}')], rows Item(a1, s1), Item(a3, s1)
 Item #[DependsOn('article?ulid={ulid}')] #[DependsOn('taxonomy?ulid={seriesId}')]
 PUT taxonomy?ulid=c1 / article?ulid=a3 / taxonomy?ulid=s1 → the page embedding Plain invalidated
 PUT article?ulid=a7 → the page stays stored
 ```
 
-**Test:** `DependsOnTest` — the four cache declaration shapes, pages through zero, one and two uncached resources, a 404 list, a hole, defaults, snake_case queries, null and Stringable values, cycles, inheritance, a doubly declared URI, and each reason of `DependsOnNotExpandable`
+**Test:** `DependsOnTest` — a list of IDs in the body, under the query's name or another, a value read from the body then the arguments, the body over an argument, a `#[ResourceParam]` value in the body, the four cache declaration shapes, pages through zero, one and two uncached resources, a 404 list, a hole, defaults, snake_case queries, null and Stringable values, cycles, inheritance, a doubly declared URI, and each reason of `DependsOnNotExpandable`
 
 ### Resources Read Through `#[ResourceParam]`
 

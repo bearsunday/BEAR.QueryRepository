@@ -193,6 +193,73 @@ class DependsOnTest extends TestCase
         $this->assertContains($this->tag('app://self/rows/article?ulid=a3'), $keys);
     }
 
+    /** As #[Link] expands its href from the body, a variable onGet() puts in the body names the URI; one the body lacks is read from the arguments */
+    public function testAVariableExpandsFromTheBodyThenFromTheArguments(): void
+    {
+        $uri = 'app://self/rows/body-declared?articleId=a3';
+        $keys = $this->keys($this->resource->get($uri));
+        $this->assertContains($this->tag('app://self/rows/taxonomy?ulid=c2'), $keys);
+        $this->assertContains($this->tag('app://self/rows/article?ulid=a3'), $keys);
+
+        $this->resource->put('app://self/rows/taxonomy?ulid=c1');
+        $this->assertTrue($this->isStored($uri, false), 'a write to another channel must not invalidate the article');
+
+        $this->resource->put('app://self/rows/taxonomy?ulid=c2');
+        $this->assertFalse($this->isStored($uri, false));
+
+        $this->resource->get($uri);
+        $this->resource->put('app://self/rows/article?ulid=a3');
+        $this->assertFalse($this->isStored($uri, false));
+    }
+
+    public function testABodyValueTakesPrecedenceOverTheArgument(): void
+    {
+        $uri = 'app://self/rows/body-over-argument?channelId=news';
+        $keys = $this->keys($this->resource->get($uri));
+        $this->assertContains($this->tag('app://self/rows/taxonomy?ulid=c1'), $keys);
+        $this->assertNotContains($this->tag('app://self/rows/taxonomy?ulid=news'), $keys);
+
+        $this->resource->put('app://self/rows/taxonomy?ulid=c1');
+        $this->assertFalse($this->isStored($uri, false));
+    }
+
+    /** The query does not hold a value #[ResourceParam] binds, but the body onGet() returns does */
+    public function testAVariableBoundByResourceParamExpandsFromTheBody(): void
+    {
+        $uri = 'app://self/rows/bound-in-body?channelId=c1';
+        $keys = $this->keys($this->resource->get($uri));
+        $this->assertContains($this->tag('app://self/rows/taxonomy?ulid=bear'), $keys);
+        $this->assertNotContains($this->tag('app://self/rows/taxonomy?ulid=c1'), $keys);
+
+        $this->resource->put('app://self/rows/taxonomy?ulid=bear');
+        $this->assertFalse($this->isStored($uri, false));
+    }
+
+    /** @return array<string, array{0: string}> */
+    public static function idListProvider(): array
+    {
+        return [
+            "{?id*}, the body's id" => ['app://self/rows/body-list'],
+            "?id={ids*}, the body's ids" => ['app://self/rows/renamed-list'],
+        ];
+    }
+
+    /** As #[Purge] does, an exploded query variable given a list in the body names one URI per element */
+    #[DataProvider('idListProvider')]
+    public function testAListOfIdsInTheBodyNamesOneUriPerId(string $uri): void
+    {
+        $keys = $this->keys($this->resource->get($uri));
+        $item = $this->tag('app://self/rows/item');
+        $items = array_values(array_filter($keys, static fn (string $key): bool => str_starts_with($key, $item)));
+        $this->assertSame([$this->tag('app://self/rows/item?id=1'), $this->tag('app://self/rows/item?id=2'), $this->tag('app://self/rows/item?id=3'), $this->tag('app://self/rows/item?id=5')], $items);
+
+        $this->resource->put('app://self/rows/item?id=4');
+        $this->assertTrue($this->isStored($uri, false), 'a write to an item not in the list must not invalidate it');
+
+        $this->resource->put('app://self/rows/item?id=3');
+        $this->assertFalse($this->isStored($uri, false));
+    }
+
     public function testAnArgumentOmittedFromTheQueryExpandsFromItsDefault(): void
     {
         $uri = 'app://self/rows/defaulted';

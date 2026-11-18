@@ -12,18 +12,30 @@ use ReflectionAttribute;
 use ReflectionClass;
 use Stringable;
 
+use function array_is_list;
 use function array_key_exists;
 use function array_unique;
 use function array_values;
 use function explode;
 use function get_debug_type;
+use function is_array;
 use function is_scalar;
 use function preg_match_all;
 use function preg_replace;
 use function sprintf;
+use function str_ends_with;
+use function strpos;
+use function substr;
 use function uri_template;
 
-/** @internal */
+use const PREG_OFFSET_CAPTURE;
+use const PREG_SET_ORDER;
+
+/**
+ * The URI templates #[DependsOn] declares, and the values #[DependsOn], #[Purge] and #[Refresh] expand theirs with
+ *
+ * @internal
+ */
 final class DependsOnTemplates
 {
     /** @var array<class-string, list<string>> */
@@ -64,6 +76,56 @@ final class DependsOnTemplates
         }
 
         return self::$onGet[$ro::class] = array_values(array_unique($templates));
+    }
+
+    /**
+     * @param array<array-key, mixed> $values
+     *
+     * @return list<string> the tag of each URI the template expands to, one per element of a list given to an exploded query variable
+     */
+    public static function tags(UriTagInterface $uriTag, string $template, array $values, string $source): array
+    {
+        $tags = [];
+        foreach (self::variableSets($template, $values) as $variables) {
+            $tag = self::tag($uriTag, $template, $variables, $source);
+            if ($tag !== null) {
+                $tags[] = $tag;
+            }
+        }
+
+        return $tags;
+    }
+
+    /**
+     * One set per element of each list given to an exploded query variable (`{?id*}`, `?id={ids*}`), the product when there are
+     * several. A null element names no URI and is skipped: the bare URI's group tag reaches every variant.
+     *
+     * @param array<array-key, mixed> $values
+     *
+     * @return list<array<array-key, mixed>>
+     */
+    public static function variableSets(string $template, array $values): array
+    {
+        $sets = [$values];
+        foreach (self::explodedQueryNames($template) as $name) {
+            if (! isset($values[$name]) || ! is_array($values[$name]) || ! array_is_list($values[$name])) {
+                continue;
+            }
+
+            $expanded = [];
+            foreach ($sets as $set) {
+                /** @psalm-suppress MixedAssignment */
+                foreach ($values[$name] as $value) {
+                    if ($value !== null) {
+                        $expanded[] = [$name => $value] + $set;
+                    }
+                }
+            }
+
+            $sets = $expanded;
+        }
+
+        return $sets;
     }
 
     /**
@@ -131,5 +193,28 @@ final class DependsOnTemplates
         }
 
         return $uris;
+    }
+
+    /** @return list<string> */
+    private static function explodedQueryNames(string $template): array
+    {
+        preg_match_all('/\{([+#.\/;?&]?)([^}]+)\}/', $template, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE);
+        $queryStart = strpos($template, '?');
+        $names = [];
+        foreach ($matches as $match) {
+            $operator = $match[1][0];
+            $inQuery = $operator === '?' || $operator === '&' || ($operator === '' && $queryStart !== false && $match[0][1] > $queryStart);
+            if (! $inQuery) {
+                continue;
+            }
+
+            foreach (explode(',', $match[2][0]) as $varSpec) {
+                if (str_ends_with($varSpec, '*')) {
+                    $names[] = substr($varSpec, 0, -1);
+                }
+            }
+        }
+
+        return array_values(array_unique($names));
     }
 }

@@ -17,7 +17,7 @@ class MethodResourceParamBound extends ResourceObject
     #[ResourceParam(uri: 'app://self/user?id=1#name', param: 'channelId')]
     public function onGet(string $channelId = 'c9'): static
     {
-        $this->body = ['channelId' => $channelId];
+        $this->body = ['channel' => $channelId];
 
         return $this;
     }

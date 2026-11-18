@@ -121,50 +121,42 @@ A purge also reaches the query variants of the URI it names that differ from it 
 
 ### #[DependsOn]
 
-Declares a dependency that only the data reveals when it is read: `a?id=1` depends on `b?id=2` and `b?id=5` because the rows it read name them. It tags the stored resource with the URI a template expands to, so a write to that URI invalidates it and every page that embeds it, without an `#[Embed]` per row. It reads its values in one of two places.
+Declares a dependency that only the data reveals when it is read: a list depends on `item?id=1`, `item?id=2`, `item?id=3` and `item?id=5` because the rows it read name them. It tags the stored resource with each URI the template expands to, so a write to that URI invalidates it and every page that embeds it, without an `#[Embed]` per row.
 
-On a resource's `onGet()`, every template variable must be an `onGet()` parameter; the URI expands once, from the call's arguments:
+Declare it on `onGet()`. As `#[Link]` expands its `href`, the template expands from the body `onGet()` returns: each variable is a top-level key of the body. A variable the body lacks is read from the `onGet()` arguments. A list given to an exploded query variable (`{?id*}`, `?id={ids*}`) names one URI per element, as in `#[Purge]`:
 
 ```php
 use BEAR\RepositoryModule\Annotation\DependsOn;
 
 #[Cacheable]
-class ChannelEntries extends ResourceObject
+class ItemList extends ResourceObject
 {
-    #[DependsOn(uri: 'app://self/taxonomy?ulid={channelId}')]
-    public function onGet(string $channelId): static
+    #[DependsOn(uri: 'app://self/item{?id*}')]
+    public function onGet(string $category): static
     {
-        $this->body = ['entries' => $this->query->entries($channelId)]; // list<Entry>
+        $rows = $this->query->items($category); // [['id' => 1, 'title' => '...'], ...]
+        $this->body = ['items' => $rows, 'id' => array_column($rows, 'id')];
 
         return $this;
     }
 }
 ```
 
-On a row class, the variables are its public properties; each instance of the class found in the stored body expands it once:
+With `[1, 2, 3, 5]` under `id`, the list is tagged with `app://self/item?id=1`, `?id=2`, `?id=3` and `?id=5`, and a write to any of them invalidates it. When the body key and the query name differ, name the key in the template: `app://self/item?id={ids*}` with `ids` in the body names the same URIs. The rows themselves (`[['id' => 1], ...]`) are not read: put their IDs under a key of the body, as `array_column()` does above.
 
-```php
-#[DependsOn(uri: 'app://self/article?ulid={ulid}')]
-#[DependsOn(uri: 'app://self/taxonomy?ulid={seriesId}')]
-final class Entry
-{
-    public function __construct(
-        public readonly string $ulid,
-        public readonly string|null $seriesId,
-    ) {
-    }
-}
-```
+A single value known only once the data is read goes in the body the same way: an article tagged with its channel declares `#[DependsOn(uri: 'app://self/taxonomy?ulid={channelUlid}')]` and its `onGet()` sets `$this->body['channelUlid']`.
 
-- The arguments are read back from the request query, under the parameter name or its snake_case form, then from the parameter default. A parameter bound by `#[ResourceParam]`, on the parameter or on the method, takes its value from another resource whatever the query holds, so a declaration that uses it fails; the resource it is read from is a dependency without a declaration (see Cache Dependencies). A value another provider binds (a web context attribute) is not in the query either: with a default, the URI silently expands from the default instead of the bound value; without one, the declaration fails. A query value is the string the request sent, so an `int` argument expands as written and a `BackedEnum` default fails as not scalar.
-- The body is walked through arrays and public properties only: rows inside a `Traversable` (`ArrayObject`, a collection, a `Generator`) are not found. An embedded request or resource object is not entered: it is read as a dependency of its own. Each object is read once, so rows that refer to each other are safe.
-- Each row adds a tag to the `Surrogate-Key` header: 1,000 rows make it about 24 KB, beyond Fastly's 16,384-byte header limit.
+- The body wins: a variable that is both a body key and an `onGet()` parameter expands from the body.
+- The arguments are read back from the request query, under the parameter name or its snake_case form, then from the parameter default. A parameter bound by `#[ResourceParam]`, on the parameter or on the method, takes its value from another resource whatever the query holds, so a declaration that uses it fails unless the body holds the value under that name; the resource it is read from is a dependency without a declaration (see Cache Dependencies). A value another provider binds (a web context attribute) is not in the query either: with a default, the URI silently expands from the default instead of the bound value; without one, the declaration fails. A query value is the string the request sent, so an `int` argument expands as written and a `BackedEnum` default fails as not scalar.
+- Each URI adds a tag to the `Surrogate-Key` header: 1,000 IDs make it about 24 KB, beyond Fastly's 16,384-byte header limit.
 - A declaration on a parent class, or on the `onGet()` a child class overrides, applies as well.
-- A `Stringable` value expands as its string. A `null` value names no URI and adds no tag.
-- Rows held as arrays have no class to declare on: tag them by hand with `UriTagInterface::fromAssoc()`. A URI tagged both ways is tagged once.
+- A `Stringable` value expands as its string. A `null` value names no URI and adds no tag; so does a `null` element of a list, and an empty list names none.
+- A URI also tagged by hand with `UriTagInterface::fromAssoc()` is tagged once.
 - `#[DependsOn]` only adds the tag. The URI is invalidated by the named resource's own write, or by a `#[Purge]`/`#[Refresh]` that names it.
 
-A declaration that cannot expand fails the GET with `BEAR\QueryRepository\Exception\DependsOnNotExpandable`, and nothing is stored. Its `reason` is `no '<variable>'` (no such argument or public property), `'<variable>' is not an onGet() parameter`, `'<variable>' is bound by #[ResourceParam]`, `'<variable>' is <type>` (neither scalar, `Stringable` nor `null`) or `declared on a resource class` (declare it on `onGet()`).
+Deprecated: `#[DependsOn]` on a row class, whose variables are its public properties, expands once for each instance of the class found in the stored body. Put the values in the body from `onGet()` instead. The body is walked through arrays and public properties only: rows inside a `Traversable` are not found, an embedded request or resource object is not entered, and each object is read once.
+
+A declaration that cannot expand fails the GET with `BEAR\QueryRepository\Exception\DependsOnNotExpandable`, and nothing is stored. Its `reason` is `no '<variable>'` (no such argument or public property), `'<variable>' is not an onGet() parameter` (nor a body key), `'<variable>' is bound by #[ResourceParam]` (and not a body key), `'<variable>' is <type>` (neither scalar, `Stringable` nor `null`; a list only under an exploded query variable) or `declared on a resource class` (declare it on `onGet()`).
 
 A row added to a list is caught by the write that adds it, not by the row tags: that write must invalidate the list's own URI, or a URI the list's `onGet()` declares. An embedded list that ran with a body gives the page its own URI tag whether or not it is cached, so a write that invalidates the list's URI reaches the page too.
 
