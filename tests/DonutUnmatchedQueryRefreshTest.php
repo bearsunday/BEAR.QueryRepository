@@ -53,14 +53,15 @@ class DonutUnmatchedQueryRefreshTest extends TestCase
 
     public function testTheSkipIsRecordedAsACacheError(): void
     {
-        $this->resource->post('page://self/html/mismatched-donut-writer', ['title' => 'new']);
+        $this->resource->post('page://self/html/mismatched-donut-writer', ['title' => 'sent-value-7f3a']);
         $tree = $this->flushAndValidate($this->logger);
 
         $error = self::eventContextJsonOf($tree, 'cache_error');
         $this->assertNotNull($error, 'the skip is a recorded event, not a silent one');
         $this->assertStringContainsString('"operation":"write"', $error);
         $this->assertStringContainsString('"exceptionClass":"BEAR\\\\QueryRepository\\\\Exception\\\\UnmatchedQuery"', $error);
-        $this->assertStringNotContainsString('title', $error, 'the values the write was sent are not recorded');
+        $this->assertStringNotContainsString('sent-value-7f3a', $error, 'the value the write was sent is not recorded');
+        $this->assertStringContainsString('"uri":"page://self/html/mismatched-donut-writer"', $error, 'the URI without its query');
     }
 
     public function testPutStillThrowsForAGenuineMismatch(): void
