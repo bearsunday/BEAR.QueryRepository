@@ -8,8 +8,6 @@ use BEAR\RepositoryModule\Annotation\AbstractCacheControl;
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\CacheableResponse;
 use BEAR\RepositoryModule\Annotation\Commands;
-use BEAR\RepositoryModule\Annotation\Purge;
-use BEAR\RepositoryModule\Annotation\Refresh;
 use BEAR\RepositoryModule\Annotation\RefreshCache;
 use BEAR\Resource\ResourceObject;
 use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
@@ -61,10 +59,7 @@ final class CacheableModule extends AbstractModule
             $this->matcher->logicalNot(
                 $this->matcher->annotatedWith(Cacheable::class),
             ),
-            $this->matcher->logicalOr(
-                $this->matcher->annotatedWith(Purge::class),
-                $this->matcher->annotatedWith(Refresh::class),
-            ),
+            new CommandMethodMatcher(),
             [RefreshInterceptor::class],
         );
         // A write with neither attribute invalidates its own key too, unless the class stores its GET, or the method's
@@ -72,24 +67,16 @@ final class CacheableModule extends AbstractModule
         $this->bindInterceptor(
             $this->matcher->logicalAnd(
                 $this->matcher->subclassesOf(ResourceObject::class),
-                $this->matcher->logicalNot(
-                    $this->matcher->logicalOr(
-                        $this->matcher->annotatedWith(Cacheable::class),
-                        $this->matcher->annotatedWith(CacheableResponse::class),
-                    ),
-                ),
+                $this->matcher->logicalNot(new CacheableClassMatcher()),
             ),
             $this->matcher->logicalAnd(
                 new UnsafeMethodMatcher(),
                 $this->matcher->logicalNot(
                     $this->matcher->logicalOr(
-                        $this->matcher->annotatedWith(Purge::class),
+                        new CommandMethodMatcher(),
                         $this->matcher->logicalOr(
-                            $this->matcher->annotatedWith(Refresh::class),
-                            $this->matcher->logicalOr(
-                                $this->matcher->annotatedWith(RefreshCache::class),
-                                $this->matcher->annotatedWith(CacheableResponse::class),
-                            ),
+                            $this->matcher->annotatedWith(RefreshCache::class),
+                            $this->matcher->annotatedWith(CacheableResponse::class),
                         ),
                     ),
                 ),

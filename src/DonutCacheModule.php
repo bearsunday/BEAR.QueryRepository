@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\CacheableResponse;
 use BEAR\RepositoryModule\Annotation\DonutCache;
 use BEAR\RepositoryModule\Annotation\RefreshCache;
@@ -82,19 +81,11 @@ final class DonutCacheModule extends AbstractModule
         // interceptor.
         $readNotDeclared = $this->matcher->logicalNot(
             $this->matcher->logicalOr(
-                $this->matcher->annotatedWith(CacheableResponse::class),
-                $this->matcher->logicalOr(
-                    $this->matcher->annotatedWith(Cacheable::class),
-                    $this->matcher->annotatedWith(DonutCache::class),
-                ),
+                new CacheableClassMatcher(),
+                $this->matcher->annotatedWith(DonutCache::class),
             ),
         );
-        $writeNotDeclared = $this->matcher->logicalNot(
-            $this->matcher->logicalOr(
-                $this->matcher->annotatedWith(CacheableResponse::class),
-                $this->matcher->annotatedWith(Cacheable::class),
-            ),
-        );
+        $writeNotDeclared = $this->matcher->logicalNot(new CacheableClassMatcher());
         $this->bindInterceptor(
             $readNotDeclared,
             $this->matcher->logicalAnd(
