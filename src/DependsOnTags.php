@@ -4,29 +4,19 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use ArrayIterator;
 use BEAR\QueryRepository\Exception\DependsOnNotExpandable;
 use BEAR\RepositoryModule\Annotation\DependsOn;
 use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\ResourceObject;
 use Closure;
 use Generator;
-use IteratorAggregate;
 use ReflectionMethod;
-use Traversable;
 
-use function array_diff_key;
-use function array_is_list;
 use function array_key_exists;
 use function array_keys;
-use function array_map;
-use function array_merge;
 use function explode;
-use function get_debug_type;
 use function in_array;
 use function is_array;
-use function is_iterable;
-use function is_object;
 use function sprintf;
 
 /**
@@ -164,9 +154,8 @@ final readonly class DependsOnTags
     }
 
     /**
-     * Each variable is read from the row, then the body's top level, then the arguments rebuilt from the request query and the
-     * defaults, past a value that cannot expand; with `key`, one any row holds is read from the rows alone: {@see DependsOn}. A row
-     * that lacks a variable is skipped, and the declaration fails when every row does.
+     * Each declaration expands with the rows it reads and the arguments, which are not on the write path, so they are rebuilt from
+     * the request query and the defaults: {@see DependsOnExpansion::tags()}
      *
      * @param list<DependsOn> $declarations
      *
@@ -174,7 +163,6 @@ final readonly class DependsOnTags
      */
     private function fromResult(ResourceObject $ro, array $declarations): array
     {
-        $source = sprintf('%s onGet()', (string) $ro->uri);
         $onGet = new ReflectionMethod($ro, 'onGet');
         // #[ResourceParam] fills these from another resource whatever the query holds, so their value cannot be read back
         $bound = array_keys(ResourceParamSources::declared($onGet));
@@ -193,131 +181,14 @@ final readonly class DependsOnTags
             }
         }
 
-        $top = is_array($ro->body) ? $ro->body : [];
+        $source = sprintf('%s onGet()', (string) $ro->uri);
+        $expansion = new DependsOnExpansion($this->uriTag, $source, is_array($ro->body) ? $ro->body : [], $arguments, $parameters, $bound);
         $tags = [];
         foreach ($declarations as $dependsOn) {
-            $template = $dependsOn->uri;
-            $variables = DependsOnTemplates::variables($template);
-            $rows = $this->rows($ro, $dependsOn->key);
-            $fromRows = array_map(static fn (array $row): array => DependsOnTemplates::expandable($template, $row), $rows);
-            $carried = $dependsOn->key === null ? [] : array_merge(...$fromRows);
-            $outside = array_diff_key($top, $carried);
-            $given = array_diff_key($arguments, $carried);
-            $fallback = DependsOnTemplates::expandable($template, $outside) + DependsOnTemplates::expandable($template, $given);
-            $rowless = $rows === [];
-            if ($rowless && $dependsOn->key === null) {
-                $rows = $fromRows = [[]];
-            }
-
-            $missing = '';
-            $expanded = false;
-            foreach ($rows as $i => $row) {
-                $values = $fromRows[$i] + $fallback;
-                $reason = $this->missing($variables, $values, $row + $outside + $given, $parameters, $bound);
-                if ($reason !== null) {
-                    $missing = $reason;
-                    continue;
-                }
-
-                $expanded = true;
-                $tags = [...$tags, ...DependsOnTemplates::tags($this->uriTag, $template, $values, $source)];
-            }
-
-            if (! $rowless && ! $expanded) {
-                throw new DependsOnNotExpandable($source, DependsOnTemplates::declaration($template), $missing);
-            }
+            $tags = [...$tags, ...$expansion->tags($dependsOn, DependsOnRows::of($ro, $dependsOn->key))];
         }
 
         return $tags;
-    }
-
-    /**
-     * @param list<string>            $variables
-     * @param array<array-key, mixed> $values     the values that can expand
-     * @param array<array-key, mixed> $read       the values as read
-     * @param list<string>            $parameters
-     * @param list<string>            $bound
-     *
-     * @return string|null why a variable has no value; null when each has one
-     */
-    private function missing(array $variables, array $values, array $read, array $parameters, array $bound): string|null
-    {
-        foreach ($variables as $variable) {
-            if (array_key_exists($variable, $values)) {
-                continue;
-            }
-
-            if (array_key_exists($variable, $read)) {
-                return sprintf("'%s' is %s", $variable, get_debug_type($read[$variable]));
-            }
-
-            if (! in_array($variable, $parameters, true)) {
-                return sprintf("'%s' is not an onGet() parameter", $variable);
-            }
-
-            return in_array($variable, $bound, true) ? sprintf("'%s' is bound by #[ResourceParam]", $variable) : sprintf("no '%s'", $variable);
-        }
-
-        return null;
-    }
-
-    /**
-     * The rows under the key, or the body itself without a key: each array or object of a list, or the array or object itself, read
-     * as `(array)`. A Traversable that may not rewind is read once and put back as an ArrayIterator: {@see self::readOnce()}.
-     *
-     * @return list<array<array-key, mixed>>
-     */
-    private function rows(ResourceObject $ro, string|null $key): array
-    {
-        /** @var mixed $value */
-        $value = $key === null ? $ro->body : (is_array($ro->body) && array_key_exists($key, $ro->body) ? $ro->body[$key] : null);
-        if ($value instanceof Traversable && ! $value instanceof IteratorAggregate && ! $value instanceof ArrayIterator) {
-            $value = $this->readOnce($value);
-            if ($key === null) {
-                $ro->body = $value;
-            } elseif (is_array($ro->body)) {
-                $ro->body[$key] = $value;
-            }
-        }
-
-        $isList = is_array($value) ? array_is_list($value) : $value instanceof Traversable;
-        if (! $isList && (is_array($value) || is_object($value))) {
-            return [(array) $value];
-        }
-
-        $rows = [];
-        /** @var mixed $row */
-        foreach (is_iterable($value) ? $value : [] as $row) {
-            if (is_array($row) || is_object($row)) {
-                $rows[] = (array) $row;
-            }
-        }
-
-        return $rows;
-    }
-
-    /**
-     * @param Traversable<mixed, mixed> $iterator
-     *
-     * @return ArrayIterator<array-key, mixed> each value under the key it was yielded with, or as a list when a key repeats, as
-     *                                         `yield from` gives, so that no row is lost
-     */
-    private function readOnce(Traversable $iterator): ArrayIterator
-    {
-        $keyed = [];
-        $list = [];
-        $unique = true;
-        /**
-         * @var array-key $key
-         * @var mixed     $value
-         */
-        foreach ($iterator as $key => $value) {
-            $unique = $unique && ! array_key_exists($key, $keyed);
-            /** @psalm-suppress MixedAssignment */
-            $keyed[$key] = $list[] = $value;
-        }
-
-        return new ArrayIterator($unique ? $keyed : $list);
     }
 
     /**

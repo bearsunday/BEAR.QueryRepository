@@ -260,6 +260,7 @@ class DependsOnTest extends TestCase
             'without a key, an empty list' => ['app://self/rows/sparse-list?shape=empty', []],
             'without a key, a list with a null' => ['app://self/rows/sparse-list?shape=null', [1]],
             'without a key, an array under the variable yields to the argument' => ['app://self/rows/nested-user?user=7', [7]],
+            'one template without a key and with the empty key' => ['app://self/rows/empty-key', [1, 2]],
         ];
     }
 

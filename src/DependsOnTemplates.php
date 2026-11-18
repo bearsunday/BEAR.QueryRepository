@@ -18,11 +18,11 @@ use function array_unique;
 use function array_values;
 use function explode;
 use function get_debug_type;
-use function in_array;
 use function is_array;
 use function is_scalar;
 use function preg_match_all;
 use function preg_replace;
+use function serialize;
 use function sprintf;
 use function str_ends_with;
 use function strpos;
@@ -75,7 +75,7 @@ final class DependsOnTemplates
         for ($ref = new ReflectionClass($ro); $ref !== false && $ref->hasMethod('onGet'); $ref = $ref->getParentClass()) {
             foreach ($ref->getMethod('onGet')->getAttributes(DependsOn::class) as $attribute) {
                 $dependsOn = $attribute->newInstance();
-                $declarations[$dependsOn->uri . "\n" . (string) $dependsOn->key] ??= $dependsOn;
+                $declarations[serialize([$dependsOn->uri, $dependsOn->key])] ??= $dependsOn;
             }
         }
 
@@ -165,38 +165,6 @@ final class DependsOnTemplates
         return $uriTag(new Uri(uri_template($template, $variables)));
     }
 
-    /**
-     * @param array<array-key, mixed> $values
-     *
-     * @return array<string, mixed> the values the template's variables can expand with: a scalar, a Stringable or null, or a list of
-     *                              those under an exploded query variable
-     */
-    public static function expandable(string $template, array $values): array
-    {
-        $exploded = self::explodedQueryNames($template);
-        $expandable = [];
-        foreach (self::variables($template) as $variable) {
-            if (! array_key_exists($variable, $values)) {
-                continue;
-            }
-
-            /** @var mixed $value */
-            $value = $values[$variable];
-            $elements = is_array($value) && array_is_list($value) && in_array($variable, $exploded, true) ? $value : [$value];
-            /** @var mixed $element */
-            foreach ($elements as $element) {
-                if ($element !== null && ! is_scalar($element) && ! $element instanceof Stringable) {
-                    continue 2;
-                }
-            }
-
-            /** @psalm-suppress MixedAssignment */
-            $expandable[$variable] = $value;
-        }
-
-        return $expandable;
-    }
-
     /** @return list<string> the RFC 6570 variable names in the template */
     public static function variables(string $template): array
     {
@@ -231,8 +199,8 @@ final class DependsOnTemplates
         return $uris;
     }
 
-    /** @return list<string> */
-    private static function explodedQueryNames(string $template): array
+    /** @return list<string> the query variables a list is given to one element at a time (`{?id*}`, `?id={ids*}`) */
+    public static function explodedQueryNames(string $template): array
     {
         preg_match_all('/\{([+#.\/;?&]?)([^}]+)\}/', $template, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE);
         $queryStart = strpos($template, '?');
