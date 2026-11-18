@@ -40,12 +40,55 @@ final readonly class RefreshAnnotatedCommand implements CommandInterface
     #[Override]
     public function command(MethodInvocation $invocation, ResourceObject $ro): void
     {
-        $method = $invocation->getMethod();
+        foreach ($this->declared($invocation, $ro) as [$uris, $refresh]) {
+            foreach ($uris as $uri) {
+                $this->repository->purge($uri);
+            }
+
+            if ($refresh) {
+                $this->refresh($uris);
+            }
+        }
+    }
+
+    /**
+     * The URIs each #[Purge]/#[Refresh] of the method names, in declaration order, and whether it is a #[Refresh]
+     *
+     * @param MethodInvocation<object> $invocation
+     *
+     * @return list<array{list<Uri>, bool}>
+     */
+    public function declared(MethodInvocation $invocation, ResourceObject $ro): array
+    {
         /** @var AbstractUri|null $uri a resource object taken from the injector has none */
         $uri = $ro->uri;
         $query = $uri === null ? $this->passedArguments($invocation) : $uri->query;
-        foreach ($method->getAnnotations() as $annotation) {
-            $this->request($ro, $annotation, $query);
+        $declared = [];
+        foreach ($invocation->getMethod()->getAnnotations() as $annotation) {
+            if (! $annotation instanceof Purge && ! $annotation instanceof Refresh) {
+                continue;
+            }
+
+            $uris = [];
+            foreach ($this->getUris($ro, $annotation, $query) as $uriString) {
+                $uris[] = new Uri($uriString);
+            }
+
+            $declared[] = [$uris, $annotation instanceof Refresh];
+        }
+
+        return $declared;
+    }
+
+    /**
+     * Called once every URI is purged, so a GET that throws leaves misses behind, not stale entries
+     *
+     * @param list<Uri> $uris
+     */
+    public function refresh(array $uris): void
+    {
+        foreach ($uris as $uri) {
+            $this->resource->get((string) $uri);
         }
     }
 
@@ -144,29 +187,5 @@ final readonly class RefreshAnnotatedCommand implements CommandInterface
         }
 
         return array_values(array_unique($names));
-    }
-
-    /** @param array<mixed> $query */
-    private function request(ResourceObject $ro, object $annotation, array $query): void
-    {
-        if (! $annotation instanceof Purge && ! $annotation instanceof Refresh) {
-            return;
-        }
-
-        $uris = [];
-        foreach ($this->getUris($ro, $annotation, $query) as $uriString) {
-            $uri = new Uri($uriString);
-            $this->repository->purge($uri);
-            $uris[] = $uri;
-        }
-
-        if (! $annotation instanceof Refresh) {
-            return;
-        }
-
-        // Every URI is purged before the first GET, so a GET that throws leaves misses behind, not stale entries.
-        foreach ($uris as $uri) {
-            $this->resource->get((string) $uri);
-        }
     }
 }

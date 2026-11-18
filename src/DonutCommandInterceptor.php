@@ -20,7 +20,6 @@ use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
 
 use function assert;
-use function str_starts_with;
 
 /**
  * Interceptor for donut cache invalidation on CQRS commands
@@ -42,6 +41,7 @@ final readonly class DonutCommandInterceptor implements MethodInterceptor
         private MatchQueryInterface $matchQuery,
         private FactoryInterface $factory,
         private InvokerInterface $invoker,
+        private UnsafeMethodMatcher $unsafeMethod,
         #[CacheLog]
         private SemanticLoggerInterface $logger = new NullSemanticLogger(),
         private CommandQuery $commandQuery = new CommandQuery(),
@@ -65,11 +65,12 @@ final readonly class DonutCommandInterceptor implements MethodInterceptor
                 } catch (UnmatchedQuery $e) {
                     // onPost-bound classes often lack a parameter onGet requires (#219); the
                     // write already ran, so this is recorded, not thrown. Other methods still throw.
-                    if (! str_starts_with($invocation->getMethod()->getName(), 'onPost')) {
+                    if (! $this->unsafeMethod->isPost($invocation->getMethod())) {
                         throw $e;
                     }
 
-                    $this->logger->event(new CacheErrorContext((string) $ro->uri, 'write', $e->getMessage(), $e::class));
+                    // Without the query, which holds the values the write was sent
+                    $this->logger->event(new CacheErrorContext("{$ro->uri->scheme}://{$ro->uri->host}{$ro->uri->path}", 'write', $e->getMessage(), $e::class));
                 }
             }
         } finally {

@@ -3,6 +3,7 @@
 namespace FakeVendor\HelloWorld\Resource\Page\Html;
 
 use BEAR\RepositoryModule\Annotation\CacheableResponse;
+use BEAR\RepositoryModule\Annotation\Purge;
 use BEAR\Resource\ResourceObject;
 
 /**
@@ -30,6 +31,7 @@ class MismatchedDonutWriter extends ResourceObject
         return $this;
     }
 
+    #[Purge(uri: 'app://self/refresh-dest?id=1')]
     public function onPut(string $title): static
     {
         $this->body = ['title' => $title];

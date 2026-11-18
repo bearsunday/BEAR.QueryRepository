@@ -20,8 +20,8 @@ This demo executes the following scenarios:
 
 5. Access counter-donut, a page whose onGet() reads an untagged child
    - The child ran but carries no ETag or Surrogate-Key
-   - dependency_skipped says so (reason: no_etag_or_surrogate_key), unlike
-     blog-posting's comment, a hole with no body yet (reason: no_body)
+   - It has a body, so depends_on gives the page its key, unlike
+     blog-posting's comment, a hole with no body yet (dependency_skipped, reason: no_body)
 
 Every donut write and refresh also records what it told the CDN (cdn_headers):
 the literal CDN-Cache-Control the response carries - including the setter's
@@ -146,22 +146,25 @@ get uri=page://self/html/counter-donut
 ├── cache_miss layer=donut durationMs=[volatile] [event]
 │   ├── layer: donut
 │   └── durationMs: [volatile]
-├── dependency_skipped parent=page://self/html/counter-donut child=app://self/counter reason=no_etag_or_surrogate_key [event]
+├── depends_on parent=page://self/html/counter-donut child=app://self/counter childTags=[_counter_, grp-_counter_] [event]
 │   ├── parent: page://self/html/counter-donut
 │   ├── child: app://self/counter
-│   └── reason: no_etag_or_surrogate_key
+│   ├── childTags[0]: _counter_
+│   └── childTags[1]: grp-_counter_
 ├── put_donut uri=page://self/html/counter-donut [event]
 │   └── uri: page://self/html/counter-donut
-├── cdn_headers uri=page://self/html/counter-donut surrogateKeys=[_html_counter-donut_ +3 items] [event]
+├── cdn_headers uri=page://self/html/counter-donut surrogateKeys=[_counter_, grp-_counter_ +2 items] [event]
 │   ├── uri: page://self/html/counter-donut
-│   ├── surrogateKeys[0]: _html_counter-donut_
-│   ├── surrogateKeys[1]: grp-_html_counter-donut_
-│   ├── surrogateKeys[2]: _counter_
-│   └── surrogateKeys[3]: grp-_counter_
-├── save_donut uri=page://self/html/counter-donut tags=[_html_counter-donut_ +1 items] saved=true [event]
+│   ├── surrogateKeys[0]: _counter_
+│   ├── surrogateKeys[1]: grp-_counter_
+│   ├── surrogateKeys[2]: _html_counter-donut_
+│   └── surrogateKeys[3]: grp-_html_counter-donut_
+├── save_donut uri=page://self/html/counter-donut tags=[_html_counter-donut_ +3 items] saved=true [event]
 │   ├── uri: page://self/html/counter-donut
 │   ├── tags[0]: _html_counter-donut_
 │   ├── tags[1]: grp-_html_counter-donut_
+│   ├── tags[2]: _counter_
+│   ├── tags[3]: grp-_counter_
 │   └── saved: true
 └── close cache_miss
     ├── layer: donut-view
@@ -505,13 +508,16 @@ get uri=page://self/html/counter-donut
                     }
                 },
                 {
-                    "id": "dependency_skipped_2",
-                    "type": "dependency_skipped",
-                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/dependency_skipped.json",
+                    "id": "depends_on_1",
+                    "type": "depends_on",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/depends_on.json",
                     "context": {
                         "parent": "page://self/html/counter-donut",
                         "child": "app://self/counter",
-                        "reason": "no_etag_or_surrogate_key"
+                        "childTags": [
+                            "_counter_",
+                            "grp-_counter_"
+                        ]
                     }
                 },
                 {
@@ -531,13 +537,13 @@ get uri=page://self/html/counter-donut
                     "context": {
                         "uri": "page://self/html/counter-donut",
                         "headers": {
-                            "Surrogate-Key": "_html_counter-donut_ grp-_html_counter-donut_ _counter_ grp-_counter_"
+                            "Surrogate-Key": "_counter_ grp-_counter_ _html_counter-donut_ grp-_html_counter-donut_"
                         },
                         "surrogateKeys": [
-                            "_html_counter-donut_",
-                            "grp-_html_counter-donut_",
                             "_counter_",
-                            "grp-_counter_"
+                            "grp-_counter_",
+                            "_html_counter-donut_",
+                            "grp-_html_counter-donut_"
                         ]
                     }
                 },
@@ -549,7 +555,9 @@ get uri=page://self/html/counter-donut
                         "uri": "page://self/html/counter-donut",
                         "tags": [
                             "_html_counter-donut_",
-                            "grp-_html_counter-donut_"
+                            "grp-_html_counter-donut_",
+                            "_counter_",
+                            "grp-_counter_"
                         ],
                         "requestedTtl": null,
                         "saved": true

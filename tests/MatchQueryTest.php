@@ -87,4 +87,59 @@ class MatchQueryTest extends TestCase
 
         $this->assertSame(['userId' => 1, 'perPage' => 20], ($this->matchQuery)($ro));
     }
+
+    /** As BEAR.Resource binds it: a nullable parameter is given by a key present with null */
+    public function testANullValueGivesANullableParameter(): void
+    {
+        $ro = new class extends ResourceObject {
+            public function onGet(int $id, string|null $locale): static
+            {
+                return $this;
+            }
+        };
+        $ro->uri = new Uri('app://self/x', ['id' => 7, 'locale' => null]);
+
+        $this->assertSame(['id' => 7, 'locale' => null], ($this->matchQuery)($ro));
+    }
+
+    public function testANullValueUnderTheSnakeCaseKeyGivesANullableParameter(): void
+    {
+        $ro = new class extends ResourceObject {
+            public function onGet(int|null $userId): static
+            {
+                return $this;
+            }
+        };
+        $ro->uri = new Uri('app://self/x', ['user_id' => null]);
+
+        $this->assertSame(['userId' => null], ($this->matchQuery)($ro));
+    }
+
+    public function testANullableParameterWithNoKeyIsStillMissing(): void
+    {
+        $ro = new class extends ResourceObject {
+            public function onGet(int $id, string|null $locale): static
+            {
+                return $this;
+            }
+        };
+        $ro->uri = new Uri('app://self/x', ['id' => 7]);
+
+        $this->expectException(UnmatchedQuery::class);
+        ($this->matchQuery)($ro);
+    }
+
+    public function testANullValueDoesNotGiveAParameterThatRejectsNull(): void
+    {
+        $ro = new class extends ResourceObject {
+            public function onGet(int $id, string $locale): static
+            {
+                return $this;
+            }
+        };
+        $ro->uri = new Uri('app://self/x', ['id' => 7, 'locale' => null]);
+
+        $this->expectException(UnmatchedQuery::class);
+        ($this->matchQuery)($ro);
+    }
 }

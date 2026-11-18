@@ -197,6 +197,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $donut->render($ro, $this->renderer);
         $unstorable = $this->declaredCacheControl->reason($ro);
         $keys->setSurrogateHeader($ro);
+        $this->cacheTags->tagHeader($ro);
         if ($unstorable !== null) {
             ($this->headerSetter)($ro, null, null);
         }
@@ -394,6 +395,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     private function setHeaders(SurrogateKeys $keys, ResourceObject $ro, int|null $sMaxAge): string
     {
         $keys->setSurrogateHeader($ro);
+        $this->cacheTags->tagHeader($ro);
         $surrogateKeys = $ro->headers[Header::SURROGATE_KEY] ?? '';
         $this->setCdnCacheControl($ro, $sMaxAge);
         ($this->headerSetter)($ro, $this->headerSetter->maxAge($sMaxAge) === null ? self::REVALIDATE : null, null);

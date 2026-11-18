@@ -52,8 +52,8 @@ This demo executes the following scenarios:
 
 5. Access counter-donut, a page whose onGet() reads an untagged child
    - The child ran but carries no ETag or Surrogate-Key
-   - dependency_skipped says so (reason: no_etag_or_surrogate_key), unlike
-     blog-posting's comment, a hole with no body yet (reason: no_body)
+   - It has a body, so depends_on gives the page its key, unlike
+     blog-posting's comment, a hole with no body yet (dependency_skipped, reason: no_body)
 
 Every donut write and refresh also records what it told the CDN (cdn_headers):
 the literal CDN-Cache-Control the response carries - including the setter's

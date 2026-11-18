@@ -7,8 +7,7 @@ namespace BEAR\QueryRepository;
 use BEAR\RepositoryModule\Annotation\AbstractCacheControl;
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\Commands;
-use BEAR\RepositoryModule\Annotation\Purge;
-use BEAR\RepositoryModule\Annotation\Refresh;
+use BEAR\Resource\ResourceObject;
 use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
 use Override;
 use Ray\Di\AbstractModule;
@@ -51,26 +50,24 @@ final class CacheableModule extends AbstractModule
         );
         $this->bindInterceptor(
             $this->matcher->annotatedWith(Cacheable::class),
-            $this->matcher->logicalOr(
-                $this->matcher->startsWith('onPut'),
-                $this->matcher->logicalOr(
-                    $this->matcher->startsWith('onPost'),
-                    $this->matcher->logicalOr(
-                        $this->matcher->startsWith('onPatch'),
-                        $this->matcher->startsWith('onDelete'),
-                    ),
-                ),
-            ),
+            new UnsafeMethodMatcher(),
             [CommandInterceptor::class],
         );
         $this->bindInterceptor(
             $this->matcher->logicalNot(
                 $this->matcher->annotatedWith(Cacheable::class),
             ),
-            $this->matcher->logicalOr(
-                $this->matcher->annotatedWith(Purge::class),
-                $this->matcher->annotatedWith(Refresh::class),
+            new CommandMethodMatcher(),
+            [RefreshInterceptor::class],
+        );
+        // A write with neither attribute invalidates its own key too, unless the class stores its GET, or the method's
+        // #[CacheableResponse] or #[RefreshCache] does
+        $this->bindInterceptor(
+            $this->matcher->logicalAnd(
+                $this->matcher->subclassesOf(ResourceObject::class),
+                $this->matcher->logicalNot(new CacheableClassMatcher()),
             ),
+            new UndeclaredWriteMatcher(),
             [RefreshInterceptor::class],
         );
 

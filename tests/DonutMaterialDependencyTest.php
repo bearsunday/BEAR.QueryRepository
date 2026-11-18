@@ -114,17 +114,15 @@ class DonutMaterialDependencyTest extends TestCase
         );
     }
 
-    public function testAChildReadWithoutATagIsSkippedAsRunNotAsAHole(): void
+    public function testAChildReadWithoutATagIsADependency(): void
     {
         $this->resource->get(self::PAGE_READING_UNTAGGED_CHILD);
         $tree = $this->flushAndValidate($this->logger);
 
-        $this->assertSame([], self::dependsOnEdgesFrom($tree, self::PAGE_READING_UNTAGGED_CHILD));
-        $this->assertSame(
-            ['{"parent":"' . self::PAGE_READING_UNTAGGED_CHILD . '","child":"app://self/counter","reason":"no_etag_or_surrogate_key"}'],
-            self::skippedChildrenOf($tree, self::PAGE_READING_UNTAGGED_CHILD),
-            'the page read the child, so it ran - it carries no tag, which is what leaves the page without the edge',
-        );
+        $edges = self::dependsOnEdgesFrom($tree, self::PAGE_READING_UNTAGGED_CHILD);
+        $this->assertCount(1, $edges, 'the page read the child, so it ran with a body - its key is the page\'s, tagged or not');
+        $this->assertStringContainsString('"child":"app://self/counter"', $edges[0]);
+        $this->assertSame([], self::skippedChildrenOf($tree, self::PAGE_READING_UNTAGGED_CHILD));
     }
 
     public function testPurgingTheMaterialChildMakesTheNextGetAFreshMiss(): void

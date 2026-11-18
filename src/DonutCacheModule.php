@@ -4,13 +4,10 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\CacheableResponse;
 use BEAR\RepositoryModule\Annotation\DonutCache;
 use BEAR\RepositoryModule\Annotation\RefreshCache;
 use Override;
-use Ray\Aop\AbstractMatcher;
-use Ray\Aop\MatcherInterface;
 use Ray\Di\AbstractModule;
 use Ray\Di\Scope;
 
@@ -72,27 +69,8 @@ final class DonutCacheModule extends AbstractModule
 
         $this->bindInterceptor(
             $this->matcher->annotatedWith(CacheableResponse::class),
-            $this->commandMethods($this->matcher),
+            new UnsafeMethodMatcher(),
             [DonutCommandInterceptor::class],
-        );
-    }
-
-    /**
-     * onPost writes too: a POST that changes state must refresh the donut it invalidates
-     *
-     * @see \BEAR\QueryRepository\CacheableModule::installAopModule()
-     */
-    private function commandMethods(MatcherInterface $matcher): AbstractMatcher
-    {
-        return $matcher->logicalOr(
-            $matcher->startsWith('onPut'),
-            $matcher->logicalOr(
-                $matcher->startsWith('onPost'),
-                $matcher->logicalOr(
-                    $matcher->startsWith('onPatch'),
-                    $matcher->startsWith('onDelete'),
-                ),
-            ),
         );
     }
 
@@ -103,19 +81,11 @@ final class DonutCacheModule extends AbstractModule
         // interceptor.
         $readNotDeclared = $this->matcher->logicalNot(
             $this->matcher->logicalOr(
-                $this->matcher->annotatedWith(CacheableResponse::class),
-                $this->matcher->logicalOr(
-                    $this->matcher->annotatedWith(Cacheable::class),
-                    $this->matcher->annotatedWith(DonutCache::class),
-                ),
+                new CacheableClassMatcher(),
+                $this->matcher->annotatedWith(DonutCache::class),
             ),
         );
-        $writeNotDeclared = $this->matcher->logicalNot(
-            $this->matcher->logicalOr(
-                $this->matcher->annotatedWith(CacheableResponse::class),
-                $this->matcher->annotatedWith(Cacheable::class),
-            ),
-        );
+        $writeNotDeclared = $this->matcher->logicalNot(new CacheableClassMatcher());
         $this->bindInterceptor(
             $readNotDeclared,
             $this->matcher->logicalAnd(
@@ -129,13 +99,15 @@ final class DonutCacheModule extends AbstractModule
             $writeNotDeclared,
             $this->matcher->logicalAnd(
                 $this->matcher->annotatedWith(CacheableResponse::class),
-                $this->commandMethods($this->matcher),
+                new UnsafeMethodMatcher(),
             ),
             [DonutCommandInterceptor::class],
         );
+        // Not an annotation matcher alone, which is woven in attribute order, outside RefreshInterceptor: in binding
+        // order, the query is matched before a #[Purge] beside #[RefreshCache] runs, as on a #[CacheableResponse] class
         $this->bindInterceptor(
             $writeNotDeclared,
-            $this->matcher->annotatedWith(RefreshCache::class),
+            $this->matcher->logicalAnd($this->matcher->annotatedWith(RefreshCache::class), $this->matcher->any()),
             [DonutCommandInterceptor::class],
         );
     }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Exception\UnmatchedQuery;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
@@ -48,6 +49,17 @@ class UnmatchedQueryRefreshTest extends TestCase
         $this->assertSame(200, $ro->code, 'the write itself still succeeds; only the automatic refresh cannot apply');
     }
 
+    /** PHP method names are case-insensitive, so onPOST is the POST handler */
+    public function testAPostHandlerSpelledInCapitalsSkipsTheRefreshToo(): void
+    {
+        $ro = $this->resource->post('app://self/case-post-writer', ['title' => 'new']);
+
+        $this->assertSame(200, $ro->code);
+        $error = self::eventContextJsonOf($this->flushAndValidate($this->logger), 'cache_error');
+        $this->assertNotNull($error);
+        $this->assertStringContainsString('"uri":"app://self/case-post-writer"', $error);
+    }
+
     public function testPostStillRunsTheExplicitPurgeWrittenOnIt(): void
     {
         $dest = new Uri('app://self/refresh-dest?id=1');
@@ -61,12 +73,28 @@ class UnmatchedQueryRefreshTest extends TestCase
 
     public function testTheSkipIsRecordedAsACacheError(): void
     {
-        $this->resource->post('app://self/mismatched-writer', ['title' => 'new']);
+        $this->resource->post('app://self/mismatched-writer', ['title' => 'sent-value-7f3a']);
         $tree = $this->flushAndValidate($this->logger);
 
         $error = self::eventContextJsonOf($tree, 'cache_error');
         $this->assertNotNull($error, 'the skip is a recorded event, not a silent one');
         $this->assertStringContainsString('"operation":"write"', $error);
         $this->assertStringContainsString('"exceptionClass":"BEAR\\\\QueryRepository\\\\Exception\\\\UnmatchedQuery"', $error);
+        $this->assertStringNotContainsString('sent-value-7f3a', $error, 'the value the write was sent is not recorded');
+        $this->assertStringContainsString('"uri":"app://self/mismatched-writer"', $error, 'the URI without its query');
+    }
+
+    public function testAPutThatThrowsDoesNotRunTheExplicitPurgeWrittenOnIt(): void
+    {
+        $dest = new Uri('app://self/refresh-dest?id=1');
+        $this->repository->put($this->resource->get('app://self/refresh-dest', ['id' => '1']));
+
+        try {
+            $this->resource->put('app://self/mismatched-writer', ['title' => 'new']);
+            $this->fail('a PUT whose query lacks onGet()\'s required parameter throws');
+        } catch (UnmatchedQuery) {
+        }
+
+        $this->assertInstanceOf(ResourceState::class, $this->repository->get($dest), 'RefreshSameCommand throws first, so #[Purge] does not run');
     }
 }

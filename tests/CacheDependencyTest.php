@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\QueryRepository\Log\Context\DependencySkippedContext;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\Module\HalModule;
 use BEAR\Resource\ResourceInterface;
@@ -86,15 +85,15 @@ class CacheDependencyTest extends TestCase
         $this->assertNull($this->repository->get(new Uri('page://self/dep/parent-of-keyed-children')));
     }
 
-    public function testAChildWithNeitherKeyIsLoggedAsSkipped(): void
+    public function testAChildWithNeitherKeyIsADependency(): void
     {
         $this->resource->get('page://self/dep/parent-of-non-cacheable');
         $tree = $this->flushAndValidate($this->logger);
 
-        $skipped = self::skippedChildrenOf($tree, 'page://self/dep/parent-of-non-cacheable');
-        $this->assertCount(1, $skipped);
-        $this->assertStringContainsString('"child":"page://self/dep/non-cacheable-child"', $skipped[0]);
-        $this->assertStringContainsString('"reason":"' . DependencySkippedContext::NO_ETAG_OR_SURROGATE_KEY . '"', $skipped[0]);
+        $this->assertSame([], self::skippedChildrenOf($tree, 'page://self/dep/parent-of-non-cacheable'));
+        $edges = self::eventContextsJsonOf($tree, 'depends_on');
+        $this->assertCount(1, $edges);
+        $this->assertStringContainsString('"child":"page://self/dep/non-cacheable-child"', $edges[0]);
     }
 
     public function testDestroyByChild(): void
@@ -263,12 +262,10 @@ class CacheDependencyTest extends TestCase
     }
 
     /**
-     * Non-Cacheable child carries neither an ETag nor a Surrogate-Key, so setCacheDependency must
-     * continue past it without registering a (parent, child) dependency. The
-     * parent's cached state still gets a Surrogate-Key (its own URI tag),
-     * but the child's URI tag must NOT appear in it.
+     * A non-Cacheable child carries neither an ETag nor a Surrogate-Key, yet it has a key: the parent's stored state
+     * carries the child's URI tag, and a purge of the child reaches the parent.
      */
-    public function testNonCacheableChildDoesNotContributeSurrogateKey(): void
+    public function testNonCacheableChildContributesSurrogateKey(): void
     {
         $this->resource->get('page://self/dep/parent-of-non-cacheable');
 
@@ -277,7 +274,10 @@ class CacheDependencyTest extends TestCase
 
         $childTag = (new UriTag())(new Uri('page://self/dep/non-cacheable-child'));
         $surrogateKey = $parent->headers[Header::SURROGATE_KEY] ?? '';
-        $this->assertStringNotContainsString($childTag, $surrogateKey);
+        $this->assertStringContainsString($childTag, $surrogateKey);
+
+        $this->repository->purge(new Uri('page://self/dep/non-cacheable-child'));
+        $this->assertNull($this->repository->get(new Uri('page://self/dep/parent-of-non-cacheable')));
     }
 
     /**

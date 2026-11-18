@@ -32,4 +32,12 @@ class MismatchedWriter extends ResourceObject
 
         return $this;
     }
+
+    #[Purge(uri: 'app://self/refresh-dest?id=1')]
+    public function onPut(string $title): static
+    {
+        $this->body = ['title' => $title];
+
+        return $this;
+    }
 }

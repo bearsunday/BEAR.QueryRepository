@@ -7,8 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- The `purge_skipped` log entry (fields `uri`, the write's URI without its query, and `reason`, `unmatched_query`), recorded when a write on a resource without a cache attribute cannot address its own key because its query lacks a required `onGet()` parameter.
+- `AppSurrogateKeyModule($key)` adds the key to every entry this package stores and to every `Surrogate-Key` it sets, so invalidating the key on the server and at the CDN clears the whole application. Install it before or after `QueryRepositoryModule`.
+
 ### Changed
+- Requires `bear/resource` 1.36 or later: a donut hole's links are carried in its `toUri()` fragment.
 - **Behaviour change**: on a `#[CacheableResponse]` or `#[DonutCache]` page, `CacheDependencyInterface::depends()` called from a template while it renders no longer tags the stored template (as before 1.20.0), so purging that child leaves the page's old content in the template. Embed such a part at the top level of the page body instead, with `#[Embed]` or an interceptor that puts the request there.
+- **Behaviour change**: an embedded child that ran with a body is a dependency of its parent even without a cache attribute, an ETag or a `Surrogate-Key`: its URI tag and group tag go into the parent's stored tags and `Surrogate-Key`, so a write to it invalidates the parent. A hole on a `#[CacheableResponse]`/`#[DonutCache]` page still has no body when the page is stored and does not reach the stored template.
+- **Behaviour change**: a write (`onPut`/`onPost`/`onPatch`/`onDelete`) on a resource with neither `#[Cacheable]` nor `#[CacheableResponse]` invalidates its own key, as `#[Purge]` of itself would, together with what its `#[Purge]`/`#[Refresh]` name; a write method marked `#[CacheableResponse]` or `#[RefreshCache]` leaves its own key to the refresh that attribute makes. A write whose query lacks a parameter its `onGet()` requires, other than one `#[ResourceParam]` binds, skips its own key and logs `purge_skipped`. Its own key is that of the URI the write was sent to. Such a write must return a resource object; one that returns another value now throws `ReturnValueIsNotResourceObjectException` after it has run.
+- **Behaviour change**: a write is intercepted only on the handler BEAR.Resource dispatches to, `onPut`, `onPost`, `onPatch` or `onDelete` in any letter case; a method that only begins with one of those names, such as `onPostProcess()`, is no longer intercepted as a write. A POST handler spelled in another case, such as `onPOST()`, whose query lacks a parameter its `onGet()` requires skips the refresh and logs `cache_error`, as `onPost()` does.
+
+### Deprecated
+- `DependencySkippedContext::NO_ETAG_OR_SURROGATE_KEY` and the `dependency_skipped` schema value `no_etag_or_surrogate_key`: no longer emitted, since an embedded child with a body is always a dependency. They are kept for compatibility with 1.20.2.
+
+### Fixed
+- A `#[Cacheable]` page that embeds a `#[CacheableResponse]` or `#[DonutCache]` page which itself embeds a resource is now stored; since 1.17.0 the GET failed with `AbstractRequest::__serialize not supported`, and before that the page was silently not stored. The page carries the tags of the part and of the resource the part embeds, so purging either drops the page.
+- A write to a `#[Cacheable]` resource whose `onGet()` reads an argument through `#[ResourceParam]` no longer fails with `UnmatchedQuery` when its query lacks that argument, which is not in the URI a GET is stored under; its entry is purged and read again.
+- A POST that cannot address its own key no longer writes the values it was sent into the cache log: `cache_error` records its URI without the query, and the `UnmatchedQuery` message names the missing `onGet()` parameter instead of quoting the query.
+- A write whose query carries `null` for an `onGet()` parameter that allows null now addresses its own key, as BEAR.Resource binds that parameter; the key was taken as missing, so the write threw `UnmatchedQuery` or skipped its own key.
+- A PUT, PATCH or DELETE handler with both `#[RefreshCache]` and `#[Purge]`/`#[Refresh]`, on a class that is neither `#[Cacheable]` nor `#[CacheableResponse]`, whose query lacks a parameter its `onGet()` requires now throws `UnmatchedQuery` before the URIs it names are purged, as on a `#[CacheableResponse]` class.
 
 ## [1.20.2] - 2026-11-13
 
