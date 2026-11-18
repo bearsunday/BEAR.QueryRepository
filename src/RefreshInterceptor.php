@@ -49,6 +49,8 @@ final readonly class RefreshInterceptor implements MethodInterceptor
     public function invoke(MethodInvocation $invocation): ResourceObject
     {
         ($this->refreshTemplateValidator)($invocation);
+        // The key is the resource the write was sent to, whatever it returns; the return gives the code
+        $target = $invocation->getThis();
         /** @psalm-suppress MixedAssignment */
         $ro = $invocation->proceed();
         if (! $ro instanceof ResourceObject) {
@@ -61,7 +63,7 @@ final readonly class RefreshInterceptor implements MethodInterceptor
         try {
             if ($ro->code < Code::BAD_REQUEST) {
                 $declared = $this->command->declared($invocation, $ro);
-                $uris = $this->ownUris($invocation, $ro);
+                $uris = $target instanceof ResourceObject ? $this->ownUris($invocation, $target) : [];
                 foreach ($declared as [$named]) {
                     $uris = [...$uris, ...$named];
                 }

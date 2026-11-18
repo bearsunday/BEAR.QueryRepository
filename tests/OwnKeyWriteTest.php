@@ -7,6 +7,8 @@ namespace BEAR\QueryRepository;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
+use FakeVendor\HelloWorld\Resource\App\Assisted\CacheableWriter;
+use FakeVendor\HelloWorld\Resource\App\Receipt;
 use FakeVendor\HelloWorld\Resource\Page\Mx\DCRefreshPurge;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
@@ -147,12 +149,28 @@ class OwnKeyWriteTest extends TestCase
 
     public function testACacheableWriteNeedsNoResourceParamBoundValue(): void
     {
+        CacheableWriter::$gets = 0;
         $this->resource->get('app://self/assisted/cacheable-writer', ['id' => '1']);
 
         $ro = $this->resource->put('app://self/assisted/cacheable-writer', ['id' => '1']);
 
         $this->assertSame(204, $ro->code);
+        $this->assertSame(2, CacheableWriter::$gets, 'the write purged the entry and read it again');
         $this->assertNotNull($this->repository->get(new Uri('app://self/assisted/cacheable-writer?id=1')), 'refreshed');
+    }
+
+    /** The key is the resource the write was sent to; what it returns gives only the code */
+    public function testAWriteThatReturnsAnotherResourcePurgesTheKeyOfTheOneItWrote(): void
+    {
+        $parent = new Uri('app://self/receipt-writer-parent?id=1');
+        $this->resource->get('app://self/receipt-writer-parent', ['id' => 1]);
+        $this->assertNotNull($this->repository->get($parent));
+
+        $ro = $this->resource->put('app://self/receipt-writer', ['id' => 1]);
+
+        $this->assertInstanceOf(Receipt::class, $ro);
+        $this->assertSame(202, $ro->code);
+        $this->assertNull($this->repository->get($parent), 'the parent that embeds the written resource is invalidated');
     }
 
     /** The method's #[CacheableResponse] leaves its own key to DonutCommandInterceptor, which refreshes it */

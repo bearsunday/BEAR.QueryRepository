@@ -9,10 +9,11 @@ use Ray\Aop\AbstractMatcher;
 use ReflectionClass;
 use ReflectionMethod;
 
-use function str_starts_with;
+use function in_array;
+use function strtolower;
 
 /**
- * Matches a resource's unsafe methods, the writes: onPut, onPost, onPatch and onDelete
+ * Matches a resource's unsafe methods, the write handlers BEAR.Resource dispatches to: onPut, onPost, onPatch and onDelete
  *
  * A method matcher; it matches no class.
  *
@@ -20,7 +21,8 @@ use function str_starts_with;
  */
 final class UnsafeMethodMatcher extends AbstractMatcher
 {
-    private const PREFIXES = ['onPut', 'onPost', 'onPatch', 'onDelete'];
+    /** Lowercased, as PHP method names are case-insensitive */
+    private const WRITES = ['onput', 'onpost', 'onpatch', 'ondelete'];
 
     /**
      * {@inheritDoc}
@@ -37,12 +39,6 @@ final class UnsafeMethodMatcher extends AbstractMatcher
     #[Override]
     public function matchesMethod(ReflectionMethod $method, array $arguments): bool
     {
-        foreach (self::PREFIXES as $prefix) {
-            if (str_starts_with($method->name, $prefix)) {
-                return true;
-            }
-        }
-
-        return false;
+        return in_array(strtolower($method->name), self::WRITES, true);
     }
 }

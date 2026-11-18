@@ -12,8 +12,12 @@ use BEAR\Resource\ResourceObject;
 #[Cacheable]
 class CacheableWriter extends ResourceObject
 {
+    /** Number of times onGet() ran */
+    public static int $gets = 0;
+
     public function onGet(string $id, #[ResourceParam(uri: 'app://self/user?id=1#name')] string $owner): static
     {
+        self::$gets++;
         $this->body = ['v' => $id . ':' . $owner];
 
         return $this;
