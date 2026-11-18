@@ -2,14 +2,20 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/purge_skipped.json",
     "title": "purge_skipped",
-    "description": "Event: a write on a resource with no cache attribute left its own key alone, because its query (`uri`) does not hold every parameter its onGet() requires, such as a POST that creates an entity. Its #[Purge]/#[Refresh] still run.",
+    "description": "Event: a write on a resource with no cache attribute left its own key alone, and why: `unmatched_query`, its query (`uri`) does not hold every parameter its onGet() requires, such as a POST that creates an entity. Its #[Purge]/#[Refresh] still run.",
     "type": "object",
     "required": [
-        "uri"
+        "uri",
+        "reason"
     ],
     "properties": {
         "uri": {
             "type": "string"
+        },
+        "reason": {
+            "enum": [
+                "unmatched_query"
+            ]
         }
     },
     "additionalProperties": false

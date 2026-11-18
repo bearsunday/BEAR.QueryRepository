@@ -1960,7 +1960,7 @@ G4 POST a creating write -> purge_skipped, then its #[Purge] of level-two
 
 === Cache Log Tree — G4. creating write ===
 command method=onPost annotations=[1 items] source=RefreshInterceptor
-├── purge_skipped uri=app://self/creating-writer?title=new [event]
+├── purge_skipped uri=app://self/creating-writer?title=new reason=unmatched_query [event]
 ├── purge uri=page://self/dep/level-two [event]
 ├── invalidate tags=[_dep_level-two_, grp-_dep_level-two_] roPool=invalidated cdn=skipped durationMs=[volatile] [event]
 └── command_result code=201
@@ -1989,7 +1989,8 @@ command method=onPost annotations=[1 items] source=RefreshInterceptor
                     "type": "purge_skipped",
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/purge_skipped.json",
                     "context": {
-                        "uri": "app://self/creating-writer?title=new"
+                        "uri": "app://self/creating-writer?title=new",
+                        "reason": "unmatched_query"
                     }
                 },
                 {

@@ -46,7 +46,7 @@ class OwnKeyWriteTest extends TestCase
 
         $this->assertNull($this->repository->get(new Uri('page://self/dep/level-one')), 'the declared #[Purge] ran');
         $tree = $this->flushAndValidate($this->logger);
-        $this->assertSame(['{"uri":"app://self/creating-writer?title=new"}'], self::eventContextsJsonOf($tree, 'purge_skipped'));
+        $this->assertSame(['{"uri":"app://self/creating-writer?title=new","reason":"unmatched_query"}'], self::eventContextsJsonOf($tree, 'purge_skipped'));
         $this->assertSame([], self::eventContextsJsonOf($tree, 'cache_error'), 'a creating write is not an error');
         $this->assertContains(['purge_skipped', 'purge', 'invalidate'], self::scopeEventTypeSequences($tree));
     }
@@ -57,7 +57,7 @@ class OwnKeyWriteTest extends TestCase
 
         $this->assertSame(200, $ro->code);
         $tree = $this->flushAndValidate($this->logger);
-        $this->assertSame(['{"uri":"app://self/creating-writer"}'], self::eventContextsJsonOf($tree, 'purge_skipped'));
+        $this->assertSame(['{"uri":"app://self/creating-writer","reason":"unmatched_query"}'], self::eventContextsJsonOf($tree, 'purge_skipped'));
         $this->assertContains(['purge_skipped'], self::scopeEventTypeSequences($tree), 'nothing else to purge, so no invalidation');
     }
 
