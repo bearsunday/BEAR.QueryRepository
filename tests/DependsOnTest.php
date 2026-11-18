@@ -165,11 +165,13 @@ class DependsOnTest extends TestCase
         $this->assertFalse($this->isStored($uri, $isDonut));
     }
 
+    /** Its null body holds no row, so a template the arguments do not fill names nothing and does not fail */
     public function testAListThatAnswers404IsStillADependencyOfItsPage(): void
     {
         $uri = 'app://self/rows/page404';
-        $this->resource->get($uri);
+        $page = $this->resource->get($uri);
         $this->assertTrue($this->isStored($uri, false));
+        $this->assertSame([], $this->itemTags($page));
 
         $this->resource->put('app://self/rows/taxonomy?ulid=c1');
         $this->assertFalse($this->isStored($uri, false));
@@ -241,12 +243,14 @@ class DependsOnTest extends TestCase
     {
         return [
             "array rows under key: 'articles'" => ['app://self/rows/row-list', [1, 2]],
+            'a row without the variable among the rows is skipped' => ['app://self/rows/mixed-rows', [1, 2]],
             "object rows in a Traversable under key: 'entries'" => ['app://self/rows/entry-rows', [1, 2]],
             "one object row under key: 'detail'" => ['app://self/rows/detail', [3]],
             'without a key, a body that is one object row' => ['app://self/rows/body-object', [7]],
             'without a key, a body that is an IteratorAggregate of object rows' => ['app://self/rows/body-iterable', [1, 2]],
             'without a key, a body that is a list of array rows' => ['app://self/rows/body-rows', [1, 2]],
             'an empty list of rows' => ['app://self/rows/empty-rows?channelId=c1', []],
+            'without a key, an empty body' => ['app://self/rows/empty-body?channelId=c1', []],
             'without a key, a top-level scalar' => ['app://self/rows/top-level-id', [5]],
             'without a key, {?id*} and a top-level list under id' => ['app://self/rows/body-list', [1, 2, 3, 5]],
             'without a key, ?id={ids*} and a top-level list under ids' => ['app://self/rows/renamed-list', [1, 2, 3, 5]],
@@ -291,10 +295,19 @@ class DependsOnTest extends TestCase
         $this->assertFalse($this->isStored($uri, false));
     }
 
-    /** An empty list has no row, and a template without a key still expands from the arguments */
-    public function testATemplateTheArgumentsFillNamesItsUriBesideAnEmptyList(): void
+    /** @return array<string, array{0: string}> */
+    public static function emptyListProvider(): array
     {
-        $uri = 'app://self/rows/empty-rows?channelId=c1';
+        return [
+            'under a key' => ['app://self/rows/empty-rows?channelId=c1'],
+            'the body itself' => ['app://self/rows/empty-body?channelId=c1'],
+        ];
+    }
+
+    /** An empty list has no row: a template the arguments fill still names its URI, and one they do not names none */
+    #[DataProvider('emptyListProvider')]
+    public function testATemplateTheArgumentsFillNamesItsUriBesideAnEmptyList(string $uri): void
+    {
         $this->assertContains($this->tag('app://self/rows/taxonomy?ulid=c1'), $this->keys($this->resource->get($uri)));
 
         $this->resource->put('app://self/rows/taxonomy?ulid=c1');

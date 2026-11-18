@@ -159,7 +159,9 @@ final readonly class DependsOnTags
 
     /**
      * Each variable is read from the row, then from the body's top level, as #[Link] expands its href, then from the arguments, which
-     * are not on the write path, so they are rebuilt from the request query and the defaults: {@see DependsOn}
+     * are not on the write path, so they are rebuilt from the request query and the defaults: {@see DependsOn}. A row that lacks a
+     * variable is skipped, and a template no row fills is a mistake. Without a row, as a 404 has, a template the top level and the
+     * arguments fill names its URI, and one they do not names none.
      *
      * @param list<DependsOn> $declarations
      *
@@ -175,6 +177,10 @@ final readonly class DependsOnTags
         $arguments = [];
         foreach ($onGet->getParameters() as $parameter) {
             $parameters[] = $parameter->name;
+            if (in_array($parameter->name, $bound, true)) {
+                continue;
+            }
+
             $arguments += $this->argument($parameter->name, $ro->uri->query);
             if (! array_key_exists($parameter->name, $arguments) && $parameter->isDefaultValueAvailable()) {
                 /** @psalm-suppress MixedAssignment */
@@ -186,23 +192,24 @@ final readonly class DependsOnTags
         $tags = [];
         foreach ($declarations as $dependsOn) {
             $template = $dependsOn->uri;
-            foreach ($this->rows($ro->body, $dependsOn->key) as $row) {
-                $values = $row + $top;
-                foreach (DependsOnTemplates::variables($template) as $variable) {
-                    if (array_key_exists($variable, $values)) {
-                        continue;
-                    }
-
-                    if (! in_array($variable, $parameters, true)) {
-                        throw new DependsOnNotExpandable($source, DependsOnTemplates::declaration($template), sprintf("'%s' is not an onGet() parameter", $variable));
-                    }
-
-                    if (in_array($variable, $bound, true)) {
-                        throw new DependsOnNotExpandable($source, DependsOnTemplates::declaration($template), sprintf("'%s' is bound by #[ResourceParam]", $variable));
-                    }
+            $variables = DependsOnTemplates::variables($template);
+            $rows = $this->rows($ro->body, $dependsOn->key);
+            $missing = '';
+            $expanded = false;
+            foreach ($rows === [] ? [[]] : $rows as $row) {
+                $values = $row + $top + $arguments;
+                $reason = $this->missing($variables, $values, $parameters, $bound);
+                if ($reason !== null) {
+                    $missing = $reason;
+                    continue;
                 }
 
-                $tags = [...$tags, ...DependsOnTemplates::tags($this->uriTag, $template, $values + $arguments, $source)];
+                $expanded = true;
+                $tags = [...$tags, ...DependsOnTemplates::tags($this->uriTag, $template, $values, $source)];
+            }
+
+            if ($rows !== [] && ! $expanded) {
+                throw new DependsOnNotExpandable($source, DependsOnTemplates::declaration($template), $missing);
             }
         }
 
@@ -210,9 +217,34 @@ final readonly class DependsOnTags
     }
 
     /**
+     * @param list<string>            $variables
+     * @param array<array-key, mixed> $values
+     * @param list<string>            $parameters
+     * @param list<string>            $bound
+     *
+     * @return string|null why a variable has no value; null when each has one
+     */
+    private function missing(array $variables, array $values, array $parameters, array $bound): string|null
+    {
+        foreach ($variables as $variable) {
+            if (array_key_exists($variable, $values)) {
+                continue;
+            }
+
+            if (! in_array($variable, $parameters, true)) {
+                return sprintf("'%s' is not an onGet() parameter", $variable);
+            }
+
+            return in_array($variable, $bound, true) ? sprintf("'%s' is bound by #[ResourceParam]", $variable) : sprintf("no '%s'", $variable);
+        }
+
+        return null;
+    }
+
+    /**
      * The rows under the key, or in the body itself without a key: each array or object of a list (an array list, or a Traversable
-     * read with foreach), or the array or object itself. An object row is read as `(array)`. Without a key, a body that holds no
-     * row is the one row with no values, so its variables are read from the top level and the arguments.
+     * read with foreach), or the array or object itself. An object row is read as `(array)`. A body or value that is neither, such
+     * as the null of a 404, or an empty list, holds none.
      *
      * @return list<array<array-key, mixed>>
      */
@@ -233,7 +265,7 @@ final readonly class DependsOnTags
             }
         }
 
-        return $rows === [] && $key === null ? [[]] : $rows;
+        return $rows;
     }
 
     /**
