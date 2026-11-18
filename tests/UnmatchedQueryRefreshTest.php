@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Exception\UnmatchedQuery;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
@@ -69,5 +70,19 @@ class UnmatchedQueryRefreshTest extends TestCase
         $this->assertStringContainsString('"operation":"write"', $error);
         $this->assertStringContainsString('"exceptionClass":"BEAR\\\\QueryRepository\\\\Exception\\\\UnmatchedQuery"', $error);
         $this->assertStringNotContainsString('title', $error, 'the values the write was sent are not recorded');
+    }
+
+    public function testAPutThatThrowsDoesNotRunTheExplicitPurgeWrittenOnIt(): void
+    {
+        $dest = new Uri('app://self/refresh-dest?id=1');
+        $this->repository->put($this->resource->get('app://self/refresh-dest', ['id' => '1']));
+
+        try {
+            $this->resource->put('app://self/mismatched-writer', ['title' => 'new']);
+            $this->fail('a PUT whose query lacks onGet()\'s required parameter throws');
+        } catch (UnmatchedQuery) {
+        }
+
+        $this->assertInstanceOf(ResourceState::class, $this->repository->get($dest), 'RefreshSameCommand throws first, so #[Purge] does not run');
     }
 }

@@ -7,6 +7,7 @@ namespace BEAR\QueryRepository;
 use BEAR\QueryRepository\Exception\UnmatchedQuery;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\ResourceInterface;
+use BEAR\Resource\Uri;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Madapaja\TwigModule\TwigModule;
 use PHPUnit\Framework\TestCase;
@@ -28,6 +29,7 @@ class DonutUnmatchedQueryRefreshTest extends TestCase
     use SemanticLogTreeTrait;
 
     private ResourceInterface $resource;
+    private QueryRepositoryInterface $repository;
     private SemanticLoggerInterface $logger;
 
     protected function setUp(): void
@@ -36,6 +38,7 @@ class DonutUnmatchedQueryRefreshTest extends TestCase
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
         $injector = new Injector($module, __DIR__ . '/tmp');
         $this->resource = $injector->getInstance(ResourceInterface::class);
+        $this->repository = $injector->getInstance(QueryRepositoryInterface::class);
         $this->logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
         parent::setUp();
@@ -64,5 +67,19 @@ class DonutUnmatchedQueryRefreshTest extends TestCase
     {
         $this->expectException(UnmatchedQuery::class);
         $this->resource->put('page://self/html/mismatched-donut-writer', ['title' => 'new']);
+    }
+
+    public function testAPutThatThrowsDoesNotRunTheExplicitPurgeWrittenOnIt(): void
+    {
+        $dest = new Uri('app://self/refresh-dest?id=1');
+        $this->repository->put($this->resource->get('app://self/refresh-dest', ['id' => '1']));
+
+        try {
+            $this->resource->put('page://self/html/mismatched-donut-writer', ['title' => 'new']);
+            $this->fail('a PUT whose query lacks onGet()\'s required parameter throws');
+        } catch (UnmatchedQuery) {
+        }
+
+        $this->assertNotNull($this->repository->get($dest), 'DonutCommandInterceptor throws inside RefreshInterceptor, so #[Purge] does not run');
     }
 }
