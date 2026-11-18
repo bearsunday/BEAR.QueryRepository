@@ -51,6 +51,17 @@ class DonutUnmatchedQueryRefreshTest extends TestCase
         $this->assertSame(200, $ro->code, 'the write itself still succeeds; only the automatic refresh cannot apply');
     }
 
+    /** PHP method names are case-insensitive, so onPOST is the POST handler */
+    public function testAPostHandlerSpelledInCapitalsSkipsTheRefreshToo(): void
+    {
+        $ro = $this->resource->post('page://self/html/case-post-donut-writer', ['title' => 'new']);
+
+        $this->assertSame(200, $ro->code);
+        $error = self::eventContextJsonOf($this->flushAndValidate($this->logger), 'cache_error');
+        $this->assertNotNull($error);
+        $this->assertStringContainsString('"uri":"page://self/html/case-post-donut-writer"', $error);
+    }
+
     public function testTheSkipIsRecordedAsACacheError(): void
     {
         $this->resource->post('page://self/html/mismatched-donut-writer', ['title' => 'sent-value-7f3a']);

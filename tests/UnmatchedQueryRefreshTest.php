@@ -49,6 +49,17 @@ class UnmatchedQueryRefreshTest extends TestCase
         $this->assertSame(200, $ro->code, 'the write itself still succeeds; only the automatic refresh cannot apply');
     }
 
+    /** PHP method names are case-insensitive, so onPOST is the POST handler */
+    public function testAPostHandlerSpelledInCapitalsSkipsTheRefreshToo(): void
+    {
+        $ro = $this->resource->post('app://self/case-post-writer', ['title' => 'new']);
+
+        $this->assertSame(200, $ro->code);
+        $error = self::eventContextJsonOf($this->flushAndValidate($this->logger), 'cache_error');
+        $this->assertNotNull($error);
+        $this->assertStringContainsString('"uri":"app://self/case-post-writer"', $error);
+    }
+
     public function testPostStillRunsTheExplicitPurgeWrittenOnIt(): void
     {
         $dest = new Uri('app://self/refresh-dest?id=1');

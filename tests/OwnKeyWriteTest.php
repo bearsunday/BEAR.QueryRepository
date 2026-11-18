@@ -63,6 +63,15 @@ class OwnKeyWriteTest extends TestCase
         $this->assertContains(['purge_skipped'], self::scopeEventTypeSequences($tree), 'nothing else to purge, so no invalidation');
     }
 
+    /** The key is the URI the write was sent to, whatever the handler does to its own */
+    public function testAWriteThatChangesItsOwnUriPurgesTheKeyItWasSentTo(): void
+    {
+        $this->resource->put('app://self/uri-changing-writer', ['id' => '1']);
+
+        $tree = $this->flushAndValidate($this->logger);
+        $this->assertSame(['{"uri":"app://self/uri-changing-writer?id=1"}'], self::eventContextsJsonOf($tree, 'purge'));
+    }
+
     public function testAPurgeOfItselfIsOnePurgeOfItsOwnKey(): void
     {
         $this->resource->put('app://self/self-purge-writer', ['id' => '1']);

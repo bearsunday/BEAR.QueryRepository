@@ -22,7 +22,16 @@ use function strtolower;
 final class UnsafeMethodMatcher extends AbstractMatcher
 {
     /** Lowercased, as PHP method names are case-insensitive */
-    private const WRITES = ['onput', 'onpost', 'onpatch', 'ondelete'];
+    private const POST = 'onpost';
+
+    /** Lowercased, as PHP method names are case-insensitive */
+    private const WRITES = ['onput', self::POST, 'onpatch', 'ondelete'];
+
+    /** Whether the method is the POST handler, in any letter case */
+    public static function isPost(ReflectionMethod $method): bool
+    {
+        return strtolower($method->name) === self::POST;
+    }
 
     /**
      * {@inheritDoc}

@@ -20,7 +20,6 @@ use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
 
 use function assert;
-use function str_starts_with;
 
 /**
  * Interceptor for donut cache invalidation on CQRS commands
@@ -65,7 +64,7 @@ final readonly class DonutCommandInterceptor implements MethodInterceptor
                 } catch (UnmatchedQuery $e) {
                     // onPost-bound classes often lack a parameter onGet requires (#219); the
                     // write already ran, so this is recorded, not thrown. Other methods still throw.
-                    if (! str_starts_with($invocation->getMethod()->getName(), 'onPost')) {
+                    if (! UnsafeMethodMatcher::isPost($invocation->getMethod())) {
                         throw $e;
                     }
 

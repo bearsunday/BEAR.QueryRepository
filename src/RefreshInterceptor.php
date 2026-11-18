@@ -49,8 +49,10 @@ final readonly class RefreshInterceptor implements MethodInterceptor
     public function invoke(MethodInvocation $invocation): ResourceObject
     {
         ($this->refreshTemplateValidator)($invocation);
-        // The key is the resource the write was sent to, whatever it returns; the return gives the code
+        // The key is the URI the write was sent to, whatever the handler does to its own or returns; the return gives
+        // the code
         $target = $invocation->getThis();
+        $sent = $target instanceof ResourceObject ? $this->sent($target) : null;
         /** @psalm-suppress MixedAssignment */
         $ro = $invocation->proceed();
         if (! $ro instanceof ResourceObject) {
@@ -63,7 +65,7 @@ final readonly class RefreshInterceptor implements MethodInterceptor
         try {
             if ($ro->code < Code::BAD_REQUEST) {
                 $declared = $this->command->declared($invocation, $ro);
-                $uris = $target instanceof ResourceObject ? $this->ownUris($invocation, $target) : [];
+                $uris = $sent instanceof ResourceObject ? $this->ownUris($invocation, $sent) : [];
                 foreach ($declared as [$named]) {
                     $uris = [...$uris, ...$named];
                 }
@@ -82,9 +84,18 @@ final readonly class RefreshInterceptor implements MethodInterceptor
         return $ro;
     }
 
+    /** The resource the write was sent to, cloned with its URI before the handler runs; none without a URI */
+    private function sent(ResourceObject $target): ResourceObject|null
+    {
+        /** @var AbstractUri|null $uri a resource object taken from the injector has none */
+        $uri = $target->uri;
+
+        return $uri === null ? null : clone $target;
+    }
+
     /**
-     * None where DonutCommandInterceptor refreshes the resource, or where it has no key: no URI, no onGet(), or a query
-     * its onGet() cannot read
+     * None where DonutCommandInterceptor refreshes the resource, or where it has no key: no onGet(), or a query its
+     * onGet() cannot read
      *
      * @param MethodInvocation<object> $invocation
      *
@@ -92,9 +103,7 @@ final readonly class RefreshInterceptor implements MethodInterceptor
      */
     private function ownUris(MethodInvocation $invocation, ResourceObject $ro): array
     {
-        /** @var AbstractUri|null $uri a resource object taken from the injector has none */
-        $uri = $ro->uri;
-        if ($uri === null || ! method_exists($ro, 'onGet') || $this->refreshedByDonut($invocation, $ro)) {
+        if (! method_exists($ro, 'onGet') || $this->refreshedByDonut($invocation, $ro)) {
             return [];
         }
 
@@ -102,7 +111,7 @@ final readonly class RefreshInterceptor implements MethodInterceptor
             return $this->refreshSameCommand->ownUris($ro, ($this->matchQuery)($ro));
         } catch (UnmatchedQuery) {
             // Without the query, which holds the values the write was sent
-            $this->logger->event(new PurgeSkippedContext("{$uri->scheme}://{$uri->host}{$uri->path}", PurgeSkippedContext::UNMATCHED_QUERY));
+            $this->logger->event(new PurgeSkippedContext("{$ro->uri->scheme}://{$ro->uri->host}{$ro->uri->path}", PurgeSkippedContext::UNMATCHED_QUERY));
 
             return [];
         }

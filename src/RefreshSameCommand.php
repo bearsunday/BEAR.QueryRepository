@@ -18,8 +18,6 @@ use Override;
 use Ray\Aop\MethodInvocation;
 use ReflectionException;
 
-use function str_starts_with;
-
 /** @internal */
 final readonly class RefreshSameCommand implements CommandInterface
 {
@@ -51,7 +49,7 @@ final readonly class RefreshSameCommand implements CommandInterface
             // onPut/onPatch/onDelete keep throwing: those act on an entity onGet already
             // addresses, so a required parameter missing there is a real signature mismatch, not
             // this case (BehaviorTest::testUnMatchQuery pins that).
-            if (! str_starts_with($invocation->getMethod()->getName(), 'onPost')) {
+            if (! UnsafeMethodMatcher::isPost($invocation->getMethod())) {
                 throw $e;
             }
 
