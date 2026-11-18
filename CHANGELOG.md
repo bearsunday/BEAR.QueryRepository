@@ -15,13 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Requires `bear/resource` 1.36 or later: a donut hole's links are carried in its `toUri()` fragment.
 - **Behaviour change**: on a `#[CacheableResponse]` or `#[DonutCache]` page, `CacheDependencyInterface::depends()` called from a template while it renders no longer tags the stored template (as before 1.20.0), so purging that child leaves the page's old content in the template. Embed such a part at the top level of the page body instead, with `#[Embed]` or an interceptor that puts the request there.
 - **Behaviour change**: an embedded child that ran with a body is a dependency of its parent even without a cache attribute, an ETag or a `Surrogate-Key`: its URI tag and group tag go into the parent's stored tags and `Surrogate-Key`, so a write to it invalidates the parent. A hole on a `#[CacheableResponse]`/`#[DonutCache]` page still has no body when the page is stored and does not reach the stored template.
-- **Behaviour change**: a write (`onPut`/`onPost`/`onPatch`/`onDelete`) on a resource with neither `#[Cacheable]` nor `#[CacheableResponse]` invalidates its own key, as `#[Purge]` of itself would, together with what its `#[Purge]`/`#[Refresh]` name. A write whose query lacks a parameter its `onGet()` requires skips its own key and logs `purge_skipped`.
+- **Behaviour change**: a write (`onPut`/`onPost`/`onPatch`/`onDelete`) on a resource with neither `#[Cacheable]` nor `#[CacheableResponse]` invalidates its own key, as `#[Purge]` of itself would, together with what its `#[Purge]`/`#[Refresh]` name; a write method marked `#[CacheableResponse]` or `#[RefreshCache]` leaves its own key to the refresh that attribute makes. A write whose query lacks a parameter its `onGet()` requires, other than one `#[ResourceParam]` binds, skips its own key and logs `purge_skipped`.
 
 ### Deprecated
 - `DependencySkippedContext::NO_ETAG_OR_SURROGATE_KEY` and the `dependency_skipped` schema value `no_etag_or_surrogate_key`: no longer emitted, since an embedded child with a body is always a dependency. They are kept for compatibility with 1.20.2.
 
 ### Fixed
 - A `#[Cacheable]` page that embeds a `#[CacheableResponse]` or `#[DonutCache]` page which itself embeds a resource is now stored; since 1.17.0 the GET failed with `AbstractRequest::__serialize not supported`, and before that the page was silently not stored. The page carries the tags of the part and of the resource the part embeds, so purging either drops the page.
+- A write to a `#[Cacheable]` resource whose `onGet()` reads an argument through `#[ResourceParam]` no longer fails with `UnmatchedQuery` when its query lacks that argument, which is not in the URI a GET is stored under; its entry is purged and read again.
 
 ## [1.20.2] - 2026-11-13
 

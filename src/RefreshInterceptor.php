@@ -108,8 +108,11 @@ final readonly class RefreshInterceptor implements MethodInterceptor
     /** @param MethodInvocation<object> $invocation */
     private function refreshedByDonut(MethodInvocation $invocation, ResourceObject $ro): bool
     {
+        $method = $invocation->getMethod();
+
         return (new ReflectionClass($ro))->getAttributes(CacheableResponse::class) !== []
-            || $invocation->getMethod()->getAnnotation(RefreshCache::class) !== null;
+            || $method->getAnnotation(CacheableResponse::class) !== null
+            || $method->getAnnotation(RefreshCache::class) !== null;
     }
 
     /**

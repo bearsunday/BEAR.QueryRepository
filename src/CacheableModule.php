@@ -67,7 +67,8 @@ final class CacheableModule extends AbstractModule
             ),
             [RefreshInterceptor::class],
         );
-        // A write with neither attribute invalidates its own key too, unless the class stores its GET or #[RefreshCache] does
+        // A write with neither attribute invalidates its own key too, unless the class stores its GET, or the method's
+        // #[CacheableResponse] or #[RefreshCache] does
         $this->bindInterceptor(
             $this->matcher->logicalAnd(
                 $this->matcher->subclassesOf(ResourceObject::class),
@@ -85,7 +86,10 @@ final class CacheableModule extends AbstractModule
                         $this->matcher->annotatedWith(Purge::class),
                         $this->matcher->logicalOr(
                             $this->matcher->annotatedWith(Refresh::class),
-                            $this->matcher->annotatedWith(RefreshCache::class),
+                            $this->matcher->logicalOr(
+                                $this->matcher->annotatedWith(RefreshCache::class),
+                                $this->matcher->annotatedWith(CacheableResponse::class),
+                            ),
                         ),
                     ),
                 ),

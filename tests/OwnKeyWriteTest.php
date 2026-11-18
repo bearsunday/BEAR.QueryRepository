@@ -128,4 +128,60 @@ class OwnKeyWriteTest extends TestCase
         $this->assertCount(1, $saved);
         $this->assertStringContainsString('"_html_uncached-middle_"', $saved[0]);
     }
+
+    /** A parameter #[ResourceParam] binds is not in the key a GET is stored under, so the write need not carry it */
+    public function testAWriteNeedsNoResourceParamBoundValueToReachItsParent(): void
+    {
+        $parent = new Uri('app://self/assisted/writer-parent?id=1');
+        $this->resource->get('app://self/assisted/writer-parent', ['id' => '1']);
+        $this->assertNotNull($this->repository->get($parent));
+        $this->logger->flush();
+
+        $this->resource->put('app://self/assisted/writer', ['id' => '1']);
+
+        $this->assertNull($this->repository->get($parent), 'the parent that embeds the writer is invalidated');
+        $tree = $this->flushAndValidate($this->logger);
+        $this->assertSame([], self::eventContextsJsonOf($tree, 'purge_skipped'));
+        $this->assertSame(['{"uri":"app://self/assisted/writer?id=1"}'], self::eventContextsJsonOf($tree, 'purge'));
+    }
+
+    public function testACacheableWriteNeedsNoResourceParamBoundValue(): void
+    {
+        $this->resource->get('app://self/assisted/cacheable-writer', ['id' => '1']);
+
+        $ro = $this->resource->put('app://self/assisted/cacheable-writer', ['id' => '1']);
+
+        $this->assertSame(204, $ro->code);
+        $this->assertNotNull($this->repository->get(new Uri('app://self/assisted/cacheable-writer?id=1')), 'refreshed');
+    }
+
+    /** The method's #[CacheableResponse] leaves its own key to DonutCommandInterceptor, which refreshes it */
+    public function testAMethodLevelCacheableResponseWriteIsPurgedOnceByTheDonutCommand(): void
+    {
+        $uri = 'page://self/mx/MRWrite';
+        $this->resource->get($uri, ['id' => '1']);
+        $this->logger->flush();
+
+        $this->resource->put($uri, ['id' => '1']);
+
+        $tree = $this->flushAndValidate($this->logger);
+        $this->assertSame(['{"uri":"page://self/mx/MRWrite"}'], self::eventContextsJsonOf($tree, 'purge'));
+        $this->assertNotNull($this->storage->getDonut(new Uri($uri . '?id=1')), 'the refreshed template is kept');
+    }
+
+    public function testAMethodLevelCacheableResponseWriteWithAPurgeLeavesItsOwnKeyToTheDonutCommand(): void
+    {
+        $uri = 'page://self/mx/MRWrite';
+        $this->resource->get($uri, ['id' => '1']);
+        $this->logger->flush();
+
+        $this->resource->post($uri, ['id' => '1']);
+
+        $tree = $this->flushAndValidate($this->logger);
+        $this->assertSame(
+            ['{"uri":"page://self/mx/MRWrite"}', '{"uri":"page://self/dep/level-one"}'],
+            self::eventContextsJsonOf($tree, 'purge'),
+        );
+        $this->assertNotNull($this->storage->getDonut(new Uri($uri . '?id=1')), 'the refreshed template is kept');
+    }
 }
