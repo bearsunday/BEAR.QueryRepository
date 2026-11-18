@@ -24,15 +24,9 @@ use ReflectionClass;
 use function method_exists;
 
 /**
- * Interceptor for the writes of a class that does not store its GET: #[Purge]/#[Refresh], and its own key
+ * A write's query has to carry what its onGet() requires for its own key to be purged; otherwise only what its
+ * #[Purge]/#[Refresh] name is purged, and purge_skipped is logged
  *
- * Bound to #[Purge]/#[Refresh] methods of non-Cacheable classes and to every command method of a class with neither
- * #[Cacheable] nor #[CacheableResponse]. Each URI its own key and its #[Purge]/#[Refresh] name is purged once; it GETs
- * only what #[Refresh] names, as nothing stores the resource.
- *
- * @see \BEAR\RepositoryModule\Annotation\Purge
- * @see \BEAR\RepositoryModule\Annotation\Refresh
- * @see https://bearsunday.github.io/manuals/1.0/en/cache.html#event-driven-content
  * @internal
  */
 final readonly class RefreshInterceptor implements MethodInterceptor
