@@ -8,22 +8,16 @@ use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceObject;
 
 use function array_key_exists;
-use function array_merge;
-use function array_unique;
-use function array_values;
-use function explode;
-use function implode;
 
 final class SurrogateKeys
 {
-    /** @var list<string> */
-    private array $surrogateKeys;
+    private TagSet $keys;
     private readonly UriTagInterface $uriTag;
     private readonly UriTag $keyTag;
     private readonly CacheTags $cacheTags;
     private readonly DependsOnTags $dependsOnTags;
 
-    /** @var array<string, list<string>|null> */
+    /** @var array<string, TagSet|null> */
     private array $declared = [];
 
     public function __construct(AbstractUri $uri, string|null $baseTag = null, UriTagInterface|null $uriTag = null, CacheTags|null $cacheTags = null, DependsOnTags|null $dependsOnTags = null)
@@ -32,7 +26,7 @@ final class SurrogateKeys
         $this->keyTag = new UriTag();
         $this->cacheTags = $cacheTags ?? new CacheTags($this->uriTag, new BaseUriTag($this->uriTag));
         $this->dependsOnTags = $dependsOnTags ?? new DependsOnTags($this->uriTag, new DependsOnRows(), cacheTags: $this->cacheTags);
-        $this->surrogateKeys = $baseTag === null ? [($this->uriTag)($uri)] : [($this->uriTag)($uri), $baseTag];
+        $this->keys = new TagSet($baseTag === null ? [($this->uriTag)($uri)] : [($this->uriTag)($uri), $baseTag]);
     }
 
     /**
@@ -41,7 +35,7 @@ final class SurrogateKeys
     public function addTag(ResourceObject $ro): void
     {
         $this->embedded($ro);
-        $this->surrogateKeys = [...$this->surrogateKeys, ...$this->cacheTags->tags($ro)];
+        $this->keys = $this->keys->merge($this->cacheTags->tags($ro));
     }
 
     /**
@@ -70,8 +64,8 @@ final class SurrogateKeys
         }
 
         $passedUp = $this->dependsOnTags->passedUp($ro, $this->embedded(...));
-        if ($passedUp !== []) {
-            $this->declared[$key] = array_values(array_unique([...$this->declared[$key] ?? [], ...$passedUp]));
+        if (! $passedUp->isEmpty()) {
+            $this->declared[$key] = ($this->declared[$key] ?? new TagSet())->merge($passedUp);
         }
 
         return $this->dependsOnTags->tagEmbedded($ro, $this->declared[$key]);
@@ -79,11 +73,6 @@ final class SurrogateKeys
 
     public function setSurrogateHeader(ResourceObject $ro): void
     {
-        $keys = $this->surrogateKeys;
-        if (isset($ro->headers[Header::SURROGATE_KEY])) {
-            $keys = array_merge(explode(' ', $ro->headers[Header::SURROGATE_KEY]), $keys);
-        }
-
-        $ro->headers[Header::SURROGATE_KEY] = implode(' ', array_unique($keys));
+        $this->keys->addTo($ro);
     }
 }

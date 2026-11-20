@@ -10,7 +10,7 @@ use PHPUnit\Framework\TestCase;
 
 class CacheTagsTest extends TestCase
 {
-    public function testRawTagsPreserveHeaderEmptyElementsAndExplicitOverride(): void
+    public function testTagsReadHeaderOrExplicitOverride(): void
     {
         $ro = new class extends ResourceObject {
         };
@@ -20,7 +20,7 @@ class CacheTagsTest extends TestCase
         $baseUriTag = new BaseUriTag($uriTag);
         $cacheTags = new CacheTags($uriTag, $baseUriTag);
 
-        $this->assertSame(['_child_', 'grp-_child_', '', 'data', '', 'data', ''], $cacheTags->tags($ro));
-        $this->assertSame(['_child_', 'grp-_child_'], $cacheTags->tags($ro, []));
+        $this->assertSame(['_child_', 'grp-_child_', 'data'], $cacheTags->tags($ro)->toArray());
+        $this->assertSame(['_child_', 'grp-_child_'], $cacheTags->tags($ro, new TagSet())->toArray());
     }
 }

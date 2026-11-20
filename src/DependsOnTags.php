@@ -10,12 +10,8 @@ use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\ResourceObject;
 use Closure;
 use Generator;
-use ReflectionMethod;
 
-use function array_key_exists;
 use function array_keys;
-use function explode;
-use function in_array;
 use function is_array;
 use function sprintf;
 
@@ -58,7 +54,7 @@ final readonly class DependsOnTags
     /** Tags the resource being stored with its onGet() declarations and the row classes in its body */
     public function __invoke(ResourceObject $ro): void
     {
-        $this->addTags($ro, $this->declared($ro) ?? []);
+        $this->declared($ro)?->addTo($ro);
     }
 
     /** @return list<ResourceObject> the resources its #[ResourceParam] declarations read: {@see ResourceParamSources} */
@@ -78,13 +74,13 @@ final readonly class DependsOnTags
     }
 
     /**
-     * @param list<string>|null $tags what ran() found for the child
+     * @param TagSet|null $tags what ran() found for the child
      *
      * @return bool whether its parent depends on it: it has a body, a declaration, an ETag or a Surrogate-Key
      */
-    public function tagEmbedded(ResourceObject $child, array|null $tags): bool
+    public function tagEmbedded(ResourceObject $child, TagSet|null $tags): bool
     {
-        $this->addTags($child, $tags ?? []);
+        $tags?->addTo($child);
 
         return $child->body !== null || $tags !== null || isset($child->headers[Header::ETAG]) || isset($child->headers[Header::SURROGATE_KEY]);
     }
@@ -94,36 +90,29 @@ final readonly class DependsOnTags
      *
      * @param (Closure(ResourceObject): bool)|null $embedded reads a request it embeds; null reads it with embedded()
      *
-     * @return list<string>|null what the resource declares and what its #[ResourceParam] read, with the tags of each
-     *                           request it embeds and ran that it depends on; null when there is none
+     * @return TagSet|null what the resource declares and what its #[ResourceParam] read, with the tags of each request
+     *                     it embeds and ran that it depends on; null when there is none
      */
-    public function ran(ResourceObject $ro, Closure|null $embedded = null): array|null
+    public function ran(ResourceObject $ro, Closure|null $embedded = null): TagSet|null
     {
-        $tags = $this->declared($ro);
-        $read = $this->resourceParamSources?->tags($ro) ?? [];
-        if ($read !== []) {
-            $tags = [...$tags ?? [], ...$read];
-        }
+        $declared = $this->declared($ro);
+        $found = ($this->resourceParamSources?->tags($ro) ?? new TagSet())->merge($this->passedUp($ro, $embedded));
 
-        $passedUp = $this->passedUp($ro, $embedded);
-
-        return $passedUp === [] ? $tags : [...$tags ?? [], ...$passedUp];
+        return $found->isEmpty() ? $declared : ($declared ?? new TagSet())->merge($found);
     }
 
     /**
      * The tags of each request the resource embeds and ran that it depends on
      *
      * @param (Closure(ResourceObject): bool)|null $embedded reads a request it embeds; null reads it with embedded()
-     *
-     * @return list<string>
      */
-    public function passedUp(ResourceObject $ro, Closure|null $embedded = null): array
+    public function passedUp(ResourceObject $ro, Closure|null $embedded = null): TagSet
     {
         $embedded ??= $this->embedded(...);
-        $tags = [];
+        $tags = new TagSet();
         foreach ($this->requests($ro) as $body) {
             if ($embedded($body->resourceObject)) {
-                $tags = [...$tags, ...$this->cacheTags->tags($body->resourceObject)];
+                $tags = $tags->merge($this->cacheTags->tags($body->resourceObject));
             }
         }
 
@@ -136,8 +125,8 @@ final readonly class DependsOnTags
         return $ro->code !== 200 || $ro->body !== null;
     }
 
-    /** @return list<string>|null null when neither onGet() nor a row class in the body declares */
-    private function declared(ResourceObject $ro): array|null
+    /** @return TagSet|null null when neither onGet() nor a row class in the body declares */
+    private function declared(ResourceObject $ro): TagSet|null
     {
         $onClass = DependsOnTemplates::ofClass($ro::class);
         if ($onClass !== []) {
@@ -145,13 +134,10 @@ final readonly class DependsOnTags
         }
 
         $onGet = DependsOnTemplates::ofOnGet($ro);
-        $tags = $onGet === [] ? null : $this->fromResult($ro, $onGet);
+        $tags = $onGet === [] ? null : new TagSet($this->fromResult($ro, $onGet));
         $rows = RowClassWalk::tags($ro->body, $this->uriTag, (string) $ro->uri);
-        if ($rows === null) {
-            return $tags;
-        }
 
-        return [...$tags ?? [], ...$rows];
+        return $rows === null ? $tags : ($tags ?? new TagSet())->merge(new TagSet($rows));
     }
 
     /**
@@ -164,58 +150,29 @@ final readonly class DependsOnTags
      */
     private function fromResult(ResourceObject $ro, array $declarations): array
     {
-        $onGet = new ReflectionMethod($ro, 'onGet');
-        // #[ResourceParam] fills these from another resource whatever the query holds, so their value cannot be read back
-        $bound = array_keys(ResourceParamSources::declared($onGet));
-        $parameters = [];
+        $onGet = OnGetParameters::of($ro, $this->identityFactory);
+        $query = $ro->uri->query;
         $arguments = [];
-        foreach ($onGet->getParameters() as $parameter) {
-            $parameters[] = $parameter->name;
-            if (in_array($parameter->name, $bound, true)) {
+        foreach ($onGet->all() as $parameter) {
+            // #[ResourceParam] fills it from another resource whatever the query holds, so its value cannot be read back
+            if ($parameter->isBound) {
                 continue;
             }
 
-            $arguments += $this->argument($parameter->name, $ro->uri->query);
-            if (! array_key_exists($parameter->name, $arguments) && $parameter->isDefaultValueAvailable()) {
+            $key = $parameter->presentKey($query);
+            if ($key !== null || $parameter->hasDefault()) {
                 /** @psalm-suppress MixedAssignment */
-                $arguments[$parameter->name] = $parameter->getDefaultValue();
+                $arguments[$parameter->name] = $key !== null ? $query[$key] : $parameter->default();
             }
         }
 
         $source = sprintf('%s onGet()', (string) $ro->uri);
-        $expansion = new DependsOnExpansion($this->uriTag, $source, is_array($ro->body) ? $ro->body : [], $arguments, $parameters, $bound);
+        $expansion = new DependsOnExpansion($this->uriTag, $source, is_array($ro->body) ? $ro->body : [], $arguments, $onGet->names(), array_keys($onGet->bound()));
         $tags = [];
         foreach ($declarations as $dependsOn) {
             $tags = [...$tags, ...$expansion->tags($dependsOn, $this->rows->of($ro, $dependsOn->key))];
         }
 
         return $tags;
-    }
-
-    /**
-     * @param array<string, mixed> $query
-     *
-     * @return array<string, mixed> the value under the parameter's name or its snake_case form; empty when the query has neither
-     */
-    private function argument(string $name, array $query): array
-    {
-        foreach ([$name, $this->identityFactory->snakeName($name)] as $key) {
-            if (array_key_exists($key, $query)) {
-                return [$name => $query[$key]];
-            }
-        }
-
-        return [];
-    }
-
-    /** @param list<string> $tags */
-    private function addTags(ResourceObject $ro, array $tags): void
-    {
-        if ($tags === []) {
-            return;
-        }
-
-        $existing = isset($ro->headers[Header::SURROGATE_KEY]) ? explode(' ', $ro->headers[Header::SURROGATE_KEY]) : [];
-        $ro->headers[Header::SURROGATE_KEY] = (new TagSet([...$existing, ...$tags]))->toHeader();
     }
 }

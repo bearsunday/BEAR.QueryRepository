@@ -241,7 +241,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
     #[Override]
     public function purge(AbstractUri $uri)
     {
-        $tags = $this->cacheTags->forUri($uri);
+        $tags = $this->cacheTags->forUri($uri)->toArray();
 
         // A top-level purge is an application-initiated (manual) cache bust: wrap it in a
         // manual_purge scope so it stands out from automatic invalidation. A purge nested

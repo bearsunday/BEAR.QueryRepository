@@ -11,11 +11,8 @@ use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use Throwable;
 
-use function array_unique;
 use function assert;
-use function explode;
 use function hash;
-use function implode;
 use function is_array;
 use function is_iterable;
 use function max;
@@ -118,11 +115,7 @@ final class ResourceDonut
             }
 
             // $this->headers lacks the group tag; add the stored tags.
-            $storedTags = $this->getStorageTags();
-            if ($storedTags !== []) {
-                $existing = isset($ro->headers[Header::SURROGATE_KEY]) ? explode(' ', $ro->headers[Header::SURROGATE_KEY]) : [];
-                $ro->headers[Header::SURROGATE_KEY] = implode(' ', array_unique([...$existing, ...$storedTags]));
-            }
+            (new TagSet($this->getStorageTags()))->addTo($ro);
 
             $etags->setSurrogateHeader($ro);
         } catch (Throwable $e) {
@@ -278,7 +271,7 @@ final class ResourceDonut
             return $this->storageTags;
         }
 
-        return isset($this->headers[Header::SURROGATE_KEY]) ? explode(' ', $this->headers[Header::SURROGATE_KEY]) : [];
+        return TagSet::ofHeaders($this->headers)->toArray();
     }
 
     private function hashContent(string $view): string

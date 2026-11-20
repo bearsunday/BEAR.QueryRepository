@@ -11,11 +11,6 @@ use Koriym\SemanticLogger\NullSemanticLogger;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 
-use function array_unique;
-use function array_values;
-use function explode;
-use function implode;
-
 /** @internal */
 final readonly class CacheDependency implements CacheDependencyInterface
 {
@@ -34,19 +29,13 @@ final readonly class CacheDependency implements CacheDependencyInterface
     #[Override]
     public function depends(ResourceObject $from, ResourceObject $to): void
     {
-        $childTagList = array_values(array_unique(explode(' ', implode(' ', $this->cacheTags->tags($to)))));
-
-        // Accumulate across embedded children, deduped: the same child may be depended on again,
-        // and this header ships to the CDN.
-        $existing = isset($from->headers[Header::SURROGATE_KEY])
-            ? explode(' ', $from->headers[Header::SURROGATE_KEY])
-            : [];
-        $from->headers[Header::SURROGATE_KEY] = implode(' ', array_unique([...$existing, ...$childTagList]));
+        $childTags = $this->cacheTags->tags($to);
+        $childTags->addTo($from);
 
         $this->logger->event(new DependsOnContext(
             (string) $from->uri,
             (string) $to->uri,
-            $childTagList,
+            $childTags->toArray(),
         ));
     }
 }

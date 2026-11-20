@@ -7,10 +7,7 @@ namespace BEAR\QueryRepository;
 use BEAR\QueryRepository\Exception\UnmatchedQuery;
 use BEAR\Resource\ResourceObject;
 use Override;
-use ReflectionMethod;
-use ReflectionParameter;
 
-use function array_key_exists;
 use function sprintf;
 
 /**
@@ -33,15 +30,12 @@ final class MatchQuery implements MatchQueryInterface
     #[Override]
     public function __invoke(ResourceObject $ro): array
     {
-        $onGet = new ReflectionMethod($ro::class, 'onGet');
-        $bound = ResourceParamSources::declared($onGet);
-        $refParameters = $onGet->getParameters();
         $getQuery = [];
         $query = $ro->uri->query;
-        foreach ($refParameters as $parameter) {
-            $key = $this->given($query, $parameter->name, $parameter) ? $parameter->name : $this->identityFactory->snakeName($parameter->name);
-            if (! $this->given($query, $key, $parameter)) {
-                if ($parameter->isDefaultValueAvailable() || isset($bound[$parameter->name])) {
+        foreach (OnGetParameters::of($ro, $this->identityFactory)->all() as $parameter) {
+            $key = $parameter->bindingKey($query);
+            if ($key === null) {
+                if ($parameter->hasDefault() || $parameter->isBound) {
                     continue;
                 }
 
@@ -54,15 +48,5 @@ final class MatchQuery implements MatchQueryInterface
         }
 
         return $getQuery;
-    }
-
-    /**
-     * As BEAR.Resource binds a parameter: a key present with null gives one that allows null
-     *
-     * @param array<string, mixed> $query
-     */
-    private function given(array $query, string $key, ReflectionParameter $parameter): bool
-    {
-        return isset($query[$key]) || ($parameter->allowsNull() && array_key_exists($key, $query));
     }
 }

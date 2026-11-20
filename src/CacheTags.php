@@ -8,10 +8,6 @@ use BEAR\RepositoryModule\Annotation\AppSurrogateKey;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceObject;
 
-use function explode;
-use function implode;
-use function in_array;
-
 /** @internal */
 final readonly class CacheTags
 {
@@ -25,28 +21,19 @@ final readonly class CacheTags
     ) {
     }
 
-    /**
-     * @param list<string>|null $declaredTags
-     *
-     * @return list<string>
-     */
-    public function tags(ResourceObject $ro, array|null $declaredTags = null): array
+    /** @param TagSet|null $declared null reads the Surrogate-Key header */
+    public function tags(ResourceObject $ro, TagSet|null $declared = null): TagSet
     {
         // The base tag makes the entry reachable by a purge aimed at the bare URI (see BaseUriTag).
-        $ownTags = [($this->uriTag)($ro->uri), ($this->baseUriTag)($ro)];
-        $declaredTags ??= isset($ro->headers[Header::SURROGATE_KEY]) ? explode(' ', $ro->headers[Header::SURROGATE_KEY]) : [];
+        $own = new TagSet([($this->uriTag)($ro->uri), ($this->baseUriTag)($ro)]);
 
-        return $this->withAppKey([...$ownTags, ...$declaredTags]);
+        return $this->withAppKey($own->merge($declared ?? TagSet::ofHeaders($ro->headers)));
     }
 
     /** Adds the application's key to the resource's Surrogate-Key, once */
     public function tagHeader(ResourceObject $ro): void
     {
-        $tags = isset($ro->headers[Header::SURROGATE_KEY]) ? explode(' ', $ro->headers[Header::SURROGATE_KEY]) : [];
-        $withKey = $this->withAppKey($tags);
-        if ($withKey !== $tags) {
-            $ro->headers[Header::SURROGATE_KEY] = implode(' ', $withKey);
-        }
+        $this->withAppKey(new TagSet())->addTo($ro);
     }
 
     public function uriTag(AbstractUri $uri): string
@@ -54,27 +41,16 @@ final readonly class CacheTags
         return ($this->uriTag)($uri);
     }
 
-    /**
-     * The URI's own tag plus the group tag shared by its query variants (see BaseUriTag).
-     *
-     * @return list<string>
-     */
-    public function forUri(AbstractUri $uri): array
+    /** The URI's own tag plus the group tag shared by its query variants (see BaseUriTag). */
+    public function forUri(AbstractUri $uri): TagSet
     {
-        return [($this->uriTag)($uri), $this->identityFactory->groupTag(($this->uriTag)($uri))];
+        $tag = ($this->uriTag)($uri);
+
+        return new TagSet([$tag, $this->identityFactory->groupTag($tag)]);
     }
 
-    /**
-     * @param list<string> $tags
-     *
-     * @return list<string>
-     */
-    private function withAppKey(array $tags): array
+    private function withAppKey(TagSet $tags): TagSet
     {
-        if ($this->appKey === null || in_array($this->appKey, $tags, true)) {
-            return $tags;
-        }
-
-        return [...$tags, $this->appKey];
+        return $this->appKey === null ? $tags : $tags->merge(new TagSet([$this->appKey]));
     }
 }
