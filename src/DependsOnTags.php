@@ -68,7 +68,7 @@ final readonly class DependsOnTags
 
         $onGet = $this->templates->ofOnGet($ro);
         $tags = $onGet === [] ? null : new TagSet($this->fromResult($ro, $onGet));
-        $rows = RowClassWalk::tags($ro->body, $this->uriTag, $this->templates, (string) $ro->uri);
+        $rows = (new RowClassWalk($this->uriTag, $this->templates, (string) $ro->uri))->tags($ro->body);
 
         return $rows === null ? $tags : ($tags ?? new TagSet())->merge(new TagSet($rows));
     }

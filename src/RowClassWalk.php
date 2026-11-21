@@ -26,7 +26,8 @@ final class RowClassWalk
     /** @var SplObjectStorage<object, null> */
     private SplObjectStorage $seen;
 
-    private function __construct(
+    /** @param string $resource the URI of the resource whose body it walks */
+    public function __construct(
         private readonly UriTagInterface $uriTag,
         private readonly DependsOnTemplates $templates,
         private readonly string $resource,
@@ -34,17 +35,14 @@ final class RowClassWalk
         $this->seen = new SplObjectStorage();
     }
 
-    /**
-     * @param string $resource the URI of the resource whose body it is
-     *
-     * @return list<string>|null the tags the instances expand to; null when the body holds none
-     */
-    public static function tags(mixed $body, UriTagInterface $uriTag, DependsOnTemplates $templates, string $resource): array|null
+    /** @return list<string>|null the tags the instances expand to; null when the body holds none */
+    public function tags(mixed $body): array|null
     {
-        $walk = new self($uriTag, $templates, $resource);
-        $walk->visit($body);
+        $this->tags = null;
+        $this->seen = new SplObjectStorage();
+        $this->visit($body);
 
-        return $walk->tags;
+        return $this->tags;
     }
 
     private function visit(mixed $value): void
