@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\QueryRepository\Exception\CacheStoreException;
-use BEAR\QueryRepository\Log\Context\CacheErrorContext;
 use BEAR\QueryRepository\Log\Context\CacheHitContext;
 use BEAR\QueryRepository\Log\Context\CacheMissContext;
 use BEAR\QueryRepository\Log\Context\GetContext;
@@ -22,10 +20,6 @@ use Throwable;
 use function assert;
 use function hrtime;
 use function round;
-use function sprintf;
-use function trigger_error;
-
-use const E_USER_WARNING;
 
 /** @internal */
 abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
@@ -34,6 +28,7 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
 
     public function __construct(
         private readonly DonutRepositoryInterface $donutRepository,
+        private readonly CacheFailure $failure,
         #[CacheLog]
         private readonly SemanticLoggerInterface $logger,
     ) {
@@ -84,12 +79,7 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
         try {
             return $this->donutRepository->get($ro);
         } catch (Throwable $e) {
-            $this->logger->event($this->failure((string) $ro->uri, 'read', $e));
-            if (! $e instanceof CacheStoreException) {
-                throw $e;
-            }
-
-            $this->triggerWarning($e);
+            $this->failure->degrade((string) $ro->uri, 'read', $e);
 
             return null;
         }
@@ -115,32 +105,9 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
                 $this->donutRepository->putStatic($ro, null, null) :
                 $this->donutRepository->putDonut($ro, null);
         } catch (Throwable $e) {
-            $this->logger->event($this->failure((string) $ro->uri, 'write', $e));
-            if (! $e instanceof CacheStoreException) {
-                throw $e;
-            }
-
-            $this->triggerWarning($e);
+            $this->failure->degrade((string) $ro->uri, 'write', $e);
 
             return $ro;
         }
-    }
-
-    /**
-     * Record the throwable that actually failed, not the boundary wrapper
-     *
-     * @param 'read'|'write' $operation
-     */
-    private function failure(string $uri, string $operation, Throwable $e): CacheErrorContext
-    {
-        $cause = $e instanceof CacheStoreException ? $e->getPrevious() ?? $e : $e;
-
-        return new CacheErrorContext($uri, $operation, $cause->getMessage(), $cause::class);
-    }
-
-    private function triggerWarning(Throwable $e): void
-    {
-        $cause = $e->getPrevious() ?? $e;
-        trigger_error(sprintf('%s: %s in %s:%s', $cause::class, $cause->getMessage(), $cause->getFile(), $cause->getLine()), E_USER_WARNING);
     }
 }

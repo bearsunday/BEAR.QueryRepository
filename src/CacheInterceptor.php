@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\QueryRepository\Exception\CacheStoreException;
-use BEAR\QueryRepository\Log\Context\CacheErrorContext;
 use BEAR\QueryRepository\Log\Context\CacheHitContext;
 use BEAR\QueryRepository\Log\Context\CacheMissContext;
 use BEAR\QueryRepository\Log\Context\GetContext;
@@ -22,10 +20,6 @@ use Throwable;
 use function assert;
 use function hrtime;
 use function round;
-use function sprintf;
-use function trigger_error;
-
-use const E_USER_WARNING;
 
 /**
  * Interceptor for TTL-based caching on CQRS queries with #[Cacheable]
@@ -40,6 +34,7 @@ final readonly class CacheInterceptor implements MethodInterceptor
 {
     public function __construct(
         private QueryRepositoryInterface $repository,
+        private CacheFailure $failure,
         private ResourceStorageInterface $storage,
         private UriTagInterface $uriTag,
         #[CacheLog]
@@ -77,14 +72,7 @@ final readonly class CacheInterceptor implements MethodInterceptor
         try {
             $state = $this->repository->get($ro->uri);
         } catch (Throwable $e) {
-            // A pool outage is swallowed and recorded, since the resource still answers
-            // correctly; anything else propagates, since a silent 200 would be invisible.
-            $this->logger->event($this->failure((string) $ro->uri, 'read', $e));
-            if (! $e instanceof CacheStoreException) {
-                throw $e;
-            }
-
-            $this->triggerWarning($e);
+            $this->failure->degrade((string) $ro->uri, 'read', $e);
 
             /** @var ResourceObject $unstored */
             $unstored = $invocation->proceed();
@@ -121,14 +109,7 @@ final readonly class CacheInterceptor implements MethodInterceptor
 
             $this->repository->put($ro);
         } catch (Throwable $e) {
-            // The store refused the write: the already-correct response is served and the
-            // failure recorded; a render/purge failure is not the store's and keeps propagating.
-            $this->logger->event($this->failure((string) $ro->uri, 'write', $e));
-            if (! $e instanceof CacheStoreException) {
-                throw $e;
-            }
-
-            $this->triggerWarning($e);
+            $this->failure->degrade((string) $ro->uri, 'write', $e);
         }
 
         return $ro;
@@ -141,28 +122,5 @@ final readonly class CacheInterceptor implements MethodInterceptor
             $hit ? new CacheHitContext('resource', $durationMs) : new CacheMissContext('resource', $durationMs),
             $openId,
         );
-    }
-
-    /**
-     * Record the throwable that actually failed, not the boundary wrapper
-     *
-     * @param 'read'|'write' $operation
-     */
-    private function failure(string $uri, string $operation, Throwable $e): CacheErrorContext
-    {
-        $cause = $e instanceof CacheStoreException ? $e->getPrevious() ?? $e : $e;
-
-        return new CacheErrorContext($uri, $operation, $cause->getMessage(), $cause::class);
-    }
-
-    /**
-     * A failure on the cache path degrades to a warning rather than an exception, so the
-     * request is still served: the cache is an optimization, not a dependency.
-     */
-    private function triggerWarning(Throwable $e): void
-    {
-        $cause = $e->getPrevious() ?? $e;
-        $message = sprintf('%s: %s in %s:%s', $cause::class, $cause->getMessage(), $cause->getFile(), $cause->getLine());
-        trigger_error($message, E_USER_WARNING);
     }
 }
