@@ -5,11 +5,7 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\UnmatchedQuery;
-use BEAR\QueryRepository\Log\Context\CommandResultContext;
-use BEAR\RepositoryModule\Annotation\CacheLog;
-use BEAR\Resource\Code;
 use BEAR\Resource\ResourceObject;
-use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
@@ -31,9 +27,7 @@ final readonly class DonutCommandInterceptor implements MethodInterceptor
 {
     public function __construct(
         private RefreshSameCommand $refreshSameCommand,
-        private CommandContextFactory $commandContextFactory,
-        #[CacheLog]
-        private SemanticLoggerInterface $logger,
+        private CommandScope $scope,
     ) {
     }
 
@@ -43,21 +37,14 @@ final readonly class DonutCommandInterceptor implements MethodInterceptor
         $ro = $invocation->proceed();
         assert($ro instanceof ResourceObject);
 
-        // Open the scope even for a failed write: a 4xx command_result with no invalidation
-        // events records that the donut purge/refresh was correctly skipped.
-        $openId = $this->logger->open(($this->commandContextFactory)($invocation, 'DonutCommandInterceptor'));
-        try {
-            if ($ro->code < Code::BAD_REQUEST) {
-                try {
-                    $this->refreshSameCommand->command($invocation, $ro);
-                } catch (UnmatchedQuery $e) {
-                    // Thrown by a write the rebuilding GET made
-                    $this->refreshSameCommand->skipUnmatched($invocation, $ro, $e);
-                }
+        $this->scope->run($invocation, $ro, 'DonutCommandInterceptor', function () use ($invocation, $ro): void {
+            try {
+                $this->refreshSameCommand->command($invocation, $ro);
+            } catch (UnmatchedQuery $e) {
+                // Thrown by a write the rebuilding GET made
+                $this->refreshSameCommand->skipUnmatched($invocation, $ro, $e);
             }
-        } finally {
-            $this->logger->close(new CommandResultContext($ro->code), $openId);
-        }
+        });
 
         return $ro;
     }

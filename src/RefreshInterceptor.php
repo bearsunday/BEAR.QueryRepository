@@ -6,13 +6,11 @@ namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\ReturnValueIsNotResourceObjectException;
 use BEAR\QueryRepository\Exception\UnmatchedQuery;
-use BEAR\QueryRepository\Log\Context\CommandResultContext;
 use BEAR\QueryRepository\Log\Context\PurgeSkippedContext;
 use BEAR\RepositoryModule\Annotation\CacheableResponse;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\RepositoryModule\Annotation\RefreshCache;
 use BEAR\Resource\AbstractUri;
-use BEAR\Resource\Code;
 use BEAR\Resource\ResourceObject;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
@@ -36,7 +34,7 @@ final readonly class RefreshInterceptor implements MethodInterceptor
         private MatchQueryInterface $matchQuery,
         private QueryRepositoryInterface $repository,
         private RefreshTemplateValidator $refreshTemplateValidator,
-        private CommandContextFactory $commandContextFactory,
+        private CommandScope $scope,
         #[CacheLog]
         private SemanticLoggerInterface $logger,
     ) {
@@ -56,27 +54,20 @@ final readonly class RefreshInterceptor implements MethodInterceptor
             throw new ReturnValueIsNotResourceObjectException($invocation->getThis()::class);
         }
 
-        // Open the scope even for a failed write: a 4xx command_result with no invalidation
-        // events records that the purge/refresh was correctly skipped.
-        $openId = $this->logger->open(($this->commandContextFactory)($invocation, 'RefreshInterceptor'));
-        try {
-            if ($ro->code < Code::BAD_REQUEST) {
-                $declared = $this->command->declared($invocation, $ro);
-                $uris = $sent instanceof ResourceObject ? $this->ownUris($invocation, $sent) : [];
-                foreach ($declared as [$named]) {
-                    $uris = [...$uris, ...$named];
-                }
+        $this->scope->run($invocation, $ro, 'RefreshInterceptor', function () use ($invocation, $ro, $sent): void {
+            $declared = $this->command->declared($invocation, $ro);
+            $uris = $sent instanceof ResourceObject ? $this->ownUris($invocation, $sent) : [];
+            foreach ($declared as [$named]) {
+                $uris = [...$uris, ...$named];
+            }
 
-                $this->purge($uris);
-                foreach ($declared as [$named, $refresh]) {
-                    if ($refresh) {
-                        $this->command->refresh($named);
-                    }
+            $this->purge($uris);
+            foreach ($declared as [$named, $refresh]) {
+                if ($refresh) {
+                    $this->command->refresh($named);
                 }
             }
-        } finally {
-            $this->logger->close(new CommandResultContext($ro->code), $openId);
-        }
+        });
 
         return $ro;
     }
