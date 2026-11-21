@@ -15,6 +15,7 @@ use Madapaja\TwigModule\TwigModule;
 use Override;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
+use Ray\Di\InjectorInterface;
 
 use function array_filter;
 use function array_values;
@@ -63,9 +64,11 @@ class DonutMaterialDependencyTest extends TestCase
     private QueryRepositoryInterface $queryRepository;
     private ResourceStorageInterface $storage;
     private SemanticLoggerInterface $logger;
+    private InjectorInterface $injector;
 
     protected function setUp(): void
     {
+        $this->injector = new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld'), __DIR__ . '/tmp');
         $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
         $injector = new Injector($module, __DIR__ . '/tmp');
@@ -415,19 +418,27 @@ class DonutMaterialDependencyTest extends TestCase
                 return '';
             }
         };
+        $identityFactory = $this->injector->getInstance(CacheIdentityFactory::class);
+        $baseUriTag = new BaseUriTag($uriTag, $identityFactory);
+        $cacheTags = new CacheTags($uriTag, $baseUriTag, $identityFactory);
+        $storage = $injector->getInstance(ResourceStorageInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
+        $dependsOnTags = new DependsOnTags($uriTag, new DependsOnRows(), $identityFactory, new ResourceParamSources($resource, $storage, $cacheTags, $identityFactory));
 
         return [
             $resource,
             new DonutRepository(
                 $injector->getInstance(QueryRepositoryInterface::class),
                 $injector->getInstance(HeaderSetter::class),
-                $injector->getInstance(ResourceStorageInterface::class),
+                $storage,
                 $resource,
                 $injector->getInstance(CdnCacheControlHeaderSetterInterface::class),
-                $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class),
+                $logger,
                 $injector->getInstance(DonutRendererInterface::class),
-                new BaseUriTag($uriTag),
                 $uriTag,
+                new DeclaredCacheControl(),
+                $cacheTags,
+                new CacheDependencyCollector($dependsOnTags, new CacheDependency($cacheTags, $logger), $cacheTags, $baseUriTag, $identityFactory, $logger),
             ),
         ];
     }

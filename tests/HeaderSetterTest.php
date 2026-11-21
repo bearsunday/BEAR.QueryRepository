@@ -7,12 +7,21 @@ namespace BEAR\QueryRepository;
 use FakeVendor\HelloWorld\Resource\Page\Html\CacheableResponseNoStore;
 use FakeVendor\HelloWorld\Resource\Page\None;
 use PHPUnit\Framework\TestCase;
+use Ray\Di\Injector;
+use Ray\Di\InjectorInterface;
 
 class HeaderSetterTest extends TestCase
 {
+    private InjectorInterface $injector;
+
+    protected function setUp(): void
+    {
+        $this->injector = new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld'), __DIR__ . '/tmp');
+    }
+
     private function headerSetter(): HeaderSetter
     {
-        return new HeaderSetter(new EtagSetter());
+        return $this->injector->getInstance(HeaderSetter::class);
     }
 
     public function testStripHeadersMatchesALowercaseCdnCacheControlHeaderName(): void

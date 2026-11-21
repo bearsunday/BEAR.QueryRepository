@@ -13,7 +13,6 @@ use BEAR\QueryRepository\Log\Context\PurgeContext;
 use BEAR\QueryRepository\Log\Context\PutSkippedContext;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\ResourceObject;
-use Koriym\SemanticLogger\NullSemanticLogger;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 use Ray\Aop\MethodInterceptor;
@@ -44,7 +43,7 @@ final readonly class CacheInterceptor implements MethodInterceptor
         private ResourceStorageInterface $storage,
         private UriTagInterface $uriTag,
         #[CacheLog]
-        private SemanticLoggerInterface $logger = new NullSemanticLogger(),
+        private SemanticLoggerInterface $logger,
     ) {
     }
 

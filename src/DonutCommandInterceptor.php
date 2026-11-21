@@ -9,11 +9,7 @@ use BEAR\QueryRepository\Log\Context\CacheErrorContext;
 use BEAR\QueryRepository\Log\Context\CommandResultContext;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\Code;
-use BEAR\Resource\FactoryInterface;
-use BEAR\Resource\InvokerInterface;
-use BEAR\Resource\Request;
 use BEAR\Resource\ResourceObject;
-use Koriym\SemanticLogger\NullSemanticLogger;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 use Ray\Aop\MethodInterceptor;
@@ -34,19 +30,13 @@ use function assert;
  */
 final readonly class DonutCommandInterceptor implements MethodInterceptor
 {
-    private CommandContextFactory $commandContextFactory;
-
     public function __construct(
-        private DonutRepositoryInterface $repository,
-        private MatchQueryInterface $matchQuery,
-        private FactoryInterface $factory,
-        private InvokerInterface $invoker,
+        private RefreshSameCommand $refreshSameCommand,
         private UnsafeMethodMatcher $unsafeMethod,
+        private CommandContextFactory $commandContextFactory,
         #[CacheLog]
-        private SemanticLoggerInterface $logger = new NullSemanticLogger(),
-        private CommandQuery $commandQuery = new CommandQuery(),
+        private SemanticLoggerInterface $logger,
     ) {
-        $this->commandContextFactory = new CommandContextFactory();
     }
 
     #[Override]
@@ -61,10 +51,9 @@ final readonly class DonutCommandInterceptor implements MethodInterceptor
         try {
             if ($ro->code < Code::BAD_REQUEST) {
                 try {
-                    $this->refreshDonutAndState($ro);
+                    $this->refreshSameCommand->command($invocation, $ro);
                 } catch (UnmatchedQuery $e) {
-                    // onPost-bound classes often lack a parameter onGet requires (#219); the
-                    // write already ran, so this is recorded, not thrown. Other methods still throw.
+                    // From a write the rebuilding GET made: the POST already ran, so it is recorded. Other methods throw.
                     if (! $this->unsafeMethod->isPost($invocation->getMethod())) {
                         throw $e;
                     }
@@ -78,28 +67,5 @@ final readonly class DonutCommandInterceptor implements MethodInterceptor
         }
 
         return $ro;
-    }
-
-    public function refreshDonutAndState(ResourceObject $ro): void
-    {
-        $getQuery = ($this->matchQuery)($ro);
-        $delUri = clone $ro->uri;
-        $baseQuery = $this->commandQuery->baseQuery($ro, $getQuery);
-        // Default-valued parameters dropped, as BaseUriTag drops them; the refresh below still uses the exact $getQuery.
-        $delUri->query = $baseQuery;
-
-        $this->repository->purge($delUri);
-
-        // A GET stored under the snake_case key keeps that spelling in its group tag; purge it too.
-        $snakeQuery = $this->commandQuery->snakeQuery($baseQuery);
-        if ($snakeQuery !== $baseQuery) {
-            $snakeUri = clone $ro->uri;
-            $snakeUri->query = $snakeQuery;
-            $this->repository->purge($snakeUri);
-        }
-
-        // Read to rebuild the cache entry
-        $get = $this->factory->newInstance("{$ro->uri->scheme}://{$ro->uri->host}{$ro->uri->path}");
-        (new Request($this->invoker, $get))($getQuery);
     }
 }

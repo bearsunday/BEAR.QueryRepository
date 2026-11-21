@@ -13,7 +13,7 @@ use function uri_template;
 
 final class UriTag implements UriTagInterface
 {
-    public function __construct(private readonly CacheIdentityFactory $identityFactory = new CacheIdentityFactory())
+    public function __construct(private readonly CacheIdentityFactory $identityFactory = new CacheIdentityFactory(new GlobalServerContext()))
     {
     }
 

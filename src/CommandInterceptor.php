@@ -10,7 +10,6 @@ use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\RepositoryModule\Annotation\Commands;
 use BEAR\Resource\Code;
 use BEAR\Resource\ResourceObject;
-use Koriym\SemanticLogger\NullSemanticLogger;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 use Ray\Aop\MethodInterceptor;
@@ -29,17 +28,15 @@ use Ray\Aop\MethodInvocation;
  */
 final readonly class CommandInterceptor implements MethodInterceptor
 {
-    private CommandContextFactory $commandContextFactory;
-
     /** @param CommandInterface[] $commands */
     public function __construct(
         #[Commands]
         private array $commands,
         private RefreshTemplateValidator $refreshTemplateValidator,
+        private CommandContextFactory $commandContextFactory,
         #[CacheLog]
-        private SemanticLoggerInterface $logger = new NullSemanticLogger(),
+        private SemanticLoggerInterface $logger,
     ) {
-        $this->commandContextFactory = new CommandContextFactory();
     }
 
     /**

@@ -13,7 +13,6 @@ use BEAR\QueryRepository\Log\Context\PutSkippedContext;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\Code;
 use BEAR\Resource\ResourceObject;
-use Koriym\SemanticLogger\NullSemanticLogger;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 use Ray\Aop\MethodInterceptor;
@@ -36,7 +35,7 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
     public function __construct(
         private readonly DonutRepositoryInterface $donutRepository,
         #[CacheLog]
-        private readonly SemanticLoggerInterface $logger = new NullSemanticLogger(),
+        private readonly SemanticLoggerInterface $logger,
     ) {
     }
 

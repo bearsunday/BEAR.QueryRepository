@@ -10,7 +10,7 @@ use BEAR\Resource\ResourceObject;
 final readonly class CommandQuery
 {
     public function __construct(
-        private CacheIdentityFactory $identityFactory = new CacheIdentityFactory(),
+        private CacheIdentityFactory $identityFactory,
     ) {
     }
 

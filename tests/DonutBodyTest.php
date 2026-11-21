@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
+use BEAR\Resource\AbstractUri;
 use BEAR\Resource\JsonRenderer;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
@@ -19,6 +20,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
+use Ray\Di\InjectorInterface;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
@@ -39,11 +41,13 @@ use const JSON_THROW_ON_ERROR;
 class DonutBodyTest extends TestCase
 {
     private ResourceInterface $resource;
+    private InjectorInterface $injector;
 
     protected function setUp(): void
     {
         Counter::$calls = 0;
-        $this->resource = (new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld'), __DIR__ . '/tmp'))->getInstance(ResourceInterface::class);
+        $this->injector = new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld'), __DIR__ . '/tmp');
+        $this->resource = $this->injector->getInstance(ResourceInterface::class);
     }
 
     /** @return iterable<string, array{string}> */
@@ -161,10 +165,10 @@ class DonutBodyTest extends TestCase
         $child->headers[Header::SURROGATE_KEY] = 'hole-tag';
         $request = new FakeDeferredRequest($child);
         $page = self::jsonPage(['hole' => $request]);
-        $keys = new SurrogateKeys($page->uri);
+        $keys = $this->dependencies($page->uri);
 
         ResourceDonut::create($page, new DonutRenderer(), $keys, null, false);
-        $keys->setSurrogateHeader($page);
+        $keys->addTo($page);
 
         $this->assertSame(1, $request->runs);
         $this->assertSame(['hole' => ['hole' => 1]], json_decode((string) $page->view, true, 512, JSON_THROW_ON_ERROR));
@@ -177,7 +181,7 @@ class DonutBodyTest extends TestCase
 
         $this->expectExceptionMessage("Serialization of 'Closure' is not allowed");
 
-        ResourceDonut::create($page, new DonutRenderer(), new SurrogateKeys($page->uri), null, false);
+        ResourceDonut::create($page, new DonutRenderer(), $this->dependencies($page->uri), null, false);
     }
 
     /** @param array<string, mixed> $body */
@@ -190,5 +194,10 @@ class DonutBodyTest extends TestCase
         $page->setRenderer(new JsonRenderer());
 
         return $page;
+    }
+
+    private function dependencies(AbstractUri $uri): Dependencies
+    {
+        return $this->injector->getInstance(CacheDependencyCollector::class)->begin(new TagSet([(new UriTag())($uri)]));
     }
 }

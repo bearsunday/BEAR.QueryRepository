@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
@@ -17,9 +18,10 @@ use Ray\Di\InjectorInterface;
 use function assert;
 use function dirname;
 
-class SurrogateKeysTest extends TestCase
+class DependenciesTest extends TestCase
 {
     private ResourceInterface $resource;
+    private InjectorInterface $injector;
 
     protected function setUp(): void
     {
@@ -33,6 +35,7 @@ class SurrogateKeysTest extends TestCase
         }
 
         assert($injector instanceof InjectorInterface);
+        $this->injector = $injector;
         $this->resource = $injector->getInstance(ResourceInterface::class);
 
         parent::setUp();
@@ -41,7 +44,7 @@ class SurrogateKeysTest extends TestCase
     public function testSetSurrogateHeader(): void
     {
         $uri = new Uri('app://self/foo');
-        $etags = new SurrogateKeys($uri);
+        $etags = $this->dependencies($uri);
         $foo1 = new class extends ResourceObject{
             /** @var array<string, string> */
             public $headers = [Header::SURROGATE_KEY => 'a b']; // phpcs:ignore
@@ -52,12 +55,12 @@ class SurrogateKeysTest extends TestCase
             public $headers = [Header::SURROGATE_KEY => 'a b']; // phpcs:ignore
         };
         $foo2->uri = new Uri('app://self/foo2');
-        $etags->addTag($foo1);
-        $etags->addTag($foo2);
+        $etags->hole($foo1);
+        $etags->hole($foo2);
         $ro = new class extends ResourceObject{
         };
         $ro->uri = $uri;
-        $etags->setSurrogateHeader($ro);
+        $etags->addTo($ro);
         $this->assertSame('_foo_ _foo1_ grp-_foo1_ a b _foo2_ grp-_foo2_', $ro->headers[Header::SURROGATE_KEY]);
 
         $ro = $this->resource->get('page://self/html/page-surrogate-key');
@@ -67,37 +70,37 @@ class SurrogateKeysTest extends TestCase
     public function testOnePurgeKey(): void
     {
         $uri = new Uri('app://self/foo');
-        $etags = new SurrogateKeys($uri);
+        $etags = $this->dependencies($uri);
         $foo = new class extends ResourceObject{
         };
         $foo->uri = $uri;
-        $etags->addTag($foo);
-        $etags->setSurrogateHeader($foo);
+        $etags->hole($foo);
+        $etags->addTo($foo);
         $this->assertSame('_foo_ grp-_foo_', $foo->headers[Header::SURROGATE_KEY]);
     }
 
     public function testSetSurrogateHeaderDeduplicatesWithManualKeys(): void
     {
         $uri = new Uri('app://self/foo');
-        $etags = new SurrogateKeys($uri);
+        $etags = $this->dependencies($uri);
         $child = new class extends ResourceObject{
             /** @var array<string, string> */
             public $headers = [Header::SURROGATE_KEY => 'shared-tag']; // phpcs:ignore
         };
         $child->uri = new Uri('app://self/foo1');
-        $etags->addTag($child);
+        $etags->hole($child);
         $ro = new class extends ResourceObject{
             /** @var array<string, string> */
             public $headers = [Header::SURROGATE_KEY => 'shared-tag _foo_']; // phpcs:ignore
         };
         $ro->uri = $uri;
-        $etags->setSurrogateHeader($ro);
+        $etags->addTo($ro);
         $this->assertSame('shared-tag _foo_ _foo1_ grp-_foo1_', $ro->headers[Header::SURROGATE_KEY]);
     }
 
     public function testEmbeddedRequestsThatDifferOnlyInStringableQueryValuesKeepTheirOwnDeclarations(): void
     {
-        $keys = new SurrogateKeys(new Uri('page://self/page'));
+        $keys = $this->dependencies(new Uri('page://self/page'));
         foreach (['c1', 'c2'] as $channelId) {
             $child = new Ca();
             $child->uri = new Uri('app://self/rows/ca', ['channelId' => new Ulid($channelId)]);
@@ -105,5 +108,10 @@ class SurrogateKeysTest extends TestCase
             $keys->embedded($child);
             $this->assertSame((new UriTag())(new Uri('app://self/rows/taxonomy', ['ulid' => $channelId])), $child->headers[Header::SURROGATE_KEY]);
         }
+    }
+
+    private function dependencies(AbstractUri $uri): Dependencies
+    {
+        return $this->injector->getInstance(CacheDependencyCollector::class)->begin(new TagSet([(new UriTag())($uri)]));
     }
 }

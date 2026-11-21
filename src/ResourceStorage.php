@@ -43,6 +43,7 @@ use function trim;
  *     roProvider:ProviderInterface<TagAwareAdapterInterface>,
  *     identityFactory: CacheIdentityFactory,
  *     cacheTags: CacheTags,
+ *     evaluateBody: ResourceBodyEvaluator,
  * }
  * @internal
  */
@@ -78,7 +79,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         #[Set(TagAwareAdapterInterface::class, ResourceObjectPool::class)]
         ProviderInterface $roPoolProvider,
         private readonly CacheTags $cacheTags,
-        private ResourceBodyEvaluator $evaluateBody = new ResourceBodyEvaluator(),
+        private ResourceBodyEvaluator $evaluateBody,
     ) {
         $this->initializePools($roPoolProvider);
     }
@@ -406,6 +407,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
             'roProvider' => $this->roPoolProvider,
             'identityFactory' => $this->identityFactory,
             'cacheTags' => $this->cacheTags,
+            'evaluateBody' => $this->evaluateBody,
         ];
     }
 
@@ -421,9 +423,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         $this->saver = $data['saver'];
         $this->identityFactory = $data['identityFactory'];
         $this->cacheTags = $data['cacheTags'];
-        // Stateless, so rebuilt rather than carried: left out of the payload it stays
-        // uninitialized, and the first save after a compiled-injector restore throws.
-        $this->evaluateBody = new ResourceBodyEvaluator();
+        $this->evaluateBody = $data['evaluateBody'];
         $this->initializePools($data['roProvider']);
     }
 }

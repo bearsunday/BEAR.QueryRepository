@@ -19,12 +19,13 @@ use function array_values;
 use function is_array;
 use function uri_template;
 
+/** @internal */
 final readonly class RefreshAnnotatedCommand implements CommandInterface
 {
     public function __construct(
         private QueryRepositoryInterface $repository,
         private ResourceInterface $resource,
-        private CacheIdentityFactory $identityFactory = new CacheIdentityFactory(),
+        private CacheIdentityFactory $identityFactory,
     ) {
     }
 

@@ -9,12 +9,14 @@ use BEAR\Resource\Module\HalModule;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
+use Koriym\SemanticLogger\NullSemanticLogger;
 use Koriym\SemanticLogger\SemanticLogger;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
+use Ray\Di\InjectorInterface;
 
 use function array_map;
 use function array_merge;
@@ -34,9 +36,11 @@ class CacheDependencyTest extends TestCase
     private ResourceStorageInterface $storage;
     private FakeCountingPurger $purger;
     private SemanticLoggerInterface $logger;
+    private InjectorInterface $injector;
 
     protected function setUp(): void
     {
+        $this->injector = new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld'), __DIR__ . '/tmp');
         $namespace = 'FakeVendor\HelloWorld';
         $this->purger = new FakeCountingPurger();
         $purger = $this->purger;
@@ -324,7 +328,7 @@ class CacheDependencyTest extends TestCase
     public function testDependsLeavesTheChildsOwnKeyIntactAndDedupesTheParent(): void
     {
         $uriTag = new UriTag();
-        $dependency = new CacheDependency($uriTag);
+        $dependency = new CacheDependency(new CacheTags($uriTag, new BaseUriTag($uriTag, $this->injector->getInstance(CacheIdentityFactory::class)), $this->injector->getInstance(CacheIdentityFactory::class)), new NullSemanticLogger());
 
         $parent = new class extends ResourceObject {
         };
@@ -354,7 +358,8 @@ class CacheDependencyTest extends TestCase
     {
         $uriTag = new UriTag();
         $logger = new SemanticLogger();
-        $dependency = new CacheDependency($uriTag, $logger);
+        $identityFactory = $this->injector->getInstance(CacheIdentityFactory::class);
+        $dependency = new CacheDependency(new CacheTags($uriTag, new BaseUriTag($uriTag, $identityFactory), $identityFactory), $logger);
 
         $parent = new class extends ResourceObject {
         };
@@ -373,6 +378,6 @@ class CacheDependencyTest extends TestCase
         $context = json_decode($edges[0], true);
         assert(is_array($context));
         $childTags = $context['childTags'];
-        $this->assertSame([$uriTag($child->uri), (new BaseUriTag($uriTag))($child)], $childTags);
+        $this->assertSame([$uriTag($child->uri), (new BaseUriTag($uriTag, $this->injector->getInstance(CacheIdentityFactory::class)))($child)], $childTags);
     }
 }

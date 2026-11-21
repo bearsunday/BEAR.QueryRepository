@@ -44,8 +44,8 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         private Expiry $expiry,
         private CacheDependencyCollector $dependencyCollector,
         private CacheTags $cacheTags,
-        private DeclaredCacheControl $declaredCacheControl = new DeclaredCacheControl(),
-        private ResourceBodyEvaluator $evaluateBody = new ResourceBodyEvaluator(),
+        private DeclaredCacheControl $declaredCacheControl,
+        private ResourceBodyEvaluator $evaluateBody,
     ) {
     }
 
@@ -227,10 +227,8 @@ final readonly class QueryRepository implements QueryRepositoryInterface
             return null;
         }
 
-        // Age is residence time since the state was stored, not derived from Last-Modified
-        // (the content's last change time). Entries predating storedAt fall back to Last-Modified.
-        $storedAt = $state->storedAt ?? (int) strtotime($state->headers[Header::LAST_MODIFIED]);
-        $state->headers[Header::AGE] = (string) (time() - $storedAt);
+        // Age is residence time since the state was stored, not derived from Last-Modified (the content's last change time)
+        $state->headers[Header::AGE] = (string) (time() - $state->storedAt);
 
         return $state;
     }

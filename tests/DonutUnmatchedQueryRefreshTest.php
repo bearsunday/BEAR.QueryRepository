@@ -81,6 +81,24 @@ class DonutUnmatchedQueryRefreshTest extends TestCase
         $this->resource->put('page://self/html/mismatched-donut-writer', ['title' => 'new']);
     }
 
+    public function testAPostSkipsARefreshWhoseGetMakesAWriteThatDoesNotAddressItsOwn(): void
+    {
+        $ro = $this->resource->post('page://self/html/nested-mismatch-donut-writer', ['id' => 1]);
+
+        $this->assertSame(200, $ro->code);
+        $error = self::eventContextJsonOf($this->flushAndValidate($this->logger), 'cache_error');
+        $this->assertNotNull($error);
+        $this->assertStringContainsString('"uri":"page://self/html/nested-mismatch-donut-writer"', $error);
+        $this->assertStringContainsString('"exceptionClass":"BEAR\\\\QueryRepository\\\\Exception\\\\UnmatchedQuery"', $error);
+        $this->assertStringContainsString("put app://self/unmatch has no 'unused'", $error, 'the write the rebuilding GET made');
+    }
+
+    public function testAPutThrowsWhenTheRefreshGetMakesAWriteThatDoesNotAddressItsOwn(): void
+    {
+        $this->expectException(UnmatchedQuery::class);
+        $this->resource->put('page://self/html/nested-mismatch-donut-writer', ['id' => 1]);
+    }
+
     public function testAPutThatThrowsDoesNotRunTheExplicitPurgeWrittenOnIt(): void
     {
         $dest = new Uri('app://self/refresh-dest?id=1');

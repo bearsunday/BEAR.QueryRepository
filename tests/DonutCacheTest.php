@@ -4,22 +4,22 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use Madapaja\TwigModule\TwigModule;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
+use Ray\Di\InjectorInterface;
 
 use function dirname;
 use function gmdate;
-use function sprintf;
-use function strlen;
 use function time;
-use function unserialize;
 
 class DonutCacheTest extends TestCase
 {
     private ResourceInterface $resource;
+    private InjectorInterface $injector;
 
     protected function setUp(): void
     {
@@ -28,6 +28,7 @@ class DonutCacheTest extends TestCase
         $path = dirname(__DIR__) . '/tests/Fake/fake-app/var/templates';
         $module->override(new TwigModule([$path]));
         $injector = new Injector($module, __DIR__ . '/tmp');
+        $this->injector = $injector;
         $this->resource = $injector->getInstance(ResourceInterface::class);
 
         parent::setUp();
@@ -36,9 +37,9 @@ class DonutCacheTest extends TestCase
     public function testGetState(): void
     {
         $headers = ['Content-Type' => 'application/xml;'];
-        $donut = new ResourceDonut('cmt=[le:page://self/html/comment]', $headers, null, true);
+        $donut = new ResourceDonut('cmt=' . ResourceDonut::placeholder('page://self/html/comment'), $headers, null, true);
         $blog = $this->resource->get('page://self/html/blog-posting');
-        $ro = $donut->refresh($this->resource, $blog);
+        $ro = $donut->refresh($this->resource, $blog, $this->dependencies($blog->uri));
         $this->assertInstanceOf(ResourceObject::class, $ro);
         $this->assertSame('cmt=comment01', $ro->view);
         $this->assertSame($headers['Content-Type'], $ro->headers['Content-Type']);
@@ -49,14 +50,14 @@ class DonutCacheTest extends TestCase
         $ro = $this->resource->get('page://self/html/comment');
         $view = $ro->toString();
         $ro->headers[Header::LAST_MODIFIED] = gmdate(Header::RFC7231, 1000);
-        $donut = (new ResourceDonut('cmt=[le:page://self/html/comment]', [], null, true))->withContentState($ro);
+        $donut = (new ResourceDonut('tmpl', [], null, true))->withContentState($ro);
 
         // identical content carries over the recorded Last-Modified
         $this->assertSame(1000, $donut->getUnchangedLastModified($view));
         // changed content advances Last-Modified (null lets the caller use the current time)
         $this->assertNull($donut->getUnchangedLastModified('changed content'));
         // a donut without recorded content state (e.g. putDonut) never carries over
-        $this->assertNull((new ResourceDonut('cmt=[le:page://self/html/comment]', [], null, false))->getUnchangedLastModified($view));
+        $this->assertNull((new ResourceDonut('tmpl', [], null, false))->getUnchangedLastModified($view));
     }
 
     public function testContentStateUpdateKeepsLastModifiedMovingForward(): void
@@ -64,7 +65,7 @@ class DonutCacheTest extends TestCase
         $ro = $this->resource->get('page://self/html/comment');
         $view = $ro->toString();
         $ro->headers[Header::LAST_MODIFIED] = gmdate(Header::RFC7231, 1000);
-        $donut = (new ResourceDonut('cmt=[le:page://self/html/comment]', [], null, true))->withContentState($ro);
+        $donut = (new ResourceDonut('tmpl', [], null, true))->withContentState($ro);
 
         // A→B: the state recorded at refresh becomes the new comparison base
         $this->assertNull($donut->getUnchangedLastModified('changed content'));
@@ -78,49 +79,6 @@ class DonutCacheTest extends TestCase
         $this->assertNull($donut->getUnchangedLastModified($view));
     }
 
-    public function testLegacyDonutPayloadHasNoContentState(): void
-    {
-        // A payload serialized before lastModified/contentHash existed: the properties
-        // are uninitialized, so no Last-Modified carry-over happens.
-        $donut = $this->legacyDonut();
-
-        $this->assertNull($donut->getUnchangedLastModified('tmpl'));
-        $this->assertNull($donut->getRemainingStorageTtl());
-        $this->assertSame([], $donut->getStorageTags());
-    }
-
-    public function testLegacyDonutPayloadCanRecordStorageState(): void
-    {
-        // A warm cache surviving a deploy: a re-saved legacy entry records the lifetime and
-        // tags it is stored with, while the content state it never had stays absent.
-        $donut = $this->legacyDonut()->withStorageState(100, ['fresh-tag']);
-
-        $this->assertSame(['fresh-tag'], $donut->getStorageTags());
-        $remaining = $donut->getRemainingStorageTtl();
-        // Not just <= 100: null passes that comparison, so a regression that stopped
-        // recording templateExpiresAt for a legacy payload would slip through.
-        $this->assertIsInt($remaining);
-        $this->assertGreaterThan(0, $remaining);
-        $this->assertLessThanOrEqual(100, $remaining);
-        $this->assertNull($donut->getUnchangedLastModified('tmpl'));
-    }
-
-    public function testLegacyDonutPayloadCanRecordContentState(): void
-    {
-        // The same entry refreshed: the recomposed content becomes the state the next
-        // refresh compares against, and the lifetime it was stored with stays absent.
-        $ro = new class extends ResourceObject{
-        };
-        $ro->view = 'recomposed';
-        $ro->headers[Header::LAST_MODIFIED] = gmdate(Header::RFC7231, 1000);
-
-        $donut = $this->legacyDonut()->withContentState($ro);
-
-        $this->assertSame(1000, $donut->getUnchangedLastModified('recomposed'));
-        $this->assertNull($donut->getRemainingStorageTtl());
-        $this->assertSame([], $donut->getStorageTags());
-    }
-
     public function testZeroTtlRecordsNoTemplateExpiry(): void
     {
         // 0 does not mean "already lapsed": ResourceStorageSaver only calls expiresAfter()
@@ -131,26 +89,6 @@ class DonutCacheTest extends TestCase
 
         $this->assertNull($donut->getRemainingStorageTtl());
         $this->assertSame(['tag'], $donut->getStorageTags());
-    }
-
-    /** A donut as it was serialized before the content and storage state existed */
-    private function legacyDonut(): ResourceDonut
-    {
-        $class = ResourceDonut::class;
-        $prop = static fn (string $name): string => "\0{$class}\0{$name}";
-        $payload = sprintf(
-            'O:%d:"%s":4:{s:%d:"%s";s:4:"tmpl";s:%d:"%s";a:0:{}s:3:"ttl";N;s:10:"isCacheble";b:1;}',
-            strlen($class),
-            $class,
-            strlen($prop('template')),
-            $prop('template'),
-            strlen($prop('headers')),
-            $prop('headers'),
-        );
-        $donut = unserialize($payload);
-        $this->assertInstanceOf(ResourceDonut::class, $donut);
-
-        return $donut;
     }
 
     public function testStorageStatePreservesExplicitTtlAndTags(): void
@@ -176,32 +114,16 @@ class DonutCacheTest extends TestCase
     public function testDonutReplaysTheStatusCodeItWasStoredWith(): void
     {
         // The refresh path has no page state to read the code from, so the donut carries it.
-        $donut = new ResourceDonut('tmpl', [], null, true, null, null, null, null, 301);
+        $donut = new ResourceDonut('tmpl', [], null, true, null, null, null, [], 301);
         $ro = $this->resource->get('page://self/html/comment');
 
-        $donut->refresh($this->resource, $ro);
+        $donut->refresh($this->resource, $ro, $this->dependencies($ro->uri));
 
         $this->assertSame(301, $ro->code);
     }
 
-    public function testLegacyDonutPayloadLeavesTheStatusCodeAlone(): void
+    private function dependencies(AbstractUri $uri): Dependencies
     {
-        // A payload serialized before the code property existed: the property is
-        // uninitialized, so the refresh leaves whatever code the response already has
-        // rather than overwriting it with a value the entry never recorded.
-        $ro = $this->resource->get('page://self/html/comment');
-        $ro->code = 301;
-
-        $this->legacyDonut()->refresh($this->resource, $ro);
-
-        $this->assertSame(301, $ro->code);
-    }
-
-    public function testStorageTagsFallBackToTheSurrogateKeyHeader(): void
-    {
-        // Donuts stored before the tags were recorded still carry them in the header.
-        $donut = new ResourceDonut('tmpl', [Header::SURROGATE_KEY => 'page-key other-key'], null, true);
-
-        $this->assertSame(['page-key', 'other-key'], $donut->getStorageTags());
+        return $this->injector->getInstance(CacheDependencyCollector::class)->begin(new TagSet([(new UriTag())($uri)]));
     }
 }

@@ -8,12 +8,21 @@ use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
 use ErrorException;
 use PHPUnit\Framework\TestCase;
+use Ray\Di\Injector;
+use Ray\Di\InjectorInterface;
 
 use function restore_error_handler;
 use function set_error_handler;
 
 class BaseUriTagTest extends TestCase
 {
+    private InjectorInterface $injector;
+
+    protected function setUp(): void
+    {
+        $this->injector = new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld'), __DIR__ . '/tmp');
+    }
+
     /**
      * A required parameter bound from outside the query (e.g. #[ResourceParam]) is not part of the URI, so not of
      * the group. Reading it from the query would raise a warning, which an app's error handler may turn into an exception.
@@ -35,7 +44,7 @@ class BaseUriTagTest extends TestCase
             throw new ErrorException($errstr, 0, $errno);
         });
         try {
-            $groupTag = (new BaseUriTag($uriTag))($ro);
+            $groupTag = (new BaseUriTag($uriTag, $this->injector->getInstance(CacheIdentityFactory::class)))($ro);
         } finally {
             restore_error_handler();
         }
@@ -56,6 +65,6 @@ class BaseUriTagTest extends TestCase
         $ro->uri = new Uri('app://self/item');
         $ro->uri->query = ['id' => new FakeStringableId('a'), 'page' => 2];
 
-        $this->assertSame('grp-_item_id=a', (new BaseUriTag(new UriTag()))($ro));
+        $this->assertSame('grp-_item_id=a', (new BaseUriTag(new UriTag(), $this->injector->getInstance(CacheIdentityFactory::class)))($ro));
     }
 }

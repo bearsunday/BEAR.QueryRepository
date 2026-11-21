@@ -13,8 +13,8 @@ use function method_exists;
 final readonly class BaseUriTag implements BaseUriTagInterface
 {
     public function __construct(
-        private UriTagInterface $uriTag = new UriTag(),
-        private CacheIdentityFactory $identityFactory = new CacheIdentityFactory(),
+        private UriTagInterface $uriTag,
+        private CacheIdentityFactory $identityFactory,
     ) {
     }
 

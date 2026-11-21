@@ -7,23 +7,17 @@ namespace BEAR\QueryRepository;
 use BEAR\QueryRepository\Log\Context\DependsOnContext;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\ResourceObject;
-use Koriym\SemanticLogger\NullSemanticLogger;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 
 /** @internal */
 final readonly class CacheDependency implements CacheDependencyInterface
 {
-    private CacheTags $cacheTags;
-
     public function __construct(
-        UriTagInterface $uriTag,
+        private CacheTags $cacheTags,
         #[CacheLog]
-        private SemanticLoggerInterface $logger = new NullSemanticLogger(),
-        BaseUriTagInterface|null $baseUriTag = null,
-        CacheTags|null $cacheTags = null,
+        private SemanticLoggerInterface $logger,
     ) {
-        $this->cacheTags = $cacheTags ?? new CacheTags($uriTag, $baseUriTag ?? new BaseUriTag($uriTag));
     }
 
     #[Override]

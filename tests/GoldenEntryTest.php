@@ -9,6 +9,7 @@ use BEAR\Resource\ResourceObject;
 use FakeVendor\HelloWorld\Entity\Catalog;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Ray\Di\Injector;
 
 use function array_diff_key;
 use function array_keys;
@@ -324,7 +325,8 @@ class GoldenEntryTest extends TestCase
 
     private static function etag(ResourceObject $ro, string $state): string
     {
-        $k = (new CacheIdentityFactory())->locator($ro->uri);
+        $identityFactory = (new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld'), __DIR__ . '/tmp'))->getInstance(CacheIdentityFactory::class);
+        $k = $identityFactory->locator($ro->uri);
 
         return '"' . $k . '.' . crc32($ro::class . $state . (string) $ro->uri) . '"';
     }

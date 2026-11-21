@@ -15,7 +15,7 @@ final readonly class CacheTags
     public function __construct(
         private UriTagInterface $uriTag,
         private BaseUriTagInterface $baseUriTag,
-        private CacheIdentityFactory $identityFactory = new CacheIdentityFactory(),
+        private CacheIdentityFactory $identityFactory,
         #[AppSurrogateKey]
         private string|null $appKey = null,
     ) {
@@ -24,10 +24,13 @@ final readonly class CacheTags
     /** @param TagSet|null $declared null reads the Surrogate-Key header */
     public function tags(ResourceObject $ro, TagSet|null $declared = null): TagSet
     {
-        // The base tag makes the entry reachable by a purge aimed at the bare URI (see BaseUriTag).
-        $own = new TagSet([($this->uriTag)($ro->uri), ($this->baseUriTag)($ro)]);
+        return $this->withAppKey($this->own($ro)->merge($declared ?? TagSet::ofHeaders($ro->headers)));
+    }
 
-        return $this->withAppKey($own->merge($declared ?? TagSet::ofHeaders($ro->headers)));
+    /** The URI tag, and the base tag that makes the entry reachable by a purge aimed at the bare URI (see BaseUriTag) */
+    public function own(ResourceObject $ro): TagSet
+    {
+        return new TagSet([($this->uriTag)($ro->uri), ($this->baseUriTag)($ro)]);
     }
 
     /** Adds the application's key to the resource's Surrogate-Key, once */

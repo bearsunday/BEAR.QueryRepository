@@ -5,14 +5,15 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\QueryRepository as Repository;
+use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\Resource\Uri;
 use FakeVendor\HelloWorld\Resource\Page\Index;
-use Koriym\SemanticLogger\NullSemanticLogger;
 use PHPUnit\Framework\TestCase;
-use Ray\Di\ProviderInterface;
+use Ray\Di\AbstractModule;
+use Ray\Di\Injector;
+use Ray\Di\InjectorInterface;
+use Symfony\Component\Cache\Adapter\AdapterInterface;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
-use Symfony\Component\Cache\Adapter\NullAdapter;
-use Symfony\Component\Cache\Adapter\TagAwareAdapter;
 
 use function array_change_key_case;
 use function assert;
@@ -21,37 +22,22 @@ use const CASE_LOWER;
 
 class ResourceRepositoryTest extends TestCase
 {
-    private Repository $repository;
+    private QueryRepositoryInterface $repository;
     private Index $ro;
+    private InjectorInterface $injector;
 
     protected function setUp(): void
     {
-        $tagAwareAdapter = new TagAwareAdapter(new FilesystemAdapter('', 0, __DIR__ . '/tmp'));
-        $tagAwareAdapterProvider = new class ($tagAwareAdapter) implements ProviderInterface{
-            public function __construct(private readonly TagAwareAdapter $tagAwareAdapter)
+        $this->injector = new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld'), __DIR__ . '/tmp');
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
+        $module->override(new StorageExpiryModule(0, 0, 0));
+        $module->override(new class extends AbstractModule {
+            protected function configure(): void
             {
+                $this->bind(AdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->toInstance(new FilesystemAdapter('', 0, __DIR__ . '/tmp'));
             }
-
-            public function get()
-            {
-                return $this->tagAwareAdapter;
-            }
-        };
-        $this->repository = new Repository(
-            new NullSemanticLogger(),
-            new HeaderSetter(new EtagSetter()),
-            new ResourceStorage(
-                new NullSemanticLogger(),
-                new NullPurger(),
-                new ResourceStorageSaver(),
-                new CacheIdentityFactory(new GlobalServerContext()),
-                $tagAwareAdapterProvider,
-                new CacheTags(new UriTag(), new BaseUriTag(new UriTag())),
-            ),
-            new Expiry(0, 0, 0),
-            new CacheDependencyCollector(new DependsOnTags(new UriTag(), new DependsOnRows()), new CacheDependency(new UriTag()), new NullSemanticLogger()),
-            new CacheTags(new UriTag(), new BaseUriTag(new UriTag())),
-        );
+        });
+        $this->repository = (new Injector($module, __DIR__ . '/tmp'))->getInstance(QueryRepositoryInterface::class);
         $this->ro = new Index();
         $this->ro->uri = new Uri('page://self/user');
     }
@@ -108,32 +94,6 @@ class ResourceRepositoryTest extends TestCase
     public function testCreateFromDoctrineAnnotation(): void
     {
         // phpcs:enable
-        $tagAwareAdapter = new TagAwareAdapter(new NullAdapter());
-        $tagAwareAdapterProvider = new class ($tagAwareAdapter) implements ProviderInterface{
-            public function __construct(private readonly TagAwareAdapter $tagAwareAdapter)
-            {
-            }
-
-            public function get()
-            {
-                return $this->tagAwareAdapter;
-            }
-        };
-        $repository = new Repository(
-            new NullSemanticLogger(),
-            new HeaderSetter(new EtagSetter()),
-            new ResourceStorage(
-                new NullSemanticLogger(),
-                new NullPurger(),
-                new ResourceStorageSaver(),
-                new CacheIdentityFactory(new GlobalServerContext()),
-                $tagAwareAdapterProvider,
-                new CacheTags(new UriTag(), new BaseUriTag(new UriTag())),
-            ),
-            new Expiry(0, 0, 0),
-            new CacheDependencyCollector(new DependsOnTags(new UriTag(), new DependsOnRows()), new CacheDependency(new UriTag()), new NullSemanticLogger()),
-            new CacheTags(new UriTag(), new BaseUriTag(new UriTag())),
-        );
-        $this->assertInstanceOf(Repository::class, $repository);
+        $this->assertInstanceOf(Repository::class, $this->injector->getInstance(QueryRepositoryInterface::class));
     }
 }

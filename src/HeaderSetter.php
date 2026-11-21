@@ -32,7 +32,7 @@ final readonly class HeaderSetter
 
     public function __construct(
         private EtagSetterInterface $etagSetter,
-        private DeclaredCacheControl $declaredCacheControl = new DeclaredCacheControl(),
+        private DeclaredCacheControl $declaredCacheControl,
     ) {
     }
 

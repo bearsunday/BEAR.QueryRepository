@@ -20,7 +20,7 @@ use function sprintf;
 final class MatchQuery implements MatchQueryInterface
 {
     public function __construct(
-        private readonly CacheIdentityFactory $identityFactory = new CacheIdentityFactory(),
+        private readonly CacheIdentityFactory $identityFactory,
     ) {
     }
 

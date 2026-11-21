@@ -463,7 +463,7 @@ class DonutRepositoryTest extends TestCase
         // A template entry the pool still answers with, five seconds past the lifetime it
         // was stored with: re-saving the recomposed content would restart a lifetime the
         // template no longer has, so the write is recorded as skipped instead.
-        $donut = new ResourceDonut('cmt=[le:page://self/html/comment]', [], 30, true, null, null, time() - 5, ['lapsed-tag']);
+        $donut = new ResourceDonut('cmt=' . ResourceDonut::placeholder('page://self/html/comment'), [], 30, true, null, null, time() - 5, ['lapsed-tag']);
         $storage->saveDonut($this->uri, $donut, 30, ['lapsed-tag']);
         $logger->flush(); // drain the seed write: this test is about the refresh that follows, not the setup
         $page = $resource->get((string) $this->uri);

@@ -26,25 +26,16 @@ use function time;
 
 /**
  * Donut cache resource state
+ *
+ * @internal
  */
 final class ResourceDonut
 {
-    // `le2` placeholders (written by this version onward) carry a rawurlencode()'d URI:
-    // percent-encoding leaves no '&', '<', '>', '"' or '\'' for an HTML renderer's default
-    // autoescaping to mangle, so the same placeholder text round-trips unchanged whether
-    // it is echoed raw, through Twig's default `{{ hole }}` escaping, or by a non-HTML
-    // renderer (issue #232). A legacy `le` placeholder (written before this version) is
-    // never decoded - its URI is used exactly as refresh() always used it, which stays
-    // correct for 0/1 query params (and still broken for 2+, as it already was: that
-    // entry was already corrupted and self-heals once it expires and is rewritten).
-    // Decoding it here too would be wrong, not merely redundant: a legacy query VALUE
-    // that itself needed percent-encoding (a literal '&', '=', '+', '/', non-ASCII bytes)
-    // would be stripped of that encoding before BEAR\Resource\Uri ever parses it, either
-    // corrupting the value (parse_str re-splits it on the now-literal '&'/'=') or failing
-    // URL validation outright (a raw non-ASCII byte is not a valid URL character).
+    // The reference is rawurlencode()'d: percent-encoding leaves no '&', '<', '>', '"' or '\'' for an HTML renderer's
+    // autoescaping to change, so the placeholder reads the same echoed raw or through Twig's `{{ hole }}`
     private const FORMAT = '[le2:%s]';
 
-    private const URI_REGEX = '/\[le(2)?:([^\]]+)]/';
+    private const URI_REGEX = '/\[le2:([^\]]+)]/';
 
     /**
      * Build the placeholder DonutRequest::__toString() embeds and DonutRenderer matches
@@ -63,8 +54,8 @@ final class ResourceDonut
     /**
      * @param array<string, string>        $headers
      * @param int|null                     $lastModified Time when the composed content last actually changed
-     * @param list<string>|null            $storageTags  Original invalidation tags for the donut template entry
-     * @param int|null                     $code         Status code the page was stored with; null in entries saved before this field existed
+     * @param list<string>                 $storageTags  Invalidation tags of the donut template entry
+     * @param int                          $code         Status code the page was stored with
      * @param array<array-key, mixed>|null $body
      * @param array<array-key, string>     $embeds
      *
@@ -81,8 +72,8 @@ final class ResourceDonut
         public int|null $lastModified = null,
         private readonly string|null $contentHash = null,
         private readonly int|null $templateExpiresAt = null,
-        private readonly array|null $storageTags = null,
-        private readonly int|null $code = null,
+        private readonly array $storageTags = [],
+        private readonly int $code = 200,
         array|null $body = null,
         array $embeds = [],
     ) {
@@ -90,15 +81,10 @@ final class ResourceDonut
         $this->embeds = $embeds;
     }
 
-    /**
-     * Answers the page again from what was stored. Whatever fails on the way degrades the hit to a fresh run of the page.
-     *
-     * @param DependsOnTags|null $dependsOnTags reads what each hole declares as it is rendered again; null reads its #[DependsOn] only
-     */
-    public function refresh(ResourceInterface $resource, ResourceObject $ro, UriTagInterface|null $uriTag = null, DependsOnTags|null $dependsOnTags = null): ResourceObject
+    /** Answers the page again from what was stored. Whatever fails on the way degrades the hit to a fresh run of the page. */
+    public function refresh(ResourceInterface $resource, ResourceObject $ro, Dependencies $etags): ResourceObject
     {
         try {
-            $etags = new SurrogateKeys($ro->uri, null, $uriTag, null, $dependsOnTags);
             if ($this->body === null) {
                 $view = $this->compose($resource, $etags);
                 $ro->headers = $this->headers;
@@ -109,15 +95,12 @@ final class ResourceDonut
                 $this->renderBody($this->body, $resource, $ro, $etags);
             }
 
-            // isset() also guards entries serialized before this property existed
-            if (isset($this->code)) {
-                $ro->code = $this->code;
-            }
+            $ro->code = $this->code;
 
             // $this->headers lacks the group tag; add the stored tags.
             (new TagSet($this->getStorageTags()))->addTo($ro);
 
-            $etags->setSurrogateHeader($ro);
+            $etags->addTo($ro);
         } catch (Throwable $e) {
             throw new CacheStoreException(previous: $e);
         }
@@ -126,16 +109,14 @@ final class ResourceDonut
     }
 
     /** The template with the view of each embedded request, read again, in its place */
-    private function compose(ResourceInterface $resource, SurrogateKeys $etags): string|null
+    private function compose(ResourceInterface $resource, Dependencies $etags): string|null
     {
         return preg_replace_callback(self::URI_REGEX, static function (array $matches) use ($resource, $etags): string {
-            // Group 1 is "2" for a new `le2` match (its reference, group 2, is rawurlencode()'d),
-            // or "" for a legacy `le` match (group 2 is its URI, used verbatim).
-            $reference = $matches[1] === '2' ? rawurldecode($matches[2]) : $matches[2];
+            $reference = rawurldecode($matches[1]);
             // toString(), not (string): the cast turns a render failure into '', which would be served
             $ro = $resource->get($reference);
             $ro->toString();
-            $etags->addTag($ro);
+            $etags->hole($ro);
 
             return (string) $ro->view;
         }, $this->template);
@@ -146,7 +127,7 @@ final class ResourceDonut
      *
      * @param array<array-key, mixed> $body
      */
-    private function renderBody(array $body, ResourceInterface $resource, ResourceObject $ro, SurrogateKeys $etags): void
+    private function renderBody(array $body, ResourceInterface $resource, ResourceObject $ro, Dependencies $etags): void
     {
         $requests = [];
         foreach ($this->embeds as $key => $reference) {
@@ -157,12 +138,12 @@ final class ResourceDonut
 
         $ro->body = $body;
         $ro->headers = $this->headers;
-        $ro->code = $this->code ?? $ro->code;
+        $ro->code = $this->code;
         $ro->view = null;
         $ro->toString();
         foreach ($requests as $request) {
             // After rendering: what a request passes up from the requests it embeds itself is known once those have run
-            $etags->addTag(DonutRequest::resultOf($request));
+            $etags->hole(DonutRequest::resultOf($request));
         }
     }
 
@@ -189,8 +170,7 @@ final class ResourceDonut
      */
     public function getUnchangedLastModified(string $view): int|null
     {
-        // isset() also guards entries serialized before these properties existed
-        if (! isset($this->contentHash, $this->lastModified)) {
+        if ($this->contentHash === null || $this->lastModified === null) {
             return null;
         }
 
@@ -208,9 +188,6 @@ final class ResourceDonut
             $lastModified = $time === false ? null : $time;
         }
 
-        $templateExpiresAt = $this->templateExpiresAt ?? null;
-        $storageTags = $this->storageTags ?? null;
-
         return new self(
             $this->template,
             $this->headers,
@@ -218,9 +195,9 @@ final class ResourceDonut
             $this->isCacheble,
             $lastModified,
             $this->hashContent((string) $ro->view),
-            $templateExpiresAt,
-            $storageTags,
-            $this->code ?? null,
+            $this->templateExpiresAt,
+            $this->storageTags,
+            $this->code,
             $this->body,
             $this->embeds,
         );
@@ -233,20 +210,16 @@ final class ResourceDonut
      */
     public function withStorageState(int|null $ttl, array $tags): self
     {
-        $lastModified = $this->lastModified ?? null;
-        $contentHash = $this->contentHash ?? null;
-        $templateExpiresAt = $ttl !== null && $ttl > 0 ? time() + $ttl : null;
-
         return new self(
             $this->template,
             $this->headers,
             $this->ttl,
             $this->isCacheble,
-            $lastModified,
-            $contentHash,
-            $templateExpiresAt,
+            $this->lastModified,
+            $this->contentHash,
+            $ttl !== null && $ttl > 0 ? time() + $ttl : null,
             $tags,
-            $this->code ?? null,
+            $this->code,
             $this->body,
             $this->embeds,
         );
@@ -257,21 +230,13 @@ final class ResourceDonut
      */
     public function getRemainingStorageTtl(): int|null
     {
-        if (! isset($this->templateExpiresAt)) {
-            return null;
-        }
-
-        return max(0, $this->templateExpiresAt - time());
+        return $this->templateExpiresAt === null ? null : max(0, $this->templateExpiresAt - time());
     }
 
     /** @return list<string> */
     public function getStorageTags(): array
     {
-        if (isset($this->storageTags)) {
-            return $this->storageTags;
-        }
-
-        return TagSet::ofHeaders($this->headers)->toArray();
+        return $this->storageTags;
     }
 
     private function hashContent(string $view): string
@@ -283,7 +248,7 @@ final class ResourceDonut
      * Renders via `toString()`, not `(string) $ro`, which swallows a render failure into
      * an `E_USER_WARNING` and `''` - that would store an empty template for every later visitor.
      */
-    public static function create(ResourceObject $ro, DonutRendererInterface $storage, SurrogateKeys $etags, int|null $ttl, bool $isCacheble): self
+    public static function create(ResourceObject $ro, DonutRendererInterface $storage, Dependencies $etags, int|null $ttl, bool $isCacheble): self
     {
         // A resource with nothing to return leaves its body null - a 204 typically does, while
         // an #[Embed] would have made it an array - and a null body holds no embedded request
@@ -320,7 +285,7 @@ final class ResourceDonut
      *
      * @param array<array-key, DonutRequest> $embeds
      */
-    private static function ofBody(ResourceObject $ro, array $embeds, SurrogateKeys $etags, int|null $ttl, bool $isCacheble): self
+    private static function ofBody(ResourceObject $ro, array $embeds, Dependencies $etags, int|null $ttl, bool $isCacheble): self
     {
         assert(is_array($ro->body));
         $body = $ro->body;
@@ -346,7 +311,7 @@ final class ResourceDonut
         $ro->toString();
         foreach ($embeds as $key => $embed) {
             // After rendering: what a request passes up from the requests it embeds itself is known once those have run
-            $etags->addTag($invoked[$key] ?? DonutRequest::resultOf($embed->request));
+            $etags->hole($invoked[$key] ?? DonutRequest::resultOf($embed->request));
         }
 
         return new self('', $ro->headers, $ttl, $isCacheble, code: $ro->code, body: $body, embeds: $references);

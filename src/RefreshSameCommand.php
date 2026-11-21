@@ -12,7 +12,6 @@ use BEAR\Resource\FactoryInterface;
 use BEAR\Resource\InvokerInterface;
 use BEAR\Resource\Request;
 use BEAR\Resource\ResourceObject;
-use Koriym\SemanticLogger\NullSemanticLogger;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 use Ray\Aop\MethodInvocation;
@@ -28,8 +27,8 @@ final readonly class RefreshSameCommand implements CommandInterface
         private InvokerInterface $invoker,
         private UnsafeMethodMatcher $unsafeMethod,
         #[CacheLog]
-        private SemanticLoggerInterface $logger = new NullSemanticLogger(),
-        private CommandQuery $commandQuery = new CommandQuery(),
+        private SemanticLoggerInterface $logger,
+        private CommandQuery $commandQuery,
     ) {
     }
 

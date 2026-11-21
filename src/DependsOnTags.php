@@ -8,7 +8,6 @@ use BEAR\QueryRepository\Exception\DependsOnNotExpandable;
 use BEAR\RepositoryModule\Annotation\DependsOn;
 use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\ResourceObject;
-use Closure;
 use Generator;
 
 use function array_keys;
@@ -16,23 +15,18 @@ use function is_array;
 use function sprintf;
 
 /**
- * Adds to a resource's Surrogate-Key the tag of each URI its #[DependsOn] declarations expand to, and for a child that
- * ran inside its parent, the tags of the resources its #[ResourceParam] declarations read
+ * The tag of each URI a resource's #[DependsOn] declarations expand to, and the resources its #[ResourceParam] declarations read
  *
  * @internal
  */
 final readonly class DependsOnTags
 {
-    private CacheTags $cacheTags;
-
     public function __construct(
         private UriTagInterface $uriTag,
         private DependsOnRows $rows,
-        private CacheIdentityFactory $identityFactory = new CacheIdentityFactory(),
-        private ResourceParamSources|null $resourceParamSources = null,
-        CacheTags|null $cacheTags = null,
+        private CacheIdentityFactory $identityFactory,
+        private ResourceParamSources $resourceParamSources,
     ) {
-        $this->cacheTags = $cacheTags ?? new CacheTags($uriTag, new BaseUriTag($uriTag));
     }
 
     /**
@@ -51,82 +45,20 @@ final readonly class DependsOnTags
         }
     }
 
-    /** Tags the resource being stored with its onGet() declarations and the row classes in its body */
-    public function __invoke(ResourceObject $ro): void
-    {
-        $this->declared($ro)?->addTo($ro);
-    }
-
     /** @return list<ResourceObject> the resources its #[ResourceParam] declarations read: {@see ResourceParamSources} */
     public function resourceParamSources(ResourceObject $ro): array
     {
-        return $this->resourceParamSources === null ? [] : ($this->resourceParamSources)($ro);
+        return ($this->resourceParamSources)($ro);
     }
 
-    /**
-     * Tags a child that ran inside its parent with what ran() finds for it
-     *
-     * @return bool whether its parent depends on it, as tagEmbedded() decides
-     */
-    public function embedded(ResourceObject $child): bool
+    /** For each resource its #[ResourceParam] declarations read, the tags a parent takes from an embedded child */
+    public function sourceTags(ResourceObject $ro): TagSet
     {
-        return $this->tagEmbedded($child, $this->hasRun($child) ? $this->ran($child) : null);
+        return $this->resourceParamSources->tags($ro);
     }
 
-    /**
-     * @param TagSet|null $tags what ran() found for the child
-     *
-     * @return bool whether its parent depends on it: it has a body, a declaration, an ETag or a Surrogate-Key
-     */
-    public function tagEmbedded(ResourceObject $child, TagSet|null $tags): bool
-    {
-        $tags?->addTo($child);
-
-        return $child->body !== null || $tags !== null || isset($child->headers[Header::ETAG]) || isset($child->headers[Header::SURROGATE_KEY]);
-    }
-
-    /**
-     * Reads a resource that has run
-     *
-     * @param (Closure(ResourceObject): bool)|null $embedded reads a request it embeds; null reads it with embedded()
-     *
-     * @return TagSet|null what the resource declares and what its #[ResourceParam] read, with the tags of each request
-     *                     it embeds and ran that it depends on; null when there is none
-     */
-    public function ran(ResourceObject $ro, Closure|null $embedded = null): TagSet|null
-    {
-        $declared = $this->declared($ro);
-        $found = ($this->resourceParamSources?->tags($ro) ?? new TagSet())->merge($this->passedUp($ro, $embedded));
-
-        return $found->isEmpty() ? $declared : ($declared ?? new TagSet())->merge($found);
-    }
-
-    /**
-     * The tags of each request the resource embeds and ran that it depends on
-     *
-     * @param (Closure(ResourceObject): bool)|null $embedded reads a request it embeds; null reads it with embedded()
-     */
-    public function passedUp(ResourceObject $ro, Closure|null $embedded = null): TagSet
-    {
-        $embedded ??= $this->embedded(...);
-        $tags = new TagSet();
-        foreach ($this->requests($ro) as $body) {
-            if ($embedded($body->resourceObject)) {
-                $tags = $tags->merge($this->cacheTags->tags($body->resourceObject));
-            }
-        }
-
-        return $tags;
-    }
-
-    /** A request that has not run yet, such as a hole, still has the default code and no body */
-    public function hasRun(ResourceObject $ro): bool
-    {
-        return $ro->code !== 200 || $ro->body !== null;
-    }
-
-    /** @return TagSet|null null when neither onGet() nor a row class in the body declares */
-    private function declared(ResourceObject $ro): TagSet|null
+    /** @return TagSet|null what onGet() and the row classes in the body declare; null when neither declares */
+    public function declared(ResourceObject $ro): TagSet|null
     {
         $onClass = DependsOnTemplates::ofClass($ro::class);
         if ($onClass !== []) {

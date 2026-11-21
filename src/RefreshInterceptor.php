@@ -14,7 +14,6 @@ use BEAR\RepositoryModule\Annotation\RefreshCache;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\Code;
 use BEAR\Resource\ResourceObject;
-use Koriym\SemanticLogger\NullSemanticLogger;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 use Ray\Aop\MethodInterceptor;
@@ -31,18 +30,16 @@ use function method_exists;
  */
 final readonly class RefreshInterceptor implements MethodInterceptor
 {
-    private CommandContextFactory $commandContextFactory;
-
     public function __construct(
         private RefreshAnnotatedCommand $command,
         private RefreshSameCommand $refreshSameCommand,
         private MatchQueryInterface $matchQuery,
         private QueryRepositoryInterface $repository,
         private RefreshTemplateValidator $refreshTemplateValidator,
+        private CommandContextFactory $commandContextFactory,
         #[CacheLog]
-        private SemanticLoggerInterface $logger = new NullSemanticLogger(),
+        private SemanticLoggerInterface $logger,
     ) {
-        $this->commandContextFactory = new CommandContextFactory();
     }
 
     #[Override]

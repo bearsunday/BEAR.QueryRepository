@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\Resource\AbstractRequest;
+use BEAR\Resource\AbstractUri;
 use BEAR\Resource\InvokerInterface;
 use BEAR\Resource\Resource;
 use BEAR\Resource\ResourceInterface;
@@ -13,6 +14,7 @@ use BEAR\Resource\Uri;
 use Madapaja\TwigModule\TwigModule;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
+use Ray\Di\InjectorInterface;
 use RuntimeException;
 
 use function assert;
@@ -22,6 +24,7 @@ use function http_build_query;
 class DonutRequestTest extends TestCase
 {
     private AbstractRequest $request;
+    private InjectorInterface $injector;
 
     protected function setUp(): void
     {
@@ -30,6 +33,7 @@ class DonutRequestTest extends TestCase
         $path = dirname(__DIR__) . '/tests/Fake/fake-app/var/templates';
         $module->override(new TwigModule([$path]));
         $injector = new Injector($module, __DIR__ . '/tmp');
+        $this->injector = $injector;
         /** @var Resource $resource */
         $resource = $injector->getInstance(ResourceInterface::class);
         $request = $resource->get->uri('page://self/html/comment');
@@ -42,7 +46,7 @@ class DonutRequestTest extends TestCase
     public function testToString(): DonutRenderer
     {
         $storage = new DonutRenderer();
-        $request = new DonutRequest($this->request, $storage, new SurrogateKeys(new Uri('app://self/foo')));
+        $request = new DonutRequest($this->request, $storage, $this->dependencies(new Uri('app://self/foo')));
         $view = (string) $request;
         $this->assertSame(ResourceDonut::placeholder('page://self/html/comment'), $view);
 
@@ -78,7 +82,7 @@ class DonutRequestTest extends TestCase
         };
         $request = new FakeNonRequestHole($invoker, $child);
         $storage = new DonutRenderer();
-        $donutRequest = new DonutRequest($request, $storage, new SurrogateKeys(new Uri('app://self/foo')));
+        $donutRequest = new DonutRequest($request, $storage, $this->dependencies(new Uri('app://self/foo')));
 
         $placeholder = (string) $donutRequest;
 
@@ -97,7 +101,7 @@ class DonutRequestTest extends TestCase
         $throwingRequest = $resource->get->uri('app://self/throwing-hole');
         assert($throwingRequest instanceof AbstractRequest);
 
-        $donutRequest = new DonutRequest($throwingRequest, new DonutRenderer(), new SurrogateKeys(new Uri('app://self/foo')));
+        $donutRequest = new DonutRequest($throwingRequest, new DonutRenderer(), $this->dependencies(new Uri('app://self/foo')));
 
         $this->expectException(RuntimeException::class);
         (string) $donutRequest;
@@ -122,11 +126,16 @@ class DonutRequestTest extends TestCase
         assert($request instanceof AbstractRequest);
 
         $storage = new DonutRenderer();
-        $donutRequest = new DonutRequest($request, $storage, new SurrogateKeys(new Uri('app://self/foo')));
+        $donutRequest = new DonutRequest($request, $storage, $this->dependencies(new Uri('app://self/foo')));
         $placeholder = (string) $donutRequest;
 
         $expectedUri = 'app://self/query-hole?' . http_build_query(['token' => 'public-9']);
         $this->assertSame(ResourceDonut::placeholder($expectedUri), $placeholder, 'the placeholder must carry the query string set via the request\'s own query array');
         $this->assertSame('public-9', $storage->render(ResourceDonut::placeholder($expectedUri)), 'the stored view must be keyed by the exact same full URI the placeholder carries');
+    }
+
+    private function dependencies(AbstractUri $uri): Dependencies
+    {
+        return $this->injector->getInstance(CacheDependencyCollector::class)->begin(new TagSet([(new UriTag())($uri)]));
     }
 }

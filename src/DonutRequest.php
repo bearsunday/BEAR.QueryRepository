@@ -26,7 +26,7 @@ final class DonutRequest implements Stringable, JsonSerializable
     public function __construct(
         public readonly AbstractRequest $request,
         private readonly DonutRendererInterface $donutStorage,
-        private readonly SurrogateKeys $etags,
+        private readonly Dependencies $dependencies,
     ) {
     }
 
@@ -55,7 +55,7 @@ final class DonutRequest implements Stringable, JsonSerializable
         // Not (string): the cast turns a render failure into '', which would be stored (#237)
         $view = $executed->toString();
 
-        $this->etags->addTag($executed);
+        $this->dependencies->hole($executed);
         $this->donutStorage->setView($reference, $view);
 
         return ResourceDonut::placeholder($reference);
