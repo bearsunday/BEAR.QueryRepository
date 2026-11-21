@@ -47,81 +47,100 @@ final readonly class CacheInterceptor implements MethodInterceptor
     ) {
     }
 
-    /**
-     * {@inheritDoc}
-     *
-     * Opens a GET scope so embedded child resources fetched during put() nest
-     * under this resource, and the scope is closed with the hit/miss outcome.
-     */
     #[Override]
     public function invoke(MethodInvocation $invocation)
     {
         $ro = $invocation->getThis();
         assert($ro instanceof ResourceObject);
-        // On a hit this is the pool read; on a miss the resource run and the write it triggered.
         $openId = $this->logger->open(new GetContext((string) $ro->uri));
         $start = hrtime(true);
-        $hit = false;
         try {
-            try {
-                $state = $this->repository->get($ro->uri);
-            } catch (Throwable $e) {
-                // A pool outage is swallowed and recorded, since the resource still answers
-                // correctly; anything else propagates, since a silent 200 would be invisible.
-                $this->logger->event($this->failure((string) $ro->uri, 'read', $e));
-                if (! $e instanceof CacheStoreException) {
-                    throw $e;
-                }
+            [$answer, $hit] = $this->answer($invocation, $ro);
+        } catch (Throwable $e) {
+            $this->closeGet($openId, $start, hit: false);
 
-                $this->triggerWarning($e);
+            throw $e;
+        }
 
-                return $invocation->proceed();
+        $this->closeGet($openId, $start, hit: $hit);
+
+        return $answer;
+    }
+
+    /**
+     * @param MethodInvocation<object> $invocation
+     *
+     * @return array{ResourceObject, bool} the response, and whether the store answered it
+     */
+    private function answer(MethodInvocation $invocation, ResourceObject $ro): array
+    {
+        try {
+            $state = $this->repository->get($ro->uri);
+        } catch (Throwable $e) {
+            // A pool outage is swallowed and recorded, since the resource still answers
+            // correctly; anything else propagates, since a silent 200 would be invisible.
+            $this->logger->event($this->failure((string) $ro->uri, 'read', $e));
+            if (! $e instanceof CacheStoreException) {
+                throw $e;
             }
 
-            if ($state instanceof ResourceState) {
-                $state->visit($ro);
-                $hit = true;
+            $this->triggerWarning($e);
+
+            /** @var ResourceObject $unstored */
+            $unstored = $invocation->proceed();
+
+            return [$unstored, false];
+        }
+
+        if ($state instanceof ResourceState) {
+            $state->visit($ro);
+
+            return [$ro, true];
+        }
+
+        return [$this->store($invocation), false];
+    }
+
+    /** @param MethodInvocation<object> $invocation */
+    private function store(MethodInvocation $invocation): ResourceObject
+    {
+        /** @psalm-suppress MixedAssignment */
+        $ro = $invocation->proceed();
+        assert($ro instanceof ResourceObject);
+        try {
+            if ($ro->code !== 200) {
+                // Record the actual non-200 code; without it the purge below reads
+                // as if a 203 and a 404 were the same thing.
+                $this->logger->event(new PutSkippedContext((string) $ro->uri, 'error-code', $ro->code));
+                // Only this URI's own tag: purge() would also evict its query variants.
+                $this->logger->event(new PurgeContext((string) $ro->uri));
+                $this->storage->invalidateTags([($this->uriTag)($ro->uri)]);
 
                 return $ro;
             }
 
-            /** @psalm-suppress MixedAssignment */
-            $ro = $invocation->proceed();
-            assert($ro instanceof ResourceObject);
-            try {
-                if ($ro->code !== 200) {
-                    // Record the actual non-200 code; without it the purge below reads
-                    // as if a 203 and a 404 were the same thing.
-                    $this->logger->event(new PutSkippedContext((string) $ro->uri, 'error-code', $ro->code));
-                    // Only this URI's own tag: purge() would also evict its query variants.
-                    $this->logger->event(new PurgeContext((string) $ro->uri));
-                    $this->storage->invalidateTags([($this->uriTag)($ro->uri)]);
-
-                    return $ro;
-                }
-
-                $this->repository->put($ro);
-            } catch (Throwable $e) {
-                // The store refused the write: the already-correct response is served and the
-                // failure recorded; a render/purge failure is not the store's and keeps propagating.
-                $this->logger->event($this->failure((string) $ro->uri, 'write', $e));
-                if (! $e instanceof CacheStoreException) {
-                    throw $e;
-                }
-
-                $this->triggerWarning($e);
+            $this->repository->put($ro);
+        } catch (Throwable $e) {
+            // The store refused the write: the already-correct response is served and the
+            // failure recorded; a render/purge failure is not the store's and keeps propagating.
+            $this->logger->event($this->failure((string) $ro->uri, 'write', $e));
+            if (! $e instanceof CacheStoreException) {
+                throw $e;
             }
 
-            return $ro;
-        } finally {
-            $durationMs = round((hrtime(true) - $start) / 1_000_000, 3);
-            // Psalm mis-tracks the $hit flag mutated inside try when read from finally.
-            /** @psalm-suppress RedundantCondition, TypeDoesNotContainType */
-            $this->logger->close(
-                $hit ? new CacheHitContext('resource', $durationMs) : new CacheMissContext('resource', $durationMs),
-                $openId,
-            );
+            $this->triggerWarning($e);
         }
+
+        return $ro;
+    }
+
+    private function closeGet(string $openId, int $start, bool $hit): void
+    {
+        $durationMs = round((hrtime(true) - $start) / 1_000_000, 3);
+        $this->logger->close(
+            $hit ? new CacheHitContext('resource', $durationMs) : new CacheMissContext('resource', $durationMs),
+            $openId,
+        );
     }
 
     /**

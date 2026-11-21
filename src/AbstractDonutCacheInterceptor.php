@@ -39,71 +39,65 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
     ) {
     }
 
-    /**
-     * {@inheritDoc}
-     *
-     * Opens a donut GET scope so embedded resources rebuilt during get()/put nest
-     * under this page, and the scope is closed with the donut-view hit/miss outcome.
-     */
     #[Override]
     final public function invoke(MethodInvocation $invocation)
     {
         $ro = $invocation->getThis();
         assert($ro instanceof ResourceObject);
-        // What the answer cost: a hit reads the recomposed view, a miss renders it.
         $openId = $this->logger->open(new GetContext((string) $ro->uri));
         $start = hrtime(true);
-        $hit = false;
         try {
-            try {
-                $maybeRo = $this->donutRepository->get($ro);
-                if ($maybeRo instanceof ResourceObject) {
-                    $hit = true;
+            $cached = $this->fromCache($ro);
+            $answer = $cached ?? $this->render($invocation);
+        } catch (Throwable $e) {
+            $this->closeGet($openId, $start, hit: false);
 
-                    return $maybeRo;
-                }
-            } catch (Throwable $e) {
-                // when cache server is down: log it so a miss here is not read as a cold cache
-                $this->logger->event($this->failure((string) $ro->uri, 'read', $e));
-                if (! $e instanceof CacheStoreException) {
-                    throw $e;
-                }
+            throw $e;
+        }
 
-                $this->triggerWarning($e);
+        $this->closeGet($openId, $start, hit: $cached !== null);
 
-                /** @var ResourceObject $fresh */
-                $fresh = $invocation->proceed();
+        return $answer;
+    }
 
-                // Route through handleProceedResult(): the raw, un-rendered proceed() result
-                // must not reach the caller - a later cast could run an untracked hole.
-                return $this->handleProceedResult($fresh);
+    /** @param MethodInvocation<object> $invocation */
+    private function render(MethodInvocation $invocation): ResourceObject
+    {
+        /** @var ResourceObject $fresh */
+        $fresh = $invocation->proceed();
+
+        // The raw, un-rendered result must not reach the caller: a later cast could run an untracked hole
+        return $this->handleProceedResult($fresh);
+    }
+
+    private function closeGet(string $openId, int $start, bool $hit): void
+    {
+        $durationMs = round((hrtime(true) - $start) / 1_000_000, 3);
+        $this->logger->close(
+            $hit ? new CacheHitContext('donut-view', $durationMs) : new CacheMissContext('donut-view', $durationMs),
+            $openId,
+        );
+    }
+
+    private function fromCache(ResourceObject $ro): ResourceObject|null
+    {
+        try {
+            return $this->donutRepository->get($ro);
+        } catch (Throwable $e) {
+            $this->logger->event($this->failure((string) $ro->uri, 'read', $e));
+            if (! $e instanceof CacheStoreException) {
+                throw $e;
             }
 
-            /** @var ResourceObject $ro */
-            $ro = $invocation->proceed();
+            $this->triggerWarning($e);
 
-            return $this->handleProceedResult($ro);
-        } finally {
-            $durationMs = round((hrtime(true) - $start) / 1_000_000, 3);
-            // Psalm mis-tracks the $hit flag mutated inside try when read from finally.
-            /** @psalm-suppress RedundantCondition, TypeDoesNotContainType */
-            $this->logger->close(
-                $hit
-                    ? new CacheHitContext('donut-view', $durationMs)
-                    : new CacheMissContext('donut-view', $durationMs),
-                $openId,
-            );
+            return null;
         }
     }
 
-    /**
-     * Serves an already-answered response (own ETag, error code) as-is; anything else is
-     * rendered and stored via putRecorded().
-     */
     private function handleProceedResult(ResourceObject $ro): ResourceObject
     {
         if (isset($ro->headers[Header::ETAG]) || $ro->code >= Code::BAD_REQUEST) {
-            // Record why this miss is not followed by a put; without it the log looks like a lost write.
             $hasEtag = isset($ro->headers[Header::ETAG]);
             $this->logger->event(new PutSkippedContext((string) $ro->uri, $hasEtag ? 'etag-present' : 'error-code', $hasEtag ? null : $ro->code));
 
@@ -113,13 +107,7 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
         return $this->putRecorded($ro);
     }
 
-    /**
-     * Run the donut write, degrading a store failure and recording either way
-     *
-     * A refused store still serves the already-rendered page, recording the failure instead
-     * of a 500; anything else keeps propagating, since swallowing it would answer 200 with
-     * nothing in it.
-     */
+    /** Run the donut write, degrading a store failure and recording either way */
     private function putRecorded(ResourceObject $ro): ResourceObject
     {
         try {
