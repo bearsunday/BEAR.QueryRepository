@@ -29,6 +29,8 @@ use function assert;
  *  - Serialization boundary: a compiled app serializes the injector between requests; session
  *    state never crosses that boundary. It is also the only hook that runs on every request, so
  *    the flush sink (when one is bound) is armed from there.
+ *
+ * @internal
  */
 final class SafeSemanticLogger implements SemanticLoggerInterface, TopLevelAwareInterface
 {

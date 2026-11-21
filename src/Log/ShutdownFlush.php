@@ -24,6 +24,8 @@ use function register_shutdown_function;
  * builds the logger, and a host with a strict error handler turns a warning raised there into
  * an exception thrown out of the provider - which would take down the very hosts this class
  * declines to serve.
+ *
+ * @internal
  */
 final class ShutdownFlush implements LogSinkInterface
 {
