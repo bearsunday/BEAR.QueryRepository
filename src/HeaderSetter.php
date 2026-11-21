@@ -18,14 +18,18 @@ use function strtolower;
 final readonly class HeaderSetter
 {
     /**
-     * The CDN-facing headers unset on an unstorable response, across every flavor (default,
-     * Fastly, Akamai) - unset unconditionally, since this package never hands a shared cache
-     * a lifetime for a response it is itself refusing to store.
+     * The CDN-facing headers this package's setters write, lifetime and purge keys. A custom
+     * CdnCacheControlHeaderSetterInterface that writes another header name is not among them.
      */
-    private const CDN_FACING_HEADERS = [
+    public const CDN_FACING_HEADERS = [
         Header::CDN_CACHE_CONTROL,
         FastlyCacheControlHeaderSetter::CDN_CACHE_CONTROL_HEADER,
         AkamaiCacheControlHeaderSetter::CDN_CACHE_CONTROL_HEADER,
+        ...self::CDN_KEY_HEADERS,
+    ];
+
+    /** The headers a CDN indexes responses under for key-based purging */
+    public const CDN_KEY_HEADERS = [
         Header::SURROGATE_KEY,
         AkamaiCacheControlHeaderSetter::PURGE_KEYS,
     ];

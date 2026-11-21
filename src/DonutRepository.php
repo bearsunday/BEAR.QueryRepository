@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\QueryRepository\Cdn\AkamaiCacheControlHeaderSetter;
-use BEAR\QueryRepository\Cdn\FastlyCacheControlHeaderSetter;
 use BEAR\QueryRepository\Log\Context\CacheHitContext;
 use BEAR\QueryRepository\Log\Context\CacheMissContext;
 use BEAR\QueryRepository\Log\Context\CdnHeadersContext;
@@ -275,25 +273,6 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     }
 
     /**
-     * The CDN-facing headers this package's setters manage, lifetime and purge keys
-     *
-     * A custom CdnCacheControlHeaderSetterInterface using its own header name is outside
-     * this list and therefore outside the log's knowledge.
-     */
-    private const CDN_FACING_HEADERS = [
-        Header::CDN_CACHE_CONTROL,
-        FastlyCacheControlHeaderSetter::CDN_CACHE_CONTROL_HEADER,
-        AkamaiCacheControlHeaderSetter::CDN_CACHE_CONTROL_HEADER,
-        ...self::CDN_KEY_HEADERS,
-    ];
-
-    /** The headers a CDN indexes responses under for key-based purging */
-    private const CDN_KEY_HEADERS = [
-        Header::SURROGATE_KEY,
-        AkamaiCacheControlHeaderSetter::PURGE_KEYS,
-    ];
-
-    /**
      * Record the CDN-facing headers the response ended up with
      *
      * Read back after the setters ran, so the log reflects the actual effect, not the
@@ -303,14 +282,14 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     private function logCdnHeaders(ResourceObject $ro): void
     {
         $headers = [];
-        foreach (self::CDN_FACING_HEADERS as $name) {
+        foreach (HeaderSetter::CDN_FACING_HEADERS as $name) {
             if (isset($ro->headers[$name])) {
                 $headers[$name] = $ro->headers[$name];
             }
         }
 
         $surrogateKeys = [];
-        foreach (self::CDN_KEY_HEADERS as $name) {
+        foreach (HeaderSetter::CDN_KEY_HEADERS as $name) {
             if (isset($ro->headers[$name])) {
                 $surrogateKeys = [...$surrogateKeys, ...explode(' ', $ro->headers[$name])];
             }

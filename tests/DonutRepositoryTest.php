@@ -676,12 +676,9 @@ class DonutRepositoryTest extends TestCase
 
     public function testEveryBuiltInCdnHeaderIsInTheRecordedSet(): void
     {
-        // cdn_headers records the headers named in DonutRepository::CDN_FACING_HEADERS.
-        // That list is a convention, and a built-in setter added without extending it
-        // would silently vanish from the log - this closes the set by reflection: every
-        // string constant a bound-able setter declares is a header the log must know.
-        $known = (new ReflectionClass(DonutRepository::class))->getConstant('CDN_FACING_HEADERS');
-        $this->assertIsArray($known);
+        // cdn_headers records the headers named in HeaderSetter::CDN_FACING_HEADERS. Every string
+        // constant a bound-able setter declares is a header the log must know.
+        $known = HeaderSetter::CDN_FACING_HEADERS;
 
         $setters = [];
         // Two explicit globs, not GLOB_BRACE: a brace pattern that does not expand returns
