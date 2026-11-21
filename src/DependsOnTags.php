@@ -26,6 +26,7 @@ final readonly class DependsOnTags
         private DependsOnRows $rows,
         private CacheIdentityFactory $identityFactory,
         private ResourceParamSources $resourceParamSources,
+        private DependsOnTemplates $templates,
     ) {
     }
 
@@ -60,14 +61,14 @@ final readonly class DependsOnTags
     /** @return TagSet|null what onGet() and the row classes in the body declare; null when neither declares */
     public function declared(ResourceObject $ro): TagSet|null
     {
-        $onClass = DependsOnTemplates::ofClass($ro::class);
+        $onClass = $this->templates->ofClass($ro::class);
         if ($onClass !== []) {
-            throw new DependsOnNotExpandable((string) $ro->uri, DependsOnTemplates::declaration($onClass[0]), 'declared on a resource class');
+            throw new DependsOnNotExpandable((string) $ro->uri, $this->templates->declaration($onClass[0]), 'declared on a resource class');
         }
 
-        $onGet = DependsOnTemplates::ofOnGet($ro);
+        $onGet = $this->templates->ofOnGet($ro);
         $tags = $onGet === [] ? null : new TagSet($this->fromResult($ro, $onGet));
-        $rows = RowClassWalk::tags($ro->body, $this->uriTag, (string) $ro->uri);
+        $rows = RowClassWalk::tags($ro->body, $this->uriTag, $this->templates, (string) $ro->uri);
 
         return $rows === null ? $tags : ($tags ?? new TagSet())->merge(new TagSet($rows));
     }
@@ -99,7 +100,7 @@ final readonly class DependsOnTags
         }
 
         $source = sprintf('%s onGet()', (string) $ro->uri);
-        $expansion = new DependsOnExpansion($this->uriTag, $source, is_array($ro->body) ? $ro->body : [], $arguments, $onGet->names(), array_keys($onGet->bound()));
+        $expansion = new DependsOnExpansion($this->uriTag, $this->templates, $source, is_array($ro->body) ? $ro->body : [], $arguments, $onGet->names(), array_keys($onGet->bound()));
         $tags = [];
         foreach ($declarations as $dependsOn) {
             $tags = [...$tags, ...$expansion->tags($dependsOn, $this->rows->of($ro, $dependsOn->key))];

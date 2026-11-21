@@ -77,6 +77,7 @@ final class QueryRepositoryModule extends AbstractModule
         $this->bind(CacheFailure::class);
         $this->bind(ResourceParamSources::class);
         $this->bind(DependsOnRows::class);
+        $this->bind(DependsOnTemplates::class)->in(Scope::SINGLETON);
         $this->bind(DependsOnTags::class);
         $this->bind(CacheDependencyCollector::class);
         $this->bind(BaseUriTag::class);

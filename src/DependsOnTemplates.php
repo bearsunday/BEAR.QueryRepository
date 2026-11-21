@@ -40,35 +40,35 @@ use const PREG_SET_ORDER;
 final class DependsOnTemplates
 {
     /** @var array<class-string, list<string>> */
-    private static array $onClass = [];
+    private array $onClass = [];
 
     /** @var array<class-string, list<DependsOn>> */
-    private static array $onGet = [];
+    private array $onGet = [];
 
     /**
      * @param class-string $class
      *
      * @return list<string> the templates declared on the class and its parents
      */
-    public static function ofClass(string $class): array
+    public function ofClass(string $class): array
     {
-        if (isset(self::$onClass[$class])) {
-            return self::$onClass[$class];
+        if (isset($this->onClass[$class])) {
+            return $this->onClass[$class];
         }
 
         $templates = [];
         for ($ref = new ReflectionClass($class); $ref !== false; $ref = $ref->getParentClass()) {
-            $templates = [...$templates, ...self::uris($ref->getAttributes(DependsOn::class))];
+            $templates = [...$templates, ...$this->uris($ref->getAttributes(DependsOn::class))];
         }
 
-        return self::$onClass[$class] = array_values(array_unique($templates));
+        return $this->onClass[$class] = array_values(array_unique($templates));
     }
 
     /** @return list<DependsOn> the declarations on onGet(), including an onGet() the class overrides, each URI and key once */
-    public static function ofOnGet(ResourceObject $ro): array
+    public function ofOnGet(ResourceObject $ro): array
     {
-        if (isset(self::$onGet[$ro::class])) {
-            return self::$onGet[$ro::class];
+        if (isset($this->onGet[$ro::class])) {
+            return $this->onGet[$ro::class];
         }
 
         $declarations = [];
@@ -79,7 +79,7 @@ final class DependsOnTemplates
             }
         }
 
-        return self::$onGet[$ro::class] = array_values($declarations);
+        return $this->onGet[$ro::class] = array_values($declarations);
     }
 
     /**
@@ -87,11 +87,11 @@ final class DependsOnTemplates
      *
      * @return list<string> the tag of each URI the template expands to, one per element of a list given to an exploded query variable
      */
-    public static function tags(UriTagInterface $uriTag, string $template, array $values, string $source): array
+    public function tags(UriTagInterface $uriTag, string $template, array $values, string $source): array
     {
         $tags = [];
-        foreach (self::variableSets($template, $values) as $variables) {
-            $tag = self::tag($uriTag, $template, $variables, $source);
+        foreach ($this->variableSets($template, $values) as $variables) {
+            $tag = $this->tag($uriTag, $template, $variables, $source);
             if ($tag !== null) {
                 $tags[] = $tag;
             }
@@ -108,10 +108,10 @@ final class DependsOnTemplates
      *
      * @return list<array<array-key, mixed>>
      */
-    public static function variableSets(string $template, array $values): array
+    public function variableSets(string $template, array $values): array
     {
         $sets = [$values];
-        foreach (self::explodedQueryNames($template) as $name) {
+        foreach ($this->explodedQueryNames($template) as $name) {
             if (! isset($values[$name]) || ! is_array($values[$name]) || ! array_is_list($values[$name])) {
                 continue;
             }
@@ -137,12 +137,12 @@ final class DependsOnTemplates
      *
      * @return string|null the tag of the URI the template expands to; null when a variable is null, which names no URI
      */
-    public static function tag(UriTagInterface $uriTag, string $template, array $values, string $source): string|null
+    public function tag(UriTagInterface $uriTag, string $template, array $values, string $source): string|null
     {
         $variables = [];
-        foreach (self::variables($template) as $variable) {
+        foreach ($this->variables($template) as $variable) {
             if (! array_key_exists($variable, $values)) {
-                throw new DependsOnNotExpandable($source, self::declaration($template), sprintf("no '%s'", $variable));
+                throw new DependsOnNotExpandable($source, $this->declaration($template), sprintf("no '%s'", $variable));
             }
 
             /** @var mixed $value */
@@ -156,7 +156,7 @@ final class DependsOnTemplates
             }
 
             if (! is_scalar($value)) {
-                throw new DependsOnNotExpandable($source, self::declaration($template), sprintf("'%s' is %s", $variable, get_debug_type($value)));
+                throw new DependsOnNotExpandable($source, $this->declaration($template), sprintf("'%s' is %s", $variable, get_debug_type($value)));
             }
 
             $variables[$variable] = $value;
@@ -166,7 +166,7 @@ final class DependsOnTemplates
     }
 
     /** @return list<string> the RFC 6570 variable names in the template */
-    public static function variables(string $template): array
+    public function variables(string $template): array
     {
         preg_match_all('/\{[+#.\/;?&]?([^}]+)\}/', $template, $matches);
         $variables = [];
@@ -179,7 +179,7 @@ final class DependsOnTemplates
         return $variables;
     }
 
-    public static function declaration(string $template): string
+    public function declaration(string $template): string
     {
         return sprintf("#[DependsOn(uri: '%s')]", $template);
     }
@@ -189,7 +189,7 @@ final class DependsOnTemplates
      *
      * @return list<string>
      */
-    private static function uris(array $attributes): array
+    private function uris(array $attributes): array
     {
         $uris = [];
         foreach ($attributes as $attribute) {
@@ -200,7 +200,7 @@ final class DependsOnTemplates
     }
 
     /** @return list<string> the query variables a list is given to one element at a time (`{?id*}`, `?id={ids*}`) */
-    public static function explodedQueryNames(string $template): array
+    public function explodedQueryNames(string $template): array
     {
         preg_match_all('/\{([+#.\/;?&]?)([^}]+)\}/', $template, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE);
         $queryStart = strpos($template, '?');
