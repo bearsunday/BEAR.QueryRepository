@@ -33,7 +33,7 @@ class HeaderSetterTest extends TestCase
         $ro->headers[Header::CACHE_CONTROL] = 'private';
         $ro->headers['cdn-cache-control'] = 'max-age=600';
 
-        ($this->headerSetter())($ro, null, null);
+        $this->headerSetter()->strip($ro);
 
         $this->assertArrayNotHasKey('cdn-cache-control', $ro->headers);
         $this->assertSame('private', $ro->headers[Header::CACHE_CONTROL], "the developer's own header is kept exactly");
@@ -50,7 +50,7 @@ class HeaderSetterTest extends TestCase
         $ro->headers[Header::CDN_CACHE_CONTROL] = 'max-age=600';
         $ro->headers['cdn-cache-control'] = 'max-age=600';
 
-        ($this->headerSetter())($ro, null, null);
+        $this->headerSetter()->strip($ro);
 
         $this->assertArrayNotHasKey(Header::CDN_CACHE_CONTROL, $ro->headers);
         $this->assertArrayNotHasKey('cdn-cache-control', $ro->headers);

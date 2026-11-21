@@ -36,31 +36,25 @@ final readonly class HeaderSetter
 
     public function __construct(
         private EtagSetterInterface $etagSetter,
-        private DeclaredCacheControl $declaredCacheControl,
     ) {
     }
 
-    /**
-     * Set the validator and, when a directive is given, the client Cache-Control; strip every
-     * CDN-facing header instead when the response's own Cache-Control already reads private or
-     * no-store outside what #[HttpCache]/#[NoHttpCache] declares
-     *
-     * The developer-set private/no-store Cache-Control header itself is left as-is; only the
-     * CDN-facing headers are stripped. A value #[HttpCache] or #[NoHttpCache] declared is
-     * exempt from this check.
-     */
+    /** Set the validator and, when a directive is given, the client Cache-Control of a response the shared cache keeps */
     public function __invoke(ResourceObject $ro, string|null $cacheControl, HttpCache|null $httpCache, int|null $time = null): void
     {
-        if ($this->declaredCacheControl->reason($ro) !== null) {
-            $this->stripHeaders($ro, self::CDN_FACING_HEADERS);
-
-            return;
-        }
-
         ($this->etagSetter)($ro, $time, $httpCache);
         if ($cacheControl !== null) {
             $this->addCacheControl($ro, $cacheControl);
         }
+    }
+
+    /**
+     * Strip every CDN-facing header from a response DeclaredCacheControl::reason() refuses. Its own private/no-store
+     * Cache-Control is left as it is.
+     */
+    public function strip(ResourceObject $ro): void
+    {
+        $this->stripHeaders($ro, self::CDN_FACING_HEADERS);
     }
 
     /** The max-age directive for a lifetime, none when there is no lifetime to give */
