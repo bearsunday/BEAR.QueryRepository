@@ -214,6 +214,27 @@ class CdnCacheControlHeaderTest extends TestCase
         $this->assertContains('cache_hit', self::collectTypes($tree), 'the content was saved and is being served from the stored page state');
     }
 
+    public function testDeclaredPrivateGetsACdnLifetimeOnTheFirstWriteButNotOnARefresh(): void
+    {
+        // A declared Cache-Control is exempt from the unstorable check until a directive is appended to it. The first
+        // write decides before max-age=0 is appended, a refresh after.
+        $module = $this->getModule();
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        $resource = $injector->getInstance(ResourceInterface::class);
+
+        $first = $resource->get('page://self/html/cacheable-response-private');
+        $this->assertSame('private, max-age=0', $first->headers[Header::CACHE_CONTROL]);
+        $this->assertArrayHasKey(Header::CDN_CACHE_CONTROL, $first->headers);
+
+        $this->assertTrue($injector->getInstance(QueryRepositoryInterface::class)->purge(new Uri('page://self/html/comment')));
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
+        $logger->flush();
+        $refreshed = $resource->get('page://self/html/cacheable-response-private');
+        $this->assertContains('refresh_donut', self::collectTypes($this->flushAndValidate($logger)));
+        $this->assertSame('private, max-age=0', $refreshed->headers[Header::CACHE_CONTROL]);
+        $this->assertArrayNotHasKey(Header::CDN_CACHE_CONTROL, $refreshed->headers);
+    }
+
     private function getModule(): AbstractModule
     {
         $namespace = 'FakeVendor\HelloWorld';
