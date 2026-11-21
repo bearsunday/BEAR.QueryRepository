@@ -24,8 +24,6 @@ use function round;
 /** @internal */
 abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
 {
-    protected const IS_ENTIRE_CONTENT_CACHEABLE = false;
-
     public function __construct(
         private readonly DonutRepositoryInterface $donutRepository,
         private readonly CacheFailure $failure,
@@ -101,13 +99,13 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
     private function putRecorded(ResourceObject $ro): ResourceObject
     {
         try {
-            return static::IS_ENTIRE_CONTENT_CACHEABLE ? // phpcs:ignore - not "self"
-                $this->donutRepository->putStatic($ro, null, null) :
-                $this->donutRepository->putDonut($ro, null);
+            return $this->put($this->donutRepository, $ro);
         } catch (Throwable $e) {
             $this->failure->degrade((string) $ro->uri, 'write', $e);
 
             return $ro;
         }
     }
+
+    abstract protected function put(DonutRepositoryInterface $donutRepository, ResourceObject $ro): ResourceObject;
 }

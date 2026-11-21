@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\Resource\ResourceObject;
+use Override;
+
 /**
  * Interceptor for full response caching on CQRS queries with #[CacheableResponse]
  *
@@ -15,6 +18,9 @@ namespace BEAR\QueryRepository;
  */
 final class DonutCacheableResponseInterceptor extends AbstractDonutCacheInterceptor
 {
-    /** @psalm-suppress InvalidClassConstantType */
-    protected const IS_ENTIRE_CONTENT_CACHEABLE = true;
+    #[Override]
+    protected function put(DonutRepositoryInterface $donutRepository, ResourceObject $ro): ResourceObject
+    {
+        return $donutRepository->putStatic($ro, null, null);
+    }
 }
