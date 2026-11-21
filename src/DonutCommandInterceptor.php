@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\UnmatchedQuery;
-use BEAR\QueryRepository\Log\Context\CacheErrorContext;
 use BEAR\QueryRepository\Log\Context\CommandResultContext;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\Code;
@@ -32,7 +31,6 @@ final readonly class DonutCommandInterceptor implements MethodInterceptor
 {
     public function __construct(
         private RefreshSameCommand $refreshSameCommand,
-        private UnsafeMethodMatcher $unsafeMethod,
         private CommandContextFactory $commandContextFactory,
         #[CacheLog]
         private SemanticLoggerInterface $logger,
@@ -53,13 +51,8 @@ final readonly class DonutCommandInterceptor implements MethodInterceptor
                 try {
                     $this->refreshSameCommand->command($invocation, $ro);
                 } catch (UnmatchedQuery $e) {
-                    // From a write the rebuilding GET made: the POST already ran, so it is recorded. Other methods throw.
-                    if (! $this->unsafeMethod->isPost($invocation->getMethod())) {
-                        throw $e;
-                    }
-
-                    // Without the query, which holds the values the write was sent
-                    $this->logger->event(new CacheErrorContext("{$ro->uri->scheme}://{$ro->uri->host}{$ro->uri->path}", 'write', $e->getMessage(), $e::class));
+                    // Thrown by a write the rebuilding GET made
+                    $this->refreshSameCommand->skipUnmatched($invocation, $ro, $e);
                 }
             }
         } finally {
