@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\CacheStoreException;
-use BEAR\QueryRepository\Log\Context\CacheErrorContext;
 use BEAR\QueryRepository\Log\Context\CacheHitContext;
 use BEAR\QueryRepository\Log\Context\CacheMissContext;
 use BEAR\QueryRepository\Log\Context\ConditionalRequestContext;
@@ -14,15 +13,10 @@ use BEAR\Resource\AbstractUri;
 use BEAR\Sunday\Provide\Transfer\ConditionalResponse;
 use BEAR\Sunday\Provide\Transfer\ConditionalResponseInterface;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
-use Throwable;
 
 use function hrtime;
 use function is_string;
 use function round;
-use function sprintf;
-use function trigger_error;
-
-use const E_USER_WARNING;
 
 /** @internal */
 final class ConditionalRequest
@@ -34,6 +28,7 @@ final class ConditionalRequest
         private readonly ResourceStorageInterface $storage,
         #[CacheLog]
         private readonly SemanticLoggerInterface $logger,
+        private readonly CacheFailure $failure,
         private readonly ConditionalResponseInterface $conditionalResponse = new ConditionalResponse(),
     ) {
     }
@@ -124,10 +119,9 @@ final class ConditionalRequest
         try {
             $hit = $this->validate($ifNoneMatch, $uri);
         } catch (CacheStoreException $e) {
-            $cause = $e->getPrevious() ?? $e;
-            $this->logger->event(new CacheErrorContext($asked, 'read', $cause->getMessage(), $cause::class));
+            $this->failure->record($asked, 'read', $e);
             $this->logger->close(new CacheMissContext('etag', round((hrtime(true) - $start) / 1_000_000, 3)), $openId);
-            $this->triggerWarning($e);
+            $this->failure->warn($e);
 
             return false;
         }
@@ -152,17 +146,5 @@ final class ConditionalRequest
         $uri = $server['REQUEST_URI'] ?? '';
 
         return is_string($uri) ? $uri : '';
-    }
-
-    /**
-     * A failure on the cache path degrades to a warning rather than an exception
-     *
-     * The host's own monitoring is what notices a pool outage; the log records it at the
-     * point it happened.
-     */
-    private function triggerWarning(Throwable $e): void
-    {
-        $cause = $e->getPrevious() ?? $e;
-        trigger_error(sprintf('%s: %s in %s:%s', $cause::class, $cause->getMessage(), $cause->getFile(), $cause->getLine()), E_USER_WARNING);
     }
 }

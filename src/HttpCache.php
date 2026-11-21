@@ -27,7 +27,7 @@ final readonly class HttpCache implements HttpCacheInterface, DeprecatedHttpCach
         private SemanticLoggerInterface $logger = new NullSemanticLogger(),
         ConditionalRequest|null $conditionalRequest = null,
     ) {
-        $this->conditionalRequest = $conditionalRequest ?? new ConditionalRequest($storage, $logger);
+        $this->conditionalRequest = $conditionalRequest ?? new ConditionalRequest($storage, $logger, new CacheFailure($logger));
     }
 
     /**

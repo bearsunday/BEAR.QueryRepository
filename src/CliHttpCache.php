@@ -30,7 +30,7 @@ final readonly class CliHttpCache implements HttpCacheInterface, UriScopedHttpCa
         private SemanticLoggerInterface $logger = new NullSemanticLogger(),
         ConditionalRequest|null $conditionalRequest = null,
     ) {
-        $this->conditionalRequest = $conditionalRequest ?? new ConditionalRequest($storage, $logger);
+        $this->conditionalRequest = $conditionalRequest ?? new ConditionalRequest($storage, $logger, new CacheFailure($logger));
     }
 
     /**
