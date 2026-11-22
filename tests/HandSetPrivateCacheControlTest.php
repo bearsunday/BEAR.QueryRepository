@@ -10,11 +10,8 @@ use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 
 /**
- * Owner-approved regression case: a #[Cacheable] response whose OWN code sets Cache-Control
- * to `private` directly (bypassing #[HttpCache]) is still refused the server-side store, but
- * keeps the developer's header. HttpCacheControlWithCacheable
- * (GetInterceptorTest::testHttpCacheWithCacheble) already covers the #[HttpCache]-declared
- * exemption: that value IS stored.
+ * A #[Cacheable] response whose own code sets Cache-Control to `private` is refused the
+ * server-side store, but keeps the developer's header.
  */
 class HandSetPrivateCacheControlTest extends TestCase
 {

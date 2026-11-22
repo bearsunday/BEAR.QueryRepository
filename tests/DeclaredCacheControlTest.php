@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Exception\UnstorableDeclaration;
 use BEAR\RepositoryModule\Annotation\HttpCache;
+use BEAR\Resource\ResourceObject;
 use FakeVendor\HelloWorld\Resource\App\HttpCacheControlWithCacheable;
 use FakeVendor\HelloWorld\Resource\App\NoHttpCacheControl;
+use FakeVendor\HelloWorld\Resource\Page\Html\CacheableResponseNoStore;
 use FakeVendor\HelloWorld\Resource\Page\None;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 
@@ -52,32 +56,23 @@ class DeclaredCacheControlTest extends TestCase
         $this->assertSame(Storability::Unstorable, $this->declaredCacheControl->storability($ro));
     }
 
-    public function testCacheControlMatchingTheDeclaredValueIsDeclaredPrivate(): void
+    /** @return iterable<string, array{ResourceObject, string}> */
+    public static function unstorableDeclarations(): iterable
     {
-        // #[HttpCache(isPrivate: true)]'s own value is the attribute speaking, not the
-        // method - #[Cacheable] still stores server-side.
-        $ro = new HttpCacheControlWithCacheable();
-        $ro->headers[Header::CACHE_CONTROL] = 'private';
-
-        $this->assertSame(Storability::DeclaredPrivate, $this->declaredCacheControl->storability($ro));
+        yield 'isPrivate' => [new HttpCacheControlWithCacheable(), 'private'];
+        yield 'NoHttpCache' => [new NoHttpCacheControl(), 'private, no-store, no-cache, must-revalidate'];
+        yield 'noStore' => [new CacheableResponseNoStore(), 'no-store'];
     }
 
-    public function testNoHttpCacheDeclaredValueIsDeclaredPrivate(): void
+    #[DataProvider('unstorableDeclarations')]
+    public function testADeclarationWithPrivateOrNoStoreThrows(ResourceObject $ro, string $declared): void
     {
-        $ro = new NoHttpCacheControl();
-        $ro->headers[Header::CACHE_CONTROL] = 'private, no-store, no-cache, must-revalidate';
-
-        $this->assertSame(Storability::DeclaredPrivate, $this->declaredCacheControl->storability($ro));
-    }
-
-    public function testCacheControlDivergingFromTheDeclaredValueIsUnstorable(): void
-    {
-        // A method or render that adds its own no-store on top of (or instead of) the
-        // declared value still trips the check.
-        $ro = new HttpCacheControlWithCacheable();
-        $ro->headers[Header::CACHE_CONTROL] = 'private, no-store';
-
-        $this->assertSame(Storability::Unstorable, $this->declaredCacheControl->storability($ro));
+        try {
+            $this->declaredCacheControl->storability($ro);
+            $this->fail('expected UnstorableDeclaration');
+        } catch (UnstorableDeclaration $e) {
+            $this->assertSame($declared, $e->cacheControl);
+        }
     }
 
     public function testOrdinaryCacheControlIsShared(): void
@@ -99,17 +94,6 @@ class DeclaredCacheControlTest extends TestCase
         $reversed = new None();
         $reversed->headers = ['cache-control' => 'private', 'Cache-Control' => 'public'];
         $this->assertSame(Storability::Unstorable, $this->declaredCacheControl->storability($reversed));
-    }
-
-    public function testStoredIsDecidedByTheDeclarationAlone(): void
-    {
-        $shared = new None();
-        $shared->headers[Header::CACHE_CONTROL] = 'no-store';
-        $this->assertSame(Storability::Shared, $this->declaredCacheControl->stored($shared));
-
-        $declaredPrivate = new HttpCacheControlWithCacheable();
-        $declaredPrivate->headers[Header::CACHE_CONTROL] = 'private, no-store';
-        $this->assertSame(Storability::DeclaredPrivate, $this->declaredCacheControl->stored($declaredPrivate));
     }
 
     public function testHttpCacheIsTheHttpCacheAttributeOnly(): void

@@ -13,9 +13,6 @@ enum Storability
 {
     case Shared;
 
-    /** Stored; a CDN must not be given a lifetime, as CDN-Cache-Control makes it ignore Cache-Control (RFC 9213 §2.2) */
-    case DeclaredPrivate;
-
     /** Not stored, and its CDN-facing headers are stripped */
     case Unstorable;
 }

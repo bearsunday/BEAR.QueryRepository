@@ -390,18 +390,4 @@ class QueryRepositoryTest extends TestCase
 
         return new Injector($module, __DIR__ . '/tmp');
     }
-
-    public function testCacheableWithNoHttpCacheStillStores(): void
-    {
-        // #[NoHttpCache] declares its own Cache-Control (private, no-store, no-cache,
-        // must-revalidate) - a header that equals the declared value is the attribute
-        // speaking, not a per-request value, and must not trip the unstorable check.
-        $ro = $this->resource->get('app://self/cacheable-no-http-cache');
-        $this->assertSame('private, no-store, no-cache, must-revalidate', $ro->headers[Header::CACHE_CONTROL], 'no lifetime is appended beside no-store (#243)');
-
-        $this->logger->flush();
-        $this->resource->get('app://self/cacheable-no-http-cache');
-        $tree = $this->flushAndValidate($this->logger);
-        $this->assertContains('cache_hit', self::collectTypes($tree), '#[NoHttpCache] must not disable the server-side store');
-    }
 }

@@ -23,7 +23,7 @@ F. Pool refuses invalidation                 -> invalidate{roPool: failed}
 G. The other command producers               -> command{source: DonutCommandInterceptor},
                                                 command{source: RefreshInterceptor}, and a
                                                 POST that creates: purge_skipped, then its #[Purge]
-H. A finite TTL under #[HttpCache]           -> save_* with requestedTtl=10, private Cache-Control
+H. A finite TTL under #[HttpCache]           -> save_* with requestedTtl=10, declared Cache-Control
 I. Direct putStatic(ttl, sMaxAge)            -> manual_store{,_result} rooting a donut
                                                 write with real ttl/sMaxAge
 
@@ -2028,13 +2028,13 @@ command method=onPost annotations=[1 items] source=RefreshInterceptor
     ]
 }
 Schema validation: OK (5 entries)
-H  GET a #[Cacheable(expirySecond: 10), HttpCache(isPrivate: true)] resource -> Cache-Control: private, max-age=10
+H  GET a #[Cacheable(expirySecond: 10), HttpCache(maxAge: 5)] resource -> Cache-Control: max-age=5
    the save events carry requestedTtl=10, not the 31536000 `never` placeholder
 
 === Cache Log Tree — H. finite TTL ===
-get uri=app://self/http-cache-control-with-cache...(+4)
-├── cache_policy uri=app://self/http-cache-control-with-cache...(+4) expirySecond=10 resolvedTtl=10 [event]
-├── save_value uri=app://self/http-cache-control-with-cache...(+4) tags=[_http-cache-control-with-cacheable_ +1 items] requestedTtl=10 saved=true [event]
+get uri=app://self/http-cache-control-override-m...(+6)
+├── cache_policy uri=app://self/http-cache-control-override-m...(+6) expirySecond=10 resolvedTtl=10 [event]
+├── save_value uri=app://self/http-cache-control-override-m...(+6) tags=[_http-cache-control-override-max-age_ +1 items] requestedTtl=10 saved=true [event]
 └── cache_miss layer=resource durationMs=[volatile]
 
 === Cache Log JSON — H. finite TTL ===
@@ -2046,7 +2046,7 @@ get uri=app://self/http-cache-control-with-cache...(+4)
             "type": "get",
             "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/get.json",
             "context": {
-                "uri": "app://self/http-cache-control-with-cacheable"
+                "uri": "app://self/http-cache-control-override-max-age"
             },
             "log": [
                 {
@@ -2054,7 +2054,7 @@ get uri=app://self/http-cache-control-with-cache...(+4)
                     "type": "cache_policy",
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_policy.json",
                     "context": {
-                        "uri": "app://self/http-cache-control-with-cacheable",
+                        "uri": "app://self/http-cache-control-override-max-age",
                         "expiry": null,
                         "expirySecond": 10,
                         "expiryAt": null,
@@ -2066,10 +2066,10 @@ get uri=app://self/http-cache-control-with-cache...(+4)
                     "type": "save_value",
                     "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/save_value.json",
                     "context": {
-                        "uri": "app://self/http-cache-control-with-cacheable",
+                        "uri": "app://self/http-cache-control-override-max-age",
                         "tags": [
-                            "_http-cache-control-with-cacheable_",
-                            "grp-_http-cache-control-with-cacheable_"
+                            "_http-cache-control-override-max-age_",
+                            "grp-_http-cache-control-override-max-age_"
                         ],
                         "requestedTtl": 10,
                         "saved": true

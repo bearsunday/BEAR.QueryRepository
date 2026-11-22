@@ -179,35 +179,6 @@ class HeaderSetterTest extends TestCase
         $this->assertSame('max-age=0', $ro->headers[Header::CACHE_CONTROL], 'the declaration is for a 200, as HttpCacheInterceptor gives it');
     }
 
-    public function testDeclaredPrivatePageKeepsItsPurgeKeysButNoCdnLifetime(): void
-    {
-        $ro = new None();
-        $ro->headers = [Header::SURROGATE_KEY => 'a', Header::CDN_CACHE_CONTROL => 'max-age=600', Header::CACHE_CONTROL => 'private'];
-
-        $this->headerSetter()->page($ro, Storability::DeclaredPrivate, 10, null, null);
-
-        $this->assertSame('a', $ro->headers[Header::SURROGATE_KEY]);
-        $this->assertArrayNotHasKey(Header::CDN_CACHE_CONTROL, $ro->headers);
-        $this->assertArrayHasKey(Header::ETAG, $ro->headers);
-        $this->assertSame('private, max-age=0', $ro->headers[Header::CACHE_CONTROL]);
-    }
-
-    public function testDeclaredPrivateEntryAndTemplateKeepTheirPurgeKeysButNoCdnLifetime(): void
-    {
-        $entry = new None();
-        $entry->headers = [Header::SURROGATE_KEY => 'a', Header::CDN_CACHE_CONTROL => 'max-age=600', Header::CACHE_CONTROL => 'private'];
-        $this->headerSetter()->entry($entry, Storability::DeclaredPrivate, 'max-age=10', null);
-        $this->assertSame('a', $entry->headers[Header::SURROGATE_KEY]);
-        $this->assertArrayNotHasKey(Header::CDN_CACHE_CONTROL, $entry->headers);
-        $this->assertArrayHasKey(Header::ETAG, $entry->headers);
-        $this->assertSame('private, max-age=10', $entry->headers[Header::CACHE_CONTROL]);
-
-        $template = new None();
-        $template->headers = [Header::SURROGATE_KEY => 'a', 'surrogate-control' => 'max-age=600', Header::CACHE_CONTROL => 'private'];
-        $this->headerSetter()->template($template, Storability::DeclaredPrivate);
-        $this->assertSame([Header::SURROGATE_KEY => 'a', Header::CACHE_CONTROL => 'private'], $template->headers);
-    }
-
     public function testSharedTemplateIsLeftAsItIs(): void
     {
         $ro = new None();

@@ -81,7 +81,6 @@ final readonly class HeaderSetter
         $surrogateKeys = TagSet::ofHeaders($ro->headers);
         match ($storability) {
             Storability::Unstorable => $this->strip($ro),
-            Storability::DeclaredPrivate => $this->stripLifetime($ro),
             Storability::Shared => $this->shareLifetime($ro, $sMaxAge),
         };
         if ($storability !== Storability::Unstorable) {
@@ -95,14 +94,12 @@ final readonly class HeaderSetter
         return $surrogateKeys;
     }
 
-    /** Strip the CDN-facing headers from an unstorable response, and the CDN lifetime from a declared-private one */
+    /** Strip the CDN-facing headers from an unstorable response */
     public function template(ResourceObject $ro, Storability $storability): void
     {
-        match ($storability) {
-            Storability::Unstorable => $this->strip($ro),
-            Storability::DeclaredPrivate => $this->stripLifetime($ro),
-            Storability::Shared => null,
-        };
+        if ($storability === Storability::Unstorable) {
+            $this->strip($ro);
+        }
     }
 
     /** The max-age directive for a lifetime, none when there is no lifetime to give */
@@ -129,19 +126,7 @@ final readonly class HeaderSetter
     /** Its own private/no-store Cache-Control is left as it is */
     private function strip(ResourceObject $ro): void
     {
-        $this->stripHeaders($ro, self::CDN_FACING_HEADERS);
-    }
-
-    /** Strip a CDN lifetime set by the resource or its renderer; its purge keys stay */
-    private function stripLifetime(ResourceObject $ro): void
-    {
-        $this->stripHeaders($ro, self::CDN_LIFETIME_HEADERS);
-    }
-
-    /** @param list<string> $canonicalNames */
-    private function stripHeaders(ResourceObject $ro, array $canonicalNames): void
-    {
-        foreach ($canonicalNames as $canonical) {
+        foreach (self::CDN_FACING_HEADERS as $canonical) {
             foreach (array_keys($ro->headers) as $name) {
                 if (strtolower($name) === strtolower($canonical)) {
                     unset($ro->headers[$name]);
