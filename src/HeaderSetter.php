@@ -39,9 +39,20 @@ final readonly class HeaderSetter
     ) {
     }
 
-    /** Set the validator and, when a directive is given, the client Cache-Control of a response the shared cache keeps */
-    public function __invoke(ResourceObject $ro, string|null $cacheControl, HttpCache|null $httpCache, int|null $time = null): void
+    /**
+     * Set the validator and, when a directive is given, the client Cache-Control; strip the CDN-facing headers instead
+     * when the write found the response unstorable
+     *
+     * @param string|null $unstorable DeclaredCacheControl::reason(), decided once by the write
+     */
+    public function __invoke(ResourceObject $ro, string|null $unstorable, string|null $cacheControl, HttpCache|null $httpCache, int|null $time = null): void
     {
+        if ($unstorable !== null) {
+            $this->strip($ro);
+
+            return;
+        }
+
         ($this->etagSetter)($ro, $time, $httpCache);
         if ($cacheControl !== null) {
             $this->addCacheControl($ro, $cacheControl);
