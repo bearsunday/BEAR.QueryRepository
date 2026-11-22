@@ -42,7 +42,8 @@ final readonly class CacheDependencyCollector
         $this->declared($ro);
         foreach ($this->dependsOnTags->requests($ro) as $request) {
             $this->materialize($request);
-            $this->embedded($ro, $request->resourceObject, $dependencies);
+            $child = $request->resourceObject;
+            $this->depends($ro, $child, $dependencies->read($child));
         }
     }
 
@@ -51,7 +52,8 @@ final readonly class CacheDependencyCollector
     {
         $this->declared($ro);
         foreach ($this->dependsOnTags->requests($ro) as $request) {
-            $this->embedded($ro, $request->resourceObject, $dependencies);
+            $child = $request->resourceObject;
+            $this->depends($ro, $child, $dependencies->embedded($child));
         }
     }
 
@@ -67,9 +69,9 @@ final readonly class CacheDependencyCollector
         }
     }
 
-    private function embedded(ResourceObject $ro, ResourceObject $child, Dependencies $dependencies): void
+    private function depends(ResourceObject $ro, ResourceObject $child, bool $depends): void
     {
-        if (! $dependencies->embedded($child)) {
+        if (! $depends) {
             $this->logger->event(DependencySkippedContext::of($ro, $child));
 
             return;
