@@ -39,15 +39,14 @@ final readonly class DeclaredCacheControl
     }
 
     /**
-     * Declared for one visitor and still storable by a browser: a CDN must not be given a lifetime for it, as
-     * CDN-Cache-Control makes the CDN ignore Cache-Control (RFC 9213 §2.2). A declared no-store is not, since no cache
-     * downstream keeps it.
+     * Declared for one visitor, by #[HttpCache(isPrivate: true)] or #[NoHttpCache]: a CDN must not be given a lifetime
+     * for it, as CDN-Cache-Control makes the CDN ignore Cache-Control, no-store included (RFC 9213 §2.2)
      */
     public function isPrivate(ResourceObject $ro): bool
     {
         $declared = $this->attribute($ro);
 
-        return $declared instanceof HttpCache && $declared->isPrivate && ! $declared->noStore;
+        return $declared instanceof NoHttpCache || ($declared instanceof HttpCache && $declared->isPrivate);
     }
 
     /**

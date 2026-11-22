@@ -27,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `#[DependsOn]` on a row class: put the rows in the body under `key` from `onGet()` instead.
 
 ### Fixed
-- A `#[CacheableResponse]` or `#[DonutCache]` page declared `#[HttpCache(isPrivate: true)]` without `noStore` no longer gets the CDN lifetime header on its first write: a CDN given one ignores `Cache-Control: private`. The page is still stored, and a browser revalidating its copy is answered `304` as before.
+- A `#[CacheableResponse]` page that declares `private`, with `#[HttpCache(isPrivate: true)]` or `#[NoHttpCache]`, no longer gets the CDN lifetime header: a CDN given one ignores `Cache-Control`. The page is still stored and answers a browser's revalidation with `304`; to let a CDN keep a page that browsers do not, declare `#[HttpCache(noStore: true)]`.
 - A `#[Cacheable]` page that embeds a `#[CacheableResponse]` or `#[DonutCache]` page which itself embeds a resource is now stored; since 1.17.0 the GET failed with `AbstractRequest::__serialize not supported`, and before that the page was silently not stored. The page carries the tags of the part and of the resource the part embeds, so purging either drops the page.
 - A write to a `#[Cacheable]` resource whose `onGet()` reads an argument through `#[ResourceParam]` no longer fails with `UnmatchedQuery` when its query lacks that argument, which is not in the URI a GET is stored under; its entry is purged and read again.
 - A POST that cannot address its own key no longer writes the values it was sent into the cache log: `cache_error` records its URI without the query, and the `UnmatchedQuery` message names the missing `onGet()` parameter instead of quoting the query.

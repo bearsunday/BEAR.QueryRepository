@@ -13,6 +13,7 @@ use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
 use Fastly\Api\PurgeApi;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Madapaja\TwigModule\TwigModule;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
@@ -215,16 +216,25 @@ class CdnCacheControlHeaderTest extends TestCase
         $this->assertContains('cache_hit', self::collectTypes($tree), 'the content was saved and is being served from the stored page state');
     }
 
-    public function testDeclaredPrivateGetsNoCdnLifetimeOnWriteOrRefresh(): void
+    /** @return iterable<string, array{string, string}> */
+    public static function declaredPrivate(): iterable
     {
-        // CDN-Cache-Control makes a CDN ignore Cache-Control: private (RFC 9213 §2.2). The page is still stored, so a
-        // browser revalidating its private copy is answered 304 from the entry.
+        yield 'isPrivate' => ['page://self/html/cacheable-response-private', 'private, max-age=0'];
+        yield 'isPrivate and noStore' => ['page://self/html/cacheable-response-private-no-store', 'private, no-store'];
+        yield 'NoHttpCache' => ['page://self/html/cacheable-response-no-http-cache', 'private, no-store, no-cache, must-revalidate'];
+    }
+
+    #[DataProvider('declaredPrivate')]
+    public function testDeclaredPrivateGetsNoCdnLifetimeOnWriteOrRefresh(string $uri, string $cacheControl): void
+    {
+        // CDN-Cache-Control makes a CDN ignore Cache-Control, no-store included (RFC 9213 §2.2). The page is still
+        // stored, so a browser revalidating its private copy is answered 304 from the entry.
         $module = $this->getModule();
         $injector = new Injector($module, __DIR__ . '/tmp');
         $resource = $injector->getInstance(ResourceInterface::class);
 
-        $first = $resource->get('page://self/html/cacheable-response-private');
-        $this->assertSame('private, max-age=0', $first->headers[Header::CACHE_CONTROL]);
+        $first = $resource->get($uri);
+        $this->assertSame($cacheControl, $first->headers[Header::CACHE_CONTROL]);
         $this->assertArrayNotHasKey(Header::CDN_CACHE_CONTROL, $first->headers);
         $this->assertArrayHasKey(Header::ETAG, $first->headers);
         $httpCache = $injector->getInstance(HttpCacheInterface::class);
@@ -233,9 +243,9 @@ class CdnCacheControlHeaderTest extends TestCase
         $this->assertTrue($injector->getInstance(QueryRepositoryInterface::class)->purge(new Uri('page://self/html/comment')));
         $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
         $logger->flush();
-        $refreshed = $resource->get('page://self/html/cacheable-response-private');
+        $refreshed = $resource->get($uri);
         $this->assertContains('refresh_donut', self::collectTypes($this->flushAndValidate($logger)));
-        $this->assertSame('private, max-age=0', $refreshed->headers[Header::CACHE_CONTROL]);
+        $this->assertSame($cacheControl, $refreshed->headers[Header::CACHE_CONTROL]);
         $this->assertArrayNotHasKey(Header::CDN_CACHE_CONTROL, $refreshed->headers);
     }
 
