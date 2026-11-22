@@ -39,6 +39,12 @@ final readonly class HeaderSetter
         AkamaiCacheControlHeaderSetter::PURGE_KEYS,
     ];
 
+    /**
+     * A write can replace a page at any time, so a browser revalidates it every time instead of reusing it for a
+     * lifetime guessed from Last-Modified; a CDN follows its own lifetime
+     */
+    private const REVALIDATE = 'max-age=0';
+
     public function __construct(
         private EtagSetterInterface $etagSetter,
         private CdnCacheControlHeaderSetterInterface $cdnCacheControlHeaderSetter,
@@ -58,7 +64,8 @@ final readonly class HeaderSetter
     }
 
     /**
-     * Set a page's CDN lifetime, validator and client Cache-Control, in that order
+     * Set a page's CDN lifetime, validator and client Cache-Control (max-age=0 unless the page declares one), in that
+     * order
      *
      * The CDN setters do not read the status code and the Fastly and Akamai defaults are
      * 31_536_000 seconds - a year - so only a 200 is handed a lifetime. The check sits here
@@ -67,7 +74,7 @@ final readonly class HeaderSetter
      *
      * @return TagSet the Surrogate-Key header as composed, before a CDN setter can move it
      */
-    public function page(ResourceObject $ro, Storability $storability, int|null $sMaxAge, string|null $cacheControl, int|null $lastModified): TagSet
+    public function page(ResourceObject $ro, Storability $storability, int|null $sMaxAge, int|null $lastModified): TagSet
     {
         $surrogateKeys = TagSet::ofHeaders($ro->headers);
         match ($storability) {
@@ -76,7 +83,7 @@ final readonly class HeaderSetter
             Storability::Shared => $this->shareLifetime($ro, $sMaxAge),
         };
         if ($storability !== Storability::Unstorable) {
-            $this->setClientHeaders($ro, $cacheControl, $lastModified, null);
+            $this->setClientHeaders($ro, self::REVALIDATE, $lastModified, null);
         }
 
         return $surrogateKeys;

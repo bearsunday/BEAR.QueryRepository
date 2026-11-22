@@ -29,12 +29,6 @@ use function max;
 /** @internal */
 final readonly class DonutRepository implements DonutRepositoryInterface
 {
-    /**
-     * A page stored without a lifetime lives until a write invalidates it, so a browser revalidates
-     * it every time instead of reusing it for a lifetime guessed from Last-Modified
-     */
-    private const REVALIDATE = 'max-age=0';
-
     /** @SuppressWarnings("PHPMD.ExcessiveParameterList") */
     public function __construct(
         private QueryRepositoryInterface $queryRepository,
@@ -156,7 +150,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $storability = $this->declaredCacheControl->storability($ro);
         $keys->addTo($ro);
         $this->cacheTags->tagHeader($ro);
-        $surrogateKeys = $this->headerSetter->page($ro, $storability, $sMaxAge, $this->headerSetter->maxAge($sMaxAge) === null ? self::REVALIDATE : null, null);
+        $surrogateKeys = $this->headerSetter->page($ro, $storability, $sMaxAge, null);
         $this->logCdnHeaders($ro);
         $this->dropReplacedEntry($ro);
         if ($storability === Storability::Unstorable) {
@@ -257,7 +251,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         // When the recomposed content is byte-identical to the recorded one, carry over
         // the original Last-Modified instead of advancing it to the recomposition time
         $lastModified = $donut->getUnchangedLastModified((string) $ro->view);
-        $surrogateKeys = $this->headerSetter->page($ro, $this->declaredCacheControl->stored($ro), $donut->ttl, $this->headerSetter->maxAge($donut->ttl) ?? self::REVALIDATE, $lastModified);
+        $surrogateKeys = $this->headerSetter->page($ro, $this->declaredCacheControl->stored($ro), $donut->ttl, $lastModified);
         $this->logCdnHeaders($ro);
         if ($lastModified === null) {
             $this->recordContentState($ro, $donut);

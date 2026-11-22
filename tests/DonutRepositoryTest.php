@@ -450,6 +450,27 @@ class DonutRepositoryTest extends TestCase
         );
     }
 
+    public function testPageWithASharedCacheLifetimeHasTheBrowserRevalidateOnWriteRefreshAndHit(): void
+    {
+        $injector = $this->getInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
+        $uri = 'page://self/html/blog-posting-s-max-age';
+
+        $miss = $resource->get($uri);
+        $hit = $resource->get($uri);
+        $this->assertSame('max-age=0', $miss->headers[Header::CACHE_CONTROL]);
+        $this->assertSame('max-age=0', $hit->headers[Header::CACHE_CONTROL]);
+
+        $this->assertTrue($injector->getInstance(QueryRepositoryInterface::class)->purge(new Uri('page://self/html/comment')));
+        $logger->flush();
+        $refreshed = $resource->get($uri);
+        $this->assertContains('refresh_donut', self::collectTypes($this->flushAndValidate($logger)));
+        $this->assertSame('max-age=0', $refreshed->headers[Header::CACHE_CONTROL]);
+        $this->assertSame('max-age=10, stale-while-revalidate=10', $refreshed->headers[Header::CDN_CACHE_CONTROL]);
+        $this->assertSame('max-age=0', $resource->get($uri)->headers[Header::CACHE_CONTROL], 'the refreshed state is served as it was stored');
+    }
+
     public function testPutStaticInsideResourceGetOpensNoManualScope(): void
     {
         $injector = $this->getInjector();

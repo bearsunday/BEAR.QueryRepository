@@ -113,7 +113,7 @@ class HeaderSetterTest extends TestCase
         $ro = new None();
         $ro->headers[Header::SURROGATE_KEY] = 'a b';
 
-        $keys = $this->headerSetter()->page($ro, Storability::Shared, 10, 'max-age=0', null);
+        $keys = $this->headerSetter()->page($ro, Storability::Shared, 10, null);
 
         $this->assertSame(['a', 'b'], $keys->toArray());
         $this->assertSame([
@@ -131,7 +131,7 @@ class HeaderSetterTest extends TestCase
         $ro = new None();
         $ro->code = 301;
 
-        $this->headerSetter()->page($ro, Storability::Shared, 10, null, null);
+        $this->headerSetter()->page($ro, Storability::Shared, 10, null);
 
         $this->assertArrayNotHasKey(Header::CDN_CACHE_CONTROL, $ro->headers);
     }
@@ -141,7 +141,7 @@ class HeaderSetterTest extends TestCase
         $ro = new None();
         $ro->headers = [Header::SURROGATE_KEY => 'a', Header::CDN_CACHE_CONTROL => 'max-age=600', Header::CACHE_CONTROL => 'private'];
 
-        $this->headerSetter()->page($ro, Storability::DeclaredPrivate, 10, 'max-age=0', null);
+        $this->headerSetter()->page($ro, Storability::DeclaredPrivate, 10, null);
 
         $this->assertSame('a', $ro->headers[Header::SURROGATE_KEY]);
         $this->assertArrayNotHasKey(Header::CDN_CACHE_CONTROL, $ro->headers);
@@ -178,7 +178,7 @@ class HeaderSetterTest extends TestCase
         $ro = new None();
         $ro->headers = [Header::SURROGATE_KEY => 'a', Header::CDN_CACHE_CONTROL => 'max-age=600', Header::CACHE_CONTROL => 'no-store'];
 
-        $keys = $this->headerSetter()->page($ro, Storability::Unstorable, 10, 'max-age=0', null);
+        $keys = $this->headerSetter()->page($ro, Storability::Unstorable, 10, null);
 
         $this->assertSame(['a'], $keys->toArray());
         $this->assertSame([Header::CACHE_CONTROL => 'no-store'], $ro->headers);
