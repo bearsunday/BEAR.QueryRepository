@@ -10,9 +10,7 @@ use BEAR\QueryRepository\Log\Context\ManualPurgeContext;
 use BEAR\QueryRepository\Log\Context\ManualPurgeResultContext;
 use BEAR\QueryRepository\Log\Context\ManualStoreContext;
 use BEAR\QueryRepository\Log\Context\ManualStoreResultContext;
-use BEAR\QueryRepository\Log\Context\PreWriteCleanupContext;
 use BEAR\QueryRepository\Log\Context\PurgeContext;
-use BEAR\QueryRepository\Log\Context\PutSkippedContext;
 use BEAR\QueryRepository\Log\TopLevelAwareInterface;
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\CacheLog;
@@ -45,6 +43,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         private CacheDependencyCollector $dependencyCollector,
         private CacheTags $cacheTags,
         private DeclaredCacheControl $declaredCacheControl,
+        private ReplacedEntry $replacedEntry,
         private ResourceBodyEvaluator $evaluateBody,
     ) {
     }
@@ -101,11 +100,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         $ofRendering = $storesView || $storability === Storability::Unstorable ? [] : $this->renderValue($ro, $httpCache);
         try {
             $this->headerSetter->entry($ro, $storability, $this->clientCacheControl($cacheable, $ttl), $httpCache);
-            $this->dropReplacedEntry($ro);
-
-            if ($storability === Storability::Unstorable) {
-                $this->logger->event(new PutSkippedContext((string) $ro->uri, 'unstorable'));
-
+            if (! $this->replacedEntry->entry($ro, $storability)) {
                 return false;
             }
 
@@ -172,21 +167,6 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         }
 
         return $this->headerSetter->maxAge($ttl);
-    }
-
-    /**
-     * Drop the entry this write replaces or refuses to replace, and with it whatever embeds it.
-     * A write into an empty slot replaces nothing: the other variants of the URI share its tag
-     * and must outlive it.
-     */
-    private function dropReplacedEntry(ResourceObject $ro): void
-    {
-        if ($this->storage->get($ro->uri) === null) {
-            return;
-        }
-
-        $this->logger->event(new PreWriteCleanupContext((string) $ro->uri));
-        $this->storage->invalidateTags([$this->cacheTags->uriTag($ro->uri)]);
     }
 
     /**

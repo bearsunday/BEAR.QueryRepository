@@ -9,7 +9,6 @@ use BEAR\QueryRepository\Log\Context\CacheMissContext;
 use BEAR\QueryRepository\Log\Context\CdnHeadersContext;
 use BEAR\QueryRepository\Log\Context\ManualStoreContext;
 use BEAR\QueryRepository\Log\Context\ManualStoreResultContext;
-use BEAR\QueryRepository\Log\Context\PreWriteCleanupContext;
 use BEAR\QueryRepository\Log\Context\PutDonutContext;
 use BEAR\QueryRepository\Log\Context\PutSkippedContext;
 use BEAR\QueryRepository\Log\Context\RefreshDonutContext;
@@ -38,8 +37,8 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         #[CacheLog]
         private SemanticLoggerInterface $logger,
         private DonutRendererInterface $renderer,
-        private UriTagInterface $uriTag,
         private DeclaredCacheControl $declaredCacheControl,
+        private ReplacedEntry $replacedEntry,
         private CacheTags $cacheTags,
         private CacheDependencyCollector $dependencyCollector,
     ) {
@@ -152,10 +151,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $this->cacheTags->tagHeader($ro);
         $surrogateKeys = $this->headerSetter->page($ro, $storability, $sMaxAge, null);
         $this->logCdnHeaders($ro);
-        $this->dropReplacedEntry($ro);
-        if ($storability === Storability::Unstorable) {
-            $this->logger->event(new PutSkippedContext((string) $ro->uri, 'unstorable'));
-
+        if (! $this->replacedEntry->page($ro, $storability)) {
             return;
         }
 
@@ -178,25 +174,11 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $this->cacheTags->tagHeader($ro);
         $this->headerSetter->template($ro, $storability);
         $this->logCdnHeaders($ro);
-        $this->dropReplacedEntry($ro);
-        if ($storability === Storability::Unstorable) {
-            $this->logger->event(new PutSkippedContext((string) $ro->uri, 'unstorable'));
-
+        if (! $this->replacedEntry->page($ro, $storability)) {
             return;
         }
 
         $this->resourceStorage->saveDonut($ro->uri, $donut, $donutTtl, $templateKeys->toArray());
-    }
-
-    /** {@see QueryRepository::dropReplacedEntry()} */
-    private function dropReplacedEntry(ResourceObject $ro): void
-    {
-        if ($this->resourceStorage->get($ro->uri) === null && $this->resourceStorage->getDonut($ro->uri) === null) {
-            return;
-        }
-
-        $this->logger->event(new PreWriteCleanupContext((string) $ro->uri));
-        $this->resourceStorage->invalidateTags([($this->uriTag)($ro->uri)]);
     }
 
     /**
@@ -237,7 +219,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
 
         $this->logger->event(new CacheHitContext('donut'));
         $this->logger->event(new RefreshDonutContext((string) $ro->uri));
-        $donut->refresh($this->resource, $ro, $this->dependencyCollector->begin(new TagSet([($this->uriTag)($ro->uri)])));
+        $donut->refresh($this->resource, $ro, $this->dependencyCollector->begin(new TagSet([$this->cacheTags->uriTag($ro->uri)])));
         if (! $donut->isCacheble) {
             // Template-only (isCacheble=false): never stored as a page view. The donut keeps the headers from before
             // the write stripped them.
