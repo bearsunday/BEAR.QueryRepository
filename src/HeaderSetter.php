@@ -13,6 +13,7 @@ use function array_keys;
 use function sprintf;
 use function str_contains;
 use function strtolower;
+use function trim;
 
 /** @internal */
 final readonly class HeaderSetter
@@ -152,8 +153,9 @@ final readonly class HeaderSetter
     private function addCacheControl(ResourceObject $ro, string $directive): void
     {
         $existingName = Header::findKey($ro->headers, Header::CACHE_CONTROL);
-        if ($existingName === null) {
-            $ro->headers[Header::CACHE_CONTROL] = $directive;
+        // An #[HttpCache] with only an etag declares an empty Cache-Control
+        if ($existingName === null || trim($ro->headers[$existingName]) === '') {
+            $ro->headers[$existingName ?? Header::CACHE_CONTROL] = $directive;
 
             return;
         }

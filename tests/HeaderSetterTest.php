@@ -148,6 +148,15 @@ class HeaderSetterTest extends TestCase
         $this->assertSame($expected, $ro->headers[Header::CACHE_CONTROL]);
     }
 
+    public function testAnEmptyDeclaredCacheControlIsReplacedRatherThanAppendedTo(): void
+    {
+        $ro = new None();
+
+        $this->headerSetter()->page($ro, Storability::Shared, 10, '', null);
+
+        $this->assertSame('max-age=0', $ro->headers[Header::CACHE_CONTROL]);
+    }
+
     public function testSharedPageThatIsNot200GetsNoCdnLifetime(): void
     {
         $ro = new None();

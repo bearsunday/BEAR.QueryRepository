@@ -95,7 +95,7 @@ class GoldenEntryTest extends TestCase
                 'app://self/etag?updatedAt=x',
                 ['ro-_etag_updatedAt=x' => ['_etag_updatedAt=x', 'grp-_etag_']],
                 ['_etag_updatedAt=x' => ['grp-_etag_', '_etag_updatedAt=x']],
-                [Header::CACHE_CONTROL => ', max-age=0', Header::ETAG => self::ETAG, Header::LAST_MODIFIED => self::LAST_MODIFIED],
+                [Header::CACHE_CONTROL => 'max-age=0', Header::ETAG => self::ETAG, Header::LAST_MODIFIED => self::LAST_MODIFIED],
             ],
             '#[Cacheable] with #[DependsOn]' => [
                 'app://self/rows/ca?channelId=c1',
