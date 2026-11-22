@@ -359,7 +359,13 @@ final readonly class DonutRepository implements DonutRepositoryInterface
      */
     private function setCdnCacheControl(ResourceObject $ro, int|null $sMaxAge, string|null $unstorable): void
     {
-        if ($ro->code !== 200 || $unstorable !== null || $this->declaredCacheControl->isPrivate($ro)) {
+        if ($this->declaredCacheControl->isPrivate($ro)) {
+            $this->headerSetter->stripLifetime($ro);
+
+            return;
+        }
+
+        if ($ro->code !== 200 || $unstorable !== null) {
             return;
         }
 

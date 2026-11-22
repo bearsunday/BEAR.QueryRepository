@@ -18,7 +18,13 @@ use PHPUnit\Framework\TestCase;
 use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
 
+use function array_filter;
+use function array_keys;
+use function array_map;
+use function array_values;
 use function dirname;
+use function in_array;
+use function strtolower;
 
 class CdnCacheControlHeaderTest extends TestCase
 {
@@ -222,6 +228,7 @@ class CdnCacheControlHeaderTest extends TestCase
         yield 'isPrivate' => ['page://self/html/cacheable-response-private', 'private, max-age=0'];
         yield 'isPrivate and noStore' => ['page://self/html/cacheable-response-private-no-store', 'private, no-store'];
         yield 'NoHttpCache' => ['page://self/html/cacheable-response-no-http-cache', 'private, no-store, no-cache, must-revalidate'];
+        yield 'isPrivate, lifetimes set by the page' => ['page://self/html/cacheable-response-private-with-cdn-headers', 'private, max-age=0'];
     }
 
     #[DataProvider('declaredPrivate')]
@@ -235,10 +242,11 @@ class CdnCacheControlHeaderTest extends TestCase
 
         $first = $resource->get($uri);
         $this->assertSame($cacheControl, $first->headers[Header::CACHE_CONTROL]);
-        $this->assertArrayNotHasKey(Header::CDN_CACHE_CONTROL, $first->headers);
+        $this->assertNoCdnLifetime($first->headers);
         $this->assertArrayHasKey(Header::ETAG, $first->headers);
         $httpCache = $injector->getInstance(HttpCacheInterface::class);
         $this->assertTrue($httpCache->isNotModified([Header::HTTP_IF_NONE_MATCH => $first->headers[Header::ETAG]]));
+        $this->assertNoCdnLifetime($resource->get($uri)->headers);
 
         $this->assertTrue($injector->getInstance(QueryRepositoryInterface::class)->purge(new Uri('page://self/html/comment')));
         $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
@@ -246,7 +254,14 @@ class CdnCacheControlHeaderTest extends TestCase
         $refreshed = $resource->get($uri);
         $this->assertContains('refresh_donut', self::collectTypes($this->flushAndValidate($logger)));
         $this->assertSame($cacheControl, $refreshed->headers[Header::CACHE_CONTROL]);
-        $this->assertArrayNotHasKey(Header::CDN_CACHE_CONTROL, $refreshed->headers);
+        $this->assertNoCdnLifetime($refreshed->headers);
+    }
+
+    /** @param array<string, string> $headers */
+    private function assertNoCdnLifetime(array $headers): void
+    {
+        $lifetime = array_map(strtolower(...), HeaderSetter::CDN_LIFETIME_HEADERS);
+        $this->assertSame([], array_values(array_filter(array_keys($headers), static fn (string $name): bool => in_array(strtolower($name), $lifetime, true))));
     }
 
     private function getModule(): AbstractModule

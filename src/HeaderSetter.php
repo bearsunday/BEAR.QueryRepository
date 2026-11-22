@@ -17,14 +17,19 @@ use function strtolower;
 /** @internal */
 final readonly class HeaderSetter
 {
+    /** The headers that give a CDN a lifetime; a CDN given one ignores Cache-Control (RFC 9213 §2.2) */
+    public const CDN_LIFETIME_HEADERS = [
+        Header::CDN_CACHE_CONTROL,
+        FastlyCacheControlHeaderSetter::CDN_CACHE_CONTROL_HEADER,
+        AkamaiCacheControlHeaderSetter::CDN_CACHE_CONTROL_HEADER,
+    ];
+
     /**
      * The CDN-facing headers this package's setters write, lifetime and purge keys. A custom
      * CdnCacheControlHeaderSetterInterface that writes another header name is not among them.
      */
     public const CDN_FACING_HEADERS = [
-        Header::CDN_CACHE_CONTROL,
-        FastlyCacheControlHeaderSetter::CDN_CACHE_CONTROL_HEADER,
-        AkamaiCacheControlHeaderSetter::CDN_CACHE_CONTROL_HEADER,
+        ...self::CDN_LIFETIME_HEADERS,
         ...self::CDN_KEY_HEADERS,
     ];
 
@@ -66,6 +71,12 @@ final readonly class HeaderSetter
     public function strip(ResourceObject $ro): void
     {
         $this->stripHeaders($ro, self::CDN_FACING_HEADERS);
+    }
+
+    /** Strip a CDN lifetime from a response declared private, set by the resource or its renderer; its purge keys stay */
+    public function stripLifetime(ResourceObject $ro): void
+    {
+        $this->stripHeaders($ro, self::CDN_LIFETIME_HEADERS);
     }
 
     /** The max-age directive for a lifetime, none when there is no lifetime to give */
