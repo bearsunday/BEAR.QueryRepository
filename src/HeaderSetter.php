@@ -152,14 +152,6 @@ final readonly class HeaderSetter
 
     private function addCacheControl(ResourceObject $ro, string $directive): void
     {
-        $existingName = Header::findKey($ro->headers, Header::CACHE_CONTROL);
-        // An #[HttpCache] with only an etag declares an empty Cache-Control
-        if ($existingName === null || trim($ro->headers[$existingName]) === '') {
-            $ro->headers[$existingName ?? Header::CACHE_CONTROL] = $directive;
-
-            return;
-        }
-
         // A lifetime already there stands, and no-store forbids keeping the response at all;
         // every case variant of the key is a Cache-Control the client receives
         foreach ($ro->headers as $name => $value) {
@@ -171,6 +163,14 @@ final readonly class HeaderSetter
             if (str_contains($lower, 'max-age') || str_contains($lower, 'no-store')) {
                 return;
             }
+        }
+
+        $existingName = Header::findKey($ro->headers, Header::CACHE_CONTROL);
+        // An #[HttpCache] with only an etag declares an empty Cache-Control
+        if ($existingName === null || trim($ro->headers[$existingName]) === '') {
+            $ro->headers[$existingName ?? Header::CACHE_CONTROL] = $directive;
+
+            return;
         }
 
         $ro->headers[$existingName] .= ', ' . $directive;

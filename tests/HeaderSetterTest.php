@@ -157,6 +157,17 @@ class HeaderSetterTest extends TestCase
         $this->assertSame('max-age=0', $ro->headers[Header::CACHE_CONTROL]);
     }
 
+    public function testAnEmptyCacheControlIsLeftWhenAnotherCaseVariantHasALifetime(): void
+    {
+        $ro = new None();
+        $ro->headers = [Header::CACHE_CONTROL => '', 'cache-control' => 'max-age=60'];
+
+        $this->headerSetter()->page($ro, Storability::Shared, 10, null, null);
+
+        $this->assertSame('', $ro->headers[Header::CACHE_CONTROL], 'no second lifetime beside max-age=60');
+        $this->assertSame('max-age=60', $ro->headers['cache-control']);
+    }
+
     public function testSharedPageThatIsNot200GetsNoCdnLifetime(): void
     {
         $ro = new None();
