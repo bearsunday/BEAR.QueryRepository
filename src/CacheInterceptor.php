@@ -48,7 +48,7 @@ final readonly class CacheInterceptor implements MethodInterceptor
         $ro = $invocation->getThis();
         assert($ro instanceof ResourceObject);
         $openId = $this->logger->open(new GetContext((string) $ro->uri));
-        $start = hrtime(true);
+        $start = (float) hrtime(true);
         try {
             [$answer, $hit] = $this->answer($invocation, $ro);
         } catch (Throwable $e) {
@@ -115,9 +115,9 @@ final readonly class CacheInterceptor implements MethodInterceptor
         return $ro;
     }
 
-    private function closeGet(string $openId, int $start, bool $hit): void
+    private function closeGet(string $openId, float $start, bool $hit): void
     {
-        $durationMs = round((hrtime(true) - $start) / 1_000_000, 3);
+        $durationMs = round(((float) hrtime(true) - $start) / 1e6, 3);
         $this->logger->close(
             $hit ? new CacheHitContext('resource', $durationMs) : new CacheMissContext('resource', $durationMs),
             $openId,
