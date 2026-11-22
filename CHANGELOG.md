@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **Behaviour change**: a `#[CacheableResponse]` page that declares `private`, with `#[HttpCache(isPrivate: true)]` or `#[NoHttpCache]`, no longer gets the CDN lifetime header, and one it or its renderer sets is removed, since a CDN given one ignores `Cache-Control`. The page is still stored and answers a browser's revalidation with `304`; to let a CDN keep a page that browsers do not, declare `#[HttpCache(noStore: true)]` instead.
-- `ResourceDonut`, `ResourceBodyEvaluator`, `RefreshAnnotatedCommand` and the default log classes `Log\HostRuntime`, `Log\ProcessSession`, `Log\SafeSemanticLogger` and `Log\ShutdownFlush` are `@internal`: depend on the interfaces they implement and the modules that bind them.
+- `ResourceDonut`, `ResourceBodyEvaluator`, `RefreshAnnotatedCommand` and the default log classes `Log\HostRuntime`, `Log\ProcessSession`, `Log\SafeSemanticLogger` and `Log\ShutdownFlush` are `@internal`: depend on the interfaces they implement and the modules that bind them. `RefreshAnnotatedCommand`'s constructor and `ResourceDonut::create()`/`refresh()` take new arguments, so code that builds them with `new` has to take them from the injector instead.
 - Requires `bear/resource` 1.36 or later: a donut hole's links are carried in its `toUri()` fragment.
 - **Behaviour change**: on a `#[CacheableResponse]` or `#[DonutCache]` page, `CacheDependencyInterface::depends()` called from a template while it renders no longer tags the stored template (as before 1.20.0), so purging that child leaves the page's old content in the template. Embed such a part at the top level of the page body instead, with `#[Embed]` or an interceptor that puts the request there.
 - **Behaviour change**: an embedded child that ran with a body is a dependency of its parent even without a cache attribute, an ETag or a `Surrogate-Key`: its URI tag and group tag go into the parent's stored tags and `Surrogate-Key`, so a write to it invalidates the parent. A hole on a `#[CacheableResponse]`/`#[DonutCache]` page still has no body when the page is stored and does not reach the stored template.
@@ -26,6 +26,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `DonutRepositoryInterface::purge()`: use `QueryRepositoryInterface::purge()`. A write to a `#[CacheableResponse]` page now purges through it, so an application that binds its own `DonutRepositoryInterface` no longer sees that purge.
 - `DependencySkippedContext::NO_ETAG_OR_SURROGATE_KEY` and the `dependency_skipped` schema value `no_etag_or_surrogate_key`: no longer emitted, since an embedded child with a body is always a dependency. They are kept for compatibility with 1.20.2.
 - `#[DependsOn]` on a row class: put the rows in the body under `key` from `onGet()` instead.
+
+### Removed
+- `SurrogateKeys`, which only the donut write used; nothing replaces it outside the package.
 
 ### Fixed
 - A `#[Cacheable]` page that embeds a `#[CacheableResponse]` or `#[DonutCache]` page which itself embeds a resource is now stored; since 1.17.0 the GET failed with `AbstractRequest::__serialize not supported`, and before that the page was silently not stored. The page carries the tags of the part and of the resource the part embeds, so purging either drops the page.
