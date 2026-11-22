@@ -30,7 +30,7 @@ final class ResourceState
     /** @var ?string */
     public $view;
 
-    /** @var int|null Unix time when this state was stored; null in entries saved before this field existed */
+    /** @var int Unix time when this state was stored */
     public $storedAt;
 
     /** @var array<int|string, array<string, mixed>> The query of each request the body held when it was stored, by body key */

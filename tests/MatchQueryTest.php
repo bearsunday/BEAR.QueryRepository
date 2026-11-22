@@ -8,15 +8,19 @@ use BEAR\QueryRepository\Exception\UnmatchedQuery;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
 use PHPUnit\Framework\TestCase;
+use Ray\Di\Injector;
+use Ray\Di\InjectorInterface;
 
 class MatchQueryTest extends TestCase
 {
-    private MatchQuery $matchQuery;
+    private MatchQueryInterface $matchQuery;
     private ResourceObject $ro;
+    private InjectorInterface $injector;
 
     protected function setUp(): void
     {
-        $this->matchQuery = new MatchQuery();
+        $this->injector = new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld'), __DIR__ . '/tmp');
+        $this->matchQuery = $this->injector->getInstance(MatchQueryInterface::class);
         $this->ro = new class extends ResourceObject {
             public function onGet(int $id, int $page = 1): static
             {

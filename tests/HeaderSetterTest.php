@@ -7,12 +7,21 @@ namespace BEAR\QueryRepository;
 use FakeVendor\HelloWorld\Resource\Page\Html\CacheableResponseNoStore;
 use FakeVendor\HelloWorld\Resource\Page\None;
 use PHPUnit\Framework\TestCase;
+use Ray\Di\Injector;
+use Ray\Di\InjectorInterface;
 
 class HeaderSetterTest extends TestCase
 {
+    private InjectorInterface $injector;
+
+    protected function setUp(): void
+    {
+        $this->injector = new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld'), __DIR__ . '/tmp');
+    }
+
     private function headerSetter(): HeaderSetter
     {
-        return new HeaderSetter(new EtagSetter());
+        return $this->injector->getInstance(HeaderSetter::class);
     }
 
     public function testStripHeadersMatchesALowercaseCdnCacheControlHeaderName(): void
@@ -24,7 +33,7 @@ class HeaderSetterTest extends TestCase
         $ro->headers[Header::CACHE_CONTROL] = 'private';
         $ro->headers['cdn-cache-control'] = 'max-age=600';
 
-        ($this->headerSetter())($ro, null, null);
+        $this->headerSetter()->strip($ro);
 
         $this->assertArrayNotHasKey('cdn-cache-control', $ro->headers);
         $this->assertSame('private', $ro->headers[Header::CACHE_CONTROL], "the developer's own header is kept exactly");
@@ -41,7 +50,7 @@ class HeaderSetterTest extends TestCase
         $ro->headers[Header::CDN_CACHE_CONTROL] = 'max-age=600';
         $ro->headers['cdn-cache-control'] = 'max-age=600';
 
-        ($this->headerSetter())($ro, null, null);
+        $this->headerSetter()->strip($ro);
 
         $this->assertArrayNotHasKey(Header::CDN_CACHE_CONTROL, $ro->headers);
         $this->assertArrayNotHasKey('cdn-cache-control', $ro->headers);
@@ -55,7 +64,7 @@ class HeaderSetterTest extends TestCase
         $ro = new None();
         $ro->headers['cache-control'] = 'public';
 
-        ($this->headerSetter())($ro, 'max-age=60', null);
+        ($this->headerSetter())($ro, null, 'max-age=60', null);
 
         $this->assertArrayNotHasKey(Header::CACHE_CONTROL, $ro->headers, 'no second, canonically-cased header was added');
         $this->assertSame('public, max-age=60', $ro->headers['cache-control']);
@@ -66,7 +75,7 @@ class HeaderSetterTest extends TestCase
         $ro = new None();
         $ro->headers['cache-control'] = 'max-age=30';
 
-        ($this->headerSetter())($ro, 'max-age=60', null);
+        ($this->headerSetter())($ro, null, 'max-age=60', null);
 
         $this->assertArrayNotHasKey(Header::CACHE_CONTROL, $ro->headers, 'no second, canonically-cased header was added');
         $this->assertSame('max-age=30', $ro->headers['cache-control']);
@@ -79,7 +88,7 @@ class HeaderSetterTest extends TestCase
         $ro = new CacheableResponseNoStore();
         $ro->headers[Header::CACHE_CONTROL] = 'no-store';
 
-        ($this->headerSetter())($ro, 'max-age=31536000', null);
+        ($this->headerSetter())($ro, null, 'max-age=31536000', null);
 
         $this->assertSame('no-store', $ro->headers[Header::CACHE_CONTROL]);
     }
@@ -91,7 +100,7 @@ class HeaderSetterTest extends TestCase
         $ro = new CacheableResponseNoStore();
         $ro->headers = ['cache-control' => 'public', Header::CACHE_CONTROL => 'no-store'];
 
-        ($this->headerSetter())($ro, 'max-age=60', null);
+        ($this->headerSetter())($ro, null, 'max-age=60', null);
 
         $this->assertSame('public', $ro->headers['cache-control']);
         $this->assertSame('no-store', $ro->headers[Header::CACHE_CONTROL]);

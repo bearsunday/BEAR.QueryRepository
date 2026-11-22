@@ -7,9 +7,10 @@ namespace BEAR\QueryRepository;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\Uri;
 use FakeVendor\HelloWorld\Resource\Page\Index;
-use Koriym\SemanticLogger\NullSemanticLogger;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Ray\Di\AbstractModule;
+use Ray\Di\Injector;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapter;
 
@@ -27,16 +28,22 @@ class EtagOfReplacedEntryTest extends TestCase
         return $ro;
     }
 
-    private function repository(ResourceStorageInterface $storage): QueryRepository
+    private function repository(ResourceStorageInterface $storage): QueryRepositoryInterface
     {
-        return new QueryRepository(
-            new NullSemanticLogger(),
-            new HeaderSetter(new EtagSetter()),
-            $storage,
-            new Expiry(),
-            new CacheDependencyCollector(new DependsOnTags(new UriTag(), new DependsOnRows()), new CacheDependency(new UriTag()), new NullSemanticLogger()),
-            new CacheTags(new UriTag(), new BaseUriTag(new UriTag())),
-        );
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
+        $module->override(new class ($storage) extends AbstractModule {
+            public function __construct(private readonly ResourceStorageInterface $storage)
+            {
+                parent::__construct();
+            }
+
+            protected function configure(): void
+            {
+                $this->bind(ResourceStorageInterface::class)->toInstance($this->storage);
+            }
+        });
+
+        return (new Injector($module, __DIR__ . '/tmp'))->getInstance(QueryRepositoryInterface::class);
     }
 
     /** @return iterable<string, array{bool}> */

@@ -5,18 +5,27 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\Resource\AbstractRequest;
+use BEAR\Resource\AbstractUri;
 use BEAR\Resource\InvokerInterface;
 use BEAR\Resource\Request;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
-use Koriym\SemanticLogger\NullSemanticLogger;
 use Override;
 use PHPUnit\Framework\TestCase;
+use Ray\Di\Injector;
+use Ray\Di\InjectorInterface;
 
 use function iterator_to_array;
 
 class CacheDependencyCollectorTest extends TestCase
 {
+    private InjectorInterface $injector;
+
+    protected function setUp(): void
+    {
+        $this->injector = new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld'), __DIR__ . '/tmp');
+    }
+
     public function testCollectRendersOnceAndReusesTheRequestResult(): void
     {
         $child = new class extends ResourceObject {
@@ -41,13 +50,11 @@ class CacheDependencyCollectorTest extends TestCase
         };
         $parent->uri = new Uri('app://self/parent');
         $parent->body = ['scalar', $child, [$request], $request];
-        $tags = new DependsOnTags(new UriTag(), new DependsOnRows());
-        $dependency = new CacheDependency(new UriTag());
-        $logger = new NullSemanticLogger();
+        $tags = $this->injector->getInstance(DependsOnTags::class);
 
         $this->assertSame([$request], iterator_to_array($tags->requests($parent)));
         $this->assertSame(0, $invoker->calls);
-        (new CacheDependencyCollector($tags, $dependency, $logger))->collect($parent);
+        $this->injector->getInstance(CacheDependencyCollector::class)->collect($parent);
         $this->assertSame(1, $invoker->calls);
         $this->assertSame('_child_ grp-_child_ data', $parent->headers[Header::SURROGATE_KEY]);
         $this->assertSame('child', (string) $request);
@@ -79,11 +86,17 @@ class CacheDependencyCollectorTest extends TestCase
         };
         $parent->uri = new Uri('app://self/parent');
         $parent->body = [new Request($invoker, $hole), new Request($invoker, $material)];
-        $keys = new SurrogateKeys($parent->uri);
+        $keys = $this->dependencies($parent->uri);
 
-        (new CacheDependencyCollector(new DependsOnTags(new UriTag(), new DependsOnRows()), new CacheDependency(new UriTag()), new NullSemanticLogger()))->collect($parent, $keys);
+        $collector = $this->injector->getInstance(CacheDependencyCollector::class);
+        $collector->materials($parent, $keys);
 
         $this->assertSame(0, $invoker->calls);
         $this->assertSame('_material_ grp-_material_ material-data', $parent->headers[Header::SURROGATE_KEY]);
+    }
+
+    private function dependencies(AbstractUri $uri): Dependencies
+    {
+        return $this->injector->getInstance(CacheDependencyCollector::class)->begin(new TagSet([(new UriTag())($uri)]));
     }
 }

@@ -19,12 +19,14 @@ use function array_values;
 use function is_array;
 use function uri_template;
 
+/** @internal */
 final readonly class RefreshAnnotatedCommand implements CommandInterface
 {
     public function __construct(
         private QueryRepositoryInterface $repository,
         private ResourceInterface $resource,
-        private CacheIdentityFactory $identityFactory = new CacheIdentityFactory(),
+        private CacheIdentityFactory $identityFactory,
+        private DependsOnTemplates $templates,
     ) {
     }
 
@@ -118,7 +120,7 @@ final readonly class RefreshAnnotatedCommand implements CommandInterface
     {
         $body = is_array($ro->body) ? $ro->body : [];
         $uris = [];
-        foreach (DependsOnTemplates::variableSets($annotation->uri, $body + $query) as $variables) {
+        foreach ($this->templates->variableSets($annotation->uri, $body + $query) as $variables) {
             $uris[] = uri_template($annotation->uri, $variables);
         }
 

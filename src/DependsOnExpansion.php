@@ -36,6 +36,7 @@ final readonly class DependsOnExpansion
      */
     public function __construct(
         private UriTagInterface $uriTag,
+        private DependsOnTemplates $templates,
         private string $source,
         private array $top,
         private array $arguments,
@@ -56,8 +57,8 @@ final readonly class DependsOnExpansion
     public function tags(DependsOn $dependsOn, array $rows): array
     {
         $template = $dependsOn->uri;
-        $variables = DependsOnTemplates::variables($template);
-        $exploded = DependsOnTemplates::explodedQueryNames($template);
+        $variables = $this->templates->variables($template);
+        $exploded = $this->templates->explodedQueryNames($template);
         $fromRows = array_map(fn (array $row): array => $this->expandable($variables, $exploded, $row), $rows);
         $carried = $dependsOn->key === null ? [] : array_merge(...$fromRows);
         $outside = array_diff_key($this->top, $carried);
@@ -66,7 +67,7 @@ final readonly class DependsOnExpansion
         if ($rows === []) {
             $named = $dependsOn->key === null && $this->missing($variables, $fallback, $outside + $given) === null;
 
-            return $named ? DependsOnTemplates::tags($this->uriTag, $template, $fallback, $this->source) : [];
+            return $named ? $this->templates->tags($this->uriTag, $template, $fallback, $this->source) : [];
         }
 
         $tags = [];
@@ -81,11 +82,11 @@ final readonly class DependsOnExpansion
             }
 
             $expanded = true;
-            $tags = [...$tags, ...DependsOnTemplates::tags($this->uriTag, $template, $values, $this->source)];
+            $tags = [...$tags, ...$this->templates->tags($this->uriTag, $template, $values, $this->source)];
         }
 
         if (! $expanded) {
-            throw new DependsOnNotExpandable($this->source, DependsOnTemplates::declaration($template), $missing);
+            throw new DependsOnNotExpandable($this->source, $this->templates->declaration($template), $missing);
         }
 
         return $tags;

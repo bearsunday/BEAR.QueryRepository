@@ -72,10 +72,15 @@ final class QueryRepositoryModule extends AbstractModule
         $this->bind(QueryRepositoryInterface::class)->to(QueryRepository::class)->in(Scope::SINGLETON);
         $this->bind(CacheDependencyInterface::class)->to(CacheDependency::class);
         $this->bind(CacheTags::class);
+        $this->bind(ResourceBodyEvaluator::class);
+        $this->bind(CommandScope::class);
+        $this->bind(CacheFailure::class);
         $this->bind(ResourceParamSources::class);
         $this->bind(DependsOnRows::class);
+        $this->bind(DependsOnTemplates::class)->in(Scope::SINGLETON);
         $this->bind(DependsOnTags::class);
         $this->bind(CacheDependencyCollector::class);
+        $this->bind(BaseUriTag::class);
         $this->bind(EtagSetterInterface::class)->to(EtagSetter::class);
         $this->bind(NamedParameterInterface::class)->to(NamedParameter::class);
         $this->bind(ResourceStorageInterface::class)->to(ResourceStorage::class)->in(Scope::SINGLETON);

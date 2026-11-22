@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\QueryRepository\Exception\CacheStoreException;
-use BEAR\QueryRepository\Log\Context\CacheErrorContext;
 use BEAR\QueryRepository\Log\Context\CacheHitContext;
 use BEAR\QueryRepository\Log\Context\CacheMissContext;
 use BEAR\QueryRepository\Log\Context\GetContext;
@@ -13,7 +11,6 @@ use BEAR\QueryRepository\Log\Context\PutSkippedContext;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\Code;
 use BEAR\Resource\ResourceObject;
-use Koriym\SemanticLogger\NullSemanticLogger;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 use Ray\Aop\MethodInterceptor;
@@ -23,88 +20,72 @@ use Throwable;
 use function assert;
 use function hrtime;
 use function round;
-use function sprintf;
-use function trigger_error;
-
-use const E_USER_WARNING;
 
 /** @internal */
 abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
 {
-    protected const IS_ENTIRE_CONTENT_CACHEABLE = false;
-
     public function __construct(
         private readonly DonutRepositoryInterface $donutRepository,
+        private readonly CacheFailure $failure,
         #[CacheLog]
-        private readonly SemanticLoggerInterface $logger = new NullSemanticLogger(),
+        private readonly SemanticLoggerInterface $logger,
     ) {
     }
 
-    /**
-     * {@inheritDoc}
-     *
-     * Opens a donut GET scope so embedded resources rebuilt during get()/put nest
-     * under this page, and the scope is closed with the donut-view hit/miss outcome.
-     */
     #[Override]
     final public function invoke(MethodInvocation $invocation)
     {
         $ro = $invocation->getThis();
         assert($ro instanceof ResourceObject);
-        // What the answer cost: a hit reads the recomposed view, a miss renders it.
         $openId = $this->logger->open(new GetContext((string) $ro->uri));
-        $start = hrtime(true);
-        $hit = false;
+        $start = (float) hrtime(true);
         try {
-            try {
-                $maybeRo = $this->donutRepository->get($ro);
-                if ($maybeRo instanceof ResourceObject) {
-                    $hit = true;
+            $cached = $this->fromCache($ro);
+            $answer = $cached ?? $this->render($invocation);
+        } catch (Throwable $e) {
+            $this->closeGet($openId, $start, hit: false);
 
-                    return $maybeRo;
-                }
-            } catch (Throwable $e) {
-                // when cache server is down: log it so a miss here is not read as a cold cache
-                $this->logger->event($this->failure((string) $ro->uri, 'read', $e));
-                if (! $e instanceof CacheStoreException) {
-                    throw $e;
-                }
+            throw $e;
+        }
 
-                $this->triggerWarning($e);
+        $this->closeGet($openId, $start, hit: $cached !== null);
 
-                /** @var ResourceObject $fresh */
-                $fresh = $invocation->proceed();
+        return $answer;
+    }
 
-                // Route through handleProceedResult(): the raw, un-rendered proceed() result
-                // must not reach the caller - a later cast could run an untracked hole.
-                return $this->handleProceedResult($fresh);
-            }
+    /** @param MethodInvocation<object> $invocation */
+    private function render(MethodInvocation $invocation): ResourceObject
+    {
+        /** @var ResourceObject $fresh */
+        $fresh = $invocation->proceed();
 
-            /** @var ResourceObject $ro */
-            $ro = $invocation->proceed();
+        // The raw, un-rendered result must not reach the caller: a later cast could run an untracked hole
+        return $this->handleProceedResult($fresh);
+    }
 
-            return $this->handleProceedResult($ro);
-        } finally {
-            $durationMs = round((hrtime(true) - $start) / 1_000_000, 3);
-            // Psalm mis-tracks the $hit flag mutated inside try when read from finally.
-            /** @psalm-suppress RedundantCondition, TypeDoesNotContainType */
-            $this->logger->close(
-                $hit
-                    ? new CacheHitContext('donut-view', $durationMs)
-                    : new CacheMissContext('donut-view', $durationMs),
-                $openId,
-            );
+    private function closeGet(string $openId, float $start, bool $hit): void
+    {
+        $durationMs = round(((float) hrtime(true) - $start) / 1e6, 3);
+        $this->logger->close(
+            $hit ? new CacheHitContext('donut-view', $durationMs) : new CacheMissContext('donut-view', $durationMs),
+            $openId,
+        );
+    }
+
+    private function fromCache(ResourceObject $ro): ResourceObject|null
+    {
+        try {
+            return $this->donutRepository->get($ro);
+        } catch (Throwable $e) {
+            $this->failure->degrade((string) $ro->uri, 'read', $e);
+
+            return null;
         }
     }
 
-    /**
-     * Serves an already-answered response (own ETag, error code) as-is; anything else is
-     * rendered and stored via putRecorded().
-     */
     private function handleProceedResult(ResourceObject $ro): ResourceObject
     {
         if (isset($ro->headers[Header::ETAG]) || $ro->code >= Code::BAD_REQUEST) {
-            // Record why this miss is not followed by a put; without it the log looks like a lost write.
             $hasEtag = isset($ro->headers[Header::ETAG]);
             $this->logger->event(new PutSkippedContext((string) $ro->uri, $hasEtag ? 'etag-present' : 'error-code', $hasEtag ? null : $ro->code));
 
@@ -114,46 +95,17 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
         return $this->putRecorded($ro);
     }
 
-    /**
-     * Run the donut write, degrading a store failure and recording either way
-     *
-     * A refused store still serves the already-rendered page, recording the failure instead
-     * of a 500; anything else keeps propagating, since swallowing it would answer 200 with
-     * nothing in it.
-     */
+    /** Run the donut write, degrading a store failure and recording either way */
     private function putRecorded(ResourceObject $ro): ResourceObject
     {
         try {
-            return static::IS_ENTIRE_CONTENT_CACHEABLE ? // phpcs:ignore - not "self"
-                $this->donutRepository->putStatic($ro, null, null) :
-                $this->donutRepository->putDonut($ro, null);
+            return $this->put($this->donutRepository, $ro);
         } catch (Throwable $e) {
-            $this->logger->event($this->failure((string) $ro->uri, 'write', $e));
-            if (! $e instanceof CacheStoreException) {
-                throw $e;
-            }
-
-            $this->triggerWarning($e);
+            $this->failure->degrade((string) $ro->uri, 'write', $e);
 
             return $ro;
         }
     }
 
-    /**
-     * Record the throwable that actually failed, not the boundary wrapper
-     *
-     * @param 'read'|'write' $operation
-     */
-    private function failure(string $uri, string $operation, Throwable $e): CacheErrorContext
-    {
-        $cause = $e instanceof CacheStoreException ? $e->getPrevious() ?? $e : $e;
-
-        return new CacheErrorContext($uri, $operation, $cause->getMessage(), $cause::class);
-    }
-
-    private function triggerWarning(Throwable $e): void
-    {
-        $cause = $e->getPrevious() ?? $e;
-        trigger_error(sprintf('%s: %s in %s:%s', $cause::class, $cause->getMessage(), $cause->getFile(), $cause->getLine()), E_USER_WARNING);
-    }
+    abstract protected function put(DonutRepositoryInterface $donutRepository, ResourceObject $ro): ResourceObject;
 }

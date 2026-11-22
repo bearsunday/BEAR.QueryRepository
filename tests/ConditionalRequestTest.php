@@ -45,8 +45,8 @@ class ConditionalRequestTest extends TestCase
     public function testUnscopedAnswerPreservesThePresentedValidator(): void
     {
         $validator = '"stale", W/' . $this->live;
-        $this->assertTrue((new ConditionalRequest($this->storage, $this->logger))->isNotModified($validator, []));
-        $this->assertFalse((new ConditionalRequest($this->storage, $this->logger))->isNotModified('*', []));
+        $this->assertTrue((new ConditionalRequest($this->storage, $this->logger, new CacheFailure($this->logger)))->isNotModified($validator, []));
+        $this->assertFalse((new ConditionalRequest($this->storage, $this->logger, new CacheFailure($this->logger)))->isNotModified('*', []));
         $open = $this->logger->opens[0];
         assert($open instanceof ConditionalRequestContext);
         $this->assertSame($validator, $open->ifNoneMatch);
@@ -57,15 +57,15 @@ class ConditionalRequestTest extends TestCase
 
     public function testScopedAnswerRejectsAnotherResource(): void
     {
-        $this->assertTrue((new ConditionalRequest($this->storage, $this->logger))->isNotModifiedFor($this->uri, 'W/' . $this->live, []));
-        $this->assertFalse((new ConditionalRequest($this->storage, $this->logger))->isNotModifiedFor(new Uri('page://self/other'), $this->live, []));
+        $this->assertTrue((new ConditionalRequest($this->storage, $this->logger, new CacheFailure($this->logger)))->isNotModifiedFor($this->uri, 'W/' . $this->live, []));
+        $this->assertFalse((new ConditionalRequest($this->storage, $this->logger, new CacheFailure($this->logger)))->isNotModifiedFor(new Uri('page://self/other'), $this->live, []));
         $this->assertInstanceOf(CacheHitContext::class, $this->logger->closes[0]);
         $this->assertInstanceOf(CacheMissContext::class, $this->logger->closes[1]);
     }
 
     public function testUnscopableStorageFallsBackToTheUnscopedAnswer(): void
     {
-        $this->assertTrue((new ConditionalRequest(new FakeUnscopableStorage($this->storage), $this->logger))->isNotModifiedFor(
+        $this->assertTrue((new ConditionalRequest(new FakeUnscopableStorage($this->storage), $this->logger, new CacheFailure($this->logger)))->isNotModifiedFor(
             new Uri('page://self/other'),
             $this->live,
             [],
@@ -93,8 +93,8 @@ class ConditionalRequestTest extends TestCase
                 try {
                     $server = ['REQUEST_URI' => '/original'];
                     $hit = $uri === null
-                        ? (new ConditionalRequest($candidate, $logger))->isNotModified($this->live, $server)
-                        : (new ConditionalRequest($candidate, $logger))->isNotModifiedFor($uri, $this->live, $server);
+                        ? (new ConditionalRequest($candidate, $logger, new CacheFailure($logger)))->isNotModified($this->live, $server)
+                        : (new ConditionalRequest($candidate, $logger, new CacheFailure($logger)))->isNotModifiedFor($uri, $this->live, $server);
                 } finally {
                     restore_error_handler();
                 }

@@ -14,6 +14,7 @@ use FakeVendor\HelloWorld\Entity\ArrayUlid;
 use FakeVendor\HelloWorld\Entity\Catalog;
 use FakeVendor\HelloWorld\Entity\PrivateUlid;
 use FakeVendor\HelloWorld\Entity\Ulid;
+use FakeVendor\HelloWorld\Resource\App\Rows\Turn;
 use Madapaja\TwigModule\TwigModule;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -185,6 +186,19 @@ class DependsOnTest extends TestCase
         $this->assertTrue($this->isStored($uri, false));
 
         $this->resource->put('app://self/rows/taxonomy?ulid=empty');
+        $this->assertFalse($this->isStored($uri, false));
+    }
+
+    /** Each run of one URI is read on its own: the second returns another article than the first */
+    public function testTwoRunsOfOneUriEachReachThePage(): void
+    {
+        Turn::$turn = 0;
+        $uri = 'app://self/rows/page-twice';
+        $this->resource->get($uri);
+        $this->assertSame(2, Turn::$turn);
+        $this->assertTrue($this->isStored($uri, false));
+
+        $this->repository->purge(new Uri('app://self/rows/article?ulid=a2'));
         $this->assertFalse($this->isStored($uri, false));
     }
 

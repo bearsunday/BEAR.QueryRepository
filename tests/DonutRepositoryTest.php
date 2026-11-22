@@ -389,6 +389,21 @@ class DonutRepositoryTest extends TestCase
         $this->assertNull($ro2);
     }
 
+    public function testPurgeDropsTheStoredPage(): void
+    {
+        $injector = $this->getInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $queryRepository = $injector->getInstance(QueryRepositoryInterface::class);
+        $donutRepository = $injector->getInstance(DonutRepositoryInterface::class);
+        $uri = new Uri('page://self/html/blog-posting');
+        $resource->get((string) $uri);
+        $this->assertInstanceOf(ResourceState::class, $queryRepository->get($uri));
+
+        $donutRepository->purge($uri);
+
+        $this->assertNull($queryRepository->get($uri));
+    }
+
     public function testTopLevelPutStaticIsRootedInManualStoreScope(): void
     {
         $injector = $this->getInjector();
@@ -463,7 +478,7 @@ class DonutRepositoryTest extends TestCase
         // A template entry the pool still answers with, five seconds past the lifetime it
         // was stored with: re-saving the recomposed content would restart a lifetime the
         // template no longer has, so the write is recorded as skipped instead.
-        $donut = new ResourceDonut('cmt=[le:page://self/html/comment]', [], 30, true, null, null, time() - 5, ['lapsed-tag']);
+        $donut = new ResourceDonut('cmt=' . ResourceDonut::placeholder('page://self/html/comment'), [], 30, true, null, null, time() - 5, ['lapsed-tag']);
         $storage->saveDonut($this->uri, $donut, 30, ['lapsed-tag']);
         $logger->flush(); // drain the seed write: this test is about the refresh that follows, not the setup
         $page = $resource->get((string) $this->uri);
@@ -676,12 +691,9 @@ class DonutRepositoryTest extends TestCase
 
     public function testEveryBuiltInCdnHeaderIsInTheRecordedSet(): void
     {
-        // cdn_headers records the headers named in DonutRepository::CDN_FACING_HEADERS.
-        // That list is a convention, and a built-in setter added without extending it
-        // would silently vanish from the log - this closes the set by reflection: every
-        // string constant a bound-able setter declares is a header the log must know.
-        $known = (new ReflectionClass(DonutRepository::class))->getConstant('CDN_FACING_HEADERS');
-        $this->assertIsArray($known);
+        // cdn_headers records the headers named in HeaderSetter::CDN_FACING_HEADERS. Every string
+        // constant a bound-able setter declares is a header the log must know.
+        $known = HeaderSetter::CDN_FACING_HEADERS;
 
         $setters = [];
         // Two explicit globs, not GLOB_BRACE: a brace pattern that does not expand returns

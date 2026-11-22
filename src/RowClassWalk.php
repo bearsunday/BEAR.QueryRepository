@@ -26,24 +26,23 @@ final class RowClassWalk
     /** @var SplObjectStorage<object, null> */
     private SplObjectStorage $seen;
 
-    private function __construct(
+    /** @param string $resource the URI of the resource whose body it walks */
+    public function __construct(
         private readonly UriTagInterface $uriTag,
+        private readonly DependsOnTemplates $templates,
         private readonly string $resource,
     ) {
         $this->seen = new SplObjectStorage();
     }
 
-    /**
-     * @param string $resource the URI of the resource whose body it is
-     *
-     * @return list<string>|null the tags the instances expand to; null when the body holds none
-     */
-    public static function tags(mixed $body, UriTagInterface $uriTag, string $resource): array|null
+    /** @return list<string>|null the tags the instances expand to; null when the body holds none */
+    public function tags(mixed $body): array|null
     {
-        $walk = new self($uriTag, $resource);
-        $walk->visit($body);
+        $this->tags = null;
+        $this->seen = new SplObjectStorage();
+        $this->visit($body);
 
-        return $walk->tags;
+        return $this->tags;
     }
 
     private function visit(mixed $value): void
@@ -86,14 +85,14 @@ final class RowClassWalk
      */
     private function expand(string $class, array $properties): void
     {
-        $templates = DependsOnTemplates::ofClass($class);
+        $templates = $this->templates->ofClass($class);
         if ($templates === []) {
             return;
         }
 
         $this->tags ??= [];
         foreach ($templates as $template) {
-            $tag = DependsOnTemplates::tag($this->uriTag, $template, $properties, sprintf('%s %s', $this->resource, $class));
+            $tag = $this->templates->tag($this->uriTag, $template, $properties, sprintf('%s %s', $this->resource, $class));
             if ($tag !== null) {
                 $this->tags[] = $tag;
             }

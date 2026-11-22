@@ -85,7 +85,7 @@ class NotModifiedHeadersTest extends TestCase
 
     public function testOnlyTheHeadersA304RepeatsAreTaken(): void
     {
-        $conditionalRequest = new ConditionalRequest($this->storage, new NullSemanticLogger());
+        $conditionalRequest = new ConditionalRequest($this->storage, new NullSemanticLogger(), new CacheFailure(new NullSemanticLogger()));
 
         $this->assertTrue($conditionalRequest->isNotModified('"stale", W/' . $this->etag, []));
         $this->assertSame([
@@ -98,7 +98,7 @@ class NotModifiedHeadersTest extends TestCase
     /** One instance answers every request of a worker: what it holds must not outlive the request */
     public function testTheHeadersAreTakenOnceAndOnlyForTheRequestJustValidated(): void
     {
-        $conditionalRequest = new ConditionalRequest($this->storage, new NullSemanticLogger());
+        $conditionalRequest = new ConditionalRequest($this->storage, new NullSemanticLogger(), new CacheFailure(new NullSemanticLogger()));
 
         $this->assertTrue($conditionalRequest->isNotModified($this->etag, []));
         $this->assertNotSame([], $conditionalRequest->notModifiedHeaders());
@@ -120,7 +120,7 @@ class NotModifiedHeadersTest extends TestCase
     #[DataProvider('httpCaches')]
     public function testARequestWithoutAValidatorDropsTheHeadersOfTheOneBefore(string $httpCacheClass): void
     {
-        $conditionalRequest = new ConditionalRequest($this->storage, new NullSemanticLogger());
+        $conditionalRequest = new ConditionalRequest($this->storage, new NullSemanticLogger(), new CacheFailure(new NullSemanticLogger()));
         $httpCache = new $httpCacheClass($this->storage, new NullSemanticLogger(), $conditionalRequest);
         $validating = [Header::HTTP_IF_NONE_MATCH => $this->etag];
 
@@ -158,7 +158,7 @@ class NotModifiedHeadersTest extends TestCase
                 return new Output(304, $headers, '');
             }
         };
-        $conditionalRequest = new ConditionalRequest($this->storage, new NullSemanticLogger(), $filter);
+        $conditionalRequest = new ConditionalRequest($this->storage, new NullSemanticLogger(), new CacheFailure(new NullSemanticLogger()), $filter);
         $this->assertTrue($conditionalRequest->isNotModified($this->etag, []));
 
         try {
@@ -173,7 +173,7 @@ class NotModifiedHeadersTest extends TestCase
     {
         $other = new Uri('page://self/other');
         $otherEtag = $this->save($other, [Header::CACHE_CONTROL => 'private, max-age=5']);
-        $conditionalRequest = new ConditionalRequest($this->storage, new NullSemanticLogger());
+        $conditionalRequest = new ConditionalRequest($this->storage, new NullSemanticLogger(), new CacheFailure(new NullSemanticLogger()));
 
         $this->assertTrue($conditionalRequest->isNotModifiedFor($other, $otherEtag, []));
         $this->assertSame([
@@ -188,7 +188,7 @@ class NotModifiedHeadersTest extends TestCase
     public function testAStorageThatCannotHandTheEntryOverAnswersABare304(): void
     {
         $storage = new FakeUnscopableStorage($this->storage);
-        $conditionalRequest = new ConditionalRequest($storage, new NullSemanticLogger());
+        $conditionalRequest = new ConditionalRequest($storage, new NullSemanticLogger(), new CacheFailure(new NullSemanticLogger()));
 
         $this->assertTrue($conditionalRequest->isNotModified($this->etag, []));
         $this->assertSame([], $conditionalRequest->notModifiedHeaders());

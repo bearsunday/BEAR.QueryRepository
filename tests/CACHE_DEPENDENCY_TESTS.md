@@ -158,7 +158,7 @@ Typed `AbstractContext` subclasses live in `src/Log/Context/` and each carries a
 |----|----|-----------|---------|
 | `get` | open | `CacheInterceptor`, `AbstractDonutCacheInterceptor` | A resource/donut GET scope (children nest under it) |
 | `cache_hit` / `cache_miss` (`layer`) | close/event | interceptors, `DonutRepository` | The lookup outcome (`layer`: resource / donut / donut-view) |
-| `command` (`method`/`annotations`/`source`) | open | `CommandInterceptor`, `DonutCommandInterceptor`, `RefreshInterceptor` (all via the shared `CommandContextFactory`) | A write scope; `source` names the producing interceptor, `annotations` its `#[Refresh]`/`#[Purge]` attributes (empty on the CacheableResponse path by design) |
+| `command` (`method`/`annotations`/`source`) | open | `CommandInterceptor`, `DonutCommandInterceptor`, `RefreshInterceptor` (all via the shared `CommandScope`) | A write scope; `source` names the producing interceptor, `annotations` its `#[Refresh]`/`#[Purge]` attributes (empty on the CacheableResponse path by design) |
 | `depends_on` (`parent`/`child`/`childTags`) | event | `CacheDependency::depends()` | A dependency-graph edge |
 | `save_value` / `save_view` / `save_donut` / `save_donut_view` | event | `ResourceStorage` | What was stored, with `tags`, `ttl` (seconds until expiry; 0/null = no expiry set) and the `saved` outcome |
 | `pre_write_cleanup` (`uri`) | event | `QueryRepository::doPut()`, `DonutRepository::putStatic()`/`putDonut()` | Marker recorded by a writer right before it clears the entry it replaces: the `invalidate` immediately following it in the same scope is pre-write cleanup, not a real invalidation. A write into an empty slot - every miss - records neither |
@@ -328,7 +328,6 @@ the next reviewer can attack the judgment instead of rediscovering it:
 |---|---|
 | `HeaderSetter` max-age guard `> 0` → `>= 0` | Pre-existing; emitting `max-age: 0` for "no expiry" would itself be a lie. Current behavior is correct, the boundary is merely unpinned |
 | DI binding removals (`DonutCacheModule`: deprecated `RepositoryLoggerInterface` BC binding, `DonutRepository` singleton scope) | BC surface / stateless `readonly` service: no in-process observable difference |
-| `continue` → `break` in `CommandContextFactory`'s attribute walk | Truncates the `annotations` list only when one method stacks 2+ cache attributes; list completeness, not cache behavior |
 | `clone` removal on the command's delete URI (`DonutCommandInterceptor`) | Aliasing with no downstream writer in any current flow |
 | `return` removals on typed early-return paths | Equivalent result or a loud type failure on any real call path |
 | `QueryRepository` expiryAt guard `\|\|` → `&&` | Differs only for a non-array body carrying an `expiryAt` attribute, which fails in both variants |

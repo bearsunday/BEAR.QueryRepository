@@ -38,6 +38,8 @@ interface DonutRepositoryInterface
 
     /**
      * Purge donut caching
+     *
+     * @deprecated Use QueryRepositoryInterface::purge(), which a write to a #[CacheableResponse] page calls
      */
     public function purge(AbstractUri $uri): void;
 

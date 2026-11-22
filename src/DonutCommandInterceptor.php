@@ -5,16 +5,7 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\UnmatchedQuery;
-use BEAR\QueryRepository\Log\Context\CacheErrorContext;
-use BEAR\QueryRepository\Log\Context\CommandResultContext;
-use BEAR\RepositoryModule\Annotation\CacheLog;
-use BEAR\Resource\Code;
-use BEAR\Resource\FactoryInterface;
-use BEAR\Resource\InvokerInterface;
-use BEAR\Resource\Request;
 use BEAR\Resource\ResourceObject;
-use Koriym\SemanticLogger\NullSemanticLogger;
-use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
@@ -34,19 +25,10 @@ use function assert;
  */
 final readonly class DonutCommandInterceptor implements MethodInterceptor
 {
-    private CommandContextFactory $commandContextFactory;
-
     public function __construct(
-        private DonutRepositoryInterface $repository,
-        private MatchQueryInterface $matchQuery,
-        private FactoryInterface $factory,
-        private InvokerInterface $invoker,
-        private UnsafeMethodMatcher $unsafeMethod,
-        #[CacheLog]
-        private SemanticLoggerInterface $logger = new NullSemanticLogger(),
-        private CommandQuery $commandQuery = new CommandQuery(),
+        private RefreshSameCommand $refreshSameCommand,
+        private CommandScope $scope,
     ) {
-        $this->commandContextFactory = new CommandContextFactory();
     }
 
     #[Override]
@@ -55,51 +37,15 @@ final readonly class DonutCommandInterceptor implements MethodInterceptor
         $ro = $invocation->proceed();
         assert($ro instanceof ResourceObject);
 
-        // Open the scope even for a failed write: a 4xx command_result with no invalidation
-        // events records that the donut purge/refresh was correctly skipped.
-        $openId = $this->logger->open(($this->commandContextFactory)($invocation, 'DonutCommandInterceptor'));
-        try {
-            if ($ro->code < Code::BAD_REQUEST) {
-                try {
-                    $this->refreshDonutAndState($ro);
-                } catch (UnmatchedQuery $e) {
-                    // onPost-bound classes often lack a parameter onGet requires (#219); the
-                    // write already ran, so this is recorded, not thrown. Other methods still throw.
-                    if (! $this->unsafeMethod->isPost($invocation->getMethod())) {
-                        throw $e;
-                    }
-
-                    // Without the query, which holds the values the write was sent
-                    $this->logger->event(new CacheErrorContext("{$ro->uri->scheme}://{$ro->uri->host}{$ro->uri->path}", 'write', $e->getMessage(), $e::class));
-                }
+        $this->scope->run($invocation, $ro, 'DonutCommandInterceptor', function () use ($invocation, $ro): void {
+            try {
+                $this->refreshSameCommand->command($invocation, $ro);
+            } catch (UnmatchedQuery $e) {
+                // Thrown by a write the rebuilding GET made
+                $this->refreshSameCommand->skipUnmatched($invocation, $ro, $e);
             }
-        } finally {
-            $this->logger->close(new CommandResultContext($ro->code), $openId);
-        }
+        });
 
         return $ro;
-    }
-
-    public function refreshDonutAndState(ResourceObject $ro): void
-    {
-        $getQuery = ($this->matchQuery)($ro);
-        $delUri = clone $ro->uri;
-        $baseQuery = $this->commandQuery->baseQuery($ro, $getQuery);
-        // Default-valued parameters dropped, as BaseUriTag drops them; the refresh below still uses the exact $getQuery.
-        $delUri->query = $baseQuery;
-
-        $this->repository->purge($delUri);
-
-        // A GET stored under the snake_case key keeps that spelling in its group tag; purge it too.
-        $snakeQuery = $this->commandQuery->snakeQuery($baseQuery);
-        if ($snakeQuery !== $baseQuery) {
-            $snakeUri = clone $ro->uri;
-            $snakeUri->query = $snakeQuery;
-            $this->repository->purge($snakeUri);
-        }
-
-        // Read to rebuild the cache entry
-        $get = $this->factory->newInstance("{$ro->uri->scheme}://{$ro->uri->host}{$ro->uri->path}");
-        (new Request($this->invoker, $get))($getQuery);
     }
 }

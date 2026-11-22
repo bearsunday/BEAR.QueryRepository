@@ -6,7 +6,11 @@ namespace BEAR\QueryRepository\Log;
 
 use Override;
 
-/** One session for the whole process: the request in progress under PHP-FPM and the CLI */
+/**
+ * One session for the whole process: the request in progress under PHP-FPM and the CLI
+ *
+ * @internal
+ */
 final class ProcessSession implements SessionStoreInterface
 {
     private Session|null $session = null;

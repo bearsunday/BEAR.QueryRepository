@@ -44,8 +44,8 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         private Expiry $expiry,
         private CacheDependencyCollector $dependencyCollector,
         private CacheTags $cacheTags,
-        private DeclaredCacheControl $declaredCacheControl = new DeclaredCacheControl(),
-        private ResourceBodyEvaluator $evaluateBody = new ResourceBodyEvaluator(),
+        private DeclaredCacheControl $declaredCacheControl,
+        private ResourceBodyEvaluator $evaluateBody,
     ) {
     }
 
@@ -100,7 +100,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
 
         $ofRendering = $storesView || $unstorable !== null ? [] : $this->renderValue($ro, $httpCache);
         try {
-            ($this->headerSetter)($ro, $this->clientCacheControl($cacheable, $ttl), $httpCache);
+            ($this->headerSetter)($ro, $unstorable, $this->clientCacheControl($cacheable, $ttl), $httpCache);
             $this->dropReplacedEntry($ro);
 
             if ($unstorable !== null) {
@@ -227,10 +227,8 @@ final readonly class QueryRepository implements QueryRepositoryInterface
             return null;
         }
 
-        // Age is residence time since the state was stored, not derived from Last-Modified
-        // (the content's last change time). Entries predating storedAt fall back to Last-Modified.
-        $storedAt = $state->storedAt ?? (int) strtotime($state->headers[Header::LAST_MODIFIED]);
-        $state->headers[Header::AGE] = (string) (time() - $storedAt);
+        // Age is residence time since the state was stored, not derived from Last-Modified (the content's last change time)
+        $state->headers[Header::AGE] = (string) (time() - $state->storedAt);
 
         return $state;
     }
@@ -241,7 +239,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
     #[Override]
     public function purge(AbstractUri $uri)
     {
-        $tags = $this->cacheTags->forUri($uri);
+        $tags = $this->cacheTags->forUri($uri)->toArray();
 
         // A top-level purge is an application-initiated (manual) cache bust: wrap it in a
         // manual_purge scope so it stands out from automatic invalidation. A purge nested

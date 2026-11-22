@@ -4,10 +4,8 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\Resource\Annotation\ResourceParam;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
-use ReflectionMethod;
 
 use function array_keys;
 use function explode;
@@ -25,6 +23,7 @@ final readonly class ResourceParamSources
         private ResourceInterface $resource,
         private ResourceStorageInterface $storage,
         private CacheTags $cacheTags,
+        private CacheIdentityFactory $identityFactory,
     ) {
     }
 
@@ -45,12 +44,12 @@ final readonly class ResourceParamSources
         return $sources;
     }
 
-    /** @return list<string> for each of the resources, the tags a parent takes from an embedded child */
-    public function tags(ResourceObject $ro): array
+    /** For each of the resources, the tags a parent takes from an embedded child */
+    public function tags(ResourceObject $ro): TagSet
     {
-        $tags = [];
+        $tags = new TagSet();
         foreach ($this($ro) as $source) {
-            $tags = [...$tags, ...$this->cacheTags->tags($source)];
+            $tags = $tags->merge($this->cacheTags->tags($source));
         }
 
         return $tags;
@@ -68,35 +67,11 @@ final readonly class ResourceParamSources
         }
 
         $uris = [];
-        foreach (self::declared(new ReflectionMethod($ro, 'onGet')) as $resourceParam) {
+        foreach (OnGetParameters::of($ro, $this->identityFactory)->bound() as $resourceParam) {
             $uri = $resourceParam->templated === true ? uri_template($resourceParam->uri, $ro->uri->query) : $resourceParam->uri;
             $uris[explode('#', $uri, 2)[0]] = true;
         }
 
         return array_keys($uris);
-    }
-
-    /**
-     * As BEAR\Resource\NamedParamMetas binds: only the onGet() that runs counts, and a declaration on the method takes
-     * the parameter it names from one on the parameter
-     *
-     * @return array<string, ResourceParam> by parameter name
-     */
-    public static function declared(ReflectionMethod $onGet): array
-    {
-        $declared = [];
-        foreach ($onGet->getAttributes(ResourceParam::class) as $attribute) {
-            $resourceParam = $attribute->newInstance();
-            $declared[$resourceParam->param] = $resourceParam;
-        }
-
-        foreach ($onGet->getParameters() as $parameter) {
-            $attribute = $parameter->getAttributes(ResourceParam::class)[0] ?? null;
-            if ($attribute !== null && ! isset($declared[$parameter->name])) {
-                $declared[$parameter->name] = $attribute->newInstance();
-            }
-        }
-
-        return $declared;
     }
 }

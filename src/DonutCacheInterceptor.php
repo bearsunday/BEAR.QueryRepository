@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\Resource\ResourceObject;
+use Override;
+
 /**
  * Interceptor for donut caching on CQRS queries with #[DonutCache]
  *
@@ -15,5 +18,9 @@ namespace BEAR\QueryRepository;
  */
 final class DonutCacheInterceptor extends AbstractDonutCacheInterceptor
 {
-    protected const IS_ENTIRE_CONTENT_CACHEABLE = false;
+    #[Override]
+    protected function put(DonutRepositoryInterface $donutRepository, ResourceObject $ro): ResourceObject
+    {
+        return $donutRepository->putDonut($ro, null);
+    }
 }

@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\Resource\ResourceObject;
+
 use function array_filter;
 use function array_unique;
 use function array_values;
+use function explode;
 use function implode;
 
 /** @internal */
@@ -21,9 +24,29 @@ final readonly class TagSet
      *
      * @param list<string> $values
      */
-    public function __construct(array $values)
+    public function __construct(array $values = [])
     {
         $this->values = array_values(array_unique(array_filter($values, static fn (string $tag): bool => $tag !== '')));
+    }
+
+    /** @param array<string, string> $headers */
+    public static function ofHeaders(array $headers): self
+    {
+        return new self(isset($headers[Header::SURROGATE_KEY]) ? explode(' ', $headers[Header::SURROGATE_KEY]) : []);
+    }
+
+    /** Keys already in the header stay first. Nothing is written when there is no key at all. */
+    public function addTo(ResourceObject $ro): void
+    {
+        $all = self::ofHeaders($ro->headers)->merge($this);
+        if (! $all->isEmpty()) {
+            $ro->headers[Header::SURROGATE_KEY] = $all->toHeader();
+        }
+    }
+
+    public function isEmpty(): bool
+    {
+        return $this->values === [];
     }
 
     /** @return list<string> */

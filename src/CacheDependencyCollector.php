@@ -17,45 +17,67 @@ final readonly class CacheDependencyCollector
     public function __construct(
         private DependsOnTags $dependsOnTags,
         private CacheDependencyInterface $cacheDependency,
+        private CacheTags $cacheTags,
+        private BaseUriTag $groupTag,
+        private CacheIdentityFactory $identityFactory,
         #[CacheLog]
         private SemanticLoggerInterface $logger,
     ) {
     }
 
+    /** @param TagSet $keys the keys the response has before anything is collected */
+    public function begin(TagSet $keys): Dependencies
+    {
+        return new Dependencies($keys, $this->dependsOnTags, $this->cacheTags, $this->groupTag, $this->identityFactory);
+    }
+
     /**
-     * Null $materialKeys materializes each child first: the keys read from it are set by its own
-     * interceptor or onGet(), so they exist only once it has run. AbstractRequest::__toString()
-     * memoizes that run for the renderer; __invoke() would execute the child again.
-     *
-     * With $materialKeys (donut), only children that already ran are inspected.
-     *
+     * Materializes each child first: the keys read from it are set by its own interceptor or onGet(), so they exist
+     * only once it has run. AbstractRequest::__toString() memoizes that run for the renderer; __invoke() would execute
+     * the child again.
+     */
+    public function collect(ResourceObject $ro): void
+    {
+        $dependencies = $this->begin(new TagSet());
+        $this->declared($ro);
+        foreach ($this->dependsOnTags->requests($ro) as $request) {
+            $this->materialize($request);
+            $child = $request->resourceObject;
+            $this->depends($ro, $child, $dependencies->read($child));
+        }
+    }
+
+    /** Only children that already ran are inspected: running one here would execute a hole outside its hole scope */
+    public function materials(ResourceObject $ro, Dependencies $dependencies): void
+    {
+        $this->declared($ro);
+        foreach ($this->dependsOnTags->requests($ro) as $request) {
+            $child = $request->resourceObject;
+            $this->depends($ro, $child, $dependencies->embedded($child));
+        }
+    }
+
+    /**
      * A resource a #[ResourceParam] read ran before onGet() and is gone, so the dependency is built from its URI, with the
      * Surrogate-Key of its stored entry when it has one.
      */
-    public function collect(
-        ResourceObject $ro,
-        SurrogateKeys|null $materialKeys = null,
-    ): void {
-        ($this->dependsOnTags)($ro);
+    private function declared(ResourceObject $ro): void
+    {
+        $this->dependsOnTags->declared($ro)?->addTo($ro);
         foreach ($this->dependsOnTags->resourceParamSources($ro) as $source) {
             $this->cacheDependency->depends($ro, $source);
         }
+    }
 
-        foreach ($this->dependsOnTags->requests($ro) as $request) {
-            if ($materialKeys === null) {
-                $this->materialize($request);
-            }
+    private function depends(ResourceObject $ro, ResourceObject $child, bool $depends): void
+    {
+        if (! $depends) {
+            $this->logger->event(DependencySkippedContext::of($ro, $child));
 
-            $child = $request->resourceObject;
-            $depends = $materialKeys === null ? $this->dependsOnTags->embedded($child) : $materialKeys->embedded($child);
-            if (! $depends) {
-                $this->logger->event(DependencySkippedContext::of($ro, $child));
-
-                continue;
-            }
-
-            $this->cacheDependency->depends($ro, $child);
+            return;
         }
+
+        $this->cacheDependency->depends($ro, $child);
     }
 
     /**

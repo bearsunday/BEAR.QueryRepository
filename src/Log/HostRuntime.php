@@ -24,6 +24,8 @@ use function getenv;
  * ReactPHP, Amp and a long-lived CLI consumer all keep one process across many requests and are
  * not detected. Such a host binds its own implementation of this interface, or leaves the log
  * module out, rather than being guessed at.
+ *
+ * @internal
  */
 final class HostRuntime implements ConcurrentRuntimeInterface
 {

@@ -9,6 +9,9 @@ use BEAR\QueryRepository\Log\Context\SaveDonutContext;
 use BEAR\QueryRepository\Log\Context\SaveDonutViewContext;
 use BEAR\QueryRepository\Log\Context\SaveValueContext;
 use BEAR\QueryRepository\Log\Context\SaveViewContext;
+use BEAR\RepositoryModule\Annotation\CacheLog;
+use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
+use BEAR\Resource\AbstractUri;
 use BEAR\Resource\Uri;
 use FakeVendor\HelloWorld\Resource\Page\Index;
 use Koriym\SemanticLogger\AbstractContext;
@@ -16,7 +19,9 @@ use Koriym\SemanticLogger\NullSemanticLogger;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 use PHPUnit\Framework\TestCase;
-use Ray\Di\ProviderInterface;
+use Ray\Di\AbstractModule;
+use Ray\Di\Injector;
+use Ray\Di\InjectorInterface;
 use RuntimeException;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
@@ -34,38 +39,39 @@ class ResourceStorageTest extends TestCase
 {
     private ResourceStorage $storage;
     private Index $ro;
+    private InjectorInterface $injector;
 
     public static function getResourceStorageInstance(
         SemanticLoggerInterface|null $logger = null,
         PurgerInterface|null $purger = null,
         TagAwareAdapterInterface|null $roPool = null,
     ): ResourceStorage {
-        $tagAwareAdapter = new TagAwareAdapter(new FilesystemAdapter('', 0, __DIR__ . '/tmp'));
-        $provider = static function (TagAwareAdapterInterface $pool): ProviderInterface {
-            return new class ($pool) implements ProviderInterface {
-                public function __construct(private readonly TagAwareAdapterInterface $pool)
-                {
-                }
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
+        $module->override(new class ($logger ?? new NullSemanticLogger(), $purger ?? new NullPurger(), $roPool ?? new TagAwareAdapter(new FilesystemAdapter('', 0, __DIR__ . '/tmp'))) extends AbstractModule {
+            public function __construct(
+                private readonly SemanticLoggerInterface $logger,
+                private readonly PurgerInterface $purger,
+                private readonly TagAwareAdapterInterface $pool,
+            ) {
+                parent::__construct();
+            }
 
-                public function get()
-                {
-                    return $this->pool;
-                }
-            };
-        };
+            protected function configure(): void
+            {
+                $this->bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)->toInstance($this->logger);
+                $this->bind(PurgerInterface::class)->toInstance($this->purger);
+                $this->bind(TagAwareAdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->toInstance($this->pool);
+            }
+        });
+        $storage = (new Injector($module, __DIR__ . '/tmp'))->getInstance(ResourceStorageInterface::class);
+        assert($storage instanceof ResourceStorage);
 
-        return new ResourceStorage(
-            $logger ?? new NullSemanticLogger(),
-            $purger ?? new NullPurger(),
-            new ResourceStorageSaver(),
-            new CacheIdentityFactory(new GlobalServerContext()),
-            $provider($roPool ?? $tagAwareAdapter),
-            new CacheTags(new UriTag(), new BaseUriTag(new UriTag())),
-        );
+        return $storage;
     }
 
     protected function setUp(): void
     {
+        $this->injector = new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld'), __DIR__ . '/tmp');
         $this->storage = self::getResourceStorageInstance();
         $this->ro = new Index();
         $this->ro->uri = new Uri('page://self/user');
@@ -74,7 +80,7 @@ class ResourceStorageTest extends TestCase
 
     public function testSaveGetStatic(): void
     {
-        $donut = ResourceDonut::create($this->ro, new DonutRenderer(), new SurrogateKeys(new Uri('app://self/')), null, false);
+        $donut = ResourceDonut::create($this->ro, new DonutRenderer(), $this->dependencies(new Uri('app://self/')), null, false);
         $this->storage->saveDonut($this->ro->uri, $donut, null, []);
         $donut = $this->storage->getDonut($this->ro->uri);
         $this->assertInstanceOf(ResourceDonut::class, $donut);
@@ -90,9 +96,10 @@ class ResourceStorageTest extends TestCase
             new NullSemanticLogger(),
             new NullPurger(),
             new ResourceStorageSaver(),
-            new CacheIdentityFactory(new GlobalServerContext()),
+            $this->injector->getInstance(CacheIdentityFactory::class),
             new FakeArrayPoolProvider(),
-            new CacheTags(new UriTag(), new BaseUriTag(new UriTag())),
+            $this->injector->getInstance(CacheTags::class),
+            new ResourceBodyEvaluator(),
         );
         $storage = unserialize(serialize($serializable));
         assert($storage instanceof ResourceStorage);
@@ -117,7 +124,7 @@ class ResourceStorageTest extends TestCase
 
     public function testADonutTemplateUnderAnEmptyKeyIsStoredUnderTheRemainingKeys(): void
     {
-        $donut = ResourceDonut::create($this->ro, new DonutRenderer(), new SurrogateKeys(new Uri('app://self/')), null, false);
+        $donut = ResourceDonut::create($this->ro, new DonutRenderer(), $this->dependencies(new Uri('app://self/')), null, false);
 
         $this->storage->saveDonut($this->ro->uri, $donut, null, ['a', '', 'b']);
         $this->assertInstanceOf(ResourceDonut::class, $this->storage->getDonut($this->ro->uri));
@@ -314,25 +321,8 @@ class ResourceStorageTest extends TestCase
                 return false;
             }
         });
-        $poolProvider = new class ($failingPool) implements ProviderInterface {
-            public function __construct(private readonly TagAwareAdapter $tagAwareAdapter)
-            {
-            }
-
-            public function get()
-            {
-                return $this->tagAwareAdapter;
-            }
-        };
         $logger = new RecordingSemanticLogger();
-        $storage = new ResourceStorage(
-            $logger,
-            new NullPurger(),
-            new ResourceStorageSaver(),
-            new CacheIdentityFactory(new GlobalServerContext()),
-            $poolProvider,
-            new CacheTags(new UriTag(), new BaseUriTag(new UriTag())),
-        );
+        $storage = self::getResourceStorageInstance(logger: $logger, roPool: $failingPool);
 
         $saved = $storage->saveValue($this->ro, 10);
 
@@ -355,26 +345,9 @@ class ResourceStorageTest extends TestCase
                 return false;
             }
         });
-        $poolProvider = new class ($failingPool) implements ProviderInterface {
-            public function __construct(private readonly TagAwareAdapter $tagAwareAdapter)
-            {
-            }
-
-            public function get()
-            {
-                return $this->tagAwareAdapter;
-            }
-        };
         $logger = new RecordingSemanticLogger();
-        $storage = new ResourceStorage(
-            $logger,
-            new NullPurger(),
-            new ResourceStorageSaver(),
-            new CacheIdentityFactory(new GlobalServerContext()),
-            $poolProvider,
-            new CacheTags(new UriTag(), new BaseUriTag(new UriTag())),
-        );
-        $donut = ResourceDonut::create($this->ro, new DonutRenderer(), new SurrogateKeys(new Uri('app://self/')), null, false);
+        $storage = self::getResourceStorageInstance(logger: $logger, roPool: $failingPool);
+        $donut = ResourceDonut::create($this->ro, new DonutRenderer(), $this->dependencies(new Uri('app://self/')), null, false);
 
         $storage->saveDonut($this->ro->uri, $donut, null, []);
 
@@ -387,7 +360,7 @@ class ResourceStorageTest extends TestCase
     {
         $logger = new RecordingSemanticLogger();
         $storage = self::getResourceStorageInstance($logger);
-        $donut = ResourceDonut::create($this->ro, new DonutRenderer(), new SurrogateKeys(new Uri('app://self/')), null, false);
+        $donut = ResourceDonut::create($this->ro, new DonutRenderer(), $this->dependencies(new Uri('app://self/')), null, false);
 
         // The storage is a public interface: a caller handing it a lifetime that already
         // passed must not produce a negative ttl, which every save_* schema forbids
@@ -429,5 +402,10 @@ class ResourceStorageTest extends TestCase
         $this->assertFalse($context->roPoolInvalidated);
         $this->assertSame(['tags', 'roPool', 'cdn', 'durationMs'], array_keys($context->jsonSerialize()));
         $this->assertSame('failed', $context->jsonSerialize()['roPool']);
+    }
+
+    private function dependencies(AbstractUri $uri): Dependencies
+    {
+        return $this->injector->getInstance(CacheDependencyCollector::class)->begin(new TagSet([(new UriTag())($uri)]));
     }
 }

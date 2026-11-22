@@ -18,37 +18,37 @@ use function strtolower;
 final readonly class HeaderSetter
 {
     /**
-     * The CDN-facing headers unset on an unstorable response, across every flavor (default,
-     * Fastly, Akamai) - unset unconditionally, since this package never hands a shared cache
-     * a lifetime for a response it is itself refusing to store.
+     * The CDN-facing headers this package's setters write, lifetime and purge keys. A custom
+     * CdnCacheControlHeaderSetterInterface that writes another header name is not among them.
      */
-    private const CDN_FACING_HEADERS = [
+    public const CDN_FACING_HEADERS = [
         Header::CDN_CACHE_CONTROL,
         FastlyCacheControlHeaderSetter::CDN_CACHE_CONTROL_HEADER,
         AkamaiCacheControlHeaderSetter::CDN_CACHE_CONTROL_HEADER,
+        ...self::CDN_KEY_HEADERS,
+    ];
+
+    /** The headers a CDN indexes responses under for key-based purging */
+    public const CDN_KEY_HEADERS = [
         Header::SURROGATE_KEY,
         AkamaiCacheControlHeaderSetter::PURGE_KEYS,
     ];
 
     public function __construct(
         private EtagSetterInterface $etagSetter,
-        private DeclaredCacheControl $declaredCacheControl = new DeclaredCacheControl(),
     ) {
     }
 
     /**
-     * Set the validator and, when a directive is given, the client Cache-Control; strip every
-     * CDN-facing header instead when the response's own Cache-Control already reads private or
-     * no-store outside what #[HttpCache]/#[NoHttpCache] declares
+     * Set the validator and, when a directive is given, the client Cache-Control; strip the CDN-facing headers instead
+     * when the write found the response unstorable
      *
-     * The developer-set private/no-store Cache-Control header itself is left as-is; only the
-     * CDN-facing headers are stripped. A value #[HttpCache] or #[NoHttpCache] declared is
-     * exempt from this check.
+     * @param string|null $unstorable DeclaredCacheControl::reason(), decided once by the write
      */
-    public function __invoke(ResourceObject $ro, string|null $cacheControl, HttpCache|null $httpCache, int|null $time = null): void
+    public function __invoke(ResourceObject $ro, string|null $unstorable, string|null $cacheControl, HttpCache|null $httpCache, int|null $time = null): void
     {
-        if ($this->declaredCacheControl->reason($ro) !== null) {
-            $this->stripHeaders($ro, self::CDN_FACING_HEADERS);
+        if ($unstorable !== null) {
+            $this->strip($ro);
 
             return;
         }
@@ -57,6 +57,15 @@ final readonly class HeaderSetter
         if ($cacheControl !== null) {
             $this->addCacheControl($ro, $cacheControl);
         }
+    }
+
+    /**
+     * Strip every CDN-facing header from a response DeclaredCacheControl::reason() refuses. Its own private/no-store
+     * Cache-Control is left as it is.
+     */
+    public function strip(ResourceObject $ro): void
+    {
+        $this->stripHeaders($ro, self::CDN_FACING_HEADERS);
     }
 
     /** The max-age directive for a lifetime, none when there is no lifetime to give */

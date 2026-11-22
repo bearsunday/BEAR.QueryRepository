@@ -29,7 +29,7 @@ use function trim;
 /** @internal */
 final readonly class CacheIdentityFactory
 {
-    public function __construct(private ServerContextInterface $serverContext = new GlobalServerContext())
+    public function __construct(private ServerContextInterface $serverContext)
     {
     }
 

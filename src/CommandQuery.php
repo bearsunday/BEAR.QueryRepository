@@ -5,13 +5,12 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\Resource\ResourceObject;
-use ReflectionMethod;
 
 /** @internal */
 final readonly class CommandQuery
 {
     public function __construct(
-        private CacheIdentityFactory $identityFactory = new CacheIdentityFactory(),
+        private CacheIdentityFactory $identityFactory,
     ) {
     }
 
@@ -23,8 +22,8 @@ final readonly class CommandQuery
     public function baseQuery(ResourceObject $ro, array $getQuery): array
     {
         $baseQuery = [];
-        foreach ((new ReflectionMethod($ro, 'onGet'))->getParameters() as $parameter) {
-            if ($parameter->isDefaultValueAvailable() || ! isset($getQuery[$parameter->name])) {
+        foreach (OnGetParameters::of($ro, $this->identityFactory)->required() as $parameter) {
+            if (! isset($getQuery[$parameter->name])) {
                 continue;
             }
 

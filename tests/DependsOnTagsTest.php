@@ -11,11 +11,20 @@ use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
 use Override;
 use PHPUnit\Framework\TestCase;
+use Ray\Di\Injector;
+use Ray\Di\InjectorInterface;
 
 use function iterator_to_array;
 
 class DependsOnTagsTest extends TestCase
 {
+    private InjectorInterface $injector;
+
+    protected function setUp(): void
+    {
+        $this->injector = new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld'), __DIR__ . '/tmp');
+    }
+
     public function testRequestsPreserveOrderAndDuplicatesWithoutConsumingTraversableBodies(): void
     {
         $child = new class extends ResourceObject {
@@ -35,7 +44,7 @@ class DependsOnTagsTest extends TestCase
         $first = new Request($invoker, $child);
         $second = new Request($invoker, clone $child);
         $parent = clone $child;
-        $tags = new DependsOnTags(new UriTag(), new DependsOnRows());
+        $tags = $this->injector->getInstance(DependsOnTags::class);
         $child->body = [$second];
         $parent->body = (object) ['second' => $second, 'nested' => [$first], 'child' => $child, 'first' => $first, 'again' => $second];
 

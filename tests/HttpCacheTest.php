@@ -15,6 +15,7 @@ use LogicException;
 use Override;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
+use Ray\Di\InjectorInterface;
 use RuntimeException;
 use Symfony\Component\Cache\Adapter\TagAwareAdapter;
 use Symfony\Component\Cache\CacheItem;
@@ -27,6 +28,13 @@ use const E_USER_WARNING;
 
 class HttpCacheTest extends TestCase
 {
+    private InjectorInterface $injector;
+
+    protected function setUp(): void
+    {
+        $this->injector = new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld'), __DIR__ . '/tmp');
+    }
+
     public function testisNotModifiedFale(): CliHttpCache
     {
         $storage = ResourceStorageTest::getResourceStorageInstance();
@@ -147,7 +155,7 @@ class HttpCacheTest extends TestCase
                 throw new RuntimeException('cache server down', 0, new LogicException('driver detail'));
             }
         }));
-        $etag = '"' . (new CacheIdentityFactory())->locator(new Uri('app://self/user?id=1')) . '.any"';
+        $etag = '"' . $this->injector->getInstance(CacheIdentityFactory::class)->locator(new Uri('app://self/user?id=1')) . '.any"';
 
         foreach ([HttpCache::class, CliHttpCache::class] as $class) {
             $logger = new RecordingSemanticLogger();
@@ -221,7 +229,7 @@ class HttpCacheTest extends TestCase
         // The same decision as the unscoped answer, recorded against the URI that was asked for.
         $storage = ResourceStorageTest::getResourceStorageInstance(roPool: new TagAwareAdapter(new FakeErrorCache()));
         $uri = new Uri('app://self/user?id=1');
-        $etag = '"' . (new CacheIdentityFactory())->locator($uri) . '.any"';
+        $etag = '"' . $this->injector->getInstance(CacheIdentityFactory::class)->locator($uri) . '.any"';
 
         foreach ([HttpCache::class, CliHttpCache::class] as $class) {
             $logger = new RecordingSemanticLogger();

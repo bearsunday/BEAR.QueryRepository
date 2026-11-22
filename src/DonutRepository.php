@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\QueryRepository\Cdn\AkamaiCacheControlHeaderSetter;
-use BEAR\QueryRepository\Cdn\FastlyCacheControlHeaderSetter;
 use BEAR\QueryRepository\Log\Context\CacheHitContext;
 use BEAR\QueryRepository\Log\Context\CacheMissContext;
 use BEAR\QueryRepository\Log\Context\CdnHeadersContext;
@@ -25,8 +23,6 @@ use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 use Throwable;
 
-use function array_unique;
-use function array_values;
 use function explode;
 use function max;
 
@@ -39,11 +35,6 @@ final readonly class DonutRepository implements DonutRepositoryInterface
      */
     private const REVALIDATE = 'max-age=0';
 
-    private CacheDependencyInterface $cacheDependency;
-    private DependsOnTags $dependsOnTags;
-    private CacheTags $cacheTags;
-    private CacheDependencyCollector $dependencyCollector;
-
     /** @SuppressWarnings("PHPMD.ExcessiveParameterList") */
     public function __construct(
         private QueryRepositoryInterface $queryRepository,
@@ -54,19 +45,11 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         #[CacheLog]
         private SemanticLoggerInterface $logger,
         private DonutRendererInterface $renderer,
-        private BaseUriTagInterface $baseUriTag,
-        private UriTagInterface $uriTag = new UriTag(),
-        CacheDependencyInterface|null $cacheDependency = null,
-        private DeclaredCacheControl $declaredCacheControl = new DeclaredCacheControl(),
-        DependsOnTags|null $dependsOnTags = null,
-        CacheTags|null $cacheTags = null,
-        CacheDependencyCollector|null $dependencyCollector = null,
+        private UriTagInterface $uriTag,
+        private DeclaredCacheControl $declaredCacheControl,
+        private CacheTags $cacheTags,
+        private CacheDependencyCollector $dependencyCollector,
     ) {
-        // Same UriTag as templateKeys(), so a material's tag matches the format purge() emits.
-        $this->cacheTags = $cacheTags ?? new CacheTags($this->uriTag, $this->baseUriTag);
-        $this->dependsOnTags = $dependsOnTags ?? new DependsOnTags($this->uriTag, new DependsOnRows(), new CacheIdentityFactory(), new ResourceParamSources($this->resource, $this->resourceStorage, $this->cacheTags), $this->cacheTags);
-        $this->cacheDependency = $cacheDependency ?? new CacheDependency($this->uriTag, $this->logger, $this->baseUriTag, $this->cacheTags);
-        $this->dependencyCollector = $dependencyCollector ?? new CacheDependencyCollector($this->dependsOnTags, $this->cacheDependency, $this->logger);
     }
 
     #[Override]
@@ -164,15 +147,15 @@ final readonly class DonutRepository implements DonutRepositoryInterface
 
     private function doPutStatic(ResourceObject $ro, int|null $ttl, int|null $sMaxAge): void
     {
-        $keys = new SurrogateKeys($ro->uri, ($this->baseUriTag)($ro), $this->uriTag, null, $this->dependsOnTags);
-        $this->classifyMaterials($ro, $keys);
+        $keys = $this->dependencyCollector->begin($this->cacheTags->own($ro));
+        $this->dependencyCollector->materials($ro, $keys);
         $this->logger->event(new PutDonutContext((string) $ro->uri, $ttl, $sMaxAge));
-        $templateKeys = $this->templateKeys($ro, $this->getHeaderKeys($ro));
-        $donut = ResourceDonut::create($ro, $this->renderer, $keys, $sMaxAge, true)->withStorageState($ttl, $templateKeys);
+        $templateKeys = $this->templateKeys($ro);
+        $donut = ResourceDonut::create($ro, $this->renderer, $keys, $sMaxAge, true)->withStorageState($ttl, $templateKeys->toArray());
         $donut->render($ro, $this->renderer);
         // Checked on the rendered response before setHeaders() mutates it
         $unstorable = $this->declaredCacheControl->reason($ro);
-        $surrogateKeys = $this->setHeaders($keys, $ro, $sMaxAge);
+        $surrogateKeys = $this->setHeaders($keys, $ro, $sMaxAge, $unstorable);
         $this->logCdnHeaders($ro);
         $this->dropReplacedEntry($ro);
         if ($unstorable !== null) {
@@ -184,22 +167,22 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         // The donut's content state lets a later refresh keep Last-Modified when the
         // recomposed content is unchanged.
         $this->saveView($ro, $sMaxAge, $surrogateKeys);
-        $this->resourceStorage->saveDonut($ro->uri, $donut->withContentState($ro), $ttl, $templateKeys);
+        $this->resourceStorage->saveDonut($ro->uri, $donut->withContentState($ro), $ttl, $templateKeys->toArray());
     }
 
     private function doPutDonut(ResourceObject $ro, int|null $donutTtl): void
     {
-        $keys = new SurrogateKeys($ro->uri, ($this->baseUriTag)($ro), $this->uriTag, null, $this->dependsOnTags);
-        $this->classifyMaterials($ro, $keys);
+        $keys = $this->dependencyCollector->begin($this->cacheTags->own($ro));
+        $this->dependencyCollector->materials($ro, $keys);
         $this->logger->event(new PutDonutContext((string) $ro->uri, $donutTtl, null));
-        $templateKeys = $this->templateKeys($ro, $this->getHeaderKeys($ro));
-        $donut = ResourceDonut::create($ro, $this->renderer, $keys, $donutTtl, false)->withStorageState($donutTtl, $templateKeys);
+        $templateKeys = $this->templateKeys($ro);
+        $donut = ResourceDonut::create($ro, $this->renderer, $keys, $donutTtl, false)->withStorageState($donutTtl, $templateKeys->toArray());
         $donut->render($ro, $this->renderer);
         $unstorable = $this->declaredCacheControl->reason($ro);
-        $keys->setSurrogateHeader($ro);
+        $keys->addTo($ro);
         $this->cacheTags->tagHeader($ro);
         if ($unstorable !== null) {
-            ($this->headerSetter)($ro, null, null);
+            $this->headerSetter->strip($ro);
         }
 
         $this->logCdnHeaders($ro);
@@ -210,7 +193,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
             return;
         }
 
-        $this->resourceStorage->saveDonut($ro->uri, $donut, $donutTtl, $templateKeys);
+        $this->resourceStorage->saveDonut($ro->uri, $donut, $donutTtl, $templateKeys->toArray());
     }
 
     /** {@see QueryRepository::dropReplacedEntry()} */
@@ -225,30 +208,12 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     }
 
     /**
-     * Register body children the page's onGet() already ran as dependencies, before the template keys read the header
-     *
-     * A child carrying an ETag or Surrogate-Key already ran during onGet() (a material); a hole has not run yet.
-     * Headers only: running a child here would execute a hole outside its hole scope. A child left out is logged
-     * as `dependency_skipped` with what its body shows: none yet (a hole, or a run that left none), or one without a tag.
-     * A child that ran counts as well when it, or a request it embeds and ran, declares #[DependsOn] or reads an onGet()
-     * argument through #[ResourceParam].
-     */
-    private function classifyMaterials(ResourceObject $ro, SurrogateKeys $keys): void
-    {
-        $this->dependencyCollector->collect($ro, $keys);
-    }
-
-    /**
      * The template's own URI tag (so `purge($uri)` reaches it, #185) and the declared keys: material children's tags
-     * (classifyMaterials()). Holes are left out: their write drops only the content and the shell is recomposed.
-     *
-     * @param list<string> $declaredKeys
-     *
-     * @return list<string>
+     * ({@see CacheDependencyCollector::materials()}). Holes are left out: their write drops only the content and the shell is recomposed.
      */
-    private function templateKeys(ResourceObject $ro, array $declaredKeys): array
+    private function templateKeys(ResourceObject $ro): TagSet
     {
-        return array_values(array_unique($this->cacheTags->tags($ro, $declaredKeys)));
+        return $this->cacheTags->tags($ro);
     }
 
     /**
@@ -280,8 +245,8 @@ final readonly class DonutRepository implements DonutRepositoryInterface
 
         $this->logger->event(new CacheHitContext('donut'));
         $this->logger->event(new RefreshDonutContext((string) $ro->uri));
-        $donut->refresh($this->resource, $ro, $this->uriTag, $this->dependsOnTags);
-        $surrogateKeys = $ro->headers[Header::SURROGATE_KEY] ?? '';
+        $donut->refresh($this->resource, $ro, $this->dependencyCollector->begin(new TagSet([($this->uriTag)($ro->uri)])));
+        $surrogateKeys = TagSet::ofHeaders($ro->headers);
 
         if (! $donut->isCacheble) {
             // Template-only (isCacheble=false): never stored as a page view.
@@ -294,9 +259,11 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         // When the recomposed content is byte-identical to the recorded one, carry over
         // the original Last-Modified instead of advancing it to the recomposition time
         $lastModified = $donut->getUnchangedLastModified((string) $ro->view);
-        ($this->headerSetter)($ro, $this->headerSetter->maxAge($donut->ttl) ?? self::REVALIDATE, null, $lastModified);
+        $unstorable = $this->declaredCacheControl->reason($ro);
+        ($this->headerSetter)($ro, $unstorable, $this->headerSetter->maxAge($donut->ttl) ?? self::REVALIDATE, null, $lastModified);
 
-        $this->setCdnCacheControl($ro, $donut->ttl);
+        // Decided again on the headers just set: a directive appended to a declared Cache-Control makes it not the declared one
+        $this->setCdnCacheControl($ro, $donut->ttl, $this->declaredCacheControl->reason($ro));
         $this->logCdnHeaders($ro);
         if ($lastModified === null) {
             $this->recordContentState($ro, $donut);
@@ -308,25 +275,6 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     }
 
     /**
-     * The CDN-facing headers this package's setters manage, lifetime and purge keys
-     *
-     * A custom CdnCacheControlHeaderSetterInterface using its own header name is outside
-     * this list and therefore outside the log's knowledge.
-     */
-    private const CDN_FACING_HEADERS = [
-        Header::CDN_CACHE_CONTROL,
-        FastlyCacheControlHeaderSetter::CDN_CACHE_CONTROL_HEADER,
-        AkamaiCacheControlHeaderSetter::CDN_CACHE_CONTROL_HEADER,
-        ...self::CDN_KEY_HEADERS,
-    ];
-
-    /** The headers a CDN indexes responses under for key-based purging */
-    private const CDN_KEY_HEADERS = [
-        Header::SURROGATE_KEY,
-        AkamaiCacheControlHeaderSetter::PURGE_KEYS,
-    ];
-
-    /**
      * Record the CDN-facing headers the response ended up with
      *
      * Read back after the setters ran, so the log reflects the actual effect, not the
@@ -336,14 +284,14 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     private function logCdnHeaders(ResourceObject $ro): void
     {
         $headers = [];
-        foreach (self::CDN_FACING_HEADERS as $name) {
+        foreach (HeaderSetter::CDN_FACING_HEADERS as $name) {
             if (isset($ro->headers[$name])) {
                 $headers[$name] = $ro->headers[$name];
             }
         }
 
         $surrogateKeys = [];
-        foreach (self::CDN_KEY_HEADERS as $name) {
+        foreach (HeaderSetter::CDN_KEY_HEADERS as $name) {
             if (isset($ro->headers[$name])) {
                 $surrogateKeys = [...$surrogateKeys, ...explode(' ', $ro->headers[$name])];
             }
@@ -362,9 +310,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     private function recordContentState(ResourceObject $ro, ResourceDonut $donut): void
     {
         $remainingTtl = $donut->getRemainingStorageTtl();
-        // Templates stored before the template carried its own URI tag have an empty tag list;
-        // re-tagging here makes an old entry reachable without a cache flush.
-        $storageTags = $this->templateKeys($ro, $donut->getStorageTags());
+        $storageTags = $donut->getStorageTags();
         if ($remainingTtl === 0) {
             $this->logger->event(new SaveDonutContext((string) $ro->uri, $storageTags, 0, false));
 
@@ -382,23 +328,23 @@ final readonly class DonutRepository implements DonutRepositoryInterface
      * parameter because the CDN setter may have already renamed the header (Akamai moves
      * Surrogate-Key to Edge-Cache-Tag).
      */
-    private function saveView(ResourceObject $ro, int|null $ttl, string $surrogateKeys): bool
+    private function saveView(ResourceObject $ro, int|null $ttl, TagSet $surrogateKeys): bool
     {
-        return $this->resourceStorage->saveDonutView($ro, $ttl, explode(' ', $surrogateKeys));
+        return $this->resourceStorage->saveDonutView($ro, $ttl, $surrogateKeys->toArray());
     }
 
     /**
      * Set the page's own headers (validator, client revalidation, CDN lifetime)
      *
-     * @return string the Surrogate-Key header as composed, before the CDN setter runs
+     * @return TagSet the Surrogate-Key header as composed, before the CDN setter runs
      */
-    private function setHeaders(SurrogateKeys $keys, ResourceObject $ro, int|null $sMaxAge): string
+    private function setHeaders(Dependencies $keys, ResourceObject $ro, int|null $sMaxAge, string|null $unstorable): TagSet
     {
-        $keys->setSurrogateHeader($ro);
+        $keys->addTo($ro);
         $this->cacheTags->tagHeader($ro);
-        $surrogateKeys = $ro->headers[Header::SURROGATE_KEY] ?? '';
-        $this->setCdnCacheControl($ro, $sMaxAge);
-        ($this->headerSetter)($ro, $this->headerSetter->maxAge($sMaxAge) === null ? self::REVALIDATE : null, null);
+        $surrogateKeys = TagSet::ofHeaders($ro->headers);
+        $this->setCdnCacheControl($ro, $sMaxAge, $unstorable);
+        ($this->headerSetter)($ro, $unstorable, $this->headerSetter->maxAge($sMaxAge) === null ? self::REVALIDATE : null, null);
 
         return $surrogateKeys;
     }
@@ -412,18 +358,12 @@ final readonly class DonutRepository implements DonutRepositoryInterface
      * private/no-store is refused the same way: the check sits here rather than in the
      * setters so it also covers an application's own CdnCacheControlHeaderSetterInterface.
      */
-    private function setCdnCacheControl(ResourceObject $ro, int|null $sMaxAge): void
+    private function setCdnCacheControl(ResourceObject $ro, int|null $sMaxAge, string|null $unstorable): void
     {
-        if ($ro->code !== 200 || $this->declaredCacheControl->reason($ro) !== null) {
+        if ($ro->code !== 200 || $unstorable !== null) {
             return;
         }
 
         ($this->cdnCacheControlHeaderSetter)($ro, $sMaxAge);
-    }
-
-    /** @return list<string> */
-    public function getHeaderKeys(ResourceObject $ro): array
-    {
-        return isset($ro->headers[Header::SURROGATE_KEY]) ? explode(' ', $ro->headers[Header::SURROGATE_KEY]) : [];
     }
 }

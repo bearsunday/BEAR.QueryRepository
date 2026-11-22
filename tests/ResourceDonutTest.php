@@ -6,7 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\CacheStoreException;
 use BEAR\Resource\AbstractRequest;
-use BEAR\Resource\Exception\ParameterException;
+use BEAR\Resource\AbstractUri;
 use BEAR\Resource\Method;
 use BEAR\Resource\RenderInterface;
 use BEAR\Resource\RequestInterface;
@@ -18,6 +18,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
+use Ray\Di\InjectorInterface;
 use RuntimeException;
 use Twig\Error\Error as TwigError;
 
@@ -31,6 +32,7 @@ use const ENT_QUOTES;
 class ResourceDonutTest extends TestCase
 {
     private ResourceInterface $resource;
+    private InjectorInterface $injector;
 
     protected function setUp(): void
     {
@@ -38,6 +40,7 @@ class ResourceDonutTest extends TestCase
         $module = new FakeEtagPoolModule(ModuleFactory::getInstance($namespace));
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
         $injector = new Injector($module, __DIR__ . '/tmp');
+        $this->injector = $injector;
         $this->resource = $injector->getInstance(ResourceInterface::class);
 
         parent::setUp();
@@ -46,39 +49,33 @@ class ResourceDonutTest extends TestCase
     public function testRefreshResolvesTwoPlaceholdersOnTheSameLine(): void
     {
         $ro = $this->resource->newInstance('page://self/html/blog-posting-donut');
-        $donut = new ResourceDonut('<p>[le:page://self/html/comment][le:page://self/html/like]</p>', [], null, false);
+        $donut = new ResourceDonut('<p>' . ResourceDonut::placeholder('page://self/html/comment') . ResourceDonut::placeholder('page://self/html/like') . '</p>', [], null, false);
 
-        $refreshed = $donut->refresh($this->resource, $ro);
+        $refreshed = $donut->refresh($this->resource, $ro, $this->dependencies($ro->uri));
 
         $this->assertStringContainsString('comment01', (string) $refreshed->view);
         $this->assertStringContainsString('like0', (string) $refreshed->view);
-        $this->assertStringNotContainsString('[le:', (string) $refreshed->view);
+        $this->assertStringNotContainsString('[le2:', (string) $refreshed->view);
     }
 
     public function testRefreshResolvesPlaceholdersOnSeparateLines(): void
     {
         $ro = $this->resource->newInstance('page://self/html/blog-posting-donut');
-        $donut = new ResourceDonut("<p>[le:page://self/html/comment]</p>\n<p>[le:page://self/html/like]</p>", [], null, false);
+        $donut = new ResourceDonut('<p>' . ResourceDonut::placeholder('page://self/html/comment') . "</p>\n<p>" . ResourceDonut::placeholder('page://self/html/like') . '</p>', [], null, false);
 
-        $refreshed = $donut->refresh($this->resource, $ro);
+        $refreshed = $donut->refresh($this->resource, $ro, $this->dependencies($ro->uri));
 
         $this->assertStringContainsString('comment01', (string) $refreshed->view);
         $this->assertStringContainsString('like0', (string) $refreshed->view);
-        $this->assertStringNotContainsString('[le:', (string) $refreshed->view);
+        $this->assertStringNotContainsString('[le2:', (string) $refreshed->view);
     }
 
     /**
-     * A query value a legacy entry's placeholder needed http_build_query() to protect: an
-     * encoded space ('+'), an encoded slash ('%2F'), a non-ASCII character (its own
-     * multi-byte '%XX' sequence), and reserved query-string characters within the value
-     * itself ('&', '=') - the case that corrupts silently rather than fatally: blanket-
-     * decoding it before BEAR\Resource\Uri parses it lets parse_str() re-split the
-     * now-literal '&'/'=' into extra, unrelated params instead of leaving them part of
-     * the value.
+     * Query values that need percent-encoding: a space, a slash, a non-ASCII character, and the reserved '&' and '='
      *
      * @return array<string, array{0: string}>
      */
-    public static function legacyQueryValueProvider(): array
+    public static function queryValueProvider(): array
     {
         return [
             'encoded space (+)' => ['a b'],
@@ -88,83 +85,16 @@ class ResourceDonutTest extends TestCase
         ];
     }
 
-    /**
-     * A legacy `[le:URI]` placeholder - written before this version introduced `le2` -
-     * must still be used verbatim, not rawurldecode()'d: its query value was already
-     * percent-encoded once (by http_build_query() when the placeholder was first built),
-     * and BEAR\Resource\Uri decodes it exactly once when it parses the re-fetched URI. An
-     * extra decode here would strip that encoding before parsing ever sees it, corrupting
-     * the value (or, for a raw non-ASCII byte, failing BEAR\Resource\Uri's own URL
-     * validation outright) instead of leaving an untouched legacy entry working exactly as
-     * it always did.
-     */
-    #[DataProvider('legacyQueryValueProvider')]
-    public function testRefreshDoesNotDoubleDecodeALegacyPlaceholdersQueryValue(string $value): void
-    {
-        $ro = $this->resource->newInstance('page://self/html/blog-posting-donut');
-        $query = http_build_query(['token' => $value]);
-        $donut = new ResourceDonut('<p>[le:app://self/query-hole?' . $query . ']</p>', [], null, false);
-
-        $refreshed = $donut->refresh($this->resource, $ro);
-
-        $this->assertSame('<p>' . htmlspecialchars($value, ENT_QUOTES, 'UTF-8') . '</p>', (string) $refreshed->view, 'the legacy placeholder\'s URI must reach BEAR\Resource\Uri exactly as stored, not pre-decoded');
-    }
-
-    /**
-     * The new `le2` form (ResourceDonut::placeholder()) round-trips the same values a
-     * legacy entry carries, through its own rawurlencode()/rawurldecode() pair.
-     */
-    #[DataProvider('legacyQueryValueProvider')]
-    public function testRefreshRoundTripsTheNewFormPlaceholdersQueryValue(string $value): void
+    #[DataProvider('queryValueProvider')]
+    public function testRefreshRoundTripsThePlaceholdersQueryValue(string $value): void
     {
         $ro = $this->resource->newInstance('page://self/html/blog-posting-donut');
         $placeholder = ResourceDonut::placeholder('app://self/query-hole?' . http_build_query(['token' => $value]));
         $donut = new ResourceDonut('<p>' . $placeholder . '</p>', [], null, false);
 
-        $refreshed = $donut->refresh($this->resource, $ro);
+        $refreshed = $donut->refresh($this->resource, $ro, $this->dependencies($ro->uri));
 
         $this->assertSame('<p>' . htmlspecialchars($value, ENT_QUOTES, 'UTF-8') . '</p>', (string) $refreshed->view);
-    }
-
-    /**
-     * A legacy `[le:URI]` placeholder for a hole with two OPTIONAL params and the same
-     * #232 `&`-to-`amp;` corruption: BEAR\Resource\Uri splits the query on the literal `&`
-     * left behind, so the second `token=b` becomes the unrelated key `amp;token`, and the
-     * first `token=a` silently wins - no required param is missing, so nothing throws, and
-     * the hole quietly recomposes with the wrong (first, not last) value. This is the
-     * "quieter" failure mode #232 describes for optional params, and it must stay exactly
-     * this wrong, not become something else, now that refresh() treats `le2` and `le`
-     * placeholders differently.
-     */
-    public function testRefreshOfALegacyDuplicateKeyPlaceholderStaysExactlyAsWrongAsBeforeThisFix(): void
-    {
-        $ro = $this->resource->newInstance('page://self/html/blog-posting-donut');
-        $donut = new ResourceDonut('<p>[le:app://self/query-hole?token=a&amp;token=b]</p>', [], null, false);
-
-        $refreshed = $donut->refresh($this->resource, $ro);
-
-        $this->assertSame('<p>a</p>', (string) $refreshed->view, 'the first token "wins" exactly as it already did - not "b", and not an exception');
-    }
-
-    /**
-     * A legacy `[le:URI]` placeholder for a hole with two REQUIRED query params, corrupted
-     * the same way, fails the re-fetch with the same underlying cause as a pre-#232-fix
-     * refresh() threw - still a ParameterException, not this fix's rawurldecode() turning it
-     * into a different, new failure. That cause arrives wrapped in a CacheStoreException, the
-     * same conversion any re-fetch failure gets, so `AbstractDonutCacheInterceptor`'s read
-     * path degrades to a fresh render instead of a 500.
-     */
-    public function testRefreshOfALegacyMultiParamPlaceholderFailsTheSameWayAsBeforeThisFix(): void
-    {
-        $ro = $this->resource->newInstance('page://self/html/blog-posting-donut');
-        $donut = new ResourceDonut('<p>[le:app://self/multi-param-query-hole?id=1&amp;tag=2]</p>', [], null, false);
-
-        try {
-            $donut->refresh($this->resource, $ro);
-            $this->fail('expected the malformed legacy placeholder to fail the re-fetch');
-        } catch (CacheStoreException $e) {
-            $this->assertInstanceOf(ParameterException::class, $e->getPrevious());
-        }
     }
 
     /**
@@ -245,7 +175,7 @@ class ResourceDonutTest extends TestCase
         };
 
         try {
-            $donut->refresh($throwingResource, $ro);
+            $donut->refresh($throwingResource, $ro, $this->dependencies($ro->uri));
             $this->fail('expected the re-fetch to throw');
         } catch (RuntimeException $e) {
             $this->assertSame('pool outage', $e->getPrevious()?->getMessage());
@@ -269,7 +199,7 @@ class ResourceDonutTest extends TestCase
         $ro->body = ['secret' => $throwingRequest];
 
         try {
-            ResourceDonut::create($ro, new DonutRenderer(), new SurrogateKeys($ro->uri), null, false);
+            ResourceDonut::create($ro, new DonutRenderer(), $this->dependencies($ro->uri), null, false);
             $this->fail('expected the hole throw to travel');
         } catch (TwigError $e) {
             $this->assertInstanceOf(RuntimeException::class, $e->getPrevious());
@@ -294,7 +224,7 @@ class ResourceDonutTest extends TestCase
         $ro->body = ['secret' => $holeRequest];
 
         try {
-            ResourceDonut::create($ro, new DonutRenderer(), new SurrogateKeys($ro->uri), null, false);
+            ResourceDonut::create($ro, new DonutRenderer(), $this->dependencies($ro->uri), null, false);
             $this->fail("expected the hole's own render failure to travel");
         } catch (TwigError $e) {
             $this->assertStringContainsString('HoleWithNoTemplate', $e->getMessage());
@@ -317,7 +247,7 @@ class ResourceDonutTest extends TestCase
         $ro->body = ['secret' => $throwingRequest];
 
         try {
-            ResourceDonut::create($ro, new DonutRenderer(), new SurrogateKeys($ro->uri), null, false);
+            ResourceDonut::create($ro, new DonutRenderer(), $this->dependencies($ro->uri), null, false);
             $this->fail('expected the anonymous-class hole throw to travel');
         } catch (TwigError $e) {
             $this->assertStringContainsString('anonymous hole blew up', $e->getPrevious()?->getMessage() ?? '');
@@ -343,7 +273,7 @@ class ResourceDonutTest extends TestCase
         $ro->body = ['value' => 'plain'];
 
         try {
-            ResourceDonut::create($ro, new DonutRenderer(), new SurrogateKeys($ro->uri), null, false);
+            ResourceDonut::create($ro, new DonutRenderer(), $this->dependencies($ro->uri), null, false);
             $this->fail('expected the page template throw to travel');
         } catch (FakeTemplateNotFound $e) {
             $this->assertSame('template not found: user.html.twig', $e->getMessage());
@@ -360,7 +290,7 @@ class ResourceDonutTest extends TestCase
         $ro = $this->resource->newInstance('page://self/html/plain-donut-hole');
         $ro->body = ['value' => 'plain'];
 
-        $donut = ResourceDonut::create($ro, new DonutRenderer(), new SurrogateKeys($ro->uri), null, false);
+        $donut = ResourceDonut::create($ro, new DonutRenderer(), $this->dependencies($ro->uri), null, false);
         $rendered = $donut->render($ro, new DonutRenderer());
 
         $this->assertStringContainsString('plain-donut-hole:plain', (string) $rendered->view);
@@ -381,10 +311,15 @@ class ResourceDonutTest extends TestCase
         $donut = new ResourceDonut('<p>' . ResourceDonut::placeholder($uri) . '</p>', [], null, false);
 
         try {
-            $donut->refresh($this->resource, $ro);
+            $donut->refresh($this->resource, $ro, $this->dependencies($ro->uri));
             $this->fail('expected the hole throw to be refused as a CacheStoreException');
         } catch (CacheStoreException $e) {
             $this->assertStringContainsString('the hole blew up mid-render', (string) $e->getPrevious()?->getMessage());
         }
+    }
+
+    private function dependencies(AbstractUri $uri): Dependencies
+    {
+        return $this->injector->getInstance(CacheDependencyCollector::class)->begin(new TagSet([(new UriTag())($uri)]));
     }
 }

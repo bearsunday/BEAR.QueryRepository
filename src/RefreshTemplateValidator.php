@@ -42,7 +42,7 @@ final class RefreshTemplateValidator
     public function __construct(
         private readonly ResourceInterface $resource,
         private readonly NamedParamMetasInterface $namedParamMetas,
-        private readonly CacheIdentityFactory $identityFactory = new CacheIdentityFactory(),
+        private readonly CacheIdentityFactory $identityFactory,
     ) {
     }
 

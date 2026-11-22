@@ -26,7 +26,6 @@ use Throwable;
 
 use function array_unique;
 use function assert;
-use function explode;
 use function hrtime;
 use function implode;
 use function max;
@@ -44,6 +43,7 @@ use function trim;
  *     roProvider:ProviderInterface<TagAwareAdapterInterface>,
  *     identityFactory: CacheIdentityFactory,
  *     cacheTags: CacheTags,
+ *     evaluateBody: ResourceBodyEvaluator,
  * }
  * @internal
  */
@@ -79,7 +79,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         #[Set(TagAwareAdapterInterface::class, ResourceObjectPool::class)]
         ProviderInterface $roPoolProvider,
         private readonly CacheTags $cacheTags,
-        private ResourceBodyEvaluator $evaluateBody = new ResourceBodyEvaluator(),
+        private ResourceBodyEvaluator $evaluateBody,
     ) {
         $this->initializePools($roPoolProvider);
     }
@@ -354,9 +354,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         // An ETag is never an invalidation tag: it is content-versioned, so each version
         // would leave a tag Set that nothing invalidates and a volatile-* eviction policy
         // never reclaims.
-        $surrogateKeys ??= isset($ro->headers[Header::SURROGATE_KEY]) ? explode(' ', $ro->headers[Header::SURROGATE_KEY]) : [];
-
-        return (new TagSet($this->cacheTags->tags($ro, $surrogateKeys)))->toArray();
+        return $this->cacheTags->tags($ro, $surrogateKeys === null ? null : new TagSet($surrogateKeys))->toArray();
     }
 
     private function nonNegative(int|null $ttl): int|null
@@ -409,6 +407,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
             'roProvider' => $this->roPoolProvider,
             'identityFactory' => $this->identityFactory,
             'cacheTags' => $this->cacheTags,
+            'evaluateBody' => $this->evaluateBody,
         ];
     }
 
@@ -424,9 +423,7 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         $this->saver = $data['saver'];
         $this->identityFactory = $data['identityFactory'];
         $this->cacheTags = $data['cacheTags'];
-        // Stateless, so rebuilt rather than carried: left out of the payload it stays
-        // uninitialized, and the first save after a compiled-injector restore throws.
-        $this->evaluateBody = new ResourceBodyEvaluator();
+        $this->evaluateBody = $data['evaluateBody'];
         $this->initializePools($data['roProvider']);
     }
 }

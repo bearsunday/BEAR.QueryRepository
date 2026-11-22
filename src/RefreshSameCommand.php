@@ -12,7 +12,6 @@ use BEAR\Resource\FactoryInterface;
 use BEAR\Resource\InvokerInterface;
 use BEAR\Resource\Request;
 use BEAR\Resource\ResourceObject;
-use Koriym\SemanticLogger\NullSemanticLogger;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 use Ray\Aop\MethodInvocation;
@@ -28,8 +27,8 @@ final readonly class RefreshSameCommand implements CommandInterface
         private InvokerInterface $invoker,
         private UnsafeMethodMatcher $unsafeMethod,
         #[CacheLog]
-        private SemanticLoggerInterface $logger = new NullSemanticLogger(),
-        private CommandQuery $commandQuery = new CommandQuery(),
+        private SemanticLoggerInterface $logger,
+        private CommandQuery $commandQuery,
     ) {
     }
 
@@ -39,35 +38,39 @@ final readonly class RefreshSameCommand implements CommandInterface
         try {
             $getQuery = $this->getQuery($ro);
         } catch (UnmatchedQuery $e) {
-            // #214 bound this command to onPost too, on classes that create rather than address
-            // an existing entity - onGet's required parameters (an id assigned on write) are
-            // routinely absent from a POST's own query. Pre-#214, onPost reached no command at
-            // all, so this was silently a no-op; skipping here restores that shape instead of a
-            // regression, and an explicit #[Refresh]/#[Purge] on the method still runs next
-            // (CommandsProvider orders this command first, but returning - not throwing - lets
-            // CommandInterceptor's loop reach the next command).
-            //
-            // onPut/onPatch/onDelete keep throwing: those act on an entity onGet already
-            // addresses, so a required parameter missing there is a real signature mismatch, not
-            // this case (BehaviorTest::testUnMatchQuery pins that).
-            if (! $this->unsafeMethod->isPost($invocation->getMethod())) {
-                throw $e;
-            }
-
-            // Without the query, which holds the values the write was sent
-            $this->logger->event(new CacheErrorContext("{$ro->uri->scheme}://{$ro->uri->host}{$ro->uri->path}", 'write', $e->getMessage(), $e::class));
+            $this->skipUnmatched($invocation, $ro, $e);
 
             return;
         }
 
-        // delete data in repository
         foreach ($this->ownUris($ro, $getQuery) as $uri) {
             $this->repository->purge($uri);
         }
 
         // Read to rebuild the cache entry; with the exact $getQuery, default-valued parameters included
-        $get = $this->factory->newInstance("{$ro->uri->scheme}://{$ro->uri->host}{$ro->uri->path}");
+        $get = $this->factory->newInstance($this->withoutQuery($ro));
         (new Request($this->invoker, $get))($getQuery);
+    }
+
+    /**
+     * A POST to a class that creates rather than addresses an entity lacks onGet()'s required parameters: it is recorded and
+     * skipped, and the next command still runs. Another method addresses an existing entity, so the mismatch is thrown.
+     *
+     * @param MethodInvocation<object> $invocation
+     */
+    public function skipUnmatched(MethodInvocation $invocation, ResourceObject $ro, UnmatchedQuery $e): void
+    {
+        if (! $this->unsafeMethod->isPost($invocation->getMethod())) {
+            throw $e;
+        }
+
+        $this->logger->event(new CacheErrorContext($this->withoutQuery($ro), 'write', $e->getMessage(), $e::class));
+    }
+
+    /** The resource's URI without its query, which holds the values the write was sent */
+    public function withoutQuery(ResourceObject $ro): string
+    {
+        return "{$ro->uri->scheme}://{$ro->uri->host}{$ro->uri->path}";
     }
 
     /**

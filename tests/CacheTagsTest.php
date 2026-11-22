@@ -7,20 +7,29 @@ namespace BEAR\QueryRepository;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
 use PHPUnit\Framework\TestCase;
+use Ray\Di\Injector;
+use Ray\Di\InjectorInterface;
 
 class CacheTagsTest extends TestCase
 {
-    public function testRawTagsPreserveHeaderEmptyElementsAndExplicitOverride(): void
+    private InjectorInterface $injector;
+
+    protected function setUp(): void
+    {
+        $this->injector = new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld'), __DIR__ . '/tmp');
+    }
+
+    public function testTagsReadHeaderOrExplicitOverride(): void
     {
         $ro = new class extends ResourceObject {
         };
         $ro->uri = new Uri('app://self/child');
         $ro->headers[Header::SURROGATE_KEY] = ' data  data ';
         $uriTag = new UriTag();
-        $baseUriTag = new BaseUriTag($uriTag);
-        $cacheTags = new CacheTags($uriTag, $baseUriTag);
+        $baseUriTag = new BaseUriTag($uriTag, $this->injector->getInstance(CacheIdentityFactory::class));
+        $cacheTags = new CacheTags($uriTag, $baseUriTag, $this->injector->getInstance(CacheIdentityFactory::class));
 
-        $this->assertSame(['_child_', 'grp-_child_', '', 'data', '', 'data', ''], $cacheTags->tags($ro));
-        $this->assertSame(['_child_', 'grp-_child_'], $cacheTags->tags($ro, []));
+        $this->assertSame(['_child_', 'grp-_child_', 'data'], $cacheTags->tags($ro)->toArray());
+        $this->assertSame(['_child_', 'grp-_child_'], $cacheTags->tags($ro, new TagSet())->toArray());
     }
 }

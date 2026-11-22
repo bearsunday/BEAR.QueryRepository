@@ -6,7 +6,6 @@ namespace BEAR\QueryRepository;
 
 use BEAR\Resource\ResourceObject;
 use Override;
-use ReflectionMethod;
 
 use function method_exists;
 
@@ -14,8 +13,8 @@ use function method_exists;
 final readonly class BaseUriTag implements BaseUriTagInterface
 {
     public function __construct(
-        private UriTagInterface $uriTag = new UriTag(),
-        private CacheIdentityFactory $identityFactory = new CacheIdentityFactory(),
+        private UriTagInterface $uriTag,
+        private CacheIdentityFactory $identityFactory,
     ) {
     }
 
@@ -29,18 +28,12 @@ final readonly class BaseUriTag implements BaseUriTagInterface
 
         $query = $ro->uri->query;
         $baseQuery = [];
-        foreach ((new ReflectionMethod($ro, 'onGet'))->getParameters() as $parameter) {
-            if ($parameter->isDefaultValueAvailable()) {
-                continue;
+        foreach (OnGetParameters::of($ro, $this->identityFactory)->required() as $parameter) {
+            $key = $parameter->valueKey($query);
+            if ($key !== null) {
+                /** @psalm-suppress MixedAssignment */
+                $baseQuery[$key] = $query[$key];
             }
-
-            $key = isset($query[$parameter->name]) ? $parameter->name : $this->identityFactory->snakeName($parameter->name);
-            if (! isset($query[$key])) {
-                continue;
-            }
-
-            /** @psalm-suppress MixedAssignment */
-            $baseQuery[$key] = $query[$key];
         }
 
         $baseUri = clone $ro->uri;
