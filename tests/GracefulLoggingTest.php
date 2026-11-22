@@ -33,6 +33,9 @@ use function json_encode;
 use function restore_error_handler;
 use function set_error_handler;
 
+use const E_ALL;
+use const E_DEPRECATED;
+use const E_USER_DEPRECATED;
 use const E_USER_WARNING;
 use const JSON_UNESCAPED_SLASHES;
 
@@ -395,8 +398,10 @@ class GracefulLoggingTest extends TestCase
         $converter = static function (int $errno, string $errstr): bool {
             throw new ErrorException($errstr, 0, $errno);
         };
+        // As an app's converter does: a deprecation, such as one a dependency raises while resolving a class, is not thrown
+        $exceptDeprecations = E_ALL & ~E_DEPRECATED & ~E_USER_DEPRECATED;
 
-        set_error_handler($converter);
+        set_error_handler($converter, $exceptDeprecations);
         try {
             // No cache attribute: $resource->get() alone does not render (onGet() only) -
             // the render happens later, the same place HttpResponder::getOutput() triggers
@@ -412,7 +417,7 @@ class GracefulLoggingTest extends TestCase
         // Twice, to show the donut page is not treated worse (or better) than the plain
         // page, and not treated worse (or better) on a later request than on the first.
         for ($i = 0; $i < 2; $i++) {
-            set_error_handler($converter);
+            set_error_handler($converter, $exceptDeprecations);
             try {
                 $resource->get('page://self/html/plain-donut-hole'); // #[DonutCache]
                 $this->fail('expected the converted warning to surface identically for the donut page');
