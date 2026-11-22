@@ -46,18 +46,15 @@ final readonly class HeaderSetter
     }
 
     /**
-     * Set a value or view entry's validator and, when a directive is given, its client Cache-Control; strip the
-     * CDN-facing headers instead when the write found the response unstorable
+     * Strip as {@see template()} does, then, unless the response is unstorable, set a value or view entry's validator
+     * and, when a directive is given, its client Cache-Control
      */
     public function entry(ResourceObject $ro, Storability $storability, string|null $cacheControl, HttpCache|null $httpCache): void
     {
-        if ($storability === Storability::Unstorable) {
-            $this->strip($ro);
-
-            return;
+        $this->template($ro, $storability);
+        if ($storability !== Storability::Unstorable) {
+            $this->setClientHeaders($ro, $cacheControl, null, $httpCache);
         }
-
-        $this->setClientHeaders($ro, $cacheControl, null, $httpCache);
     }
 
     /**
@@ -85,12 +82,14 @@ final readonly class HeaderSetter
         return $surrogateKeys;
     }
 
-    /** Strip the CDN-facing headers from a donut template the write found unstorable */
+    /** Strip the CDN-facing headers from an unstorable response, and the CDN lifetime from a declared-private one */
     public function template(ResourceObject $ro, Storability $storability): void
     {
-        if ($storability === Storability::Unstorable) {
-            $this->strip($ro);
-        }
+        match ($storability) {
+            Storability::Unstorable => $this->strip($ro),
+            Storability::DeclaredPrivate => $this->stripLifetime($ro),
+            Storability::Shared => null,
+        };
     }
 
     /** The max-age directive for a lifetime, none when there is no lifetime to give */

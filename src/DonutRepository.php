@@ -245,7 +245,9 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $this->logger->event(new RefreshDonutContext((string) $ro->uri));
         $donut->refresh($this->resource, $ro, $this->dependencyCollector->begin(new TagSet([($this->uriTag)($ro->uri)])));
         if (! $donut->isCacheble) {
-            // Template-only (isCacheble=false): never stored as a page view.
+            // Template-only (isCacheble=false): never stored as a page view. The donut keeps the headers from before
+            // the write stripped them.
+            $this->headerSetter->template($ro, $this->declaredCacheControl->stored($ro));
             $this->logCdnHeaders($ro);
             $this->logger->event(new PutSkippedContext((string) $ro->uri, 'not-cacheable'));
 
