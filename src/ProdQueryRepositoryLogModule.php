@@ -44,6 +44,9 @@ use Ray\Di\Scope;
  */
 final class ProdQueryRepositoryLogModule extends AbstractModule
 {
+    private const STREAM = self::class . ':stream';
+    private const SAMPLE_RATE = self::class . ':sampleRate';
+
     /**
      * @param string $stream     `php://stdout` for a collector, or a file path
      * @param int    $sampleRate keep 1 healthy session in N as a baseline; 0 disables sampling
@@ -59,8 +62,10 @@ final class ProdQueryRepositoryLogModule extends AbstractModule
     #[Override]
     protected function configure(): void
     {
-        $this->bind(RetentionPolicyInterface::class)->toInstance(new KeepMutationsAndFailures($this->sampleRate));
-        $this->bind(LogWriterInterface::class)->annotatedWith(LogDestination::class)->toInstance(new LogStreamWriter($this->stream));
+        $this->bind()->annotatedWith(self::SAMPLE_RATE)->toInstance($this->sampleRate);
+        $this->bind()->annotatedWith(self::STREAM)->toInstance($this->stream);
+        $this->bind(RetentionPolicyInterface::class)->toConstructor(KeepMutationsAndFailures::class, ['sampleRate' => self::SAMPLE_RATE]);
+        $this->bind(LogWriterInterface::class)->annotatedWith(LogDestination::class)->toConstructor(LogStreamWriter::class, ['stream' => self::STREAM]);
         $this->bind(LogWriterInterface::class)->toConstructor(PolicyLogWriter::class, ['writer' => LogDestination::class]);
         $this->bind(LogSinkInterface::class)->toProvider(ShutdownFlushProvider::class)->in(Scope::SINGLETON);
         // ShutdownFlushProvider injects this set, which must exist even when an app adds no writer
