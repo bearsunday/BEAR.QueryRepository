@@ -14,7 +14,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - `ResourceDonut`, `ResourceBodyEvaluator`, `RefreshAnnotatedCommand` and the default log classes `Log\HostRuntime`, `Log\ProcessSession`, `Log\SafeSemanticLogger` and `Log\ShutdownFlush` are `@internal`: depend on the interfaces they implement and the modules that bind them.
-- A write to a `#[CacheableResponse]` page purges its own entry through `QueryRepositoryInterface::purge()`; `DonutRepositoryInterface::purge()` is no longer called on that path, which matters only to an application that binds its own `DonutRepositoryInterface`.
 - Requires `bear/resource` 1.36 or later: a donut hole's links are carried in its `toUri()` fragment.
 - **Behaviour change**: on a `#[CacheableResponse]` or `#[DonutCache]` page, `CacheDependencyInterface::depends()` called from a template while it renders no longer tags the stored template (as before 1.20.0), so purging that child leaves the page's old content in the template. Embed such a part at the top level of the page body instead, with `#[Embed]` or an interceptor that puts the request there.
 - **Behaviour change**: an embedded child that ran with a body is a dependency of its parent even without a cache attribute, an ETag or a `Surrogate-Key`: its URI tag and group tag go into the parent's stored tags and `Surrogate-Key`, so a write to it invalidates the parent. A hole on a `#[CacheableResponse]`/`#[DonutCache]` page still has no body when the page is stored and does not reach the stored template.
@@ -23,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Behaviour change**: `#[DependsOn]` on `onGet()` expands its template from the body `onGet()` returns, as `#[Link]` expands its href, and from the arguments only for a variable the body lacks; a variable that is both a body key and an `onGet()` parameter now expands from the body, unless the body holds a value there that cannot expand, such as an array or an object that is not `Stringable`, which leaves it to the argument as before. A list given to an exploded query variable (`{?id*}`, `?id={ids*}`) names one URI per element, as `#[Purge]` does, so a list put in the body as `['id' => [1, 2, 3, 5]]` depends on `?id=1`, `?id=2`, `?id=3` and `?id=5`.
 
 ### Deprecated
+- `DonutRepositoryInterface::purge()`: use `QueryRepositoryInterface::purge()`. A write to a `#[CacheableResponse]` page now purges through it, so an application that binds its own `DonutRepositoryInterface` no longer sees that purge.
 - `DependencySkippedContext::NO_ETAG_OR_SURROGATE_KEY` and the `dependency_skipped` schema value `no_etag_or_surrogate_key`: no longer emitted, since an embedded child with a body is always a dependency. They are kept for compatibility with 1.20.2.
 - `#[DependsOn]` on a row class: put the rows in the body under `key` from `onGet()` instead.
 
