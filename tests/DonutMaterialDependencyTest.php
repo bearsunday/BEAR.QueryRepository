@@ -432,7 +432,6 @@ class DonutMaterialDependencyTest extends TestCase
                 $injector->getInstance(HeaderSetter::class),
                 $storage,
                 $resource,
-                $injector->getInstance(CdnCacheControlHeaderSetterInterface::class),
                 $logger,
                 $injector->getInstance(DonutRendererInterface::class),
                 $uriTag,

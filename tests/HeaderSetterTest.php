@@ -10,6 +10,8 @@ use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 use Ray\Di\InjectorInterface;
 
+use function array_keys;
+
 class HeaderSetterTest extends TestCase
 {
     private InjectorInterface $injector;
@@ -24,7 +26,7 @@ class HeaderSetterTest extends TestCase
         return $this->injector->getInstance(HeaderSetter::class);
     }
 
-    public function testStripHeadersMatchesALowercaseCdnCacheControlHeaderName(): void
+    public function testUnstorableStripMatchesALowercaseCdnCacheControlHeaderName(): void
     {
         // $ro->headers is a plain PHP array, not an HTTP-aware collection (RFC 7230 §3.2):
         // an application that wrote 'cdn-cache-control' (lowercase) must not survive an
@@ -33,13 +35,13 @@ class HeaderSetterTest extends TestCase
         $ro->headers[Header::CACHE_CONTROL] = 'private';
         $ro->headers['cdn-cache-control'] = 'max-age=600';
 
-        $this->headerSetter()->strip($ro);
+        $this->headerSetter()->template($ro, Storability::Unstorable);
 
         $this->assertArrayNotHasKey('cdn-cache-control', $ro->headers);
         $this->assertSame('private', $ro->headers[Header::CACHE_CONTROL], "the developer's own header is kept exactly");
     }
 
-    public function testStripHeadersRemovesEveryCasingWhenTheSameHeaderIsSetTwice(): void
+    public function testUnstorableStripRemovesEveryCasingWhenTheSameHeaderIsSetTwice(): void
     {
         // $ro->headers is a plain array, so 'Cache-Control' and 'cache-control' can coexist
         // as two distinct keys. stripHeaders() must remove ALL of them, not just the first
@@ -50,7 +52,7 @@ class HeaderSetterTest extends TestCase
         $ro->headers[Header::CDN_CACHE_CONTROL] = 'max-age=600';
         $ro->headers['cdn-cache-control'] = 'max-age=600';
 
-        $this->headerSetter()->strip($ro);
+        $this->headerSetter()->template($ro, Storability::Unstorable);
 
         $this->assertArrayNotHasKey(Header::CDN_CACHE_CONTROL, $ro->headers);
         $this->assertArrayNotHasKey('cdn-cache-control', $ro->headers);
@@ -64,7 +66,7 @@ class HeaderSetterTest extends TestCase
         $ro = new None();
         $ro->headers['cache-control'] = 'public';
 
-        ($this->headerSetter())($ro, Storability::Shared, 'max-age=60', null);
+        $this->headerSetter()->entry($ro, Storability::Shared, 'max-age=60', null);
 
         $this->assertArrayNotHasKey(Header::CACHE_CONTROL, $ro->headers, 'no second, canonically-cased header was added');
         $this->assertSame('public, max-age=60', $ro->headers['cache-control']);
@@ -75,7 +77,7 @@ class HeaderSetterTest extends TestCase
         $ro = new None();
         $ro->headers['cache-control'] = 'max-age=30';
 
-        ($this->headerSetter())($ro, Storability::Shared, 'max-age=60', null);
+        $this->headerSetter()->entry($ro, Storability::Shared, 'max-age=60', null);
 
         $this->assertArrayNotHasKey(Header::CACHE_CONTROL, $ro->headers, 'no second, canonically-cased header was added');
         $this->assertSame('max-age=30', $ro->headers['cache-control']);
@@ -88,7 +90,7 @@ class HeaderSetterTest extends TestCase
         $ro = new CacheableResponseNoStore();
         $ro->headers[Header::CACHE_CONTROL] = 'no-store';
 
-        ($this->headerSetter())($ro, Storability::Shared, 'max-age=31536000', null);
+        $this->headerSetter()->entry($ro, Storability::Shared, 'max-age=31536000', null);
 
         $this->assertSame('no-store', $ro->headers[Header::CACHE_CONTROL]);
     }
@@ -100,9 +102,61 @@ class HeaderSetterTest extends TestCase
         $ro = new CacheableResponseNoStore();
         $ro->headers = ['cache-control' => 'public', Header::CACHE_CONTROL => 'no-store'];
 
-        ($this->headerSetter())($ro, Storability::Shared, 'max-age=60', null);
+        $this->headerSetter()->entry($ro, Storability::Shared, 'max-age=60', null);
 
         $this->assertSame('public', $ro->headers['cache-control']);
         $this->assertSame('no-store', $ro->headers[Header::CACHE_CONTROL]);
+    }
+
+    public function testSharedPageGetsACdnLifetimeAfterItsKeysAreRead(): void
+    {
+        $ro = new None();
+        $ro->headers[Header::SURROGATE_KEY] = 'a b';
+
+        $keys = $this->headerSetter()->page($ro, Storability::Shared, 10, 'max-age=0', null);
+
+        $this->assertSame(['a', 'b'], $keys->toArray());
+        $this->assertSame([
+            Header::SURROGATE_KEY,
+            Header::CDN_CACHE_CONTROL,
+            Header::ETAG,
+            Header::LAST_MODIFIED,
+            Header::CACHE_CONTROL,
+        ], array_keys($ro->headers), 'CDN lifetime, then validator, then client Cache-Control');
+        $this->assertSame('max-age=0', $ro->headers[Header::CACHE_CONTROL]);
+    }
+
+    public function testSharedPageThatIsNot200GetsNoCdnLifetime(): void
+    {
+        $ro = new None();
+        $ro->code = 301;
+
+        $this->headerSetter()->page($ro, Storability::Shared, 10, null, null);
+
+        $this->assertArrayNotHasKey(Header::CDN_CACHE_CONTROL, $ro->headers);
+    }
+
+    public function testDeclaredPrivatePageKeepsItsPurgeKeysButNoCdnLifetime(): void
+    {
+        $ro = new None();
+        $ro->headers = [Header::SURROGATE_KEY => 'a', Header::CDN_CACHE_CONTROL => 'max-age=600', Header::CACHE_CONTROL => 'private'];
+
+        $this->headerSetter()->page($ro, Storability::DeclaredPrivate, 10, 'max-age=0', null);
+
+        $this->assertSame('a', $ro->headers[Header::SURROGATE_KEY]);
+        $this->assertArrayNotHasKey(Header::CDN_CACHE_CONTROL, $ro->headers);
+        $this->assertArrayHasKey(Header::ETAG, $ro->headers);
+        $this->assertSame('private, max-age=0', $ro->headers[Header::CACHE_CONTROL]);
+    }
+
+    public function testUnstorablePageGetsNoCdnFacingHeaderAndNoValidator(): void
+    {
+        $ro = new None();
+        $ro->headers = [Header::SURROGATE_KEY => 'a', Header::CDN_CACHE_CONTROL => 'max-age=600', Header::CACHE_CONTROL => 'no-store'];
+
+        $keys = $this->headerSetter()->page($ro, Storability::Unstorable, 10, 'max-age=0', null);
+
+        $this->assertSame(['a'], $keys->toArray());
+        $this->assertSame([Header::CACHE_CONTROL => 'no-store'], $ro->headers);
     }
 }

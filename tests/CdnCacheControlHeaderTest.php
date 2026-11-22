@@ -140,6 +140,9 @@ class CdnCacheControlHeaderTest extends TestCase
         $this->assertFalse($storage->hasEtag($etag1), 'the ETag issued by doPutStatic goes with its page state');
 
         $ro2 = $resource->get((string) $uri);
+        $this->assertSame('max-age=31536000', $ro2->headers['Akamai-Cache-Control'], 'refreshDonut hands Akamai the same lifetime');
+        $this->assertSame($ro1->headers['Edge-Cache-Tag'], $ro2->headers['Edge-Cache-Tag'], 'refreshDonut moves the same keys to Edge-Cache-Tag');
+        $this->assertArrayNotHasKey(Header::SURROGATE_KEY, $ro2->headers);
         $etag2 = $ro2->headers[Header::ETAG];
         $storage->invalidateTags([$commentTag]);
         $this->assertNull($queryRepository->get($uri), 'the page state rewritten by refreshDonut stays tagged by the embedded comment');

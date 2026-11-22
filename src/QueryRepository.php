@@ -100,7 +100,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
 
         $ofRendering = $storesView || $storability === Storability::Unstorable ? [] : $this->renderValue($ro, $httpCache);
         try {
-            ($this->headerSetter)($ro, $storability, $this->clientCacheControl($cacheable, $ttl), $httpCache);
+            $this->headerSetter->entry($ro, $storability, $this->clientCacheControl($cacheable, $ttl), $httpCache);
             $this->dropReplacedEntry($ro);
 
             if ($storability === Storability::Unstorable) {
