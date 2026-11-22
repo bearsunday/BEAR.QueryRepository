@@ -9,14 +9,22 @@ use BEAR\QueryRepository\Cdn\FastlyModule;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
+use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
 use Fastly\Api\PurgeApi;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Madapaja\TwigModule\TwigModule;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
 
+use function array_filter;
+use function array_keys;
+use function array_map;
+use function array_values;
 use function dirname;
+use function in_array;
+use function strtolower;
 
 class CdnCacheControlHeaderTest extends TestCase
 {
@@ -214,25 +222,46 @@ class CdnCacheControlHeaderTest extends TestCase
         $this->assertContains('cache_hit', self::collectTypes($tree), 'the content was saved and is being served from the stored page state');
     }
 
-    public function testDeclaredPrivateGetsACdnLifetimeOnTheFirstWriteButNotOnARefresh(): void
+    /** @return iterable<string, array{string, string}> */
+    public static function declaredPrivate(): iterable
     {
-        // A declared Cache-Control is exempt from the unstorable check until a directive is appended to it. The first
-        // write decides before max-age=0 is appended, a refresh after.
+        yield 'isPrivate' => ['page://self/html/cacheable-response-private', 'private, max-age=0'];
+        yield 'isPrivate and noStore' => ['page://self/html/cacheable-response-private-no-store', 'private, no-store'];
+        yield 'NoHttpCache' => ['page://self/html/cacheable-response-no-http-cache', 'private, no-store, no-cache, must-revalidate'];
+        yield 'isPrivate, lifetimes set by the page' => ['page://self/html/cacheable-response-private-with-cdn-headers', 'private, max-age=0'];
+    }
+
+    #[DataProvider('declaredPrivate')]
+    public function testDeclaredPrivateGetsNoCdnLifetimeOnWriteOrRefresh(string $uri, string $cacheControl): void
+    {
+        // CDN-Cache-Control makes a CDN ignore Cache-Control, no-store included (RFC 9213 §2.2). The page is still
+        // stored, so a browser revalidating its private copy is answered 304 from the entry.
         $module = $this->getModule();
         $injector = new Injector($module, __DIR__ . '/tmp');
         $resource = $injector->getInstance(ResourceInterface::class);
 
-        $first = $resource->get('page://self/html/cacheable-response-private');
-        $this->assertSame('private, max-age=0', $first->headers[Header::CACHE_CONTROL]);
-        $this->assertArrayHasKey(Header::CDN_CACHE_CONTROL, $first->headers);
+        $first = $resource->get($uri);
+        $this->assertSame($cacheControl, $first->headers[Header::CACHE_CONTROL]);
+        $this->assertNoCdnLifetime($first->headers);
+        $this->assertArrayHasKey(Header::ETAG, $first->headers);
+        $httpCache = $injector->getInstance(HttpCacheInterface::class);
+        $this->assertTrue($httpCache->isNotModified([Header::HTTP_IF_NONE_MATCH => $first->headers[Header::ETAG]]));
+        $this->assertNoCdnLifetime($resource->get($uri)->headers);
 
         $this->assertTrue($injector->getInstance(QueryRepositoryInterface::class)->purge(new Uri('page://self/html/comment')));
         $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
         $logger->flush();
-        $refreshed = $resource->get('page://self/html/cacheable-response-private');
+        $refreshed = $resource->get($uri);
         $this->assertContains('refresh_donut', self::collectTypes($this->flushAndValidate($logger)));
-        $this->assertSame('private, max-age=0', $refreshed->headers[Header::CACHE_CONTROL]);
-        $this->assertArrayNotHasKey(Header::CDN_CACHE_CONTROL, $refreshed->headers);
+        $this->assertSame($cacheControl, $refreshed->headers[Header::CACHE_CONTROL]);
+        $this->assertNoCdnLifetime($refreshed->headers);
+    }
+
+    /** @param array<string, string> $headers */
+    private function assertNoCdnLifetime(array $headers): void
+    {
+        $lifetime = array_map(strtolower(...), HeaderSetter::CDN_LIFETIME_HEADERS);
+        $this->assertSame([], array_values(array_filter(array_keys($headers), static fn (string $name): bool => in_array(strtolower($name), $lifetime, true))));
     }
 
     private function getModule(): AbstractModule
