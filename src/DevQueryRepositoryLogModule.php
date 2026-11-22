@@ -29,8 +29,8 @@ use Ray\Di\Scope;
  */
 final class DevQueryRepositoryLogModule extends AbstractModule
 {
-    private const LOG_DIR = self::class . ':logDir';
-    private const KEEP = self::class . ':keep';
+    private const LOG_DIR = self::class . '.logDir';
+    private const KEEP = self::class . '.keep';
 
     /** @param int $keep timestamped sessions to retain beside latest.json */
     public function __construct(

@@ -169,6 +169,17 @@ final class LogReceiversTest extends TestCase
         $this->assertInstanceOf(ShutdownFlush::class, $sink);
     }
 
+    #[DataProvider('logModulesAlone')]
+    public function testALogModuleCompiles(AbstractModule $logModule): void
+    {
+        $scriptDir = $this->logDir . '-di';
+        mkdir($scriptDir, 0700, true);
+        (new Compiler())->compile($logModule, $scriptDir);
+        $sink = (new CompiledInjector($scriptDir))->getInstance(LogSinkInterface::class);
+
+        $this->assertInstanceOf(ShutdownFlush::class, $sink);
+    }
+
     public function testAnAppThatBindsShutdownFlushItselfNeedsNoWriterSet(): void
     {
         $module = new class extends AbstractModule {

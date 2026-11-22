@@ -44,8 +44,8 @@ use Ray\Di\Scope;
  */
 final class ProdQueryRepositoryLogModule extends AbstractModule
 {
-    private const STREAM = self::class . ':stream';
-    private const SAMPLE_RATE = self::class . ':sampleRate';
+    private const STREAM = self::class . '.stream';
+    private const SAMPLE_RATE = self::class . '.sampleRate';
 
     /**
      * @param string $stream     `php://stdout` for a collector, or a file path
