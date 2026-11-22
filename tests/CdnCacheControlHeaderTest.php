@@ -9,6 +9,7 @@ use BEAR\QueryRepository\Cdn\FastlyModule;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
+use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
 use Fastly\Api\PurgeApi;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Madapaja\TwigModule\TwigModule;
@@ -214,17 +215,20 @@ class CdnCacheControlHeaderTest extends TestCase
         $this->assertContains('cache_hit', self::collectTypes($tree), 'the content was saved and is being served from the stored page state');
     }
 
-    public function testDeclaredPrivateGetsACdnLifetimeOnTheFirstWriteButNotOnARefresh(): void
+    public function testDeclaredPrivateGetsNoCdnLifetimeOnWriteOrRefresh(): void
     {
-        // A declared Cache-Control is exempt from the unstorable check until a directive is appended to it. The first
-        // write decides before max-age=0 is appended, a refresh after.
+        // CDN-Cache-Control makes a CDN ignore Cache-Control: private (RFC 9213 §2.2). The page is still stored, so a
+        // browser revalidating its private copy is answered 304 from the entry.
         $module = $this->getModule();
         $injector = new Injector($module, __DIR__ . '/tmp');
         $resource = $injector->getInstance(ResourceInterface::class);
 
         $first = $resource->get('page://self/html/cacheable-response-private');
         $this->assertSame('private, max-age=0', $first->headers[Header::CACHE_CONTROL]);
-        $this->assertArrayHasKey(Header::CDN_CACHE_CONTROL, $first->headers);
+        $this->assertArrayNotHasKey(Header::CDN_CACHE_CONTROL, $first->headers);
+        $this->assertArrayHasKey(Header::ETAG, $first->headers);
+        $httpCache = $injector->getInstance(HttpCacheInterface::class);
+        $this->assertTrue($httpCache->isNotModified([Header::HTTP_IF_NONE_MATCH => $first->headers[Header::ETAG]]));
 
         $this->assertTrue($injector->getInstance(QueryRepositoryInterface::class)->purge(new Uri('page://self/html/comment')));
         $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);

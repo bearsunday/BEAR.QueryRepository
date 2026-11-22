@@ -27,7 +27,7 @@ final readonly class DeclaredCacheControl
 {
     private const REASON = 'unstorable';
 
-    private function declared(ResourceObject $ro): string|null
+    private function attribute(ResourceObject $ro): HttpCache|NoHttpCache|null
     {
         $class = new ReflectionClass($ro);
         $attributes = $class->getAttributes(HttpCache::class);
@@ -35,13 +35,19 @@ final readonly class DeclaredCacheControl
             $attributes = $class->getAttributes(NoHttpCache::class);
         }
 
-        if (! isset($attributes[0])) {
-            return null;
-        }
+        return isset($attributes[0]) ? $attributes[0]->newInstance() : null;
+    }
 
-        $cacheControl = $attributes[0]->newInstance();
+    /**
+     * Declared for one visitor and still storable by a browser: a CDN must not be given a lifetime for it, as
+     * CDN-Cache-Control makes the CDN ignore Cache-Control (RFC 9213 §2.2). A declared no-store is not, since no cache
+     * downstream keeps it.
+     */
+    public function isPrivate(ResourceObject $ro): bool
+    {
+        $declared = $this->attribute($ro);
 
-        return (string) $cacheControl;
+        return $declared instanceof HttpCache && $declared->isPrivate && ! $declared->noStore;
     }
 
     /**
@@ -51,7 +57,8 @@ final readonly class DeclaredCacheControl
      */
     public function reason(ResourceObject $ro): string|null
     {
-        $declared = $this->declared($ro);
+        $declared = $this->attribute($ro);
+        $declared = $declared === null ? null : (string) $declared;
         foreach ($ro->headers as $name => $cacheControl) {
             if (strtolower($name) !== strtolower(Header::CACHE_CONTROL) || $cacheControl === $declared) {
                 continue;

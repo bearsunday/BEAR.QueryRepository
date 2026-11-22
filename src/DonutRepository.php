@@ -266,8 +266,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
             $this->headerSetter->strip($ro);
         }
 
-        // Decided again on the headers just set: a directive appended to a declared Cache-Control makes it not the declared one
-        $this->setCdnCacheControl($ro, $donut->ttl, $this->declaredCacheControl->reason($ro));
+        $this->setCdnCacheControl($ro, $donut->ttl, $unstorable);
         $this->logCdnHeaders($ro);
         if ($lastModified === null) {
             $this->recordContentState($ro, $donut);
@@ -358,7 +357,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     }
 
     /**
-     * Hand the CDN a lifetime for 200 that is also storable
+     * Hand the CDN a lifetime for 200 that is also storable, and not declared private
      *
      * The setters do not read the status code and the Fastly and Akamai defaults are
      * 31_536_000 seconds - a year - so an unguarded call would tell every shared cache to
@@ -368,7 +367,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
      */
     private function setCdnCacheControl(ResourceObject $ro, int|null $sMaxAge, string|null $unstorable): void
     {
-        if ($ro->code !== 200 || $unstorable !== null) {
+        if ($ro->code !== 200 || $unstorable !== null || $this->declaredCacheControl->isPrivate($ro)) {
             return;
         }
 
