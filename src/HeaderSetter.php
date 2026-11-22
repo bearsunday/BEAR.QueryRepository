@@ -47,12 +47,10 @@ final readonly class HeaderSetter
     /**
      * Set the validator and, when a directive is given, the client Cache-Control; strip the CDN-facing headers instead
      * when the write found the response unstorable
-     *
-     * @param string|null $unstorable DeclaredCacheControl::reason(), decided once by the write
      */
-    public function __invoke(ResourceObject $ro, string|null $unstorable, string|null $cacheControl, HttpCache|null $httpCache, int|null $time = null): void
+    public function __invoke(ResourceObject $ro, Storability $storability, string|null $cacheControl, HttpCache|null $httpCache, int|null $time = null): void
     {
-        if ($unstorable !== null) {
+        if ($storability === Storability::Unstorable) {
             $this->strip($ro);
 
             return;
@@ -65,7 +63,7 @@ final readonly class HeaderSetter
     }
 
     /**
-     * Strip every CDN-facing header from a response DeclaredCacheControl::reason() refuses. Its own private/no-store
+     * Strip every CDN-facing header from a response refused as Storability::Unstorable. Its own private/no-store
      * Cache-Control is left as it is.
      */
     public function strip(ResourceObject $ro): void

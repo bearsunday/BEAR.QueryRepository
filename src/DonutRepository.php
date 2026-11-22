@@ -154,12 +154,12 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $donut = ResourceDonut::create($ro, $this->renderer, $keys, $sMaxAge, true)->withStorageState($ttl, $templateKeys->toArray());
         $donut->render($ro, $this->renderer);
         // Checked on the rendered response before setHeaders() mutates it
-        $unstorable = $this->declaredCacheControl->reason($ro);
-        $surrogateKeys = $this->setHeaders($keys, $ro, $sMaxAge, $unstorable);
+        $storability = $this->declaredCacheControl->storability($ro);
+        $surrogateKeys = $this->setHeaders($keys, $ro, $sMaxAge, $storability);
         $this->logCdnHeaders($ro);
         $this->dropReplacedEntry($ro);
-        if ($unstorable !== null) {
-            $this->logger->event(new PutSkippedContext((string) $ro->uri, $unstorable));
+        if ($storability === Storability::Unstorable) {
+            $this->logger->event(new PutSkippedContext((string) $ro->uri, 'unstorable'));
 
             return;
         }
@@ -178,17 +178,17 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $templateKeys = $this->templateKeys($ro);
         $donut = ResourceDonut::create($ro, $this->renderer, $keys, $donutTtl, false)->withStorageState($donutTtl, $templateKeys->toArray());
         $donut->render($ro, $this->renderer);
-        $unstorable = $this->declaredCacheControl->reason($ro);
+        $storability = $this->declaredCacheControl->storability($ro);
         $keys->addTo($ro);
         $this->cacheTags->tagHeader($ro);
-        if ($unstorable !== null) {
+        if ($storability === Storability::Unstorable) {
             $this->headerSetter->strip($ro);
         }
 
         $this->logCdnHeaders($ro);
         $this->dropReplacedEntry($ro);
-        if ($unstorable !== null) {
-            $this->logger->event(new PutSkippedContext((string) $ro->uri, $unstorable));
+        if ($storability === Storability::Unstorable) {
+            $this->logger->event(new PutSkippedContext((string) $ro->uri, 'unstorable'));
 
             return;
         }
@@ -259,10 +259,10 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         // When the recomposed content is byte-identical to the recorded one, carry over
         // the original Last-Modified instead of advancing it to the recomposition time
         $lastModified = $donut->getUnchangedLastModified((string) $ro->view);
-        $unstorable = $this->declaredCacheControl->reason($ro);
-        ($this->headerSetter)($ro, $unstorable, $this->headerSetter->maxAge($donut->ttl) ?? self::REVALIDATE, null, $lastModified);
+        $storability = $this->declaredCacheControl->stored($ro);
+        ($this->headerSetter)($ro, $storability, $this->headerSetter->maxAge($donut->ttl) ?? self::REVALIDATE, null, $lastModified);
 
-        $this->setCdnCacheControl($ro, $donut->ttl, $unstorable);
+        $this->setCdnCacheControl($ro, $donut->ttl, $storability);
         $this->logCdnHeaders($ro);
         if ($lastModified === null) {
             $this->recordContentState($ro, $donut);
@@ -337,13 +337,13 @@ final readonly class DonutRepository implements DonutRepositoryInterface
      *
      * @return TagSet the Surrogate-Key header as composed, before the CDN setter runs
      */
-    private function setHeaders(Dependencies $keys, ResourceObject $ro, int|null $sMaxAge, string|null $unstorable): TagSet
+    private function setHeaders(Dependencies $keys, ResourceObject $ro, int|null $sMaxAge, Storability $storability): TagSet
     {
         $keys->addTo($ro);
         $this->cacheTags->tagHeader($ro);
         $surrogateKeys = TagSet::ofHeaders($ro->headers);
-        $this->setCdnCacheControl($ro, $sMaxAge, $unstorable);
-        ($this->headerSetter)($ro, $unstorable, $this->headerSetter->maxAge($sMaxAge) === null ? self::REVALIDATE : null, null);
+        $this->setCdnCacheControl($ro, $sMaxAge, $storability);
+        ($this->headerSetter)($ro, $storability, $this->headerSetter->maxAge($sMaxAge) === null ? self::REVALIDATE : null, null);
 
         return $surrogateKeys;
     }
@@ -357,15 +357,15 @@ final readonly class DonutRepository implements DonutRepositoryInterface
      * private/no-store is refused the same way: the check sits here rather than in the
      * setters so it also covers an application's own CdnCacheControlHeaderSetterInterface.
      */
-    private function setCdnCacheControl(ResourceObject $ro, int|null $sMaxAge, string|null $unstorable): void
+    private function setCdnCacheControl(ResourceObject $ro, int|null $sMaxAge, Storability $storability): void
     {
-        if ($this->declaredCacheControl->isPrivate($ro)) {
+        if ($storability === Storability::DeclaredPrivate) {
             $this->headerSetter->stripLifetime($ro);
 
             return;
         }
 
-        if ($ro->code !== 200 || $unstorable !== null) {
+        if ($ro->code !== 200 || $storability === Storability::Unstorable) {
             return;
         }
 

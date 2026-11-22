@@ -81,7 +81,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         $this->cacheTags->tagHeader($ro);
 
         $cacheable = $this->getCacheableAnnotation($ro);
-        $httpCache = $this->getHttpCacheAnnotation($ro);
+        $httpCache = $this->declaredCacheControl->httpCache($ro);
         $storesView = $cacheable instanceof Cacheable && $cacheable->type === 'view';
         if ($storesView) {
             // The view is the entry here, so a failed rendering fails the write. A value entry is
@@ -91,20 +91,20 @@ final readonly class QueryRepository implements QueryRepositoryInterface
 
         $ttl = $this->lifetime($ro, $cacheable);
 
-        $unstorable = $this->declaredCacheControl->reason($ro);
-        if ($unstorable === null) {
+        $storability = $this->declaredCacheControl->storability($ro);
+        if ($storability !== Storability::Unstorable) {
             // Every body this store keeps must serialize: a refusal surfaces here, before the
             // cleanup below can purge the entry and its dependents for a write that cannot happen
             serialize(($this->evaluateBody)($ro->body));
         }
 
-        $ofRendering = $storesView || $unstorable !== null ? [] : $this->renderValue($ro, $httpCache);
+        $ofRendering = $storesView || $storability === Storability::Unstorable ? [] : $this->renderValue($ro, $httpCache);
         try {
-            ($this->headerSetter)($ro, $unstorable, $this->clientCacheControl($cacheable, $ttl), $httpCache);
+            ($this->headerSetter)($ro, $storability, $this->clientCacheControl($cacheable, $ttl), $httpCache);
             $this->dropReplacedEntry($ro);
 
-            if ($unstorable !== null) {
-                $this->logger->event(new PutSkippedContext((string) $ro->uri, $unstorable));
+            if ($storability === Storability::Unstorable) {
+                $this->logger->event(new PutSkippedContext((string) $ro->uri, 'unstorable'));
 
                 return false;
             }
@@ -257,13 +257,6 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         $this->logger->event(new PurgeContext((string) $uri));
 
         return $this->storage->invalidateTags($tags);
-    }
-
-    private function getHttpCacheAnnotation(ResourceObject $ro): HttpCache|null
-    {
-        $attributes = (new ReflectionClass($ro))->getAttributes(HttpCache::class);
-
-        return isset($attributes[0]) ? $attributes[0]->newInstance() : null;
     }
 
     private function getCacheableAnnotation(ResourceObject $ro): Cacheable|null

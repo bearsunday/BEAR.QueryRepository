@@ -93,7 +93,7 @@ final class QueryRepositoryModule extends AbstractModule
         $this->bind(ResourceStorageSaver::class);
         // Server context for thread safety (Swoole, RoadRunner, etc.)
         $this->bind(ServerContextInterface::class)->to(GlobalServerContext::class)->in(Scope::SINGLETON);
-        $this->bind(DeclaredCacheControl::class);
+        $this->bind(DeclaredCacheControl::class)->in(Scope::SINGLETON);
         // #[Cacheable]
         $this->install(new CacheableModule());
         // #[CacheableResponse]
