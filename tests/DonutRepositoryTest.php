@@ -389,6 +389,21 @@ class DonutRepositoryTest extends TestCase
         $this->assertNull($ro2);
     }
 
+    public function testPurgeDropsTheStoredPage(): void
+    {
+        $injector = $this->getInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $queryRepository = $injector->getInstance(QueryRepositoryInterface::class);
+        $donutRepository = $injector->getInstance(DonutRepositoryInterface::class);
+        $uri = new Uri('page://self/html/blog-posting');
+        $resource->get((string) $uri);
+        $this->assertInstanceOf(ResourceState::class, $queryRepository->get($uri));
+
+        $donutRepository->purge($uri);
+
+        $this->assertNull($queryRepository->get($uri));
+    }
+
     public function testTopLevelPutStaticIsRootedInManualStoreScope(): void
     {
         $injector = $this->getInjector();
