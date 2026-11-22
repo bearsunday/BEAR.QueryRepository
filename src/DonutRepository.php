@@ -149,7 +149,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $storability = $this->declaredCacheControl->storability($ro);
         $keys->addTo($ro);
         $this->cacheTags->tagHeader($ro);
-        $surrogateKeys = $this->headerSetter->page($ro, $storability, $sMaxAge, null);
+        $surrogateKeys = $this->headerSetter->page($ro, $storability, $sMaxAge, $this->declaredCacheControl->cacheControl($ro), null);
         $this->logCdnHeaders($ro);
         if (! $this->replacedEntry->page($ro, $storability)) {
             return;
@@ -233,7 +233,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         // When the recomposed content is byte-identical to the recorded one, carry over
         // the original Last-Modified instead of advancing it to the recomposition time
         $lastModified = $donut->getUnchangedLastModified((string) $ro->view);
-        $surrogateKeys = $this->headerSetter->page($ro, $this->declaredCacheControl->stored($ro), $donut->ttl, $lastModified);
+        $surrogateKeys = $this->headerSetter->page($ro, $this->declaredCacheControl->stored($ro), $donut->ttl, $this->declaredCacheControl->cacheControl($ro), $lastModified);
         $this->logCdnHeaders($ro);
         if ($lastModified === null) {
             $this->recordContentState($ro, $donut);

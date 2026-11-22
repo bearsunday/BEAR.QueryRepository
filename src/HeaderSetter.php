@@ -64,8 +64,8 @@ final readonly class HeaderSetter
     }
 
     /**
-     * Set a page's CDN lifetime, validator and client Cache-Control (max-age=0 unless the page declares one), in that
-     * order
+     * Set a page's CDN lifetime, validator and client Cache-Control, in that order. A 200 gets the declared
+     * Cache-Control, as HttpCacheInterceptor gives it, with max-age=0 added unless it has a max-age or no-store.
      *
      * The CDN setters do not read the status code and the Fastly and Akamai defaults are
      * 31_536_000 seconds - a year - so only a 200 is handed a lifetime. The check sits here
@@ -74,7 +74,7 @@ final readonly class HeaderSetter
      *
      * @return TagSet the Surrogate-Key header as composed, before a CDN setter can move it
      */
-    public function page(ResourceObject $ro, Storability $storability, int|null $sMaxAge, int|null $lastModified): TagSet
+    public function page(ResourceObject $ro, Storability $storability, int|null $sMaxAge, string|null $declaredCacheControl, int|null $lastModified): TagSet
     {
         $surrogateKeys = TagSet::ofHeaders($ro->headers);
         match ($storability) {
@@ -83,6 +83,10 @@ final readonly class HeaderSetter
             Storability::Shared => $this->shareLifetime($ro, $sMaxAge),
         };
         if ($storability !== Storability::Unstorable) {
+            if ($declaredCacheControl !== null && $ro->code === 200) {
+                $ro->headers[Header::CACHE_CONTROL] = $declaredCacheControl;
+            }
+
             $this->setClientHeaders($ro, self::REVALIDATE, $lastModified, null);
         }
 

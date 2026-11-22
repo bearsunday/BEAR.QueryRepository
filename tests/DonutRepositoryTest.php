@@ -15,6 +15,7 @@ use FakeVendor\HelloWorld\Resource\Page\Html\ClosureBodyDonut;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Madapaja\TwigModule\TwigModule;
 use Override;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
@@ -469,6 +470,33 @@ class DonutRepositoryTest extends TestCase
         $this->assertSame('max-age=0', $refreshed->headers[Header::CACHE_CONTROL]);
         $this->assertSame('max-age=10, stale-while-revalidate=10', $refreshed->headers[Header::CDN_CACHE_CONTROL]);
         $this->assertSame('max-age=0', $resource->get($uri)->headers[Header::CACHE_CONTROL], 'the refreshed state is served as it was stored');
+    }
+
+    /** @return array<string, array{string, string, string}> */
+    public static function declaredCacheControlProvider(): array
+    {
+        return [
+            'max-age' => ['page://self/html/blog-posting-declared-max-age', 'max-age=60', 'max-age=60'],
+            'private' => ['page://self/html/blog-posting-declared-private', 'private', 'private, max-age=0'],
+        ];
+    }
+
+    #[DataProvider('declaredCacheControlProvider')]
+    public function testPageStoredInsideItsOwnGetKeepsTheDeclaredCacheControlOnHitAndRefresh(string $uri, string $miss, string $stored): void
+    {
+        $injector = $this->getInjector();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
+
+        $this->assertSame($miss, $resource->get($uri)->headers[Header::CACHE_CONTROL]);
+        $this->assertSame($stored, $resource->get($uri)->headers[Header::CACHE_CONTROL]);
+
+        $this->assertTrue($injector->getInstance(QueryRepositoryInterface::class)->purge(new Uri('page://self/html/comment')));
+        $logger->flush();
+        $refreshed = $resource->get($uri);
+        $this->assertContains('refresh_donut', self::collectTypes($this->flushAndValidate($logger)));
+        $this->assertSame($stored, $refreshed->headers[Header::CACHE_CONTROL]);
+        $this->assertSame($stored, $resource->get($uri)->headers[Header::CACHE_CONTROL]);
     }
 
     public function testPutStaticInsideResourceGetOpensNoManualScope(): void

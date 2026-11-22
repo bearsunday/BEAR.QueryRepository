@@ -32,8 +32,7 @@ final class DeclaredCacheControl
     /** Decide for a response as the resource and its renderer returned it, before the write adds its own headers */
     public function storability(ResourceObject $ro): Storability
     {
-        $declared = $this->attribute($ro);
-        $declaredValue = $declared === null ? null : (string) $declared;
+        $declaredValue = $this->cacheControl($ro);
         foreach ($ro->headers as $name => $cacheControl) {
             if (strtolower($name) !== strtolower(Header::CACHE_CONTROL) || $cacheControl === $declaredValue) {
                 continue;
@@ -45,13 +44,21 @@ final class DeclaredCacheControl
             }
         }
 
-        return $this->declaredStorability($declared);
+        return $this->declaredStorability($this->attribute($ro));
     }
 
     /** Decide for a response rebuilt from a stored entry, by the declaration alone */
     public function stored(ResourceObject $ro): Storability
     {
         return $this->declaredStorability($this->attribute($ro));
+    }
+
+    /** The Cache-Control value the attribute declares, as HttpCacheInterceptor writes it */
+    public function cacheControl(ResourceObject $ro): string|null
+    {
+        $declared = $this->attribute($ro);
+
+        return $declared === null ? null : (string) $declared;
     }
 
     public function httpCache(ResourceObject $ro): HttpCache|null
