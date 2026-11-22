@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\Resource\ResourceObject;
+use Closure;
 
 use function array_key_exists;
 
@@ -47,10 +48,18 @@ final class Dependencies
      */
     public function embedded(ResourceObject $ro): bool
     {
-        $found = $this->hasRun($ro) ? $this->found($ro) : null;
-        $found?->addTo($ro);
+        return $this->tag($ro, $this->hasRun($ro) ? $this->found($ro) : null);
+    }
 
-        return $ro->body !== null || $found !== null || isset($ro->headers[Header::ETAG]) || isset($ro->headers[Header::SURROGATE_KEY]);
+    /**
+     * Tags the embedded resource with what its own result declares, read each time: two requests for one URI may return
+     * different bodies
+     *
+     * @return bool whether the parent depends on it, as {@see self::embedded()}
+     */
+    public function read(ResourceObject $ro): bool
+    {
+        return $this->tag($ro, $this->hasRun($ro) ? $this->ofResult($ro, $this->read(...)) : null);
     }
 
     public function addTo(ResourceObject $ro): void
@@ -58,18 +67,22 @@ final class Dependencies
         $this->keys->addTo($ro);
     }
 
+    private function tag(ResourceObject $ro, TagSet|null $found): bool
+    {
+        $found?->addTo($ro);
+
+        return $ro->body !== null || $found !== null || isset($ro->headers[Header::ETAG]) || isset($ro->headers[Header::SURROGATE_KEY]);
+    }
+
     private function found(ResourceObject $ro): TagSet|null
     {
         // The default tag keeps Stringable query values apart; (string) $ro->uri, or an application's tagger, may not
         $key = $ro::class . ' ' . $this->identityFactory->exactTag($ro->uri);
         if (! array_key_exists($key, $this->found)) {
-            $declared = $this->dependsOnTags->declared($ro);
-            $read = $this->dependsOnTags->sourceTags($ro)->merge($this->passedUp($ro));
-
-            return $this->found[$key] = $read->isEmpty() ? $declared : ($declared ?? new TagSet())->merge($read);
+            return $this->found[$key] = $this->ofResult($ro, $this->embedded(...));
         }
 
-        $passedUp = $this->passedUp($ro);
+        $passedUp = $this->passedUp($ro, $this->embedded(...));
         if (! $passedUp->isEmpty()) {
             $this->found[$key] = ($this->found[$key] ?? new TagSet())->merge($passedUp);
         }
@@ -77,12 +90,29 @@ final class Dependencies
         return $this->found[$key];
     }
 
-    /** The tags of each request the resource embeds and ran that it depends on */
-    private function passedUp(ResourceObject $ro): TagSet
+    /**
+     * What the resource declares, what its #[ResourceParam] read and what the requests it embeds pass up; null when none
+     *
+     * @param Closure(ResourceObject): bool $embedded reads each request it embeds
+     */
+    private function ofResult(ResourceObject $ro, Closure $embedded): TagSet|null
+    {
+        $declared = $this->dependsOnTags->declared($ro);
+        $read = $this->dependsOnTags->sourceTags($ro)->merge($this->passedUp($ro, $embedded));
+
+        return $read->isEmpty() ? $declared : ($declared ?? new TagSet())->merge($read);
+    }
+
+    /**
+     * The tags of each request the resource embeds and ran that it depends on
+     *
+     * @param Closure(ResourceObject): bool $embedded
+     */
+    private function passedUp(ResourceObject $ro, Closure $embedded): TagSet
     {
         $tags = new TagSet();
         foreach ($this->dependsOnTags->requests($ro) as $request) {
-            if ($this->embedded($request->resourceObject)) {
+            if ($embedded($request->resourceObject)) {
                 $tags = $tags->merge($this->cacheTags->tags($request->resourceObject));
             }
         }
