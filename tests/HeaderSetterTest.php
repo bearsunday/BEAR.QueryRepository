@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use FakeVendor\HelloWorld\Resource\Page\Html\CacheableResponseNoStore;
 use FakeVendor\HelloWorld\Resource\Page\None;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 use Ray\Di\InjectorInterface;
@@ -124,6 +125,27 @@ class HeaderSetterTest extends TestCase
             Header::CACHE_CONTROL,
         ], array_keys($ro->headers), 'CDN lifetime, then validator, then client Cache-Control');
         $this->assertSame('max-age=0', $ro->headers[Header::CACHE_CONTROL]);
+    }
+
+    /** @return array<string, array{string, string}> */
+    public static function declaredPageCacheControlProvider(): array
+    {
+        return [
+            'lifetime' => ['max-age=60', 'max-age=60'],
+            'no lifetime' => ['private', 'private, max-age=0'],
+            'no-store' => ['no-store', 'no-store'],
+        ];
+    }
+
+    #[DataProvider('declaredPageCacheControlProvider')]
+    public function testDeclaredCacheControlReplacesTheOneThePageSet(string $declared, string $expected): void
+    {
+        $ro = new None();
+        $ro->headers[Header::CACHE_CONTROL] = 'max-age=300';
+
+        $this->headerSetter()->page($ro, Storability::Shared, 10, $declared, null);
+
+        $this->assertSame($expected, $ro->headers[Header::CACHE_CONTROL]);
     }
 
     public function testSharedPageThatIsNot200GetsNoCdnLifetime(): void
