@@ -38,7 +38,7 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
         $ro = $invocation->getThis();
         assert($ro instanceof ResourceObject);
         $openId = $this->logger->open(new GetContext((string) $ro->uri));
-        $start = hrtime(true);
+        $start = (float) hrtime(true);
         try {
             $cached = $this->fromCache($ro);
             $answer = $cached ?? $this->render($invocation);
@@ -63,9 +63,9 @@ abstract class AbstractDonutCacheInterceptor implements MethodInterceptor
         return $this->handleProceedResult($fresh);
     }
 
-    private function closeGet(string $openId, int $start, bool $hit): void
+    private function closeGet(string $openId, float $start, bool $hit): void
     {
-        $durationMs = round((hrtime(true) - $start) / 1_000_000, 3);
+        $durationMs = round(((float) hrtime(true) - $start) / 1e6, 3);
         $this->logger->close(
             $hit ? new CacheHitContext('donut-view', $durationMs) : new CacheMissContext('donut-view', $durationMs),
             $openId,
