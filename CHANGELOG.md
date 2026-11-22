@@ -32,7 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `SurrogateKeys`, which only the donut write used; nothing replaces it outside the package.
 
 ### Fixed
-- A page that declares `#[HttpCache]`/`#[NoHttpCache]` is stored by `putStatic()` with the declared `Cache-Control`, in place of one the page or the caller set, so a cache hit and a recomposed page carry the declaration as the first response does; a page that called `putStatic()` in its own `onGet()` was stored without it.
+- A page that declares `#[HttpCache]`/`#[NoHttpCache]` and calls `putStatic()` in its own `onGet()` is stored with the declared `Cache-Control`, so a cache hit and a recomposed page carry it as the first response does. Declare `Cache-Control` with the attribute rather than setting the header.
 - A `#[Cacheable]` page that embeds a `#[CacheableResponse]` or `#[DonutCache]` page which itself embeds a resource is now stored; since 1.17.0 the GET failed with `AbstractRequest::__serialize not supported`, and before that the page was silently not stored. The page carries the tags of the part and of the resource the part embeds, so purging either drops the page.
 - A write to a `#[Cacheable]` resource whose `onGet()` reads an argument through `#[ResourceParam]` no longer fails with `UnmatchedQuery` when its query lacks that argument, which is not in the URI a GET is stored under; its entry is purged and read again.
 - A POST that cannot address its own key no longer writes the values it was sent into the cache log: `cache_error` records its URI without the query, and the `UnmatchedQuery` message names the missing `onGet()` parameter instead of quoting the query.

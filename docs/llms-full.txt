@@ -78,6 +78,8 @@ use BEAR\RepositoryModule\Annotation\NoHttpCache;
 #[NoHttpCache]  // Outputs: private, no-store, no-cache, must-revalidate
 ```
 
+On a resource that declares `#[HttpCache]` or `#[NoHttpCache]`, this package sets the `Cache-Control` of a 200 response from the attribute and replaces one the resource or its caller sets. Declare the directives instead of setting the header.
+
 ### #[Refresh]
 
 After a write that answers below 400, purges the URI and reads it again with a GET, which stores what any GET of that resource stores. The URI template expands from the write's body, then its query.
