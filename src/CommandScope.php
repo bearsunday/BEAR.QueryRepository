@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Exception\UnmatchedQuery;
+use BEAR\QueryRepository\Log\Context\CacheErrorContext;
 use BEAR\QueryRepository\Log\Context\CommandContext;
 use BEAR\QueryRepository\Log\Context\CommandResultContext;
 use BEAR\RepositoryModule\Annotation\AbstractCommand;
@@ -24,6 +26,8 @@ final readonly class CommandScope
     public function __construct(
         #[CacheLog]
         private SemanticLoggerInterface $logger,
+        private UnsafeMethodMatcher $unsafeMethod,
+        private CommandQuery $commandQuery,
     ) {
     }
 
@@ -44,6 +48,21 @@ final readonly class CommandScope
         } finally {
             $this->logger->close(new CommandResultContext($ro->code), $openId);
         }
+    }
+
+    /**
+     * A POST to a class that creates rather than addresses an entity lacks onGet()'s required parameters: it is recorded and
+     * skipped, and the next command still runs. Another method addresses an existing entity, so the mismatch is thrown.
+     *
+     * @param MethodInvocation<object> $invocation
+     */
+    public function skipUnmatched(MethodInvocation $invocation, ResourceObject $ro, UnmatchedQuery $e): void
+    {
+        if (! $this->unsafeMethod->isPost($invocation->getMethod())) {
+            throw $e;
+        }
+
+        $this->logger->event(new CacheErrorContext($this->commandQuery->withoutQuery($ro), 'write', $e->getMessage(), $e::class));
     }
 
     /** @param MethodInvocation<object> $invocation */
