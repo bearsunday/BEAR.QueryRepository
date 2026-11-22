@@ -260,11 +260,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         // the original Last-Modified instead of advancing it to the recomposition time
         $lastModified = $donut->getUnchangedLastModified((string) $ro->view);
         $unstorable = $this->declaredCacheControl->reason($ro);
-        if ($unstorable === null) {
-            ($this->headerSetter)($ro, $this->headerSetter->maxAge($donut->ttl) ?? self::REVALIDATE, null, $lastModified);
-        } else {
-            $this->headerSetter->strip($ro);
-        }
+        ($this->headerSetter)($ro, $unstorable, $this->headerSetter->maxAge($donut->ttl) ?? self::REVALIDATE, null, $lastModified);
 
         // Decided again on the headers just set: a directive appended to a declared Cache-Control makes it not the declared one
         $this->setCdnCacheControl($ro, $donut->ttl, $this->declaredCacheControl->reason($ro));
@@ -348,11 +344,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $this->cacheTags->tagHeader($ro);
         $surrogateKeys = TagSet::ofHeaders($ro->headers);
         $this->setCdnCacheControl($ro, $sMaxAge, $unstorable);
-        if ($unstorable === null) {
-            ($this->headerSetter)($ro, $this->headerSetter->maxAge($sMaxAge) === null ? self::REVALIDATE : null, null);
-        } else {
-            $this->headerSetter->strip($ro);
-        }
+        ($this->headerSetter)($ro, $unstorable, $this->headerSetter->maxAge($sMaxAge) === null ? self::REVALIDATE : null, null);
 
         return $surrogateKeys;
     }
