@@ -75,7 +75,7 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 | 型 | 何が open するか | close する語 |
 |---|---|---|
 | `get` (`uri`) | キャッシュ経由のリソース GET | `cache_hit` / `cache_miss` |
-| `command` (`method`, `annotations`, `source`) | 書き込み (`onPut`/`onPatch`/`onDelete`) | `command_result` (`code`) |
+| `command` (`method`, `annotations`) | 書き込み (`onPost`/`onPut`/`onPatch`/`onDelete`) | `command_result` (`code`) |
 | `conditional_request` (`ifNoneMatch`) | 転送境界での `If-None-Match` 判定 | `layer: etag` の `cache_hit` / `cache_miss` |
 | `manual_store` (`uri`) | 直接の `put()` / `putStatic()` / `putDonut()` | `manual_store_result` (`stored` \| `failed`) |
 | `manual_purge` (`uri`) | 直接の `purge()` | `manual_purge_result` (`purged` \| `failed`) |
@@ -268,7 +268,7 @@ hit にし、中身を新しくするのは再合成のほうです。
 埋め込んでいるリソースへの PUT:
 
 ```text
-command {"method": "onPut", "annotations": [], "source": "CommandInterceptor"}
+command {"method": "onPut", "annotations": []}
   purge {"uri": "page://self/dep/level-three"}
   invalidate {"tags": ["_dep_level-three_", "grp-_dep_level-three_"], "roPool": "invalidated", "cdn": "skipped"}
   get {"uri": "page://self/dep/level-three"}
