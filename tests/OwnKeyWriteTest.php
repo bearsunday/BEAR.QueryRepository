@@ -8,6 +8,7 @@ use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
 use FakeVendor\HelloWorld\Resource\App\Assisted\CacheableWriter;
+use FakeVendor\HelloWorld\Resource\App\CacheableSelfPurgeWriter;
 use FakeVendor\HelloWorld\Resource\App\Receipt;
 use FakeVendor\HelloWorld\Resource\Page\Mx\DCRefreshPurge;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
@@ -63,6 +64,18 @@ class OwnKeyWriteTest extends TestCase
         $this->assertContains(['purge_skipped'], self::scopeEventTypeSequences($tree), 'nothing else to purge, so no invalidation');
     }
 
+    public function testADeclarationOnAReadIsNotWoven(): void
+    {
+        $this->resource->get('page://self/dep/level-one');
+        $this->logger->flush();
+
+        $this->resource->get('app://self/purge-on-read');
+
+        $this->assertNotNull($this->repository->get(new Uri('page://self/dep/level-one')));
+        $tree = $this->flushAndValidate($this->logger);
+        $this->assertSame([], self::eventContextsJsonOf($tree, 'purge'));
+    }
+
     /** The key is the URI the write was sent to, whatever the handler does to its own */
     public function testAWriteThatChangesItsOwnUriPurgesTheKeyItWasSentTo(): void
     {
@@ -83,6 +96,21 @@ class OwnKeyWriteTest extends TestCase
         $this->assertStringContainsString('"tags":["_self-purge-writer_id=1","grp-_self-purge-writer_id=1"]', $invalidations[0]);
     }
 
+    public function testACacheableWriteThatPurgesItselfKeepsTheRebuiltEntry(): void
+    {
+        CacheableSelfPurgeWriter::$gets = 0;
+        $uri = 'app://self/cacheable-self-purge-writer';
+        $this->resource->get($uri, ['id' => '1']);
+        $this->logger->flush();
+
+        $this->resource->put($uri, ['id' => '1']);
+
+        $tree = $this->flushAndValidate($this->logger);
+        $this->assertSame(['{"uri":"app://self/cacheable-self-purge-writer?id=1"}'], self::eventContextsJsonOf($tree, 'purge'));
+        $this->assertSame(2, CacheableSelfPurgeWriter::$gets, 'the write read its own URI again');
+        $this->assertNotNull($this->repository->get(new Uri($uri . '?id=1')), 'the rebuilt entry is kept');
+    }
+
     public function testAQueryRepositoryOfTheApplicationsOwnIsTheOneThatPurges(): void
     {
         $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
@@ -101,8 +129,7 @@ class OwnKeyWriteTest extends TestCase
         $this->assertSame(['app://self/self-purge-writer?id=1'], FakePurgeRecordingQueryRepository::$purged);
     }
 
-    /** DonutCommandInterceptor purges and refreshes the resource; RefreshInterceptor purges only what #[Purge] names */
-    public function testARefreshCacheWriteLeavesItsOwnKeyToTheDonutCommand(): void
+    public function testARefreshCacheWritePurgesItsOwnKeyOnceAndRebuildsIt(): void
     {
         $uri = 'page://self/mx/DCRefreshPurge?id=1';
         $this->resource->get('page://self/dep/level-one');
@@ -119,7 +146,7 @@ class OwnKeyWriteTest extends TestCase
         $this->assertSame(
             ['{"uri":"page://self/mx/DCRefreshPurge"}', '{"uri":"page://self/dep/level-two"}'],
             self::eventContextsJsonOf($tree, 'purge'),
-            'its own key is purged once, by the donut command',
+            'its own key is purged once',
         );
         $this->resource->get($uri);
         $this->assertSame(1, DCRefreshPurge::$gets, 'the next GET is served from the refreshed template');
@@ -182,8 +209,7 @@ class OwnKeyWriteTest extends TestCase
         $this->assertNull($this->repository->get($parent), 'the parent that embeds the written resource is invalidated');
     }
 
-    /** The method's #[CacheableResponse] leaves its own key to DonutCommandInterceptor, which refreshes it */
-    public function testAMethodLevelCacheableResponseWriteIsPurgedOnceByTheDonutCommand(): void
+    public function testAMethodLevelCacheableResponseWriteIsPurgedOnceAndRebuilt(): void
     {
         $uri = 'page://self/mx/MRWrite';
         $this->resource->get($uri, ['id' => '1']);
@@ -196,7 +222,7 @@ class OwnKeyWriteTest extends TestCase
         $this->assertNotNull($this->storage->getDonut(new Uri($uri . '?id=1')), 'the refreshed template is kept');
     }
 
-    public function testAMethodLevelCacheableResponseWriteWithAPurgeLeavesItsOwnKeyToTheDonutCommand(): void
+    public function testAMethodLevelCacheableResponseWriteWithAPurgePurgesEachUriOnce(): void
     {
         $uri = 'page://self/mx/MRWrite';
         $this->resource->get($uri, ['id' => '1']);

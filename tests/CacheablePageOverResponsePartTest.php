@@ -94,7 +94,7 @@ class CacheablePageOverResponsePartTest extends TestCase
     #[DataProvider('partsOverCachedChild')]
     public function testThePageCarriesThePartAndTheChildTagsOnMissAndHit(string $page, string $part): void
     {
-        $expected = [(new UriTag())(new Uri($part)), (new UriTag())(new Uri(self::CHILD))];
+        $expected = [(new UriTag(new CacheIdentityFactory(new GlobalServerContext())))(new Uri($part)), (new UriTag(new CacheIdentityFactory(new GlobalServerContext())))(new Uri(self::CHILD))];
 
         $miss = $this->resource->get($page);
         $this->assertEmpty(array_diff($expected, explode(' ', $miss->headers[Header::SURROGATE_KEY])));

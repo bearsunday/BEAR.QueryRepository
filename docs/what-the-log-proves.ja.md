@@ -13,7 +13,7 @@
 | 3 | CDN に purge を指示したか — 正確に何を、そしてそれは効いたか？ | `invalidate` `{tags, roPool, cdn, durationMs}`。purger は記録されたタグをそのまま受け取る | `cdn` は三状態（`purged` / `failed` / `skipped`）で fail-closed。まずローカルプール、結果を記録、その後に purge の例外が伝播する。プールが拒否すれば `roPool: failed` として報告される |
 | 4 | 条件付きリクエストはエッジで再検証されたか？ | layer `etag` で `cache_hit`/`cache_miss` を閉じる `conditional_request` `{ifNoneMatch}` — リソースが 1 つも走る前に下される 304 の判定 | `HttpCacheInterface` の両実装が記録する。どちらかの記録を落とすか結果を入れ替えるとスイートが失敗する |
 | 5 | なぜエントリがないのか — 何も保存されていなかったのか(コールド)、それともストアが読めなかったのか(縮退: フレームワークがキャッシュ無しとして振る舞い、リソースを走らせた)？ | `put_skipped` `{reason, code}`、`cache_error` `{operation, exceptionClass}` — `operation: read` が、それでも閉じる `cache_miss` と対になっているものが縮退した読み取り | スキップ理由と失敗した側（`read`/`write`）がピン留めされている。`cache_error{read}` + `cache_miss` = 縮退した読み取り、`cache_miss` 単独 = cold |
-| 6 | この書き込みまたは無効化を始めたのは誰か — フレームワークか、アプリケーションか？ | `command` スコープは生成元のインターセプター（`source`）を名指す。直接呼び出しは `manual_store` / `manual_purge` / `manual_invalidate` を根とし、結果は close 側に載る。`pre_write_cleanup` は writer 自身のクリーンアップを示す | 例外を投げる書き込みは `manual_store_result{failed}` で閉じる。呼び出し側が例外を捕まえているのにスコープが `stored` で閉じるのはログが嘘をついている状態であり、テストがそれを禁じる |
+| 6 | この書き込みまたは無効化を始めたのは誰か — フレームワークか、アプリケーションか？ | 書き込みは `command` スコープを根とする。直接呼び出しは `manual_store` / `manual_purge` / `manual_invalidate` を根とし、結果は close 側に載る。`pre_write_cleanup` は writer 自身のクリーンアップを示す | 例外を投げる書き込みは `manual_store_result{failed}` で閉じる。呼び出し側が例外を捕まえているのにスコープが `stored` で閉じるのはログが嘘をついている状態であり、テストがそれを禁じる |
 | 7 | このエントリは期限切れになる設計か、それとも何かが無効化するまで生きる設計か? | `cache_policy` `{expiry, expirySecond, expiryAt, resolvedTtl}` — `#[Cacheable]` の宣言を読む場所で記録 | 3 つの宣言のうち non-null は 1 つだけ、それが決めたもの。TTL ではこれに答えられない — `never` プリセットはアプリが再束縛できる有限の数値に解決するので、イベント駆動のエントリと意図的な 1 年 TTL が同じ寿命として記録される |
 | 8 | ストアは応答しているのか、それとも miss はすべて障害なのか? | `pool_error` `{key, operation, error, exceptionClass}` — 拒んだバックエンドについてのアダプタ自身の報告 | `symfony/cache` はアプリに throw しないので、プールにキャッシュログを渡している。死んだストアからの read は他と同じ miss であり、隣の `pool_error` が「落ちている」と「冷たい」を分ける。実際の Redis アダプタを閉じたポートに向けて実演 |
 | 9 | このキャッシュに価値はあるか? | `cache_hit` / `cache_miss` の close の `durationMs` — hit はプールから配る時間、miss はリソース実行とそれが起こした書き込みの時間 | 差ではなく符号が不変条件。`miss - hit` は fill を含むが、hit が miss より速くないキャッシュは金を払って何も買っていない。両方の close が持ち、スコープのない event は null(測る区間がない)。schema には契約ではなく計測値だと書いてある |
@@ -28,8 +28,8 @@
    `run-degraded.php` はセッションツリーを出力し、オフラインで検証して、
    違反があれば非ゼロで終了します。
 3. **語彙の閉包** — `tests/DemoLogCoverageTest.php` は、すべての context クラス、
-   すべてのスキーマの `enum` 値、`saved` の両方の結果、`command.source` の 3 つの
-   producer すべてがデモ出力に現れない限り失敗します。存在するがデモされない
+   すべてのスキーマの `enum` 値、`saved` の両方の結果がデモ出力に現れない限り
+   失敗します。存在するがデモされない
    context は出荷できません。
 4. **順序のピン留め** — donut 書き込みの正確なイベント順序がアサートされているため、
    emission の追加や削除は意識的でレビューされた変更になります。

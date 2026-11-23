@@ -337,7 +337,7 @@ class GoldenEntryTest extends TestCase
             return;
         }
 
-        $uriTag = (new UriTag())($ro->uri);
+        $uriTag = (new UriTag(new CacheIdentityFactory(new GlobalServerContext())))($ro->uri);
         $this->assertSame(trim($ro->headers[Header::ETAG], '"'), $app->etagEntries()[$uriTag][0] ?? null);
         $this->assertMatchesRegularExpression('/^"[\w-]{22}\.\d+"$/', $ro->headers[Header::ETAG]);
         $this->assertMatchesRegularExpression('/^[A-Z][a-z]{2}, \d{2} [A-Z][a-z]{2} \d{4} \d{2}:\d{2}:\d{2} GMT$/', $ro->headers[Header::LAST_MODIFIED] ?? '');

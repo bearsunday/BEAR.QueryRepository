@@ -14,7 +14,7 @@ use function is_array;
 use function sprintf;
 
 /**
- * The tag of each URI a resource's #[DependsOn] declarations expand to, and the resources its #[ResourceParam] declarations read
+ * The tag of each URI a resource's #[DependsOn] declarations expand to
  *
  * @internal
  */
@@ -24,7 +24,6 @@ final readonly class DependsOnTags
         private UriTagInterface $uriTag,
         private DependsOnRows $rows,
         private CacheIdentityFactory $identityFactory,
-        private ResourceParamSources $resourceParamSources,
         private DependsOnTemplates $templates,
     ) {
     }
@@ -43,18 +42,6 @@ final readonly class DependsOnTags
                 yield $body;
             }
         }
-    }
-
-    /** @return list<ResourceObject> the resources its #[ResourceParam] declarations read: {@see ResourceParamSources} */
-    public function resourceParamSources(ResourceObject $ro): array
-    {
-        return ($this->resourceParamSources)($ro);
-    }
-
-    /** For each resource its #[ResourceParam] declarations read, the tags a parent takes from an embedded child */
-    public function sourceTags(ResourceObject $ro): TagSet
-    {
-        return $this->resourceParamSources->tags($ro);
     }
 
     /** @return TagSet|null what onGet() declares; null when it declares nothing */

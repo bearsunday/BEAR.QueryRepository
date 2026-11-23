@@ -10,7 +10,6 @@ use BEAR\QueryRepository\Log\Context\CacheMissContext;
 use BEAR\QueryRepository\Log\Context\ConditionalRequestContext;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\AbstractUri;
-use BEAR\Sunday\Provide\Transfer\ConditionalResponse;
 use BEAR\Sunday\Provide\Transfer\ConditionalResponseInterface;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 
@@ -29,7 +28,7 @@ final class ConditionalRequest
         #[CacheLog]
         private readonly SemanticLoggerInterface $logger,
         private readonly CacheFailure $failure,
-        private readonly ConditionalResponseInterface $conditionalResponse = new ConditionalResponse(),
+        private readonly ConditionalResponseInterface $conditionalResponse,
     ) {
     }
 

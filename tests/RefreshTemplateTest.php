@@ -41,10 +41,10 @@ class RefreshTemplateTest extends TestCase
     public static function lackingDeclarations(): array
     {
         return [
-            'Purge via RefreshInterceptor' => ['app://self/paged-category-writer', 'patch', PagedCategoryWriter::class, 'Purge'],
-            'Refresh via RefreshInterceptor' => ['app://self/paged-category-writer', 'put', PagedCategoryWriter::class, 'Refresh'],
-            'Purge via CommandInterceptor' => ['app://self/cacheable-paged-category-writer', 'patch', CacheablePagedCategoryWriter::class, 'Purge'],
-            'Refresh via CommandInterceptor' => ['app://self/cacheable-paged-category-writer', 'put', CacheablePagedCategoryWriter::class, 'Refresh'],
+            'Purge on a class that stores nothing' => ['app://self/paged-category-writer', 'patch', PagedCategoryWriter::class, 'Purge'],
+            'Refresh on a class that stores nothing' => ['app://self/paged-category-writer', 'put', PagedCategoryWriter::class, 'Refresh'],
+            'Purge on a #[Cacheable] class' => ['app://self/cacheable-paged-category-writer', 'patch', CacheablePagedCategoryWriter::class, 'Purge'],
+            'Refresh on a #[Cacheable] class' => ['app://self/cacheable-paged-category-writer', 'put', CacheablePagedCategoryWriter::class, 'Refresh'],
         ];
     }
 
@@ -67,10 +67,10 @@ class RefreshTemplateTest extends TestCase
     public static function completeDeclarations(): array
     {
         return [
-            'Purge with snake_case via RefreshInterceptor' => ['app://self/paged-category-writer', 'post', PagedCategoryWriter::class, 'category_id'],
-            'Refresh with camelCase via RefreshInterceptor' => ['app://self/paged-category-writer', 'delete', PagedCategoryWriter::class, 'categoryId'],
-            'Purge with snake_case via CommandInterceptor' => ['app://self/cacheable-paged-category-writer', 'post', CacheablePagedCategoryWriter::class, 'category_id'],
-            'Refresh with camelCase via CommandInterceptor' => ['app://self/cacheable-paged-category-writer', 'delete', CacheablePagedCategoryWriter::class, 'categoryId'],
+            'Purge with snake_case on a class that stores nothing' => ['app://self/paged-category-writer', 'post', PagedCategoryWriter::class, 'category_id'],
+            'Refresh with camelCase on a class that stores nothing' => ['app://self/paged-category-writer', 'delete', PagedCategoryWriter::class, 'categoryId'],
+            'Purge with snake_case on a #[Cacheable] class' => ['app://self/cacheable-paged-category-writer', 'post', CacheablePagedCategoryWriter::class, 'category_id'],
+            'Refresh with camelCase on a #[Cacheable] class' => ['app://self/cacheable-paged-category-writer', 'delete', CacheablePagedCategoryWriter::class, 'categoryId'],
         ];
     }
 

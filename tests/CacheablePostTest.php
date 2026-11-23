@@ -13,10 +13,8 @@ use Ray\Di\Injector;
 /**
  * A POST is a write, and a write on a #[Cacheable] class has to invalidate
  *
- * `CommandInterceptor` was bound to `onPut`, `onPatch` and `onDelete`, and `RefreshInterceptor`
- * only to classes that are not `#[Cacheable]`. A POST on a cacheable collection - the method a
- * form submits - therefore ran with no interceptor at all: the entry it had just made stale
- * stayed served, and a `#[Purge]` written on it was dropped without an error or a log event.
+ * A POST on a cacheable collection is the method a form submits: without an interceptor, the
+ * entry it made stale stays served and a `#[Purge]` written on it is dropped without a log event.
  */
 class CacheablePostTest extends TestCase
 {

@@ -35,7 +35,7 @@
 | 8 | TTL の矛盾 | 修正済み。要求値は記録時点でクランプ、フィールド名は `requestedTtl`（要求した値であり、ストアの実効寿命ではない） |
 | 9 | 寿命の宣言 | `cache_policy {expiry, expirySecond, expiryAt, resolvedTtl}` — 3 宣言のうち決め手だけが記録され、`resolvedTtl` と読み比べられる |
 | 10 | 304 判断 | `conditional_request {ifNoneMatch}` が `cache_hit/cache_miss{layer: etag}` で閉じる |
-| 11 | 発起者 | `command.source`（interceptor 名）と `manual_store` / `manual_purge` / `manual_invalidate` スコープ（結果は close に） |
+| 11 | 発起者 | `command` スコープ（書き込み）と `manual_store` / `manual_purge` / `manual_invalidate` スコープ（結果は close に） |
 | 12 | 束縛の奪取 | `#[CacheLog]` 修飾子で分離。アプリの束縛は無修飾のまま生きる |
 
 ## 3. 明示性を支える機構（量）
@@ -49,7 +49,7 @@
 
 1. **スキーマ検証**: テストの全 flush が公開スキーマに照合され、diagnostics も fail 扱い（`failOnDiagnostics`）。ロガーが投げなくてもプロトコル退行はテストが落とす
 2. **自己検証デモ**: 4 スクリプト（`run.php` / `run-dependency.php` / `run-donut.php` / `run-degraded.php`）がセッションツリーと JSON を出力し、オフライン照合で違反時は非ゼロ終了
-3. **語彙閉包**: `DemoLogCoverageTest`（6 tests / 22 assertions）が、全コンテキストクラス・全スキーマ enum 値・全 save コンテキストの `saved` 両結果・全 `command.source` 生成元がデモ出力に現れることを要求。デモされないコンテキストは出荷できない
+3. **語彙閉包**: `DemoLogCoverageTest`（6 tests / 22 assertions）が、全コンテキストクラス・全スキーマ enum 値・全 save コンテキストの `saved` 両結果がデモ出力に現れることを要求。デモされないコンテキストは出荷できない
 4. **シーケンス pin**: donut 書き込みのイベント順序そのものを assert。発火の増減はレビュー対象の変更になる
 5. **ミューテーション検証**: 発火地点の削除・結果語の反転・既定値の変更を殺す pin を mutation testing で選定
 

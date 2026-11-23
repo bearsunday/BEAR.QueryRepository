@@ -39,8 +39,8 @@ final class SafeSemanticLogger implements SemanticLoggerInterface, TopLevelAware
     private Session $silentSession;
 
     public function __construct(
-        private LogSinkInterface|null $sink = null,
-        private SessionStoreInterface $store = new ProcessSession(),
+        private LogSinkInterface|null $sink,
+        private SessionStoreInterface $store,
     ) {
         $this->silentSession = new Session(new NullSemanticLogger());
         $this->armOrFallSilent();

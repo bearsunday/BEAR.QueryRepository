@@ -28,9 +28,8 @@ A GET app://self/member {"memberId":1} -> {"memberId":1,"name":"kuma"}
 A GET app://self/member {"member_id":1} -> {"memberId":1,"name":"kuma"}
 
 === Cache Log Tree — A. snake_case write query ===
-command method=onPatch source=CommandInterceptor
+command method=onPatch
 ├── method: onPatch
-├── source: CommandInterceptor
 ├── purge uri=app://self/member?memberId=1 [event]
 │   └── uri: app://self/member?memberId=1
 ├── invalidate tags=[_member_memberId=1 +1 items] roPool=invalidated cdn=skipped durationMs=[volatile] [event]
@@ -89,9 +88,8 @@ B GET app://self/tag {"id":"a"} -> {"id":"a","version":2}
 B GET app://self/tag {"id":"c"} -> {"id":"c","version":1}
 
 === Cache Log Tree — B. #[Refresh] with a list ===
-command method=onPut annotations=[1 items] source=RefreshInterceptor
+command method=onPut annotations=[1 items]
 ├── method: onPut
-├── source: RefreshInterceptor
 ├── purge uri=app://self/tag?id=a [event]
 │   └── uri: app://self/tag?id=a
 ├── invalidate tags=[_tag_id=a, grp-_tag_id=a] roPool=invalidated cdn=skipped durationMs=[volatile] [event]
@@ -154,9 +152,8 @@ Schema validation: OK (18 entries)
 C GET app://self/tag {"id":"a"} -> {"id":"a","version":3}
 
 === Cache Log Tree — C. #[Purge] with a list ===
-command method=onDelete annotations=[1 items] source=RefreshInterceptor
+command method=onDelete annotations=[1 items]
 ├── method: onDelete
-├── source: RefreshInterceptor
 ├── purge uri=app://self/tag?id=a [event]
 │   └── uri: app://self/tag?id=a
 ├── invalidate tags=[_tag_id=a, grp-_tag_id=a] roPool=invalidated cdn=skipped durationMs=[volatile] [event]
@@ -194,9 +191,8 @@ Schema validation: OK (10 entries)
 D GET app://self/tag {"id":"c"} -> {"id":"c","version":1}
 
 === Cache Log Tree — D. #[Purge] with an empty list ===
-command method=onDelete annotations=[1 items] source=RefreshInterceptor
+command method=onDelete annotations=[1 items]
 ├── method: onDelete
-├── source: RefreshInterceptor
 └── close command_result
     └── code: 200
 get uri=app://self/tag?id=c
@@ -239,9 +235,8 @@ get uri=app://self/tag?
 └── close cache_miss
     ├── layer: resource
     └── durationMs: [volatile]
-command method=onDelete annotations=[1 items] source=RefreshInterceptor
+command method=onDelete annotations=[1 items]
 ├── method: onDelete
-├── source: RefreshInterceptor
 ├── purge uri=app://self/tag?id=x [event]
 │   └── uri: app://self/tag?id=x
 ├── invalidate tags=[_tag_id=x, grp-_tag_id=x] roPool=invalidated cdn=skipped durationMs=[volatile] [event]
@@ -316,9 +311,8 @@ Schema validation: OK (10 entries)
 G GET app://self/article-summary {"id":1} -> {"id":1,"summary":"BIG UPDATE"}
 
 === Cache Log Tree — G. a write to the #[DependsOn] URI invalidates it ===
-command method=onPatch source=CommandInterceptor
+command method=onPatch
 ├── method: onPatch
-├── source: CommandInterceptor
 ├── purge uri=app://self/article?id=1 [event]
 │   └── uri: app://self/article?id=1
 ├── invalidate tags=[_article_id=1, grp-_article_id=1] roPool=invalidated cdn=skipped durationMs=[volatile] [event]

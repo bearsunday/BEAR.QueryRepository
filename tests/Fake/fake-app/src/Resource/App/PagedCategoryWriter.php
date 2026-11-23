@@ -8,7 +8,7 @@ use BEAR\RepositoryModule\Annotation\Purge;
 use BEAR\RepositoryModule\Annotation\Refresh;
 use BEAR\Resource\ResourceObject;
 
-/** Not #[Cacheable], so RefreshInterceptor handles the declarations */
+/** Not #[Cacheable]: a write that stores nothing of its own */
 class PagedCategoryWriter extends ResourceObject
 {
     public static int $writes = 0;

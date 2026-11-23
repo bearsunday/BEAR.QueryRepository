@@ -4,11 +4,8 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\AbstractUri;
 use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
-use Koriym\SemanticLogger\NullSemanticLogger;
-use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 
 use function assert;
@@ -22,15 +19,9 @@ use const PHP_EOL;
 
 final readonly class CliHttpCache implements HttpCacheInterface, UriScopedHttpCacheInterface
 {
-    private ConditionalRequest $conditionalRequest;
-
     public function __construct(
-        private ResourceStorageInterface $storage,
-        #[CacheLog]
-        private SemanticLoggerInterface $logger = new NullSemanticLogger(),
-        ConditionalRequest|null $conditionalRequest = null,
+        private ConditionalRequest $conditionalRequest,
     ) {
-        $this->conditionalRequest = $conditionalRequest ?? new ConditionalRequest($storage, $logger, new CacheFailure($logger));
     }
 
     /**

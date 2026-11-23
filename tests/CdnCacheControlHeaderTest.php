@@ -123,7 +123,7 @@ class CdnCacheControlHeaderTest extends TestCase
         $storage = $injector->getInstance(ResourceStorageInterface::class);
         $queryRepository = $injector->getInstance(QueryRepositoryInterface::class);
         $uri = new Uri('page://self/html/blog-posting');
-        $commentTag = (new UriTag())(new Uri('page://self/html/comment'));
+        $commentTag = (new UriTag(new CacheIdentityFactory(new GlobalServerContext())))(new Uri('page://self/html/comment'));
 
         $ro1 = $resource->get((string) $uri);
         $etag1 = $ro1->headers[Header::ETAG];

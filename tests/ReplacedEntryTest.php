@@ -36,7 +36,7 @@ class ReplacedEntryTest extends TestCase
     public function testAWriteIntoAnEmptySlotDropsNothing(): void
     {
         $ro = $this->resource->get('app://self/unstorable-value', ['unstorable' => false]);
-        $this->storage->invalidateTags([(new UriTag())($ro->uri)]);
+        $this->storage->invalidateTags([(new UriTag(new CacheIdentityFactory(new GlobalServerContext())))($ro->uri)]);
         $this->logger->flush();
 
         $this->assertTrue($this->replacedEntry->entry($ro, Storability::Shared));

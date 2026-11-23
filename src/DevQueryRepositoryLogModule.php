@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Log\ConcurrentRuntimeInterface;
+use BEAR\QueryRepository\Log\HostRuntime;
 use BEAR\QueryRepository\Log\LogFileWriter;
 use BEAR\QueryRepository\Log\LogSinkInterface;
 use BEAR\QueryRepository\Log\LogWriterInterface;
@@ -48,6 +50,7 @@ final class DevQueryRepositoryLogModule extends AbstractModule
         $this->bind()->annotatedWith(self::KEEP)->toInstance($this->keep);
         $this->bind(LogWriterInterface::class)->toConstructor(LogFileWriter::class, ['dir' => self::LOG_DIR, 'keep' => self::KEEP]);
         $this->bind(LogSinkInterface::class)->toProvider(ShutdownFlushProvider::class)->in(Scope::SINGLETON);
+        $this->bind(ConcurrentRuntimeInterface::class)->to(HostRuntime::class);
         // ShutdownFlushProvider injects this set, which must exist even when an app adds no writer
         MultiBinder::newInstance($this, LogWriterInterface::class);
         $this->bind(SessionStoreInterface::class)->to(ProcessSession::class)->in(Scope::SINGLETON);

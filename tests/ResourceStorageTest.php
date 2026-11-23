@@ -95,11 +95,11 @@ class ResourceStorageTest extends TestCase
         $serializable = new ResourceStorage(
             new NullSemanticLogger(),
             new NullPurger(),
-            new ResourceStorageSaver(),
             $this->injector->getInstance(CacheIdentityFactory::class),
             new FakeArrayPoolProvider(),
             $this->injector->getInstance(CacheTags::class),
             new ResourceBodyEvaluator(),
+            new EntityTags(),
         );
         $storage = unserialize(serialize($serializable));
         assert($storage instanceof ResourceStorage);
@@ -283,13 +283,13 @@ class ResourceStorageTest extends TestCase
         $this->assertNotNull($this->storage->get($this->ro->uri));
 
         // The URI tag still invalidates the same entry.
-        $this->storage->invalidateTags([(new UriTag())($this->ro->uri)]);
+        $this->storage->invalidateTags([(new UriTag(new CacheIdentityFactory(new GlobalServerContext())))($this->ro->uri)]);
         $this->assertNull($this->storage->get($this->ro->uri));
     }
 
     public function testSaveValueLogsSavedFalseWhenPoolRejectsEntry(): void
     {
-        // ResourceStorageSaver is final, so the failure is induced one layer down: an inner
+        // The failure is induced one layer down: an inner
         // pool whose commit() rejects every entry (e.g. storage full).
         $failingPool = new TagAwareAdapter(new class extends ArrayAdapter {
             #[Override]
@@ -383,6 +383,6 @@ class ResourceStorageTest extends TestCase
 
     private function dependencies(AbstractUri $uri): Dependencies
     {
-        return $this->injector->getInstance(CacheDependencyCollector::class)->begin(new TagSet([(new UriTag())($uri)]));
+        return $this->injector->getInstance(CacheDependencyCollector::class)->begin(new TagSet([(new UriTag(new CacheIdentityFactory(new GlobalServerContext())))($uri)]));
     }
 }

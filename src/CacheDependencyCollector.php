@@ -16,9 +16,9 @@ final readonly class CacheDependencyCollector
 {
     public function __construct(
         private DependsOnTags $dependsOnTags,
+        private ResourceParamSources $resourceParamSources,
         private CacheDependencyInterface $cacheDependency,
         private CacheTags $cacheTags,
-        private BaseUriTag $groupTag,
         private CacheIdentityFactory $identityFactory,
         #[CacheLog]
         private SemanticLoggerInterface $logger,
@@ -28,7 +28,7 @@ final readonly class CacheDependencyCollector
     /** @param TagSet $keys the keys the response has before anything is collected */
     public function begin(TagSet $keys): Dependencies
     {
-        return new Dependencies($keys, $this->dependsOnTags, $this->cacheTags, $this->groupTag, $this->identityFactory);
+        return new Dependencies($keys, $this->dependsOnTags, $this->resourceParamSources, $this->cacheTags, $this->identityFactory);
     }
 
     /**
@@ -64,7 +64,7 @@ final readonly class CacheDependencyCollector
     private function declared(ResourceObject $ro): void
     {
         $this->dependsOnTags->declared($ro)?->addTo($ro);
-        foreach ($this->dependsOnTags->resourceParamSources($ro) as $source) {
+        foreach (($this->resourceParamSources)($ro) as $source) {
             $this->cacheDependency->depends($ro, $source);
         }
     }

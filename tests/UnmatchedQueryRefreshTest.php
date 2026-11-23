@@ -16,11 +16,8 @@ use Ray\Di\Injector;
 /**
  * onPost on a #[Cacheable] class whose parameters miss onGet's required ones (#219)
  *
- * #214 bound `CommandInterceptor` to `onPost` too, so `RefreshSameCommand`'s automatic
- * same-URI refresh now runs on every write - including a create whose parameters do not
- * cover `onGet`'s required ones. `MatchQuery` throws `UnmatchedQuery` for that case; before
- * this fix nothing caught it, so the write itself failed instead of just skipping a refresh
- * it cannot perform.
+ * A create whose parameters do not cover `onGet`'s required ones has no own entry to refresh:
+ * `MatchQuery` throws `UnmatchedQuery`, and the write records the skip and still runs its `#[Purge]`.
  */
 class UnmatchedQueryRefreshTest extends TestCase
 {
@@ -68,7 +65,7 @@ class UnmatchedQueryRefreshTest extends TestCase
 
         $this->resource->post('app://self/mismatched-writer', ['title' => 'new']);
 
-        $this->assertNull($this->repository->get($dest), 'CommandsProvider runs RefreshAnnotatedCommand next - the skip must not stop it');
+        $this->assertNull($this->repository->get($dest), 'the skip does not stop the declared #[Purge]');
     }
 
     public function testTheSkipIsRecordedAsACacheError(): void
@@ -95,6 +92,6 @@ class UnmatchedQueryRefreshTest extends TestCase
         } catch (UnmatchedQuery) {
         }
 
-        $this->assertInstanceOf(ResourceState::class, $this->repository->get($dest), 'RefreshSameCommand throws first, so #[Purge] does not run');
+        $this->assertInstanceOf(ResourceState::class, $this->repository->get($dest), 'the PUT failed before its #[Purge] ran');
     }
 }

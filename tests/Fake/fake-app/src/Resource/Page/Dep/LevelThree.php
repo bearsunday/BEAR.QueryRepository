@@ -16,11 +16,8 @@ class LevelThree extends ResourceObject
         return $this;
     }
 
-    // A write busts this leaf's cache — RefreshSameCommand purges the written resource
-    // itself and re-runs onGet to refresh it, and the surrogate-key cascade invalidates
-    // its dependents (level-two, level-one). That is the command-driven invalidation
-    // demonstrated in demo/run-dependency.php; a #[Purge] aimed at this same URI would
-    // only run after that refresh and delete the entry it had just repopulated.
+    // A write purges this leaf's own key and re-runs onGet to refresh it, and the surrogate-key
+    // cascade invalidates its dependents (level-two, level-one), as demo/run-dependency.php shows.
     public function onPut()
     {
         return $this;

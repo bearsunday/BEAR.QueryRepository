@@ -14,6 +14,7 @@ use BEAR\QueryRepository\Log\LogFileWriter;
 use BEAR\QueryRepository\Log\LogStreamWriter;
 use BEAR\QueryRepository\Log\LogWriterInterface;
 use BEAR\QueryRepository\Log\PolicyLogWriter;
+use BEAR\QueryRepository\Log\ProcessSession;
 use BEAR\QueryRepository\Log\PsrLogWriter;
 use BEAR\QueryRepository\Log\RetentionPolicyInterface;
 use BEAR\QueryRepository\Log\SafeSemanticLogger;
@@ -57,7 +58,7 @@ class LogWriterTest extends TestCase
     {
         $this->dir = sys_get_temp_dir() . '/qr-writer-test-' . bin2hex(random_bytes(6));
         $this->file = $this->dir . '/log.jsonl';
-        $this->logger = new SafeSemanticLogger();
+        $this->logger = new SafeSemanticLogger(null, new ProcessSession());
         $this->clean();
     }
 
@@ -250,7 +251,7 @@ class LogWriterTest extends TestCase
 
     private function commandSession(): LogJson
     {
-        $open = $this->logger->open(new CommandContext('onPut', [], 'CommandInterceptor'));
+        $open = $this->logger->open(new CommandContext('onPut', []));
         $this->logger->close(new CommandResultContext(200), $open);
 
         return $this->logger->flush();

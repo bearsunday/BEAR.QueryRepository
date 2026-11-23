@@ -120,7 +120,7 @@ class QueryVariantPurgeTest extends TestCase
         $this->assertNotSame($page2, (string) $this->resource->get('page://self/paged-list?page=2'));
     }
 
-    /** PagedList::onPost has no #[Purge]/#[Refresh], so DonutCommandInterceptor's auto-purge is the only
+    /** PagedList::onPost has no #[Purge]/#[Refresh], so the purge of its own key is the only
      *  invalidation: a write to `?page=2` reaches every page variant. */
     public function testDonutAutoPurgeFromWriteUriCarryingDefaultedParamReachesOtherVariants(): void
     {
@@ -136,7 +136,7 @@ class QueryVariantPurgeTest extends TestCase
     }
 
     /** Same for a plain #[Cacheable] value resource: PagedValue::onPut has no #[Purge]/#[Refresh], so
-     *  RefreshSameCommand's auto-purge is the only invalidation. */
+     *  the purge of its own key is the only invalidation. */
     public function testValueAutoPurgeFromWriteUriCarryingDefaultedParamReachesOtherVariants(): void
     {
         $bare = $this->time('app://self/paged-value');
@@ -272,7 +272,7 @@ class QueryVariantPurgeTest extends TestCase
         $roPool = (new ReflectionProperty($this->storage, 'roPool'))->getValue($this->storage);
         assert($roPool instanceof TagAwareAdapterInterface);
         $dependent = $roPool->getItem('dependent-on-bare');
-        $dependent->set(true)->tag((new UriTag())(new Uri('app://self/paged-error-on-bare')));
+        $dependent->set(true)->tag((new UriTag(new CacheIdentityFactory(new GlobalServerContext())))(new Uri('app://self/paged-error-on-bare')));
         $this->assertTrue($roPool->save($dependent), 'precondition: dependent entry stored');
 
         PagedErrorOnBare::$fail = true;

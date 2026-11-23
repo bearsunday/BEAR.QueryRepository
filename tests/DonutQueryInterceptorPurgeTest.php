@@ -7,7 +7,9 @@ namespace BEAR\QueryRepository;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
+use BEAR\Sunday\Provide\Transfer\ConditionalResponse;
 use FakeVendor\HelloWorld\Resource\Page\Html\MutableComment;
+use Koriym\SemanticLogger\NullSemanticLogger;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Madapaja\TwigModule\TwigModule;
 use PHPUnit\Framework\TestCase;
@@ -112,7 +114,7 @@ class DonutQueryInterceptorPurgeTest extends TestCase
         // conditional request into a full 200 for content it already holds.
         $this->assertSame($etag, $ro2->headers[Header::ETAG]);
         $this->assertTrue(
-            (new HttpCache($this->storage))->isNotModified([Header::HTTP_IF_NONE_MATCH => $etag]),
+            (new HttpCache(new ConditionalRequest($this->storage, new NullSemanticLogger(), new CacheFailure(new NullSemanticLogger()), new ConditionalResponse())))->isNotModified([Header::HTTP_IF_NONE_MATCH => $etag]),
             'the pre-refresh validator still matches the stored ETag (304)',
         );
     }

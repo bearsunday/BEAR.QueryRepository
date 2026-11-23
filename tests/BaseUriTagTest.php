@@ -38,7 +38,7 @@ class BaseUriTagTest extends TestCase
             }
         };
         $ro->uri = new Uri('app://self/item?id=1&page=2');
-        $uriTag = new UriTag();
+        $uriTag = new UriTag(new CacheIdentityFactory(new GlobalServerContext()));
 
         set_error_handler(static function (int $errno, string $errstr): never {
             throw new ErrorException($errstr, 0, $errno);
@@ -65,6 +65,6 @@ class BaseUriTagTest extends TestCase
         $ro->uri = new Uri('app://self/item');
         $ro->uri->query = ['id' => new FakeStringableId('a'), 'page' => 2];
 
-        $this->assertSame('grp-_item_id=a', (new BaseUriTag(new UriTag(), $this->injector->getInstance(CacheIdentityFactory::class)))($ro));
+        $this->assertSame('grp-_item_id=a', (new BaseUriTag(new UriTag(new CacheIdentityFactory(new GlobalServerContext())), $this->injector->getInstance(CacheIdentityFactory::class)))($ro));
     }
 }

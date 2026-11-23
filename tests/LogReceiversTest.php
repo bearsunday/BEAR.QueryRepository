@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Log\ConcurrentRuntimeInterface;
 use BEAR\QueryRepository\Log\Context\CacheHitContext;
 use BEAR\QueryRepository\Log\Context\GetContext;
+use BEAR\QueryRepository\Log\HostRuntime;
 use BEAR\QueryRepository\Log\LogFileWriter;
 use BEAR\QueryRepository\Log\LogSinkInterface;
 use BEAR\QueryRepository\Log\LogWriterInterface;
+use BEAR\QueryRepository\Log\ProcessSession;
 use BEAR\QueryRepository\Log\SafeSemanticLogger;
 use BEAR\QueryRepository\Log\ShutdownFlush;
 use BEAR\QueryRepository\Log\ShutdownFlushProvider;
@@ -188,6 +191,7 @@ final class LogReceiversTest extends TestCase
             {
                 $this->bind(LogWriterInterface::class)->to(FakePrimaryWriter::class);
                 $this->bind(LogSinkInterface::class)->to(ShutdownFlush::class);
+                $this->bind(ConcurrentRuntimeInterface::class)->to(HostRuntime::class);
             }
         };
         $sink = (new Injector($module, __DIR__ . '/tmp'))->getInstance(LogSinkInterface::class);
@@ -222,6 +226,7 @@ final class LogReceiversTest extends TestCase
             {
                 $this->bind(LogWriterInterface::class)->to(FakePrimaryWriter::class);
                 $this->bind(ShutdownFlush::class)->toProvider(ShutdownFlushProvider::class)->in(Scope::SINGLETON);
+                $this->bind(ConcurrentRuntimeInterface::class)->to(HostRuntime::class);
                 $binder = MultiBinder::newInstance($this, LogWriterInterface::class);
                 foreach ($this->receivers as $receiver) {
                     $binder->addBinding()->to($receiver);
@@ -257,7 +262,7 @@ final class LogReceiversTest extends TestCase
     /** A healthy read: the production retention policy drops it */
     private function session(): SafeSemanticLogger
     {
-        $logger = new SafeSemanticLogger();
+        $logger = new SafeSemanticLogger(null, new ProcessSession());
         $logger->close(new CacheHitContext('view'), $logger->open(new GetContext('page://self/receivers')));
 
         return $logger;

@@ -7,7 +7,7 @@ namespace FakeVendor\HelloWorld\Resource\App;
 use BEAR\RepositoryModule\Annotation\CacheableResponse;
 use BEAR\Resource\ResourceObject;
 
-/** UserPosts on the donut path (DonutCommandInterceptor) */
+/** UserPosts on the donut path */
 #[CacheableResponse]
 class UserPostsResponse extends ResourceObject
 {

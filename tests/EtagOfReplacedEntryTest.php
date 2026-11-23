@@ -6,7 +6,9 @@ namespace BEAR\QueryRepository;
 
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\Uri;
+use BEAR\Sunday\Provide\Transfer\ConditionalResponse;
 use FakeVendor\HelloWorld\Resource\Page\Index;
+use Koriym\SemanticLogger\NullSemanticLogger;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\AbstractModule;
@@ -104,7 +106,7 @@ class EtagOfReplacedEntryTest extends TestCase
 
     private function assertNotModified(ResourceStorage $storage, AbstractUri $uri, string $ifNoneMatch, bool $expected): void
     {
-        $httpCache = new HttpCache($storage);
+        $httpCache = new HttpCache(new ConditionalRequest($storage, new NullSemanticLogger(), new CacheFailure(new NullSemanticLogger()), new ConditionalResponse()));
         $server = [Header::HTTP_IF_NONE_MATCH => $ifNoneMatch];
         $this->assertSame($expected, $httpCache->isNotModifiedFor($uri, $server), 'isNotModifiedFor ' . $ifNoneMatch);
         $this->assertSame($expected, $httpCache->isNotModified($server), 'isNotModified ' . $ifNoneMatch);
