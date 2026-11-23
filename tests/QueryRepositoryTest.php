@@ -115,19 +115,26 @@ class QueryRepositoryTest extends TestCase
         $this->assertTrue($result);
     }
 
-    public function testPastExpiryAtIsClampedToZeroTtl(): void
+    public function testAPastExpiryAtIsNotStoredAndDropsTheEntryItReplaces(): void
     {
-        // A past expiryAt leaves no lifetime to set: the TTL is 0, which the storage stores
-        // as "no expiry" rather than going negative (the save_* schemas declare "minimum": 0).
-        $ro = new ControlExpiry();
-        $ro->uri = new Uri('app://self/control-expiry');
-        $ro->body = ['expiry_at' => '2000-01-01 00:00:00'];
-        $this->repository->put($ro);
-        $tree = $this->flushAndValidate($this->logger);
+        $uri = new Uri('app://self/control-expiry');
+        $stored = new ControlExpiry();
+        $stored->uri = $uri;
+        $stored->body = ['expiry_at' => '+30 sec'];
+        $this->assertTrue($this->repository->put($stored));
 
-        $saveValue = self::eventContextJsonOf($tree, 'save_value');
-        $this->assertNotNull($saveValue);
-        $this->assertStringContainsString('"requestedTtl":0', $saveValue);
+        $ro = new ControlExpiry();
+        $ro->uri = $uri;
+        $ro->body = ['expiry_at' => '2000-01-01 00:00:00'];
+        $ro->headers[Header::SURROGATE_KEY] = 'k';
+
+        $this->assertFalse($this->repository->put($ro));
+        $this->assertNull($this->repository->get($uri));
+        $this->assertSame('no-store', $ro->headers['Cache-Control']);
+        $this->assertArrayNotHasKey(Header::SURROGATE_KEY, $ro->headers);
+        $putSkipped = self::eventContextJsonOf($this->flushAndValidate($this->logger), 'put_skipped');
+        $this->assertNotNull($putSkipped);
+        $this->assertStringContainsString('"reason":"expired"', $putSkipped);
     }
 
     public function testPutResquestEmbeddedResoureView(): void

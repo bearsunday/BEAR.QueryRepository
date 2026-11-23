@@ -2327,6 +2327,7 @@ get uri=app://self/value
 Schema validation: OK (8 entries)
 K1 GET a marked #[Cacheable] value -> Cache-Control: private, put_skipped(unstorable)
 K2 GET a marked #[CacheableResponse] donut -> Cache-Control: private, CDN-Cache-Control: (none), put_skipped(unstorable)
+K3 GET a #[Cacheable] value whose expiryAt has passed -> Cache-Control: no-store, put_skipped(expired)
 
 === Cache Log Tree — K. unstorable response ===
 get uri=app://self/unstorable-value
@@ -2339,6 +2340,10 @@ get uri=page://self/html/unstorable-donut
 ├── cdn_headers uri=page://self/html/unstorable-donut [event]
 ├── put_skipped uri=page://self/html/unstorable-donut reason=unstorable [event]
 └── cache_miss layer=donut-view durationMs=[volatile]
+get uri=app://self/past-expiry
+├── cache_policy uri=app://self/past-expiry expiryAt=expiry_at [event]
+├── put_skipped uri=app://self/past-expiry reason=expired [event]
+└── cache_miss layer=resource durationMs=[volatile]
 
 === Cache Log JSON — K. unstorable response ===
 {
@@ -2442,7 +2447,48 @@ get uri=page://self/html/unstorable-donut
                     "durationMs": 0
                 }
             }
+        },
+        {
+            "id": "get_3",
+            "type": "get",
+            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/get.json",
+            "context": {
+                "uri": "app://self/past-expiry"
+            },
+            "log": [
+                {
+                    "id": "cache_policy_2",
+                    "type": "cache_policy",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_policy.json",
+                    "context": {
+                        "uri": "app://self/past-expiry",
+                        "expiry": null,
+                        "expirySecond": null,
+                        "expiryAt": "expiry_at",
+                        "resolvedTtl": 0
+                    }
+                },
+                {
+                    "id": "put_skipped_3",
+                    "type": "put_skipped",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/put_skipped.json",
+                    "context": {
+                        "uri": "app://self/past-expiry",
+                        "reason": "expired",
+                        "code": null
+                    }
+                }
+            ],
+            "close": {
+                "id": "cache_miss_4",
+                "type": "cache_miss",
+                "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
+                "context": {
+                    "layer": "resource",
+                    "durationMs": 0
+                }
+            }
         }
     ]
 }
-Schema validation: OK (10 entries)
+Schema validation: OK (14 entries)

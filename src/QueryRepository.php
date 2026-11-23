@@ -89,6 +89,10 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         }
 
         $ttl = $this->lifetime($ro, $cacheable);
+        $expired = $cacheable instanceof Cacheable && $cacheable->expiryAt !== '' && $ttl === 0;
+        if ($expired) {
+            $this->headerSetter->noStore($ro);
+        }
 
         $storability = $this->declaredCacheControl->storability($ro);
         if ($storability !== Storability::Unstorable) {
@@ -100,7 +104,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         $ofRendering = $storesView || $storability === Storability::Unstorable ? [] : $this->renderValue($ro, $httpCache);
         try {
             $this->headerSetter->entry($ro, $storability, $this->clientCacheControl($cacheable, $ttl), $httpCache);
-            if (! $this->replacedEntry->entry($ro, $storability)) {
+            if (! $this->replacedEntry->entry($ro, $storability, $expired ? 'expired' : 'unstorable')) {
                 return false;
             }
 
@@ -271,7 +275,6 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         /** @var string $expiryAt */
         $expiryAt = $ro->body[$cacheable->expiryAt];
 
-        // A past expiryAt yields no lifetime to set, which the storage stores as "no expiry"
         return max(0, (int) strtotime($expiryAt) - time());
     }
 }

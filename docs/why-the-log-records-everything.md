@@ -55,8 +55,8 @@ is a fact about the domain, not a fault of the design.
 didn't. A store records its `saved` outcome — a pool that rejects a write no
 longer looks like a successful save. A miss not followed by a put emits
 `put_skipped` with the reason (`etag-present`, `error-code` with the actual
-response code, `not-cacheable`, or `unstorable` for a response marked unstorable
-for this request) — an absent save is a recorded decision, not a mystery, and
+response code, `not-cacheable`, `unstorable` for a response marked unstorable
+for this request, or `expired` for an `expiryAt` already past) — an absent save is a recorded decision, not a mystery, and
 none of those reasons keep a session on their own: the retention policy treats
 them as rules, stable for as long as the code is. A body a stored entry cannot
 hold (`serialize()` refusing a closure, say) fails the request instead of

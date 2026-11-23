@@ -39,8 +39,8 @@ class ReplacedEntryTest extends TestCase
         $this->storage->invalidateTags([(new UriTag())($ro->uri)]);
         $this->logger->flush();
 
-        $this->assertTrue($this->replacedEntry->entry($ro, Storability::Shared));
-        $this->assertFalse($this->replacedEntry->entry($ro, Storability::Unstorable));
+        $this->assertTrue($this->replacedEntry->entry($ro, Storability::Shared, 'unstorable'));
+        $this->assertFalse($this->replacedEntry->entry($ro, Storability::Unstorable, 'unstorable'));
 
         $this->assertSame(['put_skipped'], self::collectTypes($this->flushAndValidate($this->logger)));
     }
@@ -63,7 +63,7 @@ class ReplacedEntryTest extends TestCase
         $ro = $this->resource->get('page://self/html/donut-cache-with-material');
         $this->logger->flush();
 
-        $this->assertTrue($this->replacedEntry->entry($ro, Storability::Shared));
+        $this->assertTrue($this->replacedEntry->entry($ro, Storability::Shared, 'unstorable'));
 
         $this->assertSame([], self::collectTypes($this->flushAndValidate($this->logger)));
         $this->assertNotNull($this->storage->getDonut($ro->uri));

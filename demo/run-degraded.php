@@ -34,7 +34,9 @@ declare(strict_types=1);
  *   J. Store unreachable (PSR-3) .. pool_error{read,write}, request still served live
  *   K. Unstorable response ....... put_skipped{reason: unstorable}, Cache-Control:
  *                                  private, no-store on both a #[Cacheable] value and
- *                                  a #[CacheableResponse] donut, no CDN-Cache-Control
+ *                                  a #[CacheableResponse] donut, no CDN-Cache-Control;
+ *                                  put_skipped{reason: expired} and no-store for a
+ *                                  #[Cacheable] expiryAt already past
  *
  * Together with the other three demos this reaches every context type, every
  * schema enum value and every command producer the package can emit.
@@ -479,5 +481,8 @@ echo sprintf(
     $donutRo->headers['Cache-Control'] ?? '(none)',
     $donutRo->headers['CDN-Cache-Control'] ?? '(none)',
 ) . PHP_EOL;
+
+$expiredRo = $resource->get('app://self/past-expiry');
+echo sprintf('K3 GET a #[Cacheable] value whose expiryAt has passed -> Cache-Control: %s, put_skipped(expired)', $expiredRo->headers['Cache-Control'] ?? '(none)') . PHP_EOL;
 
 $report($logger->flush(), 'K. unstorable response');

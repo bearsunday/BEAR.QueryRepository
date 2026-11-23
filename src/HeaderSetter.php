@@ -102,6 +102,12 @@ final readonly class HeaderSetter
         }
     }
 
+    /** Make the response one no cache may keep */
+    public function noStore(ResourceObject $ro): void
+    {
+        $ro->headers[Header::findKey($ro->headers, Header::CACHE_CONTROL) ?? Header::CACHE_CONTROL] = 'no-store';
+    }
+
     /** The max-age directive for a lifetime, none when there is no lifetime to give */
     public function maxAge(int|null $seconds): string|null
     {
