@@ -23,8 +23,8 @@ use function array_merge;
 use function method_exists;
 
 /**
- * After a write that answers below 400: purges the resource's own key and every URI its #[Purge]/#[Refresh] name, then
- * reads its own URI again where the write stores it, then each #[Refresh] URI
+ * After a write that answers below 400: purges the resource's own key, every URI its #[Purge]/#[Refresh] name and each
+ * #[Link(rel: 'collection')] of its onGet(), then reads its own URI again where the write stores it, then each #[Refresh] URI
  *
  * @see https://bearsunday.github.io/manuals/1.0/en/cache.html#tag-based-cache-invalidation
  * @internal

@@ -123,6 +123,41 @@ A purge also reaches the query variants of the URI it names that differ from it 
 - A required key keeps the spelling the request used. A purge reaches a GET's entries only when it spells each required key the same way: `?user_id=1` reaches `?user_id=1&page=2`, `?userId=1` does not. The automatic purge after a write purges two spellings: every required key as the parameter name (`userId`), and every one in snake_case (`user_id`). A GET that mixes the two across its required keys (`?userId=1&post_id=2`) is not reached.
 - A non-200 GET response invalidates only its own URI's tag; cached variants stay.
 
+### #[Link(rel: 'collection')]
+
+A row names the collection it belongs to with BEAR.Resource's `#[Link(rel: 'collection')]` on its `onGet()` (RFC 6573). A write to the row that answers below 400 purges the collection's URI together with the row's own key, so an update or a delete reaches the list without the list declaring its rows.
+
+```php
+use BEAR\Resource\Annotation\Link;
+
+#[Cacheable]
+class Article extends ResourceObject
+{
+    #[Link(rel: 'collection', href: 'app://self/articles')]
+    public function onGet(int $id): static { ... }
+
+    public function onPut(int $id, string $title): static { ... }
+
+    public function onDelete(int $id): static { ... }
+}
+```
+
+- The purge reaches every variant of the collection that differs only in default-valued parameters (see Purging query variants): with `onGet(?int $authorId = null, int $page = 1)`, purging `app://self/articles` drops `?page=2` and `?author_id=7`. A list keyed by a required parameter, such as one author's articles, is another group: name it with `#[Purge]` on the write.
+- The href expands as a `#[Purge]` template does, from the body the write returns, then from its query. An href that does not expand to a resource URI, such as a path-only one, and a `#[Link]` of another rel purge nothing.
+- Which side declares the relation: when the list knows its rows and their number is bounded, declare `#[DependsOn]` on the list; when the row knows its list and the rows are unbounded, declare `#[Link(rel: 'collection')]` on the row. The collection link keeps the list to its own key.
+- A write that moves a row from one list to another names both lists with `#[Purge]`. The old value comes from the body the write returns, under a name other than the argument's, as the body is read before the query:
+
+```php
+#[Purge(uri: 'app://self/author/articles?author_id={old_author_id}')]
+#[Purge(uri: 'app://self/author/articles?author_id={author_id}')]
+public function onPatch(int $id, int $authorId): static
+{
+    $this->body['old_author_id'] = $this->query->authorOf($id);
+    // update
+    return $this;
+}
+```
+
 ### #[DependsOn]
 
 Declares a dependency that only the data reveals when it is read: a list depends on `article?id=1` and `article?id=2` because the rows it read name them. It tags the stored resource with each URI the template expands to, so a write to that URI invalidates it and every page that embeds it, without an `#[Embed]` per row.

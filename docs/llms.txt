@@ -11,6 +11,7 @@ BEAR.QueryRepository separates query (read) and command (write) operations to op
 - **Refresh/Purge**: Invalidate dependent caches after commands with `#[Refresh]` or `#[Purge]`
 - **Donut Caching**: Combine static outer shell with dynamic inner content
 - **DependsOn**: Tag a resource with the URIs its rows name with `#[DependsOn(uri: 'app://self/article?id={id}', key: 'articles')]`, read from the body its `onGet()` returns, then from its arguments, without embedding each one
+- **Collection link**: A row names its list with `#[Link(rel: 'collection', href: 'app://self/articles')]` on its `onGet()`; a write to the row purges the list and its variants that differ only in default-valued parameters
 
 ## Quick Start
 
