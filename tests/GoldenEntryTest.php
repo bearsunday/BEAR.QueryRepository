@@ -95,7 +95,7 @@ class GoldenEntryTest extends TestCase
                 'app://self/etag?updatedAt=x',
                 ['ro-_etag_updatedAt=x' => ['_etag_updatedAt=x', 'grp-_etag_']],
                 ['_etag_updatedAt=x' => ['grp-_etag_', '_etag_updatedAt=x']],
-                [Header::CACHE_CONTROL => ', max-age=0', Header::ETAG => self::ETAG, Header::LAST_MODIFIED => self::LAST_MODIFIED],
+                [Header::CACHE_CONTROL => 'max-age=0', Header::ETAG => self::ETAG, Header::LAST_MODIFIED => self::LAST_MODIFIED],
             ],
             '#[Cacheable] with #[DependsOn]' => [
                 'app://self/rows/ca?channelId=c1',
@@ -223,11 +223,11 @@ class GoldenEntryTest extends TestCase
         $this->assertSame([
             Header::SURROGATE_KEY => 'blog-posting-page _html_blog-posting_ grp-_html_blog-posting_ _html_comment_ grp-_html_comment_ comment01',
             'Content-Type' => 'text/html; charset=utf-8',
+            Header::CDN_CACHE_CONTROL => 'max-age=10, stale-while-revalidate=10',
             Header::ETAG => self::ETAG,
             Header::LAST_MODIFIED => self::LAST_MODIFIED,
             Header::CACHE_CONTROL => 'max-age=0',
-            Header::CDN_CACHE_CONTROL => 'max-age=10, stale-while-revalidate=10',
-        ], self::masked($recomposed->headers), 'the same headers, CDN-Cache-Control last');
+        ], self::masked($recomposed->headers), 'the same headers, in the order of the first write');
 
         $storage->invalidateTags(['_html_comment_']);
         $this->assertSame(['donut-_html_blog-posting_'], array_keys($app->roEntries()), 'a second purge reaches the recomposed view');

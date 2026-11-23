@@ -10,6 +10,7 @@ use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
 use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
+use FakeVendor\HelloWorld\Resource\App\CacheablePrivateWithCdnHeaders;
 use Fastly\Api\PurgeApi;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Madapaja\TwigModule\TwigModule;
@@ -140,6 +141,9 @@ class CdnCacheControlHeaderTest extends TestCase
         $this->assertFalse($storage->hasEtag($etag1), 'the ETag issued by doPutStatic goes with its page state');
 
         $ro2 = $resource->get((string) $uri);
+        $this->assertSame('max-age=31536000', $ro2->headers['Akamai-Cache-Control'], 'refreshDonut hands Akamai the same lifetime');
+        $this->assertSame($ro1->headers['Edge-Cache-Tag'], $ro2->headers['Edge-Cache-Tag'], 'refreshDonut moves the same keys to Edge-Cache-Tag');
+        $this->assertArrayNotHasKey(Header::SURROGATE_KEY, $ro2->headers);
         $etag2 = $ro2->headers[Header::ETAG];
         $storage->invalidateTags([$commentTag]);
         $this->assertNull($queryRepository->get($uri), 'the page state rewritten by refreshDonut stays tagged by the embedded comment');
@@ -255,6 +259,35 @@ class CdnCacheControlHeaderTest extends TestCase
         $this->assertContains('refresh_donut', self::collectTypes($this->flushAndValidate($logger)));
         $this->assertSame($cacheControl, $refreshed->headers[Header::CACHE_CONTROL]);
         $this->assertNoCdnLifetime($refreshed->headers);
+    }
+
+    public function testDeclaredPrivateValueGetsNoCdnLifetimeOnWriteOrHit(): void
+    {
+        $resource = (new Injector($this->getModule(), __DIR__ . '/tmp'))->getInstance(ResourceInterface::class);
+        CacheablePrivateWithCdnHeaders::$calls = 0;
+
+        $first = $resource->get('app://self/cacheable-private-with-cdn-headers');
+        $this->assertSame('private, max-age=10', $first->headers[Header::CACHE_CONTROL]);
+        $this->assertNoCdnLifetime($first->headers);
+
+        $hit = $resource->get('app://self/cacheable-private-with-cdn-headers');
+        $this->assertSame(1, CacheablePrivateWithCdnHeaders::$calls, 'served from the entry');
+        $this->assertNoCdnLifetime($hit->headers);
+    }
+
+    public function testDeclaredPrivateDonutGetsNoCdnLifetimeOnWriteOrRecomposition(): void
+    {
+        $resource = (new Injector($this->getModule(), __DIR__ . '/tmp'))->getInstance(ResourceInterface::class);
+
+        $first = $resource->get('page://self/html/donut-cache-private-with-cdn-headers');
+        $this->assertSame('private', $first->headers[Header::CACHE_CONTROL]);
+        $this->assertNoCdnLifetime($first->headers);
+        $this->assertArrayHasKey(Header::SURROGATE_KEY, $first->headers, 'the purge keys stay');
+
+        $recomposed = $resource->get('page://self/html/donut-cache-private-with-cdn-headers');
+        $this->assertSame('private', $recomposed->headers[Header::CACHE_CONTROL]);
+        $this->assertNoCdnLifetime($recomposed->headers);
+        $this->assertSame($first->headers[Header::SURROGATE_KEY], $recomposed->headers[Header::SURROGATE_KEY]);
     }
 
     /** @param array<string, string> $headers */

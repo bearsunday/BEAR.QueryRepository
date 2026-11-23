@@ -9,6 +9,7 @@ use BEAR\RepositoryModule\Annotation\NoHttpCache;
 use BEAR\Resource\ResourceObject;
 use ReflectionClass;
 
+use function array_key_exists;
 use function str_contains;
 use function strtolower;
 
@@ -16,59 +17,76 @@ use function strtolower;
  * The Cache-Control value `#[HttpCache]`/`#[NoHttpCache]` declares for a resource, and whether
  * a response's own code overrode it to something unstorable
  *
- * A declared value is exempt from `reason()`'s check - it is the attribute's own
+ * A declared value is exempt from `storability()`'s check - it is the attribute's own
  * client-facing directive, not a per-request value. A runtime `private`/`no-store` outside
  * that declared value is refused, since this package is a shared cache: whatever it stores
  * is served to every later visitor.
  *
  * @internal
  */
-final readonly class DeclaredCacheControl
+final class DeclaredCacheControl
 {
-    private const REASON = 'unstorable';
+    /** @var array<class-string, HttpCache|NoHttpCache|null> */
+    private array $declared = [];
+
+    /** Decide for a response as the resource and its renderer returned it, before the write adds its own headers */
+    public function storability(ResourceObject $ro): Storability
+    {
+        $declaredValue = $this->cacheControl($ro);
+        foreach ($ro->headers as $name => $cacheControl) {
+            if (strtolower($name) !== strtolower(Header::CACHE_CONTROL) || $cacheControl === $declaredValue) {
+                continue;
+            }
+
+            $lower = strtolower($cacheControl);
+            if (str_contains($lower, 'no-store') || str_contains($lower, 'private')) {
+                return Storability::Unstorable;
+            }
+        }
+
+        return $this->declaredStorability($this->attribute($ro));
+    }
+
+    /** Decide for a response rebuilt from a stored entry, by the declaration alone */
+    public function stored(ResourceObject $ro): Storability
+    {
+        return $this->declaredStorability($this->attribute($ro));
+    }
+
+    /** The Cache-Control value the attribute declares, as HttpCacheInterceptor writes it */
+    public function cacheControl(ResourceObject $ro): string|null
+    {
+        $declared = $this->attribute($ro);
+
+        return $declared === null ? null : (string) $declared;
+    }
+
+    public function httpCache(ResourceObject $ro): HttpCache|null
+    {
+        $declared = $this->attribute($ro);
+
+        return $declared instanceof HttpCache ? $declared : null;
+    }
+
+    private function declaredStorability(HttpCache|NoHttpCache|null $declared): Storability
+    {
+        $isPrivate = $declared instanceof NoHttpCache || ($declared instanceof HttpCache && $declared->isPrivate);
+
+        return $isPrivate ? Storability::DeclaredPrivate : Storability::Shared;
+    }
 
     private function attribute(ResourceObject $ro): HttpCache|NoHttpCache|null
     {
+        if (array_key_exists($ro::class, $this->declared)) {
+            return $this->declared[$ro::class];
+        }
+
         $class = new ReflectionClass($ro);
         $attributes = $class->getAttributes(HttpCache::class);
         if ($attributes === []) {
             $attributes = $class->getAttributes(NoHttpCache::class);
         }
 
-        return isset($attributes[0]) ? $attributes[0]->newInstance() : null;
-    }
-
-    /**
-     * Declared for one visitor, by #[HttpCache(isPrivate: true)] or #[NoHttpCache]: a CDN must not be given a lifetime
-     * for it, as CDN-Cache-Control makes the CDN ignore Cache-Control, no-store included (RFC 9213 §2.2)
-     */
-    public function isPrivate(ResourceObject $ro): bool
-    {
-        $declared = $this->attribute($ro);
-
-        return $declared instanceof NoHttpCache || ($declared instanceof HttpCache && $declared->isPrivate);
-    }
-
-    /**
-     * The reason this response must not be written to the shared cache, or null when storable
-     *
-     * @return 'unstorable'|null
-     */
-    public function reason(ResourceObject $ro): string|null
-    {
-        $declared = $this->attribute($ro);
-        $declared = $declared === null ? null : (string) $declared;
-        foreach ($ro->headers as $name => $cacheControl) {
-            if (strtolower($name) !== strtolower(Header::CACHE_CONTROL) || $cacheControl === $declared) {
-                continue;
-            }
-
-            $lower = strtolower($cacheControl);
-            if (str_contains($lower, 'no-store') || str_contains($lower, 'private')) {
-                return self::REASON;
-            }
-        }
-
-        return null;
+        return $this->declared[$ro::class] = isset($attributes[0]) ? $attributes[0]->newInstance() : null;
     }
 }

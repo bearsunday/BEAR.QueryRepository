@@ -100,6 +100,18 @@ class SemanticLogSchemaTest extends TestCase
         $this->assertSame(1, $invalidates, 'the replaced entry is cleaned up before its store');
     }
 
+    public function testUnstorableWriteDropsTheEntryItReplacesBeforeItSkips(): void
+    {
+        $ro = $this->resource->get('app://self/unstorable-value', ['unstorable' => false]);
+        $this->logger->flush();
+        $ro->headers[Header::CACHE_CONTROL] = 'private';
+        $this->assertFalse($this->repository->put($ro));
+        $tree = $this->flushAndValidate($this->logger);
+
+        $this->assertSame([['cache_policy', 'pre_write_cleanup', 'invalidate', 'put_skipped']], self::scopeEventTypeSequences($tree));
+        $this->assertNull($this->storage->get($ro->uri));
+    }
+
     public function testPurgeDrivenInvalidateCarriesNoCleanupMarker(): void
     {
         // User::onPut carries #[Purge] and #[Refresh]: each invalidate is a real invalidation,

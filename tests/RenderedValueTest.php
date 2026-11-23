@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\Cacheable;
+use BEAR\RepositoryModule\Annotation\HttpCache;
 use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\Module\HalModule;
+use BEAR\Resource\RenderInterface;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
+use Override;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\AbstractModule;
@@ -158,6 +161,31 @@ class RenderedValueTest extends TestCase
         $this->assertSame(FakeRewritingRenderer::VIEW, $ro->view);
         $this->assertSame([...self::RETURNED_HEADERS, ...FakeRewritingRenderer::HEADERS], self::unstamped($ro->headers));
         $this->assertSame(self::RETURNED_BODY, $ro->body);
+    }
+
+    public function testADeclaredPrivateResponseLosesTheCdnLifetimeItsRendererSet(): void
+    {
+        $ro = new #[Cacheable]
+        #[HttpCache(isPrivate: true, maxAge: 10)]
+        class extends ResourceObject {
+        };
+        $ro->uri = new Uri(self::URI);
+        $ro->headers = [Header::CACHE_CONTROL => 'private, max-age=10'];
+        $ro->body = self::RETURNED_BODY;
+        $ro->setRenderer(new class implements RenderInterface {
+            #[Override]
+            public function render(ResourceObject $ro): string
+            {
+                $ro->headers = [...$ro->headers, Header::CDN_CACHE_CONTROL => 'max-age=600', 'Content-Type' => 'text/x-rendered'];
+
+                return $ro->view = FakeRewritingRenderer::VIEW;
+            }
+        });
+
+        $this->assertTrue($this->injector()->getInstance(QueryRepositoryInterface::class)->put($ro));
+
+        $this->assertSame(['Content-Type' => 'text/x-rendered'], self::unstamped($ro->headers), 'the other headers of the rendering stay');
+        $this->assertSame('private, max-age=10', $ro->headers[Header::CACHE_CONTROL]);
     }
 
     private function injector(AbstractModule|null $override = null): Injector

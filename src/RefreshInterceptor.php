@@ -30,7 +30,7 @@ final readonly class RefreshInterceptor implements MethodInterceptor
 {
     public function __construct(
         private RefreshAnnotatedCommand $command,
-        private RefreshSameCommand $refreshSameCommand,
+        private CommandQuery $commandQuery,
         private MatchQueryInterface $matchQuery,
         private QueryRepositoryInterface $repository,
         private RefreshTemplateValidator $refreshTemplateValidator,
@@ -96,9 +96,9 @@ final readonly class RefreshInterceptor implements MethodInterceptor
         }
 
         try {
-            return $this->refreshSameCommand->ownUris($ro, ($this->matchQuery)($ro));
+            return $this->commandQuery->ownUris($ro, ($this->matchQuery)($ro));
         } catch (UnmatchedQuery) {
-            $this->logger->event(new PurgeSkippedContext($this->refreshSameCommand->withoutQuery($ro), PurgeSkippedContext::UNMATCHED_QUERY));
+            $this->logger->event(new PurgeSkippedContext($this->commandQuery->withoutQuery($ro), PurgeSkippedContext::UNMATCHED_QUERY));
 
             return [];
         }

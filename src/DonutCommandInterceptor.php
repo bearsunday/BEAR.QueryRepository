@@ -42,7 +42,7 @@ final readonly class DonutCommandInterceptor implements MethodInterceptor
                 $this->refreshSameCommand->command($invocation, $ro);
             } catch (UnmatchedQuery $e) {
                 // Thrown by a write the rebuilding GET made
-                $this->refreshSameCommand->skipUnmatched($invocation, $ro, $e);
+                $this->scope->skipUnmatched($invocation, $ro, $e);
             }
         });
 
