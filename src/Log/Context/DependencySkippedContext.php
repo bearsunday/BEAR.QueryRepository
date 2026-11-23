@@ -19,9 +19,6 @@ final class DependencySkippedContext extends AbstractContext
     public const SCHEMA_URL = 'https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/dependency_skipped.json';
     public const NO_BODY = 'no_body';
 
-    /** @deprecated No longer emitted: a child that has a body is a dependency, tagged or not */
-    public const NO_ETAG_OR_SURROGATE_KEY = 'no_etag_or_surrogate_key';
-
     public function __construct(
         public readonly string $parent,
         public readonly string $child,

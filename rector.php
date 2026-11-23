@@ -10,7 +10,6 @@ return RectorConfig::configure()
         __DIR__ . '/demo',
         __DIR__ . '/src',
         __DIR__ . '/src-annotation',
-        __DIR__ . '/src-annotation-deprecated',
         __DIR__ . '/tests',
         __DIR__ . '/tests-pecl-ext',
         __DIR__ . '/tests-php8',

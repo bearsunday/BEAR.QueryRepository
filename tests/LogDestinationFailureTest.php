@@ -6,9 +6,11 @@ namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Log\Context\CacheHitContext;
 use BEAR\QueryRepository\Log\Context\GetContext;
+use BEAR\QueryRepository\Log\HostRuntime;
 use BEAR\QueryRepository\Log\LogFileWriter;
 use BEAR\QueryRepository\Log\LogStreamWriter;
 use BEAR\QueryRepository\Log\LogWriterInterface;
+use BEAR\QueryRepository\Log\ProcessSession;
 use BEAR\QueryRepository\Log\SafeSemanticLogger;
 use BEAR\QueryRepository\Log\ShutdownFlush;
 use Koriym\SemanticLogger\LogJson;
@@ -54,7 +56,7 @@ class LogDestinationFailureTest extends TestCase
     {
         $this->dir = sys_get_temp_dir() . '/qr-failure-test-' . bin2hex(random_bytes(6));
         $this->errorLog = $this->dir . '.err';
-        $this->logger = new SafeSemanticLogger();
+        $this->logger = new SafeSemanticLogger(null, new ProcessSession());
         $this->logger->close(new CacheHitContext('view'), $this->logger->open(new GetContext('page://self/html/blog-posting')));
     }
 
@@ -94,7 +96,7 @@ class LogDestinationFailureTest extends TestCase
             {
                 throw new RuntimeException('the log volume is not mounted');
             }
-        });
+        }, new HostRuntime());
 
         $diagnostic = $this->diagnosticsOf(fn () => $sink->flush($this->logger));
 

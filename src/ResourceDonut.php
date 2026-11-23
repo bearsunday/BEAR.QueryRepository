@@ -45,40 +45,30 @@ final class ResourceDonut
         return sprintf(self::FORMAT, rawurlencode($reference));
     }
 
-    /** @var array<array-key, mixed>|null The body the page returned, each embedded request null, when its renderer prints no placeholder; null when the template holds the page */
-    private array|null $body = null;
-
-    /** @var array<array-key, string> toUri() of each request embedded in the body, by its key */
-    private array $embeds = [];
-
     /**
      * @param array<string, string>        $headers
+     * @param int|null                     $sMaxAge      CDN lifetime and stored lifetime of the page view; unused by a template-only donut
      * @param int|null                     $lastModified Time when the composed content last actually changed
      * @param list<string>                 $storageTags  Invalidation tags of the donut template entry
      * @param int                          $code         Status code the page was stored with
-     * @param array<array-key, mixed>|null $body
-     * @param array<array-key, string>     $embeds
+     * @param array<array-key, mixed>|null $body         The body the page returned, each embedded request null, when its renderer prints no placeholder; null when the template holds the page
+     * @param array<array-key, string>     $embeds       toUri() of each request embedded in the body, by its key
      *
      * @SuppressWarnings("PHPMD.ExcessiveParameterList")
      */
     public function __construct(
         private readonly string $template,
         private readonly array $headers,
-        /** @readonly */
-        public int|null $ttl,
-        /** @readonly */
-        public bool $isCacheble,
-        /** @readonly */
-        public int|null $lastModified = null,
+        public readonly int|null $sMaxAge,
+        public readonly bool $isPage,
+        private readonly int|null $lastModified = null,
         private readonly string|null $contentHash = null,
         private readonly int|null $templateExpiresAt = null,
         private readonly array $storageTags = [],
         private readonly int $code = 200,
-        array|null $body = null,
-        array $embeds = [],
+        private readonly array|null $body = null,
+        private readonly array $embeds = [],
     ) {
-        $this->body = $body;
-        $this->embeds = $embeds;
     }
 
     /** Answers the page again from what was stored. Whatever fails on the way degrades the hit to a fresh run of the page. */
@@ -191,8 +181,8 @@ final class ResourceDonut
         return new self(
             $this->template,
             $this->headers,
-            $this->ttl,
-            $this->isCacheble,
+            $this->sMaxAge,
+            $this->isPage,
             $lastModified,
             $this->hashContent((string) $ro->view),
             $this->templateExpiresAt,
@@ -213,8 +203,8 @@ final class ResourceDonut
         return new self(
             $this->template,
             $this->headers,
-            $this->ttl,
-            $this->isCacheble,
+            $this->sMaxAge,
+            $this->isPage,
             $this->lastModified,
             $this->contentHash,
             $ttl !== null && $ttl > 0 ? time() + $ttl : null,
@@ -248,7 +238,7 @@ final class ResourceDonut
      * Renders via `toString()`, not `(string) $ro`, which swallows a render failure into
      * an `E_USER_WARNING` and `''` - that would store an empty template for every later visitor.
      */
-    public static function create(ResourceObject $ro, DonutRendererInterface $storage, Dependencies $etags, int|null $ttl, bool $isCacheble): self
+    public static function create(ResourceObject $ro, DonutRendererInterface $storage, Dependencies $etags, int|null $sMaxAge, bool $isPage): self
     {
         // A resource with nothing to return leaves its body null - a 204 typically does, while
         // an #[Embed] would have made it an array - and a null body holds no embedded request
@@ -272,11 +262,11 @@ final class ResourceDonut
         $donutTemplate = $ro->toString();
         foreach ($embeds as $embed) {
             if ($embed->isEncoded && is_array($ro->body)) {
-                return self::ofBody($ro, $embeds, $etags, $ttl, $isCacheble);
+                return self::ofBody($ro, $embeds, $etags, $sMaxAge, $isPage);
             }
         }
 
-        return new self($donutTemplate, $ro->headers, $ttl, $isCacheble, code: $ro->code);
+        return new self($donutTemplate, $ro->headers, $sMaxAge, $isPage, code: $ro->code);
     }
 
     /**
@@ -285,7 +275,7 @@ final class ResourceDonut
      *
      * @param array<array-key, DonutRequest> $embeds
      */
-    private static function ofBody(ResourceObject $ro, array $embeds, Dependencies $etags, int|null $ttl, bool $isCacheble): self
+    private static function ofBody(ResourceObject $ro, array $embeds, Dependencies $etags, int|null $sMaxAge, bool $isPage): self
     {
         assert(is_array($ro->body));
         $body = $ro->body;
@@ -314,6 +304,6 @@ final class ResourceDonut
             $etags->hole($invoked[$key] ?? DonutRequest::resultOf($embed->request));
         }
 
-        return new self('', $ro->headers, $ttl, $isCacheble, code: $ro->code, body: $body, embeds: $references);
+        return new self('', $ro->headers, $sMaxAge, $isPage, code: $ro->code, body: $body, embeds: $references);
     }
 }

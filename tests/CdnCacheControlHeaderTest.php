@@ -123,13 +123,13 @@ class CdnCacheControlHeaderTest extends TestCase
         $storage = $injector->getInstance(ResourceStorageInterface::class);
         $queryRepository = $injector->getInstance(QueryRepositoryInterface::class);
         $uri = new Uri('page://self/html/blog-posting');
-        $commentTag = (new UriTag())(new Uri('page://self/html/comment'));
+        $commentTag = (new UriTag(new CacheIdentityFactory(new GlobalServerContext())))(new Uri('page://self/html/comment'));
 
         $ro1 = $resource->get((string) $uri);
         $etag1 = $ro1->headers[Header::ETAG];
         $storage->invalidateTags([$commentTag]);
         $this->assertNull($queryRepository->get($uri), 'the page state written by doPutStatic stays tagged by the embedded comment');
-        $this->assertFalse($storage->hasEtag($etag1), 'the ETag issued by doPutStatic goes with its page state');
+        $this->assertNull($storage->validatedEntry($etag1), 'the ETag issued by doPutStatic goes with its page state');
 
         $ro2 = $resource->get((string) $uri);
         $this->assertSame('max-age=31536000', $ro2->headers['Akamai-Cache-Control'], 'refreshDonut hands Akamai the same lifetime');
@@ -138,7 +138,7 @@ class CdnCacheControlHeaderTest extends TestCase
         $etag2 = $ro2->headers[Header::ETAG];
         $storage->invalidateTags([$commentTag]);
         $this->assertNull($queryRepository->get($uri), 'the page state rewritten by refreshDonut stays tagged by the embedded comment');
-        $this->assertFalse($storage->hasEtag($etag2), 'the ETag issued by refreshDonut goes with its page state');
+        $this->assertNull($storage->validatedEntry($etag2), 'the ETag issued by refreshDonut goes with its page state');
     }
 
     public function testNullCdnCacheControlModule(): void
@@ -199,7 +199,7 @@ class CdnCacheControlHeaderTest extends TestCase
     private function getModule(): AbstractModule
     {
         $namespace = 'FakeVendor\HelloWorld';
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance($namespace));
+        $module = ModuleFactory::getInstance($namespace);
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
 
         return $module;

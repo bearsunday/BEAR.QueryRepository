@@ -1,6 +1,5 @@
 # Exclude build/test files from archive.
 /tests                           export-ignore
-/tests-deprecated                export-ignore
 /tests-pecl-ext                  export-ignore
 /tests-php8                      export-ignore
 /demo                            export-ignore

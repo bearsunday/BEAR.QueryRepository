@@ -24,7 +24,7 @@ class ReplacedEntryTest extends TestCase
 
     protected function setUp(): void
     {
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
         $injector = new Injector($module, __DIR__ . '/tmp');
         $this->resource = $injector->getInstance(ResourceInterface::class);
@@ -36,7 +36,7 @@ class ReplacedEntryTest extends TestCase
     public function testAWriteIntoAnEmptySlotDropsNothing(): void
     {
         $ro = $this->resource->get('app://self/unstorable-value', ['unstorable' => false]);
-        $this->storage->invalidateTags([(new UriTag())($ro->uri)]);
+        $this->storage->invalidateTags([(new UriTag(new CacheIdentityFactory(new GlobalServerContext())))($ro->uri)]);
         $this->logger->flush();
 
         $this->assertTrue($this->replacedEntry->entry($ro, Storability::Shared));

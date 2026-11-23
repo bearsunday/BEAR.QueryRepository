@@ -34,44 +34,19 @@ use function substr_count;
 class WeavingMatrixTest extends TestCase
 {
     /**
-     * Every shape an application can write: the chain its write carries, and the scopes it opens
+     * Every shape an application can write; each write carries `CommandInterceptor` alone and opens one scope
      *
-     * The chain is the contract, order included - the defect this test exists for was a query
-     * interceptor sitting first, answering the write from the store. A write on a class that does
-     * not store its GET, with no attribute of its own, carries `RefreshInterceptor`: it purges the
-     * resource's own key, which whatever embedded the resource holds.
-     * `CRPurge` carries two interceptors with different jobs - `RefreshInterceptor` purges the URI
-     * the attribute names, `DonutCommandInterceptor` refreshes the resource - so two scopes are
-     * correct there and on `DCRefreshPurge`, which carries them in the same order: the query is
-     * matched before the named URI is purged. `CARefresh` shows `#[RefreshCache]` adding nothing to a
-     * `#[Cacheable]` class: `CommandInterceptor` already purges and regenerates, and weaving the
-     * donut command interceptor beside it did the same work twice.
+     * The defect this test exists for was a query interceptor sitting first, answering the write from the store.
      *
      * @return list<array{0: string, 1: string, 2: list<string>, 3: int}>
      */
     public static function writeProvider(): array
     {
-        $expected = [
-            'CANone' => [[CommandInterceptor::class], 1],
-            'CAPurge' => [[CommandInterceptor::class], 1],
-            'CARefresh' => [[CommandInterceptor::class], 1],
-            'CRNone' => [[DonutCommandInterceptor::class], 1],
-            'CRPurge' => [[RefreshInterceptor::class, DonutCommandInterceptor::class], 2],
-            'CRRefresh' => [[DonutCommandInterceptor::class], 1],
-            'CRBoth' => [[DonutCommandInterceptor::class], 1],
-            'MRNone' => [[RefreshInterceptor::class], 1],
-            'MRPurge' => [[RefreshInterceptor::class], 1],
-            'MRRefresh' => [[DonutCommandInterceptor::class], 1],
-            'DCNone' => [[RefreshInterceptor::class], 1],
-            'DCPurge' => [[RefreshInterceptor::class], 1],
-            'DCRefresh' => [[DonutCommandInterceptor::class], 1],
-            'DCRefreshPurge' => [[RefreshInterceptor::class, DonutCommandInterceptor::class], 2],
-            'DCMR' => [[RefreshInterceptor::class], 1],
-        ];
+        $shapes = ['CANone', 'CAPurge', 'CARefresh', 'CRNone', 'CRPurge', 'CRRefresh', 'CRBoth', 'MRNone', 'MRPurge', 'MRRefresh', 'DCNone', 'DCPurge', 'DCRefresh', 'DCRefreshPurge', 'DCMR'];
         $cases = [];
-        foreach ($expected as $shape => [$chain, $scopes]) {
+        foreach ($shapes as $shape) {
             foreach (['onPut', 'onPost', 'onPatch', 'onDelete'] as $method) {
-                $cases[] = [$shape, $method, $chain, $scopes];
+                $cases[] = [$shape, $method, [CommandInterceptor::class], 1];
             }
         }
 
@@ -89,7 +64,7 @@ class WeavingMatrixTest extends TestCase
         $class = 'FakeVendor\HelloWorld\Resource\Page\Mx\\' . $shape;
         $class::$ran = 0;
         $injector = new Injector(
-            new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld')),
+            ModuleFactory::getInstance('FakeVendor\HelloWorld'),
             __DIR__ . '/tmp',
         );
         $resource = $injector->getInstance(ResourceInterface::class);

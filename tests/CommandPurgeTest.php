@@ -14,14 +14,10 @@ use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 
 /**
- * RefreshInterceptor's #[Purge] branch, which no #[Cacheable] fixture can reach
- *
- * Every other #[Purge] fixture is #[Cacheable], so its annotation is processed by
- * CommandInterceptor alongside RefreshSameCommand. Here the class is not #[Cacheable]:
- * RefreshInterceptor is the only interceptor bound, and it invalidates the written
- * resource's own key together with what the annotations name.
+ * #[Purge] on a class that stores nothing: the write invalidates its own key together with what the
+ * annotations name, and reads nothing again
  */
-class RefreshInterceptorPurgeTest extends TestCase
+class CommandPurgeTest extends TestCase
 {
     use SemanticLogTreeTrait;
 
@@ -33,7 +29,7 @@ class RefreshInterceptorPurgeTest extends TestCase
     protected function setUp(): void
     {
         $namespace = 'FakeVendor\HelloWorld';
-        $injector = new Injector(new FakeEtagPoolModule(ModuleFactory::getInstance($namespace)), __DIR__ . '/tmp');
+        $injector = new Injector(ModuleFactory::getInstance($namespace), __DIR__ . '/tmp');
         $this->resource = $injector->getInstance(ResourceInterface::class);
         $this->repository = $injector->getInstance(QueryRepositoryInterface::class);
         $this->storage = $injector->getInstance(ResourceStorageInterface::class);
@@ -63,18 +59,17 @@ class RefreshInterceptorPurgeTest extends TestCase
 
         // Self-targeting #[Purge]: the write's own key, which it invalidates anyway.
         $this->assertNull($this->repository->get($selfUri));
-        $this->assertFalse($this->storage->hasEtag($selfEtag));
+        $this->assertNull($this->storage->validatedEntry($selfEtag));
 
         // Dependent #[Purge]: purging the embedded child invalidates the parent that embeds it.
         $this->assertNull($this->repository->get(new Uri('page://self/dep/level-two')));
         $this->assertNull($this->repository->get(new Uri('page://self/dep/level-one')));
-        $this->assertFalse($this->storage->hasEtag($levelOneEtag));
+        $this->assertNull($this->storage->validatedEntry($levelOneEtag));
 
         $tree = $this->flushAndValidate($this->logger);
 
         $command = self::contextJsonOf($tree, 'command');
-        $this->assertNotNull($command, 'RefreshInterceptor opens a command scope');
-        $this->assertStringContainsString('"source":"RefreshInterceptor"', $command);
+        $this->assertNotNull($command, 'the write opens a command scope');
         $this->assertStringContainsString('"method":"onPut"', $command);
         $this->assertStringContainsString('"uri":"page://self/dep/purge-src{?id}"', $command);
         $this->assertStringContainsString('"uri":"page://self/dep/level-two"', $command);

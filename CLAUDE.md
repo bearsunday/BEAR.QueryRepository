@@ -85,9 +85,9 @@ composer build
 - Gracefully degrades when cache is unavailable (triggers warning instead of exception)
 
 **CommandInterceptor** (`src/CommandInterceptor.php`)
-- Handles `#[Refresh]` and `#[Purge]` annotations
-- Executes cache invalidation commands after resource updates
-- Only processes successful responses (code < 400)
+- Woven into every `onPost`/`onPut`/`onPatch`/`onDelete`; acts on responses below 400
+- Purges the resource's own key and every `#[Purge]`/`#[Refresh]` URI once each
+- Then reads its own URI again where its GET is stored, then each `#[Refresh]` URI
 
 **DonutRepository** (`src/DonutRepository.php`)
 - Implements donut caching pattern (static outer shell + dynamic inner content)
@@ -165,12 +165,11 @@ Located in `src-annotation/`:
 
 ### Cache Invalidation Flow
 
-1. Resource with `#[Refresh]` or `#[Purge]` is invoked
-2. CommandInterceptor executes the command
-3. After successful response, annotations are processed
-4. RefreshAnnotatedCommand resolves URIs and invalidates tags
-5. ResourceStorage.invalidateTags() invalidates the tagged entries in the RO pool
-6. CDN purger (if configured) purges surrogate keys
+1. A write method (`onPost`/`onPut`/`onPatch`/`onDelete`) runs
+2. On a response below 400, CommandInterceptor collects its own key and the URIs `#[Purge]`/`#[Refresh]` name (RefreshAnnotatedCommand expands the templates)
+3. QueryRepository purges each URI once; ResourceStorage.invalidateTags() invalidates the tagged entries in the RO pool
+4. CDN purger (if configured) purges surrogate keys
+5. The own URI is read again where its GET is stored, then each `#[Refresh]` URI
 
 ### Surrogate Keys (Tags)
 

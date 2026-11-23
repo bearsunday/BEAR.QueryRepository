@@ -120,7 +120,7 @@ class QueryVariantPurgeTest extends TestCase
         $this->assertNotSame($page2, (string) $this->resource->get('page://self/paged-list?page=2'));
     }
 
-    /** PagedList::onPost has no #[Purge]/#[Refresh], so DonutCommandInterceptor's auto-purge is the only
+    /** PagedList::onPost has no #[Purge]/#[Refresh], so the purge of its own key is the only
      *  invalidation: a write to `?page=2` reaches every page variant. */
     public function testDonutAutoPurgeFromWriteUriCarryingDefaultedParamReachesOtherVariants(): void
     {
@@ -136,7 +136,7 @@ class QueryVariantPurgeTest extends TestCase
     }
 
     /** Same for a plain #[Cacheable] value resource: PagedValue::onPut has no #[Purge]/#[Refresh], so
-     *  RefreshSameCommand's auto-purge is the only invalidation. */
+     *  the purge of its own key is the only invalidation. */
     public function testValueAutoPurgeFromWriteUriCarryingDefaultedParamReachesOtherVariants(): void
     {
         $bare = $this->time('app://self/paged-value');
@@ -193,34 +193,31 @@ class QueryVariantPurgeTest extends TestCase
     /** The bare URI's first fetch keeps the sibling's If-None-Match validator. */
     public function testBareColdMissStoreDoesNotEvictSiblingVariantEtag(): void
     {
-        assert($this->storage instanceof ScopedValidatorInterface);
         $uri = new Uri('app://self/optional-param?id=1&page=2');
         $etag = $this->resource->get('app://self/optional-param?id=1&page=2')->headers['ETag'];
 
         $this->resource->get('app://self/optional-param?id=1'); // first-ever fetch of the bare URI
 
-        $this->assertTrue($this->storage->hasEtagFor($etag, $uri));
+        $this->assertNotNull($this->storage->validatedEntry($etag, $uri));
     }
 
     /** A bare purge also invalidates the variant's If-None-Match validator. */
     public function testBarePurgeInvalidatesQueryVariantEtag(): void
     {
-        assert($this->storage instanceof ScopedValidatorInterface);
         $uri = new Uri('app://self/optional-param?id=1&page=2');
         $ro = $this->resource->get('app://self/optional-param?id=1&page=2');
         $etag = $ro->headers['ETag'];
-        $this->assertTrue($this->storage->hasEtagFor($etag, $uri), 'precondition: validator registered');
+        $this->assertNotNull($this->storage->validatedEntry($etag, $uri), 'precondition: validator registered');
 
         $this->repository->purge(new Uri('app://self/optional-param?id=1'));
 
-        $this->assertFalse($this->storage->hasEtagFor($etag, $uri));
+        $this->assertNull($this->storage->validatedEntry($etag, $uri));
     }
 
     /** After ResourceDonut::refresh() re-saves a page's value (its template survived), the ETag validator
      *  still carries the group tag. */
     public function testDonutRefreshKeepsTheGroupTagOnTheEtagValidator(): void
     {
-        assert($this->storage instanceof ScopedValidatorInterface);
         $uri = new Uri('page://self/html/paged-static-donut');
         $this->resource->get((string) $uri); // the interceptor's own putStatic() stores the value and the donut template
 
@@ -238,25 +235,24 @@ class QueryVariantPurgeTest extends TestCase
 
         $refreshed = $this->resource->get((string) $uri);
         $etag = $refreshed->headers['ETag'];
-        $this->assertTrue($this->storage->hasEtagFor($etag, $uri), 'precondition: refreshed validator registered');
+        $this->assertNotNull($this->storage->validatedEntry($etag, $uri), 'precondition: refreshed validator registered');
 
         $this->storage->invalidateTags(['grp-_html_paged-static-donut_']);
 
-        $this->assertFalse($this->storage->hasEtagFor($etag, $uri));
+        $this->assertNull($this->storage->validatedEntry($etag, $uri));
     }
 
     /** On the first, never-refreshed save, doPutStatic()'s SurrogateKeys tags the entry holding the validator with the page's group tag. */
     public function testDonutInitialSaveTagsTheEtagValidatorWithTheGroupTag(): void
     {
-        assert($this->storage instanceof ScopedValidatorInterface);
         $uri = new Uri('page://self/html/paged-static-donut');
         $ro = $this->resource->get((string) $uri);
         $etag = $ro->headers['ETag'];
-        $this->assertTrue($this->storage->hasEtagFor($etag, $uri), 'precondition: validator registered');
+        $this->assertNotNull($this->storage->validatedEntry($etag, $uri), 'precondition: validator registered');
 
         $this->storage->invalidateTags(['grp-_html_paged-static-donut_']);
 
-        $this->assertFalse($this->storage->hasEtagFor($etag, $uri));
+        $this->assertNull($this->storage->validatedEntry($etag, $uri));
     }
 
     /** doPutDonut() (dynamic #[DonutCache], template-only) builds the CDN Surrogate-Key header from its own
@@ -276,7 +272,7 @@ class QueryVariantPurgeTest extends TestCase
         $roPool = (new ReflectionProperty($this->storage, 'roPool'))->getValue($this->storage);
         assert($roPool instanceof TagAwareAdapterInterface);
         $dependent = $roPool->getItem('dependent-on-bare');
-        $dependent->set(true)->tag((new UriTag())(new Uri('app://self/paged-error-on-bare')));
+        $dependent->set(true)->tag((new UriTag(new CacheIdentityFactory(new GlobalServerContext())))(new Uri('app://self/paged-error-on-bare')));
         $this->assertTrue($roPool->save($dependent), 'precondition: dependent entry stored');
 
         PagedErrorOnBare::$fail = true;

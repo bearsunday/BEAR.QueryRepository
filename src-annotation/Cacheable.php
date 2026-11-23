@@ -22,14 +22,13 @@ final class Cacheable
 {
     /**
      * @param 'short'|'medium'|'long'|'never' $expiry
-     * @param bool                            $update Deprecated: has no effect, nothing reads it
+     * @param non-negative-int                $expirySecond
      * @param 'value'|'view'                  $type
      */
     public function __construct(
         public string $expiry = 'never',
         public int $expirySecond = 0,
         public string $expiryAt = '',
-        public bool $update = false,
         public string $type = 'value',
     ) {
     }

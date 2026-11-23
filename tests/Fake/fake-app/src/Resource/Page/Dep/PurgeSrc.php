@@ -10,10 +10,10 @@ use BEAR\RepositoryModule\Annotation\Purge;
 use BEAR\Resource\ResourceObject;
 
 /**
- * Non-Cacheable writer carrying #[Purge], so RefreshInterceptor runs instead of CommandInterceptor
+ * Writer carrying #[Purge] on a class that stores nothing
  *
  * The targets:
- *  - its own URI: the write's own key, which RefreshInterceptor purges anyway, so the two are
+ *  - its own URI: the write's own key, which the write purges anyway, so the two are
  *    one purge. An entry stored for this resource (here by a direct
  *    QueryRepository::put) is dropped by the write.
  *  - page://self/dep/level-two: level-one embeds it, so the purge cascades to the parent.

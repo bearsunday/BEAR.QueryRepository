@@ -8,6 +8,7 @@ use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
 use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
+use BEAR\Sunday\Provide\Transfer\ConditionalResponse;
 use BEAR\Sunday\Provide\Transfer\ConditionalResponseInterface;
 use BEAR\Sunday\Provide\Transfer\Output;
 use FakeVendor\HelloWorld\Resource\Page\Index;
@@ -85,7 +86,7 @@ class NotModifiedHeadersTest extends TestCase
 
     public function testOnlyTheHeadersA304RepeatsAreTaken(): void
     {
-        $conditionalRequest = new ConditionalRequest($this->storage, new NullSemanticLogger(), new CacheFailure(new NullSemanticLogger()));
+        $conditionalRequest = new ConditionalRequest($this->storage, new NullSemanticLogger(), new CacheFailure(new NullSemanticLogger()), new ConditionalResponse());
 
         $this->assertTrue($conditionalRequest->isNotModified('"stale", W/' . $this->etag, []));
         $this->assertSame([
@@ -98,7 +99,7 @@ class NotModifiedHeadersTest extends TestCase
     /** One instance answers every request of a worker: what it holds must not outlive the request */
     public function testTheHeadersAreTakenOnceAndOnlyForTheRequestJustValidated(): void
     {
-        $conditionalRequest = new ConditionalRequest($this->storage, new NullSemanticLogger(), new CacheFailure(new NullSemanticLogger()));
+        $conditionalRequest = new ConditionalRequest($this->storage, new NullSemanticLogger(), new CacheFailure(new NullSemanticLogger()), new ConditionalResponse());
 
         $this->assertTrue($conditionalRequest->isNotModified($this->etag, []));
         $this->assertNotSame([], $conditionalRequest->notModifiedHeaders());
@@ -120,8 +121,8 @@ class NotModifiedHeadersTest extends TestCase
     #[DataProvider('httpCaches')]
     public function testARequestWithoutAValidatorDropsTheHeadersOfTheOneBefore(string $httpCacheClass): void
     {
-        $conditionalRequest = new ConditionalRequest($this->storage, new NullSemanticLogger(), new CacheFailure(new NullSemanticLogger()));
-        $httpCache = new $httpCacheClass($this->storage, new NullSemanticLogger(), $conditionalRequest);
+        $conditionalRequest = new ConditionalRequest($this->storage, new NullSemanticLogger(), new CacheFailure(new NullSemanticLogger()), new ConditionalResponse());
+        $httpCache = new $httpCacheClass($conditionalRequest);
         $validating = [Header::HTTP_IF_NONE_MATCH => $this->etag];
 
         $this->assertTrue($httpCache->isNotModified($validating));
@@ -173,7 +174,7 @@ class NotModifiedHeadersTest extends TestCase
     {
         $other = new Uri('page://self/other');
         $otherEtag = $this->save($other, [Header::CACHE_CONTROL => 'private, max-age=5']);
-        $conditionalRequest = new ConditionalRequest($this->storage, new NullSemanticLogger(), new CacheFailure(new NullSemanticLogger()));
+        $conditionalRequest = new ConditionalRequest($this->storage, new NullSemanticLogger(), new CacheFailure(new NullSemanticLogger()), new ConditionalResponse());
 
         $this->assertTrue($conditionalRequest->isNotModifiedFor($other, $otherEtag, []));
         $this->assertSame([
@@ -183,20 +184,6 @@ class NotModifiedHeadersTest extends TestCase
 
         $this->assertFalse($conditionalRequest->isNotModifiedFor($other, $this->etag, []));
         $this->assertSame([], $conditionalRequest->notModifiedHeaders(), 'a live validator of another URI');
-    }
-
-    public function testAStorageThatCannotHandTheEntryOverAnswersABare304(): void
-    {
-        $storage = new FakeUnscopableStorage($this->storage);
-        $conditionalRequest = new ConditionalRequest($storage, new NullSemanticLogger(), new CacheFailure(new NullSemanticLogger()));
-
-        $this->assertTrue($conditionalRequest->isNotModified($this->etag, []));
-        $this->assertSame([], $conditionalRequest->notModifiedHeaders());
-
-        $httpCache = new CliHttpCache($storage);
-        $this->assertTrue($httpCache->isNotModifiedFor($this->uri, [Header::HTTP_IF_NONE_MATCH => $this->etag]));
-        $this->expectOutputString('304 Not Modified' . PHP_EOL . PHP_EOL);
-        $httpCache->transfer();
     }
 
     public function testTheApplicationChoosesWhatA304Repeats(): void

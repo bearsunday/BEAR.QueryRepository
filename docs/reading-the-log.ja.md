@@ -75,7 +75,7 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 | 型 | 何が open するか | close する語 |
 |---|---|---|
 | `get` (`uri`) | キャッシュ経由のリソース GET | `cache_hit` / `cache_miss` |
-| `command` (`method`, `annotations`, `source`) | 書き込み (`onPut`/`onPatch`/`onDelete`) | `command_result` (`code`) |
+| `command` (`method`, `annotations`) | 書き込み (`onPost`/`onPut`/`onPatch`/`onDelete`) | `command_result` (`code`) |
 | `conditional_request` (`ifNoneMatch`) | 転送境界での `If-None-Match` 判定 | `layer: etag` の `cache_hit` / `cache_miss` |
 | `manual_store` (`uri`) | 直接の `put()` / `putStatic()` / `putDonut()` | `manual_store_result` (`stored` \| `failed`) |
 | `manual_purge` (`uri`) | 直接の `purge()` | `manual_purge_result` (`purged` \| `failed`) |
@@ -120,7 +120,7 @@ get page://self/html/blog-posting          ← スコープ: open されて clos
 | `cdn` | `purged` \| `failed` \| `skipped` | `skipped` は purger 未設定 (`NullPurger`)。「やることが無かった」ではない |
 | `operation` | `read` \| `write` | キャッシュのどちら側が throw したか |
 | `reason` (`put_skipped`) | `etag-present` \| `error-code` \| `not-cacheable` \| `unstorable` \| `expired` | 書き込みが起きなかった理由。`etag-present` = リソースが既に ETag を持っていたので donut 層は手を出さなかった、`not-cacheable` = テンプレートから再描画された donut ページ(ページとしては保存しない)、`error-code` は応答の `code` を伴い閾値は経路で違う: `#[Cacheable]` は 200 以外すべて(`203` もここに出る)、donut は 4xx 以上、`unstorable` = このリクエスト中に producer がマークしたか、`Cache-Control` が `no-store`/`private` を含んでいた — code や type が許す場合でも書き込みは拒否される、`expired` = `#[Cacheable]` の `expiryAt` が既に過ぎていたので、応答は `no-store` になる |
-| `reason` (`dependency_skipped`) | `no_body` | 書き込みの時点で子の body に見えた事実。body を持つ子は、タグの有無にかかわらず依存になる。`no_body` = body が null だった。donut ページでは多くはレンダラが後で実行する穴で、健全な形(実行された 204 の子も同じに見える)。`#[Cacheable]` の put は最上位の埋め込みリクエストをすべて先に実行するので、そこでは子は必ず親と一緒に保存される。1.20.2 がキャッシュ用ヘッダの無い子に記録した `no_etag_or_surrogate_key` はスキーマに残るが、もう記録しない |
+| `reason` (`dependency_skipped`) | `no_body` | 書き込みの時点で子の body に見えた事実。body を持つ子は、タグの有無にかかわらず依存になる。`no_body` = body が null だった。donut ページでは多くはレンダラが後で実行する穴で、健全な形(実行された 204 の子も同じに見える)。`#[Cacheable]` の put は最上位の埋め込みリクエストをすべて先に実行するので、そこでは子は必ず親と一緒に保存される。 |
 | `reason` (`purge_skipped`) | `unmatched_query` | 書き込みが自身のキーを無効化しなかった理由。`unmatched_query` = 書き込みのクエリに `onGet()` の必須パラメータが揃っていない(作成する POST にはまだ id が無い) |
 | `result` (`manual_*`) | `stored`/`purged`/`invalidated` \| `failed` | 直接呼び出しの結果 |
 | `requestedTtl` | 秒 | このパッケージがストアに要求した保持時間。`31536000` は `never` の慣習値、`0`/`null` は「期限を要求しなかった」— バックエンドが上書きし得る(下の規則) |
@@ -268,7 +268,7 @@ hit にし、中身を新しくするのは再合成のほうです。
 埋め込んでいるリソースへの PUT:
 
 ```text
-command {"method": "onPut", "annotations": [], "source": "CommandInterceptor"}
+command {"method": "onPut", "annotations": []}
   purge {"uri": "page://self/dep/level-three"}
   invalidate {"tags": ["_dep_level-three_", "grp-_dep_level-three_"], "roPool": "invalidated", "cdn": "skipped"}
   get {"uri": "page://self/dep/level-three"}

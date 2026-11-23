@@ -37,7 +37,7 @@ class TopLevelAwareLoggerTest extends TestCase
     protected function setUp(): void
     {
         $this->logger = new RecordingTopLevelAwareLogger();
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
         $logger = $this->logger;
         $module->override(new class ($logger) extends AbstractModule {
             public function __construct(

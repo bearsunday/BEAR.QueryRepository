@@ -7,7 +7,9 @@ namespace BEAR\QueryRepository;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
+use BEAR\Sunday\Provide\Transfer\ConditionalResponse;
 use FakeVendor\HelloWorld\Resource\Page\Html\MutableComment;
+use Koriym\SemanticLogger\NullSemanticLogger;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Madapaja\TwigModule\TwigModule;
 use PHPUnit\Framework\TestCase;
@@ -50,7 +52,7 @@ class DonutQueryInterceptorPurgeTest extends TestCase
     private static function newInjector(): Injector
     {
         $namespace = 'FakeVendor\HelloWorld';
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance($namespace));
+        $module = ModuleFactory::getInstance($namespace);
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
         $module->override(new class extends AbstractModule {
             protected function configure(): void
@@ -112,7 +114,7 @@ class DonutQueryInterceptorPurgeTest extends TestCase
         // conditional request into a full 200 for content it already holds.
         $this->assertSame($etag, $ro2->headers[Header::ETAG]);
         $this->assertTrue(
-            (new HttpCache($this->storage))->isNotModified([Header::HTTP_IF_NONE_MATCH => $etag]),
+            (new HttpCache(new ConditionalRequest($this->storage, new NullSemanticLogger(), new CacheFailure(new NullSemanticLogger()), new ConditionalResponse())))->isNotModified([Header::HTTP_IF_NONE_MATCH => $etag]),
             'the pre-refresh validator still matches the stored ETag (304)',
         );
     }
@@ -148,7 +150,7 @@ class DonutQueryInterceptorPurgeTest extends TestCase
         $this->assertNotSame($aLastModified, $bLastModified, 'A→B advances Last-Modified');
         $this->assertStringContainsString('comment-b', (string) $b1->view);
         $this->assertNotSame($a1->headers[Header::ETAG], $b1->headers[Header::ETAG], 'changed content changes the validator');
-        $this->assertFalse($this->storage->hasEtag($a1->headers[Header::ETAG]), 'the superseded validator leaves the pool, so a client holding it gets 200');
+        $this->assertNull($this->storage->validatedEntry($a1->headers[Header::ETAG]), 'the superseded validator leaves the pool, so a client holding it gets 200');
         $changedTree = $this->flushAndValidate($this->logger);
         $saveDonut = self::eventContextJsonOf($changedTree, 'save_donut');
         $this->assertNotNull($saveDonut, 'changed content persists the new donut comparison state');

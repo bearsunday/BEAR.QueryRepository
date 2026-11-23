@@ -41,7 +41,7 @@ final class ShutdownFlush implements LogSinkInterface
     /** @param iterable<LogWriterInterface> $receivers writers after the bound one; the log modules pass the LogWriterInterface set */
     public function __construct(
         private LogWriterInterface $writer,
-        private ConcurrentRuntimeInterface $runtime = new HostRuntime(),
+        private ConcurrentRuntimeInterface $runtime,
         iterable $receivers = [],
     ) {
         // Copied now so no Map or generator, nor the injector behind it, is serialized

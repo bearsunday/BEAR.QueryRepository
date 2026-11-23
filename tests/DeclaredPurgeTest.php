@@ -20,7 +20,7 @@ class DeclaredPurgeTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->injector = new Injector(new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld')), __DIR__ . '/tmp');
+        $this->injector = new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld'), __DIR__ . '/tmp');
         $this->resource = $this->injector->getInstance(ResourceInterface::class);
         TagPage::$version = 1;
         PagedCategory::$version = 1;

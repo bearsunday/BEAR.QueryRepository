@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\CacheLog;
-use BEAR\RepositoryModule\Annotation\EtagPool;
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\RepositoryModule\Annotation\TagsPool;
 use BEAR\Resource\NamedParameter;
@@ -26,7 +25,6 @@ use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
  *  The following bindings are provided:
  *
  *  TagAwareAdapterInterface-ResourceObjectPool::class (NullAdapter by default)
- *  TagAwareAdapterInterface-EtagPool::class (null, and read by nothing: the entry itself holds its ETag)
  *  QueryRepositoryInterface
  *  CacheDependencyInterface
  *  EtagSetterInterface
@@ -35,7 +33,6 @@ use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
  *  SemanticLoggerInterface (null by default - install Dev/ProdQueryRepositoryLogModule to record)
  *  MatchQueryInterface
  *  UriTag
- *  BaseUriTagInterface
  *  DeclaredCacheControl
  *
  *  The following module are installed.
@@ -66,12 +63,11 @@ final class QueryRepositoryModule extends AbstractModule
                 'tagsPool' => TagsPool::class,
             ],
         );
-        // Read by nothing; bound so that an application module overriding it still installs.
-        $this->bind(TagAwareAdapterInterface::class)->annotatedWith(EtagPool::class)->toInstance(null);
         // core
         $this->bind(QueryRepositoryInterface::class)->to(QueryRepository::class)->in(Scope::SINGLETON);
         $this->bind(CacheDependencyInterface::class)->to(CacheDependency::class);
         $this->bind(CacheTags::class);
+        $this->bind(EntityTags::class);
         $this->bind(ResourceBodyEvaluator::class);
         $this->bind(CommandScope::class);
         $this->bind(CacheFailure::class);
@@ -84,13 +80,10 @@ final class QueryRepositoryModule extends AbstractModule
         $this->bind(EtagSetterInterface::class)->to(EtagSetter::class);
         $this->bind(NamedParameterInterface::class)->to(NamedParameter::class);
         $this->bind(ResourceStorageInterface::class)->to(ResourceStorage::class)->in(Scope::SINGLETON);
-        $this->bind(BaseUriTagInterface::class)->to(BaseUriTag::class);
         $this->bind(MatchQueryInterface::class)->to(MatchQuery::class);
         $this->bind(RefreshAnnotatedCommand::class);
-        $this->bind(RefreshSameCommand::class);
         $this->bind(CommandQuery::class);
         $this->bind(UnsafeMethodMatcher::class);
-        $this->bind(ResourceStorageSaver::class);
         // Server context for thread safety (Swoole, RoadRunner, etc.)
         $this->bind(ServerContextInterface::class)->to(GlobalServerContext::class)->in(Scope::SINGLETON);
         $this->bind(DeclaredCacheControl::class)->in(Scope::SINGLETON);

@@ -22,7 +22,7 @@ final readonly class ReplacedEntry
         #[CacheLog]
         private SemanticLoggerInterface $logger,
         private ResourceStorageInterface $storage,
-        private CacheTags $cacheTags,
+        private UriTagInterface $uriTag,
     ) {
     }
 
@@ -49,7 +49,7 @@ final readonly class ReplacedEntry
     private function drop(ResourceObject $ro): void
     {
         $this->logger->event(new PreWriteCleanupContext((string) $ro->uri));
-        $this->storage->invalidateTags([$this->cacheTags->uriTag($ro->uri)]);
+        $this->storage->invalidateTags([($this->uriTag)($ro->uri)]);
     }
 
     private function mayStore(ResourceObject $ro, Storability $storability): bool

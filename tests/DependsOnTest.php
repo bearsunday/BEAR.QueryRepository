@@ -37,7 +37,7 @@ class DependsOnTest extends TestCase
 
     protected function setUp(): void
     {
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
         $injector = new Injector($module, __DIR__ . '/tmp');
         $this->repository = $injector->getInstance(QueryRepositoryInterface::class);
@@ -442,16 +442,16 @@ class DependsOnTest extends TestCase
         $uriTag = new class implements UriTagInterface {
             public function __invoke(AbstractUri $uri): string
             {
-                return 'x-' . (new UriTag())($uri);
+                return 'x-' . (new UriTag(new CacheIdentityFactory(new GlobalServerContext())))($uri);
             }
 
             /** @param list<array<string, mixed>> $assoc */
             public function fromAssoc(string $uriTemplate, array $assoc): string
             {
-                return 'x-' . (new UriTag())->fromAssoc($uriTemplate, $assoc);
+                return 'x-' . (new UriTag(new CacheIdentityFactory(new GlobalServerContext())))->fromAssoc($uriTemplate, $assoc);
             }
         };
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
         $module->override(new class ($uriTag) extends AbstractModule {
             public function __construct(private readonly UriTagInterface $uriTag)
@@ -593,6 +593,6 @@ class DependsOnTest extends TestCase
 
     private function tag(string $uri): string
     {
-        return (new UriTag())(new Uri($uri));
+        return (new UriTag(new CacheIdentityFactory(new GlobalServerContext())))(new Uri($uri));
     }
 }

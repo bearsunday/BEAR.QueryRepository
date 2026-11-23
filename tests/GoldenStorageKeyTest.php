@@ -48,12 +48,12 @@ class GoldenStorageKeyTest extends TestCase
             $uriObject->query = $query;
         }
 
-        $this->assertSame($expected, (new UriTag())($uriObject));
+        $this->assertSame($expected, (new UriTag(new CacheIdentityFactory(new GlobalServerContext())))($uriObject));
     }
 
     public function testUriTagsFromAssoc(): void
     {
-        $this->assertSame('_item_id=1 _item_id=2', (new UriTag())->fromAssoc('app://self/item{?id}', [['id' => 1], ['id' => 2]]));
+        $this->assertSame('_item_id=1 _item_id=2', (new UriTag(new CacheIdentityFactory(new GlobalServerContext())))->fromAssoc('app://self/item{?id}', [['id' => 1], ['id' => 2]]));
     }
 
     public function testUrisSharingATagKeepSeparateEntries(): void

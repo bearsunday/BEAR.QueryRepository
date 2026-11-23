@@ -14,6 +14,7 @@ use BEAR\QueryRepository\Log\LogFileWriter;
 use BEAR\QueryRepository\Log\LogStreamWriter;
 use BEAR\QueryRepository\Log\LogWriterInterface;
 use BEAR\QueryRepository\Log\PolicyLogWriter;
+use BEAR\QueryRepository\Log\ProcessSession;
 use BEAR\QueryRepository\Log\PsrLogWriter;
 use BEAR\QueryRepository\Log\RetentionPolicyInterface;
 use BEAR\QueryRepository\Log\SafeSemanticLogger;
@@ -57,7 +58,7 @@ class LogWriterTest extends TestCase
     {
         $this->dir = sys_get_temp_dir() . '/qr-writer-test-' . bin2hex(random_bytes(6));
         $this->file = $this->dir . '/log.jsonl';
-        $this->logger = new SafeSemanticLogger();
+        $this->logger = new SafeSemanticLogger(null, new ProcessSession());
         $this->clean();
     }
 
@@ -217,7 +218,7 @@ class LogWriterTest extends TestCase
 
     public function testTheProductionModuleWritesThroughItsPolicy(): void
     {
-        $module = new ProdQueryRepositoryLogModule($this->file, module: new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld')));
+        $module = new ProdQueryRepositoryLogModule($this->file, module: ModuleFactory::getInstance('FakeVendor\HelloWorld'));
         $injector = new Injector($module, __DIR__ . '/tmp');
 
         $this->assertInstanceOf(PolicyLogWriter::class, $injector->getInstance(LogWriterInterface::class));
@@ -227,7 +228,7 @@ class LogWriterTest extends TestCase
     public function testAnAppPolicyBoundAfterTheModuleDecidesInstead(): void
     {
         // The seam the module documents: bind the interface after installing it and the writer takes it
-        $module = new class (new ProdQueryRepositoryLogModule($this->file, module: new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld')))) extends AbstractModule {
+        $module = new class (new ProdQueryRepositoryLogModule($this->file, module: ModuleFactory::getInstance('FakeVendor\HelloWorld'))) extends AbstractModule {
             protected function configure(): void
             {
                 $this->bind(RetentionPolicyInterface::class)->to(KeepEverything::class);
@@ -250,7 +251,7 @@ class LogWriterTest extends TestCase
 
     private function commandSession(): LogJson
     {
-        $open = $this->logger->open(new CommandContext('onPut', [], 'CommandInterceptor'));
+        $open = $this->logger->open(new CommandContext('onPut', []));
         $this->logger->close(new CommandResultContext(200), $open);
 
         return $this->logger->flush();

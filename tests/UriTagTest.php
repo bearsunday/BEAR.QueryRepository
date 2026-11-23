@@ -14,7 +14,7 @@ class UriTagTest extends TestCase
         $uri = new Uri('app://self/article');
         $uri->query = ['ulid' => '01ABC', 'page' => 1];
 
-        $this->assertSame('_article_page=1_ulid=01ABC', (new UriTag())($uri));
+        $this->assertSame('_article_page=1_ulid=01ABC', (new UriTag(new CacheIdentityFactory(new GlobalServerContext())))($uri));
     }
 
     public function testStringableValueIsTaggedAsItsString(): void
@@ -22,7 +22,7 @@ class UriTagTest extends TestCase
         $uri = new Uri('app://self/article');
         $uri->query = ['ulid' => new FakeStringableId('01ABC'), 'page' => 1];
 
-        $this->assertSame('_article_page=1_ulid=01ABC', (new UriTag())($uri));
+        $this->assertSame('_article_page=1_ulid=01ABC', (new UriTag(new CacheIdentityFactory(new GlobalServerContext())))($uri));
     }
 
     public function testStringableInsideAnArrayIsTaggedAsItsString(): void
@@ -32,6 +32,6 @@ class UriTagTest extends TestCase
         $expected = new Uri('app://self/article');
         $expected->query = ['ids' => ['a', 'b']];
 
-        $this->assertSame((new UriTag())($expected), (new UriTag())($uri));
+        $this->assertSame((new UriTag(new CacheIdentityFactory(new GlobalServerContext())))($expected), (new UriTag(new CacheIdentityFactory(new GlobalServerContext())))($uri));
     }
 }

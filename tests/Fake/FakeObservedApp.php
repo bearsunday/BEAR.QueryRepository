@@ -53,7 +53,7 @@ final class FakeObservedApp
         $this->roPool = new TagAwareAdapter($this->roItems, new ArrayAdapter());
         $this->server = $server;
 
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
         if ($twig) {
             $module->override(new TwigModule([dirname(__DIR__) . '/Fake/fake-app/var/templates']));
         }

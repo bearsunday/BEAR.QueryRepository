@@ -20,7 +20,7 @@ use function time;
 final readonly class EtagSetter implements EtagSetterInterface
 {
     public function __construct(
-        private ResourceBodyEvaluator $evaluateBody = new ResourceBodyEvaluator(),
+        private ResourceBodyEvaluator $evaluateBody,
     ) {
     }
 
