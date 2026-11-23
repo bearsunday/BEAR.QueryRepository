@@ -10,7 +10,9 @@ use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 use Ray\Di\InjectorInterface;
 
+use function array_intersect_ukey;
 use function array_keys;
+use function strcasecmp;
 
 class HeaderSetterTest extends TestCase
 {
@@ -39,6 +41,16 @@ class HeaderSetterTest extends TestCase
 
         $this->assertArrayNotHasKey('cdn-cache-control', $ro->headers);
         $this->assertSame('private', $ro->headers[Header::CACHE_CONTROL], "the developer's own header is kept exactly");
+    }
+
+    public function testTheDeclaredCacheControlReplacesTheResponsesOwnUnderAnyCasing(): void
+    {
+        $ro = new None();
+        $ro->headers['cache-control'] = 'public';
+
+        $this->headerSetter()->page($ro, Storability::Shared, null, 'max-age=60', null);
+
+        $this->assertSame(['cache-control' => 'max-age=60'], array_intersect_ukey($ro->headers, [Header::CACHE_CONTROL => true], strcasecmp(...)));
     }
 
     public function testUnstorableStripRemovesEveryCasingWhenTheSameHeaderIsSetTwice(): void

@@ -85,7 +85,7 @@ final readonly class HeaderSetter
         };
         if ($storability !== Storability::Unstorable) {
             if ($declaredCacheControl !== null && $ro->code === 200) {
-                $ro->headers[Header::CACHE_CONTROL] = $declaredCacheControl;
+                $ro->headers[Header::findKey($ro->headers, Header::CACHE_CONTROL) ?? Header::CACHE_CONTROL] = $declaredCacheControl;
             }
 
             $this->setClientHeaders($ro, self::REVALIDATE, $lastModified, null);
