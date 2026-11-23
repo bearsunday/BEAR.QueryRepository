@@ -67,7 +67,7 @@ final readonly class DependsOnExpansion
         if ($rows === []) {
             $named = $dependsOn->key === null && $this->missing($variables, $fallback, $outside + $given) === null;
 
-            return $named ? $this->templates->tags($this->uriTag, $template, $fallback, $this->source) : [];
+            return $named ? $this->templates->tags($this->uriTag, $template, $fallback) : [];
         }
 
         $tags = [];
@@ -82,7 +82,7 @@ final readonly class DependsOnExpansion
             }
 
             $expanded = true;
-            $tags = [...$tags, ...$this->templates->tags($this->uriTag, $template, $values, $this->source)];
+            $tags = [...$tags, ...$this->templates->tags($this->uriTag, $template, $values)];
         }
 
         if (! $expanded) {

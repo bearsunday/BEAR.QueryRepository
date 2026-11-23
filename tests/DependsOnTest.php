@@ -7,6 +7,7 @@ namespace BEAR\QueryRepository;
 use ArrayIterator;
 use BEAR\QueryRepository\Exception\DependsOnNotExpandable;
 use BEAR\Resource\AbstractUri;
+use BEAR\Resource\AssistedWebContextParam;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
@@ -511,6 +512,22 @@ class DependsOnTest extends TestCase
         } catch (DependsOnNotExpandable $e) {
             $this->assertSame($source, $e->source);
             $this->assertSame($reason, $e->reason);
+        }
+
+        $this->assertFalse($this->isStored($uri, false));
+    }
+
+    public function testAVariableACookieFillsWithoutADefaultCannotExpand(): void
+    {
+        $uri = 'app://self/rows/cookie-bound';
+        AssistedWebContextParam::setSuperGlobalsOnlyForTestingPurpose(['_COOKIE' => ['channel' => 'c1']]);
+        try {
+            $this->resource->get($uri);
+            $this->fail('DependsOnNotExpandable must be thrown');
+        } catch (DependsOnNotExpandable $e) {
+            $this->assertSame("no 'channelId'", $e->reason);
+        } finally {
+            AssistedWebContextParam::setSuperGlobalsOnlyForTestingPurpose([]);
         }
 
         $this->assertFalse($this->isStored($uri, false));

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\QueryRepository\Exception\DependsOnNotExpandable;
 use BEAR\RepositoryModule\Annotation\DependsOn;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
@@ -12,13 +11,10 @@ use ReflectionClass;
 use Stringable;
 
 use function array_is_list;
-use function array_key_exists;
 use function array_unique;
 use function array_values;
 use function explode;
-use function get_debug_type;
 use function is_array;
-use function is_scalar;
 use function preg_match_all;
 use function preg_replace;
 use function serialize;
@@ -64,11 +60,11 @@ final class DependsOnTemplates
      *
      * @return list<string> the tag of each URI the template expands to, one per element of a list given to an exploded query variable
      */
-    public function tags(UriTagInterface $uriTag, string $template, array $values, string $source): array
+    public function tags(UriTagInterface $uriTag, string $template, array $values): array
     {
         $tags = [];
         foreach ($this->variableSets($template, $values) as $variables) {
-            $tag = $this->tag($uriTag, $template, $variables, $source);
+            $tag = $this->tag($uriTag, $template, $variables);
             if ($tag !== null) {
                 $tags[] = $tag;
             }
@@ -110,33 +106,21 @@ final class DependsOnTemplates
     }
 
     /**
-     * @param array<array-key, mixed> $values
+     * @param array<array-key, mixed> $values each variable of the template holds a scalar, a Stringable or null: {@see DependsOnExpansion}
      *
      * @return string|null the tag of the URI the template expands to; null when a variable is null, which names no URI
      */
-    public function tag(UriTagInterface $uriTag, string $template, array $values, string $source): string|null
+    public function tag(UriTagInterface $uriTag, string $template, array $values): string|null
     {
         $variables = [];
         foreach ($this->variables($template) as $variable) {
-            if (! array_key_exists($variable, $values)) {
-                throw new DependsOnNotExpandable($source, $this->declaration($template), sprintf("no '%s'", $variable));
-            }
-
-            /** @var mixed $value */
+            /** @var scalar|Stringable|null $value */
             $value = $values[$variable];
             if ($value === null) {
                 return null;
             }
 
-            if ($value instanceof Stringable) {
-                $value = (string) $value;
-            }
-
-            if (! is_scalar($value)) {
-                throw new DependsOnNotExpandable($source, $this->declaration($template), sprintf("'%s' is %s", $variable, get_debug_type($value)));
-            }
-
-            $variables[$variable] = $value;
+            $variables[$variable] = $value instanceof Stringable ? (string) $value : $value;
         }
 
         return $uriTag(new Uri(uri_template($template, $variables)));
