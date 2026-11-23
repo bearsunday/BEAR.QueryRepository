@@ -135,7 +135,8 @@ These are the ones you cannot guess from a field name.
 
 **When a miss is not followed by a write, `put_skipped` says why.** A rule forbade storing: a
 response code that path will not cache, a validator already present, a donut page served from its
-template, or a response marked `unstorable` for this request — the event names which one.
+template, a response marked `unstorable` for this request, or an `expiryAt` already past (`expired`)
+— the event names which one.
 
 **A donut write of a non-200 stores no validator, and its `cdn_headers` carries no lifetime.**
 The donut threshold lets 2xx and 3xx through, and a validator is issued for 200 only, so a stored
@@ -157,7 +158,8 @@ The miss itself does not say which:
 - **the write failed** — a `cache_error{operation: write}` in the same scope. The resource ran
   and the fill attempt threw.
 - **the write was skipped by rule** — `put_skipped` says why (an error code, an existing ETag,
-  a not-cacheable response, a response marked unstorable for this request).
+  a not-cacheable response, a response marked unstorable for this request, an `expiryAt` already
+  past).
 
 `durationMs` includes the write only for the lone miss and the write-failed miss; read-degraded
 misses measure the resource run, and put-skipped misses the resource run plus the purge a non-200

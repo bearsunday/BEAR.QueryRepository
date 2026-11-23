@@ -137,6 +137,14 @@ class QueryRepositoryTest extends TestCase
         $this->assertStringContainsString('"reason":"expired"', $putSkipped);
     }
 
+    public function testAPastExpiryAtReplacesTheDeclaredCacheControl(): void
+    {
+        $ro = $this->resource->get('app://self/past-expiry');
+
+        $this->assertSame(['Cache-Control' => 'no-store'], $ro->headers);
+        $this->assertNull($this->repository->get($ro->uri));
+    }
+
     public function testPutResquestEmbeddedResoureView(): void
     {
         $uri = 'page://self/emb-view';

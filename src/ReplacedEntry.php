@@ -26,18 +26,14 @@ final readonly class ReplacedEntry
     ) {
     }
 
-    /**
-     * @param 'unstorable'|'expired' $unstorable the put_skipped reason an unstorable response is logged with
-     *
-     * @return bool whether the value or view write may store
-     */
-    public function entry(ResourceObject $ro, Storability $storability, string $unstorable): bool
+    /** @return bool whether the value or view write may store */
+    public function entry(ResourceObject $ro, Storability $storability): bool
     {
         if ($this->storage->get($ro->uri) !== null) {
             $this->drop($ro);
         }
 
-        return $this->mayStore($ro, $storability, $unstorable);
+        return $this->mayStore($ro, $storability);
     }
 
     /** @return bool whether the page or template write may store */
@@ -47,7 +43,7 @@ final readonly class ReplacedEntry
             $this->drop($ro);
         }
 
-        return $this->mayStore($ro, $storability, 'unstorable');
+        return $this->mayStore($ro, $storability);
     }
 
     private function drop(ResourceObject $ro): void
@@ -56,10 +52,14 @@ final readonly class ReplacedEntry
         $this->storage->invalidateTags([$this->cacheTags->uriTag($ro->uri)]);
     }
 
-    /** @param 'unstorable'|'expired' $reason */
-    private function mayStore(ResourceObject $ro, Storability $storability, string $reason): bool
+    private function mayStore(ResourceObject $ro, Storability $storability): bool
     {
-        if ($storability !== Storability::Unstorable) {
+        $reason = match ($storability) {
+            Storability::Shared => null,
+            Storability::Unstorable => 'unstorable',
+            Storability::Expired => 'expired',
+        };
+        if ($reason === null) {
             return true;
         }
 
