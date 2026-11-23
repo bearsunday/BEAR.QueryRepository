@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository\Log;
 
-use BEAR\QueryRepository\Exception\UnsupportedLogStream;
 use Koriym\SemanticLogger\LogJson;
 use Override;
 
@@ -15,12 +14,9 @@ use function fclose;
 use function flock;
 use function fopen;
 use function fwrite;
-use function implode;
-use function in_array;
 use function is_dir;
 use function json_encode;
 use function mkdir;
-use function sprintf;
 use function str_contains;
 
 use const JSON_UNESCAPED_SLASHES;
@@ -37,28 +33,13 @@ use const PHP_EOL;
  * concurrent workers would interleave halves of it. A wrapper that refuses the lock is written
  * anyway rather than dropped.
  *
- * The target is restricted to the two shapes documented above. Anything else - `php://filter/…`,
- * `ftp://`, `ssh2.sftp://` - would let a module argument truncate an unrelated file or send every
- * session over the network, so it is rejected rather than honoured.
- *
  * A file target is created 0600 in a 0700 directory; a stream target inherits whatever the host
  * points it at.
  */
 final class LogStreamWriter implements LogWriterInterface
 {
-    private const STREAMS = ['php://stdout', 'php://stderr', 'php://output'];
-
     public function __construct(private string $stream = 'php://stdout')
     {
-        if (in_array($stream, self::STREAMS, true) || ! str_contains($stream, '://')) {
-            return;
-        }
-
-        throw new UnsupportedLogStream(sprintf(
-            '%s: expected a filesystem path or one of %s',
-            $stream,
-            implode(', ', self::STREAMS),
-        ));
     }
 
     #[Override]
@@ -89,7 +70,7 @@ final class LogStreamWriter implements LogWriterInterface
 
     private function isFile(): bool
     {
-        return ! in_array($this->stream, self::STREAMS, true);
+        return ! str_contains($this->stream, '://');
     }
 
     private function prepareDir(): bool

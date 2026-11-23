@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `#[DependsOn]` on a row class: put the rows in the body under `key` from `onGet()` instead.
 
 ### Removed
+- `UnsupportedLogStream`: `ProdQueryRepositoryLogModule` opens the stream it is given, so a target other than a path or `php://stdout`/`php://stderr`/`php://output` is no longer refused.
 - `SurrogateKeys`, which only the donut write used; nothing replaces it outside the package.
 
 ### Fixed

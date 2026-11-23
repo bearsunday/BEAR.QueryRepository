@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\QueryRepository\Exception\UnsupportedLogStream;
 use BEAR\QueryRepository\Fake\KeepEverything;
 use BEAR\QueryRepository\Log\Context\CacheHitContext;
 use BEAR\QueryRepository\Log\Context\CommandContext;
@@ -150,15 +149,6 @@ class LogWriterTest extends TestCase
 
         $this->assertSame(0700, fileperms($this->dir) & 0777);
         $this->assertSame(0600, fileperms($this->dir . '/' . LogFileWriter::LATEST) & 0777);
-    }
-
-    public function testAStreamTargetThatIsNeitherAPathNorAStandardStreamIsRejected(): void
-    {
-        // `php://filter/write=…/resource=…` would truncate an unrelated file, and `ftp://user:pass@host`
-        // would send every session over the network with credentials in a module argument
-        $this->expectException(UnsupportedLogStream::class);
-
-        new LogStreamWriter('php://filter/write=convert.base64-encode/resource=' . $this->file);
     }
 
     public function testThePsrAdapterPassesTheTreeAsContextNotAsAMessage(): void
