@@ -155,7 +155,7 @@ class LogWriterTest extends TestCase
     /** @return array<string, array{0: string}> */
     public static function fileTargets(): array
     {
-        return ['path' => [''], 'file URL' => ['file://']];
+        return ['path' => [''], 'file URL' => ['file://'], 'upper-case file URL' => ['FILE://']];
     }
 
     #[DataProvider('fileTargets')]
