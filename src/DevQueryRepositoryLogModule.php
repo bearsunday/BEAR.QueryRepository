@@ -29,6 +29,9 @@ use Ray\Di\Scope;
  */
 final class DevQueryRepositoryLogModule extends AbstractModule
 {
+    private const LOG_DIR = self::class . '.logDir';
+    private const KEEP = self::class . '.keep';
+
     /** @param int $keep timestamped sessions to retain beside latest.json */
     public function __construct(
         private string $logDir,
@@ -41,7 +44,9 @@ final class DevQueryRepositoryLogModule extends AbstractModule
     #[Override]
     protected function configure(): void
     {
-        $this->bind(LogWriterInterface::class)->toInstance(new LogFileWriter($this->logDir, $this->keep));
+        $this->bind()->annotatedWith(self::LOG_DIR)->toInstance($this->logDir);
+        $this->bind()->annotatedWith(self::KEEP)->toInstance($this->keep);
+        $this->bind(LogWriterInterface::class)->toConstructor(LogFileWriter::class, ['dir' => self::LOG_DIR, 'keep' => self::KEEP]);
         $this->bind(LogSinkInterface::class)->toProvider(ShutdownFlushProvider::class)->in(Scope::SINGLETON);
         // ShutdownFlushProvider injects this set, which must exist even when an app adds no writer
         MultiBinder::newInstance($this, LogWriterInterface::class);
