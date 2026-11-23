@@ -11,15 +11,15 @@ class UtiTagTest extends TestCase
 {
     public function testInvoke(): void
     {
-        $key = (new UriTag())(new Uri('app://self/foo?a=1&b=2'));
+        $key = (new UriTag(new CacheIdentityFactory(new GlobalServerContext())))(new Uri('app://self/foo?a=1&b=2'));
         $this->assertSame('_foo_a=1_b=2', (string) $key);
-        $key2 = (new UriTag())(new Uri('app://self/foo?b=2&a=1'));
+        $key2 = (new UriTag(new CacheIdentityFactory(new GlobalServerContext())))(new Uri('app://self/foo?b=2&a=1'));
         $this->assertSame('_foo_a=1_b=2', (string) $key2);
     }
 
     public function testFromAssoc(): void
     {
-        $list = (new UriTag())->fromAssoc(
+        $list = (new UriTag(new CacheIdentityFactory(new GlobalServerContext())))->fromAssoc(
             'app://self/item{?id}',
             [
                 ['id' => '1', 'name' => 'a'],

@@ -9,6 +9,7 @@ use BEAR\QueryRepository\Log\Context\CacheHitContext;
 use BEAR\QueryRepository\Log\Context\CacheMissContext;
 use BEAR\QueryRepository\Log\Context\ConditionalRequestContext;
 use BEAR\Resource\Uri;
+use BEAR\Sunday\Provide\Transfer\ConditionalResponse;
 use FakeVendor\HelloWorld\Resource\Page\Index;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
@@ -45,8 +46,8 @@ class ConditionalRequestTest extends TestCase
     public function testUnscopedAnswerPreservesThePresentedValidator(): void
     {
         $validator = '"stale", W/' . $this->live;
-        $this->assertTrue((new ConditionalRequest($this->storage, $this->logger, new CacheFailure($this->logger)))->isNotModified($validator, []));
-        $this->assertFalse((new ConditionalRequest($this->storage, $this->logger, new CacheFailure($this->logger)))->isNotModified('*', []));
+        $this->assertTrue((new ConditionalRequest($this->storage, $this->logger, new CacheFailure($this->logger), new ConditionalResponse()))->isNotModified($validator, []));
+        $this->assertFalse((new ConditionalRequest($this->storage, $this->logger, new CacheFailure($this->logger), new ConditionalResponse()))->isNotModified('*', []));
         $open = $this->logger->opens[0];
         assert($open instanceof ConditionalRequestContext);
         $this->assertSame($validator, $open->ifNoneMatch);
@@ -57,8 +58,8 @@ class ConditionalRequestTest extends TestCase
 
     public function testScopedAnswerRejectsAnotherResource(): void
     {
-        $this->assertTrue((new ConditionalRequest($this->storage, $this->logger, new CacheFailure($this->logger)))->isNotModifiedFor($this->uri, 'W/' . $this->live, []));
-        $this->assertFalse((new ConditionalRequest($this->storage, $this->logger, new CacheFailure($this->logger)))->isNotModifiedFor(new Uri('page://self/other'), $this->live, []));
+        $this->assertTrue((new ConditionalRequest($this->storage, $this->logger, new CacheFailure($this->logger), new ConditionalResponse()))->isNotModifiedFor($this->uri, 'W/' . $this->live, []));
+        $this->assertFalse((new ConditionalRequest($this->storage, $this->logger, new CacheFailure($this->logger), new ConditionalResponse()))->isNotModifiedFor(new Uri('page://self/other'), $this->live, []));
         $this->assertInstanceOf(CacheHitContext::class, $this->logger->closes[0]);
         $this->assertInstanceOf(CacheMissContext::class, $this->logger->closes[1]);
     }
@@ -80,8 +81,8 @@ class ConditionalRequestTest extends TestCase
             try {
                 $server = ['REQUEST_URI' => '/original'];
                 $hit = $uri === null
-                    ? (new ConditionalRequest($storage, $logger, new CacheFailure($logger)))->isNotModified($this->live, $server)
-                    : (new ConditionalRequest($storage, $logger, new CacheFailure($logger)))->isNotModifiedFor($uri, $this->live, $server);
+                    ? (new ConditionalRequest($storage, $logger, new CacheFailure($logger), new ConditionalResponse()))->isNotModified($this->live, $server)
+                    : (new ConditionalRequest($storage, $logger, new CacheFailure($logger), new ConditionalResponse()))->isNotModifiedFor($uri, $this->live, $server);
             } finally {
                 restore_error_handler();
             }

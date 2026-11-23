@@ -442,13 +442,13 @@ class DependsOnTest extends TestCase
         $uriTag = new class implements UriTagInterface {
             public function __invoke(AbstractUri $uri): string
             {
-                return 'x-' . (new UriTag())($uri);
+                return 'x-' . (new UriTag(new CacheIdentityFactory(new GlobalServerContext())))($uri);
             }
 
             /** @param list<array<string, mixed>> $assoc */
             public function fromAssoc(string $uriTemplate, array $assoc): string
             {
-                return 'x-' . (new UriTag())->fromAssoc($uriTemplate, $assoc);
+                return 'x-' . (new UriTag(new CacheIdentityFactory(new GlobalServerContext())))->fromAssoc($uriTemplate, $assoc);
             }
         };
         $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
@@ -593,6 +593,6 @@ class DependsOnTest extends TestCase
 
     private function tag(string $uri): string
     {
-        return (new UriTag())(new Uri($uri));
+        return (new UriTag(new CacheIdentityFactory(new GlobalServerContext())))(new Uri($uri));
     }
 }

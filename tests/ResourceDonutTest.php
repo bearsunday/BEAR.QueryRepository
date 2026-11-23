@@ -320,6 +320,6 @@ class ResourceDonutTest extends TestCase
 
     private function dependencies(AbstractUri $uri): Dependencies
     {
-        return $this->injector->getInstance(CacheDependencyCollector::class)->begin(new TagSet([(new UriTag())($uri)]));
+        return $this->injector->getInstance(CacheDependencyCollector::class)->begin(new TagSet([(new UriTag(new CacheIdentityFactory(new GlobalServerContext())))($uri)]));
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository\Fake;
 
+use Koriym\SemanticLogger\SemanticLogger;
 use BEAR\QueryRepository\Log\Session;
 use BEAR\QueryRepository\Log\SessionStoreInterface;
 use Override;
@@ -24,7 +25,7 @@ final class FakeKeyedSessionStore implements SessionStoreInterface
     {
         $this->calls++;
 
-        return $this->sessions[$this->key] ??= new Session();
+        return $this->sessions[$this->key] ??= new Session(new SemanticLogger());
     }
 
     #[Override]

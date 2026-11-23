@@ -272,7 +272,7 @@ class QueryVariantPurgeTest extends TestCase
         $roPool = (new ReflectionProperty($this->storage, 'roPool'))->getValue($this->storage);
         assert($roPool instanceof TagAwareAdapterInterface);
         $dependent = $roPool->getItem('dependent-on-bare');
-        $dependent->set(true)->tag((new UriTag())(new Uri('app://self/paged-error-on-bare')));
+        $dependent->set(true)->tag((new UriTag(new CacheIdentityFactory(new GlobalServerContext())))(new Uri('app://self/paged-error-on-bare')));
         $this->assertTrue($roPool->save($dependent), 'precondition: dependent entry stored');
 
         PagedErrorOnBare::$fail = true;

@@ -25,7 +25,7 @@ class CacheTagsTest extends TestCase
         };
         $ro->uri = new Uri('app://self/child');
         $ro->headers[Header::SURROGATE_KEY] = ' data  data ';
-        $uriTag = new UriTag();
+        $uriTag = new UriTag(new CacheIdentityFactory(new GlobalServerContext()));
         $baseUriTag = new BaseUriTag($uriTag, $this->injector->getInstance(CacheIdentityFactory::class));
         $cacheTags = new CacheTags($uriTag, $baseUriTag, $this->injector->getInstance(CacheIdentityFactory::class));
 

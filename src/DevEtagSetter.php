@@ -13,6 +13,11 @@ use function gmdate;
 /** @internal */
 final readonly class DevEtagSetter implements EtagSetterInterface
 {
+    public function __construct(
+        private UriTagInterface $uriTag,
+    ) {
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -25,7 +30,7 @@ final readonly class DevEtagSetter implements EtagSetterInterface
             return;
         }
 
-        $uriEtag = (new UriTag())($ro->uri);
+        $uriEtag = ($this->uriTag)($ro->uri);
         // Dev mode uses the URI itself as the ETag, instead of a content hash, so the stored
         // key is predictable while debugging.
         $ro->headers[Header::ETAG] = '"' . $uriEtag . '"';

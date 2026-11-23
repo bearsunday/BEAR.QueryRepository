@@ -188,7 +188,7 @@ class DonutMaterialDependencyTest extends TestCase
         $this->resource->get(self::PAGE_RESPONSE_WITH_MUTABLE_MATERIAL);
         $tree = $this->flushAndValidate($this->logger);
 
-        $childUriTag = (new UriTag())(new Uri(self::MUTABLE_CHILD));
+        $childUriTag = (new UriTag(new CacheIdentityFactory(new GlobalServerContext())))(new Uri(self::MUTABLE_CHILD));
         $saveDonut = self::eventContextsJsonOf($tree, 'save_donut', self::PAGE_RESPONSE_WITH_MUTABLE_MATERIAL);
         $this->assertCount(1, $saveDonut);
         $this->assertStringContainsString('"' . $childUriTag . '"', $saveDonut[0], "the child's URI tag reaches the stored template");
@@ -302,8 +302,8 @@ class DonutMaterialDependencyTest extends TestCase
         // refreshDonut() (a different, unaffected code path) - the template AND the hole's
         // own entry both have to go, forcing doPutDonut() to run create()/render() again.
         $this->storage->invalidateTags([
-            (new UriTag())(new Uri(self::PAGE_WITH_MUTABLE_HOLE)),
-            (new UriTag())(new Uri(self::MUTABLE_CHILD)),
+            (new UriTag(new CacheIdentityFactory(new GlobalServerContext())))(new Uri(self::PAGE_WITH_MUTABLE_HOLE)),
+            (new UriTag(new CacheIdentityFactory(new GlobalServerContext())))(new Uri(self::MUTABLE_CHILD)),
         ]);
         $this->flushAndValidate($this->logger);
 
@@ -318,7 +318,7 @@ class DonutMaterialDependencyTest extends TestCase
      * A DI-bound repository always gets the container's own CacheDependencyInterface
      * binding, which never exercises the `?? new CacheDependency(...)` default - only a
      * manually constructed repository does. That default must still honour the UriTag
-     * such a caller actually passed, not a bare `new UriTag()`.
+     * such a caller actually passed, not a bare `new UriTag(new CacheIdentityFactory(new GlobalServerContext()))`.
      */
     public function testAManuallyConstructedRepositoryUsesItsOwnUriTagForTheDefaultCacheDependency(): void
     {
@@ -337,7 +337,7 @@ class DonutMaterialDependencyTest extends TestCase
 
         $result = $repository->putDonut($parent, null);
 
-        $this->assertContains('customtag_page___self_html_comment', explode(' ', $result->headers[Header::SURROGATE_KEY] ?? ''), "the default CacheDependency must tag the child with THIS repository's own UriTag, not a bare new UriTag()");
+        $this->assertContains('customtag_page___self_html_comment', explode(' ', $result->headers[Header::SURROGATE_KEY] ?? ''), "the default CacheDependency must tag the child with THIS repository's own UriTag, not a bare new UriTag(new CacheIdentityFactory(new GlobalServerContext()))");
     }
 
     /** The hole's group tag reaches the view, so a purge of the hole's bare URI recomposes the page. */

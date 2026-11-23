@@ -16,7 +16,7 @@ final class AdvancingEtagSetter implements EtagSetterInterface
 
     public function __construct()
     {
-        $this->etagSetter = new EtagSetter();
+        $this->etagSetter = new EtagSetter(new ResourceBodyEvaluator());
     }
 
     #[Override]

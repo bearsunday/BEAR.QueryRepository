@@ -17,6 +17,7 @@ use BEAR\QueryRepository\Log\Context\PreWriteCleanupContext;
 use BEAR\QueryRepository\Log\Context\PutSkippedContext;
 use BEAR\QueryRepository\Log\Context\SaveValueContext;
 use BEAR\QueryRepository\Log\KeepMutationsAndFailures;
+use BEAR\QueryRepository\Log\ProcessSession;
 use BEAR\QueryRepository\Log\SafeSemanticLogger;
 use Koriym\SemanticLogger\CloseEntry;
 use Koriym\SemanticLogger\LogJson;
@@ -38,7 +39,7 @@ class RetentionPolicyTest extends TestCase
     protected function setUp(): void
     {
         $this->policy = new KeepMutationsAndFailures();
-        $this->logger = new SafeSemanticLogger();
+        $this->logger = new SafeSemanticLogger(null, new ProcessSession());
     }
 
     public function testAHealthyReadIsDropped(): void

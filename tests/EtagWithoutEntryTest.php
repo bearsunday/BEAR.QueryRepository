@@ -6,7 +6,9 @@ namespace BEAR\QueryRepository;
 
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\Uri;
+use BEAR\Sunday\Provide\Transfer\ConditionalResponse;
 use FakeVendor\HelloWorld\Resource\Page\Index;
+use Koriym\SemanticLogger\NullSemanticLogger;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
@@ -64,7 +66,7 @@ class EtagWithoutEntryTest extends TestCase
         $etag = (string) $ro->headers[Header::ETAG];
         $this->assertNotModified($ro->uri, $etag, true);
 
-        $this->assertTrue($this->storage->invalidateTags([(new UriTag())($ro->uri)]));
+        $this->assertTrue($this->storage->invalidateTags([(new UriTag(new CacheIdentityFactory(new GlobalServerContext())))($ro->uri)]));
 
         $this->assertNull($this->storage->get($ro->uri), 'precondition: the entry did not survive the invalidation');
         $this->assertNotModified($ro->uri, $etag, false);
@@ -105,7 +107,7 @@ class EtagWithoutEntryTest extends TestCase
 
     private function assertNotModified(AbstractUri $uri, string $ifNoneMatch, bool $expected): void
     {
-        $httpCache = new HttpCache($this->storage);
+        $httpCache = new HttpCache(new ConditionalRequest($this->storage, new NullSemanticLogger(), new CacheFailure(new NullSemanticLogger()), new ConditionalResponse()));
         $server = [Header::HTTP_IF_NONE_MATCH => $ifNoneMatch];
         $this->assertSame($expected, $httpCache->isNotModifiedFor($uri, $server), 'isNotModifiedFor ' . $ifNoneMatch);
         $this->assertSame($expected, $httpCache->isNotModified($server), 'isNotModified ' . $ifNoneMatch);

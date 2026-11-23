@@ -10,6 +10,7 @@ use BEAR\QueryRepository\Log\Context\GetContext;
 use BEAR\QueryRepository\Log\HostRuntime;
 use BEAR\QueryRepository\Log\LogFileWriter;
 use BEAR\QueryRepository\Log\LogSinkInterface;
+use BEAR\QueryRepository\Log\ProcessSession;
 use BEAR\QueryRepository\Log\SafeSemanticLogger;
 use BEAR\QueryRepository\Log\ShutdownFlush;
 use BEAR\RepositoryModule\Annotation\CacheLog;
@@ -117,7 +118,7 @@ class LogSinkTest extends TestCase
     public function testAnEmptySessionIsNotWritten(): void
     {
         // Nothing was recorded: a file would claim the request had no cache activity to show
-        (new ShutdownFlush(new LogFileWriter($this->logDir)))->flush(new SafeSemanticLogger());
+        (new ShutdownFlush(new LogFileWriter($this->logDir), new HostRuntime()))->flush(new SafeSemanticLogger(null, new ProcessSession()));
 
         $this->assertFalse(is_dir($this->logDir));
     }
@@ -137,7 +138,7 @@ class LogSinkTest extends TestCase
             }
         };
         $sink = new ShutdownFlush(new LogFileWriter($this->logDir), $runtime);
-        $logger = new SafeSemanticLogger();
+        $logger = new SafeSemanticLogger(null, new ProcessSession());
 
         $sink->arm($logger);
         $sink->arm($logger);
@@ -150,10 +151,10 @@ class LogSinkTest extends TestCase
         // Silent total log loss is the worst failure a forensics feature can have: an armed sink
         // flushes the logger it was armed with, so an app that forgets Scope::SINGLETON on its own
         // SemanticLoggerInterface binding would lose every session after the first with no signal.
-        $sink = new ShutdownFlush(new LogFileWriter($this->logDir));
+        $sink = new ShutdownFlush(new LogFileWriter($this->logDir), new HostRuntime());
         $diagnostic = $this->diagnosticsOf(static function () use ($sink): void {
-            $sink->arm(new SafeSemanticLogger());
-            $sink->arm(new SafeSemanticLogger());
+            $sink->arm(new SafeSemanticLogger(null, new ProcessSession()));
+            $sink->arm(new SafeSemanticLogger(null, new ProcessSession()));
         });
 
         $this->assertStringContainsString('Scope::SINGLETON', $diagnostic);
@@ -186,7 +187,7 @@ class LogSinkTest extends TestCase
                         return true;
                     }
                 },
-            ));
+            ), new ProcessSession());
             $logger->close(new CacheHitContext('view'), $logger->open(new GetContext('page://self/html/blog-posting')));
         });
 
@@ -229,7 +230,7 @@ class LogSinkTest extends TestCase
                     return true;
                 }
             },
-        ));
+        ), new ProcessSession());
     }
 
     public function testAWriterThatThrowsDoesNotChangeHowTheRequestEnded(): void
@@ -244,7 +245,7 @@ class LogSinkTest extends TestCase
 
     public function testTheSinkSurvivesTheSerializationBoundaryAndTheSessionDoesNot(): void
     {
-        $logger = new SafeSemanticLogger(new ShutdownFlush(new LogFileWriter($this->logDir)));
+        $logger = new SafeSemanticLogger(new ShutdownFlush(new LogFileWriter($this->logDir), new HostRuntime()), new ProcessSession());
         $logger->open(new Log\Context\GetContext('page://self/unclosed'));
 
         $restored = unserialize(serialize($logger));
@@ -253,7 +254,7 @@ class LogSinkTest extends TestCase
 
         // The sink came across, so the restored logger can still write: it flushes through it
         $restored->open(new Log\Context\GetContext('page://self/after-unserialize'));
-        (new ShutdownFlush(new LogFileWriter($this->logDir)))->flush($restored);
+        (new ShutdownFlush(new LogFileWriter($this->logDir), new HostRuntime()))->flush($restored);
         $this->assertFileExists($this->logDir . '/' . LogFileWriter::LATEST);
     }
 

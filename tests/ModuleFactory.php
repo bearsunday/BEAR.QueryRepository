@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Log\ProcessSession;
 use BEAR\QueryRepository\Log\SafeSemanticLogger;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
@@ -29,7 +30,7 @@ final class ModuleFactory
             protected function configure(): void
             {
                 $this->bind(AdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->to(ArrayAdapter::class);
-                $this->bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)->toInstance(new SafeSemanticLogger());
+                $this->bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)->toInstance(new SafeSemanticLogger(null, new ProcessSession()));
             }
         });
 

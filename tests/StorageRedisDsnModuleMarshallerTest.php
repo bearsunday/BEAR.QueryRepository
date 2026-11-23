@@ -32,7 +32,7 @@ final class StorageRedisDsnModuleMarshallerTest extends TestCase
             ],
         );
 
-        $injector = new Injector($module);
+        $injector = $this->injector($module);
 
         $adapter = $injector->getInstance(TagAwareAdapterInterface::class, ResourceObjectPool::class);
         $this->assertInstanceOf(TagAwareAdapterInterface::class, $adapter);
@@ -51,7 +51,7 @@ final class StorageRedisDsnModuleMarshallerTest extends TestCase
             ],
         );
 
-        $injector = new Injector($module);
+        $injector = $this->injector($module);
         $provider = $injector->getInstance(MarshallerProvider::class);
 
         $this->assertInstanceOf(MarshallerProvider::class, $provider);
@@ -61,7 +61,7 @@ final class StorageRedisDsnModuleMarshallerTest extends TestCase
     {
         $module = new StorageRedisDsnModule(self::redisDsn(), ['timeout' => 30]);
 
-        $injector = new Injector($module);
+        $injector = $this->injector($module);
 
         $adapter = $injector->getInstance(TagAwareAdapterInterface::class, ResourceObjectPool::class);
         $this->assertInstanceOf(TagAwareAdapterInterface::class, $adapter);
@@ -71,7 +71,7 @@ final class StorageRedisDsnModuleMarshallerTest extends TestCase
     {
         $module = new StorageRedisDsnModule(self::redisDsn());
 
-        $injector = new Injector($module);
+        $injector = $this->injector($module);
 
         $adapter = $injector->getInstance(TagAwareAdapterInterface::class, ResourceObjectPool::class);
         $this->assertInstanceOf(TagAwareAdapterInterface::class, $adapter);
@@ -86,7 +86,7 @@ final class StorageRedisDsnModuleMarshallerTest extends TestCase
             ['enabled' => false],
         );
 
-        $injector = new Injector($module);
+        $injector = $this->injector($module);
 
         $adapter = $injector->getInstance(TagAwareAdapterInterface::class, ResourceObjectPool::class);
         $this->assertInstanceOf(TagAwareAdapterInterface::class, $adapter);
@@ -100,9 +100,17 @@ final class StorageRedisDsnModuleMarshallerTest extends TestCase
             1800,
         );
 
-        $injector = new Injector($module);
+        $injector = $this->injector($module);
 
         $adapter = $injector->getInstance(TagAwareAdapterInterface::class, ResourceObjectPool::class);
         $this->assertInstanceOf(TagAwareAdapterInterface::class, $adapter);
+    }
+
+    private function injector(StorageRedisDsnModule $storage): Injector
+    {
+        $module = new QueryRepositoryModule();
+        $module->override($storage);
+
+        return new Injector($module);
     }
 }

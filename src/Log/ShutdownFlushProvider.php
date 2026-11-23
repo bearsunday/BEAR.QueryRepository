@@ -24,7 +24,7 @@ final class ShutdownFlushProvider implements ProviderInterface
         private LogWriterInterface $writer,
         #[Set(LogWriterInterface::class)]
         private Map $receivers,
-        private ConcurrentRuntimeInterface $runtime = new HostRuntime(),
+        private ConcurrentRuntimeInterface $runtime,
     ) {
     }
 

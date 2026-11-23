@@ -6,7 +6,6 @@ namespace BEAR\QueryRepository\Log;
 
 use BEAR\QueryRepository\Log\Context\PoolErrorContext;
 use BEAR\RepositoryModule\Annotation\CacheLog;
-use Koriym\SemanticLogger\NullSemanticLogger;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 use Psr\Log\AbstractLogger;
@@ -32,7 +31,7 @@ final class PoolErrorLogger extends AbstractLogger
 
     public function __construct(
         #[CacheLog]
-        private readonly SemanticLoggerInterface $logger = new NullSemanticLogger(),
+        private readonly SemanticLoggerInterface $logger,
     ) {
     }
 

@@ -9,6 +9,8 @@ use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\Commands;
 use BEAR\Resource\ResourceObject;
 use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
+use BEAR\Sunday\Provide\Transfer\ConditionalResponse;
+use BEAR\Sunday\Provide\Transfer\ConditionalResponseInterface;
 use Override;
 use Ray\Di\AbstractModule;
 use Ray\Di\Scope;
@@ -34,6 +36,7 @@ final class CacheableModule extends AbstractModule
     {
         $this->bind(HttpCacheInterface::class)->to(HttpCache::class);
         $this->bind(ConditionalRequest::class);
+        $this->bind(ConditionalResponseInterface::class)->to(ConditionalResponse::class);
         $this->bind()->annotatedWith(Commands::class)->toProvider(CommandsProvider::class);
         $this->bind(RefreshInterceptor::class);
         $this->bind(RefreshTemplateValidator::class)->in(Scope::SINGLETON);

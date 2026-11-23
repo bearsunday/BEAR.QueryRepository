@@ -145,7 +145,7 @@ class DonutRepositoryTest extends TestCase
         // create donut
         $resource->get('page://self/html/blog-posting');
         // delete comment and blog-posting view
-        $storage->invalidateTags([(new UriTag())(new Uri('page://self/html/comment'))]);
+        $storage->invalidateTags([(new UriTag(new CacheIdentityFactory(new GlobalServerContext())))(new Uri('page://self/html/comment'))]);
         // create by donut
         $donutRo = $resource->get('page://self/html/blog-posting');
         $this->assertSame(200, $donutRo->code);
@@ -302,7 +302,7 @@ class DonutRepositoryTest extends TestCase
         // Drop just the hole's own state, leaving the page's donut template behind, so the
         // next GET takes the refresh path: ResourceDonut::refresh() re-parses the stored
         // [le:URI] placeholder and re-fetches it independently of the first render.
-        $storage->invalidateTags([(new UriTag())(new Uri('app://self/multi-param-query-hole?id=1&tag=2'))]);
+        $storage->invalidateTags([(new UriTag(new CacheIdentityFactory(new GlobalServerContext())))(new Uri('app://self/multi-param-query-hole?id=1&tag=2'))]);
         $logger->flush();
 
         $refreshed = $resource->get('page://self/html/donut-cache-with-multi-param-query-hole');
@@ -362,7 +362,7 @@ class DonutRepositoryTest extends TestCase
         $resource->get('page://self/html/blog-posting');
         $ro1 = $queryRepository->get(new Uri('page://self/html/blog-posting'));
         $this->assertInstanceOf(ResourceState::class, $ro1);
-        $donutRepository->invalidateTags([(new UriTag())(new Uri('page://self/html/blog-posting'))]);
+        $donutRepository->invalidateTags([(new UriTag(new CacheIdentityFactory(new GlobalServerContext())))(new Uri('page://self/html/blog-posting'))]);
         $ro2 = $queryRepository->get(new Uri('page://self/html/blog-posting'));
         $this->assertNull($ro2);
     }

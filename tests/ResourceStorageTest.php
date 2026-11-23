@@ -283,7 +283,7 @@ class ResourceStorageTest extends TestCase
         $this->assertNotNull($this->storage->get($this->ro->uri));
 
         // The URI tag still invalidates the same entry.
-        $this->storage->invalidateTags([(new UriTag())($this->ro->uri)]);
+        $this->storage->invalidateTags([(new UriTag(new CacheIdentityFactory(new GlobalServerContext())))($this->ro->uri)]);
         $this->assertNull($this->storage->get($this->ro->uri));
     }
 
@@ -383,6 +383,6 @@ class ResourceStorageTest extends TestCase
 
     private function dependencies(AbstractUri $uri): Dependencies
     {
-        return $this->injector->getInstance(CacheDependencyCollector::class)->begin(new TagSet([(new UriTag())($uri)]));
+        return $this->injector->getInstance(CacheDependencyCollector::class)->begin(new TagSet([(new UriTag(new CacheIdentityFactory(new GlobalServerContext())))($uri)]));
     }
 }

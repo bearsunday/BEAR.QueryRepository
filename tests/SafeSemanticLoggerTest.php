@@ -7,6 +7,7 @@ namespace BEAR\QueryRepository;
 use BEAR\QueryRepository\Log\Context\CacheHitContext;
 use BEAR\QueryRepository\Log\Context\CacheMissContext;
 use BEAR\QueryRepository\Log\Context\GetContext;
+use BEAR\QueryRepository\Log\ProcessSession;
 use BEAR\QueryRepository\Log\SafeSemanticLogger;
 use PHPUnit\Framework\TestCase;
 
@@ -33,7 +34,7 @@ class SafeSemanticLoggerTest extends TestCase
 
     public function testSerializesWithoutCarryingSessionState(): void
     {
-        $safe = new SafeSemanticLogger();
+        $safe = new SafeSemanticLogger(null, new ProcessSession());
         $safe->open(new GetContext('page://self/x')); // leave a session open (dirty)
 
         $restored = unserialize(serialize($safe));
@@ -50,7 +51,7 @@ class SafeSemanticLoggerTest extends TestCase
         // Pin the 0.9 contract against a REAL SemanticLogger delegate (no fake):
         // closing scope A while B is still open violates LIFO order. The core
         // never throws — the violation is recorded in-band as a diagnostic.
-        $safe = new SafeSemanticLogger();
+        $safe = new SafeSemanticLogger(null, new ProcessSession());
 
         $idA = $safe->open(new GetContext('page://self/a'));
         $safe->open(new GetContext('page://self/b'));
