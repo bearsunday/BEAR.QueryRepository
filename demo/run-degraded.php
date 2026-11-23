@@ -115,7 +115,7 @@ F. Pool refuses invalidation                 -> invalidate{roPool: failed}
 G. The other command producers               -> command{source: DonutCommandInterceptor},
                                                 command{source: RefreshInterceptor}, and a
                                                 POST that creates: purge_skipped, then its #[Purge]
-H. A finite TTL under #[HttpCache]           -> save_* with requestedTtl=10, private Cache-Control
+H. A finite TTL under #[HttpCache]           -> save_* with requestedTtl=10, declared Cache-Control
 I. Direct putStatic(ttl, sMaxAge)            -> manual_store{,_result} rooting a donut
                                                 write with real ttl/sMaxAge
 
@@ -398,9 +398,9 @@ $injector = $newInjector();
 $resource = $injector->getInstance(ResourceInterface::class);
 $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
-$ro = $resource->get('app://self/http-cache-control-with-cacheable');
+$ro = $resource->get('app://self/http-cache-control-override-max-age');
 echo sprintf(
-    'H  GET a #[Cacheable(expirySecond: 10), HttpCache(isPrivate: true)] resource -> Cache-Control: %s',
+    'H  GET a #[Cacheable(expirySecond: 10), HttpCache(maxAge: 5)] resource -> Cache-Control: %s',
     $ro->headers['Cache-Control'] ?? '(none)',
 ) . PHP_EOL;
 echo '   the save events carry requestedTtl=10, not the 31536000 `never` placeholder' . PHP_EOL;

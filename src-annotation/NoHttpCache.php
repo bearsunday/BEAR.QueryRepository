@@ -9,7 +9,7 @@ use Attribute;
 /**
  * Sets `Cache-Control: private, no-store, no-cache, must-revalidate` on an onGet() response with status 200
  *
- * A server-side cache attribute such as #[Cacheable] still stores the response.
+ * A resource stored by #[Cacheable], #[CacheableResponse] or #[DonutCache] throws UnstorableDeclaration.
  *
  * @see \BEAR\QueryRepository\HttpCacheInterceptor
  */

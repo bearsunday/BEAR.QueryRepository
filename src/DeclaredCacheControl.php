@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Exception\UnstorableDeclaration;
 use BEAR\RepositoryModule\Annotation\HttpCache;
 use BEAR\RepositoryModule\Annotation\NoHttpCache;
 use BEAR\Resource\ResourceObject;
@@ -14,13 +15,7 @@ use function str_contains;
 use function strtolower;
 
 /**
- * The Cache-Control value `#[HttpCache]`/`#[NoHttpCache]` declares for a resource, and whether
- * a response's own code overrode it to something unstorable
- *
- * A declared value is exempt from `storability()`'s check - it is the attribute's own
- * client-facing directive, not a per-request value. A runtime `private`/`no-store` outside
- * that declared value is refused, since this package is a shared cache: whatever it stores
- * is served to every later visitor.
+ * The Cache-Control value `#[HttpCache]`/`#[NoHttpCache]` declares for a resource, and whether a write may store it
  *
  * @internal
  */
@@ -29,28 +24,28 @@ final class DeclaredCacheControl
     /** @var array<class-string, HttpCache|NoHttpCache|null> */
     private array $declared = [];
 
-    /** Decide for a response as the resource and its renderer returned it, before the write adds its own headers */
+    /**
+     * Decide for a response as the resource and its renderer returned it, before the write adds its own headers
+     *
+     * A runtime `private`/`no-store` makes the response unstorable: this package is a shared cache, and whatever it
+     * stores is served to every later visitor.
+     *
+     * @throws UnstorableDeclaration When the declared value itself has `private` or `no-store`.
+     */
     public function storability(ResourceObject $ro): Storability
     {
         $declaredValue = $this->cacheControl($ro);
-        foreach ($ro->headers as $name => $cacheControl) {
-            if (strtolower($name) !== strtolower(Header::CACHE_CONTROL) || $cacheControl === $declaredValue) {
-                continue;
-            }
+        if ($declaredValue !== null && $this->forbidsSharing($declaredValue)) {
+            throw new UnstorableDeclaration((string) $ro->uri, $declaredValue);
+        }
 
-            $lower = strtolower($cacheControl);
-            if (str_contains($lower, 'no-store') || str_contains($lower, 'private')) {
+        foreach ($ro->headers as $name => $cacheControl) {
+            if (strtolower($name) === strtolower(Header::CACHE_CONTROL) && $this->forbidsSharing($cacheControl)) {
                 return Storability::Unstorable;
             }
         }
 
-        return $this->declaredStorability($this->attribute($ro));
-    }
-
-    /** Decide for a response rebuilt from a stored entry, by the declaration alone */
-    public function stored(ResourceObject $ro): Storability
-    {
-        return $this->declaredStorability($this->attribute($ro));
+        return Storability::Shared;
     }
 
     /** The Cache-Control value the attribute declares, as HttpCacheInterceptor writes it */
@@ -68,11 +63,11 @@ final class DeclaredCacheControl
         return $declared instanceof HttpCache ? $declared : null;
     }
 
-    private function declaredStorability(HttpCache|NoHttpCache|null $declared): Storability
+    private function forbidsSharing(string $cacheControl): bool
     {
-        $isPrivate = $declared instanceof NoHttpCache || ($declared instanceof HttpCache && $declared->isPrivate);
+        $lower = strtolower($cacheControl);
 
-        return $isPrivate ? Storability::DeclaredPrivate : Storability::Shared;
+        return str_contains($lower, 'no-store') || str_contains($lower, 'private');
     }
 
     private function attribute(ResourceObject $ro): HttpCache|NoHttpCache|null

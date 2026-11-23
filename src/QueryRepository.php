@@ -109,8 +109,6 @@ final readonly class QueryRepository implements QueryRepositoryInterface
             // The response carries the headers of its rendering, such as Content-Type. A value
             // entry does not: a hit renders again.
             $ro->headers = array_replace($ro->headers, $ofRendering);
-            // The renderer may have set a CDN lifetime, which a declared-private response must not carry
-            $this->headerSetter->template($ro, $storability);
         }
     }
 

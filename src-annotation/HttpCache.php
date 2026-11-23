@@ -27,7 +27,8 @@ use function sprintf;
  * #[HttpCache(maxAge: 300, sMaxAge: 3600)]
  * ```
  *
- * `#[NoHttpCache]` tells clients not to cache.
+ * `#[NoHttpCache]` tells clients not to cache. A resource stored by #[Cacheable], #[CacheableResponse] or #[DonutCache]
+ * throws UnstorableDeclaration with `isPrivate` or `noStore`: this package is a shared cache.
  *
  * @see \BEAR\QueryRepository\HttpCacheInterceptor
  */

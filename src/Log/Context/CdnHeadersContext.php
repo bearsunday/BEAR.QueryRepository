@@ -18,8 +18,7 @@ use stdClass;
  * the CDN a lifetime - which is how an un-cacheable donut page is meant to stay off
  * the CDN, and how a response DeclaredCacheControl::storability() refuses (its own code set
  * private/no-store) is too: every CDN-facing header is stripped, so this records none.
- * A no-store declared by #[HttpCache] is not refused. What the CDN then does
- * is outside this record.
+ * What the CDN then does is outside this record.
  *
  * `headers` holds the literal name => value pairs of every CDN-facing header this
  * package's setters manage that is present on the response (CDN-Cache-Control,

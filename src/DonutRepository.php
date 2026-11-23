@@ -221,9 +221,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $this->logger->event(new RefreshDonutContext((string) $ro->uri));
         $donut->refresh($this->resource, $ro, $this->dependencyCollector->begin(new TagSet([$this->cacheTags->uriTag($ro->uri)])));
         if (! $donut->isCacheble) {
-            // Template-only (isCacheble=false): never stored as a page view. The donut keeps the headers from before
-            // the write stripped them.
-            $this->headerSetter->template($ro, $this->declaredCacheControl->stored($ro));
+            // Template-only (isCacheble=false): never stored as a page view
             $this->logCdnHeaders($ro);
             $this->logger->event(new PutSkippedContext((string) $ro->uri, 'not-cacheable'));
 
@@ -233,7 +231,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         // When the recomposed content is byte-identical to the recorded one, carry over
         // the original Last-Modified instead of advancing it to the recomposition time
         $lastModified = $donut->getUnchangedLastModified((string) $ro->view);
-        $surrogateKeys = $this->headerSetter->page($ro, $this->declaredCacheControl->stored($ro), $donut->ttl, $this->declaredCacheControl->cacheControl($ro), $lastModified);
+        $surrogateKeys = $this->headerSetter->page($ro, Storability::Shared, $donut->ttl, $this->declaredCacheControl->cacheControl($ro), $lastModified);
         $this->logCdnHeaders($ro);
         if ($lastModified === null) {
             $this->recordContentState($ro, $donut);

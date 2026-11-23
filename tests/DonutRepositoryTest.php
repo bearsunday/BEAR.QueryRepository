@@ -477,7 +477,6 @@ class DonutRepositoryTest extends TestCase
     {
         return [
             'max-age' => ['page://self/html/blog-posting-declared-max-age', 'max-age=60', 'max-age=60'],
-            'private' => ['page://self/html/blog-posting-declared-private', 'private', 'private, max-age=0'],
         ];
     }
 

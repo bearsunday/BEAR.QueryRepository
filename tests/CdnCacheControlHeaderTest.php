@@ -9,23 +9,14 @@ use BEAR\QueryRepository\Cdn\FastlyModule;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
-use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
-use FakeVendor\HelloWorld\Resource\App\CacheablePrivateWithCdnHeaders;
 use Fastly\Api\PurgeApi;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Madapaja\TwigModule\TwigModule;
-use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
 
-use function array_filter;
-use function array_keys;
-use function array_map;
-use function array_values;
 use function dirname;
-use function in_array;
-use function strtolower;
 
 class CdnCacheControlHeaderTest extends TestCase
 {
@@ -203,98 +194,6 @@ class CdnCacheControlHeaderTest extends TestCase
         $this->assertSame('private', $ro->headers[Header::CACHE_CONTROL]);
         $this->assertArrayNotHasKey(Header::CDN_CACHE_CONTROL, $ro->headers);
         $this->assertArrayNotHasKey('Surrogate-Control', $ro->headers);
-    }
-
-    public function testCacheableResponseWithHttpCacheNoStoreStillGetsCdnHeader(): void
-    {
-        // #[HttpCache(noStore: true)] declares its own client-facing Cache-Control: no-store
-        // - a header that equals the declared value is the attribute speaking, not a
-        // per-request value, and must not trip the gate (issue #222 regression guard: 1.x
-        // stored the template/content state and sent CDN headers for this combo).
-        $module = $this->getModule();
-        $injector = new Injector($module, __DIR__ . '/tmp');
-        $resource = $injector->getInstance(ResourceInterface::class);
-
-        $ro = $resource->get('page://self/html/cacheable-response-no-store');
-        $this->assertArrayHasKey(Header::CDN_CACHE_CONTROL, $ro->headers);
-        $this->assertStringContainsString('no-store', $ro->headers[Header::CACHE_CONTROL]);
-
-        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
-        $logger->flush();
-        $resource->get('page://self/html/cacheable-response-no-store');
-        $tree = $this->flushAndValidate($logger);
-        $this->assertContains('cache_hit', self::collectTypes($tree), 'the content was saved and is being served from the stored page state');
-    }
-
-    /** @return iterable<string, array{string, string}> */
-    public static function declaredPrivate(): iterable
-    {
-        yield 'isPrivate' => ['page://self/html/cacheable-response-private', 'private, max-age=0'];
-        yield 'isPrivate and noStore' => ['page://self/html/cacheable-response-private-no-store', 'private, no-store'];
-        yield 'NoHttpCache' => ['page://self/html/cacheable-response-no-http-cache', 'private, no-store, no-cache, must-revalidate'];
-        yield 'isPrivate, lifetimes set by the page' => ['page://self/html/cacheable-response-private-with-cdn-headers', 'private, max-age=0'];
-    }
-
-    #[DataProvider('declaredPrivate')]
-    public function testDeclaredPrivateGetsNoCdnLifetimeOnWriteOrRefresh(string $uri, string $cacheControl): void
-    {
-        // CDN-Cache-Control makes a CDN ignore Cache-Control, no-store included (RFC 9213 §2.2). The page is still
-        // stored, so a browser revalidating its private copy is answered 304 from the entry.
-        $module = $this->getModule();
-        $injector = new Injector($module, __DIR__ . '/tmp');
-        $resource = $injector->getInstance(ResourceInterface::class);
-
-        $first = $resource->get($uri);
-        $this->assertSame($cacheControl, $first->headers[Header::CACHE_CONTROL]);
-        $this->assertNoCdnLifetime($first->headers);
-        $this->assertArrayHasKey(Header::ETAG, $first->headers);
-        $httpCache = $injector->getInstance(HttpCacheInterface::class);
-        $this->assertTrue($httpCache->isNotModified([Header::HTTP_IF_NONE_MATCH => $first->headers[Header::ETAG]]));
-        $this->assertNoCdnLifetime($resource->get($uri)->headers);
-
-        $this->assertTrue($injector->getInstance(QueryRepositoryInterface::class)->purge(new Uri('page://self/html/comment')));
-        $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
-        $logger->flush();
-        $refreshed = $resource->get($uri);
-        $this->assertContains('refresh_donut', self::collectTypes($this->flushAndValidate($logger)));
-        $this->assertSame($cacheControl, $refreshed->headers[Header::CACHE_CONTROL]);
-        $this->assertNoCdnLifetime($refreshed->headers);
-    }
-
-    public function testDeclaredPrivateValueGetsNoCdnLifetimeOnWriteOrHit(): void
-    {
-        $resource = (new Injector($this->getModule(), __DIR__ . '/tmp'))->getInstance(ResourceInterface::class);
-        CacheablePrivateWithCdnHeaders::$calls = 0;
-
-        $first = $resource->get('app://self/cacheable-private-with-cdn-headers');
-        $this->assertSame('private, max-age=10', $first->headers[Header::CACHE_CONTROL]);
-        $this->assertNoCdnLifetime($first->headers);
-
-        $hit = $resource->get('app://self/cacheable-private-with-cdn-headers');
-        $this->assertSame(1, CacheablePrivateWithCdnHeaders::$calls, 'served from the entry');
-        $this->assertNoCdnLifetime($hit->headers);
-    }
-
-    public function testDeclaredPrivateDonutGetsNoCdnLifetimeOnWriteOrRecomposition(): void
-    {
-        $resource = (new Injector($this->getModule(), __DIR__ . '/tmp'))->getInstance(ResourceInterface::class);
-
-        $first = $resource->get('page://self/html/donut-cache-private-with-cdn-headers');
-        $this->assertSame('private', $first->headers[Header::CACHE_CONTROL]);
-        $this->assertNoCdnLifetime($first->headers);
-        $this->assertArrayHasKey(Header::SURROGATE_KEY, $first->headers, 'the purge keys stay');
-
-        $recomposed = $resource->get('page://self/html/donut-cache-private-with-cdn-headers');
-        $this->assertSame('private', $recomposed->headers[Header::CACHE_CONTROL]);
-        $this->assertNoCdnLifetime($recomposed->headers);
-        $this->assertSame($first->headers[Header::SURROGATE_KEY], $recomposed->headers[Header::SURROGATE_KEY]);
-    }
-
-    /** @param array<string, string> $headers */
-    private function assertNoCdnLifetime(array $headers): void
-    {
-        $lifetime = array_map(strtolower(...), HeaderSetter::CDN_LIFETIME_HEADERS);
-        $this->assertSame([], array_values(array_filter(array_keys($headers), static fn (string $name): bool => in_array(strtolower($name), $lifetime, true))));
     }
 
     private function getModule(): AbstractModule
