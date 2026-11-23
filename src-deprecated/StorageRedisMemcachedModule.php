@@ -1,0 +1,54 @@
+<?php
+
+declare(strict_types=1);
+
+namespace BEAR\QueryRepository;
+
+use BEAR\RepositoryModule\Annotation\EtagPool;
+use Memcached;
+use Psr\Cache\CacheItemPoolInterface;
+use Ray\Di\AbstractModule;
+use Ray\PsrCacheModule\Annotation\CacheNamespace;
+use Ray\PsrCacheModule\Annotation\MemcacheConfig;
+use Ray\PsrCacheModule\MemcachedAdapter;
+use Ray\PsrCacheModule\MemcachedProvider;
+use Ray\PsrCacheModule\Psr6RedisModule;
+use function array_map;
+use function explode;
+
+/**
+ * @deprecated
+ *
+ * Bind redis to shared storage, Bind memcache to etag pool
+ */
+final class StorageRedisMemcachedModule extends AbstractModule
+{
+    /** @var list<list<string>> */
+    private readonly array $memcacheServer;
+
+    /** @param string $redisServer 'localhost:6379' {host}:{port} */
+    public function __construct(
+        private readonly string $redisServer,
+        string $memcacheServer,
+        AbstractModule|null $module = null,
+    ) {
+        $this->memcacheServer = array_map(static fn ($memcacheServer) => explode(':', $memcacheServer), explode(',', $memcacheServer));
+
+        parent::__construct($module);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    protected function configure(): void
+    {
+        $this->install(new Psr6RedisModule($this->redisServer));
+        $this->bind(CacheItemPoolInterface::class)->annotatedWith(EtagPool::class)->toConstructor(MemcachedAdapter::class, [
+            'namespace' => CacheNamespace::class,
+            'clientProvider' => 'memcached',
+        ]);
+        $this->bind()->annotatedWith(MemcacheConfig::class)->toInstance($this->memcacheServer);
+        $this->bind(MemcachedProvider::class);
+        $this->bind(Memcached::class)->toProvider(MemcachedProvider::class);
+    }
+}
