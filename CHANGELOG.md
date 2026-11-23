@@ -38,8 +38,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `UnsupportedLogStream`: `ProdQueryRepositoryLogModule` opens the stream it is given, so a target other than a path or `php://stdout`/`php://stderr`/`php://output` is no longer refused.
 - `SurrogateKeys`, which only the donut write used; nothing replaces it outside the package.
 - `CommandInterface` and the `#[Commands]` binding of the commands a write runs, with `CommandsProvider`: a write runs the package's own purge and refresh. Move a command of your own into the write method or an interceptor of your own.
+- The `BaseUriTagInterface` binding: the group tag of an entry is always the one a purge of its bare URI reaches.
 
 ### Fixed
+- A conditional request whose ETag, set by an `EtagSetterInterface` of your own, holds a character PSR-6 reserves in a cache key, such as the `/` of base64, is answered with 304; it was answered in full.
 - A `#[Cacheable]` write that changed its own `$this->uri` purged the changed URI and left the entry of the URI it was sent to stale. It purges and reads again the URI it was sent to.
 - A page stored by `DonutRepositoryInterface::putStatic()` with an `$sMaxAge` gave browsers that lifetime as `max-age` on a cache hit and after a refresh, so a browser kept the page as long as the CDN did, out of reach of a purge. It now gets `max-age=0` and revalidates, unless its `Cache-Control` already has a `max-age`.
 - A page that declares `#[HttpCache]` and calls `putStatic()` in its own `onGet()` is stored with the declared `Cache-Control`, so a cache hit and a recomposed page carry it too. Declare `Cache-Control` with the attribute rather than setting the header.

@@ -33,7 +33,6 @@ use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
  *  SemanticLoggerInterface (null by default - install Dev/ProdQueryRepositoryLogModule to record)
  *  MatchQueryInterface
  *  UriTag
- *  BaseUriTagInterface
  *  DeclaredCacheControl
  *
  *  The following module are installed.
@@ -68,6 +67,7 @@ final class QueryRepositoryModule extends AbstractModule
         $this->bind(QueryRepositoryInterface::class)->to(QueryRepository::class)->in(Scope::SINGLETON);
         $this->bind(CacheDependencyInterface::class)->to(CacheDependency::class);
         $this->bind(CacheTags::class);
+        $this->bind(EntityTags::class);
         $this->bind(ResourceBodyEvaluator::class);
         $this->bind(CommandScope::class);
         $this->bind(CacheFailure::class);
@@ -80,12 +80,10 @@ final class QueryRepositoryModule extends AbstractModule
         $this->bind(EtagSetterInterface::class)->to(EtagSetter::class);
         $this->bind(NamedParameterInterface::class)->to(NamedParameter::class);
         $this->bind(ResourceStorageInterface::class)->to(ResourceStorage::class)->in(Scope::SINGLETON);
-        $this->bind(BaseUriTagInterface::class)->to(BaseUriTag::class);
         $this->bind(MatchQueryInterface::class)->to(MatchQuery::class);
         $this->bind(RefreshAnnotatedCommand::class);
         $this->bind(CommandQuery::class);
         $this->bind(UnsafeMethodMatcher::class);
-        $this->bind(ResourceStorageSaver::class);
         // Server context for thread safety (Swoole, RoadRunner, etc.)
         $this->bind(ServerContextInterface::class)->to(GlobalServerContext::class)->in(Scope::SINGLETON);
         $this->bind(DeclaredCacheControl::class)->in(Scope::SINGLETON);

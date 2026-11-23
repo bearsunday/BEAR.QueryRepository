@@ -98,7 +98,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     /**
      * Clamp a requested lifetime the way the storage does
      *
-     * `ResourceStorageSaver` treats zero or below as no expiry; clamping here keeps the
+     * The storage treats zero or below as no expiry; clamping here keeps the
      * recorded lifetime at 0 instead of a negative value the entry never had.
      */
     private function lifetime(int|null $seconds): int|null
@@ -209,7 +209,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
 
         $this->logger->event(new CacheHitContext('donut'));
         $this->logger->event(new RefreshDonutContext((string) $ro->uri));
-        $donut->refresh($this->resource, $ro, $this->dependencyCollector->begin(new TagSet([$this->cacheTags->uriTag($ro->uri)])));
+        $donut->refresh($this->resource, $ro, $this->dependencyCollector->begin(new TagSet()));
         if (! $donut->isCacheble) {
             // Template-only (isCacheble=false): never stored as a page view
             $this->logCdnHeaders($ro);

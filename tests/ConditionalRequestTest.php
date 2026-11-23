@@ -56,6 +56,17 @@ class ConditionalRequestTest extends TestCase
         $this->assertSame([], $this->logger->events);
     }
 
+    public function testAnEtagWithAPsr6ReservedCharacterIsAnswered(): void
+    {
+        $ro = new Index();
+        $ro->uri = new Uri('page://self/base64');
+        $ro->body = [];
+        $ro->headers[Header::ETAG] = '"a/b+c="';
+        $this->storage->saveValue($ro, 10);
+
+        $this->assertTrue((new ConditionalRequest($this->storage, $this->logger, new CacheFailure($this->logger), new ConditionalResponse()))->isNotModified($ro->headers[Header::ETAG], []));
+    }
+
     public function testScopedAnswerRejectsAnotherResource(): void
     {
         $this->assertTrue((new ConditionalRequest($this->storage, $this->logger, new CacheFailure($this->logger), new ConditionalResponse()))->isNotModifiedFor($this->uri, 'W/' . $this->live, []));

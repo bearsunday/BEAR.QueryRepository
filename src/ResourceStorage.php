@@ -28,6 +28,7 @@ use function array_unique;
 use function assert;
 use function hrtime;
 use function implode;
+use function in_array;
 use function max;
 use function round;
 use function str_starts_with;
@@ -39,11 +40,11 @@ use function trim;
  * @psalm-type Props = array{
  *     logger: SemanticLoggerInterface,
  *     purger:PurgerInterface,
- *     saver: ResourceStorageSaver,
  *     roProvider:ProviderInterface<TagAwareAdapterInterface>,
  *     identityFactory: CacheIdentityFactory,
  *     cacheTags: CacheTags,
  *     evaluateBody: ResourceBodyEvaluator,
+ *     entityTags: EntityTags,
  * }
  * @internal
  */
@@ -74,12 +75,12 @@ final class ResourceStorage implements ResourceStorageInterface
         #[CacheLog]
         private SemanticLoggerInterface $logger,
         private PurgerInterface $purger,
-        private ResourceStorageSaver $saver,
         private readonly CacheIdentityFactory $identityFactory,
         #[Set(TagAwareAdapterInterface::class, ResourceObjectPool::class)]
         ProviderInterface $roPoolProvider,
         private readonly CacheTags $cacheTags,
         private ResourceBodyEvaluator $evaluateBody,
+        private EntityTags $entityTags,
     ) {
         $this->initializePools($roPoolProvider);
     }
@@ -123,7 +124,7 @@ final class ResourceStorage implements ResourceStorageInterface
     public function validatedEntry(string $ifNoneMatch, AbstractUri|null $uri = null): ResourceState|null
     {
         $locator = $uri === null ? null : $this->identityFactory->locator($uri);
-        foreach (array_unique(EntityTags::of($ifNoneMatch)) as $opaqueTag) {
+        foreach (array_unique($this->entityTags->of($ifNoneMatch)) as $opaqueTag) {
             $entryLocator = $this->identityFactory->locatorOf($opaqueTag);
             if ($entryLocator === null || ($locator !== null && $entryLocator !== $locator)) {
                 continue;
@@ -132,7 +133,7 @@ final class ResourceStorage implements ResourceStorageInterface
             $key = $this->identityFactory->storageKey($entryLocator, self::KEY_RO);
             $state = $this->guard(fn () => $this->roPool->getItem($key))->get();
             assert($state instanceof ResourceState || $state === null);
-            if (EntityTags::of($state?->headers[Header::ETAG] ?? '') === [$opaqueTag]) {
+            if (in_array($state?->headers[Header::ETAG] ?? null, ['"' . $opaqueTag . '"', 'W/"' . $opaqueTag . '"'], true)) {
                 return $state;
             }
         }
@@ -254,7 +255,7 @@ final class ResourceStorage implements ResourceStorageInterface
         $ttl = $this->nonNegative($ttl);
         $key = $this->getUriKey($uri, self::KEY_DONUT);
         $headerKeys = (new TagSet($headerKeys))->toArray();
-        $saved = $this->saveToPool($key, $donut, $this->roPool, $headerKeys, $ttl);
+        $saved = $this->saveToPool($key, $donut, $headerKeys, $ttl);
         // saved=false is logged, not asserted: a quiet store failure must stay observable
         // in the log (an assert here would throw AFTER the event, contradicting it).
         $this->logger->event(new SaveDonutContext((string) $uri, $headerKeys, $ttl, $saved));
@@ -278,7 +279,7 @@ final class ResourceStorage implements ResourceStorageInterface
         $resourceState = ResourceState::create($ro, $body, $view);
         $key = $this->getUriKey($ro->uri, self::KEY_RO);
         $tags = $this->getTags($ro, $tags);
-        $saved = $this->saveToPool($key, $resourceState, $this->roPool, $tags, $ttl);
+        $saved = $this->saveToPool($key, $resourceState, $tags, $ttl);
         $this->logger->event(new $contextClass((string) $ro->uri, $tags, $ttl, $saved));
 
         return $saved;
@@ -306,9 +307,16 @@ final class ResourceStorage implements ResourceStorageInterface
     }
 
     /** @param list<string> $tags */
-    private function saveToPool(string $key, mixed $value, TagAwareAdapterInterface $pool, array $tags, int|null $ttl): bool
+    private function saveToPool(string $key, mixed $value, array $tags, int|null $ttl): bool
     {
-        return $this->guard(fn (): bool => ($this->saver)($key, $value, $pool, $tags, $ttl));
+        return $this->guard(function () use ($key, $value, $tags, $ttl): bool {
+            $item = $this->roPool->getItem($key)->set($value)->tag($tags);
+            if ($ttl !== null && $ttl > 0) {
+                $item->expiresAfter($ttl);
+            }
+
+            return $this->roPool->save($item);
+        });
     }
 
     /**
@@ -365,11 +373,11 @@ final class ResourceStorage implements ResourceStorageInterface
         return [
             'logger' => $this->logger,
             'purger' => $this->purger,
-            'saver' => $this->saver,
             'roProvider' => $this->roPoolProvider,
             'identityFactory' => $this->identityFactory,
             'cacheTags' => $this->cacheTags,
             'evaluateBody' => $this->evaluateBody,
+            'entityTags' => $this->entityTags,
         ];
     }
 
@@ -382,10 +390,10 @@ final class ResourceStorage implements ResourceStorageInterface
     {
         $this->logger = $data['logger'];
         $this->purger = $data['purger'];
-        $this->saver = $data['saver'];
         $this->identityFactory = $data['identityFactory'];
         $this->cacheTags = $data['cacheTags'];
         $this->evaluateBody = $data['evaluateBody'];
+        $this->entityTags = $data['entityTags'];
         $this->initializePools($data['roProvider']);
     }
 }
