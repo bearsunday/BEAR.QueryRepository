@@ -23,7 +23,7 @@ use function assert;
  * Routing supplies the missing half, and routing is cheap - what a 304 avoids is running the
  * resource, not matching a path.
  */
-class ScopedValidatorTest extends TestCase
+class UriScopedHttpCacheTest extends TestCase
 {
     private ResourceInterface $resource;
     private HttpCacheInterface $httpCache;

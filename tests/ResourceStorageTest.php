@@ -197,7 +197,7 @@ class ResourceStorageTest extends TestCase
         $this->assertSame('failed', $context->jsonSerialize()['cdn']);
     }
 
-    public function testHasEtagAcceptsIfNoneMatchVariants(): void
+    public function testValidatedEntryAcceptsIfNoneMatchVariants(): void
     {
         $this->ro->headers[Header::ETAG] = '"123456"';
         $this->storage->saveValue($this->ro, 10);
@@ -210,7 +210,7 @@ class ResourceStorageTest extends TestCase
         $this->assertNull($this->storage->validatedEntry('"999999"'), 'unknown entity-tag');
     }
 
-    public function testHasEtagSplitsOnlyOnCommasOutsideQuotes(): void
+    public function testValidatedEntrySplitsOnlyOnCommasOutsideQuotes(): void
     {
         $this->ro->headers[Header::ETAG] = '"foo,bar"';
         $this->storage->saveValue($this->ro, 10);
@@ -226,7 +226,7 @@ class ResourceStorageTest extends TestCase
         );
     }
 
-    public function testHasEtagRejectsMalformedFieldValues(): void
+    public function testValidatedEntryRejectsMalformedFieldValues(): void
     {
         $this->ro->headers[Header::ETAG] = '"123456"';
         $this->storage->saveValue($this->ro, 10);

@@ -63,7 +63,6 @@
         "files": [
             "tests/Fake/Memcached.php",
             "tests/Fake/Redis.php",
-            "tests/Fake/RedisException.php",
             "tests/syslog.php"
         ]
     },

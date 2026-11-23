@@ -67,37 +67,35 @@ class ConditionalRequestTest extends TestCase
     {
         $storage = ResourceStorageTest::getResourceStorageInstance(roPool: new TagAwareAdapter(new FakeErrorCache()));
         foreach ([null, $this->uri] as $uri) {
-            foreach ([$storage] as $candidate) {
-                $logger = new RecordingSemanticLogger();
-                $warnings = [];
-                set_error_handler(function (int $errno, string $message) use ($logger, &$warnings): bool {
-                    $this->assertSame(E_USER_WARNING, $errno);
-                    $this->assertCount(1, $logger->events);
-                    $this->assertCount(1, $logger->closes);
-                    $warnings[] = $message;
+            $logger = new RecordingSemanticLogger();
+            $warnings = [];
+            set_error_handler(function (int $errno, string $message) use ($logger, &$warnings): bool {
+                $this->assertSame(E_USER_WARNING, $errno);
+                $this->assertCount(1, $logger->events);
+                $this->assertCount(1, $logger->closes);
+                $warnings[] = $message;
 
-                    return true;
-                });
-                try {
-                    $server = ['REQUEST_URI' => '/original'];
-                    $hit = $uri === null
-                        ? (new ConditionalRequest($candidate, $logger, new CacheFailure($logger)))->isNotModified($this->live, $server)
-                        : (new ConditionalRequest($candidate, $logger, new CacheFailure($logger)))->isNotModifiedFor($uri, $this->live, $server);
-                } finally {
-                    restore_error_handler();
-                }
-
-                $this->assertFalse($hit);
-                $this->assertCount(1, $warnings);
-                $this->assertStringStartsWith('RuntimeException: cache server down in ', $warnings[0]);
-                $error = $logger->events[0];
-                assert($error instanceof CacheErrorContext);
-                $this->assertSame($uri !== null ? (string) $uri : '/original', $error->uri);
-                $this->assertSame('read', $error->operation);
-                $miss = $logger->closes[0];
-                assert($miss instanceof CacheMissContext);
-                $this->assertSame('etag', $miss->layer);
+                return true;
+            });
+            try {
+                $server = ['REQUEST_URI' => '/original'];
+                $hit = $uri === null
+                    ? (new ConditionalRequest($storage, $logger, new CacheFailure($logger)))->isNotModified($this->live, $server)
+                    : (new ConditionalRequest($storage, $logger, new CacheFailure($logger)))->isNotModifiedFor($uri, $this->live, $server);
+            } finally {
+                restore_error_handler();
             }
+
+            $this->assertFalse($hit);
+            $this->assertCount(1, $warnings);
+            $this->assertStringStartsWith('RuntimeException: cache server down in ', $warnings[0]);
+            $error = $logger->events[0];
+            assert($error instanceof CacheErrorContext);
+            $this->assertSame($uri !== null ? (string) $uri : '/original', $error->uri);
+            $this->assertSame('read', $error->operation);
+            $miss = $logger->closes[0];
+            assert($miss instanceof CacheMissContext);
+            $this->assertSame('etag', $miss->layer);
         }
     }
 }

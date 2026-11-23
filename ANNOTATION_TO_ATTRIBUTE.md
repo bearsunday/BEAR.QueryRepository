@@ -167,7 +167,7 @@ use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\HttpCache;
 
 /**
- * @Cacheable(expiry="medium", expirySecond=3600, type="view", update=true)
+ * @Cacheable(expiry="medium", expirySecond=3600, type="view")
  * @HttpCache(maxAge=60, sMaxAge=600, isPrivate=false, mustRevalidate=true)
  */
 class Article extends ResourceObject
@@ -181,7 +181,7 @@ class Article extends ResourceObject
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\HttpCache;
 
-#[Cacheable(expiry: "medium", expirySecond: 3600, type: "view", update: true)]
+#[Cacheable(expiry: "medium", expirySecond: 3600, type: "view")]
 #[HttpCache(maxAge: 60, sMaxAge: 600, isPrivate: false, mustRevalidate: true)]
 class Article extends ResourceObject
 {

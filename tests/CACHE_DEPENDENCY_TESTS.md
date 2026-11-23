@@ -324,7 +324,7 @@ the next reviewer can attack the judgment instead of rediscovering it:
 | Surviving mutant (construct) | Why it stays |
 |---|---|
 | `HeaderSetter` max-age guard `> 0` → `>= 0` | Pre-existing; emitting `max-age: 0` for "no expiry" would itself be a lie. Current behavior is correct, the boundary is merely unpinned |
-| DI binding removals (`DonutCacheModule`: deprecated `RepositoryLoggerInterface` BC binding, `DonutRepository` singleton scope) | BC surface / stateless `readonly` service: no in-process observable difference |
+| DI binding removals (`DonutRepository` singleton scope) | Stateless `readonly` service: no in-process observable difference |
 | `clone` removal on the command's delete URI (`DonutCommandInterceptor`) | Aliasing with no downstream writer in any current flow |
 | `return` removals on typed early-return paths | Equivalent result or a loud type failure on any real call path |
 | `QueryRepository` expiryAt guard `\|\|` → `&&` | Differs only for a non-array body carrying an `expiryAt` attribute, which fails in both variants |
