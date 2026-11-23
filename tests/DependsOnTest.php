@@ -7,12 +7,11 @@ namespace BEAR\QueryRepository;
 use ArrayIterator;
 use BEAR\QueryRepository\Exception\DependsOnNotExpandable;
 use BEAR\Resource\AbstractUri;
+use BEAR\Resource\AssistedWebContextParam;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
-use FakeVendor\HelloWorld\Entity\ArrayUlid;
 use FakeVendor\HelloWorld\Entity\Catalog;
-use FakeVendor\HelloWorld\Entity\PrivateUlid;
 use FakeVendor\HelloWorld\Entity\Ulid;
 use FakeVendor\HelloWorld\Resource\App\Rows\Turn;
 use Madapaja\TwigModule\TwigModule;
@@ -66,8 +65,8 @@ class DependsOnTest extends TestCase
         $cases = [];
         foreach (self::shapeProvider() as $shape => [$uri, $isDonut]) {
             $cases["{$shape}, onGet() argument"] = [$uri, $isDonut, 'app://self/rows/taxonomy?ulid=c1'];
-            $cases["{$shape}, row property"] = [$uri, $isDonut, 'app://self/rows/article?ulid=a3'];
-            $cases["{$shape}, row parent class"] = [$uri, $isDonut, 'app://self/rows/taxonomy?ulid=s1'];
+            $cases["{$shape}, row ulid"] = [$uri, $isDonut, 'app://self/rows/article?ulid=a3'];
+            $cases["{$shape}, row seriesId"] = [$uri, $isDonut, 'app://self/rows/taxonomy?ulid=s1'];
         }
 
         return $cases;
@@ -427,14 +426,6 @@ class DependsOnTest extends TestCase
         $this->assertFalse($this->isStored($uri, false));
     }
 
-    public function testRowsThatReferToEachOtherAreEachReadOnce(): void
-    {
-        $keys = $this->keys($this->resource->get('app://self/rows/cyclic'));
-
-        $this->assertSame(1, array_count_values($keys)[$this->tag('app://self/rows/article?ulid=a1')] ?? 0);
-        $this->assertSame(1, array_count_values($keys)[$this->tag('app://self/rows/article?ulid=a3')] ?? 0);
-    }
-
     public function testTheDeclarationOnAnOverriddenOnGetIsRead(): void
     {
         $uri = 'app://self/rows/overriding?channelId=c1';
@@ -503,12 +494,9 @@ class DependsOnTest extends TestCase
     public static function notExpandableProvider(): array
     {
         return [
-            'private property' => ['app://self/rows/private-row', 'app://self/rows/private-row ' . PrivateUlid::class, "no 'ulid'"],
-            'array property' => ['app://self/rows/array-row', 'app://self/rows/array-row ' . ArrayUlid::class, "'ulid' is array"],
             'variable not an onGet() parameter' => ['app://self/rows/not-parameter?channelId=c1', 'app://self/rows/not-parameter?channelId=c1 onGet()', "'ulid' is not an onGet() parameter"],
             'variable whose only value is an array' => ['app://self/rows/nested-only', 'app://self/rows/nested-only onGet()', "'user' is array"],
             'variable in neither the rows, the top level nor the arguments' => ['app://self/rows/row-missing', 'app://self/rows/row-missing onGet()', "'ulid' is not an onGet() parameter"],
-            'declared on a resource class' => ['app://self/rows/class-declared?channelId=c1', 'app://self/rows/class-declared?channelId=c1', 'declared on a resource class'],
             'variable bound by #[ResourceParam]' => ['app://self/rows/resource-param-bound', 'app://self/rows/resource-param-bound onGet()', "'channelId' is bound by #[ResourceParam]"],
             'variable bound by #[ResourceParam] and also in the query' => ['app://self/rows/resource-param-bound?channelId=c1', 'app://self/rows/resource-param-bound?channelId=c1 onGet()', "'channelId' is bound by #[ResourceParam]"],
             'variable bound by a method-level #[ResourceParam]' => ['app://self/rows/method-resource-param-bound', 'app://self/rows/method-resource-param-bound onGet()', "'channelId' is bound by #[ResourceParam]"],
@@ -524,6 +512,22 @@ class DependsOnTest extends TestCase
         } catch (DependsOnNotExpandable $e) {
             $this->assertSame($source, $e->source);
             $this->assertSame($reason, $e->reason);
+        }
+
+        $this->assertFalse($this->isStored($uri, false));
+    }
+
+    public function testAVariableACookieFillsWithoutADefaultCannotExpand(): void
+    {
+        $uri = 'app://self/rows/cookie-bound';
+        AssistedWebContextParam::setSuperGlobalsOnlyForTestingPurpose(['_COOKIE' => ['channel' => 'c1']]);
+        try {
+            $this->resource->get($uri);
+            $this->fail('DependsOnNotExpandable must be thrown');
+        } catch (DependsOnNotExpandable $e) {
+            $this->assertSame("no 'channelId'", $e->reason);
+        } finally {
+            AssistedWebContextParam::setSuperGlobalsOnlyForTestingPurpose([]);
         }
 
         $this->assertFalse($this->isStored($uri, false));

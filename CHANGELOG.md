@@ -25,9 +25,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Deprecated
 - `DonutRepositoryInterface::purge()`: use `QueryRepositoryInterface::purge()`. A write to a `#[CacheableResponse]` page now purges through it, so an application that binds its own `DonutRepositoryInterface` no longer sees that purge.
 - `DependencySkippedContext::NO_ETAG_OR_SURROGATE_KEY` and the `dependency_skipped` schema value `no_etag_or_surrogate_key`: no longer emitted, since an embedded child with a body is always a dependency. They are kept for compatibility with 1.20.2.
-- `#[DependsOn]` on a row class: put the rows in the body under `key` from `onGet()` instead.
 
 ### Removed
+- `#[DependsOn]` on a row class, added in 1.20.0: declare it on `onGet()` with `key` naming the top-level body key that holds the rows; rows nested deeper are not read. A declaration left on a class is not read; PHPStan and Psalm report it.
 - `UnsupportedLogStream`: `ProdQueryRepositoryLogModule` opens the stream it is given, so a target other than a path or `php://stdout`/`php://stderr`/`php://output` is no longer refused.
 - `SurrogateKeys`, which only the donut write used; nothing replaces it outside the package.
 

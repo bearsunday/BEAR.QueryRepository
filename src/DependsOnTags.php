@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\QueryRepository\Exception\DependsOnNotExpandable;
 use BEAR\RepositoryModule\Annotation\DependsOn;
 use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\ResourceObject;
@@ -58,19 +57,12 @@ final readonly class DependsOnTags
         return $this->resourceParamSources->tags($ro);
     }
 
-    /** @return TagSet|null what onGet() and the row classes in the body declare; null when neither declares */
+    /** @return TagSet|null what onGet() declares; null when it declares nothing */
     public function declared(ResourceObject $ro): TagSet|null
     {
-        $onClass = $this->templates->ofClass($ro::class);
-        if ($onClass !== []) {
-            throw new DependsOnNotExpandable((string) $ro->uri, $this->templates->declaration($onClass[0]), 'declared on a resource class');
-        }
-
         $onGet = $this->templates->ofOnGet($ro);
-        $tags = $onGet === [] ? null : new TagSet($this->fromResult($ro, $onGet));
-        $rows = (new RowClassWalk($this->uriTag, $this->templates, (string) $ro->uri))->tags($ro->body);
 
-        return $rows === null ? $tags : ($tags ?? new TagSet())->merge(new TagSet($rows));
+        return $onGet === [] ? null : new TagSet($this->fromResult($ro, $onGet));
     }
 
     /**

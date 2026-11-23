@@ -9,13 +9,15 @@ use BEAR\RepositoryModule\Annotation\DependsOn;
 use BEAR\Resource\ResourceObject;
 use FakeVendor\HelloWorld\Entity\Catalog;
 
-/** A class-level #[Cacheable] list: the channel from its argument, the rows from their class */
+/** A class-level #[Cacheable] list: the channel from its argument, the article and series from its rows */
 #[Cacheable]
 class Ca extends ResourceObject
 {
     public static int $runs = 0;
 
     #[DependsOn(uri: 'app://self/rows/taxonomy?ulid={channelId}')]
+    #[DependsOn(uri: 'app://self/rows/article?ulid={ulid}', key: 'entries')]
+    #[DependsOn(uri: 'app://self/rows/taxonomy?ulid={seriesId}', key: 'entries')]
     public function onGet(string $channelId): static
     {
         self::$runs++;

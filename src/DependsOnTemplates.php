@@ -4,22 +4,17 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\QueryRepository\Exception\DependsOnNotExpandable;
 use BEAR\RepositoryModule\Annotation\DependsOn;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
-use ReflectionAttribute;
 use ReflectionClass;
 use Stringable;
 
 use function array_is_list;
-use function array_key_exists;
 use function array_unique;
 use function array_values;
 use function explode;
-use function get_debug_type;
 use function is_array;
-use function is_scalar;
 use function preg_match_all;
 use function preg_replace;
 use function serialize;
@@ -39,30 +34,8 @@ use const PREG_SET_ORDER;
  */
 final class DependsOnTemplates
 {
-    /** @var array<class-string, list<string>> */
-    private array $onClass = [];
-
     /** @var array<class-string, list<DependsOn>> */
     private array $onGet = [];
-
-    /**
-     * @param class-string $class
-     *
-     * @return list<string> the templates declared on the class and its parents
-     */
-    public function ofClass(string $class): array
-    {
-        if (isset($this->onClass[$class])) {
-            return $this->onClass[$class];
-        }
-
-        $templates = [];
-        for ($ref = new ReflectionClass($class); $ref !== false; $ref = $ref->getParentClass()) {
-            $templates = [...$templates, ...$this->uris($ref->getAttributes(DependsOn::class))];
-        }
-
-        return $this->onClass[$class] = array_values(array_unique($templates));
-    }
 
     /** @return list<DependsOn> the declarations on onGet(), including an onGet() the class overrides, each URI and key once */
     public function ofOnGet(ResourceObject $ro): array
@@ -87,11 +60,11 @@ final class DependsOnTemplates
      *
      * @return list<string> the tag of each URI the template expands to, one per element of a list given to an exploded query variable
      */
-    public function tags(UriTagInterface $uriTag, string $template, array $values, string $source): array
+    public function tags(UriTagInterface $uriTag, string $template, array $values): array
     {
         $tags = [];
         foreach ($this->variableSets($template, $values) as $variables) {
-            $tag = $this->tag($uriTag, $template, $variables, $source);
+            $tag = $this->tag($uriTag, $template, $variables);
             if ($tag !== null) {
                 $tags[] = $tag;
             }
@@ -133,33 +106,21 @@ final class DependsOnTemplates
     }
 
     /**
-     * @param array<array-key, mixed> $values
+     * @param array<array-key, mixed> $values each variable of the template holds a scalar, a Stringable or null: {@see DependsOnExpansion}
      *
      * @return string|null the tag of the URI the template expands to; null when a variable is null, which names no URI
      */
-    public function tag(UriTagInterface $uriTag, string $template, array $values, string $source): string|null
+    public function tag(UriTagInterface $uriTag, string $template, array $values): string|null
     {
         $variables = [];
         foreach ($this->variables($template) as $variable) {
-            if (! array_key_exists($variable, $values)) {
-                throw new DependsOnNotExpandable($source, $this->declaration($template), sprintf("no '%s'", $variable));
-            }
-
-            /** @var mixed $value */
+            /** @var scalar|Stringable|null $value */
             $value = $values[$variable];
             if ($value === null) {
                 return null;
             }
 
-            if ($value instanceof Stringable) {
-                $value = (string) $value;
-            }
-
-            if (! is_scalar($value)) {
-                throw new DependsOnNotExpandable($source, $this->declaration($template), sprintf("'%s' is %s", $variable, get_debug_type($value)));
-            }
-
-            $variables[$variable] = $value;
+            $variables[$variable] = $value instanceof Stringable ? (string) $value : $value;
         }
 
         return $uriTag(new Uri(uri_template($template, $variables)));
@@ -182,21 +143,6 @@ final class DependsOnTemplates
     public function declaration(string $template): string
     {
         return sprintf("#[DependsOn(uri: '%s')]", $template);
-    }
-
-    /**
-     * @param list<ReflectionAttribute<DependsOn>> $attributes
-     *
-     * @return list<string>
-     */
-    private function uris(array $attributes): array
-    {
-        $uris = [];
-        foreach ($attributes as $attribute) {
-            $uris[] = $attribute->newInstance()->uri;
-        }
-
-        return $uris;
     }
 
     /** @return list<string> the query variables a list is given to one element at a time (`{?id*}`, `?id={ids*}`) */
