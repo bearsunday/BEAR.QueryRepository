@@ -74,12 +74,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     #[Override]
     public function putStatic(ResourceObject $ro, int|null $ttl = null, int|null $sMaxAge = null): ResourceObject
     {
-        $ttl = $this->lifetime($ttl);
-        $sMaxAge = $this->lifetime($sMaxAge);
-
-        return $this->store($ro, function () use ($ro, $ttl, $sMaxAge): void {
-            $this->doPutStatic($ro, $ttl, $sMaxAge);
-        });
+        return $this->store($ro, true, $this->lifetime($ttl), $this->lifetime($sMaxAge));
     }
 
     /**
@@ -88,17 +83,13 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     #[Override]
     public function putDonut(ResourceObject $ro, int|null $donutTtl): ResourceObject
     {
-        $donutTtl = $this->lifetime($donutTtl);
-
-        return $this->store($ro, function () use ($ro, $donutTtl): void {
-            $this->doPutDonut($ro, $donutTtl);
-        });
+        return $this->store($ro, false, $this->lifetime($donutTtl), null);
     }
 
     /**
      * Clamp a requested lifetime the way the storage does
      *
-     * `ResourceStorageSaver` treats zero or below as no expiry; clamping here keeps the
+     * The storage treats zero or below as no expiry; clamping here keeps the
      * recorded lifetime at 0 instead of a negative value the entry never had.
      */
     private function lifetime(int|null $seconds): int|null
@@ -111,15 +102,12 @@ final readonly class DonutRepository implements DonutRepositoryInterface
      *
      * A direct (non-AOP) call roots its own scope so every event it emits nests under one
      * scope instead of scattering at the session root; a nested call emits into the
-     * caller's scope instead. The close reports `stored` once the write (a void call)
-     * completes.
-     *
-     * @param callable(): void $write
+     * caller's scope instead. The close reports `stored` once the write completes.
      */
-    private function store(ResourceObject $ro, callable $write): ResourceObject
+    private function store(ResourceObject $ro, bool $isPage, int|null $ttl, int|null $sMaxAge): ResourceObject
     {
         if (! $this->logger instanceof TopLevelAwareInterface || ! $this->logger->isTopLevel()) {
-            $write();
+            $this->write($ro, $isPage, $ttl, $sMaxAge);
 
             return $ro;
         }
@@ -127,7 +115,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $openId = $this->logger->open(new ManualStoreContext((string) $ro->uri));
         $stored = false;
         try {
-            $write();
+            $this->write($ro, $isPage, $ttl, $sMaxAge);
             $stored = true;
 
             return $ro;
@@ -136,57 +124,46 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         }
     }
 
-    private function doPutStatic(ResourceObject $ro, int|null $ttl, int|null $sMaxAge): void
+    /**
+     * Store the template, and for a page its view too
+     *
+     * The template is tagged with its own URI tag (so `purge($uri)` reaches it, #185) and the material children's tags
+     * ({@see CacheDependencyCollector::materials()}). Holes are left out: their write drops only the view and the page is recomposed.
+     */
+    private function write(ResourceObject $ro, bool $isPage, int|null $ttl, int|null $sMaxAge): void
     {
         $keys = $this->dependencyCollector->begin($this->cacheTags->own($ro));
         $this->dependencyCollector->materials($ro, $keys);
         $this->logger->event(new PutDonutContext((string) $ro->uri, $ttl, $sMaxAge));
-        $templateKeys = $this->templateKeys($ro);
-        $donut = ResourceDonut::create($ro, $this->renderer, $keys, $sMaxAge, true)->withStorageState($ttl, $templateKeys->toArray());
+        $templateTags = $this->cacheTags->tags($ro)->toArray();
+        $donut = ResourceDonut::create($ro, $this->renderer, $keys, $sMaxAge, $isPage)->withStorageState($ttl, $templateTags);
         $donut->render($ro, $this->renderer);
         // Checked on the rendered response before the write adds its own headers
         $storability = $this->declaredCacheControl->storability($ro);
         $keys->addTo($ro);
         $this->cacheTags->tagHeader($ro);
-        $surrogateKeys = $this->headerSetter->page($ro, $storability, $sMaxAge, $this->declaredCacheControl->cacheControl($ro), null);
+        // Read before a CDN setter can move the header (Akamai renames Surrogate-Key to Edge-Cache-Tag)
+        $viewTags = null;
+        if ($isPage) {
+            $viewTags = $this->headerSetter->page($ro, $storability, $sMaxAge, $this->declaredCacheControl->cacheControl($ro), null);
+        }
+
+        if (! $isPage) {
+            $this->headerSetter->template($ro, $storability);
+        }
+
         $this->logCdnHeaders($ro);
         if (! $this->replacedEntry->page($ro, $storability)) {
             return;
         }
 
-        // The donut's content state lets a later refresh keep Last-Modified when the
-        // recomposed content is unchanged.
-        $this->saveView($ro, $sMaxAge, $surrogateKeys);
-        $this->resourceStorage->saveDonut($ro->uri, $donut->withContentState($ro), $ttl, $templateKeys->toArray());
-    }
-
-    private function doPutDonut(ResourceObject $ro, int|null $donutTtl): void
-    {
-        $keys = $this->dependencyCollector->begin($this->cacheTags->own($ro));
-        $this->dependencyCollector->materials($ro, $keys);
-        $this->logger->event(new PutDonutContext((string) $ro->uri, $donutTtl, null));
-        $templateKeys = $this->templateKeys($ro);
-        $donut = ResourceDonut::create($ro, $this->renderer, $keys, $donutTtl, false)->withStorageState($donutTtl, $templateKeys->toArray());
-        $donut->render($ro, $this->renderer);
-        $storability = $this->declaredCacheControl->storability($ro);
-        $keys->addTo($ro);
-        $this->cacheTags->tagHeader($ro);
-        $this->headerSetter->template($ro, $storability);
-        $this->logCdnHeaders($ro);
-        if (! $this->replacedEntry->page($ro, $storability)) {
-            return;
+        if ($viewTags !== null) {
+            $this->resourceStorage->saveDonutView($ro, $sMaxAge, $viewTags->toArray());
+            // The content state lets a later refresh keep Last-Modified when the recomposed content is unchanged
+            $donut = $donut->withContentState($ro);
         }
 
-        $this->resourceStorage->saveDonut($ro->uri, $donut, $donutTtl, $templateKeys->toArray());
-    }
-
-    /**
-     * The template's own URI tag (so `purge($uri)` reaches it, #185) and the declared keys: material children's tags
-     * ({@see CacheDependencyCollector::materials()}). Holes are left out: their write drops only the content and the shell is recomposed.
-     */
-    private function templateKeys(ResourceObject $ro): TagSet
-    {
-        return $this->cacheTags->tags($ro);
+        $this->resourceStorage->saveDonut($ro->uri, $donut, $ttl, $templateTags);
     }
 
     /**
@@ -209,9 +186,8 @@ final readonly class DonutRepository implements DonutRepositoryInterface
 
         $this->logger->event(new CacheHitContext('donut'));
         $this->logger->event(new RefreshDonutContext((string) $ro->uri));
-        $donut->refresh($this->resource, $ro, $this->dependencyCollector->begin(new TagSet([$this->cacheTags->uriTag($ro->uri)])));
-        if (! $donut->isCacheble) {
-            // Template-only (isCacheble=false): never stored as a page view
+        $donut->refresh($this->resource, $ro, $this->dependencyCollector->begin(new TagSet()));
+        if (! $donut->isPage) {
             $this->logCdnHeaders($ro);
             $this->logger->event(new PutSkippedContext((string) $ro->uri, 'not-cacheable'));
 
@@ -221,13 +197,13 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         // When the recomposed content is byte-identical to the recorded one, carry over
         // the original Last-Modified instead of advancing it to the recomposition time
         $lastModified = $donut->getUnchangedLastModified((string) $ro->view);
-        $surrogateKeys = $this->headerSetter->page($ro, Storability::Shared, $donut->ttl, $this->declaredCacheControl->cacheControl($ro), $lastModified);
+        $surrogateKeys = $this->headerSetter->page($ro, Storability::Shared, $donut->sMaxAge, $this->declaredCacheControl->cacheControl($ro), $lastModified);
         $this->logCdnHeaders($ro);
         if ($lastModified === null) {
             $this->recordContentState($ro, $donut);
         }
 
-        $this->saveView($ro, $donut->ttl, $surrogateKeys);
+        $this->resourceStorage->saveDonutView($ro, $donut->sMaxAge, $surrogateKeys->toArray());
 
         return $ro;
     }
@@ -276,18 +252,5 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         }
 
         $this->resourceStorage->saveDonut($ro->uri, $donut->withContentState($ro), $remainingTtl, $storageTags);
-    }
-
-    /**
-     * Save the page state, and its validator when it has one and the state is stored
-     *
-     * A 3xx/204 arrives here with no ETag (only 200 gets one), but the entry is keyed and
-     * invalidated by its URI tag, never by ETag, so that's fine. Surrogate keys arrive as a
-     * parameter because the CDN setter may have already renamed the header (Akamai moves
-     * Surrogate-Key to Edge-Cache-Tag).
-     */
-    private function saveView(ResourceObject $ro, int|null $ttl, TagSet $surrogateKeys): bool
-    {
-        return $this->resourceStorage->saveDonutView($ro, $ttl, $surrogateKeys->toArray());
     }
 }

@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - `ResourceDonut`, `ResourceBodyEvaluator`, `RefreshAnnotatedCommand` and the default log classes `Log\HostRuntime`, `Log\ProcessSession`, `Log\SafeSemanticLogger` and `Log\ShutdownFlush` are `@internal`: depend on the interfaces they implement and the modules that bind them. `RefreshAnnotatedCommand`'s constructor and `ResourceDonut::create()`/`refresh()` take new arguments, so code that builds them with `new` has to take them from the injector instead.
 - `HttpCache` and `CliHttpCache` take only the `ConditionalRequest` they answer with, and `UriTag`, `EtagSetter` and `Log\Session` require their dependency. Code that builds them with `new` has to pass it, or take them from the injector.
+- `#[Cacheable]`'s `expirySecond` is documented as `non-negative-int`, so PHPStan and Psalm report a negative literal; a negative value is stored as no lifetime.
 - Requires `bear/resource` 1.36 or later: a donut hole's links are carried in its `toUri()` fragment.
 - **Behaviour change**: on a `#[CacheableResponse]` or `#[DonutCache]` page, `CacheDependencyInterface::depends()` called from a template while it renders no longer tags the stored template (as before 1.20.0), so purging that child leaves the page's old content in the template. Embed such a part at the top level of the page body instead, with `#[Embed]` or an interceptor that puts the request there.
 - **Behaviour change**: an embedded child that ran with a body is a dependency of its parent even without a cache attribute, an ETag or a `Surrogate-Key`: its URI tag and group tag go into the parent's stored tags and `Surrogate-Key`, so a write to it invalidates the parent. A hole on a `#[CacheableResponse]`/`#[DonutCache]` page still has no body when the page is stored and does not reach the stored template.
@@ -38,8 +39,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `UnsupportedLogStream`: `ProdQueryRepositoryLogModule` opens the stream it is given, so a target other than a path or `php://stdout`/`php://stderr`/`php://output` is no longer refused.
 - `SurrogateKeys`, which only the donut write used; nothing replaces it outside the package.
 - `CommandInterface` and the `#[Commands]` binding of the commands a write runs, with `CommandsProvider`: a write runs the package's own purge and refresh. Move a command of your own into the write method or an interceptor of your own.
+- The `BaseUriTagInterface` binding: the group tag of an entry is always the one a purge of its bare URI reaches.
 
 ### Fixed
+- A conditional request whose ETag, set by an `EtagSetterInterface` of your own, holds a character PSR-6 reserves in a cache key, such as the `/` of base64, is answered with 304; it was answered in full.
 - A `#[Cacheable]` write that changed its own `$this->uri` purged the changed URI and left the entry of the URI it was sent to stale. It purges and reads again the URI it was sent to.
 - A page stored by `DonutRepositoryInterface::putStatic()` with an `$sMaxAge` gave browsers that lifetime as `max-age` on a cache hit and after a refresh, so a browser kept the page as long as the CDN did, out of reach of a purge. It now gets `max-age=0` and revalidates, unless its `Cache-Control` already has a `max-age`.
 - A page that declares `#[HttpCache]` and calls `putStatic()` in its own `onGet()` is stored with the declared `Cache-Control`, so a cache hit and a recomposed page carry it too. Declare `Cache-Control` with the attribute rather than setting the header.

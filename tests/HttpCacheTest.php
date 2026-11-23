@@ -245,9 +245,8 @@ class HttpCacheTest extends TestCase
 
     public function testAClientChosenUnpoolableTokenIsAMissNotAnError(): void
     {
-        // Before EntityTags dropped these, `If-None-Match: "x:y"` reached the pool as a key,
-        // Symfony threw InvalidArgumentException, and any client could turn a request into a 500
-        // that logged like a pool outage. Unanswerable tokens are a plain miss at both boundaries.
+        // `If-None-Match: "x:y"` names no K, so it never reaches the pool, whose keys reject `:`
+        // with an exception a client could turn into a 500. It is a plain miss at both boundaries.
         $storage = ResourceStorageTest::getResourceStorageInstance();
         $uri = new Uri('app://self/user?id=1');
 

@@ -95,11 +95,11 @@ class ResourceStorageTest extends TestCase
         $serializable = new ResourceStorage(
             new NullSemanticLogger(),
             new NullPurger(),
-            new ResourceStorageSaver(),
             $this->injector->getInstance(CacheIdentityFactory::class),
             new FakeArrayPoolProvider(),
             $this->injector->getInstance(CacheTags::class),
             new ResourceBodyEvaluator(),
+            new EntityTags(),
         );
         $storage = unserialize(serialize($serializable));
         assert($storage instanceof ResourceStorage);
@@ -289,7 +289,7 @@ class ResourceStorageTest extends TestCase
 
     public function testSaveValueLogsSavedFalseWhenPoolRejectsEntry(): void
     {
-        // ResourceStorageSaver is final, so the failure is induced one layer down: an inner
+        // The failure is induced one layer down: an inner
         // pool whose commit() rejects every entry (e.g. storage full).
         $failingPool = new TagAwareAdapter(new class extends ArrayAdapter {
             #[Override]
