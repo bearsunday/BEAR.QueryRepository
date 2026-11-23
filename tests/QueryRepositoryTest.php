@@ -6,7 +6,6 @@ namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\QueryRepository as Repository;
 use BEAR\RepositoryModule\Annotation\CacheLog;
-use BEAR\RepositoryModule\Annotation\EtagPool;
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\Resource\Module\ResourceModule;
 use BEAR\Resource\ResourceInterface;
@@ -26,7 +25,6 @@ use Psr\Cache\CacheItemPoolInterface;
 use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
 use Ray\PsrCacheModule\Annotation\Shared;
-use Symfony\Component\Cache\Adapter\AdapterInterface;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
@@ -54,7 +52,7 @@ class QueryRepositoryTest extends TestCase
     protected function setUp(): void
     {
         $namespace = 'FakeVendor\HelloWorld';
-        $injector = new Injector(new FakeEtagPoolModule(ModuleFactory::getInstance($namespace)), __DIR__ . '/tmp');
+        $injector = new Injector(ModuleFactory::getInstance($namespace), __DIR__ . '/tmp');
         $this->repository = $injector->getInstance(QueryRepositoryInterface::class);
         $this->resource = $injector->getInstance(ResourceInterface::class);
         $this->httpCache = $injector->getInstance(HttpCacheInterface::class);
@@ -270,8 +268,6 @@ class QueryRepositoryTest extends TestCase
             protected function configure(): void
             {
                 $this->bind(CacheItemPoolInterface::class)->annotatedWith(Shared::class)->to(FilesystemAdapter::class);
-                $this->bind(AdapterInterface::class)->annotatedWith(EtagPool::class)->to(FilesystemAdapter::class);
-                $this->bind(TagAwareAdapterInterface::class)->annotatedWith(EtagPool::class)->toConstructor(TagAwareAdapter::class, ['itemsPool' => EtagPool::class]);
             }
         });
         $injector = new Injector($module);
@@ -390,7 +386,7 @@ class QueryRepositoryTest extends TestCase
 
     private function injectorWithPurger(PurgerInterface $purger): Injector
     {
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
         $module->override(new class ($purger) extends AbstractModule {
             public function __construct(private readonly PurgerInterface $purger)
             {

@@ -12,7 +12,7 @@ use BEAR\RepositoryModule\Annotation\Refresh;
 use BEAR\Resource\Code;
 use BEAR\Resource\ResourceObject;
 
-#[Cacheable(expiry: "never", update: true)]
+#[Cacheable(expiry: "never")]
 class Entry extends ResourceObject
 {
     private array $data = [];

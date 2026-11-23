@@ -30,7 +30,7 @@ class DonutQueryInterceptorTest extends TestCase
         static $injector;
 
         $namespace = 'FakeVendor\HelloWorld';
-        $module = new DevEtagModule((new FakeEtagPoolModule(ModuleFactory::getInstance($namespace))));
+        $module = new DevEtagModule(ModuleFactory::getInstance($namespace));
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
         if (! $injector) {
             $injector = new Injector($module, __DIR__ . '/tmp');

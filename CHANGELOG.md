@@ -23,11 +23,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Behaviour change**: a resource stored by `#[Cacheable]`, `#[CacheableResponse]` or `#[DonutCache]` that declares `private` or `no-store`, with `#[HttpCache(isPrivate: true)]`, `#[HttpCache(noStore: true)]` or `#[NoHttpCache]`, now throws `UnstorableDeclaration` when its response is stored, and stores nothing; it was stored in the shared pool, served to every visitor, and given a CDN lifetime. Remove the cache attribute or the declaration.
 - **Behaviour change**: a `#[Cacheable(expiryAt: ...)]` response whose time has already passed is not stored and answers `Cache-Control: no-store`; it was stored without expiry and served until a write invalidated it. The `put_skipped` log entry gets the reason `expired`.
 
-### Deprecated
-- `DonutRepositoryInterface::purge()`: use `QueryRepositoryInterface::purge()`. A write to a `#[CacheableResponse]` page now purges through it, so an application that binds its own `DonutRepositoryInterface` no longer sees that purge.
-- `DependencySkippedContext::NO_ETAG_OR_SURROGATE_KEY` and the `dependency_skipped` schema value `no_etag_or_surrogate_key`: no longer emitted, since an embedded child with a body is always a dependency. They are kept for compatibility with 1.20.2.
-
 ### Removed
+- The code deprecated in earlier versions: `src-deprecated/` and `src-annotation-deprecated/` (`BcModule`, `HttpCacheInject`, `BEAR\QueryRepository\HttpCacheInterface`, `MobileEtagModule`, `RepositoryLoggerInterface` and its binding, `StorageRedisModule`, `StorageMemcachedEtagModule`, `StorageApcModule`, `#[CacheVersion]`, `#[Storage]` and the providers they used). Use `BEAR\Sunday\Extension\Transfer\HttpCacheInterface`, constructor injection, `StorageRedisDsnModule`/`StorageMemcachedModule` and `CacheVersionModule`.
+- `ResourceStorageInterface::hasEtag()`, `saveEtag()` and `deleteEtag()`, and `ScopedValidatorInterface`: a storage answers a conditional request with `validatedEntry()`. Purge with `invalidateTags()`.
+- `#[EtagPool]` and its binding, `#[KnownTagTtl]`, and `Cacheable::$update`, which nothing read. Remove a binding or an `update:` argument of your own.
+- `DonutRepositoryInterface::purge()`: call `QueryRepositoryInterface::purge()`.
+- `DependencySkippedContext::NO_ETAG_OR_SURROGATE_KEY` and the `dependency_skipped` schema value `no_etag_or_surrogate_key`, which nothing emits.
 - `#[DependsOn]` on a row class, added in 1.20.0: declare it on `onGet()` with `key` naming the rows in the body. A declaration left on a class is not read; PHPStan and Psalm report it.
 - `UnsupportedLogStream`: `ProdQueryRepositoryLogModule` opens the stream it is given, so a target other than a path or `php://stdout`/`php://stderr`/`php://output` is no longer refused.
 - `SurrogateKeys`, which only the donut write used; nothing replaces it outside the package.

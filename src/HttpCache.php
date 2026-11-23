@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\QueryRepository\HttpCacheInterface as DeprecatedHttpCacheInterface;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\AbstractUri;
 use BEAR\Sunday\Extension\Transfer\HttpCacheInterface;
@@ -16,8 +15,7 @@ use function header;
 use function header_remove;
 use function http_response_code;
 
-/** @psalm-suppress DeprecatedInterface for BC */
-final readonly class HttpCache implements HttpCacheInterface, DeprecatedHttpCacheInterface, UriScopedHttpCacheInterface
+final readonly class HttpCache implements HttpCacheInterface, UriScopedHttpCacheInterface
 {
     private ConditionalRequest $conditionalRequest;
 

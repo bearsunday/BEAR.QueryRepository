@@ -24,7 +24,7 @@ class ReplacedEntryTest extends TestCase
 
     protected function setUp(): void
     {
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
         $injector = new Injector($module, __DIR__ . '/tmp');
         $this->resource = $injector->getInstance(ResourceInterface::class);

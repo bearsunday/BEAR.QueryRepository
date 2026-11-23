@@ -45,7 +45,7 @@ class SemanticLogSchemaTest extends TestCase
 
     protected function setUp(): void
     {
-        $injector = new Injector(new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld')), __DIR__ . '/tmp');
+        $injector = new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld'), __DIR__ . '/tmp');
         $this->resource = $injector->getInstance(ResourceInterface::class);
         $this->logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
         $this->repository = $injector->getInstance(QueryRepositoryInterface::class);
@@ -256,7 +256,7 @@ class SemanticLogSchemaTest extends TestCase
 
     public function testTopLevelPurgeLogsFailClosedOutcomeWhenPurgerFails(): void
     {
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
         $module->override(new class extends AbstractModule {
             protected function configure(): void
             {
@@ -288,7 +288,7 @@ class SemanticLogSchemaTest extends TestCase
 
     public function testTopLevelInvalidateVerdictFailsWhenThePurgerFails(): void
     {
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
         $module->override(new class extends AbstractModule {
             protected function configure(): void
             {

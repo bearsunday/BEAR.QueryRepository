@@ -24,9 +24,7 @@ use RuntimeException;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
-use Throwable;
 
-use function array_fill;
 use function assert;
 use function basename;
 use function class_exists;
@@ -64,11 +62,10 @@ class DonutRepositoryTest extends TestCase
         parent::setUp();
     }
 
-    private function getInjector(PurgerInterface|null $purger = null, bool $mobileEtag = false): Injector
+    private function getInjector(PurgerInterface|null $purger = null): Injector
     {
         $namespace = 'FakeVendor\HelloWorld';
-        $base = new FakeEtagPoolModule(ModuleFactory::getInstance($namespace));
-        $module = $mobileEtag ? new MobileEtagModule($base) : $base;
+        $module = ModuleFactory::getInstance($namespace);
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
         if ($purger !== null) {
             $module->override(new class ($purger) extends AbstractModule {
@@ -89,7 +86,7 @@ class DonutRepositoryTest extends TestCase
 
     public function testDonutMissKeepsStandardChildGroupTagWithCustomBaseBinding(): void
     {
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
         $module->override(new TwigModule([__DIR__ . '/Fake/fake-app/var/templates']));
         $module->override(new class extends AbstractModule {
             #[Override]
@@ -264,26 +261,6 @@ class DonutRepositoryTest extends TestCase
         $this->assertSame([], $purger->tags, 'no write replaces an entry');
     }
 
-    public function testUnderMobileEtagAClosureInACacheableResponseBodyFailsBeforeAnythingIsPurged(): void
-    {
-        $purger = new FakeCountingPurger();
-        $resource = $this->getInjector($purger, true)->getInstance(ResourceInterface::class);
-
-        $outcomes = [];
-        for ($i = 0; $i < 2; $i++) {
-            try {
-                $resource->get('page://self/html/closure-body-donut');
-                $outcomes[] = 'served';
-            } catch (Throwable $e) {
-                $outcomes[] = $e::class . ': ' . $e->getMessage();
-            }
-        }
-
-        // The deprecated MobileEtagModule's ETag serializes the body, which a page otherwise does not store
-        $this->assertSame(array_fill(0, 2, "Exception: Serialization of 'Closure' is not allowed"), $outcomes, 'nothing is stored, so the next request fails too');
-        $this->assertSame([], $purger->tags, 'a write that cannot happen purges nothing');
-    }
-
     public function testUnstorableDonutWriteStillDropsAnEarlierEntry(): void
     {
         $purger = new FakeCountingPurger();
@@ -395,12 +372,11 @@ class DonutRepositoryTest extends TestCase
         $injector = $this->getInjector();
         $resource = $injector->getInstance(ResourceInterface::class);
         $queryRepository = $injector->getInstance(QueryRepositoryInterface::class);
-        $donutRepository = $injector->getInstance(DonutRepositoryInterface::class);
         $uri = new Uri('page://self/html/blog-posting');
         $resource->get((string) $uri);
         $this->assertInstanceOf(ResourceState::class, $queryRepository->get($uri));
 
-        $donutRepository->purge($uri);
+        $queryRepository->purge($uri);
 
         $this->assertNull($queryRepository->get($uri));
     }
@@ -605,7 +581,7 @@ class DonutRepositoryTest extends TestCase
         $page = $this->getInjector()->getInstance(ResourceInterface::class)->get((string) $this->uri);
 
         $namespace = 'FakeVendor\HelloWorld';
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance($namespace));
+        $module = ModuleFactory::getInstance($namespace);
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
         $module->override(new class extends AbstractModule {
             protected function configure(): void

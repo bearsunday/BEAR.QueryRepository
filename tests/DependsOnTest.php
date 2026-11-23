@@ -37,7 +37,7 @@ class DependsOnTest extends TestCase
 
     protected function setUp(): void
     {
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
         $injector = new Injector($module, __DIR__ . '/tmp');
         $this->repository = $injector->getInstance(QueryRepositoryInterface::class);
@@ -451,7 +451,7 @@ class DependsOnTest extends TestCase
                 return 'x-' . (new UriTag())->fromAssoc($uriTemplate, $assoc);
             }
         };
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
         $module->override(new class ($uriTag) extends AbstractModule {
             public function __construct(private readonly UriTagInterface $uriTag)

@@ -63,23 +63,11 @@ class ConditionalRequestTest extends TestCase
         $this->assertInstanceOf(CacheMissContext::class, $this->logger->closes[1]);
     }
 
-    public function testUnscopableStorageFallsBackToTheUnscopedAnswer(): void
-    {
-        $this->assertTrue((new ConditionalRequest(new FakeUnscopableStorage($this->storage), $this->logger, new CacheFailure($this->logger)))->isNotModifiedFor(
-            new Uri('page://self/other'),
-            $this->live,
-            [],
-        ));
-        $this->assertCount(1, $this->logger->opens);
-        $this->assertCount(1, $this->logger->closes);
-        $this->assertInstanceOf(CacheHitContext::class, $this->logger->closes[0]);
-    }
-
     public function testFailureClosesBeforeWarningAndUsesTheSelectedUri(): void
     {
         $storage = ResourceStorageTest::getResourceStorageInstance(roPool: new TagAwareAdapter(new FakeErrorCache()));
         foreach ([null, $this->uri] as $uri) {
-            foreach ([$storage, new FakeUnscopableStorage($storage)] as $candidate) {
+            foreach ([$storage] as $candidate) {
                 $logger = new RecordingSemanticLogger();
                 $warnings = [];
                 set_error_handler(function (int $errno, string $message) use ($logger, &$warnings): bool {
@@ -104,7 +92,7 @@ class ConditionalRequestTest extends TestCase
                 $this->assertStringStartsWith('RuntimeException: cache server down in ', $warnings[0]);
                 $error = $logger->events[0];
                 assert($error instanceof CacheErrorContext);
-                $this->assertSame($uri !== null && $candidate instanceof ScopedValidatorInterface ? (string) $uri : '/original', $error->uri);
+                $this->assertSame($uri !== null ? (string) $uri : '/original', $error->uri);
                 $this->assertSame('read', $error->operation);
                 $miss = $logger->closes[0];
                 assert($miss instanceof CacheMissContext);

@@ -36,8 +36,7 @@ final class ConditionalRequest
     /**
      * The headers of the 304 answering the request last found not modified
      *
-     * Those of the entry that validated it, taken once; none when the storage cannot hand the
-     * entry over.
+     * Those of the entry that validated it, taken once.
      *
      * @return array<string, string>
      */
@@ -52,10 +51,6 @@ final class ConditionalRequest
     private function validate(string $ifNoneMatch, AbstractUri|null $uri): bool
     {
         $this->validated = [];
-        if (! $this->storage instanceof ResourceStorage) {
-            return $uri !== null && $this->storage instanceof ScopedValidatorInterface ? $this->storage->hasEtagFor($ifNoneMatch, $uri) : $this->storage->hasEtag($ifNoneMatch);
-        }
-
         $state = $this->storage->validatedEntry($ifNoneMatch, $uri);
         if ($state === null) {
             return false;
@@ -96,10 +91,7 @@ final class ConditionalRequest
         string|null $ifNoneMatch,
         array $server,
     ): bool {
-        if ($ifNoneMatch === null || ! $this->storage instanceof ScopedValidatorInterface) {
-            // No validator leaves nothing to scope. A storage that cannot scope answers the older
-            // question; a reader of the log can still see which validator was presented, but not
-            // which question was asked.
+        if ($ifNoneMatch === null) {
             return $this->isNotModified($ifNoneMatch, $server);
         }
 

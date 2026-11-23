@@ -38,7 +38,7 @@ class DonutCommandRedisCacheTest extends DonutCommandInterceptorTest
         // Override with Redis-backed instances. parent::setUp() assigns the same
         // properties from a non-Redis module, so it must run first.
         // StorageRedisDsnModule binds the RedisTagAwareAdapter pools consumed by
-        // ResourceStorage; the deprecated StorageRedisModule does not. The HttpCache below is
+        // ResourceStorage. The HttpCache below is
         // restored from a serialized copy and reads the ETags from the entries in that Redis pool.
         $namespace = 'FakeVendor\HelloWorld';
         $module = ModuleFactory::getInstance($namespace);

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\CacheLog;
-use BEAR\RepositoryModule\Annotation\EtagPool;
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\RepositoryModule\Annotation\TagsPool;
 use BEAR\Resource\NamedParameter;
@@ -26,7 +25,6 @@ use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
  *  The following bindings are provided:
  *
  *  TagAwareAdapterInterface-ResourceObjectPool::class (NullAdapter by default)
- *  TagAwareAdapterInterface-EtagPool::class (null, and read by nothing: the entry itself holds its ETag)
  *  QueryRepositoryInterface
  *  CacheDependencyInterface
  *  EtagSetterInterface
@@ -66,8 +64,6 @@ final class QueryRepositoryModule extends AbstractModule
                 'tagsPool' => TagsPool::class,
             ],
         );
-        // Read by nothing; bound so that an application module overriding it still installs.
-        $this->bind(TagAwareAdapterInterface::class)->annotatedWith(EtagPool::class)->toInstance(null);
         // core
         $this->bind(QueryRepositoryInterface::class)->to(QueryRepository::class)->in(Scope::SINGLETON);
         $this->bind(CacheDependencyInterface::class)->to(CacheDependency::class);

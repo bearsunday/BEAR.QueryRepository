@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceObject;
 use Override;
 
@@ -36,11 +35,6 @@ final class FakeDefectiveDonutRepository implements DonutRepositoryInterface
     public function putDonut(ResourceObject $ro, int|null $donutTtl): ResourceObject
     {
         throw new FakeRepositoryDefect('write is broken');
-    }
-
-    #[Override]
-    public function purge(AbstractUri $uri): void
-    {
     }
 
     #[Override]

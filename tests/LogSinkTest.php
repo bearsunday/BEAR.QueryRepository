@@ -259,7 +259,7 @@ class LogSinkTest extends TestCase
 
     public function testTheModuleBindsOneSinkAndOneRecordingLoggerPerProcess(): void
     {
-        $module = new DevQueryRepositoryLogModule($this->logDir, module: new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld')));
+        $module = new DevQueryRepositoryLogModule($this->logDir, module: ModuleFactory::getInstance('FakeVendor\HelloWorld'));
         $injector = new Injector($module, __DIR__ . '/tmp');
 
         $this->assertInstanceOf(SafeSemanticLogger::class, $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class));

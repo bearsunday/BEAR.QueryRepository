@@ -37,7 +37,7 @@ class RefreshAnnotatedCommandTest extends TestCase
 
         $logger = $this->logger;
         $purger = $this->purger;
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance($namespace));
+        $module = ModuleFactory::getInstance($namespace);
         $module->override(new class ($logger, $purger) extends AbstractModule {
             public function __construct(
                 private readonly SemanticLoggerInterface $logger,

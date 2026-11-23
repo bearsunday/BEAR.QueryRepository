@@ -67,7 +67,7 @@
   セッションがリクエスト間で共有されるか、drain されないままになります。検出できないホスト（ロガーが起動時に構築される Swoole
   ワーカー、FrankenPHP の worker モード、ReactPHP、Amp、長命の CLI コンシューマ）は
   運用者の判断です。
-- **条件付きリクエストの外での `ResourceStorage::hasEtag()` 呼び出し。** セマンティックな
+- **条件付きリクエストの外での `ResourceStorage::validatedEntry()` 呼び出し。** セマンティックな
   イベントは「条件付きリクエストに応答した」ことであり、転送境界（`HttpCache` /
   `CliHttpCache`）が所有します。ストレージへの問い合わせ自体は無言です。
 - **保持ポリシーが落としたセッション。** `DevQueryRepositoryLogModule` はすべてのセッションを

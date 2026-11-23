@@ -29,7 +29,7 @@ class DonutRequestTest extends TestCase
     protected function setUp(): void
     {
         $namespace = 'FakeVendor\HelloWorld';
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance($namespace));
+        $module = ModuleFactory::getInstance($namespace);
         $path = dirname(__DIR__) . '/tests/Fake/fake-app/var/templates';
         $module->override(new TwigModule([$path]));
         $injector = new Injector($module, __DIR__ . '/tmp');
@@ -94,7 +94,7 @@ class DonutRequestTest extends TestCase
     public function testHoleFailureTravelsToTheCaller(): void
     {
         $namespace = 'FakeVendor\HelloWorld';
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance($namespace));
+        $module = ModuleFactory::getInstance($namespace);
         $injector = new Injector($module, __DIR__ . '/tmp');
         /** @var Resource $resource */
         $resource = $injector->getInstance(ResourceInterface::class);
@@ -115,7 +115,7 @@ class DonutRequestTest extends TestCase
         // invocation. AbstractRequest::__invoke() is what syncs it (its first statement),
         // so a placeholder/view-map URI read before invocation can be missing it.
         $namespace = 'FakeVendor\HelloWorld';
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance($namespace));
+        $module = ModuleFactory::getInstance($namespace);
         $path = dirname(__DIR__) . '/tests/Fake/fake-app/var/templates';
         $module->override(new TwigModule([$path]));
         $injector = new Injector($module, __DIR__ . '/tmp');

@@ -185,20 +185,6 @@ class NotModifiedHeadersTest extends TestCase
         $this->assertSame([], $conditionalRequest->notModifiedHeaders(), 'a live validator of another URI');
     }
 
-    public function testAStorageThatCannotHandTheEntryOverAnswersABare304(): void
-    {
-        $storage = new FakeUnscopableStorage($this->storage);
-        $conditionalRequest = new ConditionalRequest($storage, new NullSemanticLogger(), new CacheFailure(new NullSemanticLogger()));
-
-        $this->assertTrue($conditionalRequest->isNotModified($this->etag, []));
-        $this->assertSame([], $conditionalRequest->notModifiedHeaders());
-
-        $httpCache = new CliHttpCache($storage);
-        $this->assertTrue($httpCache->isNotModifiedFor($this->uri, [Header::HTTP_IF_NONE_MATCH => $this->etag]));
-        $this->expectOutputString('304 Not Modified' . PHP_EOL . PHP_EOL);
-        $httpCache->transfer();
-    }
-
     public function testTheApplicationChoosesWhatA304Repeats(): void
     {
         $injector = $this->injector(new class extends AbstractModule {

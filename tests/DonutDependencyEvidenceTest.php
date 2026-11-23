@@ -44,14 +44,14 @@ class DonutDependencyEvidenceTest extends TestCase
     /** The html pages render through Twig; the dep/* chain has no template and takes the default renderer */
     private function bootDonutApp(): void
     {
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
         $this->boot($module);
     }
 
     private function bootCacheableApp(): void
     {
-        $this->boot(new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld')));
+        $this->boot(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
     }
 
     private function boot(AbstractModule $module): void

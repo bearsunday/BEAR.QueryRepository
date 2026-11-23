@@ -47,7 +47,7 @@ use function trim;
  * }
  * @internal
  */
-final class ResourceStorage implements ResourceStorageInterface, ScopedValidatorInterface
+final class ResourceStorage implements ResourceStorageInterface
 {
     /**
      * Resource object cache prefix
@@ -116,32 +116,10 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
     }
 
     /**
-     * {@inheritDoc}
-     */
-    #[Override]
-    public function hasEtagFor(string $etag, AbstractUri $uri): bool
-    {
-        return $this->validatedEntry($etag, $uri) !== null;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    #[Override]
-    public function hasEtag(string $etag): bool
-    {
-        return $this->validatedEntry($etag) !== null;
-    }
-
-    /**
-     * The entry this request would be served from, when it still carries one of these validators
-     *
      * A validator is "K.H". K and the request's vary values name the entry, so one read decides,
-     * and another variant's validator finds this request's entry, not its own. With $uri, only a
-     * validator issued for that URI is looked up.
-     *
-     * @internal
+     * and another variant's validator finds this request's entry, not its own.
      */
+    #[Override]
     public function validatedEntry(string $ifNoneMatch, AbstractUri|null $uri = null): ResourceState|null
     {
         $locator = $uri === null ? null : $this->identityFactory->locator($uri);
@@ -160,15 +138,6 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
         }
 
         return null;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    #[Override]
-    public function deleteEtag(AbstractUri $uri)
-    {
-        return $this->invalidateTags([$this->cacheTags->uriTag($uri)]);
     }
 
     /**
@@ -280,17 +249,15 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
      * {@inheritDoc}
      */
     #[Override]
-    public function saveDonut(AbstractUri $uri, ResourceDonut $donut, int|null $sMaxAge, array $headerKeys): void
+    public function saveDonut(AbstractUri $uri, ResourceDonut $donut, int|null $ttl, array $headerKeys): void
     {
-        // Despite the legacy parameter name (kept for BC), this argument carries the donut
-        // template entry TTL (putStatic passes $ttl, putDonut passes $donutTtl), never a CDN s-maxage.
-        $sMaxAge = $this->nonNegative($sMaxAge);
+        $ttl = $this->nonNegative($ttl);
         $key = $this->getUriKey($uri, self::KEY_DONUT);
         $headerKeys = (new TagSet($headerKeys))->toArray();
-        $saved = $this->saveToPool($key, $donut, $this->roPool, $headerKeys, $sMaxAge);
+        $saved = $this->saveToPool($key, $donut, $this->roPool, $headerKeys, $ttl);
         // saved=false is logged, not asserted: a quiet store failure must stay observable
         // in the log (an assert here would throw AFTER the event, contradicting it).
-        $this->logger->event(new SaveDonutContext((string) $uri, $headerKeys, $sMaxAge, $saved));
+        $this->logger->event(new SaveDonutContext((string) $uri, $headerKeys, $ttl, $saved));
     }
 
     #[Override]
@@ -365,11 +332,6 @@ final class ResourceStorage implements ResourceStorageInterface, ScopedValidator
     private function getUriKey(AbstractUri $uri, string $type): string
     {
         return $this->identityFactory->storageKey($this->identityFactory->locator($uri), $type);
-    }
-
-    #[Override]
-    public function saveEtag(AbstractUri $uri, string $etag, string $surrogateKeys, int|null $ttl): void
-    {
     }
 
     /**

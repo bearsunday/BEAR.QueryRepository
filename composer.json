@@ -31,7 +31,6 @@
         "bamarni/composer-bin-plugin": "^1.8",
         "bear/fastly-module": "^1.0",
         "madapaja/twig-module": "^2.6",
-        "mobiledetect/mobiledetectlib": "^3.74 || ^4.8",
         "phpunit/phpunit": "^11.0",
         "predis/predis": "^2.4",
         "ray/compiler": "^1.17",
@@ -41,20 +40,18 @@
     "suggest": {
         "ext-redis": "Required for Redis cache storage backend",
         "ext-memcached": "Required for Memcached cache storage backend",
-        "bear/fastly-module": "Required for FastlyModule (Fastly CDN purge)",
-        "mobiledetect/mobiledetectlib": "Required for MobileEtagModule (device-aware ETags)"
+        "bear/fastly-module": "Required for FastlyModule (Fastly CDN purge)"
     },
     "autoload": {
         "psr-4": {
-            "BEAR\\QueryRepository\\": ["src/", "src-deprecated/"],
-            "BEAR\\RepositoryModule\\Annotation\\": ["src-annotation/",  "src-annotation-deprecated/"]
+            "BEAR\\QueryRepository\\": "src/",
+            "BEAR\\RepositoryModule\\Annotation\\": "src-annotation/"
         }
     },
     "autoload-dev": {
         "psr-4": {
             "BEAR\\QueryRepository\\": [
                 "tests/",
-                "tests-deprecated/",
                 "tests-pecl-ext/",
                 "tests/Fake/",
                 "tests-php8/Fake"

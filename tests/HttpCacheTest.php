@@ -83,7 +83,7 @@ class HttpCacheTest extends TestCase
 
     public function testIsNotModifiedForUnderstandsTheCliArgvForm(): void
     {
-        $injector = new Injector(new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld')), __DIR__ . '/tmp');
+        $injector = new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld'), __DIR__ . '/tmp');
         $storage = $injector->getInstance(ResourceStorageInterface::class);
         $ro = new Index();
         $ro->uri = new Uri('page://self/x');
@@ -205,22 +205,6 @@ class HttpCacheTest extends TestCase
             assert($hit instanceof CacheHitContext);
             $this->assertSame('etag', $hit->layer, $class);
             $this->assertIsFloat($hit->durationMs, $class . ': a close measures its scope');
-        }
-    }
-
-    public function testAStorageThatCannotScopeAnswersTheOlderQuestion(): void
-    {
-        // An application's own ResourceStorageInterface implementation predates the capability.
-        // Falling back keeps its 304s working rather than answering 200 to every revalidation.
-        $resource = (new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld')))->getInstance(ResourceInterface::class);
-        $user = $resource->get('app://self/user', ['id' => 1]);
-        $etag = (string) $user->headers[Header::ETAG];
-        $unscopable = new FakeUnscopableStorage(ResourceStorageTest::getResourceStorageInstance());
-        $unscopable->saveValue($user, 10);
-
-        foreach ([HttpCache::class, CliHttpCache::class] as $class) {
-            $httpCache = new $class($unscopable, new RecordingSemanticLogger());
-            $this->assertTrue($httpCache->isNotModifiedFor($user->uri, ['HTTP_IF_NONE_MATCH' => $etag]), $class);
         }
     }
 

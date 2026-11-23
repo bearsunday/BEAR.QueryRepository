@@ -15,7 +15,6 @@ use BEAR\QueryRepository\Log\Context\RefreshDonutContext;
 use BEAR\QueryRepository\Log\Context\SaveDonutContext;
 use BEAR\QueryRepository\Log\TopLevelAwareInterface;
 use BEAR\RepositoryModule\Annotation\CacheLog;
-use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
@@ -188,15 +187,6 @@ final readonly class DonutRepository implements DonutRepositoryInterface
     private function templateKeys(ResourceObject $ro): TagSet
     {
         return $this->cacheTags->tags($ro);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    #[Override]
-    public function purge(AbstractUri $uri): void
-    {
-        $this->queryRepository->purge($uri);
     }
 
     /**

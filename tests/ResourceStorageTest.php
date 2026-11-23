@@ -114,12 +114,12 @@ class ResourceStorageTest extends TestCase
 
         $this->assertTrue($this->storage->saveValue($this->ro, 60));
         $etag = $this->ro->headers[Header::ETAG];
-        $this->assertTrue($this->storage->hasEtag($etag));
+        $this->assertNotNull($this->storage->validatedEntry($etag));
 
         $this->storage->invalidateTags(['b']);
 
         $this->assertNull($this->storage->get($this->ro->uri));
-        $this->assertFalse($this->storage->hasEtag($etag));
+        $this->assertNull($this->storage->validatedEntry($etag));
     }
 
     public function testADonutTemplateUnderAnEmptyKeyIsStoredUnderTheRemainingKeys(): void
@@ -203,11 +203,11 @@ class ResourceStorageTest extends TestCase
         $this->storage->saveValue($this->ro, 10);
         $tag = trim($this->ro->headers[Header::ETAG], '"');
 
-        $this->assertTrue($this->storage->hasEtag('"' . $tag . '"'), 'quoted entity-tag');
-        $this->assertTrue($this->storage->hasEtag($tag), 'bare legacy token');
-        $this->assertTrue($this->storage->hasEtag('W/"' . $tag . '"'), 'weak validator');
-        $this->assertTrue($this->storage->hasEtag('"999999", "' . $tag . '"'), 'entity-tag list');
-        $this->assertFalse($this->storage->hasEtag('"999999"'), 'unknown entity-tag');
+        $this->assertNotNull($this->storage->validatedEntry('"' . $tag . '"'), 'quoted entity-tag');
+        $this->assertNotNull($this->storage->validatedEntry($tag), 'bare legacy token');
+        $this->assertNotNull($this->storage->validatedEntry('W/"' . $tag . '"'), 'weak validator');
+        $this->assertNotNull($this->storage->validatedEntry('"999999", "' . $tag . '"'), 'entity-tag list');
+        $this->assertNull($this->storage->validatedEntry('"999999"'), 'unknown entity-tag');
     }
 
     public function testHasEtagSplitsOnlyOnCommasOutsideQuotes(): void
@@ -216,12 +216,12 @@ class ResourceStorageTest extends TestCase
         $this->storage->saveValue($this->ro, 10);
         $tag = trim($this->ro->headers[Header::ETAG], '"');
 
-        $this->assertTrue($this->storage->hasEtag('"' . $tag . '"'), 'comma inside a quoted opaque-tag is data');
-        $this->assertTrue($this->storage->hasEtag('W/"' . $tag . '"'), 'weak validator with comma in opaque-tag');
-        $this->assertTrue($this->storage->hasEtag('"999999", "' . $tag . '"'), 'list with a comma-bearing entity-tag');
-        $this->assertFalse($this->storage->hasEtag('"bar"'), 'naive split fragment must not match');
-        $this->assertFalse(
-            $this->storage->hasEtag($tag),
+        $this->assertNotNull($this->storage->validatedEntry('"' . $tag . '"'), 'comma inside a quoted opaque-tag is data');
+        $this->assertNotNull($this->storage->validatedEntry('W/"' . $tag . '"'), 'weak validator with comma in opaque-tag');
+        $this->assertNotNull($this->storage->validatedEntry('"999999", "' . $tag . '"'), 'list with a comma-bearing entity-tag');
+        $this->assertNull($this->storage->validatedEntry('"bar"'), 'naive split fragment must not match');
+        $this->assertNull(
+            $this->storage->validatedEntry($tag),
             'unquoted legacy value is indistinguishable from a two-element list (documented limitation)',
         );
     }
@@ -231,13 +231,13 @@ class ResourceStorageTest extends TestCase
         $this->ro->headers[Header::ETAG] = '"123456"';
         $this->storage->saveValue($this->ro, 10);
         $tag = trim($this->ro->headers[Header::ETAG], '"');
-        $this->assertTrue($this->storage->hasEtag('"' . $tag . '"'));
+        $this->assertNotNull($this->storage->validatedEntry('"' . $tag . '"'));
 
-        $this->assertFalse($this->storage->hasEtag('"' . $tag), 'unterminated quoted entity-tag');
-        $this->assertFalse($this->storage->hasEtag('"' . $tag . '" trailing'), 'trailing data after entity-tag');
-        $this->assertFalse($this->storage->hasEtag('x"' . $tag . '"'), 'leading data before entity-tag');
-        $this->assertFalse($this->storage->hasEtag('"' . $tag . '" "' . $tag . '"'), 'missing comma separator');
-        $this->assertFalse($this->storage->hasEtag('"' . $tag . "\"\n"), 'trailing newline');
+        $this->assertNull($this->storage->validatedEntry('"' . $tag), 'unterminated quoted entity-tag');
+        $this->assertNull($this->storage->validatedEntry('"' . $tag . '" trailing'), 'trailing data after entity-tag');
+        $this->assertNull($this->storage->validatedEntry('x"' . $tag . '"'), 'leading data before entity-tag');
+        $this->assertNull($this->storage->validatedEntry('"' . $tag . '" "' . $tag . '"'), 'missing comma separator');
+        $this->assertNull($this->storage->validatedEntry('"' . $tag . "\"\n"), 'trailing newline');
     }
 
     public function testAValueNotShapedLikeAStoredValidatorIsNotLookedUp(): void
@@ -246,8 +246,8 @@ class ResourceStorageTest extends TestCase
         $storage = self::getResourceStorageInstance(roPool: new TagAwareAdapter(new FakeErrorCache()));
 
         foreach (['"日本.語"', '"' . str_repeat('b', 1000) . '.x"', '".x"', '"abc.x"', '"ro-abc.x"', '"no-dot"'] as $etag) {
-            $this->assertFalse($storage->hasEtag($etag), $etag);
-            $this->assertFalse($storage->hasEtagFor($etag, $this->ro->uri), $etag);
+            $this->assertNull($storage->validatedEntry($etag), $etag);
+            $this->assertNull($storage->validatedEntry($etag, $this->ro->uri), $etag);
         }
     }
 
@@ -260,40 +260,17 @@ class ResourceStorageTest extends TestCase
             $this->ro->headers[Header::ETAG] = '"1"';
             $storage->saveValue($this->ro, 10);
             $etag = $this->ro->headers[Header::ETAG];
-            $this->assertTrue($storage->hasEtag($etag));
-            $this->assertTrue($storage->hasEtagFor($etag, $this->ro->uri));
+            $this->assertNotNull($storage->validatedEntry($etag));
+            $this->assertNotNull($storage->validatedEntry($etag, $this->ro->uri));
 
             $_SERVER['X_LANG'] = 'ja';
 
             $this->assertNull($storage->get($this->ro->uri));
-            $this->assertFalse($storage->hasEtag($etag), 'the entry asked about is the one this request is served from');
-            $this->assertFalse($storage->hasEtagFor($etag, $this->ro->uri));
+            $this->assertNull($storage->validatedEntry($etag), 'the entry asked about is the one this request is served from');
+            $this->assertNull($storage->validatedEntry($etag, $this->ro->uri));
         } finally {
             unset($_SERVER['X_VARY'], $_SERVER['X_LANG']);
         }
-    }
-
-    public function testDeleteEtagDropsTheEntryThatHoldsTheEtag(): void
-    {
-        $this->ro->headers[Header::ETAG] = '"123456"';
-        $this->storage->saveValue($this->ro, 10);
-        $etag = $this->ro->headers[Header::ETAG];
-        $this->assertTrue($this->storage->hasEtag($etag));
-
-        $this->assertTrue($this->storage->deleteEtag($this->ro->uri));
-
-        $this->assertFalse($this->storage->hasEtag($etag));
-        $this->assertNull($this->storage->get($this->ro->uri));
-    }
-
-    public function testSaveEtagStoresNothing(): void
-    {
-        $items = new ArrayAdapter();
-        $storage = self::getResourceStorageInstance(roPool: new TagAwareAdapter($items));
-
-        $storage->saveEtag($this->ro->uri, '"123456"', 'a b', 10);
-
-        $this->assertSame([], $items->getValues());
     }
 
     public function testEtagIsNotRegisteredAsInvalidationTag(): void

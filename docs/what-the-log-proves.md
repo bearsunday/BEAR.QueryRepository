@@ -76,7 +76,7 @@ is removed or its meaning inverted (verified by mutation testing).
   session between requests or never drains it. Hosts it cannot detect
   (a Swoole worker whose logger is built at boot, FrankenPHP worker mode, ReactPHP, Amp, a
   long-lived CLI consumer) are the operator's call.
-- **A `ResourceStorage::hasEtag()` call outside a conditional request.** The
+- **A `ResourceStorage::validatedEntry()` call outside a conditional request.** The
   semantic event is "a conditional request was answered", owned by the transfer
   boundary (`HttpCache` / `CliHttpCache`); the storage query itself is silent.
 - **Sessions a retention policy dropped.** `DevQueryRepositoryLogModule` writes every session;

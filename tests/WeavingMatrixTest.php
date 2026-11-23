@@ -89,7 +89,7 @@ class WeavingMatrixTest extends TestCase
         $class = 'FakeVendor\HelloWorld\Resource\Page\Mx\\' . $shape;
         $class::$ran = 0;
         $injector = new Injector(
-            new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld')),
+            ModuleFactory::getInstance('FakeVendor\HelloWorld'),
             __DIR__ . '/tmp',
         );
         $resource = $injector->getInstance(ResourceInterface::class);

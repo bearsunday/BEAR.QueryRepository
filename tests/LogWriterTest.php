@@ -205,7 +205,7 @@ class LogWriterTest extends TestCase
 
     public function testTheProductionModuleWritesThroughItsPolicy(): void
     {
-        $module = new ProdQueryRepositoryLogModule($this->file, module: new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld')));
+        $module = new ProdQueryRepositoryLogModule($this->file, module: ModuleFactory::getInstance('FakeVendor\HelloWorld'));
         $injector = new Injector($module, __DIR__ . '/tmp');
 
         $this->assertInstanceOf(PolicyLogWriter::class, $injector->getInstance(LogWriterInterface::class));
@@ -215,7 +215,7 @@ class LogWriterTest extends TestCase
     public function testAnAppPolicyBoundAfterTheModuleDecidesInstead(): void
     {
         // The seam the module documents: bind the interface after installing it and the writer takes it
-        $module = new class (new ProdQueryRepositoryLogModule($this->file, module: new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld')))) extends AbstractModule {
+        $module = new class (new ProdQueryRepositoryLogModule($this->file, module: ModuleFactory::getInstance('FakeVendor\HelloWorld'))) extends AbstractModule {
             protected function configure(): void
             {
                 $this->bind(RetentionPolicyInterface::class)->to(KeepEverything::class);

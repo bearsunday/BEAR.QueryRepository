@@ -18,7 +18,6 @@ use function dirname;
 use function file_get_contents;
 use function glob;
 use function implode;
-use function in_array;
 use function is_array;
 use function is_bool;
 use function is_scalar;
@@ -60,9 +59,6 @@ class DemoLogCoverageTest extends TestCase
      * so this is the set of built-in producers, not a closed enum.
      */
     private const COMMAND_PRODUCERS = ['CommandInterceptor', 'DonutCommandInterceptor', 'RefreshInterceptor'];
-
-    /** Enum values the schema keeps so that an older log still validates, though nothing emits them any more */
-    private const DEPRECATED_ENUM_VALUES = ['dependency_skipped.reason=no_etag_or_surrogate_key'];
 
     /** @var array<string, int> demo name => exit code */
     private static array $exitCodes = [];
@@ -124,10 +120,7 @@ class DemoLogCoverageTest extends TestCase
                         continue;
                     }
 
-                    $name = sprintf('%s.%s=%s', $type, (string) $field, (string) $value);
-                    if (! in_array($name, self::DEPRECATED_ENUM_VALUES, true)) {
-                        $missing[] = $name;
-                    }
+                    $missing[] = sprintf('%s.%s=%s', $type, (string) $field, (string) $value);
                 }
             }
         }

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceObject;
 
 interface DonutRepositoryInterface
@@ -35,13 +34,6 @@ interface DonutRepositoryInterface
      * and cache headers such as Cdn-Cache-Control, ETag, and Age will not be given.
      */
     public function putDonut(ResourceObject $ro, int|null $donutTtl): ResourceObject;
-
-    /**
-     * Purge donut caching
-     *
-     * @deprecated Use QueryRepositoryInterface::purge(), which a write to a #[CacheableResponse] page calls
-     */
-    public function purge(AbstractUri $uri): void;
 
     /** @param list<string> $tags */
     public function invalidateTags(array $tags): void;

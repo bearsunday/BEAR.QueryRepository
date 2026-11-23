@@ -65,7 +65,7 @@ class GracefulLoggingTest extends TestCase
 
     public function testCacheWorksWhenLoggingSessionIsMisused(): void
     {
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
         $injector = new Injector($module, __DIR__ . '/tmp');
         $resource = $injector->getInstance(ResourceInterface::class);
         $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
@@ -105,7 +105,7 @@ class GracefulLoggingTest extends TestCase
 
     public function testCacheErrorIsLoggedWhenCacheServerIsDown(): void
     {
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
         $module->override(new class extends AbstractModule {
             protected function configure(): void
             {
@@ -153,7 +153,7 @@ class GracefulLoggingTest extends TestCase
 
     public function testARenderFailureOnTheWritePathKeepsTravelling(): void
     {
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
         $module->override(new class extends AbstractModule {
             protected function configure(): void
             {
@@ -188,7 +188,7 @@ class GracefulLoggingTest extends TestCase
 
     public function testManualWritesCloseAsFailedWhenTheStoreThrows(): void
     {
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
         $module->override(new class extends AbstractModule {
             protected function configure(): void
             {
@@ -221,7 +221,7 @@ class GracefulLoggingTest extends TestCase
 
     public function testDonutWriteFailureIsRecordedAndTheRenderedPageIsStillServed(): void
     {
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
         $module->override(new class extends AbstractModule {
             protected function configure(): void
@@ -273,7 +273,7 @@ class GracefulLoggingTest extends TestCase
      */
     public function testDonutWriteLetsAHoleThrowTravelAndStoresNothing(): void
     {
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
         $injector = new Injector($module, __DIR__ . '/tmp');
         $resource = $injector->getInstance(ResourceInterface::class);
@@ -315,7 +315,7 @@ class GracefulLoggingTest extends TestCase
      */
     public function testDonutWriteLetsAPageTemplateThrowTravelAndStoresNothing(): void
     {
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
         $module->override(new class extends AbstractModule {
             protected function configure(): void
             {
@@ -350,7 +350,7 @@ class GracefulLoggingTest extends TestCase
      */
     public function testDonutWriteStoresAPageThatEmitsAnUnrelatedWarningButRendersFine(): void
     {
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
         $module->override(new class extends AbstractModule {
             protected function configure(): void
             {
@@ -385,7 +385,7 @@ class GracefulLoggingTest extends TestCase
      */
     public function testAWarningToExceptionConverterBehavesIdenticallyWithAndWithoutDonutCache(): void
     {
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
         $module->override(new class extends AbstractModule {
             protected function configure(): void
             {
@@ -437,7 +437,7 @@ class GracefulLoggingTest extends TestCase
      */
     public function testHitRefreshFallsBackToAFreshRenderWhenAHoleTransientlyFails(): void
     {
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
         $injector = new Injector($module, __DIR__ . '/tmp');
         $resource = $injector->getInstance(ResourceInterface::class);
@@ -486,7 +486,7 @@ class GracefulLoggingTest extends TestCase
      */
     public function testHitRefreshFallsBackToAFreshRenderWhenAHolesTemplateTransientlyFails(): void
     {
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
         $injector = new Injector($module, __DIR__ . '/tmp');
         $resource = $injector->getInstance(ResourceInterface::class);
@@ -523,7 +523,7 @@ class GracefulLoggingTest extends TestCase
      */
     public function testHitRefreshFailsTheSameWayAsNoDonutCacheWhenAHoleIsPersistentlyBroken(): void
     {
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
         $injector = new Injector($module, __DIR__ . '/tmp');
         $resource = $injector->getInstance(ResourceInterface::class);
@@ -561,7 +561,7 @@ class GracefulLoggingTest extends TestCase
     public function testAValueEntryIsStoredWhenTheResourceCannotBeRendered(): void
     {
         // An app resource has no template under an html renderer, so rendering it throws.
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
         $module->override(new class extends AbstractModule {
             protected function configure(): void
             {
@@ -600,7 +600,7 @@ class GracefulLoggingTest extends TestCase
         // The same contract as the `#[Cacheable]` read, on the donut path: a pool that throws
         // costs latency and a warning, not the page. The two interceptors have separate code for
         // it, and only one of them was covered - which is how a degrade path rots.
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
         $module->override(new class extends AbstractModule {
             protected function configure(): void
             {
@@ -642,7 +642,7 @@ class GracefulLoggingTest extends TestCase
         // `QueryRepositoryInterface` is a binding an application can replace, so a read can fail
         // for a reason the store never raised. Degrading that would answer 200 from a defect
         // nobody sees; only what the store raised is forgiven.
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
         $module->override(new class extends AbstractModule {
             protected function configure(): void
             {
@@ -656,7 +656,7 @@ class GracefulLoggingTest extends TestCase
     public function testABrokenDonutReadKeepsTravelling(): void
     {
         // The donut interceptor has its own copy of the decision, which is how one of them rots.
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
         $module->override(new class extends AbstractModule {
             protected function configure(): void
             {
@@ -671,7 +671,7 @@ class GracefulLoggingTest extends TestCase
     {
         // The real write renders the page it stores, so this catch sees a pool outage and a
         // template bug alike. Only the first degrades: a page that cannot render does not exist.
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
         $module->override(new class extends AbstractModule {
             protected function configure(): void
             {

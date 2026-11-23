@@ -50,7 +50,7 @@ class DonutQueryInterceptorPurgeTest extends TestCase
     private static function newInjector(): Injector
     {
         $namespace = 'FakeVendor\HelloWorld';
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance($namespace));
+        $module = ModuleFactory::getInstance($namespace);
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
         $module->override(new class extends AbstractModule {
             protected function configure(): void
@@ -148,7 +148,7 @@ class DonutQueryInterceptorPurgeTest extends TestCase
         $this->assertNotSame($aLastModified, $bLastModified, 'A→B advances Last-Modified');
         $this->assertStringContainsString('comment-b', (string) $b1->view);
         $this->assertNotSame($a1->headers[Header::ETAG], $b1->headers[Header::ETAG], 'changed content changes the validator');
-        $this->assertFalse($this->storage->hasEtag($a1->headers[Header::ETAG]), 'the superseded validator leaves the pool, so a client holding it gets 200');
+        $this->assertNull($this->storage->validatedEntry($a1->headers[Header::ETAG]), 'the superseded validator leaves the pool, so a client holding it gets 200');
         $changedTree = $this->flushAndValidate($this->logger);
         $saveDonut = self::eventContextJsonOf($changedTree, 'save_donut');
         $this->assertNotNull($saveDonut, 'changed content persists the new donut comparison state');

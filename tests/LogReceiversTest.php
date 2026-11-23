@@ -251,7 +251,7 @@ final class LogReceiversTest extends TestCase
 
     private static function app(): AbstractModule
     {
-        return new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        return ModuleFactory::getInstance('FakeVendor\HelloWorld');
     }
 
     /** A healthy read: the production retention policy drops it */

@@ -24,7 +24,7 @@ class DonutCacheTest extends TestCase
     protected function setUp(): void
     {
         $namespace = 'FakeVendor\HelloWorld';
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance($namespace));
+        $module = ModuleFactory::getInstance($namespace);
         $path = dirname(__DIR__) . '/tests/Fake/fake-app/var/templates';
         $module->override(new TwigModule([$path]));
         $injector = new Injector($module, __DIR__ . '/tmp');
