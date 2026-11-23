@@ -23,9 +23,9 @@ class DevEtagSetterTest extends TestCase
     public function testInvoke(): void
     {
         $ro = $this->resource->get('app://self/user', ['id' => 1]);
-        (new DevEtagSetter())($ro);
+        (new DevEtagSetter(new UriTag(new CacheIdentityFactory(new GlobalServerContext()))))($ro);
 
-        $this->assertSame('"' . (new UriTag())($ro->uri) . '"', $ro->headers[Header::ETAG]);
+        $this->assertSame('"' . (new UriTag(new CacheIdentityFactory(new GlobalServerContext())))($ro->uri) . '"', $ro->headers[Header::ETAG]);
     }
 
     public function testStatusNotOk(): void
@@ -34,7 +34,7 @@ class DevEtagSetterTest extends TestCase
         // lets ConditionalResponse::isModified() answer 304 in place of that response.
         // The fake answers 203, one of the statuses a donut stores.
         $ro = new Code();
-        (new DevEtagSetter())($ro);
+        (new DevEtagSetter(new UriTag(new CacheIdentityFactory(new GlobalServerContext()))))($ro);
 
         $this->assertArrayNotHasKey(Header::ETAG, $ro->headers);
     }

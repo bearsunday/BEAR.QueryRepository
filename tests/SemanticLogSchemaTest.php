@@ -45,7 +45,7 @@ class SemanticLogSchemaTest extends TestCase
 
     protected function setUp(): void
     {
-        $injector = new Injector(new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld')), __DIR__ . '/tmp');
+        $injector = new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld'), __DIR__ . '/tmp');
         $this->resource = $injector->getInstance(ResourceInterface::class);
         $this->logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
         $this->repository = $injector->getInstance(QueryRepositoryInterface::class);
@@ -148,7 +148,6 @@ class SemanticLogSchemaTest extends TestCase
         $this->assertStringContainsString('"method":"onPut"', $commandContext);
         $this->assertStringContainsString('Refresh', $commandContext);
         $this->assertStringContainsString('Purge', $commandContext);
-        $this->assertStringContainsString('"source":"CommandInterceptor"', $commandContext);
 
         $types = self::collectTypes($tree);
         $this->assertContains('purge', $types, 'the #[Purge]/#[Refresh] invalidations nest under the command scope');
@@ -256,7 +255,7 @@ class SemanticLogSchemaTest extends TestCase
 
     public function testTopLevelPurgeLogsFailClosedOutcomeWhenPurgerFails(): void
     {
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
         $module->override(new class extends AbstractModule {
             protected function configure(): void
             {
@@ -288,7 +287,7 @@ class SemanticLogSchemaTest extends TestCase
 
     public function testTopLevelInvalidateVerdictFailsWhenThePurgerFails(): void
     {
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
         $module->override(new class extends AbstractModule {
             protected function configure(): void
             {
@@ -318,9 +317,9 @@ class SemanticLogSchemaTest extends TestCase
         $this->assertStringContainsString('"result":"failed"', $close);
     }
 
-    public function testRefreshInterceptorSkipsRefreshOnErrorCode(): void
+    public function testAFailedWriteRefreshesNothing(): void
     {
-        // The third command producer's 4xx branch: a failed write must refresh nothing,
+        // A failed write must refresh nothing,
         // and the scope itself proves it - code recorded, no invalidation, no re-fetch.
         $this->logger->flush(); // drain the setUp session
         $ro = $this->resource->put('app://self/refresh-error', ['id' => '9']);
@@ -329,7 +328,6 @@ class SemanticLogSchemaTest extends TestCase
         $this->assertSame(400, $ro->code);
         $command = self::contextJsonOf($tree, 'command');
         $this->assertNotNull($command);
-        $this->assertStringContainsString('"source":"RefreshInterceptor"', $command);
         $close = self::closeContextJsonOf($tree, 'command_result');
         $this->assertNotNull($close, 'the command scope closes with its outcome');
         $this->assertStringContainsString('"code":400', $close);

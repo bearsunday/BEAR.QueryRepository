@@ -77,7 +77,7 @@ and still close with one, at a different layer.
 | Type | Opened by | Closes with |
 |---|---|---|
 | `get` (`uri`) | a resource GET through the cache | `cache_hit` / `cache_miss` |
-| `command` (`method`, `annotations`, `source`) | a write (`onPut`/`onPatch`/`onDelete`) | `command_result` (`code`) |
+| `command` (`method`, `annotations`) | a write (`onPost`/`onPut`/`onPatch`/`onDelete`) | `command_result` (`code`) |
 | `conditional_request` (`ifNoneMatch`) | the transfer boundary checking `If-None-Match` | `cache_hit` / `cache_miss` at `layer: etag` |
 | `manual_store` (`uri`) | a direct `put()` / `putStatic()` / `putDonut()` | `manual_store_result` (`stored` \| `failed`) |
 | `manual_purge` (`uri`) | a direct `purge()` | `manual_purge_result` (`purged` \| `failed`) |
@@ -121,8 +121,8 @@ Every outcome is a self-describing word, never a bare boolean — except `saved`
 | `roPool` | `invalidated` \| `failed` | the pool's invalidation result |
 | `cdn` | `purged` \| `failed` \| `skipped` | `skipped` = no purger configured (`NullPurger`), not "nothing to do" |
 | `operation` | `read` \| `write` | which side of the cache threw |
-| `reason` (`put_skipped`) | `etag-present` \| `error-code` \| `not-cacheable` \| `unstorable` | why no write happened. `etag-present` = the resource already carried an ETag, so the donut layer left it alone; `not-cacheable` = a donut page re-rendered from its template, which is never stored as a page; `error-code` carries the response `code`, and the threshold differs by path: `#[Cacheable]` skips any non-200 (a `203` appears here), a donut skips 4xx and above; `unstorable` = a producer marked the response during this request, or its `Cache-Control` says `no-store`/`private` — the write is refused even though the code and type would otherwise allow it |
-| `reason` (`dependency_skipped`) | `no_body` | what the child's body showed at write time. A child that has a body is a dependency, tagged or not. `no_body` = the body was null: on a donut page usually a hole the renderer runs later, the healthy shape (a 204 that ran reads the same). A `#[Cacheable]` put runs every top-level embedded request first, so there the child is always stored with the parent. `no_etag_or_surrogate_key`, which 1.20.2 recorded for a child with no cache header, stays in the schema and is no longer emitted |
+| `reason` (`put_skipped`) | `etag-present` \| `error-code` \| `not-cacheable` \| `unstorable` \| `expired` | why no write happened. `etag-present` = the resource already carried an ETag, so the donut layer left it alone; `not-cacheable` = a donut page re-rendered from its template, which is never stored as a page; `error-code` carries the response `code`, and the threshold differs by path: `#[Cacheable]` skips any non-200 (a `203` appears here), a donut skips 4xx and above; `unstorable` = a producer marked the response during this request, or its `Cache-Control` says `no-store`/`private` — the write is refused even though the code and type would otherwise allow it; `expired` = the `#[Cacheable]` `expiryAt` has already passed, so the response answers `no-store` |
+| `reason` (`dependency_skipped`) | `no_body` | what the child's body showed at write time. A child that has a body is a dependency, tagged or not. `no_body` = the body was null: on a donut page usually a hole the renderer runs later, the healthy shape (a 204 that ran reads the same). A `#[Cacheable]` put runs every top-level embedded request first, so there the child is always stored with the parent. |
 | `reason` (`purge_skipped`) | `unmatched_query` | why the write left its own key alone. `unmatched_query` = its query lacks a parameter its `onGet()` requires (a creating POST has no id yet) |
 | `result` (`manual_*`) | `stored`/`purged`/`invalidated` \| `failed` | the direct call's outcome |
 | `requestedTtl` | seconds | what this package asked the store to keep. `31536000` is the `never` convention; `0`/`null` = it asked for no expiry, which a backend may override (see the rule below) |
@@ -135,7 +135,8 @@ These are the ones you cannot guess from a field name.
 
 **When a miss is not followed by a write, `put_skipped` says why.** A rule forbade storing: a
 response code that path will not cache, a validator already present, a donut page served from its
-template, or a response marked `unstorable` for this request — the event names which one.
+template, a response marked `unstorable` for this request, or an `expiryAt` already past (`expired`)
+— the event names which one.
 
 **A donut write of a non-200 stores no validator, and its `cdn_headers` carries no lifetime.**
 The donut threshold lets 2xx and 3xx through, and a validator is issued for 200 only, so a stored
@@ -157,7 +158,8 @@ The miss itself does not say which:
 - **the write failed** — a `cache_error{operation: write}` in the same scope. The resource ran
   and the fill attempt threw.
 - **the write was skipped by rule** — `put_skipped` says why (an error code, an existing ETag,
-  a not-cacheable response, a response marked unstorable for this request).
+  a not-cacheable response, a response marked unstorable for this request, an `expiryAt` already
+  past).
 
 `durationMs` includes the write only for the lone miss and the write-failed miss; read-degraded
 misses measure the resource run, and put-skipped misses the resource run plus the purge a non-200
@@ -277,7 +279,7 @@ From `demo/run-dependency.php`, with durations and null fields left out — a PU
 other resources embed:
 
 ```text
-command {"method": "onPut", "annotations": [], "source": "CommandInterceptor"}
+command {"method": "onPut", "annotations": []}
   purge {"uri": "page://self/dep/level-three"}
   invalidate {"tags": ["_dep_level-three_", "grp-_dep_level-three_"], "roPool": "invalidated", "cdn": "skipped"}
   get {"uri": "page://self/dep/level-three"}

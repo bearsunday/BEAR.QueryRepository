@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\RepositoryModule\Annotation\EtagPool;
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use PHPUnit\Framework\TestCase;
 use Psr\Cache\CacheItemPoolInterface;
@@ -68,8 +67,6 @@ class StorageRedisDsnModuleTest extends TestCase
         $injector = (new Injector($module, __DIR__ . '/tmp'));
         $redisAdapter = $injector->getInstance(TagAwareAdapterInterface::class, ResourceObjectPool::class);
         $this->assertInstanceOf(RedisTagAwareAdapter::class, $redisAdapter);
-        $etagAdapter = $injector->getInstance(TagAwareAdapterInterface::class, EtagPool::class);
-        $this->assertNull($etagAdapter);
         $resourceStorage = $injector->getInstance(ResourceStorageInterface::class);
         $this->assertInstanceOf(ResourceStorageInterface::class, $resourceStorage);
     }

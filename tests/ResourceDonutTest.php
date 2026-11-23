@@ -37,7 +37,7 @@ class ResourceDonutTest extends TestCase
     protected function setUp(): void
     {
         $namespace = 'FakeVendor\HelloWorld';
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance($namespace));
+        $module = ModuleFactory::getInstance($namespace);
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
         $injector = new Injector($module, __DIR__ . '/tmp');
         $this->injector = $injector;
@@ -260,7 +260,7 @@ class ResourceDonutTest extends TestCase
      */
     public function testCreateLetsAPageTemplateThrowTravelAndStoresNothing(): void
     {
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
         $module->override(new class extends AbstractModule {
             protected function configure(): void
             {
@@ -320,6 +320,6 @@ class ResourceDonutTest extends TestCase
 
     private function dependencies(AbstractUri $uri): Dependencies
     {
-        return $this->injector->getInstance(CacheDependencyCollector::class)->begin(new TagSet([(new UriTag())($uri)]));
+        return $this->injector->getInstance(CacheDependencyCollector::class)->begin(new TagSet([(new UriTag(new CacheIdentityFactory(new GlobalServerContext())))($uri)]));
     }
 }

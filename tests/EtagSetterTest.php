@@ -23,7 +23,7 @@ class EtagSetterTest extends TestCase
 
     public function testStatusNotOk(): void
     {
-        $setEtag = new EtagSetter();
+        $setEtag = new EtagSetter(new ResourceBodyEvaluator());
         $ro = new Code();
         $ro->code = 500;
         $setEtag($ro);
@@ -34,7 +34,7 @@ class EtagSetterTest extends TestCase
     public function testInvoke(): void
     {
         $ro = $this->resource->get('app://self/user', ['id' => 1]);
-        $setEtag = new EtagSetter();
+        $setEtag = new EtagSetter(new ResourceBodyEvaluator());
         $time = 0;
         $setEtag($ro, $time);
         $expect = 'Thu, 01 Jan 1970 00:00:00 GMT';
@@ -46,7 +46,7 @@ class EtagSetterTest extends TestCase
     /** A child rebuilt in a later second carries a new Last-Modified; its parent's state did not change. */
     public function testEmbeddedChildHeadersDoNotChangeTheParentTag(): void
     {
-        $setEtag = new EtagSetter();
+        $setEtag = new EtagSetter(new ResourceBodyEvaluator());
 
         $this->assertSame(
             $setEtag->getEtagByEntireView($this->parentEmbedding('Thu, 01 Jan 1970 00:00:00 GMT', ['child-c' => 1])),
@@ -56,7 +56,7 @@ class EtagSetterTest extends TestCase
 
     public function testEmbeddedChildBodyChangesTheParentTag(): void
     {
-        $setEtag = new EtagSetter();
+        $setEtag = new EtagSetter(new ResourceBodyEvaluator());
 
         $this->assertNotSame(
             $setEtag->getEtagByEntireView($this->parentEmbedding('Thu, 01 Jan 1970 00:00:00 GMT', ['child-c' => 1])),
@@ -67,7 +67,7 @@ class EtagSetterTest extends TestCase
     /** A child restored from the donut cache has no body: its view is all that tells two states apart. */
     public function testEmbeddedChildViewChangesTheParentTag(): void
     {
-        $setEtag = new EtagSetter();
+        $setEtag = new EtagSetter(new ResourceBodyEvaluator());
         $tagOf = static function (string $childView) use ($setEtag): string {
             $child = new Code();
             $child->uri = new Uri('app://self/child-c');
@@ -85,7 +85,7 @@ class EtagSetterTest extends TestCase
     /** The same child, once just built (body and view) and once restored from the donut cache (view alone). */
     public function testADonutChildRestoredWithoutItsBodyKeepsTheParentTag(): void
     {
-        $setEtag = new EtagSetter();
+        $setEtag = new EtagSetter(new ResourceBodyEvaluator());
         $tagOf = static function (mixed $childBody) use ($setEtag): string {
             $child = new Code();
             $child->uri = new Uri('app://self/child-c');
@@ -102,7 +102,7 @@ class EtagSetterTest extends TestCase
 
     public function testAnArrayListingAChildsStateIsNotThatChild(): void
     {
-        $setEtag = new EtagSetter();
+        $setEtag = new EtagSetter(new ResourceBodyEvaluator());
         $embedding = $this->parentEmbedding('Thu, 01 Jan 1970 00:00:00 GMT', ['child-c' => 1]);
         $listing = new Code();
         $listing->body = ['parent-a' => 1, 'child' => [Code::class, $listing->code, ['child-c' => 1]]];
@@ -112,7 +112,7 @@ class EtagSetterTest extends TestCase
 
     public function testHeadersOfAChildEmbeddedInAChildDoNotChangeTheParentTag(): void
     {
-        $setEtag = new EtagSetter();
+        $setEtag = new EtagSetter(new ResourceBodyEvaluator());
         $tagOf = function (string $grandchildLastModified) use ($setEtag): string {
             $parent = $this->parentEmbedding($grandchildLastModified, ['child-c' => 1]);
             $parent->uri = new Uri('app://self/parent-a');

@@ -20,9 +20,9 @@ D. Pool refuses writes                       -> save_value/save_view saved=false
                                                 manual_store_result{failed}
 E. Pool refuses writes, donut page           -> save_donut/save_donut_view saved=false
 F. Pool refuses invalidation                 -> invalidate{roPool: failed}
-G. The other command producers               -> command{source: DonutCommandInterceptor},
-                                                command{source: RefreshInterceptor}, and a
-                                                POST that creates: purge_skipped, then its #[Purge]
+G. Other writes                              -> command on a whole-page donut write and on a
+                                                non-cacheable #[Refresh], and a POST that
+                                                creates: purge_skipped, then its #[Purge]
 H. A finite TTL under #[HttpCache]           -> save_* with requestedTtl=10, declared Cache-Control
 I. Direct putStatic(ttl, sMaxAge)            -> manual_store{,_result} rooting a donut
                                                 write with real ttl/sMaxAge
@@ -69,7 +69,7 @@ get uri=page://self/html/blog-posting-donut
 ├── cdn_headers uri=page://self/html/blog-posting-donut surrogateKeys=[_html_blog-posting-donut_ +4 items] [event]
 ├── put_skipped uri=page://self/html/blog-posting-donut reason=not-cacheable [event]
 └── cache_hit layer=donut-view durationMs=[volatile]
-command method=onDelete source=CommandInterceptor
+command method=onDelete
 └── command_result code=400
 get uri=app://self/view
 ├── cache_policy uri=app://self/view expiry=never resolvedTtl=31536000 [event]
@@ -451,8 +451,7 @@ manual_invalidate tags=[_demo_manual_tag_, _demo_second_tag_]
             "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/command.json",
             "context": {
                 "method": "onDelete",
-                "annotations": [],
-                "source": "CommandInterceptor"
+                "annotations": []
             },
             "close": {
                 "id": "command_result_1",
@@ -1460,7 +1459,7 @@ manual_invalidate tags=[_demo_stuck_tag_]
     ]
 }
 Schema validation: OK (3 entries)
-G1 DELETE a whole-page donut resource -> command{source: DonutCommandInterceptor}
+G1 DELETE a whole-page donut resource -> command
 
 === Cache Log Tree — G1. donut command ===
 get uri=page://self/html/blog-posting?id=0
@@ -1475,7 +1474,7 @@ get uri=page://self/html/blog-posting?id=0
 ├── save_donut_view uri=page://self/html/blog-posting?id=0 tags=[_html_blog-posting_id=0 +5 items] saved=true [event]
 ├── save_donut uri=page://self/html/blog-posting?id=0 tags=[_html_blog-posting_id=0 +2 items] saved=true [event]
 └── cache_miss layer=donut-view durationMs=[volatile]
-command method=onDelete source=DonutCommandInterceptor
+command method=onDelete
 ├── purge uri=page://self/html/blog-posting [event]
 ├── invalidate tags=[_html_blog-posting_ +1 items] roPool=invalidated cdn=skipped durationMs=[volatile] [event]
 ├── get uri=page://self/html/blog-posting?id=0
@@ -1647,8 +1646,7 @@ command method=onDelete source=DonutCommandInterceptor
             "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/command.json",
             "context": {
                 "method": "onDelete",
-                "annotations": [],
-                "source": "DonutCommandInterceptor"
+                "annotations": []
             },
             "log": [
                 {
@@ -1804,10 +1802,10 @@ command method=onDelete source=DonutCommandInterceptor
     ]
 }
 Schema validation: OK (26 entries)
-G2 PUT a non-cacheable #[Refresh] resource -> command{source: RefreshInterceptor}
+G2 PUT a non-cacheable #[Refresh] resource -> command
 
 === Cache Log Tree — G2. refresh command ===
-command method=onPut annotations=[1 items] source=RefreshInterceptor
+command method=onPut annotations=[1 items]
 ├── purge uri=app://self/refresh-dest?id=1 [event]
 ├── invalidate tags=[_refresh-dest_id=1 +1 items] roPool=invalidated cdn=skipped durationMs=[volatile] [event]
 └── command_result code=200
@@ -1827,8 +1825,7 @@ command method=onPut annotations=[1 items] source=RefreshInterceptor
                         "class": "BEAR\\RepositoryModule\\Annotation\\Refresh",
                         "uri": "app://self/refresh-dest{?id}"
                     }
-                ],
-                "source": "RefreshInterceptor"
+                ]
             },
             "log": [
                 {
@@ -1869,7 +1866,7 @@ Schema validation: OK (4 entries)
 G3 PUT a #[Purge]-only resource -> command.annotations lists Annotation\Purge x2, level-two purged: true
 
 === Cache Log Tree — G3. purge-only command ===
-command method=onPut annotations=[2 items] source=RefreshInterceptor
+command method=onPut annotations=[2 items]
 ├── purge uri=page://self/dep/purge-src?id=1 [event]
 ├── invalidate tags=[_dep_purge-src_id=1 +1 items] roPool=invalidated cdn=skipped durationMs=[volatile] [event]
 ├── purge uri=page://self/dep/level-two [event]
@@ -1895,8 +1892,7 @@ command method=onPut annotations=[2 items] source=RefreshInterceptor
                         "class": "BEAR\\RepositoryModule\\Annotation\\Purge",
                         "uri": "page://self/dep/level-two"
                     }
-                ],
-                "source": "RefreshInterceptor"
+                ]
             },
             "log": [
                 {
@@ -1959,7 +1955,7 @@ Schema validation: OK (6 entries)
 G4 POST a creating write -> purge_skipped, then its #[Purge] of level-two
 
 === Cache Log Tree — G4. creating write ===
-command method=onPost annotations=[1 items] source=RefreshInterceptor
+command method=onPost annotations=[1 items]
 ├── purge_skipped uri=app://self/creating-writer reason=unmatched_query [event]
 ├── purge uri=page://self/dep/level-two [event]
 ├── invalidate tags=[_dep_level-two_, grp-_dep_level-two_] roPool=invalidated cdn=skipped durationMs=[volatile] [event]
@@ -1980,8 +1976,7 @@ command method=onPost annotations=[1 items] source=RefreshInterceptor
                         "class": "BEAR\\RepositoryModule\\Annotation\\Purge",
                         "uri": "page://self/dep/level-two"
                     }
-                ],
-                "source": "RefreshInterceptor"
+                ]
             },
             "log": [
                 {
@@ -2327,6 +2322,7 @@ get uri=app://self/value
 Schema validation: OK (8 entries)
 K1 GET a marked #[Cacheable] value -> Cache-Control: private, put_skipped(unstorable)
 K2 GET a marked #[CacheableResponse] donut -> Cache-Control: private, CDN-Cache-Control: (none), put_skipped(unstorable)
+K3 GET a #[Cacheable] value whose expiryAt has passed -> Cache-Control: no-store, put_skipped(expired)
 
 === Cache Log Tree — K. unstorable response ===
 get uri=app://self/unstorable-value
@@ -2339,6 +2335,10 @@ get uri=page://self/html/unstorable-donut
 ├── cdn_headers uri=page://self/html/unstorable-donut [event]
 ├── put_skipped uri=page://self/html/unstorable-donut reason=unstorable [event]
 └── cache_miss layer=donut-view durationMs=[volatile]
+get uri=app://self/past-expiry
+├── cache_policy uri=app://self/past-expiry expiryAt=expiry_at [event]
+├── put_skipped uri=app://self/past-expiry reason=expired [event]
+└── cache_miss layer=resource durationMs=[volatile]
 
 === Cache Log JSON — K. unstorable response ===
 {
@@ -2442,7 +2442,48 @@ get uri=page://self/html/unstorable-donut
                     "durationMs": 0
                 }
             }
+        },
+        {
+            "id": "get_3",
+            "type": "get",
+            "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/get.json",
+            "context": {
+                "uri": "app://self/past-expiry"
+            },
+            "log": [
+                {
+                    "id": "cache_policy_2",
+                    "type": "cache_policy",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_policy.json",
+                    "context": {
+                        "uri": "app://self/past-expiry",
+                        "expiry": null,
+                        "expirySecond": null,
+                        "expiryAt": "expiry_at",
+                        "resolvedTtl": 0
+                    }
+                },
+                {
+                    "id": "put_skipped_3",
+                    "type": "put_skipped",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/put_skipped.json",
+                    "context": {
+                        "uri": "app://self/past-expiry",
+                        "reason": "expired",
+                        "code": null
+                    }
+                }
+            ],
+            "close": {
+                "id": "cache_miss_4",
+                "type": "cache_miss",
+                "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/cache_miss.json",
+                "context": {
+                    "layer": "resource",
+                    "durationMs": 0
+                }
+            }
         }
     ]
 }
-Schema validation: OK (10 entries)
+Schema validation: OK (14 entries)

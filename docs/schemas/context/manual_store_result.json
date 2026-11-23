@@ -7,7 +7,7 @@
     "required": ["result"],
     "properties": {
         "result": {
-            "description": "reflects the save_value/save_view outcome. \"failed\" also covers a write this gate refused outright (issue #222: marked unstorable, or a no-store/private Cache-Control) - no save_value/save_view was attempted, and the nested put_skipped{reason} in the same scope names which",
+            "description": "reflects the save_value/save_view outcome. \"failed\" also covers a write this gate refused outright (issue #222: marked unstorable, or a no-store/private Cache-Control; or a #[Cacheable] expiryAt already past) - no save_value/save_view was attempted, and the nested put_skipped{reason} in the same scope names which",
             "type": "string",
             "enum": ["stored", "failed"]
         }

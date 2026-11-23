@@ -53,14 +53,20 @@ final readonly class HeaderSetter
     }
 
     /**
-     * Strip as {@see template()} does, then, unless the response is unstorable, set a value or view entry's validator
-     * and, when a directive is given, its client Cache-Control
+     * Strip as {@see template()} does, then set a shared value or view entry's validator and, when a directive is
+     * given, its client Cache-Control; an expired one gets no-store
      */
     public function entry(ResourceObject $ro, Storability $storability, string|null $cacheControl, HttpCache|null $httpCache): void
     {
-        $this->template($ro, $storability);
-        if ($storability !== Storability::Unstorable) {
+        if ($storability === Storability::Shared) {
             $this->setClientHeaders($ro, $cacheControl, null, $httpCache);
+
+            return;
+        }
+
+        $this->strip($ro);
+        if ($storability === Storability::Expired) {
+            $ro->headers[Header::findKey($ro->headers, Header::CACHE_CONTROL) ?? Header::CACHE_CONTROL] = 'no-store';
         }
     }
 
@@ -79,25 +85,26 @@ final readonly class HeaderSetter
     public function page(ResourceObject $ro, Storability $storability, int|null $sMaxAge, string|null $declaredCacheControl, int|null $lastModified): TagSet
     {
         $surrogateKeys = TagSet::ofHeaders($ro->headers);
-        match ($storability) {
-            Storability::Unstorable => $this->strip($ro),
-            Storability::Shared => $this->shareLifetime($ro, $sMaxAge),
-        };
-        if ($storability !== Storability::Unstorable) {
-            if ($declaredCacheControl !== null && $ro->code === 200) {
-                $ro->headers[Header::findKey($ro->headers, Header::CACHE_CONTROL) ?? Header::CACHE_CONTROL] = $declaredCacheControl;
-            }
+        if ($storability !== Storability::Shared) {
+            $this->strip($ro);
 
-            $this->setClientHeaders($ro, self::REVALIDATE, $lastModified, null);
+            return $surrogateKeys;
         }
+
+        $this->shareLifetime($ro, $sMaxAge);
+        if ($declaredCacheControl !== null && $ro->code === 200) {
+            $ro->headers[Header::findKey($ro->headers, Header::CACHE_CONTROL) ?? Header::CACHE_CONTROL] = $declaredCacheControl;
+        }
+
+        $this->setClientHeaders($ro, self::REVALIDATE, $lastModified, null);
 
         return $surrogateKeys;
     }
 
-    /** Strip the CDN-facing headers from an unstorable response */
+    /** Strip the CDN-facing headers from a response that is not stored */
     public function template(ResourceObject $ro, Storability $storability): void
     {
-        if ($storability === Storability::Unstorable) {
+        if ($storability !== Storability::Shared) {
             $this->strip($ro);
         }
     }

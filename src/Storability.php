@@ -15,4 +15,7 @@ enum Storability
 
     /** Not stored, and its CDN-facing headers are stripped */
     case Unstorable;
+
+    /** A #[Cacheable] expiryAt already past: not stored, stripped as Unstorable, and answered with no-store */
+    case Expired;
 }

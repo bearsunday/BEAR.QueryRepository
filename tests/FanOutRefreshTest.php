@@ -22,7 +22,7 @@ class FanOutRefreshTest extends TestCase
 
     protected function setUp(): void
     {
-        $injector = new Injector(new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld')), __DIR__ . '/tmp');
+        $injector = new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld'), __DIR__ . '/tmp');
         $this->resource = $injector->getInstance(ResourceInterface::class);
         TagPage::$version = 1;
         TagPage::$gets = 0;
@@ -39,10 +39,10 @@ class FanOutRefreshTest extends TestCase
         $abcd = ['a' => ['id' => 'a'], 'b' => ['id' => 'b'], 'c' => ['id' => 'c'], 'd' => ['id' => 'd']];
 
         return [
-            'Purge via RefreshInterceptor' => ['app://self/fan-out-writer', 'post', ['id' => ['a', 'b', 'c']], $abcd, ['a', 'b', 'c']],
-            'Refresh via RefreshInterceptor' => ['app://self/fan-out-refresh-writer', 'post', ['id' => ['a', 'b', 'c']], $abcd, ['a', 'b', 'c']],
-            'Purge via CommandInterceptor' => ['app://self/cacheable-fan-out-writer', 'post', ['id' => ['a', 'b', 'c']], $abcd, ['a', 'b', 'c']],
-            'Refresh via CommandInterceptor' => ['app://self/cacheable-fan-out-writer', 'put', ['id' => ['a', 'b', 'c']], $abcd, ['a', 'b', 'c']],
+            'Purge on a class that stores nothing' => ['app://self/fan-out-writer', 'post', ['id' => ['a', 'b', 'c']], $abcd, ['a', 'b', 'c']],
+            'Refresh on a class that stores nothing' => ['app://self/fan-out-refresh-writer', 'post', ['id' => ['a', 'b', 'c']], $abcd, ['a', 'b', 'c']],
+            'Purge on a #[Cacheable] class' => ['app://self/cacheable-fan-out-writer', 'post', ['id' => ['a', 'b', 'c']], $abcd, ['a', 'b', 'c']],
+            'Refresh on a #[Cacheable] class' => ['app://self/cacheable-fan-out-writer', 'put', ['id' => ['a', 'b', 'c']], $abcd, ['a', 'b', 'c']],
             'variable under another key' => ['app://self/fan-out-writer', 'put', ['tagIds' => ['a', 'b', 'c']], $abcd, ['a', 'b', 'c']],
             'two lists in one expression' => [
                 'app://self/fan-out-writer',
@@ -58,8 +58,8 @@ class FanOutRefreshTest extends TestCase
                 ],
                 ['a1', 'a2', 'b1', 'b2'],
             ],
-            'empty list via RefreshInterceptor' => ['app://self/fan-out-writer', 'post', ['id' => []], $abcd, []],
-            'empty list via CommandInterceptor' => ['app://self/cacheable-fan-out-writer', 'post', ['id' => []], $abcd, []],
+            'empty list on a class that stores nothing' => ['app://self/fan-out-writer', 'post', ['id' => []], $abcd, []],
+            'empty list on a #[Cacheable] class' => ['app://self/cacheable-fan-out-writer', 'post', ['id' => []], $abcd, []],
             'scalar' => ['app://self/fan-out-writer', 'post', ['id' => 'a'], $abcd, ['a']],
             'one-element list' => ['app://self/fan-out-writer', 'post', ['id' => ['a']], $abcd, ['a']],
             'associative array' => [

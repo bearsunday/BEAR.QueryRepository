@@ -10,7 +10,9 @@ use BEAR\QueryRepository\Log\Context\CacheMissContext;
 use BEAR\QueryRepository\Log\Context\ConditionalRequestContext;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
+use BEAR\Sunday\Provide\Transfer\ConditionalResponse;
 use FakeVendor\HelloWorld\Resource\Page\Index;
+use Koriym\SemanticLogger\NullSemanticLogger;
 use LogicException;
 use Override;
 use PHPUnit\Framework\TestCase;
@@ -38,7 +40,7 @@ class HttpCacheTest extends TestCase
     public function testisNotModifiedFale(): CliHttpCache
     {
         $storage = ResourceStorageTest::getResourceStorageInstance();
-        $httpCache = new CliHttpCache($storage);
+        $httpCache = new CliHttpCache(new ConditionalRequest($storage, new NullSemanticLogger(), new CacheFailure(new NullSemanticLogger()), new ConditionalResponse()));
         $server = [];
         $this->assertFalse($httpCache->isNotModified($server));
 
@@ -51,7 +53,7 @@ class HttpCacheTest extends TestCase
         $user = $resource->get('app://self/user', ['id' => 1]);
         $storage = ResourceStorageTest::getResourceStorageInstance();
         $storage->saveValue($user, 10);
-        $httpCache = new CliHttpCache($storage);
+        $httpCache = new CliHttpCache(new ConditionalRequest($storage, new NullSemanticLogger(), new CacheFailure(new NullSemanticLogger()), new ConditionalResponse()));
         $server = ['HTTP_IF_NONE_MATCH' => $user->headers[Header::ETAG]];
         $this->assertTrue($httpCache->isNotModified($server));
 
@@ -72,7 +74,7 @@ class HttpCacheTest extends TestCase
         $user = $resource->get('app://self/user', ['id' => 1]);
         $storage = ResourceStorageTest::getResourceStorageInstance();
         $storage->saveValue($user, 10);
-        $httpCache = new CliHttpCache($storage);
+        $httpCache = new CliHttpCache(new ConditionalRequest($storage, new NullSemanticLogger(), new CacheFailure(new NullSemanticLogger()), new ConditionalResponse()));
         $header = 'IF_NONE_MATCH=' . $user->headers[Header::ETAG];
         $server = [
             'argc' => 4,
@@ -83,7 +85,7 @@ class HttpCacheTest extends TestCase
 
     public function testIsNotModifiedForUnderstandsTheCliArgvForm(): void
     {
-        $injector = new Injector(new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld')), __DIR__ . '/tmp');
+        $injector = new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld'), __DIR__ . '/tmp');
         $storage = $injector->getInstance(ResourceStorageInterface::class);
         $ro = new Index();
         $ro->uri = new Uri('page://self/x');
@@ -91,7 +93,7 @@ class HttpCacheTest extends TestCase
         $ro->headers[Header::ETAG] = '"abc"';
         $storage->saveValue($ro, 10);
         $etag = $ro->headers[Header::ETAG];
-        $httpCache = new CliHttpCache($storage);
+        $httpCache = new CliHttpCache(new ConditionalRequest($storage, new NullSemanticLogger(), new CacheFailure(new NullSemanticLogger()), new ConditionalResponse()));
         $server = [
             'argc' => 4,
             'argv' => ['bootstrap', 'get', 'page://self/x', 'If-None-Match=' . $etag],
@@ -116,7 +118,7 @@ class HttpCacheTest extends TestCase
         // get scope can ever show.
         foreach ([HttpCache::class, CliHttpCache::class] as $class) {
             $logger = new RecordingSemanticLogger();
-            $httpCache = new $class($storage, $logger);
+            $httpCache = new $class(new ConditionalRequest($storage, $logger, new CacheFailure($logger), new ConditionalResponse()));
 
             $this->assertTrue($httpCache->isNotModified(['HTTP_IF_NONE_MATCH' => $etag]), $class);
             $this->assertFalse($httpCache->isNotModified(['HTTP_IF_NONE_MATCH' => '"stale"']), $class);
@@ -159,7 +161,7 @@ class HttpCacheTest extends TestCase
 
         foreach ([HttpCache::class, CliHttpCache::class] as $class) {
             $logger = new RecordingSemanticLogger();
-            $httpCache = new $class($storage, $logger);
+            $httpCache = new $class(new ConditionalRequest($storage, $logger, new CacheFailure($logger), new ConditionalResponse()));
 
             $warning = null;
             set_error_handler(static function (int $errno, string $message) use (&$warning): bool {
@@ -195,7 +197,7 @@ class HttpCacheTest extends TestCase
         // resource. Another resource's live validator is not an answer about this one.
         foreach ([HttpCache::class, CliHttpCache::class] as $class) {
             $logger = new RecordingSemanticLogger();
-            $httpCache = new $class($storage, $logger);
+            $httpCache = new $class(new ConditionalRequest($storage, $logger, new CacheFailure($logger), new ConditionalResponse()));
             $this->assertTrue($httpCache->isNotModifiedFor($user->uri, ['HTTP_IF_NONE_MATCH' => $user->headers[Header::ETAG]]), $class);
             $this->assertFalse($httpCache->isNotModifiedFor($user->uri, ['HTTP_IF_NONE_MATCH' => $other->headers[Header::ETAG]]), $class);
             $this->assertFalse($httpCache->isNotModifiedFor($user->uri, []), $class . ': no validator presents nothing');
@@ -208,22 +210,6 @@ class HttpCacheTest extends TestCase
         }
     }
 
-    public function testAStorageThatCannotScopeAnswersTheOlderQuestion(): void
-    {
-        // An application's own ResourceStorageInterface implementation predates the capability.
-        // Falling back keeps its 304s working rather than answering 200 to every revalidation.
-        $resource = (new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld')))->getInstance(ResourceInterface::class);
-        $user = $resource->get('app://self/user', ['id' => 1]);
-        $etag = (string) $user->headers[Header::ETAG];
-        $unscopable = new FakeUnscopableStorage(ResourceStorageTest::getResourceStorageInstance());
-        $unscopable->saveValue($user, 10);
-
-        foreach ([HttpCache::class, CliHttpCache::class] as $class) {
-            $httpCache = new $class($unscopable, new RecordingSemanticLogger());
-            $this->assertTrue($httpCache->isNotModifiedFor($user->uri, ['HTTP_IF_NONE_MATCH' => $etag]), $class);
-        }
-    }
-
     public function testTheScopedAnswerDegradesWhenTheLookupThrows(): void
     {
         // The same decision as the unscoped answer, recorded against the URI that was asked for.
@@ -233,7 +219,7 @@ class HttpCacheTest extends TestCase
 
         foreach ([HttpCache::class, CliHttpCache::class] as $class) {
             $logger = new RecordingSemanticLogger();
-            $httpCache = new $class($storage, $logger);
+            $httpCache = new $class(new ConditionalRequest($storage, $logger, new CacheFailure($logger), new ConditionalResponse()));
 
             $warned = false;
             set_error_handler(static function (int $errno) use (&$warned): bool {
@@ -259,15 +245,14 @@ class HttpCacheTest extends TestCase
 
     public function testAClientChosenUnpoolableTokenIsAMissNotAnError(): void
     {
-        // Before EntityTags dropped these, `If-None-Match: "x:y"` reached the pool as a key,
-        // Symfony threw InvalidArgumentException, and any client could turn a request into a 500
-        // that logged like a pool outage. Unanswerable tokens are a plain miss at both boundaries.
+        // `If-None-Match: "x:y"` names no K, so it never reaches the pool, whose keys reject `:`
+        // with an exception a client could turn into a 500. It is a plain miss at both boundaries.
         $storage = ResourceStorageTest::getResourceStorageInstance();
         $uri = new Uri('app://self/user?id=1');
 
         foreach ([HttpCache::class, CliHttpCache::class] as $class) {
             $logger = new RecordingSemanticLogger();
-            $httpCache = new $class($storage, $logger);
+            $httpCache = new $class(new ConditionalRequest($storage, $logger, new CacheFailure($logger), new ConditionalResponse()));
 
             $this->assertFalse($httpCache->isNotModified(['HTTP_IF_NONE_MATCH' => '"x:y"']), $class);
             $this->assertFalse($httpCache->isNotModifiedFor($uri, ['HTTP_IF_NONE_MATCH' => '"a/b, c"']), $class);

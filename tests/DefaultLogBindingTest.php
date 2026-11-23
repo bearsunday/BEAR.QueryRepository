@@ -28,7 +28,7 @@ class DefaultLogBindingTest extends TestCase
     protected function setUp(): void
     {
         // QueryRepositoryModule on its own: what an app gets without a log module
-        $module = new FakeEtagPoolModule(new QueryRepositoryModule(new ResourceModule('FakeVendor\HelloWorld')));
+        $module = new QueryRepositoryModule(new ResourceModule('FakeVendor\HelloWorld'));
         $this->injector = new Injector($module, __DIR__ . '/tmp');
     }
 
@@ -66,7 +66,7 @@ class DefaultLogBindingTest extends TestCase
         // PackageModule brings this one in ahead of the app's own bindings. An unqualified default
         // would win that race and the app's logger would silently become the null one.
         $appLogger = new SemanticLogger();
-        $package = new FakeEtagPoolModule(new QueryRepositoryModule(new ResourceModule('FakeVendor\HelloWorld')));
+        $package = new QueryRepositoryModule(new ResourceModule('FakeVendor\HelloWorld'));
         $package->install(new class ($appLogger) extends AbstractModule {
             public function __construct(private SemanticLogger $appLogger)
             {

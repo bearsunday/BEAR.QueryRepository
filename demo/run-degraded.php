@@ -24,9 +24,9 @@ declare(strict_types=1);
  *                                  manual_store_result{failed}
  *   E. Donut writes refused ...... save_donut / save_donut_view saved=false
  *   F. Invalidation refused ...... invalidate{roPool: failed}
- *   G. Other command producers ... command{source: DonutCommandInterceptor} and
- *                                  command{source: RefreshInterceptor}, and a creating
- *                                  write's purge_skipped
+ *   G. Other writes .............. command on a whole-page donut write and on a
+ *                                  non-cacheable #[Refresh], and a creating write's
+ *                                  purge_skipped
  *   H. Finite TTL ................ save_* with a real ttl instead of the `never`
  *                                  placeholder, under #[HttpCache]
  *   I. Direct donut write ........ a donut entry with real TTLs, rooted in
@@ -34,7 +34,9 @@ declare(strict_types=1);
  *   J. Store unreachable (PSR-3) .. pool_error{read,write}, request still served live
  *   K. Unstorable response ....... put_skipped{reason: unstorable}, Cache-Control:
  *                                  private, no-store on both a #[Cacheable] value and
- *                                  a #[CacheableResponse] donut, no CDN-Cache-Control
+ *                                  a #[CacheableResponse] donut, no CDN-Cache-Control;
+ *                                  put_skipped{reason: expired} and no-store for a
+ *                                  #[Cacheable] expiryAt already past
  *
  * Together with the other three demos this reaches every context type, every
  * schema enum value and every command producer the package can emit.
@@ -112,9 +114,9 @@ D. Pool refuses writes                       -> save_value/save_view saved=false
                                                 manual_store_result{failed}
 E. Pool refuses writes, donut page           -> save_donut/save_donut_view saved=false
 F. Pool refuses invalidation                 -> invalidate{roPool: failed}
-G. The other command producers               -> command{source: DonutCommandInterceptor},
-                                                command{source: RefreshInterceptor}, and a
-                                                POST that creates: purge_skipped, then its #[Purge]
+G. Other writes                              -> command on a whole-page donut write and on a
+                                                non-cacheable #[Refresh], and a POST that
+                                                creates: purge_skipped, then its #[Purge]
 H. A finite TTL under #[HttpCache]           -> save_* with requestedTtl=10, declared Cache-Control
 I. Direct putStatic(ttl, sMaxAge)            -> manual_store{,_result} rooting a donut
                                                 write with real ttl/sMaxAge
@@ -340,16 +342,15 @@ echo 'F  invalidateTags() on a pool that refuses it -> roPool=failed' . PHP_EOL;
 
 $report($logger->flush(), 'F. invalidation refused');
 
-// ------------------------------------------------------ G. other command producers
+// ------------------------------------------------------------------ G. other writes
 $injector = $newInjector(null, twig: true);
 $resource = $injector->getInstance(ResourceInterface::class);
 $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
-// DonutCommandInterceptor is bound to #[CacheableResponse] writes (the whole-page
-// donut kind), so the write below — not the #[DonutCache] page — is what it drives.
+// A write on a #[CacheableResponse] resource (the whole-page donut kind) purges and rebuilds its page.
 $resource->get('page://self/html/blog-posting?id=0');
 $resource->delete('page://self/html/blog-posting?id=0');
-echo 'G1 DELETE a whole-page donut resource -> command{source: DonutCommandInterceptor}' . PHP_EOL;
+echo 'G1 DELETE a whole-page donut resource -> command' . PHP_EOL;
 
 $report($logger->flush(), 'G1. donut command');
 
@@ -357,10 +358,9 @@ $injector = $newInjector();
 $resource = $injector->getInstance(ResourceInterface::class);
 $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
-// RefreshSrc is NOT #[Cacheable]: its #[Refresh] is driven by RefreshInterceptor,
-// the third command producer, which purges and re-populates the annotated target.
+// RefreshSrc is NOT #[Cacheable]: its #[Refresh] purges and re-populates the annotated target.
 $resource->put('app://self/refresh-src', ['id' => 1]);
-echo 'G2 PUT a non-cacheable #[Refresh] resource -> command{source: RefreshInterceptor}' . PHP_EOL;
+echo 'G2 PUT a non-cacheable #[Refresh] resource -> command' . PHP_EOL;
 
 $report($logger->flush(), 'G2. refresh command');
 
@@ -370,8 +370,7 @@ $repository = $injector->getInstance(QueryRepositoryInterface::class);
 $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
 
 // PurgeSrc is NOT #[Cacheable] and carries two #[Purge] attributes: purge-only commands,
-// no re-population. The command scope records the annotations verbatim - the only
-// producer path where Annotation\Purge appears - and level-two's purge cascades to the
+// no re-population. The command scope records the annotations verbatim, and level-two's purge cascades to the
 // level-one page that embeds it.
 $resource->get('page://self/dep/level-one'); // caches level-one -> level-two -> level-three
 $logger->flush(); // drain the GET session: this scenario is about the purging write
@@ -479,5 +478,8 @@ echo sprintf(
     $donutRo->headers['Cache-Control'] ?? '(none)',
     $donutRo->headers['CDN-Cache-Control'] ?? '(none)',
 ) . PHP_EOL;
+
+$expiredRo = $resource->get('app://self/past-expiry');
+echo sprintf('K3 GET a #[Cacheable] value whose expiryAt has passed -> Cache-Control: %s, put_skipped(expired)', $expiredRo->headers['Cache-Control'] ?? '(none)') . PHP_EOL;
 
 $report($logger->flush(), 'K. unstorable response');

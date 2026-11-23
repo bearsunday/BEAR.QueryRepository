@@ -9,7 +9,6 @@ use BEAR\QueryRepository\Cdn\FastlyCacheControlHeaderSetter;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\Resource\ResourceInterface;
-use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
 use FakeVendor\HelloWorld\Resource\Page\Html\ClosureBodyDonut;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
@@ -24,9 +23,7 @@ use RuntimeException;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
-use Throwable;
 
-use function array_fill;
 use function assert;
 use function basename;
 use function class_exists;
@@ -34,7 +31,6 @@ use function dirname;
 use function glob;
 use function is_string;
 use function is_subclass_of;
-use function str_replace;
 use function time;
 
 class DonutRepositoryTest extends TestCase
@@ -64,11 +60,10 @@ class DonutRepositoryTest extends TestCase
         parent::setUp();
     }
 
-    private function getInjector(PurgerInterface|null $purger = null, bool $mobileEtag = false): Injector
+    private function getInjector(PurgerInterface|null $purger = null): Injector
     {
         $namespace = 'FakeVendor\HelloWorld';
-        $base = new FakeEtagPoolModule(ModuleFactory::getInstance($namespace));
-        $module = $mobileEtag ? new MobileEtagModule($base) : $base;
+        $module = ModuleFactory::getInstance($namespace);
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
         if ($purger !== null) {
             $module->override(new class ($purger) extends AbstractModule {
@@ -85,35 +80,6 @@ class DonutRepositoryTest extends TestCase
         }
 
         return new Injector($module, __DIR__ . '/tmp');
-    }
-
-    public function testDonutMissKeepsStandardChildGroupTagWithCustomBaseBinding(): void
-    {
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
-        $module->override(new TwigModule([__DIR__ . '/Fake/fake-app/var/templates']));
-        $module->override(new class extends AbstractModule {
-            #[Override]
-            protected function configure(): void
-            {
-                $this->bind(BaseUriTagInterface::class)->toInstance(new class implements BaseUriTagInterface {
-                    #[Override]
-                    public function __invoke(ResourceObject $ro): string
-                    {
-                        return 'CB' . str_replace('/', '_', $ro->uri->path);
-                    }
-                });
-            }
-        });
-        $injector = new Injector($module, __DIR__ . '/tmp');
-        $repository = $injector->getInstance(QueryRepositoryInterface::class);
-        $this->assertNull($repository->get($this->uri));
-        $page = $injector->getInstance(ResourceInterface::class)->get((string) $this->uri);
-        $page->toString();
-
-        $this->assertSame(
-            'blog-posting-page _html_blog-posting_ CB_html_blog-posting _html_comment_ grp-_html_comment_ comment01',
-            $page->headers[Header::SURROGATE_KEY],
-        );
     }
 
     public function testCreateDonut(): void
@@ -148,7 +114,7 @@ class DonutRepositoryTest extends TestCase
         // create donut
         $resource->get('page://self/html/blog-posting');
         // delete comment and blog-posting view
-        $storage->invalidateTags([(new UriTag())(new Uri('page://self/html/comment'))]);
+        $storage->invalidateTags([(new UriTag(new CacheIdentityFactory(new GlobalServerContext())))(new Uri('page://self/html/comment'))]);
         // create by donut
         $donutRo = $resource->get('page://self/html/blog-posting');
         $this->assertSame(200, $donutRo->code);
@@ -264,26 +230,6 @@ class DonutRepositoryTest extends TestCase
         $this->assertSame([], $purger->tags, 'no write replaces an entry');
     }
 
-    public function testUnderMobileEtagAClosureInACacheableResponseBodyFailsBeforeAnythingIsPurged(): void
-    {
-        $purger = new FakeCountingPurger();
-        $resource = $this->getInjector($purger, true)->getInstance(ResourceInterface::class);
-
-        $outcomes = [];
-        for ($i = 0; $i < 2; $i++) {
-            try {
-                $resource->get('page://self/html/closure-body-donut');
-                $outcomes[] = 'served';
-            } catch (Throwable $e) {
-                $outcomes[] = $e::class . ': ' . $e->getMessage();
-            }
-        }
-
-        // The deprecated MobileEtagModule's ETag serializes the body, which a page otherwise does not store
-        $this->assertSame(array_fill(0, 2, "Exception: Serialization of 'Closure' is not allowed"), $outcomes, 'nothing is stored, so the next request fails too');
-        $this->assertSame([], $purger->tags, 'a write that cannot happen purges nothing');
-    }
-
     public function testUnstorableDonutWriteStillDropsAnEarlierEntry(): void
     {
         $purger = new FakeCountingPurger();
@@ -325,7 +271,7 @@ class DonutRepositoryTest extends TestCase
         // Drop just the hole's own state, leaving the page's donut template behind, so the
         // next GET takes the refresh path: ResourceDonut::refresh() re-parses the stored
         // [le:URI] placeholder and re-fetches it independently of the first render.
-        $storage->invalidateTags([(new UriTag())(new Uri('app://self/multi-param-query-hole?id=1&tag=2'))]);
+        $storage->invalidateTags([(new UriTag(new CacheIdentityFactory(new GlobalServerContext())))(new Uri('app://self/multi-param-query-hole?id=1&tag=2'))]);
         $logger->flush();
 
         $refreshed = $resource->get('page://self/html/donut-cache-with-multi-param-query-hole');
@@ -385,7 +331,7 @@ class DonutRepositoryTest extends TestCase
         $resource->get('page://self/html/blog-posting');
         $ro1 = $queryRepository->get(new Uri('page://self/html/blog-posting'));
         $this->assertInstanceOf(ResourceState::class, $ro1);
-        $donutRepository->invalidateTags([(new UriTag())(new Uri('page://self/html/blog-posting'))]);
+        $donutRepository->invalidateTags([(new UriTag(new CacheIdentityFactory(new GlobalServerContext())))(new Uri('page://self/html/blog-posting'))]);
         $ro2 = $queryRepository->get(new Uri('page://self/html/blog-posting'));
         $this->assertNull($ro2);
     }
@@ -395,12 +341,11 @@ class DonutRepositoryTest extends TestCase
         $injector = $this->getInjector();
         $resource = $injector->getInstance(ResourceInterface::class);
         $queryRepository = $injector->getInstance(QueryRepositoryInterface::class);
-        $donutRepository = $injector->getInstance(DonutRepositoryInterface::class);
         $uri = new Uri('page://self/html/blog-posting');
         $resource->get((string) $uri);
         $this->assertInstanceOf(ResourceState::class, $queryRepository->get($uri));
 
-        $donutRepository->purge($uri);
+        $queryRepository->purge($uri);
 
         $this->assertNull($queryRepository->get($uri));
     }
@@ -605,7 +550,7 @@ class DonutRepositoryTest extends TestCase
         $page = $this->getInjector()->getInstance(ResourceInterface::class)->get((string) $this->uri);
 
         $namespace = 'FakeVendor\HelloWorld';
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance($namespace));
+        $module = ModuleFactory::getInstance($namespace);
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
         $module->override(new class extends AbstractModule {
             protected function configure(): void

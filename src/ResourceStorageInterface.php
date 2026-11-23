@@ -10,23 +10,13 @@ use BEAR\Resource\ResourceObject;
 interface ResourceStorageInterface
 {
     /**
-     * Is ETag registered ?
+     * The entry this request would be served from, when it still carries one of these validators
      *
-     * @param string $etag If-None-Match field value: quoted entity-tag(s), weak validator, or bare legacy token
+     * With $uri, only a validator issued for that URI is looked up.
+     *
+     * @param string $ifNoneMatch If-None-Match field value: quoted entity-tag(s), weak validator, or bare legacy token
      */
-    public function hasEtag(string $etag): bool;
-
-    /** @deprecated Does nothing: the entry itself holds its ETag */
-    public function saveEtag(AbstractUri $uri, string $etag, string $surrogateKeys, int|null $ttl): void;
-
-    /**
-     * Drop the entries of the URI, and with them the ETag each holds
-     *
-     * @return bool
-     *
-     * @deprecated Use invalidateTags() with the URI's tag
-     */
-    public function deleteEtag(AbstractUri $uri);
+    public function validatedEntry(string $ifNoneMatch, AbstractUri|null $uri = null): ResourceState|null;
 
     /**
      * Return cached resource state
@@ -57,7 +47,7 @@ interface ResourceStorageInterface
      *
      * @param list<string> $headerKeys
      */
-    public function saveDonut(AbstractUri $uri, ResourceDonut $donut, int|null $sMaxAge, array $headerKeys): void;
+    public function saveDonut(AbstractUri $uri, ResourceDonut $donut, int|null $ttl, array $headerKeys): void;
 
     /**
      * Save donut-cache state

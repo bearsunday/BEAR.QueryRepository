@@ -14,15 +14,10 @@ final class CommandContext extends AbstractContext
     public const TYPE = 'command';
     public const SCHEMA_URL = 'https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/command.json';
 
-    /**
-     * @param list<array{class: string, uri: string}> $annotations
-     * @param string                                  $source      class basename of the producing interceptor
-     *                                                             (CommandInterceptor / DonutCommandInterceptor / RefreshInterceptor)
-     */
+    /** @param list<array{class: string, uri: string}> $annotations */
     public function __construct(
         public readonly string $method,
         public readonly array $annotations,
-        public readonly string $source,
     ) {
     }
 }

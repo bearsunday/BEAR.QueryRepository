@@ -17,6 +17,7 @@ use BEAR\QueryRepository\Log\Context\PreWriteCleanupContext;
 use BEAR\QueryRepository\Log\Context\PutSkippedContext;
 use BEAR\QueryRepository\Log\Context\SaveValueContext;
 use BEAR\QueryRepository\Log\KeepMutationsAndFailures;
+use BEAR\QueryRepository\Log\ProcessSession;
 use BEAR\QueryRepository\Log\SafeSemanticLogger;
 use Koriym\SemanticLogger\CloseEntry;
 use Koriym\SemanticLogger\LogJson;
@@ -38,7 +39,7 @@ class RetentionPolicyTest extends TestCase
     protected function setUp(): void
     {
         $this->policy = new KeepMutationsAndFailures();
-        $this->logger = new SafeSemanticLogger();
+        $this->logger = new SafeSemanticLogger(null, new ProcessSession());
     }
 
     public function testAHealthyReadIsDropped(): void
@@ -102,7 +103,7 @@ class RetentionPolicyTest extends TestCase
 
     public function testACommandIsKept(): void
     {
-        $open = $this->logger->open(new CommandContext('onPut', [], 'CommandInterceptor'));
+        $open = $this->logger->open(new CommandContext('onPut', []));
         $this->logger->close(new CommandResultContext(200), $open);
 
         $this->assertTrue($this->policy->keeps($this->logger->flush()));
@@ -168,8 +169,9 @@ class RetentionPolicyTest extends TestCase
     {
         // Every skip reason records a store that was never attempted because a rule forbade it:
         // a response code the path will not cache (`#[Cacheable]` skips any non-200, donut 4xx up),
-        // a validator already set, a page served from its template. Decisions, not runtime failures.
-        foreach (['error-code', 'not-cacheable', 'etag-present', 'unstorable'] as $reason) {
+        // a validator already set, a page served from its template, an unstorable or expired response.
+        // Decisions, not runtime failures.
+        foreach (['error-code', 'not-cacheable', 'etag-present', 'unstorable', 'expired'] as $reason) {
             $open = $this->logger->open(new GetContext('page://self/html/blog-posting'));
             $this->logger->event(new PutSkippedContext('page://self/html/blog-posting', $reason, $reason === 'error-code' ? 400 : null));
             $this->logger->close(new CacheMissContext('view'), $open);

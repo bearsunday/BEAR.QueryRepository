@@ -14,7 +14,7 @@ final readonly class CacheTags
     /** @param string|null $appKey null unless AppSurrogateKeyModule binds one */
     public function __construct(
         private UriTagInterface $uriTag,
-        private BaseUriTagInterface $baseUriTag,
+        private BaseUriTag $baseUriTag,
         private CacheIdentityFactory $identityFactory,
         #[AppSurrogateKey]
         private string|null $appKey = null,
@@ -37,11 +37,6 @@ final readonly class CacheTags
     public function tagHeader(ResourceObject $ro): void
     {
         $this->withAppKey(new TagSet())->addTo($ro);
-    }
-
-    public function uriTag(AbstractUri $uri): string
-    {
-        return ($this->uriTag)($uri);
     }
 
     /** The URI's own tag plus the group tag shared by its query variants (see BaseUriTag). */

@@ -12,7 +12,7 @@ use BEAR\Resource\ResourceObject;
  * @Cacheable
  * @NoHttpCache
  */
-#[Cacheable('never', expirySecond: 30, expiryAt: 'expiry_column', type: 'view', update: true)]
+#[Cacheable('never', expirySecond: 30, expiryAt: 'expiry_column', type: 'view')]
 #[NoHttpCache]
 class FakeAttributes extends ResourceObject
 {

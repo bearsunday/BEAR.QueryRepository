@@ -31,7 +31,7 @@ use function in_array;
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
 $logDir = (string) ($argv[1] ?? '');
-$inner = new FakeEtagPoolModule(ModuleFactory::getInstance('FakeVendor\HelloWorld'));
+$inner = ModuleFactory::getInstance('FakeVendor\HelloWorld');
 $module = new DevQueryRepositoryLogModule($logDir, module: $inner);
 if (in_array('--throw', $argv, true)) {
     $module->override(new class extends AbstractModule {

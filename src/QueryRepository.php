@@ -90,14 +90,14 @@ final readonly class QueryRepository implements QueryRepositoryInterface
 
         $ttl = $this->lifetime($ro, $cacheable);
 
-        $storability = $this->declaredCacheControl->storability($ro);
-        if ($storability !== Storability::Unstorable) {
+        $storability = $this->storability($ro, $cacheable, $ttl);
+        if ($storability === Storability::Shared) {
             // Every body this store keeps must serialize: a refusal surfaces here, before the
             // cleanup below can purge the entry and its dependents for a write that cannot happen
             serialize(($this->evaluateBody)($ro->body));
         }
 
-        $ofRendering = $storesView || $storability === Storability::Unstorable ? [] : $this->renderValue($ro, $httpCache);
+        $ofRendering = $storesView || $storability !== Storability::Shared ? [] : $this->renderValue($ro, $httpCache);
         try {
             $this->headerSetter->entry($ro, $storability, $this->clientCacheControl($cacheable, $ttl), $httpCache);
             if (! $this->replacedEntry->entry($ro, $storability)) {
@@ -110,6 +110,16 @@ final readonly class QueryRepository implements QueryRepositoryInterface
             // entry does not: a hit renders again.
             $ro->headers = array_replace($ro->headers, $ofRendering);
         }
+    }
+
+    private function storability(ResourceObject $ro, Cacheable|null $cacheable, int $ttl): Storability
+    {
+        $storability = $this->declaredCacheControl->storability($ro);
+        if ($storability === Storability::Shared && $cacheable instanceof Cacheable && $cacheable->expiryAt !== '' && $ttl === 0) {
+            return Storability::Expired;
+        }
+
+        return $storability;
     }
 
     /**
@@ -252,12 +262,9 @@ final readonly class QueryRepository implements QueryRepositoryInterface
             return 0;
         }
 
-        if ($cacheable->expiryAt !== '') {
-            return $this->getExpiryAtSec($ro, $cacheable);
-        }
+        $seconds = $cacheable->expiryAt !== '' ? $this->getExpiryAtSec($ro, $cacheable) : ($cacheable->expirySecond ?: $this->expiry->getTime($cacheable->expiry));
 
-        // A user-supplied expirySecond may be negative; the schemas declare "minimum": 0
-        return max(0, $cacheable->expirySecond ?: $this->expiry->getTime($cacheable->expiry));
+        return max(0, $seconds);
     }
 
     private function getExpiryAtSec(ResourceObject $ro, Cacheable $cacheable): int
@@ -271,7 +278,6 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         /** @var string $expiryAt */
         $expiryAt = $ro->body[$cacheable->expiryAt];
 
-        // A past expiryAt yields no lifetime to set, which the storage stores as "no expiry"
-        return max(0, (int) strtotime($expiryAt) - time());
+        return (int) strtotime($expiryAt) - time();
     }
 }

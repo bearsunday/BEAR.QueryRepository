@@ -32,6 +32,5 @@ return RectorConfig::configure()
             new AnnotationToAttribute('BEAR\RepositoryModule\Annotation\Purge'),
             new AnnotationToAttribute('BEAR\RepositoryModule\Annotation\DonutCache'),
             new AnnotationToAttribute('BEAR\RepositoryModule\Annotation\RefreshCache'),
-            new AnnotationToAttribute('BEAR\RepositoryModule\Annotation\Commands'),
         ]
     );

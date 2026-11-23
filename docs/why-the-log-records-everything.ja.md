@@ -54,7 +54,7 @@ surrogate key を追加せずに上書きしていた）。失われた子を pu
 プールが、成功した保存に見えることはもうありません。put が続かない miss は
 理由付きの `put_skipped` を出します（`etag-present`、実際のレスポンスコードを
 伴う `error-code`、`not-cacheable`、このリクエストで unstorable とマークされた
-応答の `unstorable`）—
+応答の `unstorable`、`expiryAt` が既に過ぎた応答の `expired`）—
 保存の不在は記録された決定であり、謎ではありません。どの理由も単独でセッションを
 残しません — 保持ポリシーはそれらをコードが生きている限り変わらない規則として
 扱います。保存先が持てない body（`serialize()` がクロージャを拒むなど）は

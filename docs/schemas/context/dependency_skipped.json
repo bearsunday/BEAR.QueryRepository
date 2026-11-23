@@ -2,7 +2,7 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/dependency_skipped.json",
     "title": "dependency_skipped",
-    "description": "Event: a top-level embedded child its cached parent does not depend on, recorded by a #[Cacheable] put or a donut page write. A child that has a body is a dependency; the reason is what its body showed: `no_body` (null, on a donut page usually a hole). `no_etag_or_surrogate_key` is deprecated: no longer emitted, kept so that a log written by 1.20.2 still validates.",
+    "description": "Event: a top-level embedded child its cached parent does not depend on, recorded by a #[Cacheable] put or a donut page write. A child that has a body is a dependency; the reason is what its body showed: `no_body` (null, on a donut page usually a hole).",
     "type": "object",
     "required": [
         "parent",
@@ -18,8 +18,7 @@
         },
         "reason": {
             "enum": [
-                "no_body",
-                "no_etag_or_surrogate_key"
+                "no_body"
             ]
         }
     },

@@ -24,7 +24,7 @@ class DonutCacheTest extends TestCase
     protected function setUp(): void
     {
         $namespace = 'FakeVendor\HelloWorld';
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance($namespace));
+        $module = ModuleFactory::getInstance($namespace);
         $path = dirname(__DIR__) . '/tests/Fake/fake-app/var/templates';
         $module->override(new TwigModule([$path]));
         $injector = new Injector($module, __DIR__ . '/tmp');
@@ -81,7 +81,7 @@ class DonutCacheTest extends TestCase
 
     public function testZeroTtlRecordsNoTemplateExpiry(): void
     {
-        // 0 does not mean "already lapsed": ResourceStorageSaver only calls expiresAfter()
+        // 0 does not mean "already lapsed": the storage only calls expiresAfter()
         // for a positive value, so the entry is stored with no expiry and there is no
         // lifetime to carry. Recording time() here would report 0 remaining on the next
         // refresh and stop the content-state write of an entry that never expires.
@@ -124,6 +124,6 @@ class DonutCacheTest extends TestCase
 
     private function dependencies(AbstractUri $uri): Dependencies
     {
-        return $this->injector->getInstance(CacheDependencyCollector::class)->begin(new TagSet([(new UriTag())($uri)]));
+        return $this->injector->getInstance(CacheDependencyCollector::class)->begin(new TagSet([(new UriTag(new CacheIdentityFactory(new GlobalServerContext())))($uri)]));
     }
 }

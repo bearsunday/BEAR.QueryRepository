@@ -44,7 +44,7 @@ class CacheDependencyTest extends TestCase
         $namespace = 'FakeVendor\HelloWorld';
         $this->purger = new FakeCountingPurger();
         $purger = $this->purger;
-        $module = new FakeEtagPoolModule(ModuleFactory::getInstance($namespace));
+        $module = ModuleFactory::getInstance($namespace);
         $module->override(new class ($purger) extends AbstractModule {
             public function __construct(private readonly PurgerInterface $purger)
             {
@@ -110,7 +110,7 @@ class CacheDependencyTest extends TestCase
         $this->repository->purge(new Uri('page://self/dep/level-two'));
         $one2 = $this->repository->get(new Uri('page://self/dep/level-one'));
         $this->assertNull($one2);
-        $this->assertFalse($this->storage->hasEtag($etag1));
+        $this->assertNull($this->storage->validatedEntry($etag1));
     }
 
     public function testDestroyByGrandChild(): void
@@ -121,14 +121,14 @@ class CacheDependencyTest extends TestCase
             $state = $this->repository->get(new Uri('page://self/dep/' . $level));
             $this->assertInstanceOf(ResourceState::class, $state);
             $etags[$level] = $state->headers[Header::ETAG];
-            $this->assertTrue($this->storage->hasEtag($etags[$level]), $level);
+            $this->assertNotNull($this->storage->validatedEntry($etags[$level]), $level);
         }
 
         $this->repository->purge(new Uri('page://self/dep/level-three'));
 
         $this->assertNull($this->repository->get(new Uri('page://self/dep/level-one')));
         foreach ($etags as $level => $etag) {
-            $this->assertFalse($this->storage->hasEtag($etag), $level);
+            $this->assertNull($this->storage->validatedEntry($etag), $level);
         }
     }
 
@@ -152,8 +152,8 @@ class CacheDependencyTest extends TestCase
         // unlike its parents it is cached again right after the write, validator included.
         $three = $this->repository->get(new Uri('page://self/dep/level-three'));
         $this->assertInstanceOf(ResourceState::class, $three);
-        $this->assertTrue($this->storage->hasEtag($three->headers[Header::ETAG]));
-        $this->assertFalse($this->storage->hasEtag($etag1));
+        $this->assertNotNull($this->storage->validatedEntry($three->headers[Header::ETAG]));
+        $this->assertNull($this->storage->validatedEntry($etag1));
     }
 
     /** A miss writes where nothing is stored: it replaces no entry, so it purges no key */
@@ -176,7 +176,7 @@ class CacheDependencyTest extends TestCase
         $this->assertNull($this->repository->get(new Uri('page://self/dep/level-one')));
         $this->assertNull($this->repository->get(new Uri('page://self/dep/level-two')));
         $this->assertInstanceOf(ResourceState::class, $this->repository->get(new Uri('page://self/dep/level-three')));
-        $this->assertSame([(new UriTag())(new Uri('page://self/dep/level-three'))], $this->purger->tags);
+        $this->assertSame([(new UriTag(new CacheIdentityFactory(new GlobalServerContext())))(new Uri('page://self/dep/level-three'))], $this->purger->tags);
     }
 
     /**
@@ -208,20 +208,20 @@ class CacheDependencyTest extends TestCase
 
         // LevelOne should be invalidated (it depends on LevelThree via LevelTwo)
         $this->assertNull($this->repository->get(new Uri('page://self/dep/level-one')));
-        $this->assertFalse($this->storage->hasEtag($etagLevelOne));
+        $this->assertNull($this->storage->validatedEntry($etagLevelOne));
 
         // ChildC should still be cached (completely unrelated chain)
         $childCAfterPurge = $this->repository->get(new Uri('page://self/dep/child-c'));
         $this->assertInstanceOf(ResourceState::class, $childCAfterPurge);
-        $this->assertTrue($this->storage->hasEtag($etagChildC));
+        $this->assertNotNull($this->storage->validatedEntry($etagChildC));
     }
 
     /** The edge sees only tags, so a purge reaches a page iff its tag is among the keys the page advertised in Surrogate-Key */
     public function testCommandPurgeSendsTheKeyTheDependentPageAdvertised(): void
     {
         $levelOne = $this->resource->get('page://self/dep/level-one');
-        $levelThreeTag = (new UriTag())(new Uri('page://self/dep/level-three'));
-        $childCTag = (new UriTag())(new Uri('page://self/dep/child-c'));
+        $levelThreeTag = (new UriTag(new CacheIdentityFactory(new GlobalServerContext())))(new Uri('page://self/dep/level-three'));
+        $childCTag = (new UriTag(new CacheIdentityFactory(new GlobalServerContext())))(new Uri('page://self/dep/child-c'));
         $this->assertContains($levelThreeTag, explode(' ', $levelOne->headers[Header::SURROGATE_KEY]), 'level-one told the CDN it depends on level-three');
         $this->purger->tags = [];
 
@@ -261,8 +261,8 @@ class CacheDependencyTest extends TestCase
         $this->assertNull($this->repository->get(new Uri('page://self/dep/parent-b')));
 
         // ETags should also be invalidated
-        $this->assertFalse($this->storage->hasEtag($etagA));
-        $this->assertFalse($this->storage->hasEtag($etagB));
+        $this->assertNull($this->storage->validatedEntry($etagA));
+        $this->assertNull($this->storage->validatedEntry($etagB));
     }
 
     /**
@@ -276,7 +276,7 @@ class CacheDependencyTest extends TestCase
         $parent = $this->repository->get(new Uri('page://self/dep/parent-of-non-cacheable'));
         $this->assertInstanceOf(ResourceState::class, $parent);
 
-        $childTag = (new UriTag())(new Uri('page://self/dep/non-cacheable-child'));
+        $childTag = (new UriTag(new CacheIdentityFactory(new GlobalServerContext())))(new Uri('page://self/dep/non-cacheable-child'));
         $surrogateKey = $parent->headers[Header::SURROGATE_KEY] ?? '';
         $this->assertStringContainsString($childTag, $surrogateKey);
 
@@ -306,7 +306,7 @@ class CacheDependencyTest extends TestCase
     {
         $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
         $module->override(new HalModule());
-        $injector = new Injector(new FakeEtagPoolModule($module), __DIR__ . '/tmp');
+        $injector = new Injector($module, __DIR__ . '/tmp');
         $resource = $injector->getInstance(ResourceInterface::class);
         $repository = $injector->getInstance(QueryRepositoryInterface::class);
 
@@ -314,7 +314,7 @@ class CacheDependencyTest extends TestCase
 
         $parent = $repository->get(new Uri('page://self/hal/parent-resource'));
         $this->assertInstanceOf(ResourceState::class, $parent);
-        $childTag = (new UriTag())(new Uri('page://self/hal/child'));
+        $childTag = (new UriTag(new CacheIdentityFactory(new GlobalServerContext())))(new Uri('page://self/hal/child'));
 
         $this->assertStringContainsString($childTag, $parent->headers[Header::SURROGATE_KEY] ?? '');
     }
@@ -327,7 +327,7 @@ class CacheDependencyTest extends TestCase
      */
     public function testDependsLeavesTheChildsOwnKeyIntactAndDedupesTheParent(): void
     {
-        $uriTag = new UriTag();
+        $uriTag = new UriTag(new CacheIdentityFactory(new GlobalServerContext()));
         $dependency = new CacheDependency(new CacheTags($uriTag, new BaseUriTag($uriTag, $this->injector->getInstance(CacheIdentityFactory::class)), $this->injector->getInstance(CacheIdentityFactory::class)), new NullSemanticLogger());
 
         $parent = new class extends ResourceObject {
@@ -356,7 +356,7 @@ class CacheDependencyTest extends TestCase
      */
     public function testDependsOnChildTagsHaveNoDuplicateWhenTheChildsOwnKeyEqualsItsUriTag(): void
     {
-        $uriTag = new UriTag();
+        $uriTag = new UriTag(new CacheIdentityFactory(new GlobalServerContext()));
         $logger = new SemanticLogger();
         $identityFactory = $this->injector->getInstance(CacheIdentityFactory::class);
         $dependency = new CacheDependency(new CacheTags($uriTag, new BaseUriTag($uriTag, $identityFactory), $identityFactory), $logger);

@@ -28,7 +28,7 @@ class DependenciesTest extends TestCase
         static $injector;
 
         $namespace = 'FakeVendor\HelloWorld';
-        $module = new DevEtagModule((new FakeEtagPoolModule(ModuleFactory::getInstance($namespace))));
+        $module = new DevEtagModule(ModuleFactory::getInstance($namespace));
         $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
         if (! $injector) {
             $injector = new Injector($module, __DIR__ . '/tmp');
@@ -106,12 +106,12 @@ class DependenciesTest extends TestCase
             $child->uri = new Uri('app://self/rows/ca', ['channelId' => new Ulid($channelId)]);
             $child->body = [];
             $keys->embedded($child);
-            $this->assertSame((new UriTag())(new Uri('app://self/rows/taxonomy', ['ulid' => $channelId])), $child->headers[Header::SURROGATE_KEY]);
+            $this->assertSame((new UriTag(new CacheIdentityFactory(new GlobalServerContext())))(new Uri('app://self/rows/taxonomy', ['ulid' => $channelId])), $child->headers[Header::SURROGATE_KEY]);
         }
     }
 
     private function dependencies(AbstractUri $uri): Dependencies
     {
-        return $this->injector->getInstance(CacheDependencyCollector::class)->begin(new TagSet([(new UriTag())($uri)]));
+        return $this->injector->getInstance(CacheDependencyCollector::class)->begin(new TagSet([(new UriTag(new CacheIdentityFactory(new GlobalServerContext())))($uri)]));
     }
 }

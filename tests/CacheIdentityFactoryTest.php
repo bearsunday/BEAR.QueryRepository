@@ -64,13 +64,13 @@ final class CacheIdentityFactoryTest extends TestCase
             #[Override]
             public function __invoke(AbstractUri $uri): string
             {
-                return 'custom-' . (new UriTag())($uri);
+                return 'custom-' . (new UriTag(new CacheIdentityFactory(new GlobalServerContext())))($uri);
             }
 
             #[Override]
             public function fromAssoc(string $uriTemplate, array $assoc): string
             {
-                return (new UriTag())->fromAssoc($uriTemplate, $assoc);
+                return (new UriTag(new CacheIdentityFactory(new GlobalServerContext())))->fromAssoc($uriTemplate, $assoc);
             }
         };
 
@@ -86,7 +86,7 @@ final class CacheIdentityFactoryTest extends TestCase
         };
         $ro->uri = new Uri('page://self/item?page=2');
 
-        $this->assertSame('grp-_item_page=2', (new BaseUriTag(new UriTag(), $this->injector->getInstance(CacheIdentityFactory::class)))($ro));
+        $this->assertSame('grp-_item_page=2', (new BaseUriTag(new UriTag(new CacheIdentityFactory(new GlobalServerContext())), $this->injector->getInstance(CacheIdentityFactory::class)))($ro));
     }
 
     public function testStorageKeyReadsVaryInDeclaredOrderWithRepeatsAndMissingValues(): void
@@ -117,7 +117,7 @@ final class CacheIdentityFactoryTest extends TestCase
         $this->assertSame($locators, array_unique($locators));
         $this->assertSame(self::k('app://self/a/b?'), $locators[0]);
         $this->assertSame(self::k('app://self/a/b?x=1&y=2'), $factory->locator(new Uri('app://self/a/b?y=2&x=1')));
-        $this->assertSame((string) (new UriTag())(new Uri($uris[0])), (string) (new UriTag())(new Uri($uris[2])), 'while the tags stay shared');
+        $this->assertSame((string) (new UriTag(new CacheIdentityFactory(new GlobalServerContext())))(new Uri($uris[0])), (string) (new UriTag(new CacheIdentityFactory(new GlobalServerContext())))(new Uri($uris[2])), 'while the tags stay shared');
     }
 
     public function testLocatorOfReadsOnlyTheShapeOfALocator(): void

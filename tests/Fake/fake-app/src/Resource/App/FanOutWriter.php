@@ -7,7 +7,7 @@ namespace FakeVendor\HelloWorld\Resource\App;
 use BEAR\RepositoryModule\Annotation\Purge;
 use BEAR\Resource\ResourceObject;
 
-/** Not #[Cacheable], so RefreshInterceptor handles the declarations */
+/** Not #[Cacheable]: a write that stores nothing of its own */
 class FanOutWriter extends ResourceObject
 {
     /** @param string|array<string> $id */

@@ -167,7 +167,7 @@ use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\HttpCache;
 
 /**
- * @Cacheable(expiry="medium", expirySecond=3600, type="view", update=true)
+ * @Cacheable(expiry="medium", expirySecond=3600, type="view")
  * @HttpCache(maxAge=60, sMaxAge=600, isPrivate=false, mustRevalidate=true)
  */
 class Article extends ResourceObject
@@ -181,7 +181,7 @@ class Article extends ResourceObject
 use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\HttpCache;
 
-#[Cacheable(expiry: "medium", expirySecond: 3600, type: "view", update: true)]
+#[Cacheable(expiry: "medium", expirySecond: 3600, type: "view")]
 #[HttpCache(maxAge: 60, sMaxAge: 600, isPrivate: false, mustRevalidate: true)]
 class Article extends ResourceObject
 {
@@ -232,7 +232,6 @@ The following BEAR.QueryRepository annotations are automatically converted:
 - `@Purge` → `#[Purge]` - Purge specific cache entries
 - `@DonutCache` → `#[DonutCache]` - Donut caching pattern
 - `@RefreshCache` → `#[RefreshCache]` - Refresh cache after command
-- `@Commands` → `#[Commands]` - Cache invalidation commands
 
 **Note**: This migration tool only handles BEAR.QueryRepository annotations. For Ray.Di annotations (such as `@Inject`, `@Named`, etc.), please refer to the [Ray.Di migration guide](https://github.com/ray-di/Ray.Di).
 

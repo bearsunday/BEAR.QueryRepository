@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository\Log;
 
+use Koriym\SemanticLogger\SemanticLogger;
 use Override;
 
 /**
@@ -18,7 +19,7 @@ final class ProcessSession implements SessionStoreInterface
     #[Override]
     public function current(): Session
     {
-        return $this->session ??= new Session();
+        return $this->session ??= new Session(new SemanticLogger());
     }
 
     #[Override]
