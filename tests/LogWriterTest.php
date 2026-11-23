@@ -251,7 +251,7 @@ class LogWriterTest extends TestCase
 
     private function commandSession(): LogJson
     {
-        $open = $this->logger->open(new CommandContext('onPut', [], 'CommandInterceptor'));
+        $open = $this->logger->open(new CommandContext('onPut', []));
         $this->logger->close(new CommandResultContext(200), $open);
 
         return $this->logger->flush();

@@ -11,7 +11,6 @@ use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
-use Override;
 use Ray\Aop\MethodInvocation;
 
 use function array_unique;
@@ -20,28 +19,13 @@ use function is_array;
 use function uri_template;
 
 /** @internal */
-final readonly class RefreshAnnotatedCommand implements CommandInterface
+final readonly class RefreshAnnotatedCommand
 {
     public function __construct(
-        private QueryRepositoryInterface $repository,
         private ResourceInterface $resource,
         private CacheIdentityFactory $identityFactory,
         private DependsOnTemplates $templates,
     ) {
-    }
-
-    #[Override]
-    public function command(MethodInvocation $invocation, ResourceObject $ro): void
-    {
-        foreach ($this->declared($invocation, $ro) as [$uris, $refresh]) {
-            foreach ($uris as $uri) {
-                $this->repository->purge($uri);
-            }
-
-            if ($refresh) {
-                $this->refresh($uris);
-            }
-        }
     }
 
     /**

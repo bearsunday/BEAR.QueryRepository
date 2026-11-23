@@ -21,7 +21,7 @@ use function serialize;
 use function unserialize;
 
 /** @requires extension redis */
-class DonutCommandRedisCacheTest extends DonutCommandInterceptorTest
+class DonutCommandRedisCacheTest extends DonutCommandTest
 {
     use RequiresRedisServerTrait;
 

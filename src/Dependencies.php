@@ -19,12 +19,11 @@ final class Dependencies
     /** @var array<string, TagSet|null> by class and URI; null when the resource declares nothing and passes nothing up */
     private array $found = [];
 
-    /** @param BaseUriTag $groupTag the group tag a purge of a bare URI emits, whatever BaseUriTagInterface is bound to */
     public function __construct(
         private TagSet $keys,
         private readonly DependsOnTags $dependsOnTags,
+        private readonly ResourceParamSources $resourceParamSources,
         private readonly CacheTags $cacheTags,
-        private readonly BaseUriTag $groupTag,
         private readonly CacheIdentityFactory $identityFactory,
     ) {
     }
@@ -33,8 +32,7 @@ final class Dependencies
     public function hole(ResourceObject $ro): void
     {
         $this->embedded($ro);
-        $own = new TagSet([$this->cacheTags->uriTag($ro->uri), ($this->groupTag)($ro)]);
-        $this->keys = $this->keys->merge($own)->merge(TagSet::ofHeaders($ro->headers));
+        $this->keys = $this->keys->merge($this->cacheTags->own($ro))->merge(TagSet::ofHeaders($ro->headers));
     }
 
     /**
@@ -98,7 +96,7 @@ final class Dependencies
     private function ofResult(ResourceObject $ro, Closure $embedded): TagSet|null
     {
         $declared = $this->dependsOnTags->declared($ro);
-        $read = $this->dependsOnTags->sourceTags($ro)->merge($this->passedUp($ro, $embedded));
+        $read = $this->resourceParamSources->tags($ro)->merge($this->passedUp($ro, $embedded));
 
         return $read->isEmpty() ? $declared : ($declared ?? new TagSet())->merge($read);
     }

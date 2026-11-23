@@ -75,9 +75,8 @@ get uri=app://self/user?id=1
 └── close cache_hit
     ├── layer: resource
     └── durationMs: [volatile]
-command method=onPatch source=CommandInterceptor
+command method=onPatch
 ├── method: onPatch
-├── source: CommandInterceptor
 ├── purge uri=app://self/user?id=1 [event]
 │   └── uri: app://self/user?id=1
 ├── invalidate tags=[_user_id=1, grp-_user_id=1] roPool=invalidated cdn=skipped durationMs=[volatile] [event]
@@ -201,8 +200,7 @@ conditional_request ifNoneMatch="stale"
             "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/command.json",
             "context": {
                 "method": "onPatch",
-                "annotations": [],
-                "source": "CommandInterceptor"
+                "annotations": []
             },
             "log": [
                 {

@@ -77,7 +77,7 @@ and still close with one, at a different layer.
 | Type | Opened by | Closes with |
 |---|---|---|
 | `get` (`uri`) | a resource GET through the cache | `cache_hit` / `cache_miss` |
-| `command` (`method`, `annotations`, `source`) | a write (`onPut`/`onPatch`/`onDelete`) | `command_result` (`code`) |
+| `command` (`method`, `annotations`) | a write (`onPost`/`onPut`/`onPatch`/`onDelete`) | `command_result` (`code`) |
 | `conditional_request` (`ifNoneMatch`) | the transfer boundary checking `If-None-Match` | `cache_hit` / `cache_miss` at `layer: etag` |
 | `manual_store` (`uri`) | a direct `put()` / `putStatic()` / `putDonut()` | `manual_store_result` (`stored` \| `failed`) |
 | `manual_purge` (`uri`) | a direct `purge()` | `manual_purge_result` (`purged` \| `failed`) |
@@ -279,7 +279,7 @@ From `demo/run-dependency.php`, with durations and null fields left out — a PU
 other resources embed:
 
 ```text
-command {"method": "onPut", "annotations": [], "source": "CommandInterceptor"}
+command {"method": "onPut", "annotations": []}
   purge {"uri": "page://self/dep/level-three"}
   invalidate {"tags": ["_dep_level-three_", "grp-_dep_level-three_"], "roPool": "invalidated", "cdn": "skipped"}
   get {"uri": "page://self/dep/level-three"}

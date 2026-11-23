@@ -52,14 +52,6 @@ class DemoLogCoverageTest extends TestCase
 {
     private const DEMOS = ['run', 'run-donut', 'run-dependency', 'run-degraded'];
 
-    /**
-     * Command producers the log documents.
-     *
-     * `command.source` is a free string (an application may bind its own interceptor),
-     * so this is the set of built-in producers, not a closed enum.
-     */
-    private const COMMAND_PRODUCERS = ['CommandInterceptor', 'DonutCommandInterceptor', 'RefreshInterceptor'];
-
     /** @var array<string, int> demo name => exit code */
     private static array $exitCodes = [];
 
@@ -146,19 +138,10 @@ class DemoLogCoverageTest extends TestCase
         $this->assertCount(4, $saveTypes, 'expected save_value/save_view/save_donut/save_donut_view');
     }
 
-    public function testEveryCommandProducerIsDemonstrated(): void
-    {
-        $sources = self::$observed['command']['source'] ?? [];
-        foreach (self::COMMAND_PRODUCERS as $producer) {
-            $this->assertContains($producer, $sources, sprintf('no demo opens a command scope from %s', $producer));
-        }
-    }
-
     public function testEveryBuiltInCommandAnnotationIsDemonstrated(): void
     {
-        // command.annotations[].class is a free string (no enum), so the enum guard cannot
-        // see it: a producer can satisfy the source guard without ever demonstrating
-        // #[Purge], whose log shape (purge-only, no re-population) differs from #[Refresh].
+        // command.annotations[].class is a free string (no enum), so the enum guard cannot see it; #[Purge]'s log
+        // shape (purge-only, no re-population) differs from #[Refresh].
         $classes = self::$observed['command']['annotations.class'] ?? [];
         foreach ([Refresh::class, Purge::class] as $annotation) {
             $this->assertContains($annotation, $classes, sprintf('no demo runs a command carrying #[%s]', $annotation));
