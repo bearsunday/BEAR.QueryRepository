@@ -80,7 +80,7 @@ use BEAR\RepositoryModule\Annotation\NoHttpCache;
 
 On a resource that declares `#[HttpCache]` or `#[NoHttpCache]`, this package sets the `Cache-Control` of a 200 response from the attribute and replaces one the resource or its caller sets. Declare the directives instead of setting the header.
 
-A resource stored by `#[Cacheable]`, `#[CacheableResponse]` or `#[DonutCache]` must not declare `isPrivate`, `noStore` or `#[NoHttpCache]`: this package is a shared cache, so storing its response throws `UnstorableDeclaration` and stores nothing. When a write rebuilds its cache, the write has already run when the exception is thrown.
+A resource stored by `#[Cacheable]`, `#[CacheableResponse]` or `#[DonutCache]` must not declare `isPrivate`, `noStore` or `#[NoHttpCache]`: this package is a shared cache, so storing its response throws `UnstorableDeclaration` and stores nothing. When a write rebuilds its cache, the write has already run when the exception is thrown. A `private` or `no-store` that an embedded child sets at runtime is not carried to its parent: a stored parent keeps the child's body with its own and answers without `private`, so do not embed such a child in a stored resource.
 
 ### #[Refresh]
 
