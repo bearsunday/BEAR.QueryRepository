@@ -146,7 +146,9 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $viewTags = null;
         if ($isPage) {
             $viewTags = $this->headerSetter->page($ro, $storability, $sMaxAge, $this->declaredCacheControl->cacheControl($ro), null);
-        } else {
+        }
+
+        if (! $isPage) {
             $this->headerSetter->template($ro, $storability);
         }
 
