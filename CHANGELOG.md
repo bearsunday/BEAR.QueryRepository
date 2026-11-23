@@ -28,12 +28,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `#[DependsOn]` on a row class: put the rows in the body under `key` from `onGet()` instead.
 
 ### Removed
+- `UnsupportedLogStream`: `ProdQueryRepositoryLogModule` opens the stream it is given, so a target other than a path or `php://stdout`/`php://stderr`/`php://output` is no longer refused.
 - `SurrogateKeys`, which only the donut write used; nothing replaces it outside the package.
 
 ### Fixed
-- A page stored by `DonutRepositoryInterface::putStatic()` with an `$sMaxAge` gave browsers that lifetime as `max-age` on a cache hit and after a refresh, so a browser kept the page as long as the CDN did, out of reach of a purge. It now gets `max-age=0` and revalidates, unless its `Cache-Control` already has a `max-age` or `no-store`.
+- A page stored by `DonutRepositoryInterface::putStatic()` with an `$sMaxAge` gave browsers that lifetime as `max-age` on a cache hit and after a refresh, so a browser kept the page as long as the CDN did, out of reach of a purge. It now gets `max-age=0` and revalidates, unless its `Cache-Control` already has a `max-age`.
 - A page that declares `#[HttpCache]` and calls `putStatic()` in its own `onGet()` is stored with the declared `Cache-Control`, so a cache hit and a recomposed page carry it too. Declare `Cache-Control` with the attribute rather than setting the header.
 - A `#[Cacheable]` resource or a stored page that declares `#[HttpCache]` with only `etag` sent a `Cache-Control` that began with a comma, such as `, max-age=0`; the comma is gone.
+- The `Cache-Control` a resource declares with `#[HttpCache]` or `#[NoHttpCache]` replaces one the resource set itself under another casing, such as `cache-control`; both were sent.
 - A `#[Cacheable]` page that embeds a `#[CacheableResponse]` or `#[DonutCache]` page which itself embeds a resource is now stored; since 1.17.0 the GET failed with `AbstractRequest::__serialize not supported`, and before that the page was silently not stored. The page carries the tags of the part and of the resource the part embeds, so purging either drops the page.
 - A write to a `#[Cacheable]` resource whose `onGet()` reads an argument through `#[ResourceParam]` no longer fails with `UnmatchedQuery` when its query lacks that argument, which is not in the URI a GET is stored under; its entry is purged and read again.
 - A POST that cannot address its own key no longer writes the values it was sent into the cache log: `cache_error` records its URI without the query, and the `UnmatchedQuery` message names the missing `onGet()` parameter instead of quoting the query.

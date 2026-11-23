@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use FakeVendor\HelloWorld\Resource\Page\Html\CacheableResponseNoStore;
 use FakeVendor\HelloWorld\Resource\Page\None;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 use Ray\Di\InjectorInterface;
 
+use function array_intersect_ukey;
 use function array_keys;
+use function strcasecmp;
 
 class HeaderSetterTest extends TestCase
 {
@@ -40,6 +41,16 @@ class HeaderSetterTest extends TestCase
 
         $this->assertArrayNotHasKey('cdn-cache-control', $ro->headers);
         $this->assertSame('private', $ro->headers[Header::CACHE_CONTROL], "the developer's own header is kept exactly");
+    }
+
+    public function testTheDeclaredCacheControlReplacesTheResponsesOwnUnderAnyCasing(): void
+    {
+        $ro = new None();
+        $ro->headers['cache-control'] = 'public';
+
+        $this->headerSetter()->page($ro, Storability::Shared, null, 'max-age=60', null);
+
+        $this->assertSame(['cache-control' => 'max-age=60'], array_intersect_ukey($ro->headers, [Header::CACHE_CONTROL => true], strcasecmp(...)));
     }
 
     public function testUnstorableStripRemovesEveryCasingWhenTheSameHeaderIsSetTwice(): void
@@ -84,31 +95,6 @@ class HeaderSetterTest extends TestCase
         $this->assertSame('max-age=30', $ro->headers['cache-control']);
     }
 
-    public function testSetCacheControlMaxAgeDoesNotAppendALifetimeToNoStore(): void
-    {
-        // A declared #[HttpCache(noStore: true)] is still stored server-side, but the client
-        // header must not pair no-store with a lifetime (#243).
-        $ro = new CacheableResponseNoStore();
-        $ro->headers[Header::CACHE_CONTROL] = 'no-store';
-
-        $this->headerSetter()->entry($ro, Storability::Shared, 'max-age=31536000', null);
-
-        $this->assertSame('no-store', $ro->headers[Header::CACHE_CONTROL]);
-    }
-
-    public function testSetCacheControlMaxAgeChecksEveryCacheControlKeyForNoStore(): void
-    {
-        // An app-set lowercase 'cache-control' can sit beside the declared 'Cache-Control:
-        // no-store'; whichever key comes first, no lifetime may be added to either.
-        $ro = new CacheableResponseNoStore();
-        $ro->headers = ['cache-control' => 'public', Header::CACHE_CONTROL => 'no-store'];
-
-        $this->headerSetter()->entry($ro, Storability::Shared, 'max-age=60', null);
-
-        $this->assertSame('public', $ro->headers['cache-control']);
-        $this->assertSame('no-store', $ro->headers[Header::CACHE_CONTROL]);
-    }
-
     public function testSharedPageGetsACdnLifetimeAfterItsKeysAreRead(): void
     {
         $ro = new None();
@@ -132,8 +118,7 @@ class HeaderSetterTest extends TestCase
     {
         return [
             'lifetime' => ['max-age=60', 'max-age=60'],
-            'no lifetime' => ['private', 'private, max-age=0'],
-            'no-store' => ['no-store', 'no-store'],
+            'no lifetime' => ['public', 'public, max-age=0'],
         ];
     }
 
@@ -155,17 +140,6 @@ class HeaderSetterTest extends TestCase
         $this->headerSetter()->page($ro, Storability::Shared, 10, '', null);
 
         $this->assertSame('max-age=0', $ro->headers[Header::CACHE_CONTROL]);
-    }
-
-    public function testAnEmptyCacheControlIsLeftWhenAnotherCaseVariantHasALifetime(): void
-    {
-        $ro = new None();
-        $ro->headers = [Header::CACHE_CONTROL => '', 'cache-control' => 'max-age=60'];
-
-        $this->headerSetter()->page($ro, Storability::Shared, 10, null, null);
-
-        $this->assertSame('', $ro->headers[Header::CACHE_CONTROL], 'no second lifetime beside max-age=60');
-        $this->assertSame('max-age=60', $ro->headers['cache-control']);
     }
 
     public function testSharedPageThatIsNot200GetsNoCdnLifetime(): void

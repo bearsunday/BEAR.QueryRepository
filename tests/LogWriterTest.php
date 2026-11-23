@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\QueryRepository\Exception\UnsupportedLogStream;
 use BEAR\QueryRepository\Fake\KeepEverything;
 use BEAR\QueryRepository\Log\Context\CacheHitContext;
 use BEAR\QueryRepository\Log\Context\CommandContext;
@@ -21,6 +20,7 @@ use BEAR\QueryRepository\Log\SafeSemanticLogger;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use Koriym\SemanticLogger\LogJson;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LogLevel;
 use Ray\Di\AbstractModule;
@@ -37,6 +37,7 @@ use function mkdir;
 use function random_bytes;
 use function rmdir;
 use function rsort;
+use function str_replace;
 use function substr_count;
 use function sys_get_temp_dir;
 use function trim;
@@ -152,13 +153,34 @@ class LogWriterTest extends TestCase
         $this->assertSame(0600, fileperms($this->dir . '/' . LogFileWriter::LATEST) & 0777);
     }
 
-    public function testAStreamTargetThatIsNeitherAPathNorAStandardStreamIsRejected(): void
+    /** @return array<string, array{0: string}> */
+    public static function fileTargets(): array
     {
-        // `php://filter/write=…/resource=…` would truncate an unrelated file, and `ftp://user:pass@host`
-        // would send every session over the network with credentials in a module argument
-        $this->expectException(UnsupportedLogStream::class);
+        return ['path' => [''], 'file URL' => ['file://'], 'upper-case file URL' => ['FILE://'], 'file URL naming localhost' => ['file://localhost'], 'upper-case localhost' => ['FILE://LOCALHOST']];
+    }
 
-        new LogStreamWriter('php://filter/write=convert.base64-encode/resource=' . $this->file);
+    #[DataProvider('fileTargets')]
+    public function testTheStreamWriterRestrictsAFileItCreates(string $scheme): void
+    {
+        if (DIRECTORY_SEPARATOR === '\\') {
+            $this->markTestSkipped('POSIX file modes: Windows expresses this through ACLs, which this writer does not claim to set');
+        }
+
+        (new LogStreamWriter($scheme . $this->file))->write($this->readSession());
+
+        $this->assertSame(0700, fileperms($this->dir) & 0777);
+        $this->assertSame(0600, fileperms($this->file) & 0777);
+    }
+
+    public function testTheStreamWriterCreatesTheDirectoryOfAWindowsDriveFileUrl(): void
+    {
+        if (DIRECTORY_SEPARATOR !== '\\') {
+            $this->markTestSkipped('A drive letter names a path on Windows only');
+        }
+
+        (new LogStreamWriter('file:///' . str_replace('\\', '/', $this->file)))->write($this->readSession());
+
+        $this->assertFileExists($this->file);
     }
 
     public function testThePsrAdapterPassesTheTreeAsContextNotAsAMessage(): void

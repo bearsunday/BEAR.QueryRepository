@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository\Log;
 
-use BEAR\QueryRepository\Exception\UnsupportedLogStream;
 use Koriym\SemanticLogger\LogJson;
 use Override;
 
@@ -15,14 +14,16 @@ use function fclose;
 use function flock;
 use function fopen;
 use function fwrite;
-use function implode;
-use function in_array;
 use function is_dir;
 use function json_encode;
 use function mkdir;
-use function sprintf;
+use function preg_match;
 use function str_contains;
+use function stripos;
+use function strlen;
+use function substr;
 
+use const DIRECTORY_SEPARATOR;
 use const JSON_UNESCAPED_SLASHES;
 use const JSON_UNESCAPED_UNICODE;
 use const LOCK_EX;
@@ -37,28 +38,17 @@ use const PHP_EOL;
  * concurrent workers would interleave halves of it. A wrapper that refuses the lock is written
  * anyway rather than dropped.
  *
- * The target is restricted to the two shapes documented above. Anything else - `php://filter/…`,
- * `ftp://`, `ssh2.sftp://` - would let a module argument truncate an unrelated file or send every
- * session over the network, so it is rejected rather than honoured.
- *
- * A file target is created 0600 in a 0700 directory; a stream target inherits whatever the host
- * points it at.
+ * A file target, a path or a `file://` URL, is created 0600 in a 0700 directory; a stream target
+ * inherits whatever the host points it at.
  */
 final class LogStreamWriter implements LogWriterInterface
 {
-    private const STREAMS = ['php://stdout', 'php://stderr', 'php://output'];
+    private const FILE_SCHEME = 'file://';
+    private const LOCALHOST = 'localhost';
+    private const WINDOWS_DRIVE_PATH = '#\\A/[A-Za-z]:/#';
 
     public function __construct(private string $stream = 'php://stdout')
     {
-        if (in_array($stream, self::STREAMS, true) || ! str_contains($stream, '://')) {
-            return;
-        }
-
-        throw new UnsupportedLogStream(sprintf(
-            '%s: expected a filesystem path or one of %s',
-            $stream,
-            implode(', ', self::STREAMS),
-        ));
     }
 
     #[Override]
@@ -87,18 +77,29 @@ final class LogStreamWriter implements LogWriterInterface
         $this->restrict();
     }
 
-    private function isFile(): bool
+    /** @return string|null the path of a file target; null for a stream */
+    private function path(): string|null
     {
-        return ! in_array($this->stream, self::STREAMS, true);
+        if (stripos($this->stream, self::FILE_SCHEME) === 0) {
+            $path = substr($this->stream, strlen(self::FILE_SCHEME));
+
+            // fopen() opens file://localhost/x as /x, and on Windows file:///C:/x as C:/x
+            $path = stripos($path, self::LOCALHOST . '/') === 0 ? substr($path, strlen(self::LOCALHOST)) : $path;
+
+            return DIRECTORY_SEPARATOR === '\\' && preg_match(self::WINDOWS_DRIVE_PATH, $path) === 1 ? substr($path, 1) : $path;
+        }
+
+        return str_contains($this->stream, '://') ? null : $this->stream;
     }
 
     private function prepareDir(): bool
     {
-        if (! $this->isFile()) {
+        $path = $this->path();
+        if ($path === null) {
             return true;
         }
 
-        $dir = dirname($this->stream);
+        $dir = dirname($path);
         if (is_dir($dir) || @mkdir($dir, 0700, true) || is_dir($dir)) {
             return true;
         }
@@ -110,10 +111,11 @@ final class LogStreamWriter implements LogWriterInterface
 
     private function restrict(): void
     {
-        if (! $this->isFile()) {
+        $path = $this->path();
+        if ($path === null) {
             return;
         }
 
-        @chmod($this->stream, 0600);
+        @chmod($path, 0600);
     }
 }
