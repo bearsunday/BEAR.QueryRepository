@@ -20,6 +20,7 @@ use BEAR\QueryRepository\Log\SafeSemanticLogger;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use Koriym\SemanticLogger\LogJson;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LogLevel;
 use Ray\Di\AbstractModule;
@@ -149,6 +150,25 @@ class LogWriterTest extends TestCase
 
         $this->assertSame(0700, fileperms($this->dir) & 0777);
         $this->assertSame(0600, fileperms($this->dir . '/' . LogFileWriter::LATEST) & 0777);
+    }
+
+    /** @return array<string, array{0: string}> */
+    public static function fileTargets(): array
+    {
+        return ['path' => [''], 'file URL' => ['file://']];
+    }
+
+    #[DataProvider('fileTargets')]
+    public function testTheStreamWriterRestrictsAFileItCreates(string $scheme): void
+    {
+        if (DIRECTORY_SEPARATOR === '\\') {
+            $this->markTestSkipped('POSIX file modes: Windows expresses this through ACLs, which this writer does not claim to set');
+        }
+
+        (new LogStreamWriter($scheme . $this->file))->write($this->readSession());
+
+        $this->assertSame(0700, fileperms($this->dir) & 0777);
+        $this->assertSame(0600, fileperms($this->file) & 0777);
     }
 
     public function testThePsrAdapterPassesTheTreeAsContextNotAsAMessage(): void

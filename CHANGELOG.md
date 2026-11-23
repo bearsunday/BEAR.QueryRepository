@@ -32,7 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `SurrogateKeys`, which only the donut write used; nothing replaces it outside the package.
 
 ### Fixed
-- A page stored by `DonutRepositoryInterface::putStatic()` with an `$sMaxAge` gave browsers that lifetime as `max-age` on a cache hit and after a refresh, so a browser kept the page as long as the CDN did, out of reach of a purge. It now gets `max-age=0` and revalidates, unless its `Cache-Control` already has a `max-age` or `no-store`.
+- A page stored by `DonutRepositoryInterface::putStatic()` with an `$sMaxAge` gave browsers that lifetime as `max-age` on a cache hit and after a refresh, so a browser kept the page as long as the CDN did, out of reach of a purge. It now gets `max-age=0` and revalidates, unless its `Cache-Control` already has a `max-age`.
 - A page that declares `#[HttpCache]` and calls `putStatic()` in its own `onGet()` is stored with the declared `Cache-Control`, so a cache hit and a recomposed page carry it too. Declare `Cache-Control` with the attribute rather than setting the header.
 - A `#[Cacheable]` resource or a stored page that declares `#[HttpCache]` with only `etag` sent a `Cache-Control` that began with a comma, such as `, max-age=0`; the comma is gone.
 - A `#[Cacheable]` page that embeds a `#[CacheableResponse]` or `#[DonutCache]` page which itself embeds a resource is now stored; since 1.17.0 the GET failed with `AbstractRequest::__serialize not supported`, and before that the page was silently not stored. The page carries the tags of the part and of the resource the part embeds, so purging either drops the page.

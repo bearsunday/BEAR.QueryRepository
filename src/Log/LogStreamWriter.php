@@ -18,6 +18,9 @@ use function is_dir;
 use function json_encode;
 use function mkdir;
 use function str_contains;
+use function str_starts_with;
+use function strlen;
+use function substr;
 
 use const JSON_UNESCAPED_SLASHES;
 use const JSON_UNESCAPED_UNICODE;
@@ -33,11 +36,13 @@ use const PHP_EOL;
  * concurrent workers would interleave halves of it. A wrapper that refuses the lock is written
  * anyway rather than dropped.
  *
- * A file target is created 0600 in a 0700 directory; a stream target inherits whatever the host
- * points it at.
+ * A file target, a path or a `file://` URL, is created 0600 in a 0700 directory; a stream target
+ * inherits whatever the host points it at.
  */
 final class LogStreamWriter implements LogWriterInterface
 {
+    private const FILE_SCHEME = 'file://';
+
     public function __construct(private string $stream = 'php://stdout')
     {
     }
@@ -68,18 +73,24 @@ final class LogStreamWriter implements LogWriterInterface
         $this->restrict();
     }
 
-    private function isFile(): bool
+    /** @return string|null the path of a file target; null for a stream */
+    private function path(): string|null
     {
-        return ! str_contains($this->stream, '://');
+        if (str_starts_with($this->stream, self::FILE_SCHEME)) {
+            return substr($this->stream, strlen(self::FILE_SCHEME));
+        }
+
+        return str_contains($this->stream, '://') ? null : $this->stream;
     }
 
     private function prepareDir(): bool
     {
-        if (! $this->isFile()) {
+        $path = $this->path();
+        if ($path === null) {
             return true;
         }
 
-        $dir = dirname($this->stream);
+        $dir = dirname($path);
         if (is_dir($dir) || @mkdir($dir, 0700, true) || is_dir($dir)) {
             return true;
         }
@@ -91,10 +102,11 @@ final class LogStreamWriter implements LogWriterInterface
 
     private function restrict(): void
     {
-        if (! $this->isFile()) {
+        $path = $this->path();
+        if ($path === null) {
             return;
         }
 
-        @chmod($this->stream, 0600);
+        @chmod($path, 0600);
     }
 }
