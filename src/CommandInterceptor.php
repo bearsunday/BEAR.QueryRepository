@@ -6,21 +6,16 @@ namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\ReturnValueIsNotResourceObjectException;
 use BEAR\QueryRepository\Exception\UnmatchedQuery;
-use BEAR\QueryRepository\Log\Context\PurgeSkippedContext;
-use BEAR\RepositoryModule\Annotation\Cacheable;
 use BEAR\RepositoryModule\Annotation\CacheableResponse;
-use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\RepositoryModule\Annotation\RefreshCache;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\FactoryInterface;
 use BEAR\Resource\InvokerInterface;
 use BEAR\Resource\Request;
 use BEAR\Resource\ResourceObject;
-use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
 use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
-use ReflectionAttribute;
 use ReflectionClass;
 
 use function array_column;
@@ -45,8 +40,7 @@ final readonly class CommandInterceptor implements MethodInterceptor
         private InvokerInterface $invoker,
         private RefreshTemplateValidator $refreshTemplateValidator,
         private CommandScope $scope,
-        #[CacheLog]
-        private SemanticLoggerInterface $logger,
+        private CacheableClassMatcher $cacheableClass,
     ) {
     }
 
@@ -90,7 +84,7 @@ final readonly class CommandInterceptor implements MethodInterceptor
         }
     }
 
-    /** The resource the write was sent to, cloned with its URI before the handler runs; none without a URI */
+    /** The resource the write was sent to, cloned with its URI before the handler runs; none without a URI or an onGet() */
     private function sent(ResourceObject $target): ResourceObject|null
     {
         /** @var AbstractUri|null $uri a resource object taken from the injector has none */
@@ -107,11 +101,9 @@ final readonly class CommandInterceptor implements MethodInterceptor
      */
     private function isStored(MethodInvocation $invocation): bool
     {
-        $class = new ReflectionClass($invocation->getThis());
         $method = $invocation->getMethod();
 
-        return $class->getAttributes(Cacheable::class, ReflectionAttribute::IS_INSTANCEOF) !== []
-            || $class->getAttributes(CacheableResponse::class, ReflectionAttribute::IS_INSTANCEOF) !== []
+        return $this->cacheableClass->matchesClass(new ReflectionClass($invocation->getThis()), [])
             || $method->getAnnotation(CacheableResponse::class) !== null
             || $method->getAnnotation(RefreshCache::class) !== null;
     }
@@ -128,13 +120,7 @@ final readonly class CommandInterceptor implements MethodInterceptor
         try {
             return ($this->matchQuery)($sent);
         } catch (UnmatchedQuery $e) {
-            if ($stored) {
-                $this->scope->skipUnmatched($invocation, $sent, $e);
-
-                return null;
-            }
-
-            $this->logger->event(new PurgeSkippedContext($this->commandQuery->withoutQuery($sent), PurgeSkippedContext::UNMATCHED_QUERY));
+            $this->scope->skipUnmatched($invocation, $sent, $e, $stored);
 
             return null;
         }
@@ -153,7 +139,7 @@ final readonly class CommandInterceptor implements MethodInterceptor
             (new Request($this->invoker, $get))($getQuery);
         } catch (UnmatchedQuery $e) {
             // Thrown by a write the rebuilding GET made
-            $this->scope->skipUnmatched($invocation, $sent, $e);
+            $this->scope->skipUnmatched($invocation, $sent, $e, true);
         }
     }
 

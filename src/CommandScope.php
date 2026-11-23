@@ -8,6 +8,7 @@ use BEAR\QueryRepository\Exception\UnmatchedQuery;
 use BEAR\QueryRepository\Log\Context\CacheErrorContext;
 use BEAR\QueryRepository\Log\Context\CommandContext;
 use BEAR\QueryRepository\Log\Context\CommandResultContext;
+use BEAR\QueryRepository\Log\Context\PurgeSkippedContext;
 use BEAR\RepositoryModule\Annotation\AbstractCommand;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\Code;
@@ -51,13 +52,19 @@ final readonly class CommandScope
 
     /**
      * A POST to a class that creates rather than addresses an entity lacks onGet()'s required parameters: it is recorded and
-     * its own key skipped, and the URIs it names are still purged. Another method addresses an existing entity, so the
-     * mismatch is thrown.
+     * its own key skipped, and the URIs it names are still purged. Another method on a stored resource addresses an
+     * existing entity, so the mismatch is thrown; on a resource that stores nothing it is only recorded.
      *
      * @param MethodInvocation<object> $invocation
      */
-    public function skipUnmatched(MethodInvocation $invocation, ResourceObject $ro, UnmatchedQuery $e): void
+    public function skipUnmatched(MethodInvocation $invocation, ResourceObject $ro, UnmatchedQuery $e, bool $stored): void
     {
+        if (! $stored) {
+            $this->logger->event(new PurgeSkippedContext($this->commandQuery->withoutQuery($ro), PurgeSkippedContext::UNMATCHED_QUERY));
+
+            return;
+        }
+
         if (! $this->unsafeMethod->isPost($invocation->getMethod())) {
             throw $e;
         }

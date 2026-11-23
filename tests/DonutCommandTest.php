@@ -19,7 +19,7 @@ use function dirname;
 use function is_array;
 use function property_exists;
 
-class DonutCommandInterceptorTest extends TestCase
+class DonutCommandTest extends TestCase
 {
     use SemanticLogTreeTrait;
 
@@ -96,7 +96,7 @@ class DonutCommandInterceptorTest extends TestCase
         $this->assertArrayHasKey('Age', $cached->headers);
     }
 
-    public function testDonutCommandInterceptorSkipsRefreshOnErrorCode(): void
+    public function testADonutWriteSkipsRefreshOnErrorCode(): void
     {
         // The donut sibling of the case above: BlogPosting answers 400 for any id but 0.
         $this->resource->get('page://self/html/blog-posting?id=0');

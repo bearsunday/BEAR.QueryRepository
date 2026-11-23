@@ -64,6 +64,18 @@ class OwnKeyWriteTest extends TestCase
         $this->assertContains(['purge_skipped'], self::scopeEventTypeSequences($tree), 'nothing else to purge, so no invalidation');
     }
 
+    public function testADeclarationOnAReadIsNotWoven(): void
+    {
+        $this->resource->get('page://self/dep/level-one');
+        $this->logger->flush();
+
+        $this->resource->get('app://self/purge-on-read');
+
+        $this->assertNotNull($this->repository->get(new Uri('page://self/dep/level-one')));
+        $tree = $this->flushAndValidate($this->logger);
+        $this->assertSame([], self::eventContextsJsonOf($tree, 'purge'));
+    }
+
     /** The key is the URI the write was sent to, whatever the handler does to its own */
     public function testAWriteThatChangesItsOwnUriPurgesTheKeyItWasSentTo(): void
     {

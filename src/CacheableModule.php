@@ -35,6 +35,7 @@ final class CacheableModule extends AbstractModule
         $this->bind(ConditionalRequest::class);
         $this->bind(ConditionalResponseInterface::class)->to(ConditionalResponse::class);
         $this->bind(RefreshTemplateValidator::class)->in(Scope::SINGLETON);
+        $this->bind(CacheableClassMatcher::class);
         $this->install(new StorageExpiryModule(60, 60 * 60, 60 * 60 * 24));
         $this->installAopModule();
     }

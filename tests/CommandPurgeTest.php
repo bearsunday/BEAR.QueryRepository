@@ -17,7 +17,7 @@ use Ray\Di\Injector;
  * #[Purge] on a class that stores nothing: the write invalidates its own key together with what the
  * annotations name, and reads nothing again
  */
-class RefreshInterceptorPurgeTest extends TestCase
+class CommandPurgeTest extends TestCase
 {
     use SemanticLogTreeTrait;
 

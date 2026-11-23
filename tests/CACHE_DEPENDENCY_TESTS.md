@@ -39,7 +39,7 @@ PUT PurgeSrc #[Purge(self)] #[Purge(LevelTwo)]
   → purge(LevelTwo) → LevelOne invalidated
 ```
 
-**Test:** `RefreshInterceptorPurgeTest::testPurgeOnNonCacheableClassInvalidatesItselfAndCascadesToParent`
+**Test:** `CommandPurgeTest::testPurgeOnNonCacheableClassInvalidatesItselfAndCascadesToParent`
 
 ### Multiple Parents Depending on Same Child
 

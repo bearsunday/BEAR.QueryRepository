@@ -24,7 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Behaviour change**: a resource stored by `#[Cacheable]`, `#[CacheableResponse]` or `#[DonutCache]` that declares `private` or `no-store`, with `#[HttpCache(isPrivate: true)]`, `#[HttpCache(noStore: true)]` or `#[NoHttpCache]`, now throws `UnstorableDeclaration` when its response is stored, and stores nothing; it was stored in the shared pool, served to every visitor, and given a CDN lifetime. Remove the cache attribute or the declaration.
 - **Behaviour change**: every write runs in one order: its own key and each URI its `#[Purge]`/`#[Refresh]` name are purged, each once, then its own URI is read again where its GET is stored, then each `#[Refresh]` URI is read. A stored resource whose write names itself with `#[Purge]` keeps the entry that read rebuilt.
 - **Behaviour change**: `#[Purge]`, `#[Refresh]` and `#[RefreshCache]` act only on `onPost()`, `onPut()`, `onPatch()` and `onDelete()`. Move one declared on another method to the write method.
-- **Behaviour change**: the `command` log entry carries `method` and `annotations` only; a reader of the log that reads `source` has to drop it.
+- **Behaviour change**: when the GET that rebuilds a stored write's entry makes a write whose query cannot address its own key, a POST logs `cache_error` and answers, and a PUT, PATCH or DELETE throws `UnmatchedQuery` after every purge has run.
+- **Behaviour change**: a write opens one `command` log scope, whose entry carries `method` and `annotations` only; a reader of the log that reads `source` has to drop it.
 - **Behaviour change**: a `#[Cacheable(expiryAt: ...)]` response whose time has already passed is not stored and answers `Cache-Control: no-store`; it was stored without expiry and served until a write invalidated it. The `put_skipped` log entry gets the reason `expired`.
 
 ### Removed
@@ -39,6 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `CommandInterface` and the `#[Commands]` binding of the commands a write runs, with `CommandsProvider`: a write runs the package's own purge and refresh. Move a command of your own into the write method or an interceptor of your own.
 
 ### Fixed
+- A `#[Cacheable]` write that changed its own `$this->uri` purged the changed URI and left the entry of the URI it was sent to stale. It purges and reads again the URI it was sent to.
 - A page stored by `DonutRepositoryInterface::putStatic()` with an `$sMaxAge` gave browsers that lifetime as `max-age` on a cache hit and after a refresh, so a browser kept the page as long as the CDN did, out of reach of a purge. It now gets `max-age=0` and revalidates, unless its `Cache-Control` already has a `max-age`.
 - A page that declares `#[HttpCache]` and calls `putStatic()` in its own `onGet()` is stored with the declared `Cache-Control`, so a cache hit and a recomposed page carry it too. Declare `Cache-Control` with the attribute rather than setting the header.
 - A `#[Cacheable]` resource or a stored page that declares `#[HttpCache]` with only `etag` sent a `Cache-Control` that began with a comma, such as `, max-age=0`; the comma is gone.
