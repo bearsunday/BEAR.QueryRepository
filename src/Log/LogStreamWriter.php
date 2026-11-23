@@ -18,7 +18,7 @@ use function is_dir;
 use function json_encode;
 use function mkdir;
 use function str_contains;
-use function str_starts_with;
+use function stripos;
 use function strlen;
 use function substr;
 
@@ -76,7 +76,7 @@ final class LogStreamWriter implements LogWriterInterface
     /** @return string|null the path of a file target; null for a stream */
     private function path(): string|null
     {
-        if (str_starts_with($this->stream, self::FILE_SCHEME)) {
+        if (stripos($this->stream, self::FILE_SCHEME) === 0) {
             return substr($this->stream, strlen(self::FILE_SCHEME));
         }
 
