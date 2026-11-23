@@ -8,7 +8,6 @@ use BEAR\QueryRepository\Exception\DependsOnNotExpandable;
 use BEAR\RepositoryModule\Annotation\DependsOn;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
-use ReflectionAttribute;
 use ReflectionClass;
 use Stringable;
 
@@ -39,30 +38,8 @@ use const PREG_SET_ORDER;
  */
 final class DependsOnTemplates
 {
-    /** @var array<class-string, list<string>> */
-    private array $onClass = [];
-
     /** @var array<class-string, list<DependsOn>> */
     private array $onGet = [];
-
-    /**
-     * @param class-string $class
-     *
-     * @return list<string> the templates declared on the class and its parents
-     */
-    public function ofClass(string $class): array
-    {
-        if (isset($this->onClass[$class])) {
-            return $this->onClass[$class];
-        }
-
-        $templates = [];
-        for ($ref = new ReflectionClass($class); $ref !== false; $ref = $ref->getParentClass()) {
-            $templates = [...$templates, ...$this->uris($ref->getAttributes(DependsOn::class))];
-        }
-
-        return $this->onClass[$class] = array_values(array_unique($templates));
-    }
 
     /** @return list<DependsOn> the declarations on onGet(), including an onGet() the class overrides, each URI and key once */
     public function ofOnGet(ResourceObject $ro): array
@@ -182,21 +159,6 @@ final class DependsOnTemplates
     public function declaration(string $template): string
     {
         return sprintf("#[DependsOn(uri: '%s')]", $template);
-    }
-
-    /**
-     * @param list<ReflectionAttribute<DependsOn>> $attributes
-     *
-     * @return list<string>
-     */
-    private function uris(array $attributes): array
-    {
-        $uris = [];
-        foreach ($attributes as $attribute) {
-            $uris[] = $attribute->newInstance()->uri;
-        }
-
-        return $uris;
     }
 
     /** @return list<string> the query variables a list is given to one element at a time (`{?id*}`, `?id={ids*}`) */

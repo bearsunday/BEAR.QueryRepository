@@ -4,7 +4,15 @@ declare(strict_types=1);
 
 namespace FakeVendor\HelloWorld\Entity;
 
-final class Item extends AbstractContent
+use Stringable;
+
+final class Item
 {
     public string $title = 'title';
+
+    public function __construct(
+        public string|Stringable $ulid,
+        public string|null $seriesId,
+    ) {
+    }
 }

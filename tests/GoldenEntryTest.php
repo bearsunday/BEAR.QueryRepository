@@ -99,9 +99,9 @@ class GoldenEntryTest extends TestCase
             ],
             '#[Cacheable] with #[DependsOn]' => [
                 'app://self/rows/ca?channelId=c1',
-                ['ro-_rows_ca_channelId=c1' => ['_rows_ca_channelId=c1', 'grp-_rows_ca_channelId=c1', '_rows_taxonomy_ulid=c1', '_rows_article_ulid=a1', '_rows_taxonomy_ulid=s1', '_rows_article_ulid=a3']],
-                ['_rows_ca_channelId=c1' => ['_rows_taxonomy_ulid=c1', '_rows_article_ulid=a1', '_rows_taxonomy_ulid=s1', '_rows_article_ulid=a3', 'grp-_rows_ca_channelId=c1', '_rows_ca_channelId=c1']],
-                [Header::SURROGATE_KEY => '_rows_taxonomy_ulid=c1 _rows_article_ulid=a1 _rows_taxonomy_ulid=s1 _rows_article_ulid=a3', Header::ETAG => self::ETAG, Header::LAST_MODIFIED => self::LAST_MODIFIED, Header::CACHE_CONTROL => 'max-age=0'],
+                ['ro-_rows_ca_channelId=c1' => ['_rows_ca_channelId=c1', 'grp-_rows_ca_channelId=c1', '_rows_taxonomy_ulid=c1', '_rows_article_ulid=a1', '_rows_article_ulid=a3', '_rows_taxonomy_ulid=s1']],
+                ['_rows_ca_channelId=c1' => ['_rows_taxonomy_ulid=c1', '_rows_article_ulid=a1', '_rows_article_ulid=a3', '_rows_taxonomy_ulid=s1', 'grp-_rows_ca_channelId=c1', '_rows_ca_channelId=c1']],
+                [Header::SURROGATE_KEY => '_rows_taxonomy_ulid=c1 _rows_article_ulid=a1 _rows_article_ulid=a3 _rows_taxonomy_ulid=s1', Header::ETAG => self::ETAG, Header::LAST_MODIFIED => self::LAST_MODIFIED, Header::CACHE_CONTROL => 'max-age=0'],
             ],
             '#[CacheableResponse] with a hole' => [
                 'page://self/html/blog-posting',

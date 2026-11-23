@@ -14,6 +14,8 @@ use FakeVendor\HelloWorld\Entity\Item;
 class NullValues extends ResourceObject
 {
     #[DependsOn(uri: 'app://self/rows/taxonomy?ulid={channelId}')]
+    #[DependsOn(uri: 'app://self/rows/article?ulid={ulid}', key: 'entries')]
+    #[DependsOn(uri: 'app://self/rows/taxonomy?ulid={seriesId}', key: 'entries')]
     public function onGet(string|null $channelId = null): static
     {
         $this->body = ['channelId' => $channelId, 'entries' => [new Item('a1', null), new Item('a3', 's1')]];

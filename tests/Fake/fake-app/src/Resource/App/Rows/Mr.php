@@ -14,6 +14,8 @@ class Mr extends ResourceObject
 {
     #[CacheableResponse]
     #[DependsOn(uri: 'app://self/rows/taxonomy?ulid={channelId}')]
+    #[DependsOn(uri: 'app://self/rows/article?ulid={ulid}', key: 'entries')]
+    #[DependsOn(uri: 'app://self/rows/taxonomy?ulid={seriesId}', key: 'entries')]
     public function onGet(string $channelId): static
     {
         $this->body = ['entries' => Catalog::items($channelId), 'channelId' => $channelId];
