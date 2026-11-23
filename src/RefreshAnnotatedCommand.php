@@ -8,16 +8,18 @@ use BEAR\RepositoryModule\Annotation\Purge;
 use BEAR\RepositoryModule\Annotation\Refresh;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\Annotation\Link;
+use BEAR\Resource\Exception\UriException;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
 use Ray\Aop\MethodInvocation;
-use ReflectionClass;
+use ReflectionMethod;
 
 use function array_map;
 use function array_unique;
 use function array_values;
 use function is_array;
+use function method_exists;
 use function uri_template;
 
 /** @internal */
@@ -34,7 +36,8 @@ final readonly class RefreshAnnotatedCommand
 
     /**
      * The URIs each #[Purge]/#[Refresh] of the method names, in declaration order, and whether it is a #[Refresh]; then the URI
-     * each #[Link(rel: 'collection')] on the resource's onGet() names, purged only
+     * each #[Link(rel: 'collection')] on the resource's onGet() names, purged only; an href that does not expand to a resource URI is
+     * skipped
      *
      * @param MethodInvocation<object> $invocation
      *
@@ -51,13 +54,14 @@ final readonly class RefreshAnnotatedCommand
                 continue;
             }
 
-            $declared[] = [$this->uris($ro, $annotation->uri, $query), $annotation instanceof Refresh];
+            $uris = array_map(static fn (string $uri): Uri => new Uri($uri), $this->uris($ro, $annotation->uri, $query));
+            $declared[] = [$uris, $annotation instanceof Refresh];
         }
 
         $target = $invocation->getThis();
         if ($target instanceof ResourceObject) {
             foreach ($this->collections($target) as $href) {
-                $declared[] = [$this->uris($ro, $href, $query), false];
+                $declared[] = [$this->resourceUris($this->uris($ro, $href, $query)), false];
             }
         }
 
@@ -105,7 +109,7 @@ final readonly class RefreshAnnotatedCommand
      *
      * @param array<mixed> $query
      *
-     * @return list<Uri>
+     * @return list<string>
      */
     private function uris(ResourceObject $ro, string $template, array $query): array
     {
@@ -115,23 +119,44 @@ final readonly class RefreshAnnotatedCommand
             $uris[] = uri_template($template, $variables);
         }
 
-        return array_map(static fn (string $uri): Uri => new Uri($uri), array_values(array_unique($uris)));
+        return array_values(array_unique($uris));
     }
 
     /**
-     * The href of each #[Link(rel: 'collection')] on onGet(), including an onGet() the class overrides, each once
+     * @param list<string> $uris
+     *
+     * @return list<Uri>
+     */
+    private function resourceUris(array $uris): array
+    {
+        $resourceUris = [];
+        foreach ($uris as $uri) {
+            try {
+                $resourceUris[] = new Uri($uri);
+            } catch (UriException) {
+                continue;
+            }
+        }
+
+        return $resourceUris;
+    }
+
+    /**
+     * The href of each #[Link(rel: 'collection')] on onGet(), read as BEAR\Resource\Linker reads links
      *
      * @return list<string>
      */
     private function collections(ResourceObject $ro): array
     {
+        if (! method_exists($ro, 'onGet')) {
+            return [];
+        }
+
         $hrefs = [];
-        for ($ref = new ReflectionClass($ro); $ref !== false && $ref->hasMethod('onGet'); $ref = $ref->getParentClass()) {
-            foreach ($ref->getMethod('onGet')->getAttributes(Link::class) as $attribute) {
-                $link = $attribute->newInstance();
-                if ($link->rel === self::COLLECTION) {
-                    $hrefs[$link->href] = $link->href;
-                }
+        foreach ((new ReflectionMethod($ro, 'onGet'))->getAttributes(Link::class) as $attribute) {
+            $link = $attribute->newInstance();
+            if ($link->rel === self::COLLECTION) {
+                $hrefs[$link->href] = $link->href;
             }
         }
 

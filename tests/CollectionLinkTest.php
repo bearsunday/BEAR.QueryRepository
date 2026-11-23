@@ -63,6 +63,18 @@ class CollectionLinkTest extends TestCase
         $this->assertNotNull($this->repository->get(new Uri($authorPosts)));
     }
 
+    /** An href that is not a resource URI, as a path-only one, is skipped after the write has run */
+    public function testHrefThatIsNotAResourceUriIsSkipped(): void
+    {
+        $posts = 'app://self/collection/posts';
+        $this->resource->get($posts);
+
+        $ro = $this->resource->put('app://self/collection/comment', ['id' => 1]);
+
+        $this->assertSame(200, $ro->code);
+        $this->assertNull($this->repository->get(new Uri($posts)));
+    }
+
     /** A write that moves a row to another list purges the old list with the value its body carries */
     public function testMovePurgesTheOldListFromTheBody(): void
     {
