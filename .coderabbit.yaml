@@ -1,6 +1,15 @@
 # Reviews run on demand: mention @coderabbitai review when a PR needs one.
 reviews:
   review_status: false
+  path_filters:
+    - "!tests/**"
+    - "!tests-deprecated/**"
+    - "!tests-pecl-ext/**"
+    - "!tests-php8/**"
+    - "!docs/**"
+    - "!demo/**"
+    - "!src-deprecated/**"
+    - "!src-annotation-deprecated/**"
   pre_merge_checks:
     docstrings:
       mode: "off"
