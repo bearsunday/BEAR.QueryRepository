@@ -298,12 +298,9 @@ final class ResourceStorage implements ResourceStorageInterface
         $etag = $ro->headers[Header::ETAG];
         $weak = str_starts_with($etag, 'W/') ? 'W/' : '';
         $opaque = trim(substr($etag, strlen($weak)), '"');
-        $locator = $this->identityFactory->locator($ro->uri);
-        if (str_starts_with($opaque, $locator . '.')) {
-            return;
-        }
-
-        $ro->headers[Header::ETAG] = $weak . '"' . $locator . '.' . $opaque . '"';
+        $locator = $this->identityFactory->locator($ro->uri) . '.';
+        $located = str_starts_with($opaque, $locator) ? $opaque : $locator . $opaque;
+        $ro->headers[Header::ETAG] = $weak . '"' . $located . '"';
     }
 
     /** @param list<string> $tags */

@@ -22,6 +22,7 @@ class EntityTagsTest extends TestCase
     {
         $this->assertSame([], (new EntityTags())->of('"abc" "def"'));
         $this->assertSame([], (new EntityTags())->of("\"abc\"\n"));
+        $this->assertSame([], (new EntityTags())->of('""'));
     }
 
     public function testServerIssuedGrammarsPass(): void
