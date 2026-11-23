@@ -9,8 +9,10 @@ use BEAR\Resource\ResourceInterface;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 
+use function array_intersect_ukey;
 use function preg_match;
 use function sleep;
+use function strcasecmp;
 use function strtotime;
 use function time;
 
@@ -125,6 +127,12 @@ class GetInterceptorTest extends TestCase
     {
         $ro = $this->resource->get('app://self/http-cache-control-override-max-age');
         $this->assertSame('max-age=5', $ro->headers['Cache-Control']);
+    }
+
+    public function testTheDeclaredCacheControlReplacesTheResourcesOwnUnderAnyCasing(): void
+    {
+        $ro = $this->resource->get('app://self/http-cache-control-lower-case');
+        $this->assertSame(['cache-control' => 'max-age=60'], array_intersect_ukey($ro->headers, ['cache-control' => true], strcasecmp(...)));
     }
 
     public function testHttpCacheEtag(): void
