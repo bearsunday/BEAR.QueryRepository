@@ -67,7 +67,7 @@ final readonly class HeaderSetter
     /**
      * Set a page's CDN lifetime, validator and client Cache-Control, in that order. On a 200 the declared
      * Cache-Control replaces the one set, as HttpCacheInterceptor does; then max-age=0 is added unless the
-     * Cache-Control has a max-age or no-store.
+     * Cache-Control has a max-age.
      *
      * The CDN setters do not read the status code and the Fastly and Akamai defaults are
      * 31_536_000 seconds - a year - so only a 200 is handed a lifetime. The check sits here
@@ -137,27 +137,19 @@ final readonly class HeaderSetter
 
     private function addCacheControl(ResourceObject $ro, string $directive): void
     {
-        // A lifetime already there stands, and no-store forbids keeping the response at all;
-        // every case variant of the key is a Cache-Control the client receives
-        foreach ($ro->headers as $name => $value) {
-            if (strtolower($name) !== strtolower(Header::CACHE_CONTROL)) {
-                continue;
-            }
-
-            $lower = strtolower($value);
-            if (str_contains($lower, 'max-age') || str_contains($lower, 'no-store')) {
-                return;
-            }
-        }
-
-        $existingName = Header::findKey($ro->headers, Header::CACHE_CONTROL);
+        $name = Header::findKey($ro->headers, Header::CACHE_CONTROL);
         // An #[HttpCache] with only an etag declares an empty Cache-Control
-        if ($existingName === null || trim($ro->headers[$existingName]) === '') {
-            $ro->headers[$existingName ?? Header::CACHE_CONTROL] = $directive;
+        if ($name === null || trim($ro->headers[$name]) === '') {
+            $ro->headers[$name ?? Header::CACHE_CONTROL] = $directive;
 
             return;
         }
 
-        $ro->headers[$existingName] .= ', ' . $directive;
+        // A lifetime already there stands
+        if (str_contains(strtolower($ro->headers[$name]), 'max-age')) {
+            return;
+        }
+
+        $ro->headers[$name] .= ', ' . $directive;
     }
 }
