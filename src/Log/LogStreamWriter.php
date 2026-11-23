@@ -17,11 +17,13 @@ use function fwrite;
 use function is_dir;
 use function json_encode;
 use function mkdir;
+use function preg_match;
 use function str_contains;
 use function stripos;
 use function strlen;
 use function substr;
 
+use const DIRECTORY_SEPARATOR;
 use const JSON_UNESCAPED_SLASHES;
 use const JSON_UNESCAPED_UNICODE;
 use const LOCK_EX;
@@ -43,6 +45,7 @@ final class LogStreamWriter implements LogWriterInterface
 {
     private const FILE_SCHEME = 'file://';
     private const LOCALHOST = 'localhost';
+    private const WINDOWS_DRIVE_PATH = '#\\A/[A-Za-z]:/#';
 
     public function __construct(private string $stream = 'php://stdout')
     {
@@ -80,8 +83,10 @@ final class LogStreamWriter implements LogWriterInterface
         if (stripos($this->stream, self::FILE_SCHEME) === 0) {
             $path = substr($this->stream, strlen(self::FILE_SCHEME));
 
-            // fopen() opens file://localhost/x as /x
-            return stripos($path, self::LOCALHOST . '/') === 0 ? substr($path, strlen(self::LOCALHOST)) : $path;
+            // fopen() opens file://localhost/x as /x, and on Windows file:///C:/x as C:/x
+            $path = stripos($path, self::LOCALHOST . '/') === 0 ? substr($path, strlen(self::LOCALHOST)) : $path;
+
+            return DIRECTORY_SEPARATOR === '\\' && preg_match(self::WINDOWS_DRIVE_PATH, $path) === 1 ? substr($path, 1) : $path;
         }
 
         return str_contains($this->stream, '://') ? null : $this->stream;
