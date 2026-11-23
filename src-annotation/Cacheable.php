@@ -22,6 +22,7 @@ final class Cacheable
 {
     /**
      * @param 'short'|'medium'|'long'|'never' $expiry
+     * @param non-negative-int                $expirySecond
      * @param 'value'|'view'                  $type
      */
     public function __construct(

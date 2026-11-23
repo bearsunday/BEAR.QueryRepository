@@ -262,12 +262,9 @@ final readonly class QueryRepository implements QueryRepositoryInterface
             return 0;
         }
 
-        if ($cacheable->expiryAt !== '') {
-            return $this->getExpiryAtSec($ro, $cacheable);
-        }
+        $seconds = $cacheable->expiryAt !== '' ? $this->getExpiryAtSec($ro, $cacheable) : ($cacheable->expirySecond ?: $this->expiry->getTime($cacheable->expiry));
 
-        // A user-supplied expirySecond may be negative; the schemas declare "minimum": 0
-        return max(0, $cacheable->expirySecond ?: $this->expiry->getTime($cacheable->expiry));
+        return max(0, $seconds);
     }
 
     private function getExpiryAtSec(ResourceObject $ro, Cacheable $cacheable): int
@@ -281,6 +278,6 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         /** @var string $expiryAt */
         $expiryAt = $ro->body[$cacheable->expiryAt];
 
-        return max(0, (int) strtotime($expiryAt) - time());
+        return (int) strtotime($expiryAt) - time();
     }
 }

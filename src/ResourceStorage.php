@@ -224,7 +224,6 @@ final class ResourceStorage implements ResourceStorageInterface
     #[Override]
     public function saveValue(ResourceObject $ro, int $ttl)
     {
-        $ttl = max(0, $ttl);
         /** @psalm-suppress MixedAssignment $body */
         $body = ($this->evaluateBody)($ro->body);
 
@@ -239,7 +238,6 @@ final class ResourceStorage implements ResourceStorageInterface
     #[Override]
     public function saveView(ResourceObject $ro, int $ttl)
     {
-        $ttl = max(0, $ttl);
         /** @psalm-suppress MixedAssignment $body */
         $body = ($this->evaluateBody)($ro->body);
 
@@ -264,8 +262,6 @@ final class ResourceStorage implements ResourceStorageInterface
     #[Override]
     public function saveDonutView(ResourceObject $ro, int|null $ttl, array|null $tags = null): bool
     {
-        $ttl = $this->nonNegative($ttl);
-
         return $this->saveResourceState($ro, [], $ro->view, $ttl, SaveDonutViewContext::class, $tags);
     }
 
@@ -275,6 +271,7 @@ final class ResourceStorage implements ResourceStorageInterface
      */
     private function saveResourceState(ResourceObject $ro, mixed $body, string|null $view, int|null $ttl, string $contextClass, array|null $tags = null): bool
     {
+        $ttl = $this->nonNegative($ttl);
         $this->locateEtag($ro);
         $resourceState = ResourceState::create($ro, $body, $view);
         $key = $this->getUriKey($ro->uri, self::KEY_RO);
