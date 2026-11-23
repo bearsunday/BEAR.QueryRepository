@@ -4,6 +4,17 @@
     "static", "self", "parent",
     "array", "string", "int", "float", "bool", "iterable", "callable", "void", "object",
     "Attribute", "Memcached", "Redis",
-    "BEAR\\FastlyModule\\FastlyCachePurgerInterface", "BEAR\\FastlyModule\\FastlyPurgeModule"
+    "BEAR\\FastlyModule\\FastlyCachePurgerInterface", "BEAR\\FastlyModule\\FastlyPurgeModule",
+    "RedisException",
+    "Doctrine\\Common\\Cache\\CacheProvider",
+    "Doctrine\\Common\\Cache\\MemcachedCache",
+    "Doctrine\\Common\\Cache\\RedisCache",
+    "Detection\\MobileDetect",
+    "BEAR\\QueryRepository\\Exception\\RedisConnectionException",
+    "BEAR\\QueryRepository\\Exception\\ResourceStorageUnserializeException",
+    "BEAR\\RepositoryModule\\Annotation\\CacheEngine",
+    "BEAR\\RepositoryModule\\Annotation\\EtagPool",
+    "BEAR\\RepositoryModule\\Annotation\\Memcache",
+    "BEAR\\RepositoryModule\\Annotation\\Redis"
   ]
 }
