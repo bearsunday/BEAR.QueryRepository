@@ -267,7 +267,7 @@ final class ResourceStorage implements ResourceStorageInterface
 
     /**
      * @param class-string<SaveValueContext>|class-string<SaveViewContext>|class-string<SaveDonutViewContext> $contextClass
-     * @param list<string>|null                                                                               $tags
+     * @param list<string>|null                                                                               $tags         null reads the Surrogate-Key header
      */
     private function saveResourceState(ResourceObject $ro, mixed $body, string|null $view, int|null $ttl, string $contextClass, array|null $tags = null): bool
     {
@@ -275,7 +275,10 @@ final class ResourceStorage implements ResourceStorageInterface
         $this->locateEtag($ro);
         $resourceState = ResourceState::create($ro, $body, $view);
         $key = $this->getUriKey($ro->uri, self::KEY_RO);
-        $tags = $this->getTags($ro, $tags);
+        // An ETag is never an invalidation tag: it is content-versioned, so each version
+        // would leave a tag Set that nothing invalidates and a volatile-* eviction policy
+        // never reclaims.
+        $tags = $this->cacheTags->tags($ro, $tags === null ? null : new TagSet($tags))->toArray();
         $saved = $this->saveToPool($key, $resourceState, $tags, $ttl);
         $this->logger->event(new $contextClass((string) $ro->uri, $tags, $ttl, $saved));
 
@@ -311,19 +314,6 @@ final class ResourceStorage implements ResourceStorageInterface
 
             return $this->roPool->save($item);
         });
-    }
-
-    /**
-     * @param list<string>|null $surrogateKeys null reads the Surrogate-Key header
-     *
-     * @return list<string>
-     */
-    private function getTags(ResourceObject $ro, array|null $surrogateKeys = null): array
-    {
-        // An ETag is never an invalidation tag: it is content-versioned, so each version
-        // would leave a tag Set that nothing invalidates and a volatile-* eviction policy
-        // never reclaims.
-        return $this->cacheTags->tags($ro, $surrogateKeys === null ? null : new TagSet($surrogateKeys))->toArray();
     }
 
     private function nonNegative(int|null $ttl): int|null
