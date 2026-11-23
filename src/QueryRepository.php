@@ -90,11 +90,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
 
         $ttl = $this->lifetime($ro, $cacheable);
 
-        $storability = $this->declaredCacheControl->storability($ro);
-        if ($storability === Storability::Shared && $cacheable instanceof Cacheable && $cacheable->expiryAt !== '' && $ttl === 0) {
-            $storability = Storability::Expired;
-        }
-
+        $storability = $this->storability($ro, $cacheable, $ttl);
         if ($storability === Storability::Shared) {
             // Every body this store keeps must serialize: a refusal surfaces here, before the
             // cleanup below can purge the entry and its dependents for a write that cannot happen
@@ -114,6 +110,16 @@ final readonly class QueryRepository implements QueryRepositoryInterface
             // entry does not: a hit renders again.
             $ro->headers = array_replace($ro->headers, $ofRendering);
         }
+    }
+
+    private function storability(ResourceObject $ro, Cacheable|null $cacheable, int $ttl): Storability
+    {
+        $storability = $this->declaredCacheControl->storability($ro);
+        if ($storability === Storability::Shared && $cacheable instanceof Cacheable && $cacheable->expiryAt !== '' && $ttl === 0) {
+            return Storability::Expired;
+        }
+
+        return $storability;
     }
 
     /**
