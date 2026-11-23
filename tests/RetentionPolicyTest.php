@@ -103,7 +103,7 @@ class RetentionPolicyTest extends TestCase
 
     public function testACommandIsKept(): void
     {
-        $open = $this->logger->open(new CommandContext('onPut', [], 'CommandInterceptor'));
+        $open = $this->logger->open(new CommandContext('onPut', []));
         $this->logger->close(new CommandResultContext(200), $open);
 
         $this->assertTrue($this->policy->keeps($this->logger->flush()));

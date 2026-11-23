@@ -32,7 +32,6 @@ purge(LevelTwo) → LevelOne invalidated
 
 A write on a class with neither `#[Cacheable]` nor `#[CacheableResponse]` invalidates its own key, as `#[Purge]`
 of itself would, with no GET afterwards since nothing stores it; its `#[Purge]` attributes add what they name.
-`RefreshInterceptor` is the sole interceptor on this path.
 
 ```text
 PUT PurgeSrc #[Purge(self)] #[Purge(LevelTwo)]
@@ -158,15 +157,15 @@ Typed `AbstractContext` subclasses live in `src/Log/Context/` and each carries a
 |----|----|-----------|---------|
 | `get` | open | `CacheInterceptor`, `AbstractDonutCacheInterceptor` | A resource/donut GET scope (children nest under it) |
 | `cache_hit` / `cache_miss` (`layer`) | close/event | interceptors, `DonutRepository` | The lookup outcome (`layer`: resource / donut / donut-view) |
-| `command` (`method`/`annotations`/`source`) | open | `CommandInterceptor`, `DonutCommandInterceptor`, `RefreshInterceptor` (all via the shared `CommandScope`) | A write scope; `source` names the producing interceptor, `annotations` its `#[Refresh]`/`#[Purge]` attributes (empty on the CacheableResponse path by design) |
+| `command` (`method`/`annotations`) | open | `CommandInterceptor` (via `CommandScope`) | A write scope; `annotations` lists the method's `#[Refresh]`/`#[Purge]` attributes |
 | `depends_on` (`parent`/`child`/`childTags`) | event | `CacheDependency::depends()` | A dependency-graph edge |
 | `save_value` / `save_view` / `save_donut` / `save_donut_view` | event | `ResourceStorage` | What was stored, with `tags`, `ttl` (seconds until expiry; 0/null = no expiry set) and the `saved` outcome |
 | `pre_write_cleanup` (`uri`) | event | `QueryRepository::doPut()`, `DonutRepository::putStatic()`/`putDonut()` | Marker recorded by a writer right before it clears the entry it replaces: the `invalidate` immediately following it in the same scope is pre-write cleanup, not a real invalidation. A write into an empty slot - every miss - records neither |
 | `invalidate` (`tags`/`roPool`/`cdn`/`durationMs`) | event | `ResourceStorage::invalidateTags()` | Per-target outcome as status words: `roPool` is `invalidated`\|`failed`; `cdn` is tri-state: `purged` (a configured purger ran), `failed` (the purge threw — fail-closed: the local pool is invalidated first, then the exception propagates), `skipped` (NullPurger, no CDN configured). Pre-write cleanup vs real invalidation is recorded at the source via the `pre_write_cleanup` marker — see the flow example below |
 | `cdn_headers` (`uri`/`headers`/`surrogateKeys`) | event | `DonutRepository` (donut write and refresh paths) | The CDN-facing headers the response ended up with, read back after they are final: literal name => value pairs of the headers this package's setters manage (`CDN-Cache-Control`, `Surrogate-Control`, `Akamai-Cache-Control`, `Surrogate-Key`, `Edge-Cache-Tag`) — including the bound setter's default when no `sMaxAge` was requested, which the `put_donut` request fields alone cannot reveal. No lifetime header present = the response gave the CDN no lifetime directive (the `putDonut` kind); the CDN's own behavior is outside this log. `surrogateKeys` is the split key list a purge's tags must reach to drop the response at the edge; under Akamai it comes from `Edge-Cache-Tag` (the response carries no `Surrogate-Key`). A state-served hit replays the stored headers and emits no new event |
 | `conditional_request` (`ifNoneMatch`) | open | `HttpCache`, `CliHttpCache` (transfer boundary) | A conditional request presented a validator; the scope closes as `cache_hit`/`cache_miss` at layer `etag`, answered by the entry the validator names. A hit is the 304 decision — the whole request served without running the resource. A direct `ResourceStorage::validatedEntry()` call records nothing: the semantic event is the answered conditional request, owned by the transfer boundary |
-| `purge` | event | `QueryRepository::purge()` | An explicit purge request; on a write with no cache attribute, `RefreshInterceptor` purges each URI the write names once |
-| `purge_skipped` (`uri`/`reason`) | event | `RefreshInterceptor` | A write on a resource with no cache attribute did not invalidate its own key (`reason`: `unmatched_query`, its query lacks a parameter its `onGet()` requires). `uri` is the write's URI without its query. Its `#[Purge]`/`#[Refresh]` still run |
+| `purge` | event | `QueryRepository::purge()` | An explicit purge request; a write purges its own key and each URI it names once |
+| `purge_skipped` (`uri`/`reason`) | event | `CommandInterceptor` | A write on a resource with no cache attribute did not invalidate its own key (`reason`: `unmatched_query`, its query lacks a parameter its `onGet()` requires). `uri` is the write's URI without its query. Its `#[Purge]`/`#[Refresh]` still run |
 | `put_skipped` (`uri`/`reason`[/`code`]) | event | `CacheInterceptor`, `AbstractDonutCacheInterceptor`, `DonutRepository` | A miss was not followed by a put (`reason`: `etag-present` / `error-code` with the actual response `code` / `not-cacheable` for a donut page served from its template / `unstorable` / `expired`) |
 | `cache_error` (`uri`/`operation`/`error`/`exceptionClass`) | event | `CacheInterceptor`, `AbstractDonutCacheInterceptor` | A failure raised on the cache read/write path — the pool itself (e.g. cache server down) or any work the store performs (rendering a view, purging a CDN); `operation` is the failing side (`read` / `write`) and `exceptionClass` the throwable, so a pool outage is distinguishable from a rendering bug; a `cache_miss` after a read-side outage is a degraded cache, not a cold one |
 | `put_donut` / `refresh_donut` | event | `DonutRepository` | Donut store / re-render from a template hit |
@@ -325,7 +324,6 @@ the next reviewer can attack the judgment instead of rediscovering it:
 |---|---|
 | `HeaderSetter` max-age guard `> 0` → `>= 0` | Pre-existing; emitting `max-age: 0` for "no expiry" would itself be a lie. Current behavior is correct, the boundary is merely unpinned |
 | DI binding removals (`DonutRepository` singleton scope) | Stateless `readonly` service: no in-process observable difference |
-| `clone` removal on the command's delete URI (`DonutCommandInterceptor`) | Aliasing with no downstream writer in any current flow |
 | `return` removals on typed early-return paths | Equivalent result or a loud type failure on any real call path |
 | `QueryRepository` expiryAt guard `\|\|` → `&&` | Differs only for a non-array body carrying an `expiryAt` attribute, which fails in both variants |
 | `ResourceStorage` vary-string `.=` → `=` | Multi-value `X_VARY` request building; niche, unfixtured |
@@ -344,4 +342,4 @@ Located in `tests/Fake/fake-app/src/Resource/Page/Dep/`:
 | `ParentA` | `ChildC` | Multiple parent test |
 | `ParentB` | `ChildC` | Multiple parent test |
 | `ChildC` | - | Shared child resource |
-| `PurgeSrc` | - | Non-Cacheable writer whose `#[Purge]` attributes drive `RefreshInterceptor` |
+| `PurgeSrc` | - | Non-Cacheable writer carrying `#[Purge]` |

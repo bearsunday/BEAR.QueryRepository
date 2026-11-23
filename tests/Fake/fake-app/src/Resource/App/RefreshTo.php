@@ -7,7 +7,7 @@ namespace FakeVendor\HelloWorld\Resource\App;
 use BEAR\RepositoryModule\Annotation\Refresh;
 use BEAR\Resource\ResourceObject;
 
-/** Refreshes the URI the write names; not #[Cacheable], so RefreshInterceptor handles the declaration */
+/** Refreshes the URI the write names; not #[Cacheable] */
 class RefreshTo extends ResourceObject
 {
     #[Refresh(uri: '{+uri}')]

@@ -6,7 +6,6 @@ namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\CacheableResponse;
 use BEAR\RepositoryModule\Annotation\DonutCache;
-use BEAR\RepositoryModule\Annotation\RefreshCache;
 use Override;
 use Ray\Di\AbstractModule;
 use Ray\Di\Scope;
@@ -25,8 +24,6 @@ use Ray\Di\Scope;
  * The following interceptors are provided:
  *
  * DonutCacheableResponseInterceptor
- * DonutCacheInterceptor
- * DonutCommandInterceptor
  * DonutCacheInterceptor
  */
 final class DonutCacheModule extends AbstractModule
@@ -61,26 +58,16 @@ final class DonutCacheModule extends AbstractModule
             $this->matcher->startsWith('onGet'),
             [DonutCacheInterceptor::class],
         );
-
-        $this->bindInterceptor(
-            $this->matcher->annotatedWith(CacheableResponse::class),
-            new UnsafeMethodMatcher(),
-            [DonutCommandInterceptor::class],
-        );
     }
 
     private function installAopMethodModule(): void
     {
-        // Ray.Aop merges without deduplicating, so a class whose own declaration governs a
-        // method is excluded; unifying the sets would leave a #[RefreshCache] write with no
-        // interceptor.
         $readNotDeclared = $this->matcher->logicalNot(
             $this->matcher->logicalOr(
                 new CacheableClassMatcher(),
                 $this->matcher->annotatedWith(DonutCache::class),
             ),
         );
-        $writeNotDeclared = $this->matcher->logicalNot(new CacheableClassMatcher());
         $this->bindInterceptor(
             $readNotDeclared,
             $this->matcher->logicalAnd(
@@ -88,22 +75,6 @@ final class DonutCacheModule extends AbstractModule
                 $this->matcher->startsWith('onGet'),
             ),
             [DonutCacheInterceptor::class],
-        );
-
-        $this->bindInterceptor(
-            $writeNotDeclared,
-            $this->matcher->logicalAnd(
-                $this->matcher->annotatedWith(CacheableResponse::class),
-                new UnsafeMethodMatcher(),
-            ),
-            [DonutCommandInterceptor::class],
-        );
-        // Not an annotation matcher alone, which is woven in attribute order, outside RefreshInterceptor: in binding
-        // order, the query is matched before a #[Purge] beside #[RefreshCache] runs, as on a #[CacheableResponse] class
-        $this->bindInterceptor(
-            $writeNotDeclared,
-            $this->matcher->logicalAnd($this->matcher->annotatedWith(RefreshCache::class), $this->matcher->any()),
-            [DonutCommandInterceptor::class],
         );
     }
 }

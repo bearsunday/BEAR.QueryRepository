@@ -120,7 +120,7 @@ class QueryVariantPurgeTest extends TestCase
         $this->assertNotSame($page2, (string) $this->resource->get('page://self/paged-list?page=2'));
     }
 
-    /** PagedList::onPost has no #[Purge]/#[Refresh], so DonutCommandInterceptor's auto-purge is the only
+    /** PagedList::onPost has no #[Purge]/#[Refresh], so the purge of its own key is the only
      *  invalidation: a write to `?page=2` reaches every page variant. */
     public function testDonutAutoPurgeFromWriteUriCarryingDefaultedParamReachesOtherVariants(): void
     {
@@ -136,7 +136,7 @@ class QueryVariantPurgeTest extends TestCase
     }
 
     /** Same for a plain #[Cacheable] value resource: PagedValue::onPut has no #[Purge]/#[Refresh], so
-     *  RefreshSameCommand's auto-purge is the only invalidation. */
+     *  the purge of its own key is the only invalidation. */
     public function testValueAutoPurgeFromWriteUriCarryingDefaultedParamReachesOtherVariants(): void
     {
         $bare = $this->time('app://self/paged-value');

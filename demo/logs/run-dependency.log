@@ -100,9 +100,8 @@ get uri=page://self/dep/level-one
 └── close cache_hit
     ├── layer: resource
     └── durationMs: [volatile]
-command method=onPut source=CommandInterceptor
+command method=onPut
 ├── method: onPut
-├── source: CommandInterceptor
 ├── purge uri=page://self/dep/level-three [event]
 │   └── uri: page://self/dep/level-three
 ├── invalidate tags=[_dep_level-three_, grp-_dep_level-three_] roPool=invalidated cdn=skipped durationMs=[volatile] [event]
@@ -516,8 +515,7 @@ get uri=page://self/dep/parent-b
             "schemaUrl": "https://bearsunday.github.io/BEAR.QueryRepository/schemas/context/command.json",
             "context": {
                 "method": "onPut",
-                "annotations": [],
-                "source": "CommandInterceptor"
+                "annotations": []
             },
             "log": [
                 {

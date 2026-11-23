@@ -18,11 +18,7 @@ use function dirname;
 /**
  * onPost on a #[CacheableResponse] class whose parameters miss onGet's required ones (#219)
  *
- * The same gap as `UnmatchedQueryRefreshTest`, on the donut command path:
- * `DonutCommandInterceptor::refreshDonutAndState()` calls `MatchQuery` with no catch, inside
- * an `invoke()` whose `try` is `finally`-only. `DonutCacheModule` binds this interceptor to
- * `onPost` too (`UnsafeMethodMatcher`), so a `#[CacheableResponse]` collection POST whose
- * parameters do not cover `onGet`'s required ones threw uncaught here as well.
+ * The same gap as `UnmatchedQueryRefreshTest`, on a `#[CacheableResponse]` collection POST.
  */
 class DonutUnmatchedQueryRefreshTest extends TestCase
 {
@@ -110,7 +106,7 @@ class DonutUnmatchedQueryRefreshTest extends TestCase
         } catch (UnmatchedQuery) {
         }
 
-        $this->assertNotNull($this->repository->get($dest), 'DonutCommandInterceptor throws inside RefreshInterceptor, so #[Purge] does not run');
+        $this->assertNotNull($this->repository->get($dest), 'the PUT failed before its #[Purge] ran');
     }
 
     /** A #[RefreshCache] write keeps the same promise: its #[Purge] runs only once its query addresses onGet() */

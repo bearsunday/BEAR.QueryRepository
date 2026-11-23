@@ -6,15 +6,14 @@
     "type": "object",
     "required": [
         "method",
-        "annotations",
-        "source"
+        "annotations"
     ],
     "properties": {
         "method": {
             "type": "string"
         },
         "annotations": {
-            "description": "the #[Refresh]/#[Purge] annotations on the command method; empty on the CacheableResponse (donut-command) path by design — that path refreshes by resource identity, not by annotation",
+            "description": "the #[Refresh]/#[Purge] annotations on the write method, in declaration order; empty when it declares none",
             "type": "array",
             "items": {
                 "type": "object",
@@ -32,10 +31,6 @@
                 },
                 "additionalProperties": false
             }
-        },
-        "source": {
-            "description": "class basename of the producing interceptor; built-in producers are CommandInterceptor, DonutCommandInterceptor and RefreshInterceptor, but any custom command interceptor may appear here",
-            "type": "string"
         }
     },
     "additionalProperties": false

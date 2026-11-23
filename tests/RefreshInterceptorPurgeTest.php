@@ -14,12 +14,8 @@ use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 
 /**
- * RefreshInterceptor's #[Purge] branch, which no #[Cacheable] fixture can reach
- *
- * Every other #[Purge] fixture is #[Cacheable], so its annotation is processed by
- * CommandInterceptor alongside RefreshSameCommand. Here the class is not #[Cacheable]:
- * RefreshInterceptor is the only interceptor bound, and it invalidates the written
- * resource's own key together with what the annotations name.
+ * #[Purge] on a class that stores nothing: the write invalidates its own key together with what the
+ * annotations name, and reads nothing again
  */
 class RefreshInterceptorPurgeTest extends TestCase
 {
@@ -73,8 +69,7 @@ class RefreshInterceptorPurgeTest extends TestCase
         $tree = $this->flushAndValidate($this->logger);
 
         $command = self::contextJsonOf($tree, 'command');
-        $this->assertNotNull($command, 'RefreshInterceptor opens a command scope');
-        $this->assertStringContainsString('"source":"RefreshInterceptor"', $command);
+        $this->assertNotNull($command, 'the write opens a command scope');
         $this->assertStringContainsString('"method":"onPut"', $command);
         $this->assertStringContainsString('"uri":"page://self/dep/purge-src{?id}"', $command);
         $this->assertStringContainsString('"uri":"page://self/dep/level-two"', $command);

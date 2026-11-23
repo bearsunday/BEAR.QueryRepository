@@ -35,12 +35,11 @@ final readonly class CommandScope
      * A 4xx result opens the scope too: a command_result with no invalidation under it records that the commands were skipped.
      *
      * @param MethodInvocation<object> $invocation
-     * @param string                   $source     the interceptor, recorded as the scope's source
      * @param Closure(): void          $commands
      */
-    public function run(MethodInvocation $invocation, ResourceObject $ro, string $source, Closure $commands): void
+    public function run(MethodInvocation $invocation, ResourceObject $ro, Closure $commands): void
     {
-        $openId = $this->logger->open($this->context($invocation, $source));
+        $openId = $this->logger->open($this->context($invocation));
         try {
             if ($ro->code < Code::BAD_REQUEST) {
                 $commands();
@@ -52,7 +51,8 @@ final readonly class CommandScope
 
     /**
      * A POST to a class that creates rather than addresses an entity lacks onGet()'s required parameters: it is recorded and
-     * skipped, and the next command still runs. Another method addresses an existing entity, so the mismatch is thrown.
+     * its own key skipped, and the URIs it names are still purged. Another method addresses an existing entity, so the
+     * mismatch is thrown.
      *
      * @param MethodInvocation<object> $invocation
      */
@@ -66,7 +66,7 @@ final readonly class CommandScope
     }
 
     /** @param MethodInvocation<object> $invocation */
-    private function context(MethodInvocation $invocation, string $source): CommandContext
+    private function context(MethodInvocation $invocation): CommandContext
     {
         $method = $invocation->getMethod();
         $annotations = [];
@@ -76,6 +76,6 @@ final readonly class CommandScope
             }
         }
 
-        return new CommandContext($method->getName(), $annotations, $source);
+        return new CommandContext($method->getName(), $annotations);
     }
 }

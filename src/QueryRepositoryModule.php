@@ -83,7 +83,6 @@ final class QueryRepositoryModule extends AbstractModule
         $this->bind(BaseUriTagInterface::class)->to(BaseUriTag::class);
         $this->bind(MatchQueryInterface::class)->to(MatchQuery::class);
         $this->bind(RefreshAnnotatedCommand::class);
-        $this->bind(RefreshSameCommand::class);
         $this->bind(CommandQuery::class);
         $this->bind(UnsafeMethodMatcher::class);
         $this->bind(ResourceStorageSaver::class);
