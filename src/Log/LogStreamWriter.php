@@ -42,6 +42,7 @@ use const PHP_EOL;
 final class LogStreamWriter implements LogWriterInterface
 {
     private const FILE_SCHEME = 'file://';
+    private const LOCALHOST = 'localhost';
 
     public function __construct(private string $stream = 'php://stdout')
     {
@@ -77,7 +78,10 @@ final class LogStreamWriter implements LogWriterInterface
     private function path(): string|null
     {
         if (stripos($this->stream, self::FILE_SCHEME) === 0) {
-            return substr($this->stream, strlen(self::FILE_SCHEME));
+            $path = substr($this->stream, strlen(self::FILE_SCHEME));
+
+            // fopen() opens file://localhost/x as /x
+            return stripos($path, self::LOCALHOST . '/') === 0 ? substr($path, strlen(self::LOCALHOST)) : $path;
         }
 
         return str_contains($this->stream, '://') ? null : $this->stream;
