@@ -11,6 +11,7 @@ class Comment extends ResourceObject
 {
     #[Link(rel: 'collection', href: '{/kind}/posts')]
     #[Link(rel: 'collection', href: '')]
+    #[Link(rel: 'collection', href: 'app:/x')]
     public function onGet(int $id): static
     {
         $this->body = ['id' => $id];

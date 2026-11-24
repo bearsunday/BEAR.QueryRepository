@@ -77,6 +77,17 @@ class CollectionLinkTest extends TestCase
         $this->assertNull($this->repository->get(new Uri($posts)));
     }
 
+    public function testRelativeHrefWithoutLeadingSlashIsSkipped(): void
+    {
+        $posts = 'app://self/collection/posts';
+        $this->resource->get($posts);
+
+        $ro = $this->resource->put('app://self/collection/note', ['id' => 1]);
+
+        $this->assertSame(200, $ro->code);
+        $this->assertNotNull($this->repository->get(new Uri($posts)));
+    }
+
     /** A row taken from the injector has no URI, and its path-only href still purges the list */
     public function testPathOnlyHrefOfARowWithoutUriPurgesTheList(): void
     {
