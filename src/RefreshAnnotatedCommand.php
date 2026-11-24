@@ -62,7 +62,8 @@ final readonly class RefreshAnnotatedCommand
         $target = $invocation->getThis();
         if ($target instanceof ResourceObject) {
             foreach ($this->collections($target) as $href) {
-                $declared[] = [$this->resourceUris($this->uris($ro, $this->resolved($href, $uri), $query)), false];
+                $expanded = array_map(fn (string $expandedHref): string => $this->resolved($expandedHref, $uri), $this->uris($ro, $href, $query));
+                $declared[] = [$this->resourceUris($expanded), false];
             }
         }
 
@@ -123,7 +124,7 @@ final readonly class RefreshAnnotatedCommand
         return array_values(array_unique($uris));
     }
 
-    /** A path-only href, as HAL writes it, names a resource of the write's own scheme and host */
+    /** A path-only href, as HAL writes it, is a resource path; the scheme and host are the write's */
     private function resolved(string $href, AbstractUri|null $uri): string
     {
         if ($uri === null) {
