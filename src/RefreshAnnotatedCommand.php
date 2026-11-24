@@ -12,6 +12,7 @@ use BEAR\Resource\Exception\UriException;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
+use BEAR\Resource\UriFactory;
 use Ray\Aop\MethodInvocation;
 use ReflectionMethod;
 
@@ -20,19 +21,18 @@ use function array_unique;
 use function array_values;
 use function is_array;
 use function method_exists;
-use function str_starts_with;
 use function uri_template;
 
 /** @internal */
 final readonly class RefreshAnnotatedCommand
 {
     private const COLLECTION = 'collection';
-    private const ORIGIN_WITHOUT_URI = 'app://self';
 
     public function __construct(
         private ResourceInterface $resource,
         private CacheIdentityFactory $identityFactory,
         private DependsOnTemplates $templates,
+        private UriFactory $uriFactory,
     ) {
     }
 
@@ -63,8 +63,7 @@ final readonly class RefreshAnnotatedCommand
         $target = $invocation->getThis();
         if ($target instanceof ResourceObject) {
             foreach ($this->collections($target) as $href) {
-                $expanded = array_map(fn (string $expandedHref): string => $this->resolved($expandedHref, $uri), $this->uris($ro, $href, $query));
-                $declared[] = [$this->resourceUris($expanded), false];
+                $declared[] = [$this->resourceUris($this->uris($ro, $href, $query)), false];
             }
         }
 
@@ -126,22 +125,8 @@ final readonly class RefreshAnnotatedCommand
     }
 
     /**
-     * A path-only href, as HAL writes it, is a resource path under the write's scheme and host
+     * Resolved as BEAR\Resource\Linker resolves a link, so a path-only href takes the context scheme (#[ContextScheme])
      *
-     * The purge tag holds no scheme or host, so a resource without a URI, taken from the injector, uses app://self.
-     */
-    private function resolved(string $href, AbstractUri|null $uri): string
-    {
-        if (! str_starts_with($href, '/') || str_starts_with($href, '//')) {
-            return $href;
-        }
-
-        $origin = $uri === null ? self::ORIGIN_WITHOUT_URI : "{$uri->scheme}://{$uri->host}";
-
-        return $origin . $href;
-    }
-
-    /**
      * @param list<string> $uris
      *
      * @return list<Uri>
@@ -151,7 +136,7 @@ final readonly class RefreshAnnotatedCommand
         $resourceUris = [];
         foreach ($uris as $uri) {
             try {
-                $resourceUris[] = new Uri($uri);
+                $resourceUris[] = ($this->uriFactory)($uri);
             } catch (UriException) {
                 continue;
             }
