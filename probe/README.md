@@ -2,7 +2,7 @@
 
 BEAR.QueryRepository（BQR）のキャッシュを、どこに、どう置くのがよいかを手元で測った記録。この枝（`study-cache-storage-backends`）は merge しない。`upstream/1.x` の 7a76681e の上に、この `probe/` と確かめ用の page を足しただけで、`src/` は変えていない。
 
-- 数字と結論: [`results.md`](results.md)（1〜15 節）
+- 数字と結論: [`results.md`](results.md)（1〜16 節）
 - 測ったスクリプト: この directory の `*.php`。1 本が results.md の 1 つの節に対応する（下の表）
 
 ## 問い
@@ -16,7 +16,7 @@ BEAR.QueryRepository（BQR）のキャッシュを、どこに、どう置くの
 
 ## 結論の要点
 
-- 量は「page の数 × 約 13〜15KB」（deflate、tag 100 本込み。1000 page で、保存の前後の used_memory の差が 13.2MB、used_memory そのものが 14.9MB）。deflate なしでは約 64KB。`StorageRedisDsnModule` の `marshallingOptions: ['enabled' => true, 'type' => 'deflate']` で本体が約 1/5 になる（[5](results.md#s5)・[6](results.md#s6)）
+- `#[CacheableResponse]` の page は、テンプレートと組み上がった view の 2 つを置くので、量は page の HTML のほぼ 2 倍。50KB の HTML で、deflate ありで約 25KB / page、なしで約 130KB / page（[16](results.md#s16)）。`StorageRedisDsnModule` の `marshallingOptions: ['enabled' => true, 'type' => 'deflate']` で約 1/5 になる。`#[DonutCache]` は view を置かないので半分（[5](results.md#s5)・[6](results.md#s6) は 1 page を塊 1 つとして測った値）
 - 溜まり続ける主な原因は、namespace を替えた後に残る古い namespace。`RedisTagAwareAdapter` の tag の SET は TTL がなく、volatile-* では追い出されない。古い namespace に `clear()` を当てれば消える。消すのは、古い版のサーバーがいなくなった後（[6](results.md#s6)・[9](results.md#s9)）
 - 同じ namespace の中でも、tag が新しい行へ移る page（新着の一覧など）では、tag の SET が「これまでに載った行の数」だけ増える（[10](results.md#s10)）
 - cluster は容量の面では要らない。性能の面で効くのは、単体の Redis の CPU か処理の回数が頭打ちのときだけ。読みは速くならず（どちらも 1 往復）、保存は 1 回 102 往復になる（単体は 2 往復）（[7](results.md#s7)・[8](results.md#s8)）
@@ -42,6 +42,7 @@ BEAR.QueryRepository（BQR）のキャッシュを、どこに、どう置くの
 | `pdo-library.php` | [13](results.md#s13) | SQLite（自分で作って消すファイル） |
 | `cold-start.php` | [14](results.md#s14) | Redis 6379 |
 | `null-pool.php` | [15](results.md#s15) | なし（`NullAdapter`） |
+| `page-size.php` | [16](results.md#s16) | Redis 6379。page は `ProbeLargePage`、`ProbeLargeDonut`（約 50KB の HTML） |
 
 引数を取るスクリプトは、頭のコメントに usage がある。
 
@@ -84,7 +85,7 @@ git checkout -- src/HttpCacheInterceptor.php
 rm -rf tests/tmp/*
 ```
 
-確かめ用の page（`tests/Fake/fake-app/src/Resource/Page/Html/Probe*.php` とテンプレート）は 2 節と 4 節で使う。
+確かめ用の page（`tests/Fake/fake-app/src/Resource/Page/Html/Probe*.php` とテンプレート）は 2・4・16 節で使う。
 
 ## 読むときの注意
 

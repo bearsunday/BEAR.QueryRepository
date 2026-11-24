@@ -1,0 +1,650 @@
+{% verbatim %}<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <title>Cache &#124; BEAR.Sunday</title>
+    <meta name="description" content="BEAR.Sunday is a resource orientated framework with a REST centered architecture, implementing Dependency Injection and Aspect Orientated Programming' at its core.">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="//stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+    
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/github-markdown-css/2.10.0/github-markdown.css">
+    <link rel="stylesheet" href="/css/syntax.css">
+    
+    <link rel="stylesheet" href="/css/bearsunday.css">
+    <link rel="manifest" href="/site.webmanifest">
+    <link rel="apple-touch-icon" href="/icon.png">
+    
+    <link href="/pagefind/pagefind-component-ui.css" rel="stylesheet">
+    <script src="/pagefind/pagefind-component-ui.js" type="module"></script>
+    
+</head>
+<body data-page-category="Manual" data-spy="scroll" data-target="#ArticleToc" data-offset="65">
+<header>
+    <nav class="navbar navbar-expand flex-column flex-md-row bg-light">
+        <a class="navbar-brand mr-0 mr-md-2" href="/index.html"></a>
+        <div class="navbar-nav-scroll">
+            <ul class="navbar-nav flex-row">
+                <li class="nav-item">
+                    <a class="nav-link " href="/index.html">Home</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active" href="/manuals/1.0/en/index.html">Manual</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link " href="/contributors.html">Contributors</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/slide.html">Slide</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/llms-full.txt">LLMs</a>
+                </li>
+            </ul>
+        </div>
+        
+        <ul class="navbar-nav ml-md-auto d-none d-md-flex language-list">
+            <li class="nav-item">
+                <pagefind-modal-trigger></pagefind-modal-trigger>
+            </li>
+            <li>
+                <a class="active" href="/manuals/1.0/en/cache.html">En</a>
+            </li>
+            <li>
+                <a class="" href="/manuals/1.0/ja/cache.html">Ja</a>
+            </li>
+        </ul>
+        <pagefind-modal></pagefind-modal>
+        
+    </nav>
+</header>
+
+<main class="container-fluid">
+    <div class="row flex-xl-nowrap">
+        <div class="col-md-3 col-lg-2">
+            <div class="side-bar">
+                <nav class="navbar navbar-expand-md navbar-light">
+    <div class="navigation-header">
+        <div class="ml-auto d-flex align-items-center justify-content-between d-md-none">
+            <button type="button" class="navbar-toggler" data-toggle="collapse" data-target="#Navber" aria-controls="Navber" aria-expanded="false" aria-label="ナビゲーションの切替">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="d-flex align-items-center">
+                
+                <pagefind-modal-trigger></pagefind-modal-trigger>
+                
+                <ul class="navbar-nav language-list">
+                    <li>
+                        <a class="active" href="/manuals/1.0/en/cache.html">En</a>
+                    </li>
+                    <li>
+                        <a class="" href="/manuals/1.0/ja/cache.html">Ja</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="collapse navbar-collapse" id="Navber">
+        <ul class="navbar-nav mr-auto">
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/">Introduction</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/tech.html">Technology</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/version.html">Version</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/quick-start.html">Quick Start</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/setup.html">Environment Setup</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/tutorial.html">Tutorial</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/tutorial2.html">Tutorial 2</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/tutorial3.html">CLI Tutorial</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/package.html">Package</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/application.html">Application</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/module.html">Module</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/di.html">DI</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/aop.html">AOP</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/resource.html">Resource</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/resource_param.html">・Parameter</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/resource_link.html">・Link</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/resource_renderer.html">・Rendering and Transfer</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/router.html">Router</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/production.html">Production</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/phar.html">・Phar</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/wasm.html">・Wasm</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/import.html">Import</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/database.html">Database</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/database_media.html">・MediaQuery</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/validation.html">Validation</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/cli.html">CLI</a>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/html.html">HTML</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/form.html">Form</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/csrf.html">CSRF</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/content-negotiation.html">Content Negotiation</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/hypermedia-api.html">Hypermedia API</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/psr7.html">Request / PSR-7</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/stream.html">Stream Response</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link active" href="/manuals/1.0/en/cache.html">Cache</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/redis-dsn.html">・Redis DSN</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/event-sourcing.html">Event Sourcing <sup style="font-size:0.7em; color:#888;">Alpha</sup></a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/swoole.html">Servers <sup style="font-size:0.7em; color:#888;">Beta</sup></a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/async.html">Parallel Execution <sup style="font-size:0.7em; color:#888;">Alpha</sup></a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/defer.html">Deferred Execution <sup style="font-size:0.7em; color:#888;">Alpha</sup></a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/coding-guide.html">Coding Guide</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/types.html">PHPDoc Types</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/types-utility.html">PHPDoc Utility Types</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/test.html">Test</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/security.html">Security <sup style="font-size:0.7em; color:#888;">Beta</sup></a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/examples.html">Examples</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/upgrade/injector.html">Upgrade</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/attribute.html">Attribute</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/apidoc.html">API Doc</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/reference.html">Reference</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="/manuals/1.0/en/ai-assistant.html">AI Assistant</a>
+            </li>
+        </ul>
+    </div>
+</nav>
+
+            </div>
+        </div>
+        <div class="col-md-9 col-lg-8">
+            <article id="article" class="markdown-body" data-pagefind-body>
+                <h1 id="cache">Cache</h1>
+
+<blockquote>
+  <p>There are only two hard things in Computer Science: cache invalidation and naming things.</p>
+
+  <p>– Phil Karlton</p>
+</blockquote>
+
+<h2 id="overview">Overview</h2>
+
+<p>A good caching system fundamentally improves the quality of user experience and reduces resource utilization costs and environmental impact. BEAR.Sunday supports the following caching features in addition to traditional simple TTL-based caching:</p>
+
+<ul>
+  <li>Event-driven cache invalidation</li>
+  <li>Cache dependency resolution</li>
+  <li>Donut cache and donut hole cache</li>
+  <li>CDN control</li>
+  <li>Conditional requests</li>
+</ul>
+
+<h3 id="distributed-cache-framework">Distributed Cache Framework</h3>
+
+<p>A distributed caching system that follows REST constraints saves not only computational resources but also network resources. BEAR.Sunday provides a caching framework that integrates <strong>server-side caches</strong> (such as Redis and APC handled directly by PHP), <strong>shared caches</strong> (known as content delivery networks - CDNs), and <strong>client-side caches</strong> (cached by web browsers and API clients) with modern CDNs.</p>
+
+<p><img src="https://user-images.githubusercontent.com/529021/137062427-c733c832-0631-4a43-a6ee-4204e6be007c.png" alt="distributed cache" /></p>
+
+<h2 id="tag-based-cache-invalidation">Tag-based Cache Invalidation</h2>
+
+<p><img width="369" alt="dependency graph 2021-10-19 21 38 02" src="https://user-images.githubusercontent.com/529021/137910748-b6e95839-eeb7-4ade-a564-3cdcd5fdc09e.png" /></p>
+
+<p>Content caching has dependency issues. If content A depends on content B, and B depends on C, then when C is updated, not only must C’s cache and ETag be updated, but also B’s cache and ETag (which depends on C), and A’s cache and ETag (which depends on B).</p>
+
+<p>BEAR.Sunday solves this problem by having each resource hold the URI of dependent resources as tags. When a resource embedded with <code class="language-plaintext highlighter-rouge">#[Embed]</code> is modified, the cache and ETag of the resources that hold it as a dependency are invalidated, and cache regeneration occurs for the next request.</p>
+
+<p>This dependency is registered only when the resource embedded with <code class="language-plaintext highlighter-rouge">#[Embed]</code> is itself made cacheable, for example with <code class="language-plaintext highlighter-rouge">#[Cacheable]</code>, or declares <code class="language-plaintext highlighter-rouge">#[DependsOn]</code> (see below). A resource with neither, read in <code class="language-plaintext highlighter-rouge">onGet()</code>, is not a dependency: its tag does not reach the page’s entries. If that resource is also rendered as a hole, purging its URI drops the stored view, and the next request recomposes the page from the template. Give such a resource a cache attribute. A value fetched eagerly with <code class="language-plaintext highlighter-rouge">$this-&gt;resource-&gt;get()</code> is not tracked either.</p>
+
+<p>How an embedded resource is used determines the behavior (see <a href="#donut-cache">Donut Cache</a> below for holes):</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Need</th>
+      <th>Use</th>
+      <th>Effect of a resource purge</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Per-user content (no shared cache)</td>
+      <td>a non-cacheable resource rendered as a hole on a <code class="language-plaintext highlighter-rouge">#[DonutCache]</code> page</td>
+      <td>that hole alone re-runs on every HIT</td>
+    </tr>
+    <tr>
+      <td>Shared content that changes on an event</td>
+      <td>a cacheable resource rendered as a hole (never read in <code class="language-plaintext highlighter-rouge">onGet()</code>)</td>
+      <td>the shell is recomposed from the stored template</td>
+    </tr>
+    <tr>
+      <td>A value the page’s own <code class="language-plaintext highlighter-rouge">onGet()</code> reads</td>
+      <td>a cacheable resource becomes a dependency</td>
+      <td>the whole stored entry is dropped and the next GET is a fresh miss</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="dependson">#[DependsOn]</h3>
+
+<p>The dependency above is automatic only for a resource embedded with <code class="language-plaintext highlighter-rouge">#[Embed]</code>. Data a resource reads without embedding it — through a query, a service call, or any other code — forms no dependency on its own. Declare the URI by hand with <code class="language-plaintext highlighter-rouge">#[DependsOn]</code>, and a write to it invalidates this resource the same way, without adding an <code class="language-plaintext highlighter-rouge">#[Embed]</code> just to create the dependency.</p>
+
+<div class="language-php highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">use</span> <span class="nc">BEAR\RepositoryModule\Annotation\DependsOn</span><span class="p">;</span>
+
+<span class="na">#[Cacheable]</span>
+<span class="kd">class</span> <span class="nc">ChannelEntries</span> <span class="kd">extends</span> <span class="nc">ResourceObject</span>
+<span class="p">{</span>
+    <span class="na">#[DependsOn(uri: 'app://self/taxonomy?ulid={channelId}')]</span>
+    <span class="k">public</span> <span class="k">function</span> <span class="n">onGet</span><span class="p">(</span><span class="kt">string</span> <span class="nv">$channelId</span><span class="p">):</span> <span class="kt">static</span>
+    <span class="p">{</span>
+        <span class="nv">$this</span><span class="o">-&gt;</span><span class="n">body</span> <span class="o">=</span> <span class="p">[</span><span class="s1">'entries'</span> <span class="o">=&gt;</span> <span class="nv">$this</span><span class="o">-&gt;</span><span class="n">query</span><span class="o">-&gt;</span><span class="nf">entries</span><span class="p">(</span><span class="nv">$channelId</span><span class="p">)];</span>
+
+        <span class="k">return</span> <span class="nv">$this</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">#[DependsOn]</code> only adds the tag; the named URI still needs its own write to invalidate it — either because it is itself <code class="language-plaintext highlighter-rouge">#[Cacheable]</code>, or through a <code class="language-plaintext highlighter-rouge">#[Purge]</code>/<code class="language-plaintext highlighter-rouge">#[Refresh]</code> that names it.</p>
+
+<p>The attribute can also be placed on a row class read from a list: each public property becomes a template variable, and every row found in the body expands the URI once. The body is walked through arrays and public properties only, so rows inside a <code class="language-plaintext highlighter-rouge">Traversable</code> such as a collection or a <code class="language-plaintext highlighter-rouge">Generator</code> are not found.</p>
+
+<p>Two more limits apply: an argument bound by <code class="language-plaintext highlighter-rouge">#[ResourceParam]</code> is read back from the request query rather than from the binding, so a declaration without a default fails and one with a default silently expands from the default instead of the bound value; and a declaration that cannot expand fails the GET with <code class="language-plaintext highlighter-rouge">DependsOnNotExpandable</code>, storing nothing.</p>
+
+<p>A non-cached resource in between passes on only URIs declared with <code class="language-plaintext highlighter-rouge">#[DependsOn]</code> (its own, and those of the requests below it that ran), not a cacheable grandchild’s own tag further down. Declare the grandchild’s URI on the resource in between as well, or make that resource <code class="language-plaintext highlighter-rouge">#[Cacheable]</code>, to have the invalidation reach the top.</p>
+
+<p>Requires <code class="language-plaintext highlighter-rouge">bear/query-repository</code> 1.20 or later.</p>
+
+<h2 id="donut-cache">Donut Cache</h2>
+
+<p><img width="200" alt="donut caching" src="https://user-images.githubusercontent.com/529021/137097856-f9428918-5b76-4c0e-8cea-2472c15d82e9.png" /></p>
+
+<p>Donut caching is a partial caching technique for cache optimization. It separates content into cacheable and non-cacheable parts and combines them for output.</p>
+
+<p>For example, consider content containing a non-cacheable resource like “<code class="language-plaintext highlighter-rouge">Welcome to $name</code>”. The non-cacheable (do-not-cache) part is combined with other cacheable parts for output.</p>
+
+<p><img width="557" alt="image" src="https://user-images.githubusercontent.com/529021/139617102-1f7f436c-a1f4-4c6c-b90b-de24491e4c8c.png" /></p>
+
+<p>In this case, since the entire content is dynamic, the whole donut is not cached. Therefore, no ETag is output either.</p>
+
+<h2 id="donut-hole-cache">Donut Hole Cache</h2>
+
+<p><img width="544" alt="image" src="https://user-images.githubusercontent.com/529021/139617571-31aea99a-533f-4b95-b3f3-6c613407d377.png" /></p>
+
+<p>When the donut hole part is cacheable, it can be handled the same way as donut cache. In the example above, a weather forecast resource that changes once per hour is cached and included in the news resource.</p>
+
+<p>In this case, since the donut content as a whole (news) is static, the entire content is also cached and given an ETag. This creates cache dependency. When the donut hole content is updated, the entire cached donut needs to be regenerated.</p>
+
+<p>This dependency resolution happens automatically. To minimize computational resources, the donut part computation is reused. When the hole part (weather resource) is updated, the cache and ETag of the entire content are also automatically updated.</p>
+
+<h3 id="recursive-donut">Recursive Donut</h3>
+
+<p><img width="191" alt="recursive donut 2021-10-19 21 27 06" src="https://user-images.githubusercontent.com/529021/137909083-2c5176f7-edb7-422b-bccc-1db90460fc15.png" /></p>
+
+<p>The donut structure is applied recursively. For example, if A contains B and B contains C, when C is modified, A’s cache and B’s cache are reused except for the modified C part. A’s and B’s caches and ETags are regenerated, but database access for A and B content retrieval and view rendering are not performed.</p>
+
+<p>The optimized partial cache structure performs content regeneration with minimal cost. Clients don’t need to know about the content cache structure.</p>
+
+<h2 id="event-driven-content">Event-Driven Content</h2>
+
+<p>Traditionally, CDNs considered content requiring application logic as “dynamic” and therefore not cacheable by CDNs. However, some CDNs like Fastly and Akamai now support immediate or tag-based cache invalidation within seconds, making <a href="https://www.fastly.com/blog/leveraging-your-cdn-cache-uncacheable-content">this thinking obsolete</a>.</p>
+
+<p>BEAR.Sunday dependency resolution works not only server-side but also on shared caches. When AOP detects changes and makes PURGE requests to shared caches, related cache invalidation occurs on shared caches just like server-side.</p>
+
+<h2 id="conditional-requests">Conditional Requests</h2>
+
+<p><img width="468" alt="conditional request" src="https://user-images.githubusercontent.com/529021/137151061-8d7a5605-3aa3-494c-91c5-c1deddd987dd.png" /></p>
+
+<p>Content changes are managed by AOP, and content entity tags (ETags) are automatically updated. HTTP conditional requests using ETags not only minimize computational resource usage, but responses returning only <code class="language-plaintext highlighter-rouge">304 Not Modified</code> also minimize network resource usage.</p>
+
+<h1 id="usage">Usage</h1>
+
+<p>For classes to be cached, use the <code class="language-plaintext highlighter-rouge">#[DonutCache]</code> attribute for donut cache (when embedded content is not cacheable), and <code class="language-plaintext highlighter-rouge">#[CacheableResponse]</code> for other cases:</p>
+
+<div class="language-php highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">use</span> <span class="nc">BEAR\RepositoryModule\Annotation\CacheableResponse</span><span class="p">;</span>
+
+<span class="na">#[CacheableResponse]</span>
+<span class="kd">class</span> <span class="nc">BlogPosting</span> <span class="kd">extends</span> <span class="nc">ResourceObject</span>
+<span class="p">{</span>
+    <span class="k">public</span> <span class="nv">$headers</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="nc">RequestHeader</span><span class="o">::</span><span class="no">CACHE_CONTROL</span> <span class="o">=&gt;</span> <span class="nc">CacheControl</span><span class="o">::</span><span class="no">NO_CACHE</span>
+    <span class="p">];</span>
+
+    <span class="na">#[Embed(rel: "comment", src: "page://self/html/comment")]</span>
+    <span class="k">public</span> <span class="k">function</span> <span class="n">onGet</span><span class="p">(</span><span class="kt">int</span> <span class="nv">$id</span> <span class="o">=</span> <span class="mi">0</span><span class="p">):</span> <span class="kt">static</span>
+    <span class="p">{</span>
+        <span class="nv">$this</span><span class="o">-&gt;</span><span class="n">body</span><span class="p">[</span><span class="s1">'article'</span><span class="p">]</span> <span class="o">=</span> <span class="s1">'hello world'</span><span class="p">;</span>
+
+        <span class="k">return</span> <span class="nv">$this</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="k">public</span> <span class="k">function</span> <span class="n">onDelete</span><span class="p">(</span><span class="kt">int</span> <span class="nv">$id</span> <span class="o">=</span> <span class="mi">0</span><span class="p">):</span> <span class="kt">static</span>
+    <span class="p">{</span>
+        <span class="k">return</span> <span class="nv">$this</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>To cache only selected methods, leave the class unannotated and annotate the methods instead. In that case, mark the methods that change the cache with <code class="language-plaintext highlighter-rouge">#[RefreshCache]</code>:</p>
+
+<div class="language-php highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">class</span> <span class="nc">Todo</span> <span class="kd">extends</span> <span class="nc">ResourceObject</span>
+<span class="p">{</span>
+    <span class="na">#[CacheableResponse]</span>
+    <span class="k">public</span> <span class="k">function</span> <span class="n">onPut</span><span class="p">(</span><span class="kt">int</span> <span class="nv">$id</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="kt">string</span> <span class="nv">$todo</span><span class="p">):</span> <span class="kt">static</span>
+    <span class="p">{</span>
+    <span class="p">}</span>
+
+    <span class="na">#[RefreshCache]</span>
+    <span class="k">public</span> <span class="k">function</span> <span class="n">onDelete</span><span class="p">(</span><span class="kt">int</span> <span class="nv">$id</span> <span class="o">=</span> <span class="mi">0</span><span class="p">):</span> <span class="kt">static</span>
+    <span class="p">{</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>Either approach applies all the features described in the overview. Because event-driven content is assumed, the cache is invalidated by events rather than by time; the default TTL depends on the CDN module, as described below. Note that <code class="language-plaintext highlighter-rouge">#[DonutCache]</code> does not cache the whole content, while <code class="language-plaintext highlighter-rouge">#[CacheableResponse]</code> does.</p>
+
+<p>What a cache attribute stores is shared with every visitor, so put per-user values in a non-cacheable resource rendered as a hole on a <code class="language-plaintext highlighter-rouge">#[DonutCache]</code> page. QueryRepository inspects only the response’s own <code class="language-plaintext highlighter-rouge">Cache-Control</code>. A per-user value that reaches the cached output by any other route is stored and served to every later visitor:</p>
+
+<ul>
+  <li>a value of an embedded resource read in <code class="language-plaintext highlighter-rouge">onGet()</code></li>
+  <li>a value received through <code class="language-plaintext highlighter-rouge">#[ResourceParam]</code></li>
+  <li>a value generated in the template (for example a Twig function)</li>
+</ul>
+
+<h2 id="ttl">TTL</h2>
+
+<p>TTL is specified with <code class="language-plaintext highlighter-rouge">DonutRepositoryInterface::putStatic()</code>.
+<code class="language-plaintext highlighter-rouge">ttl</code> is the cache time for non-donut holes, <code class="language-plaintext highlighter-rouge">sMaxAge</code> is the cache time for CDNs.</p>
+
+<div class="language-php highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">use</span> <span class="nc">BEAR\RepositoryModule\Annotation\CacheableResponse</span><span class="p">;</span>
+
+<span class="na">#[CacheableResponse]</span>
+<span class="kd">class</span> <span class="nc">BlogPosting</span> <span class="kd">extends</span> <span class="nc">ResourceObject</span>
+<span class="p">{</span>
+    <span class="k">public</span> <span class="k">function</span> <span class="n">__construct</span><span class="p">(</span><span class="k">private</span> <span class="kt">DonutRepositoryInterface</span> <span class="nv">$repository</span><span class="p">)</span>
+    <span class="p">{}</span>
+
+    <span class="na">#[Embed(rel: "comment", src: "page://self/html/comment")]</span>
+    <span class="k">public</span> <span class="k">function</span> <span class="n">onGet</span><span class="p">():</span> <span class="kt">static</span>
+    <span class="p">{</span>
+        <span class="c1">// process ...</span>
+        <span class="nv">$this</span><span class="o">-&gt;</span><span class="n">repository</span><span class="o">-&gt;</span><span class="nf">putStatic</span><span class="p">(</span><span class="nv">$this</span><span class="p">,</span> <span class="n">ttl</span><span class="o">:</span> <span class="mi">10</span><span class="p">,</span> <span class="n">sMaxAge</span><span class="o">:</span> <span class="mi">100</span><span class="p">);</span>
+
+        <span class="k">return</span> <span class="nv">$this</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="default-ttl-value">Default TTL value</h3>
+
+<p>For event-driven content, changes to the content must be reflected in the cache immediately. The default TTL therefore depends on which CDN module is installed: it is indefinite (one year) if the CDN supports tag-based cache invalidation, and 10 seconds if it does not.</p>
+
+<p>The expected cache reflection time is immediate for Fastly, a few seconds for Akamai, and 10 seconds for others.</p>
+
+<p>To customize it, bind it by implementing <code class="language-plaintext highlighter-rouge">CdnCacheControlHeaderSetterInterface</code> with reference to <code class="language-plaintext highlighter-rouge">CdnCacheControlHeader</code>.</p>
+
+<h2 id="cache-invalidation">Cache invalidation</h2>
+
+<p>Use the methods of <code class="language-plaintext highlighter-rouge">DonutRepositoryInterface</code> to manually invalidate the cache.
+This will invalidate not only the specified cache, but also the cache of the ETag, any other resource that depends on it, and the cache of the ETag on the server side and, if possible, on the CDN.</p>
+
+<div class="language-php highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">interface</span> <span class="nc">DonutRepositoryInterface</span>
+<span class="p">{</span>
+    <span class="k">public</span> <span class="k">function</span> <span class="n">purge</span><span class="p">(</span><span class="kt">AbstractUri</span> <span class="nv">$uri</span><span class="p">):</span> <span class="kt">void</span><span class="p">;</span>
+    <span class="k">public</span> <span class="k">function</span> <span class="n">invalidateTags</span><span class="p">(</span><span class="kt">array</span> <span class="nv">$tags</span><span class="p">):</span> <span class="kt">void</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="invalidate-by-uri">Invalidate by URI</h3>
+
+<div class="language-php highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// app://self/articles has onGet(int $page = 1)</span>
+<span class="nv">$this</span><span class="o">-&gt;</span><span class="n">repository</span><span class="o">-&gt;</span><span class="nf">purge</span><span class="p">(</span><span class="k">new</span> <span class="nc">Uri</span><span class="p">(</span><span class="s1">'app://self/articles'</span><span class="p">));</span>        <span class="c1">// every page: ?page=1, ?page=2, ...</span>
+<span class="nv">$this</span><span class="o">-&gt;</span><span class="n">repository</span><span class="o">-&gt;</span><span class="nf">purge</span><span class="p">(</span><span class="k">new</span> <span class="nc">Uri</span><span class="p">(</span><span class="s1">'app://self/articles?page=2'</span><span class="p">));</span> <span class="c1">// ?page=2 only</span>
+</code></pre></div></div>
+
+<p>Besides its own URI tag, each cached entry carries a group tag: the tag of its URI after removing the <code class="language-plaintext highlighter-rouge">onGet()</code> parameters that have a default value and any query <code class="language-plaintext highlighter-rouge">onGet()</code> does not declare. A purge of a URI drops the entries of that URI and the entries whose group tag is the tag of that URI. The group tag of <code class="language-plaintext highlighter-rouge">app://self/articles?page=2</code> is the tag of <code class="language-plaintext highlighter-rouge">app://self/articles</code>, so purging <code class="language-plaintext highlighter-rouge">app://self/articles</code> drops it. No group tag keeps a default-valued parameter, so purging <code class="language-plaintext highlighter-rouge">app://self/articles?page=1</code> drops only the entries of that URI. The <code class="language-plaintext highlighter-rouge">#[Purge]</code> and <code class="language-plaintext highlighter-rouge">#[Refresh]</code> method attributes, which purge the URI they name after the method runs (<code class="language-plaintext highlighter-rouge">#[Refresh]</code> then fetches it again), work the same way. A page that embeds such a variant (<code class="language-plaintext highlighter-rouge">app://self/articles?page=2</code>) as a cached dependency (see <a href="#tag-based-cache-invalidation">Tag-based Cache Invalidation</a>) carries its group tag as well and is dropped with it.</p>
+
+<p>A write method of a <code class="language-plaintext highlighter-rouge">#[Cacheable]</code> or <code class="language-plaintext highlighter-rouge">#[CacheableResponse]</code> resource, and a method marked <code class="language-plaintext highlighter-rouge">#[RefreshCache]</code>, purges its own URI with the default-valued parameters removed, so a write to <code class="language-plaintext highlighter-rouge">app://self/articles</code> drops every page of the list. A write method of a <code class="language-plaintext highlighter-rouge">#[DonutCache]</code> resource automatically purges its own URI only when it is marked <code class="language-plaintext highlighter-rouge">#[RefreshCache]</code>.</p>
+
+<p>A required parameter stays in the group tag under the key the request used. For <code class="language-plaintext highlighter-rouge">onGet(int $userId, int $page = 1)</code>, an entry requested as <code class="language-plaintext highlighter-rouge">?user_id=1&amp;page=2</code> is dropped by a purge of <code class="language-plaintext highlighter-rouge">?user_id=1</code>, not by one of <code class="language-plaintext highlighter-rouge">?userId=1</code>. The automatic purge after a write purges both the parameter name (<code class="language-plaintext highlighter-rouge">?userId=1</code>) and its snake_case form (<code class="language-plaintext highlighter-rouge">?user_id=1</code>), so it reaches the entry whichever spelling the GET used; a GET that mixes the two across its required keys (<code class="language-plaintext highlighter-rouge">?userId=1&amp;post_id=2</code>) is not reached. This needs bear/query-repository 1.20.1 or later.</p>
+
+<h3 id="invalidate-by-tag">Invalidate by tag</h3>
+
+<div class="language-php highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$this</span><span class="o">-&gt;</span><span class="n">repository</span><span class="o">-&gt;</span><span class="nf">invalidateTags</span><span class="p">([</span><span class="s1">'template_a'</span><span class="p">,</span> <span class="s1">'campaign_b'</span><span class="p">]);</span>
+</code></pre></div></div>
+<h3 id="tag-invalidation-in-cdn">Tag Invalidation in CDN</h3>
+
+<p>In order to enable tag-based cache invalidation in CDN, you need to implement and bind <code class="language-plaintext highlighter-rouge">PurgerInterface</code>.</p>
+
+<div class="language-php highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">use</span> <span class="nc">BEAR\QueryRepository\PurgerInterface</span><span class="p">;</span>
+
+<span class="kd">interface</span> <span class="nc">PurgerInterface</span>
+<span class="p">{</span>
+    <span class="k">public</span> <span class="k">function</span> <span class="n">__invoke</span><span class="p">(</span><span class="kt">string</span> <span class="nv">$tag</span><span class="p">):</span> <span class="kt">void</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="specify-dependent-tags">Specify dependent tags</h3>
+
+<p>Use the <code class="language-plaintext highlighter-rouge">SURROGATE_KEY</code> header to specify the key for PURGE. Use a space as a separator for multiple strings.</p>
+
+<div class="language-php highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">use</span> <span class="nc">BEAR\QueryRepository\Header</span><span class="p">;</span>
+
+<span class="kd">class</span> <span class="nc">Foo</span>
+<span class="p">{</span>
+    <span class="k">public</span> <span class="nv">$headers</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="nc">Header</span><span class="o">::</span><span class="no">SURROGATE_KEY</span> <span class="o">=&gt;</span> <span class="s1">'template_a campaign_b'</span>
+    <span class="p">];</span>
+</code></pre></div></div>
+
+<p>If the cache is invalidated by <code class="language-plaintext highlighter-rouge">template_a</code> or <code class="language-plaintext highlighter-rouge">campaign_b</code> tags, Foo’s cache and Foo’s ETag will be invalidated both server-side and CDN.</p>
+
+<h3 id="resource-dependencies">Resource Dependencies</h3>
+
+<p>Use <code class="language-plaintext highlighter-rouge">UriTagInterface</code> to convert a URI into a dependency tag string.</p>
+
+<div class="language-php highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">public</span> <span class="k">function</span> <span class="n">__construct</span><span class="p">(</span><span class="k">private</span> <span class="kt">UriTagInterface</span> <span class="nv">$uriTag</span><span class="p">)</span>
+<span class="p">{}</span>
+</code></pre></div></div>
+<div class="language-php highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$this</span><span class="o">-&gt;</span><span class="n">headers</span><span class="p">[</span><span class="nc">Header</span><span class="o">::</span><span class="no">SURROGATE_KEY</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="nv">$this</span><span class="o">-&gt;</span><span class="n">uriTag</span><span class="p">)(</span><span class="k">new</span> <span class="nc">Uri</span><span class="p">(</span><span class="s1">'app://self/foo'</span><span class="p">));</span>
+</code></pre></div></div>
+
+<p>This cache will be invalidated both server-side and CDN when <code class="language-plaintext highlighter-rouge">app://self/foo</code> is modified.</p>
+
+<h3 id="make-an-associative-array-a-resource-dependency">Make an associative array a resource dependency</h3>
+
+<div class="language-php highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// body contents</span>
+<span class="p">[</span>
+    <span class="p">[</span><span class="s1">'id'</span> <span class="o">=&gt;</span> <span class="s1">'1'</span><span class="p">,</span> <span class="s1">'name'</span> <span class="o">=&gt;</span> <span class="s1">'a'</span><span class="p">],</span>
+    <span class="p">[</span><span class="s1">'id'</span> <span class="o">=&gt;</span> <span class="s1">'2'</span><span class="p">,</span> <span class="s1">'name'</span> <span class="o">=&gt;</span> <span class="s1">'b'</span><span class="p">],</span>
+<span class="p">]</span>
+</code></pre></div></div>
+<p>If you want to generate a list of dependent URI tags from a <code class="language-plaintext highlighter-rouge">body</code> associative array like the above, you can specify the URI template with the <code class="language-plaintext highlighter-rouge">fromAssoc()</code> method.</p>
+
+<div class="language-php highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$this</span><span class="o">-&gt;</span><span class="n">headers</span><span class="p">[</span><span class="nc">Header</span><span class="o">::</span><span class="no">SURROGATE_KEY</span><span class="p">]</span> <span class="o">=</span> <span class="nv">$this</span><span class="o">-&gt;</span><span class="n">uriTag</span><span class="o">-&gt;</span><span class="nf">fromAssoc</span><span class="p">(</span>
+    <span class="n">uriTemplate</span><span class="o">:</span> <span class="s1">'app://self/item{?id}'</span><span class="p">,</span>
+    <span class="n">assoc</span><span class="o">:</span> <span class="nv">$this</span><span class="o">-&gt;</span><span class="n">body</span>
+<span class="p">);</span>
+</code></pre></div></div>
+
+<p>In the above case, this cache will be invalidated for both server-side and CDN when <code class="language-plaintext highlighter-rouge">app://self/item?id=1</code> and <code class="language-plaintext highlighter-rouge">app://self/item?id=2</code> are changed.</p>
+
+<h2 id="configuration">Configuration</h2>
+
+<h3 id="redis-marshaller">Redis Marshaller</h3>
+
+<p>The Redis cache adapter allows you to configure data compression and serialization methods.</p>
+
+<p>A marshaller handles the serialization of PHP objects and arrays when storing them in Redis, and deserialization when retrieving them.</p>
+
+<div class="language-php highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">use</span> <span class="nc">BEAR\QueryRepository\StorageRedisDsnModule</span><span class="p">;</span>
+
+<span class="nv">$this</span><span class="o">-&gt;</span><span class="nf">install</span><span class="p">(</span>
+    <span class="k">new</span> <span class="nc">StorageRedisDsnModule</span><span class="p">(</span>
+        <span class="n">dsn</span><span class="o">:</span> <span class="s1">'redis://localhost:6379'</span><span class="p">,</span>
+        <span class="n">marshallingOptions</span><span class="o">:</span> <span class="p">[</span>
+            <span class="s1">'enabled'</span> <span class="o">=&gt;</span> <span class="kc">true</span><span class="p">,</span>
+            <span class="s1">'type'</span> <span class="o">=&gt;</span> <span class="s1">'deflate'</span><span class="p">,</span>      <span class="c1">// 'default' or 'deflate'</span>
+            <span class="s1">'use_igbinary'</span> <span class="o">=&gt;</span> <span class="kc">true</span>    <span class="c1">// requires ext-igbinary</span>
+        <span class="p">]</span>
+    <span class="p">)</span>
+<span class="p">);</span>
+</code></pre></div></div>
+
+<p><strong>Marshaller types:</strong></p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">default</code>: Uses PHP’s standard serialization (enabling <code class="language-plaintext highlighter-rouge">use_igbinary</code> uses a more efficient binary format)</li>
+  <li><code class="language-plaintext highlighter-rouge">deflate</code>: Compresses data before storing (uses zlib)</li>
+</ul>
+
+<p>Use <code class="language-plaintext highlighter-rouge">deflate</code> if you want to reduce Redis memory usage. This is a trade-off with CPU usage.</p>
+
+<p>For the <code class="language-plaintext highlighter-rouge">dsn</code> format (authentication, TLS, Sentinel, Cluster, etc.) and connection options, see <a href="redis-dsn.html">Redis DSN</a>.</p>
+
+<h2 id="cdn-specific-modules">CDN-specific Modules</h2>
+
+<p>If you install a module that supports a specific CDN, vendor-specific headers will be output.</p>
+
+<div class="language-php highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$this</span><span class="o">-&gt;</span><span class="nf">install</span><span class="p">(</span><span class="k">new</span> <span class="nc">FastlyModule</span><span class="p">());</span>
+<span class="nv">$this</span><span class="o">-&gt;</span><span class="nf">install</span><span class="p">(</span><span class="k">new</span> <span class="nc">AkamaiModule</span><span class="p">());</span>
+</code></pre></div></div>
+
+<h2 id="multi-cdn">Multi-CDN</h2>
+
+<p>You can also configure a multi-tier CDN and set the TTL according to the role. For example, in this diagram, a multi-functional CDN is placed upstream, and a conventional CDN is placed downstream. Content invalidation is done for the upstream CDN, and the downstream CDN uses it.</p>
+
+<p><img width="344" alt="multi cdn diagram" src="https://user-images.githubusercontent.com/529021/137098809-ec949a15-8efb-4d03-9808-3be15523ade7.png" /></p>
+
+<h1 id="response-headers">Response headers</h1>
+
+<p>BEAR.Sunday handles CDN cache control automatically and outputs the CDN headers. Client cache control is described in <code class="language-plaintext highlighter-rouge">$headers</code> of the ResourceObject depending on the content.</p>
+
+<p>This section is important for security and maintenance purposes.
+Make sure to specify the <code class="language-plaintext highlighter-rouge">Cache-Control</code> in all ResourceObjects.</p>
+
+<h3 id="do-not-cache">Do not cache</h3>
+
+<p>Always specify content that cannot be cached.</p>
+
+<div class="language-php highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nc">ResponseHeader</span><span class="o">::</span><span class="no">CACHE_CONTROL</span> <span class="o">=&gt;</span> <span class="nc">CacheControl</span><span class="o">::</span><span class="no">NO_STORE</span>
+</code></pre></div></div>
+
+<p>If a <code class="language-plaintext highlighter-rouge">#[Cacheable]</code>/<code class="language-plaintext highlighter-rouge">#[CacheableResponse]</code>/<code class="language-plaintext highlighter-rouge">#[DonutCache]</code> response sets its own <code class="language-plaintext highlighter-rouge">Cache-Control</code> to <code class="language-plaintext highlighter-rouge">private</code> or <code class="language-plaintext highlighter-rouge">no-store</code> - including a <code class="language-plaintext highlighter-rouge">$headers</code> property default such as <code class="language-plaintext highlighter-rouge">CacheControl::NO_STORE</code> - that response is not stored server-side. Its own header is kept, and the CDN-facing headers are removed. No <code class="language-plaintext highlighter-rouge">max-age</code> is appended to a <code class="language-plaintext highlighter-rouge">no-store</code> response.</p>
+
+<p>To keep the server-side cache while telling the client <code class="language-plaintext highlighter-rouge">no-store</code>, add <code class="language-plaintext highlighter-rouge">#[HttpCache(noStore: true)]</code>:</p>
+
+<div class="language-php highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">use</span> <span class="nc">BEAR\RepositoryModule\Annotation\Cacheable</span><span class="p">;</span>
+<span class="kn">use</span> <span class="nc">BEAR\RepositoryModule\Annotation\HttpCache</span><span class="p">;</span>
+
+<span class="na">#[Cacheable]</span>
+<span class="na">#[HttpCache(noStore: true)]</span>
+<span class="kd">class</span> <span class="nc">News</span> <span class="kd">extends</span> <span class="nc">ResourceObject</span>
+<span class="p">{</span>
+    <span class="c1">// ...</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="conditional-requests-1">Conditional requests</h3>
+
+<p>Check the server for content changes before using the cache. Server-side content changes will be detected and reflected.</p>
+
+<div class="language-php highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nc">ResponseHeader</span><span class="o">::</span><span class="no">CACHE_CONTROL</span> <span class="o">=&gt;</span> <span class="nc">CacheControl</span><span class="o">::</span><span class="no">NO_CACHE</span>
+</code></pre></div></div>
+
+<h3 id="specify-client-cache-time">Specify client cache time</h3>
+
+<p>The client is cached on the client. This is the most efficient cache, but server-side content changes will not be reflected at the specified time.</p>
+
+<p>Also, this cache is not used when the browser reloads. The cache is used when a transition is made with the <code class="language-plaintext highlighter-rouge">&lt;a&gt;</code> tag or when a URL is entered.</p>
+
+<div class="language-php highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nc">ResponseHeader</span><span class="o">::</span><span class="no">CACHE_CONTROL</span> <span class="o">=&gt;</span> <span class="s1">'max-age=60'</span>
+</code></pre></div></div>
+
+<p>If response time is important to you, consider specifying SWR.</p>
+
+<div class="language-php highlighter-rouge"><div class="highlight"><pre class="highlight"><code><spa{% endverbatim %}<comment>{{ comment }}</comment>

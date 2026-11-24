@@ -291,3 +291,22 @@ fake app の page を、pool を `RedisTagAwareAdapter`（Redis）にした場�
 
 - origin には何も保存されず、毎回描画する。それでも `Surrogate-Key`（穴の tag を含む）と CDN の寿命は付き、書き込みの purge は CDN に届く。CDN の寿命は宣言に書かず、CDN の module の既定で決まる（Fastly は 1 年で、purge まで持つ）。
 - pool は 1 つなので、`#[Cacheable]` の値も保存されない。page だけを CDN に任せ、値は Redis に置くには、pool を分ける束縛が要る（今はない）。
+
+<a id="s16"></a>
+
+## 16. BQR が page 1 つのために置くもの（`probe/page-size.php`）
+
+5〜6 節の量は、page 1 つを 50KB の塊 1 つとして保存した値だった。BQR が実際に置くものを、`StorageRedisDsnModule` で測った。page は約 50KB の実在の HTML（`probe/sample.html`）に、`#[Cacheable]` の穴（comment）を 1 つ持つ（`ProbeLargePage`、`ProbeLargeDonut`）。量は鍵ごとの `MEMORY USAGE … SAMPLES 0`。
+
+| | `#[CacheableResponse]` default | `#[CacheableResponse]` deflate | `#[DonutCache]` default | `#[DonutCache]` deflate |
+|---|---|---|---|---|
+| テンプレート（`donut-`） | 65,591 | 12,343 | 65,591 | 12,343 |
+| 組み上がった view（`ro-`、TTL 100 日） | 65,588 | 12,340 | なし | なし |
+| 穴の値（`ro-`、TTL 1 年） | 820 | 500 | 820 | 500 |
+| tag のメモ（5 本） | 529 | 529 | 396 | 396 |
+| 合計（バイト） | 132,528 | 25,712 | 66,807 | 13,239 |
+| 2 回目（hit）の応答ヘッダー | `Surrogate-Key`、`CDN-Cache-Control`、`ETag`、`Last-Modified`、`Age` | 同じ | `Surrogate-Key` だけ | 同じ |
+
+- `#[CacheableResponse]` の page は、テンプレートと組み上がった view の 2 つを持つので、page の HTML のほぼ 2 倍を置く。deflate で約 25KB / page。5〜6 節の「約 13〜15KB / page」は、この page では約半分に見積もっていたことになる。
+- `#[DonutCache]` は view を置かず、テンプレートと穴から毎回組む（12 節で hit 1 回 3 往復）。量は半分。ただし応答に CDN の寿命と `ETag` を付けない（人ごとに違う穴を持つ page のための作り）。
+- 穴の値と tag のメモは、穴を共有するほかの page と分け合うので、page の数に比例するのは主にテンプレートと view。
