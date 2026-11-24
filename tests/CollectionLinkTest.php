@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
+use FakeVendor\HelloWorld\Resource\App\Collection\Comment;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
@@ -13,14 +14,15 @@ use Ray\Di\Injector;
 /** A write to a row purges the collection its onGet() links with #[Link(rel: 'collection')] */
 class CollectionLinkTest extends TestCase
 {
+    private Injector $injector;
     private ResourceInterface $resource;
     private QueryRepositoryInterface $repository;
 
     protected function setUp(): void
     {
-        $injector = new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld'), __DIR__ . '/tmp');
-        $this->resource = $injector->getInstance(ResourceInterface::class);
-        $this->repository = $injector->getInstance(QueryRepositoryInterface::class);
+        $this->injector = new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld'), __DIR__ . '/tmp');
+        $this->resource = $this->injector->getInstance(ResourceInterface::class);
+        $this->repository = $this->injector->getInstance(QueryRepositoryInterface::class);
         $this->repository->purge(new Uri('app://self/collection/posts'));
         $this->repository->purge(new Uri('app://self/collection/author-posts?author_id=7'));
         $this->repository->purge(new Uri('app://self/collection/author-posts?author_id=8'));
@@ -73,6 +75,18 @@ class CollectionLinkTest extends TestCase
 
         $this->assertSame(200, $ro->code);
         $this->assertNull($this->repository->get(new Uri($posts)));
+    }
+
+    /** A row taken from the injector has no URI to resolve a path-only href against */
+    public function testPathOnlyHrefOfARowWithoutUriPurgesNothing(): void
+    {
+        $posts = 'app://self/collection/posts';
+        $this->resource->get($posts);
+
+        $comment = $this->injector->getInstance(Comment::class);
+        $comment->onPut(1);
+
+        $this->assertNotNull($this->repository->get(new Uri($posts)));
     }
 
     /** A write that moves a row to another list purges the old list with the value its body carries */
