@@ -16,30 +16,30 @@ BEAR.QueryRepository（BQR）のキャッシュを、どこに、どう置くの
 
 ## 結論の要点
 
-- 量は「page の数 × 約 13KB」（deflate、tag 100 本）。deflate なしでは約 64KB。`StorageRedisDsnModule` の `marshallingOptions: ['enabled' => true, 'type' => 'deflate']` で本体が約 1/5 になる（5・6 節）
-- 溜まり続ける主な原因は、namespace を替えた後に残る古い namespace。`RedisTagAwareAdapter` の tag の SET は TTL がなく、volatile-* では追い出されない。古い namespace に `clear()` を当てれば消える。消すのは、古い版のサーバーがいなくなった後（6・9 節）
-- 同じ namespace の中でも、tag が新しい行へ移る page（新着の一覧など）では、tag の SET が「これまでに載った行の数」だけ増える（10 節）
-- cluster は容量の面でも速さの面でも要らない。保存は 1 回 102 往復になり、単体の約 1/14 の回数しか出ない（7・8 節）
-- `AdapterInterface #[ResourceObjectPool]` を `PdoAdapter` に束縛するだけで、DB だけで動く。新しい型は要らない。読みの往復は倍になるが、手元の差は 1 リクエスト 0.03〜0.07ms（12・13 節）
-- origin に保存しない page に `Surrogate-Key` を付ける試作は効いた（4 節）。実装はまだしていない
+- 量は「page の数 × 約 13KB」（deflate、tag 100 本）。deflate なしでは約 64KB。`StorageRedisDsnModule` の `marshallingOptions: ['enabled' => true, 'type' => 'deflate']` で本体が約 1/5 になる（[5](results.md#s5)・[6](results.md#s6)）
+- 溜まり続ける主な原因は、namespace を替えた後に残る古い namespace。`RedisTagAwareAdapter` の tag の SET は TTL がなく、volatile-* では追い出されない。古い namespace に `clear()` を当てれば消える。消すのは、古い版のサーバーがいなくなった後（[6](results.md#s6)・[9](results.md#s9)）
+- 同じ namespace の中でも、tag が新しい行へ移る page（新着の一覧など）では、tag の SET が「これまでに載った行の数」だけ増える（[10](results.md#s10)）
+- cluster は容量の面では要らない。性能の面で効くのは、単体の Redis の CPU か処理の回数が頭打ちのときだけ。読みは速くならず（どちらも 1 往復）、保存は 1 回 102 往復になる（単体は 2 往復）（[7](results.md#s7)・[8](results.md#s8)）
+- `AdapterInterface #[ResourceObjectPool]` を `PdoAdapter` に束縛するだけで、DB だけで動く。新しい型は要らない。読みの往復は倍になるが、手元の差は 1 リクエスト 0.03〜0.07ms（[12](results.md#s12)・[13](results.md#s13)）
+- origin に保存しない page に `Surrogate-Key` を付ける試作は効いた（[4](results.md#s4)）。実装はまだしていない
 
 ## スクリプトと節の対応
 
 | スクリプト | 節 | 使うもの |
 |---|---|---|
-| `adapters.php` | 1 | Redis 6379 |
-| `headers.php`、`children.php` | 2 | なし（テスト用の `ModuleFactory` が束縛する `ArrayAdapter`。プロセスの中だけ） |
-| `pool-error.php` | 3 | Redis 6379。maxmemory-policy を allkeys-lru と volatile-lru に替えて 2 回流した（替えるのはスクリプトの外で `redis-cli config set`） |
-| `cdn-only.php` | 4 | なし（`ArrayAdapter`）。先に試作の差分を当てる（下） |
-| `pdo.php`、`redis-deflate.php`、`redis-module.php` | 5 | MySQL 3407 か SQLite、Redis 6379 |
-| `redis-breakdown.php` | 6 | Redis 6379 |
-| `cluster.php`、`roundtrips.php` | 7 | Redis 6379 と cluster 7001〜7003 |
-| `throughput.php` | 8 | Redis 6379 と cluster 7001〜7003 |
-| `clear-impact.php` | 9 | Redis 6379 |
-| `tag-drift.php` | 10 | Redis 6379 |
-| `clear-namespace.php` | 11 | Redis 6379 と cluster 7001〜7003 |
-| `bqr-pdo.php` | 12 | Redis 6379 と MySQL 3407 |
-| `pdo-library.php` | 13 | SQLite（自分で作って消すファイル） |
+| `adapters.php` | [1](results.md#s1) | Redis 6379 |
+| `headers.php`、`children.php` | [2](results.md#s2) | なし（テスト用の `ModuleFactory` が束縛する `ArrayAdapter`。プロセスの中だけ） |
+| `pool-error.php` | [3](results.md#s3) | Redis 6379。maxmemory-policy を allkeys-lru と volatile-lru に替えて 2 回流した（替えるのはスクリプトの外で `redis-cli config set`） |
+| `cdn-only.php` | [4](results.md#s4) | なし（`ArrayAdapter`）。先に試作の差分を当てる（下） |
+| `pdo.php`、`redis-deflate.php`、`redis-module.php` | [5](results.md#s5) | MySQL 3407 か SQLite、Redis 6379 |
+| `redis-breakdown.php` | [6](results.md#s6) | Redis 6379 |
+| `cluster.php`、`roundtrips.php` | [7](results.md#s7) | Redis 6379 と cluster 7001〜7003 |
+| `throughput.php` | [8](results.md#s8) | Redis 6379 と cluster 7001〜7003 |
+| `clear-impact.php` | [9](results.md#s9) | Redis 6379 |
+| `tag-drift.php` | [10](results.md#s10) | Redis 6379 |
+| `clear-namespace.php` | [11](results.md#s11) | Redis 6379 と cluster 7001〜7003 |
+| `bqr-pdo.php` | [12](results.md#s12) | Redis 6379 と MySQL 3407 |
+| `pdo-library.php` | [13](results.md#s13) | SQLite（自分で作って消すファイル） |
 
 引数を取るスクリプトは、頭のコメントに usage がある。
 

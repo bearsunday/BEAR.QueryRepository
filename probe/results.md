@@ -8,6 +8,8 @@
 
 条件: 1000 page、1 page に tag 100 本（共有 200 本から 20 本、行 5000 本から 80 本）、本文 50KB。スクリプトは `probe/adapters.php <rta|ta> <scenario>`。
 
+<a id="s1"></a>
+
 ## 1. RedisTagAwareAdapter (rta) と TagAwareAdapter + RedisAdapter (ta)
 
 | 項目 | rta | ta |
@@ -23,6 +25,8 @@
 - ta では tag の版のキーも TTL なし。volatile-* では追い出されず、rta と同じく溜まる。溜まらないのは allkeys-* のときだけ。
 - allkeys-lru では小さな tag の版のキーが追い出され、その tag を持つ page がまとめて miss になる。古い内容を返したことはない（stale 0）。
 
+<a id="s2"></a>
+
 ## 2. CDN 向けのヘッダー
 
 `#[Embed]` を 2 本持つ page の応答（`tests/Fake/.../Page/Html/Probe*.php`、`probe/headers.php`）。
@@ -36,6 +40,8 @@
 - 2 行目の `CDN-Cache-Control: max-age=10` は、`DonutCacheableResponseInterceptor::put()` が `putStatic($ro, null, null)` と sMaxAge に null を渡し、`CdnCacheControlHeaderSetter` が `$sMaxAge ??= 10` で補ったもの。`#[HttpCache(sMaxAge)]` は `Cache-Control` にしか入らない。CDN の寿命の入口は `putStatic()` の sMaxAge だけで、既定 10 秒は manual の「Default TTL value」のとおり。宣言した s-maxage と食い違う場合の扱いは、manual にも llms-full.txt にも書かれていない。
 - 2 行目の `Surrogate-Key` に子の tag が入らないのは、置いた子が依存の条件を満たさないため。`probe/children.php` のログでは、2 本とも `dependency_skipped`（`no_body`）だった。`app://self/code` は 203 で本文がない。`app://self/no-http-cache-control` も本文がない。本文を持つ子を onGet で読む既存の page（`cacheable-response-with-material`）では、子の tag（`_html_mutable-comment_ grp-… mutable-comment`）が入る。
 
+<a id="s3"></a>
+
 ## 3. allkeys-* での保存の失敗はログに出るか（`probe/pool-error.php`）
 
 `StorageRedisDsnModule('redis://127.0.0.1:6379')` で `app://self/user?id=1` を 2 回 GET した。
@@ -48,6 +54,8 @@
 - `PoolErrorLogger` は `StorageRedisDsnModule` が `setLogger()` で渡しており、失敗を記録する。`ProdQueryRepositoryLogModule` の `KeepMutationsAndFailures` は `saved: false` を含むセッションを残す。
 - 黙って失うのは、log module を入れない既定（`NullSemanticLogger`）と、adapter を自分で束縛して `setLogger()` を渡さない場合。
 - Redis の maxmemory-policy の条件（`noeviction` か `volatile-*`）は、llms-full.txt にも `StorageRedisDsnModule` にも書かれていない。
+
+<a id="s4"></a>
 
 ## 4. origin に保存しない page の Surrogate-Key（試作、`probe/cdn-only.php`）
 
@@ -73,6 +81,8 @@ CDN-Cache-Control: max-age=600, stale-while-revalidate=10
 - 書き込み `PATCH app://self/user?id=1`（200）で、purger に `_user_id=1 grp-_user_id=1` が渡った。CommandInterceptor から CDN の purge までは、origin に保存していなくても動く。
 - キャッシュの属性のない子（`probe-plain-child`）も、本文があれば tag が入る（`Dependencies::tag()` の条件どおり）。この repo の `docs/llms-full.txt`（「Cache Dependencies」と `dependency_skipped` の行）も同じことを書いている。食い違うのは bearsunday.github.io の英語の manual（ https://github.com/bearsunday/bearsunday.github.io/blob/master/manuals/1.0/en/cache.md 「Tag-based Cache Invalidation」）で、"This dependency is registered only when the resource embedded with `#[Embed]` is itself made cacheable, for example with `#[Cacheable]`, or declares `#[DependsOn]` (see below). A resource with neither, read in `onGet()`, is not a dependency" と書いている（11/24 に raw を読んで確かめた。日本語版は読んでいない）。
 
+<a id="s5"></a>
+
 ## 5. PdoAdapter に page を置く（`probe/pdo.php`、`probe/redis-deflate.php`）
 
 条件は 1 節と同じ（1000 page、tag 100 本）。本文だけ、実在の HTML（ https://bearsunday.github.io/manuals/1.0/en/cache.html 、`probe/sample.html`）を 50KB に切ったものにした。MySQL 26.10 は手元に別に立てた（port 3407、binlog なし、測定後に datadir ごと消した）。どれも同じ機械の上で、ネットワークの往復を含まない。
@@ -94,6 +104,8 @@ CDN-Cache-Control: max-age=600, stale-while-revalidate=10
 - BQR の pool は 1 つ（`ResourceStorage::$roPool`）。PdoAdapter に束縛すると、`#[Cacheable]` の値も page も DB に入る。
 - BQR の保存のログ（`save_value` など）が持つのは `uri`・`tags`・`requestedTtl`・`saved`。ETag（内容のハッシュ）は持たない。
 
+<a id="s6"></a>
+
 ## 6. default と deflate、本体と tag の内訳（`probe/redis-breakdown.php`）
 
 `RedisTagAwareAdapter` を `StorageRedisDsnModule` と同じ引数（marshaller は `MarshallerProvider` から）で組んだ。1000 page、tag 100 本、本文は 5 節と同じ HTML。量は鍵ごとの `MEMORY USAGE … SAMPLES 0` の合計。
@@ -107,6 +119,8 @@ CDN-Cache-Control: max-age=600, stale-while-revalidate=10
 - namespace を ns1 → ns2 に替えると、ns1 の本体と tag がそのまま残り、量が倍になる（default 130.2MB、deflate 28.7MB）。volatile-* で追い出せるのは TTL のある本体だけで、tag の SET は残り続ける。
 - `(new RedisTagAwareAdapter($redis, 'ns1', …))->clear()` で、ns1 の本体も tag も 0 本になり、ns2 は残った（used_memory 65.7MB / 15.0MB に戻る）。`clear()` は `ns1:*` を SCAN して消す（`RedisTrait::doClear()`）。namespace が空文字だと `flushDb()` になる（同 621 行）。
 - 1 節の「5,200 本、約 2.1MB」は used_memory の差で測った値。ここでは鍵ごとの MEMORY USAGE の合計で 1.7MB。
+
+<a id="s7"></a>
 
 ## 7. 単体の Redis と 3 台の cluster（`probe/cluster.php`）
 
@@ -134,6 +148,8 @@ CDN-Cache-Control: max-age=600, stale-while-revalidate=10
 - cluster の保存では、page 1 つの 102 コマンドがそれぞれ別の往復になった。`RedisTrait::pipeline()` は `RedisCluster` のとき、コマンドを 1 つずつ送る分岐に入る（745〜752 行）。
 - 表の「injector から毎回取る」読みには、毎回の接続の確立が入っている。injector から取るたびに、単体では SELECT、cluster では CLUSTER SLOTS が 1 回ずつ増えた。`StorageRedisDsnModule` の `redis` と pool の束縛には scope がない。接続を使い回すと、読みは単体と cluster でほぼ同じになる（0.23ms と 0.17ms）。
 
+<a id="s8"></a>
+
 ## 8. 同時に打ったときの全体の回数（`probe/throughput.php`）
 
 N 個のプロセスを fork し、3 秒間、ランダムな page の読み（または保存）を続けた。各プロセスは接続を 1 本作って使い回す。page は 1000 件で deflate、tag は 100 本。機械は論理 CPU 14 個で、PHP のプロセスと Redis が同じ CPU を取り合う。
@@ -150,6 +166,8 @@ N 個のプロセスを fork し、3 秒間、ランダムな page の読み（�
 - `INFO cpu` の差で見た単体の読みの CPU は、4 workers から 99〜100% だった。それなのに回数は 41,283/秒まで伸び続けた。この理由は確かめていない。
 - 手元の 3 台は同じ CPU 14 個を分け合っていて、ネットワークの往復もない。台数が増えて CPU が増える、という cluster の利点はここでは効かない。この節で分かるのは、この並列度では単体が頭打ちにならず、分散で速くなる条件がまだ来ていない、ということまで。本番で単体が頭打ちになるかは、本番の `INFO stats` の `instantaneous_ops_per_sec` と `INFO cpu` で見る。
 - 一方、保存 1 回の往復の数（単体 2、cluster 102。7 節）は機械によらない。本番では 1 往復の時間を掛けた分だけ差が開く。たとえば 1 往復 0.5ms なら、単体 約 1ms、cluster 約 51ms（計算。測っていない）。
+
+<a id="s9"></a>
 
 ## 9. 大きな古い namespace に clear() を当てる（`probe/clear-impact.php`）
 
@@ -168,6 +186,8 @@ N 個のプロセスを fork し、3 秒間、ランダムな page の読み（�
 - `clear()` は 1,000 鍵ずつ SCAN し、UNLINK（phpredis では `unlink`、`RedisTrait.php` 677 行）で消す。メモリは UNLINK の後で非同期に返る。
 - ネットワーク越しの本番では、SCAN と UNLINK のたびに往復が入るので、もっと時間がかかるはず（推測。測っていない）。
 
+<a id="s10"></a>
+
 ## 10. 1 つの namespace の中でも tag の SET は溜まるか（`probe/tag-drift.php`）
 
 一覧 page 100 件。各 page は共有 tag `list` と、新しい 1000 行の中からランダムな 50 行の tag を持つ。1 回ごとに 200 行が増え、全 page を保存し直す。古い行への書き込みはない。`RedisTagAwareAdapter`、deflate、namespace は 1 つのまま。保存し直す前に `list` を無効化する場合（invalidate。一覧への書き込みの後の miss からの保存）と、無効化せず生きている項目に上書きする場合（overwrite。hit からの保存）を比べた。
@@ -185,6 +205,8 @@ N 個のプロセスを fork し、3 秒間、ランダムな page の読み（�
 - それまで「同じ namespace の中では URI の数で上限がある」と見ていたが、成り立つのは page の tag が変わらないときだけだった。
 - 生きている namespace の中でこの分を減らせるのは、その行への書き込み（tag の無効化）か、namespace 全体を消すことだけ。デプロイで namespace を替えた後に古い namespace へ `clear()` を当てれば、この分も含めて消える（6 節・9 節）。
 
+<a id="s11"></a>
+
 ## 11. DSN は 1 台、redis_cluster は options で渡す形で deflate と clear()（`probe/clear-namespace.php`）
 
 `StorageRedisDsnModule($dsn, ['redis_cluster' => 0 か 1], marshallingOptions: deflate)` の形。DSN は `redis://127.0.0.1:6379`（単体）か `redis://127.0.0.1:7001`（cluster）。fake app の `CacheNamespace` は空文字なので、clear() を確かめる namespace はスクリプトで明示した（`oldns`、`curns`）。
@@ -198,6 +220,8 @@ N 個のプロセスを fork し、3 秒間、ランダムな page の読み（�
 
 - 鍵の数は、単体では 6379、cluster では 7001・7002・7003 をそれぞれ SCAN して、namespace ごとに足した合計。ノードごとの内訳は出していない。
 - namespace が空文字のまま clear() を当てると `flushDb()` になる（6 節）。最初に fake app の空文字の namespace で試した版は、そのために検証にならなかったので捨てた。
+
+<a id="s12"></a>
 
 ## 12. BQR の page を、pool を MySQL だけにして GET する（`probe/bqr-pdo.php`）
 
@@ -216,6 +240,8 @@ fake app の page を、pool を `RedisTagAwareAdapter`（Redis）にした場�
 - 本番では、1 往復あたりのネットワークの時間 × 増えた往復の数だけ遅くなる（計算。測っていない）。
 - 「接続して 1 往復」は、1 つのプロセスの中で、接続を張って 1 往復して閉じることを繰り返した値。本番の PHP-FPM で 1 リクエストごとに新しく接続する費用（ネットワークの往復、TLS、認証）と同じとは限らない。
 - 最初の版では、html のテンプレートのない app resource を `(string)` で描画して例外が出ていた。page だけ描画するように直して測り直した。
+
+<a id="s13"></a>
 
 ## 13. BQR の既存の束縛だけで DB を pool にする（`probe/pdo-library.php`、SQLite）
 
