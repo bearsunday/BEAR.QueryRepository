@@ -77,8 +77,8 @@ class CollectionLinkTest extends TestCase
         $this->assertNull($this->repository->get(new Uri($posts)));
     }
 
-    /** A row taken from the injector has no URI to resolve a path-only href against */
-    public function testPathOnlyHrefOfARowWithoutUriPurgesNothing(): void
+    /** A row taken from the injector has no URI, and its path-only href still purges the list */
+    public function testPathOnlyHrefOfARowWithoutUriPurgesTheList(): void
     {
         $posts = 'app://self/collection/posts';
         $this->resource->get($posts);
@@ -86,7 +86,7 @@ class CollectionLinkTest extends TestCase
         $comment = $this->injector->getInstance(Comment::class);
         $comment->onPut(1);
 
-        $this->assertNotNull($this->repository->get(new Uri($posts)));
+        $this->assertNull($this->repository->get(new Uri($posts)));
     }
 
     /** A write that moves a row to another list purges the old list with the value its body carries */

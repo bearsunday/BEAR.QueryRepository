@@ -27,6 +27,7 @@ use function uri_template;
 final readonly class RefreshAnnotatedCommand
 {
     private const COLLECTION = 'collection';
+    private const ORIGIN_WITHOUT_URI = 'app://self';
 
     public function __construct(
         private ResourceInterface $resource,
@@ -124,18 +125,20 @@ final readonly class RefreshAnnotatedCommand
         return array_values(array_unique($uris));
     }
 
-    /** A path-only href, as HAL writes it, is a resource path; the scheme and host are the write's */
+    /**
+     * A path-only href, as HAL writes it, is a resource path under the write's scheme and host
+     *
+     * The purge tag holds no scheme or host, so a resource without a URI, taken from the injector, uses app://self.
+     */
     private function resolved(string $href, AbstractUri|null $uri): string
     {
-        if ($uri === null) {
-            return $href;
-        }
-
         if (! str_starts_with($href, '/') || str_starts_with($href, '//')) {
             return $href;
         }
 
-        return "{$uri->scheme}://{$uri->host}{$href}";
+        $origin = $uri === null ? self::ORIGIN_WITHOUT_URI : "{$uri->scheme}://{$uri->host}";
+
+        return $origin . $href;
     }
 
     /**
