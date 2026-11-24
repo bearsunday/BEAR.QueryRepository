@@ -117,6 +117,7 @@ CDN-Cache-Control: max-age=600, stale-while-revalidate=10
 
 - deflate で本体は約 1/5.3（−81%）。tag の SET は圧縮されず、どちらも 1.7MB。
 - namespace を ns1 → ns2 に替えると、ns1 の本体と tag がそのまま残り、量が倍になる（default 130.2MB、deflate 28.7MB）。volatile-* で追い出せるのは TTL のある本体だけで、tag の SET は残り続ける。
+- この節では本体に TTL 1 年を付けて保存した。BQR が実際に付ける TTL は、`StorageRedisDsnModule` で fake app の page を GET して確かめた（`probe/ttl.php`）。`#[Cacheable]` の値（`ro-`）は 31,536,000 秒（`expiry: 'never'` の 1 年）。`#[CacheableResponse]` と `#[DonutCache]` の page（`donut-`、view の `ro-`）は TTL を渡さないが、`RedisTagAwareAdapter` が `DEFAULT_CACHE_TTL` の 8,640,000 秒（100 日）を付ける（`RedisTagAwareAdapter.php` 57・106 行）。tag の SET はどれも TTL なし（-1）だった。
 - `(new RedisTagAwareAdapter($redis, 'ns1', …))->clear()` で、ns1 の本体も tag も 0 本になり、ns2 は残った（used_memory 65.7MB / 15.0MB に戻る）。`clear()` は `ns1:*` を SCAN して消す（`RedisTrait::doClear()`）。namespace が空文字だと `flushDb()` になる（同 621 行）。
 - 1 節の「5,200 本、約 2.1MB」は used_memory の差で測った値。ここでは鍵ごとの MEMORY USAGE の合計で 1.7MB。
 
