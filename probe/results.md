@@ -260,3 +260,17 @@ fake app の page を、pool を `RedisTagAwareAdapter`（Redis）にした場�
 
   tag の版の行は、10 節の Redis の SET と同じく「これまでに載った行の数」だけ増えた。違うのは 1 本の中身で、版の値（約 13 バイト）だけを持ち、page の id の一覧を持たない。値の合計は 50 回目で 140KB（Redis の SET は 3.44MB）。行の id や表の索引の分は数えていない。
 - `TagAwareAdapter(new PdoAdapter($pdo, 'drift'))->clear()` で、`drift` の本体 100 行と tag の版 10,798 行が消え、`app` の 4 行と 10 行は残った（`PdoAdapter::doClear()` は `item_id LIKE 'drift%'` で消す）。
+
+<a id="s14"></a>
+
+## 14. 空のキャッシュに同じ page が同時に来たとき（`probe/cold-start.php`）
+
+デプロイで namespace を替えた直後を想定した。`StorageRedisDsnModule` で、空の Redis に `page://self/html/blog-posting`（`#[CacheableResponse]`、穴は `#[Cacheable]` の comment）への GET を同時に打ち、保存のコマンド（`SETEX`）を数えた。2 回流した。
+
+| 同時の GET | SETEX |
+|---|---|
+| 1 本 | 3 回（テンプレート、view、comment の値） |
+| 12 本 | 34 回、36 回 |
+
+- 12 本のほぼすべてが、それぞれ描画して保存した。BQR には、同じ鍵の miss をまとめる仕組み（lock など）も、キャッシュを前もって温める仕組みもない（`src/` に該当するコードがない）。
+- デプロイ直後は、人気の page に同時に来た数だけ描画が重なる。その費用は、page の描画の重さと、保存 1 回の費用（cluster なら 102 往復。7 節）で決まる。
