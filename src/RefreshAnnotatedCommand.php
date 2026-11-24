@@ -20,6 +20,7 @@ use function array_unique;
 use function array_values;
 use function is_array;
 use function method_exists;
+use function str_starts_with;
 use function uri_template;
 
 /** @internal */
@@ -61,7 +62,7 @@ final readonly class RefreshAnnotatedCommand
         $target = $invocation->getThis();
         if ($target instanceof ResourceObject) {
             foreach ($this->collections($target) as $href) {
-                $declared[] = [$this->resourceUris($this->uris($ro, $href, $query)), false];
+                $declared[] = [$this->resourceUris($this->uris($ro, $this->resolved($href, $uri), $query)), false];
             }
         }
 
@@ -120,6 +121,20 @@ final readonly class RefreshAnnotatedCommand
         }
 
         return array_values(array_unique($uris));
+    }
+
+    /** A path-only href, as HAL writes it, names a resource of the write's own scheme and host */
+    private function resolved(string $href, AbstractUri|null $uri): string
+    {
+        if ($uri === null) {
+            return $href;
+        }
+
+        if (! str_starts_with($href, '/') || str_starts_with($href, '//')) {
+            return $href;
+        }
+
+        return "{$uri->scheme}://{$uri->host}{$href}";
     }
 
     /**

@@ -63,8 +63,8 @@ class CollectionLinkTest extends TestCase
         $this->assertNotNull($this->repository->get(new Uri($authorPosts)));
     }
 
-    /** An href that is not a resource URI, as a path-only one, is skipped after the write has run */
-    public function testHrefThatIsNotAResourceUriIsSkipped(): void
+    /** A path-only href names the list under the write's own scheme and host; an href that is not a resource URI is skipped */
+    public function testPathOnlyHrefIsResolvedAndAnUnusableOneSkipped(): void
     {
         $posts = 'app://self/collection/posts';
         $this->resource->get($posts);
