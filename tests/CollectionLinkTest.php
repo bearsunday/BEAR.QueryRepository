@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\Uri;
+use FakeVendor\HelloWorld\Resource\App\Collection\Comment;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
@@ -13,14 +14,15 @@ use Ray\Di\Injector;
 /** A write to a row purges the collection its onGet() links with #[Link(rel: 'collection')] */
 class CollectionLinkTest extends TestCase
 {
+    private Injector $injector;
     private ResourceInterface $resource;
     private QueryRepositoryInterface $repository;
 
     protected function setUp(): void
     {
-        $injector = new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld'), __DIR__ . '/tmp');
-        $this->resource = $injector->getInstance(ResourceInterface::class);
-        $this->repository = $injector->getInstance(QueryRepositoryInterface::class);
+        $this->injector = new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld'), __DIR__ . '/tmp');
+        $this->resource = $this->injector->getInstance(ResourceInterface::class);
+        $this->repository = $this->injector->getInstance(QueryRepositoryInterface::class);
         $this->repository->purge(new Uri('app://self/collection/posts'));
         $this->repository->purge(new Uri('app://self/collection/author-posts?author_id=7'));
         $this->repository->purge(new Uri('app://self/collection/author-posts?author_id=8'));
@@ -63,8 +65,8 @@ class CollectionLinkTest extends TestCase
         $this->assertNotNull($this->repository->get(new Uri($authorPosts)));
     }
 
-    /** An href that is not a resource URI, as a path-only one, is skipped after the write has run */
-    public function testHrefThatIsNotAResourceUriIsSkipped(): void
+    /** An href that expands to a path names the list at that path; an href that is not a resource URI is skipped */
+    public function testHrefExpandingToAPathIsResolvedAndAnUnusableOneSkipped(): void
     {
         $posts = 'app://self/collection/posts';
         $this->resource->get($posts);
@@ -72,6 +74,18 @@ class CollectionLinkTest extends TestCase
         $ro = $this->resource->put('app://self/collection/comment', ['id' => 1]);
 
         $this->assertSame(200, $ro->code);
+        $this->assertNull($this->repository->get(new Uri($posts)));
+    }
+
+    /** A row taken from the injector has no URI, and its path-only href still purges the list */
+    public function testPathOnlyHrefOfARowWithoutUriPurgesTheList(): void
+    {
+        $posts = 'app://self/collection/posts';
+        $this->resource->get($posts);
+
+        $comment = $this->injector->getInstance(Comment::class);
+        $comment->onPut(1);
+
         $this->assertNull($this->repository->get(new Uri($posts)));
     }
 

@@ -12,6 +12,7 @@ use BEAR\Resource\Exception\UriException;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
+use BEAR\Resource\UriFactory;
 use Ray\Aop\MethodInvocation;
 use ReflectionMethod;
 
@@ -31,6 +32,7 @@ final readonly class RefreshAnnotatedCommand
         private ResourceInterface $resource,
         private CacheIdentityFactory $identityFactory,
         private DependsOnTemplates $templates,
+        private UriFactory $uriFactory,
     ) {
     }
 
@@ -123,6 +125,8 @@ final readonly class RefreshAnnotatedCommand
     }
 
     /**
+     * Resolved as BEAR\Resource\Linker resolves a link, so a path-only href takes the context scheme (#[ContextScheme])
+     *
      * @param list<string> $uris
      *
      * @return list<Uri>
@@ -132,7 +136,7 @@ final readonly class RefreshAnnotatedCommand
         $resourceUris = [];
         foreach ($uris as $uri) {
             try {
-                $resourceUris[] = new Uri($uri);
+                $resourceUris[] = ($this->uriFactory)($uri);
             } catch (UriException) {
                 continue;
             }

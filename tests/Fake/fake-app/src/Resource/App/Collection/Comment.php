@@ -9,8 +9,8 @@ use BEAR\Resource\ResourceObject;
 
 class Comment extends ResourceObject
 {
-    #[Link(rel: 'collection', href: '/collection/posts')]
-    #[Link(rel: 'collection', href: 'app://self/collection/posts')]
+    #[Link(rel: 'collection', href: '{/kind}/posts')]
+    #[Link(rel: 'collection', href: '')]
     public function onGet(int $id): static
     {
         $this->body = ['id' => $id];
@@ -20,7 +20,7 @@ class Comment extends ResourceObject
 
     public function onPut(int $id): static
     {
-        $this->body = ['id' => $id];
+        $this->body = ['id' => $id, 'kind' => 'collection'];
 
         return $this;
     }
