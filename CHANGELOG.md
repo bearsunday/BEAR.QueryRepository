@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Behaviour change**: `StorageRedisDsnModule` compresses stored values with deflate when no `$marshallingOptions` are given, so a page takes about a fifth of the memory. Pass `['enabled' => false]` to store them uncompressed. The package now requires `ext-zlib`.
+
+## [Unreleased]
+
 ### Added
 - `#[Link(rel: 'collection', href: ...)]` on a row's `onGet()` names the list it belongs to: a write to the row purges the list's URI and the variants that differ only in default-valued parameters, so the list needs no `#[DependsOn]` for its rows. A path-only href (`/posts`) takes the context scheme (`#[ContextScheme]`).
 - The `purge_skipped` log entry (fields `uri`, the write's URI without its query, and `reason`, `unmatched_query`), recorded when a write on a resource without a cache attribute cannot address its own key because its query lacks a required `onGet()` parameter.

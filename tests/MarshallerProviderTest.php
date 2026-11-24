@@ -81,12 +81,12 @@ final class MarshallerProviderTest extends TestCase
         $this->assertInstanceOf(DefaultMarshaller::class, $marshaller);
     }
 
-    public function testGetMarshallerWithEmptyOptions(): void
+    public function testGetMarshallerWithEmptyOptionsCompressesWithDeflate(): void
     {
         $provider = new MarshallerProvider([]);
         $marshaller = $provider->get();
 
-        $this->assertNull($marshaller);
+        $this->assertInstanceOf(DeflateMarshaller::class, $marshaller);
     }
 
     public function testGetMarshallerWithDeflateTypeAndIgbinary(): void

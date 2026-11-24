@@ -212,7 +212,8 @@ Configures Redis-backed storage.
 use BEAR\QueryRepository\StorageRedisDsnModule;
 
 new StorageRedisDsnModule('redis://localhost:6379');
-// optional: $options, $defaultLifetime, $marshallingOptions (e.g. ['enabled' => true, 'type' => 'deflate'])
+// optional: $options, $defaultLifetime, $marshallingOptions
+// values are compressed with deflate unless $marshallingOptions says otherwise; ['enabled' => false] stores them uncompressed
 ```
 
 ### StorageMemcachedModule
