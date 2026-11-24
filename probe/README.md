@@ -2,7 +2,7 @@
 
 BEAR.QueryRepository（BQR）のキャッシュを、どこに、どう置くのがよいかを手元で測った記録。この枝（`study-cache-storage-backends`）は merge しない。`upstream/1.x` の 7a76681e の上に、この `probe/` と確かめ用の page を足しただけで、`src/` は変えていない。
 
-- 数字と結論: [`results.md`](results.md)（1〜16 節）
+- 数字と結論: [`results.md`](results.md)（1〜17 節）
 - 測ったスクリプト: この directory の `*.php`。1 本が results.md の 1 つの節に対応する（下の表）
 
 ## 問い
@@ -16,7 +16,8 @@ BEAR.QueryRepository（BQR）のキャッシュを、どこに、どう置くの
 
 ## 結論の要点
 
-- `#[CacheableResponse]` の page は、テンプレートと組み上がった view の 2 つを置くので、量は page の HTML のほぼ 2 倍。50KB の HTML で、deflate ありで約 25KB / page、なしで約 130KB / page（[16](results.md#s16)）。`StorageRedisDsnModule` の `marshallingOptions: ['enabled' => true, 'type' => 'deflate']` で約 1/5 になる。`#[DonutCache]` は view を置かないので半分（[5](results.md#s5)・[6](results.md#s6) は 1 page を塊 1 つとして測った値）
+- `#[CacheableResponse]` の page は、テンプレートと組み上がった view の 2 つを置くので、量は page の HTML のほぼ 2 倍。50KB の HTML で、deflate ありで約 25KB / page、なしで約 130KB / page（[16](results.md#s16)）。`StorageRedisDsnModule` の `marshallingOptions: ['enabled' => true, 'type' => 'deflate']` で約 1/5 になる。`#[DonutCache]` は view を置かないので半分だが、応答に CDN の寿命と `ETag` を付けない（[5](results.md#s5)・[6](results.md#s6) は 1 page を塊 1 つとして測った値）
+- Redis に入る page の数 ≈（`maxmemory` − tag のメモ − ほかに置くもの）÷ page 1 つの本体。page 本体は期限があり `volatile-lru` で追い出されるが、tag のメモは追い出されず、「一度でも保存された page の数 × page あたりの tag の数 × 約 30〜60 バイト」になる（[17](results.md#s17)）
 - 溜まり続ける主な原因は、namespace を替えた後に残る古い namespace。`RedisTagAwareAdapter` の tag の SET は TTL がなく、volatile-* では追い出されない。古い namespace に `clear()` を当てれば消える。消すのは、古い版のサーバーがいなくなった後（[6](results.md#s6)・[9](results.md#s9)）
 - 同じ namespace の中でも、tag が新しい行へ移る page（新着の一覧など）では、tag の SET が「これまでに載った行の数」だけ増える（[10](results.md#s10)）
 - cluster は容量の面では要らない。性能の面で効くのは、単体の Redis の CPU か処理の回数が頭打ちのときだけ。読みは速くならず（どちらも 1 往復）、保存は 1 回 102 往復になる（単体は 2 往復）（[7](results.md#s7)・[8](results.md#s8)）
@@ -43,6 +44,7 @@ BEAR.QueryRepository（BQR）のキャッシュを、どこに、どう置くの
 | `cold-start.php` | [14](results.md#s14) | Redis 6379 |
 | `null-pool.php` | [15](results.md#s15) | なし（`NullAdapter`） |
 | `page-size.php` | [16](results.md#s16) | Redis 6379。page は `ProbeLargePage`、`ProbeLargeDonut`（約 50KB の HTML） |
+| `set-member.php` | [17](results.md#s17) | Redis 6379 |
 
 引数を取るスクリプトは、頭のコメントに usage がある。
 

@@ -310,3 +310,24 @@ fake app の page を、pool を `RedisTagAwareAdapter`（Redis）にした場�
 - `#[CacheableResponse]` の page は、テンプレートと組み上がった view の 2 つを持つので、page の HTML のほぼ 2 倍を置く。deflate で約 25KB / page。5〜6 節の「約 13〜15KB / page」は、この page では約半分に見積もっていたことになる。
 - `#[DonutCache]` は view を置かず、テンプレートと穴から毎回組む（12 節で hit 1 回 3 往復）。量は半分。ただし応答に CDN の寿命と `ETag` を付けない（人ごとに違う穴を持つ page のための作り）。
 - 穴の値と tag のメモは、穴を共有するほかの page と分け合うので、page の数に比例するのは主にテンプレートと view。
+
+<a id="s17"></a>
+
+## 17. tag のメモの要素 1 つの量（`probe/set-member.php`）
+
+要素は BQR の項目の id の形（`ns:ro-` + 22 文字、28 文字）にした。Redis 8.10、既定の `set-max-listpack-entries`（128）。
+
+| 要素の数 | encoding | 要素 1 つ |
+|---|---|---|
+| 16 | listpack | 32.4 バイト |
+| 100 | listpack | 30.4 バイト |
+| 128 | listpack | 30.3 バイト |
+| 129 | hashtable | 62.6 バイト |
+| 1,000 | hashtable | 54.3 バイト |
+| 10,000 | hashtable | 65.7 バイト |
+| 100,000 | hashtable | 61.7 バイト |
+
+- 要素が 128 以下の SET は約 30 バイト / 要素、129 を超えると約 55〜65 バイト / 要素。行の tag のように載る page が少ない SET は前者、一覧や taxonomy のように多くの page が持つ tag は後者になる。
+- 6 節の「1000 page × tag 100 本で 1.7MB」（約 17 バイト / 要素）は、要素の id が短く（`ns1:ro-pageN`）、どの SET も 128 以下だった値。本番の id（namespace に BQR の 22 文字の K が続く）では 2〜4 倍になる。namespace が長いと、その分さらに増える。
+- 項目が追い出されても、SET の要素は残る。Redis の追い出しは鍵を消すだけで、その鍵がどの SET に入っているかは知らない（追い出しの場合は測っていない。purge の後に要素が残ることは 10 節で確かめた）。そのため tag のメモの量は、「今 Redis にある page」ではなく、「その置き場で一度でも保存された page の数 × page あたりの tag の数」で決まる。
+- これを使った見積もり（計算。測っていない）: Redis に入る page の数 ≈（`maxmemory` − tag のメモ − ほかに置くもの）÷ page 1 つの本体（16 節）。tag のメモ ≈ 全 page の数 × page あたりの tag の数 × 30〜60 バイト。
