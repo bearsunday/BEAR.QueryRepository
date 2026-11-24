@@ -143,7 +143,7 @@ class Article extends ResourceObject
 ```
 
 - The purge reaches every variant of the collection that differs only in default-valued parameters (see Purging query variants): with `onGet(?int $authorId = null, int $page = 1)`, purging `app://self/articles` drops `?page=2` and `?author_id=7`. A list keyed by a required parameter, such as one author's articles, is another group: name it with `#[Purge]` on the write.
-- The href expands as a `#[Purge]` template does, from the body the write returns, then from its query. An href that does not expand to a resource URI, such as a path-only one, and a `#[Link]` of another rel purge nothing.
+- The href expands as a `#[Purge]` template does, from the body the write returns, then from its query. An href that expands to a path (`/articles`) is resolved as BEAR.Resource resolves a link, under the context scheme (`#[ContextScheme]`), so the purge and the link crawl name the same resource; an href that does not expand to a resource URI and a `#[Link]` of another rel purge nothing.
 - Which side declares the relation: when the list knows its rows and their number is bounded, declare `#[DependsOn]` on the list; when the row knows its list and the rows are unbounded, declare `#[Link(rel: 'collection')]` on the row. The collection link keeps the list to its own key.
 - A write that moves a row from one list to another names both lists with `#[Purge]`. The old value comes from the body the write returns, under a name other than the argument's, as the body is read before the query:
 
