@@ -97,7 +97,7 @@ CDN-Cache-Control: max-age=600, stale-while-revalidate=10
 | 本体・tag とも SQLite（参考） | 52.5MB / deflate 11.3MB | 4.28ms / 9.07ms | 0.40ms / 0.42ms | — |
 
 - 上の Redis の 2 行は、`probe/redis-deflate.php` が自分で組んだ adapter の値。`StorageRedisDsnModule` 経由でも測った（`probe/redis-module.php`、injector から `ResourceObjectPool` の pool を取り、同じ 1000 page を保存）。`marshallingOptions` なしで 64.3MB、`['enabled' => true, 'type' => 'deflate']` で 13.2MB。pool はどちらも `RedisTagAwareAdapter`。
-- 1 page あたりにすると、モジュール経由の deflate で約 13KB、deflate なしで約 64KB（1000 page の値を 1000 で割った値。ほかの page 数では測っていない）。
+- 1 page あたりにすると、モジュール経由の deflate で約 13KB、deflate なしで約 64KB（1000 page の値を 1000 で割った値。ほかの page 数では測っていない）。これは page 1 つを塊 1 つとして保存した値で、BQR の `#[CacheableResponse]` の page はテンプレートと組み上がった view の 2 つを置くので、約 2 倍になる（16 節）。
 - purge（共有 tag 200 本）は tag の版を消すだけ。本体の 1000 行は残り、読むとすべて miss（stale 0）。保存し直すと同じ行を上書きし、行数は 1000 のまま（URI の数で上限）。
 - namespace を替えて保存すると 2000 行になる。`prune()` は期限切れしか消さず、寿命 1 年（`#[Cacheable]` の既定 `never` は `requestedTtl: 31536000`）の行は残る。PdoAdapter には追い出しがないので、古い namespace の行は手で消すまで残る。
 - 行の形: `item_id` は `ns1:ro-page0`（BQR では `ro-<K>`、K は URI のハッシュ）、`item_data` は PHP の serialize（先頭 `O:1:"©"`）。URI・tag・ETag は列にない。保存は UPSERT なので、前の内容は残らない。
@@ -115,7 +115,7 @@ CDN-Cache-Control: max-age=600, stale-while-revalidate=10
 | default | 1000 本 62.5MB | 5,200 本 1.7MB | 65.7MB | 0.64ms | 0.17ms |
 | deflate | 1000 本 11.8MB | 5,200 本 1.7MB | 14.9MB | 1.32ms | 0.18ms |
 
-- deflate で本体は約 1/5.3（−81%）。tag の SET は圧縮されず、どちらも 1.7MB。
+- deflate で本体は約 1/5.3（−81%）。tag の SET は圧縮されず、どちらも 1.7MB。page 1 つを塊 1 つとして保存した値で、BQR が実際に置く量は 16 節。
 - namespace を ns1 → ns2 に替えると、ns1 の本体と tag がそのまま残り、量が倍になる（default 130.2MB、deflate 28.7MB）。volatile-* で追い出せるのは TTL のある本体だけで、tag の SET は残り続ける。
 - この節では本体に TTL 1 年を付けて保存した。BQR が実際に付ける TTL は、`StorageRedisDsnModule` で fake app の page を GET して確かめた（`probe/ttl.php`）。`#[Cacheable]` の値（`ro-`）は 31,536,000 秒（`expiry: 'never'` の 1 年）。`#[CacheableResponse]` と `#[DonutCache]` の page（`donut-`、view の `ro-`）は TTL を渡さないが、`RedisTagAwareAdapter` が `DEFAULT_CACHE_TTL` の 8,640,000 秒（100 日）を付ける（`RedisTagAwareAdapter.php` 57・106 行）。tag の SET はどれも TTL なし（-1）だった。
 - `(new RedisTagAwareAdapter($redis, 'ns1', …))->clear()` で、ns1 の本体も tag も 0 本になり、ns2 は残った（used_memory 65.7MB / 15.0MB に戻る）。`clear()` は `ns1:*` を SCAN して消す（`RedisTrait::doClear()`）。namespace が空文字だと `flushDb()` になる（同 621 行）。
