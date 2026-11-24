@@ -2,7 +2,7 @@
 
 BEAR.QueryRepository（BQR）のキャッシュを、どこに、どう置くのがよいかを手元で測った記録。この枝（`study-cache-storage-backends`）は merge しない。`upstream/1.x` の 7a76681e の上に、この `probe/` と確かめ用の page を足しただけで、`src/` は変えていない。
 
-- 数字と結論: [`results.md`](results.md)（1〜17 節）
+- 数字と結論: [`results.md`](results.md)（1〜18 節）
 - Redis の大きさの見積もり方（ElastiCache の大きさと、入る page の数）: [`sizing.md`](sizing.md)
 - 測ったスクリプト: この directory の `*.php`。1 本が results.md の 1 つの節に対応する（下の表）
 
@@ -46,6 +46,7 @@ BEAR.QueryRepository（BQR）のキャッシュを、どこに、どう置くの
 | `null-pool.php` | [15](results.md#s15) | なし（`NullAdapter`） |
 | `page-size.php` | [16](results.md#s16) | Redis 6379。page は `ProbeLargePage`、`ProbeLargeDonut`（約 50KB の HTML） |
 | `set-member.php` | [17](results.md#s17) | Redis 6379 |
+| `small-values.php` | [18](results.md#s18) | Redis 6379 |
 
 引数を取るスクリプトは、頭のコメントに usage がある。
 

@@ -331,3 +331,31 @@ fake app の page を、pool を `RedisTagAwareAdapter`（Redis）にした場�
 - 6 節の「1000 page × tag 100 本で 1.7MB」（約 17 バイト / 要素）は、要素の id が短く（`ns1:ro-pageN`）、どの SET も 128 以下だった値。本番の id（namespace に BQR の 22 文字の K が続く）では 2〜4 倍になる。namespace が長いと、その分さらに増える。
 - 項目が追い出されても、SET の要素は残る。Redis の追い出しは鍵を消すだけで、その鍵がどの SET に入っているかは知らない（追い出しの場合は測っていない。purge の後に要素が残ることは 10 節で確かめた）。そのため tag のメモの量は、「今 Redis にある page」ではなく、「その置き場で一度でも保存された page の数 × page あたりの tag の数」で決まる。
 - これを使った見積もり（計算。測っていない）: Redis に入る page の数 ≈（`maxmemory` − tag のメモ − ほかに置くもの）÷ page 1 つの本体（16 節）。tag のメモ ≈ 全 page の数 × page あたりの tag の数 × 30〜60 バイト。
+
+<a id="s18"></a>
+
+## 18. 小さな値で deflate は効くか（`probe/small-values.php`）
+
+(1) 文字列 1 つの値を `DefaultMarshaller` と `DeflateMarshaller` で比べた。
+
+| 文字列の長さ | 圧縮なし | 圧縮あり |
+|---|---|---|
+| 1 | 8 | 10（+2） |
+| 10 | 18 | 20（+2） |
+| 20 | 28 | 30（+2） |
+| 50 | 58 | 41（−17） |
+| 100 | 109 | 42（−67） |
+| 500 | 509 | 44（−465） |
+
+(2) BQR が実際に保存する小さな `#[Cacheable]` の値（fake app、`StorageRedisDsnModule`）の Redis 上の長さ（`STRLEN`）。
+
+| resource | 圧縮なし | 圧縮あり |
+|---|---|---|
+| `app://self/user?id=1` | 633 | 406 |
+| `app://self/control-none` | 577 | 381 |
+| `app://self/control-public` | 591 | 392 |
+| `app://self/etag` | 580 | 385 |
+| `app://self/null-view` | 639 | 428 |
+
+- 20 文字以下の値は、圧縮すると 2 バイト増えた。50 文字から縮んだ。
+- BQR の値は、body が小さくても、headers などを含む `ResourceState` 全体で 580 バイト前後あり、圧縮で約 2/3 になった。手元の fake app で見た範囲では、圧縮で増える値はなかった。
