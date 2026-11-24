@@ -1,0 +1,37 @@
+diff --git a/src/HttpCacheInterceptor.php b/src/HttpCacheInterceptor.php
+index 1de83021..9c1ff456 100644
+--- a/src/HttpCacheInterceptor.php
++++ b/src/HttpCacheInterceptor.php
+@@ -26,9 +26,13 @@
+  */
+ final class HttpCacheInterceptor implements MethodInterceptor
+ {
+-    /**
+-     * {@inheritDoc}
+-     */
++    public function __construct(
++        private readonly CacheDependencyCollector $dependencyCollector,
++        private readonly CacheTags $cacheTags,
++        private readonly CdnCacheControlHeaderSetterInterface $cdnSetter,
++    ) {
++    }
++
+     #[Override]
+     public function invoke(MethodInvocation $invocation)
+     {
+@@ -45,6 +49,15 @@ public function invoke(MethodInvocation $invocation)
+             $ro->headers[Header::findKey($ro->headers, Header::CACHE_CONTROL) ?? Header::CACHE_CONTROL] = (string) $cacheControl;
+         }
+ 
++        $stored = $class->getAttributes(\BEAR\RepositoryModule\Annotation\Cacheable::class) !== []
++            || $class->getAttributes(\BEAR\RepositoryModule\Annotation\CacheableResponse::class) !== []
++            || $class->getAttributes(\BEAR\RepositoryModule\Annotation\DonutCache::class) !== [];
++        if ($ro->code === 200 && $cacheControl instanceof HttpCache && $cacheControl->sMaxAge > 0 && ! $cacheControl->isPrivate && ! $cacheControl->noStore && ! $stored) {
++            $this->dependencyCollector->collect($ro);
++            $this->cacheTags->tags($ro)->addTo($ro);
++            ($this->cdnSetter)($ro, $cacheControl->sMaxAge);
++        }
++
+         return $ro;
+     }
+ }
