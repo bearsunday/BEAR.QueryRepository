@@ -20,6 +20,7 @@ use function array_map;
 use function array_unique;
 use function array_values;
 use function is_array;
+use function is_string;
 use function method_exists;
 use function parse_url;
 use function str_starts_with;
@@ -139,7 +140,7 @@ final readonly class RefreshAnnotatedCommand
     {
         $resourceUris = [];
         foreach ($uris as $uri) {
-            if (parse_url($uri, PHP_URL_SCHEME) === null && ! str_starts_with($uri, '/')) {
+            if (! is_string(parse_url($uri, PHP_URL_SCHEME)) && ! str_starts_with($uri, '/')) {
                 continue;
             }
 

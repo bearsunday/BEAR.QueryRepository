@@ -10,6 +10,7 @@ use BEAR\Resource\ResourceObject;
 class Note extends ResourceObject
 {
     #[Link(rel: 'collection', href: 'x/collection/posts')]
+    #[Link(rel: 'collection', href: ':80/collection/posts')]
     public function onGet(int $id): static
     {
         $this->body = ['id' => $id];
