@@ -2,7 +2,7 @@
 
 BEAR.QueryRepository（BQR）のキャッシュを、どこに、どう置くのがよいかを手元で測った記録。この枝（`study-cache-storage-backends`）は merge しない。`upstream/1.x` の 7a76681e の上に、この `probe/` と確かめ用の page を足しただけで、`src/` は変えていない。
 
-- 数字と結論: [`results.md`](results.md)（1〜14 節）
+- 数字と結論: [`results.md`](results.md)（1〜15 節）
 - 測ったスクリプト: この directory の `*.php`。1 本が results.md の 1 つの節に対応する（下の表）
 
 ## 問い
@@ -41,6 +41,7 @@ BEAR.QueryRepository（BQR）のキャッシュを、どこに、どう置くの
 | `bqr-pdo.php` | [12](results.md#s12) | Redis 6379 と MySQL 3407 |
 | `pdo-library.php` | [13](results.md#s13) | SQLite（自分で作って消すファイル） |
 | `cold-start.php` | [14](results.md#s14) | Redis 6379 |
+| `null-pool.php` | [15](results.md#s15) | なし（`NullAdapter`） |
 
 引数を取るスクリプトは、頭のコメントに usage がある。
 

@@ -274,3 +274,20 @@ fake app の page を、pool を `RedisTagAwareAdapter`（Redis）にした場�
 
 - 12 本のほぼすべてが、それぞれ描画して保存した。BQR には、同じ鍵の miss をまとめる仕組み（lock など）も、キャッシュを前もって温める仕組みもない（`src/` に該当するコードがない）。
 - デプロイ直後は、人気の page に同時に来た数だけ描画が重なる。その費用は、page の描画の重さと、保存 1 回の費用（cluster なら 102 往復。7 節）で決まる。
+
+<a id="s15"></a>
+
+## 15. pool を NullAdapter にすると「全文は CDN、依存の管理は BQR」になる（`probe/null-pool.php`）
+
+`AdapterInterface #[ResourceObjectPool]` を `NullAdapter` に束縛した（storage の module を入れないときの `QueryRepositoryModule` の既定と同じ）。`page://self/html/blog-posting`（`#[CacheableResponse]`、穴は `#[Cacheable]` の comment）を 2 回 GET し、purge で purger に渡る tag を見た。CDN の寿命のヘッダーは、既定の setter と Fastly の setter の両方で見た。
+
+| | 既定の CDN setter | Fastly の setter |
+|---|---|---|
+| GET 1 回目・2 回目 | どちらも miss（`Age` なし） | どちらも miss |
+| `Surrogate-Key` | `blog-posting-page _html_blog-posting_ grp-_html_blog-posting_ _html_comment_ grp-_html_comment_ comment01` | 同じ |
+| CDN の寿命 | `CDN-Cache-Control: max-age=10, stale-while-revalidate=10` | `Surrogate-Control: max-age=31536000` |
+| `page://self/html/comment` を purge | purger の tag が page の `Surrogate-Key` に当たる | 当たる |
+| `page://self/html/blog-posting` を purge | 当たる | 当たる |
+
+- origin には何も保存されず、毎回描画する。それでも `Surrogate-Key`（穴の tag を含む）と CDN の寿命は付き、書き込みの purge は CDN に届く。CDN の寿命は宣言に書かず、CDN の module の既定で決まる（Fastly は 1 年で、purge まで持つ）。
+- pool は 1 つなので、`#[Cacheable]` の値も保存されない。page だけを CDN に任せ、値は Redis に置くには、pool を分ける束縛が要る（今はない）。
