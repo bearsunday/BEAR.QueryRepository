@@ -3,6 +3,7 @@
 BEAR.QueryRepository（BQR）のキャッシュを、どこに、どう置くのがよいかを手元で測った記録。この枝（`study-cache-storage-backends`）は merge しない。`upstream/1.x` の 7a76681e の上に、この `probe/` と確かめ用の page を足しただけで、`src/` は変えていない。
 
 - 数字と結論: [`results.md`](results.md)（1〜17 節）
+- Redis の大きさの見積もり方（ElastiCache の大きさと、入る page の数）: [`sizing.md`](sizing.md)
 - 測ったスクリプト: この directory の `*.php`。1 本が results.md の 1 つの節に対応する（下の表）
 
 ## 問い
