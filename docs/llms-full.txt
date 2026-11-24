@@ -213,7 +213,7 @@ use BEAR\QueryRepository\StorageRedisDsnModule;
 
 new StorageRedisDsnModule('redis://localhost:6379');
 // optional: $options, $defaultLifetime, $marshallingOptions
-// values are compressed with deflate unless $marshallingOptions says otherwise; ['enabled' => false] stores them uncompressed
+// empty $marshallingOptions compress values with deflate; given options are used as they are, and ['enabled' => false] stores values uncompressed
 ```
 
 ### StorageMemcachedModule

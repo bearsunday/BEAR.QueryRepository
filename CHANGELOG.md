@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
-- **Behaviour change**: `StorageRedisDsnModule` compresses stored values with deflate when no `$marshallingOptions` are given, so a page takes about a fifth of the memory. Pass `['enabled' => false]` to store them uncompressed. The package now requires `ext-zlib`.
+- **Behaviour change**: `StorageRedisDsnModule` compresses stored values with deflate when `$marshallingOptions` is empty; pass `['enabled' => false]` to store them uncompressed. The package now requires `ext-zlib`.
 
 ## [Unreleased]
 
