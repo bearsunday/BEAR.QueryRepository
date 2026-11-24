@@ -21,7 +21,11 @@ use function array_unique;
 use function array_values;
 use function is_array;
 use function method_exists;
+use function parse_url;
+use function str_starts_with;
 use function uri_template;
+
+use const PHP_URL_SCHEME;
 
 /** @internal */
 final readonly class RefreshAnnotatedCommand
@@ -125,7 +129,7 @@ final readonly class RefreshAnnotatedCommand
     }
 
     /**
-     * Resolved as BEAR\Resource\Linker resolves a link, so a path-only href takes the context scheme (#[ContextScheme])
+     * A path-only href takes the context scheme (#[ContextScheme]); a relative href without a leading slash names nothing
      *
      * @param list<string> $uris
      *
@@ -135,6 +139,10 @@ final readonly class RefreshAnnotatedCommand
     {
         $resourceUris = [];
         foreach ($uris as $uri) {
+            if (parse_url($uri, PHP_URL_SCHEME) === null && ! str_starts_with($uri, '/')) {
+                continue;
+            }
+
             try {
                 $resourceUris[] = ($this->uriFactory)($uri);
             } catch (UriException) {
