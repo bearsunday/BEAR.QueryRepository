@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
+use PHPUnit\Framework\Attributes\RequiresPhpExtension;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
@@ -13,9 +14,8 @@ use Symfony\Component\Cache\Exception\InvalidArgumentException;
 /**
  * The pool is part of the graph an application builds at boot, and a machine that compiles the
  * application may have no store to reach.
- *
- * @requires extension redis
  */
+#[RequiresPhpExtension('redis')]
 final class StorageRedisDsnModuleLazyTest extends TestCase
 {
     /** A closed port: connection refused at once, no service to install. */
@@ -33,6 +33,13 @@ final class StorageRedisDsnModuleLazyTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         $this->pool(new StorageRedisDsnModule(self::UNREACHABLE, ['lazy' => false]));
+    }
+
+    public function testLazyInTheDsnQueryWinsOverTheDefault(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        $this->pool(new StorageRedisDsnModule(self::UNREACHABLE . '?lazy=0'));
     }
 
     private function pool(StorageRedisDsnModule $storage): TagAwareAdapterInterface

@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **Behaviour change**: `StorageRedisDsnModule` compresses stored values with deflate when `$marshallingOptions` is empty; pass `['enabled' => false]` to store them uncompressed. The package now requires `ext-zlib`.
-- **Behaviour change**: `StorageRedisDsnModule` connects to Redis on first use, so building the application, as a compile does, needs no Redis, and a store that is down is logged as `pool_error` per request instead of failing the boot. Pass `['lazy' => false]` to connect when the pool is built. The package now requires `symfony/cache` 6.2 or later, whose lazy connection is a `\Redis`.
+- **Behaviour change**: `StorageRedisDsnModule` connects to Redis on first use, so building the application, as a compile does, needs no Redis, and a store that is down is logged as `pool_error` per request instead of failing the boot. Pass `['lazy' => false]` to connect when the pool is built. The package now requires `symfony/cache` 6.4.12 or later: earlier lazy connections fail to load with ext-redis 6.3.
 
 ## [Unreleased]
 
