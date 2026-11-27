@@ -36,10 +36,7 @@ final readonly class CacheTags
         return new TagSet([($this->uriTag)($ro->uri), ($this->baseUriTag)($ro)]);
     }
 
-    /**
-     * The tags a resource that depends on this one takes: its own and its Surrogate-Key's, without the application's key,
-     * which {@see self::tagHeader()} puts first when the dependent response is stored or written as a donut
-     */
+    /** Without the application's key: {@see self::tagHeader()} puts it first when the dependent response is stored or written as a donut */
     public function ofDependency(ResourceObject $ro): TagSet
     {
         $tags = $this->own($ro)->merge(TagSet::ofHeaders($ro->headers));

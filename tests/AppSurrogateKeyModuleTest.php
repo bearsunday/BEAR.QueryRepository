@@ -128,7 +128,6 @@ class AppSurrogateKeyModuleTest extends TestCase
         $this->assertSame($without, $this->withoutKey($before));
     }
 
-    /** depends() records the child's keys only; the write that stores the parent puts the application's key first, once */
     public function testDependsLeavesTheKeyToTheWriteThatStoresTheParent(): void
     {
         $this->boot('after');
@@ -149,7 +148,6 @@ class AppSurrogateKeyModuleTest extends TestCase
         $this->assertSame(self::KEY . ' parent-own _child_ grp-_child_ child-own', $parent->headers[Header::SURROGATE_KEY], 'stored');
     }
 
-    /** Uncached children embedded in a stored page, the one that reads a #[ResourceParam] source included, carry the keys they pass up without the application's */
     public function testAnEmbeddedChildThatIsNotStoredCarriesNoKey(): void
     {
         $this->boot('after');
