@@ -24,7 +24,7 @@ final readonly class CacheTags
     /** @param TagSet|null $declared null reads the Surrogate-Key header */
     public function tags(ResourceObject $ro, TagSet|null $declared = null): TagSet
     {
-        return $this->withAppKey($this->own($ro)->merge($declared ?? TagSet::ofHeaders($ro->headers)));
+        return $this->own($ro)->merge($declared ?? TagSet::ofHeaders($ro->headers));
     }
 
     /** The URI tag, and the base tag that makes the entry reachable by a purge aimed at the bare URI (see BaseUriTag) */
@@ -36,7 +36,7 @@ final readonly class CacheTags
     /** Puts the application's key first in the resource's Surrogate-Key, once, so a CDN that ignores the keys past a length limit (Fastly: 16,384 bytes) still reads it */
     public function tagHeader(ResourceObject $ro): void
     {
-        $tags = $this->withAppKey(new TagSet())->merge(TagSet::ofHeaders($ro->headers));
+        $tags = $this->ofEntry(new TagSet())->merge(TagSet::ofHeaders($ro->headers));
         if (! $tags->isEmpty()) {
             $ro->headers[Header::SURROGATE_KEY] = $tags->toHeader();
         }
@@ -50,7 +50,8 @@ final readonly class CacheTags
         return new TagSet([$tag, $this->identityFactory->groupTag($tag)]);
     }
 
-    private function withAppKey(TagSet $tags): TagSet
+    /** Only the final steps add the application's key: storing an entry and {@see self::tagHeader()} */
+    public function ofEntry(TagSet $tags): TagSet
     {
         return $this->appKey === null ? $tags : $tags->merge(new TagSet([$this->appKey]));
     }

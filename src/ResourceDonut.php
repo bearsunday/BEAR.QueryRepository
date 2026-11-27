@@ -49,7 +49,7 @@ final class ResourceDonut
      * @param array<string, string>        $headers
      * @param int|null                     $sMaxAge      CDN lifetime and stored lifetime of the page view; unused by a template-only donut
      * @param int|null                     $lastModified Time when the composed content last actually changed
-     * @param list<string>                 $storageTags  Invalidation tags of the donut template entry
+     * @param list<string>                 $storageTags  Invalidation tags of the donut template entry, without the application key the storage adds
      * @param int                          $code         Status code the page was stored with
      * @param array<array-key, mixed>|null $body         The body the page returned, each embedded request null, when its renderer prints no placeholder; null when the template holds the page
      * @param array<array-key, string>     $embeds       toUri() of each request embedded in the body, by its key

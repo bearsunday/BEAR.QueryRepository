@@ -252,7 +252,7 @@ final class ResourceStorage implements ResourceStorageInterface
     {
         $ttl = $this->nonNegative($ttl);
         $key = $this->getUriKey($uri, self::KEY_DONUT);
-        $headerKeys = (new TagSet($headerKeys))->toArray();
+        $headerKeys = $this->cacheTags->ofEntry(new TagSet($headerKeys))->toArray();
         $saved = $this->saveToPool($key, $donut, $headerKeys, $ttl);
         // saved=false is logged, not asserted: a quiet store failure must stay observable
         // in the log (an assert here would throw AFTER the event, contradicting it).
@@ -278,7 +278,7 @@ final class ResourceStorage implements ResourceStorageInterface
         // An ETag is never an invalidation tag: it is content-versioned, so each version
         // would leave a tag Set that nothing invalidates and a volatile-* eviction policy
         // never reclaims.
-        $tags = $this->cacheTags->tags($ro, $tags === null ? null : new TagSet($tags))->toArray();
+        $tags = $this->cacheTags->ofEntry($this->cacheTags->tags($ro, $tags === null ? null : new TagSet($tags)))->toArray();
         $saved = $this->saveToPool($key, $resourceState, $tags, $ttl);
         $this->logger->event(new $contextClass((string) $ro->uri, $tags, $ttl, $saved));
 
