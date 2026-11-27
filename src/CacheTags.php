@@ -8,6 +8,9 @@ use BEAR\RepositoryModule\Annotation\AppSurrogateKey;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceObject;
 
+use function array_diff;
+use function array_values;
+
 /** @internal */
 final readonly class CacheTags
 {
@@ -31,6 +34,17 @@ final readonly class CacheTags
     public function own(ResourceObject $ro): TagSet
     {
         return new TagSet([($this->uriTag)($ro->uri), ($this->baseUriTag)($ro)]);
+    }
+
+    /**
+     * The tags a resource that depends on this one takes: its own and its Surrogate-Key's, without the application's key,
+     * which the write that stores the dependent resource puts first ({@see self::tagHeader()})
+     */
+    public function ofDependency(ResourceObject $ro): TagSet
+    {
+        $tags = $this->own($ro)->merge(TagSet::ofHeaders($ro->headers));
+
+        return $this->appKey === null ? $tags : new TagSet(array_values(array_diff($tags->toArray(), [$this->appKey])));
     }
 
     /** Puts the application's key first in the resource's Surrogate-Key, once, so a CDN that ignores the keys past a length limit (Fastly: 16,384 bytes) still reads it */

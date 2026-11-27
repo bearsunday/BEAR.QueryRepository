@@ -8,7 +8,7 @@ use Attribute;
 use Ray\Di\Di\Qualifier;
 
 /**
- * The key every entry and every Surrogate-Key of the application carries; bound by `AppSurrogateKeyModule`
+ * The key every stored entry and the Surrogate-Key of its response carry; bound by `AppSurrogateKeyModule`
  */
 #[Attribute(Attribute::TARGET_PARAMETER)]
 #[Qualifier]
