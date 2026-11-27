@@ -240,7 +240,7 @@ new AkamaiModule();
 ### Other modules
 
 - `CacheVersionModule($version)`: the cache namespace. Deploy with a new version so entries stored by the previous one are not read.
-- `AppSurrogateKeyModule($key)`: every entry is stored with the key and every `Surrogate-Key` this package sets carries it, so `invalidateTags([$key])` and a CDN purge by the key clear what this package caches. `invalidateTags([$key])` clears the local pool and calls the bound CDN purger; a purge sent to the CDN directly clears only the CDN, which then refills from the local entries. A `Surrogate-Key` a resource sets on a response this package neither stores nor writes as a donut does not get it. Install it before or after `QueryRepositoryModule`.
+- `AppSurrogateKeyModule($key)`: every entry is stored with the key and every `Surrogate-Key` this package sets carries it as its first key, so `invalidateTags([$key])` and a CDN purge by the key clear what this package caches, even a page whose `Surrogate-Key` passes a CDN's length limit (Fastly ignores the keys past 16,384 bytes). `invalidateTags([$key])` clears the local pool and calls the bound CDN purger; a purge sent to the CDN directly clears only the CDN, which then refills from the local entries. A `Surrogate-Key` a resource sets on a response this package neither stores nor writes as a donut does not get it. Install it before or after `QueryRepositoryModule`.
 - `StorageExpiryModule($short, $medium, $long)`: the `short`/`medium`/`long` presets (60/3600/86400 by default); bind `Expiry` to change `never` too.
 - `DevEtagModule`: ETags derived from the URI instead of the content, for debugging.
 - `DevQueryRepositoryLogModule` / `ProdQueryRepositoryLogModule`: turn the cache log on (see below).

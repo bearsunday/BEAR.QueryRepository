@@ -9,8 +9,8 @@ use Override;
 use Ray\Di\AbstractModule;
 
 /**
- * Adds one key to every entry this package stores and to every Surrogate-Key it sets, so that invalidating the key,
- * on the server and on the CDN, invalidates the whole application. Install it before or after QueryRepositoryModule.
+ * Adds one key to every entry this package stores and, as the first key, to every Surrogate-Key it sets, so that invalidating
+ * the key, on the server and on the CDN, invalidates the whole application. Install it before or after QueryRepositoryModule.
  */
 final class AppSurrogateKeyModule extends AbstractModule
 {
