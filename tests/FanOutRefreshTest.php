@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\CacheStoreException;
 use BEAR\Resource\ResourceInterface;
+use BEAR\Resource\Uri;
 use FakeVendor\HelloWorld\Resource\App\FlakyTagPage;
 use FakeVendor\HelloWorld\Resource\App\TagIndex;
 use FakeVendor\HelloWorld\Resource\App\TagPage;
@@ -160,20 +161,23 @@ class FanOutRefreshTest extends TestCase
         $this->assertSame(['v' => 'c:v2'], $this->resource->get('app://self/flaky-tag-page', ['id' => 'c'])->body);
     }
 
-    /** @return array<string, array{string, string, int}> uri, method, the GETs the write makes of the entries it names */
+    /**
+     * @return array<string, array{string, string, int, string, bool}> uri, method, the GETs the write makes of the entries it names,
+     *                                                                 the tag of the first URI purged, whether it reads its own URI again
+     */
     public static function writesWhileTheCdnIsDown(): array
     {
         return [
-            'Purge on a class that stores nothing' => ['app://self/fan-out-writer', 'post', 0],
-            'Refresh on a class that stores nothing' => ['app://self/fan-out-refresh-writer', 'post', 3],
-            'Purge on a #[Cacheable] class, after its own key' => ['app://self/cacheable-fan-out-writer', 'post', 0],
-            'Refresh on a #[Cacheable] class, after its own key' => ['app://self/cacheable-fan-out-writer', 'put', 3],
+            'Purge on a class that stores nothing' => ['app://self/fan-out-writer', 'post', 0, '_tag-page_id=a', false],
+            'Refresh on a class that stores nothing' => ['app://self/fan-out-refresh-writer', 'post', 3, '_tag-page_id=a', false],
+            'Purge on a #[Cacheable] class, after its own key' => ['app://self/cacheable-fan-out-writer', 'post', 0, '_cacheable-fan-out-writer_', true],
+            'Refresh on a #[Cacheable] class, after its own key' => ['app://self/cacheable-fan-out-writer', 'put', 3, '_cacheable-fan-out-writer_', true],
         ];
     }
 
-    /** A CDN purge that fails stops neither the other purges nor the reads: the failure is thrown after them */
+    /** A CDN purge that fails stops neither the other purges nor the reads: the first failure is thrown after them */
     #[DataProvider('writesWhileTheCdnIsDown')]
-    public function testAFailedCdnPurgeLeavesNoStaleEntryAndIsThrownLast(string $uri, string $method, int $refreshed): void
+    public function testAFailedCdnPurgeLeavesNoStaleEntryAndIsThrownLast(string $uri, string $method, int $refreshed, string $firstTag, bool $rebuildsItself): void
     {
         $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
         $module->override(new class extends AbstractModule {
@@ -182,7 +186,8 @@ class FanOutRefreshTest extends TestCase
                 $this->bind(PurgerInterface::class)->to(FakeThrowingPurger::class);
             }
         });
-        $resource = (new Injector($module, __DIR__ . '/tmp'))->getInstance(ResourceInterface::class);
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        $resource = $injector->getInstance(ResourceInterface::class);
         foreach (['a', 'b', 'c'] as $id) {
             $resource->get('app://self/tag-page', ['id' => $id]);
         }
@@ -192,9 +197,11 @@ class FanOutRefreshTest extends TestCase
             $this->fail('the failed CDN purge was not thrown');
         } catch (CacheStoreException $e) {
             $this->assertInstanceOf(FakeCdnPurgeFailed::class, $e->getPrevious());
+            $this->assertStringStartsWith("purge failed: {$firstTag} ", $e->getPrevious()->getMessage(), 'the first failure');
         }
 
         $this->assertSame(3 + $refreshed, TagPage::$gets, 'each #[Refresh] URI is read');
+        $this->assertSame($rebuildsItself, $injector->getInstance(ResourceStorageInterface::class)->get(new Uri($uri)) !== null, 'its own URI is read again where it is stored');
         foreach (['a', 'b', 'c'] as $id) {
             $this->assertSame(['v' => "{$id}:1:v2"], $resource->get('app://self/tag-page', ['id' => $id])->body, $id);
         }

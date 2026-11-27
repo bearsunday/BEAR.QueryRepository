@@ -27,7 +27,8 @@ use function method_exists;
 /**
  * After a write that answers below 400: purges the resource's own key, every URI its #[Purge]/#[Refresh] name and each
  * #[Link(rel: 'collection')] of its onGet(), then reads its own URI again where the write stores it, then each #[Refresh] URI.
- * A purge that fails does not stop the rest: the first failure is thrown once every read has run.
+ * A purge that fails with CacheStoreException does not stop the rest: the first failure is thrown once every read has run, or
+ * an exception from one of those reads in its place.
  *
  * @see https://bearsunday.github.io/manuals/1.0/en/cache.html#tag-based-cache-invalidation
  * @internal
