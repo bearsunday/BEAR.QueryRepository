@@ -23,7 +23,7 @@ final readonly class CacheDependency implements CacheDependencyInterface
     #[Override]
     public function depends(ResourceObject $from, ResourceObject $to): void
     {
-        $childTags = $this->cacheTags->ofDependency($to);
+        $childTags = $this->cacheTags->tags($to);
         $childTags->addTo($from);
 
         $this->logger->event(new DependsOnContext(

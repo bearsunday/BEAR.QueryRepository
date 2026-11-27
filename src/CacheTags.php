@@ -8,9 +8,6 @@ use BEAR\RepositoryModule\Annotation\AppSurrogateKey;
 use BEAR\Resource\AbstractUri;
 use BEAR\Resource\ResourceObject;
 
-use function array_diff;
-use function array_values;
-
 /** @internal */
 final readonly class CacheTags
 {
@@ -27,7 +24,7 @@ final readonly class CacheTags
     /** @param TagSet|null $declared null reads the Surrogate-Key header */
     public function tags(ResourceObject $ro, TagSet|null $declared = null): TagSet
     {
-        return $this->withAppKey($this->own($ro)->merge($declared ?? TagSet::ofHeaders($ro->headers)));
+        return $this->own($ro)->merge($declared ?? TagSet::ofHeaders($ro->headers));
     }
 
     /** The URI tag, and the base tag that makes the entry reachable by a purge aimed at the bare URI (see BaseUriTag) */
@@ -36,18 +33,10 @@ final readonly class CacheTags
         return new TagSet([($this->uriTag)($ro->uri), ($this->baseUriTag)($ro)]);
     }
 
-    /** Without the application's key: {@see self::tagHeader()} puts it first when the dependent response is stored or written as a donut */
-    public function ofDependency(ResourceObject $ro): TagSet
-    {
-        $tags = $this->own($ro)->merge(TagSet::ofHeaders($ro->headers));
-
-        return $this->appKey === null ? $tags : new TagSet(array_values(array_diff($tags->toArray(), [$this->appKey])));
-    }
-
     /** Puts the application's key first in the resource's Surrogate-Key, once, so a CDN that ignores the keys past a length limit (Fastly: 16,384 bytes) still reads it */
     public function tagHeader(ResourceObject $ro): void
     {
-        $tags = $this->withAppKey(new TagSet())->merge(TagSet::ofHeaders($ro->headers));
+        $tags = $this->ofEntry(new TagSet())->merge(TagSet::ofHeaders($ro->headers));
         if (! $tags->isEmpty()) {
             $ro->headers[Header::SURROGATE_KEY] = $tags->toHeader();
         }
@@ -61,7 +50,8 @@ final readonly class CacheTags
         return new TagSet([$tag, $this->identityFactory->groupTag($tag)]);
     }
 
-    private function withAppKey(TagSet $tags): TagSet
+    /** With the application's key, which every stored entry carries: invalidating it clears the pool */
+    public function ofEntry(TagSet $tags): TagSet
     {
         return $this->appKey === null ? $tags : $tags->merge(new TagSet([$this->appKey]));
     }

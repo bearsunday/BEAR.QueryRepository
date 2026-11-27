@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\CacheLog;
-use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
@@ -138,7 +137,7 @@ class AppSurrogateKeyModuleTest extends TestCase
         $child = new class extends ResourceObject {
         };
         $child->uri = new Uri('app://self/child');
-        $child->headers[Header::SURROGATE_KEY] = self::KEY . ' child-own';
+        $child->headers[Header::SURROGATE_KEY] = 'child-own';
 
         $this->cacheDependency->depends($parent, $child);
         $this->assertSame('parent-own _child_ grp-_child_ child-own', $parent->headers[Header::SURROGATE_KEY], 'not stored');
@@ -148,20 +147,22 @@ class AppSurrogateKeyModuleTest extends TestCase
         $this->assertSame(self::KEY . ' parent-own _child_ grp-_child_ child-own', $parent->headers[Header::SURROGATE_KEY], 'stored');
     }
 
-    public function testAnEmbeddedChildThatIsNotStoredCarriesNoKey(): void
+    public function testInvalidatingTheKeyDropsEntriesSavedDirectly(): void
     {
         $this->boot('after');
-        $page = $this->resource->get('app://self/assisted/page-chain');
-        $this->assertKeyFirstAndOnce($page->headers[Header::SURROGATE_KEY] ?? null, 'the stored page');
-        $this->assertIsArray($page->body);
-        $mid = $page->body['mid'] ?? null;
-        $this->assertInstanceOf(AbstractRequest::class, $mid);
-        $this->assertSame('_assisted_child_ grp-_assisted_child_ _user_id=1 grp-_user_id=1', $mid->resourceObject->headers[Header::SURROGATE_KEY] ?? null);
+        $ro = new class extends ResourceObject {
+        };
+        $ro->uri = new Uri('app://self/direct');
+        $ro->body = ['saved' => 'directly'];
+        $this->storage->saveValue($ro, 0);
+        $this->storage->saveDonut($ro->uri, new ResourceDonut('template', [], null, false), null, ['direct']);
+        $this->assertNotNull($this->storage->get($ro->uri));
+        $this->assertNotNull($this->storage->getDonut($ro->uri));
 
-        $this->assertIsArray($mid->resourceObject->body);
-        $inner = $mid->resourceObject->body['inner'] ?? null;
-        $this->assertInstanceOf(AbstractRequest::class, $inner);
-        $this->assertSame('_user_id=1 grp-_user_id=1', $inner->resourceObject->headers[Header::SURROGATE_KEY] ?? null, 'the child that reads the source');
+        $this->storage->invalidateTags([self::KEY]);
+
+        $this->assertNull($this->storage->get($ro->uri));
+        $this->assertNull($this->storage->getDonut($ro->uri));
     }
 
     private function boot(string $order): void
