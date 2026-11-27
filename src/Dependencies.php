@@ -111,7 +111,7 @@ final class Dependencies
         $tags = new TagSet();
         foreach ($this->dependsOnTags->requests($ro) as $request) {
             if ($embedded($request->resourceObject)) {
-                $tags = $tags->merge($this->cacheTags->tags($request->resourceObject));
+                $tags = $tags->merge($this->cacheTags->ofDependency($request->resourceObject));
             }
         }
 

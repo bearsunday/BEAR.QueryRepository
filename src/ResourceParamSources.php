@@ -49,7 +49,7 @@ final readonly class ResourceParamSources
     {
         $tags = new TagSet();
         foreach ($this($ro) as $source) {
-            $tags = $tags->merge($this->cacheTags->tags($source));
+            $tags = $tags->merge($this->cacheTags->ofDependency($source));
         }
 
         return $tags;

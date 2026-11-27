@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\CacheLog;
+use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
@@ -146,6 +147,19 @@ class AppSurrogateKeyModuleTest extends TestCase
         $this->repository->put($parent);
         $this->assertNotNull($this->storage->get(new Uri('app://self/parent')));
         $this->assertSame(self::KEY . ' parent-own _child_ grp-_child_ child-own', $parent->headers[Header::SURROGATE_KEY], 'stored');
+    }
+
+    /** An uncached child embedded in a stored page carries the keys it passes up, without the application's */
+    public function testAnEmbeddedChildThatIsNotStoredCarriesNoKey(): void
+    {
+        $this->boot('after');
+        $page = $this->resource->get('app://self/assisted/page-chain');
+        $this->assertKeyFirstAndOnce($page->headers[Header::SURROGATE_KEY] ?? null, 'the stored page');
+        $this->assertIsArray($page->body);
+        $mid = $page->body['mid'] ?? null;
+        $this->assertInstanceOf(AbstractRequest::class, $mid);
+
+        $this->assertSame('_assisted_child_ grp-_assisted_child_ _user_id=1 grp-_user_id=1', $mid->resourceObject->headers[Header::SURROGATE_KEY] ?? null);
     }
 
     private function boot(string $order): void
