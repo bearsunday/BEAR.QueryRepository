@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Exception\CacheStoreException;
 use BEAR\Resource\ResourceInterface;
 use FakeVendor\HelloWorld\Resource\App\FlakyTagPage;
 use FakeVendor\HelloWorld\Resource\App\TagIndex;
 use FakeVendor\HelloWorld\Resource\App\TagPage;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
 
 use function array_keys;
@@ -156,5 +158,45 @@ class FanOutRefreshTest extends TestCase
 
         FlakyTagPage::$failOn = null;
         $this->assertSame(['v' => 'c:v2'], $this->resource->get('app://self/flaky-tag-page', ['id' => 'c'])->body);
+    }
+
+    /** @return array<string, array{string, string, int}> uri, method, the GETs the write makes of the entries it names */
+    public static function writesWhileTheCdnIsDown(): array
+    {
+        return [
+            'Purge on a class that stores nothing' => ['app://self/fan-out-writer', 'post', 0],
+            'Refresh on a class that stores nothing' => ['app://self/fan-out-refresh-writer', 'post', 3],
+            'Purge on a #[Cacheable] class, after its own key' => ['app://self/cacheable-fan-out-writer', 'post', 0],
+            'Refresh on a #[Cacheable] class, after its own key' => ['app://self/cacheable-fan-out-writer', 'put', 3],
+        ];
+    }
+
+    /** A CDN purge that fails stops neither the other purges nor the reads: the failure is thrown after them */
+    #[DataProvider('writesWhileTheCdnIsDown')]
+    public function testAFailedCdnPurgeLeavesNoStaleEntryAndIsThrownLast(string $uri, string $method, int $refreshed): void
+    {
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
+        $module->override(new class extends AbstractModule {
+            protected function configure(): void
+            {
+                $this->bind(PurgerInterface::class)->to(FakeThrowingPurger::class);
+            }
+        });
+        $resource = (new Injector($module, __DIR__ . '/tmp'))->getInstance(ResourceInterface::class);
+        foreach (['a', 'b', 'c'] as $id) {
+            $resource->get('app://self/tag-page', ['id' => $id]);
+        }
+
+        try {
+            $resource->{$method}($uri, ['id' => ['a', 'b', 'c']]);
+            $this->fail('the failed CDN purge was not thrown');
+        } catch (CacheStoreException $e) {
+            $this->assertInstanceOf(FakeCdnPurgeFailed::class, $e->getPrevious());
+        }
+
+        $this->assertSame(3 + $refreshed, TagPage::$gets, 'each #[Refresh] URI is read');
+        foreach (['a', 'b', 'c'] as $id) {
+            $this->assertSame(['v' => "{$id}:1:v2"], $resource->get('app://self/tag-page', ['id' => $id])->body, $id);
+        }
     }
 }

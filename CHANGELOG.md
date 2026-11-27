@@ -55,6 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A POST that cannot address its own key no longer writes the values it was sent into the cache log: `cache_error` records its URI without the query, and the `UnmatchedQuery` message names the missing `onGet()` parameter instead of quoting the query.
 - A write whose query carries `null` for an `onGet()` parameter that allows null now addresses its own key, as BEAR.Resource binds that parameter; the key was taken as missing, so the write threw `UnmatchedQuery` or skipped its own key.
 - A PUT, PATCH or DELETE handler with both `#[RefreshCache]` and `#[Purge]`/`#[Refresh]`, on a class that is neither `#[Cacheable]` nor `#[CacheableResponse]`, whose query lacks a parameter its `onGet()` requires now throws `UnmatchedQuery` before the URIs it names are purged, as on a `#[CacheableResponse]` class.
+- A write whose purge fails, such as a CDN purge, still runs its other purges and its reads of its own URI and its `#[Refresh]` URIs, then throws the first failure as `CacheStoreException`; it stopped at the first failure and left the other entries stale in the local pool. To report such a write as done while the CDN is down, bind a `PurgerInterface` of your own that records the failure instead of throwing.
 
 ## [1.20.2] - 2026-11-13
 

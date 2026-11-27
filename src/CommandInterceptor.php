@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Exception\CacheStoreException;
 use BEAR\QueryRepository\Exception\ReturnValueIsNotResourceObjectException;
 use BEAR\QueryRepository\Exception\UnmatchedQuery;
 use BEAR\RepositoryModule\Annotation\CacheableResponse;
@@ -24,7 +25,8 @@ use function method_exists;
 
 /**
  * After a write that answers below 400: purges the resource's own key, every URI its #[Purge]/#[Refresh] name and each
- * #[Link(rel: 'collection')] of its onGet(), then reads its own URI again where the write stores it, then each #[Refresh] URI
+ * #[Link(rel: 'collection')] of its onGet(), then reads its own URI again where the write stores it, then each #[Refresh] URI.
+ * A purge that fails does not stop the rest: the first failure is thrown once every read has run.
  *
  * @see https://bearsunday.github.io/manuals/1.0/en/cache.html#tag-based-cache-invalidation
  * @internal
@@ -72,7 +74,7 @@ final readonly class CommandInterceptor implements MethodInterceptor
         $getQuery = $sent === null ? null : $this->getQuery($invocation, $sent, $stored);
         $declared = $this->command->declared($invocation, $ro);
         $own = $sent === null || $getQuery === null ? [] : $this->commandQuery->ownUris($sent, $getQuery);
-        $this->purge([...$own, ...array_merge(...array_column($declared, 0))]);
+        $failure = $this->purge([...$own, ...array_merge(...array_column($declared, 0))]);
         if ($stored && $sent !== null && $getQuery !== null) {
             $this->rebuild($invocation, $sent, $getQuery);
         }
@@ -81,6 +83,10 @@ final readonly class CommandInterceptor implements MethodInterceptor
             if ($refresh) {
                 $this->command->refresh($named);
             }
+        }
+
+        if ($failure !== null) {
+            throw $failure;
         }
     }
 
@@ -147,10 +153,13 @@ final readonly class CommandInterceptor implements MethodInterceptor
      * Each URI once, compared as the string purge() is given: its own key and a #[Purge] of itself are one purge
      *
      * @param list<AbstractUri> $uris
+     *
+     * @return CacheStoreException|null the first failure, such as a CDN purge that failed after the local pool was invalidated
      */
-    private function purge(array $uris): void
+    private function purge(array $uris): CacheStoreException|null
     {
         $purged = [];
+        $failure = null;
         foreach ($uris as $uri) {
             $key = (string) $uri;
             if (isset($purged[$key])) {
@@ -158,7 +167,13 @@ final readonly class CommandInterceptor implements MethodInterceptor
             }
 
             $purged[$key] = true;
-            $this->repository->purge($uri);
+            try {
+                $this->repository->purge($uri);
+            } catch (CacheStoreException $e) {
+                $failure ??= $e;
+            }
         }
+
+        return $failure;
     }
 }
