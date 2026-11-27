@@ -154,15 +154,22 @@ class AppSurrogateKeyModuleTest extends TestCase
         };
         $ro->uri = new Uri('app://self/direct');
         $ro->body = ['saved' => 'directly'];
+        $view = new class extends ResourceObject {
+        };
+        $view->uri = new Uri('app://self/direct-view');
+        $view->view = 'view';
         $this->storage->saveValue($ro, 0);
         $this->storage->saveDonut($ro->uri, new ResourceDonut('template', [], null, false), null, ['direct']);
+        $this->storage->saveDonutView($view, null, ['explicit']);
         $this->assertNotNull($this->storage->get($ro->uri));
         $this->assertNotNull($this->storage->getDonut($ro->uri));
+        $this->assertNotNull($this->storage->get($view->uri));
 
         $this->storage->invalidateTags([self::KEY]);
 
         $this->assertNull($this->storage->get($ro->uri));
         $this->assertNull($this->storage->getDonut($ro->uri));
+        $this->assertNull($this->storage->get($view->uri));
     }
 
     private function boot(string $order): void
