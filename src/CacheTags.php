@@ -36,12 +36,10 @@ final readonly class CacheTags
     /** Puts the application's key first in the resource's Surrogate-Key, once, so a CDN that ignores the keys past a length limit (Fastly: 16,384 bytes) still reads it */
     public function tagHeader(ResourceObject $ro): void
     {
-        $tags = $this->withAppKey(new TagSet());
-        if ($tags->isEmpty()) {
-            return;
+        $tags = $this->withAppKey(new TagSet())->merge(TagSet::ofHeaders($ro->headers));
+        if (! $tags->isEmpty()) {
+            $ro->headers[Header::SURROGATE_KEY] = $tags->toHeader();
         }
-
-        $ro->headers[Header::SURROGATE_KEY] = $tags->merge(TagSet::ofHeaders($ro->headers))->toHeader();
     }
 
     /** The URI's own tag plus the group tag shared by its query variants (see BaseUriTag). */
