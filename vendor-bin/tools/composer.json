@@ -1,7 +1,7 @@
 {
     "require-dev": {
         "doctrine/coding-standard": "^14.0",
-        "phpmd/phpmd": "^2.15",
+        "phpmd/phpmd": "^3.0",
         "phpstan/phpstan": "^2.0",
         "rector/rector": "^2.0",
         "rector/swiss-knife": "^2.3",

@@ -33,8 +33,10 @@ final class StorageRedisDsnModule extends AbstractModule
      * @param int                                                      $defaultLifetime    Default lifetime for cache items in seconds
      * @param array<string, mixed>                                     $marshallingOptions Marshalling options
      *
-     * Example with compression:
+     * Empty $marshallingOptions compress values with deflate. Given options are used as they are, so a marshaller is
+     * set only with `'enabled' => true`:
      * <code>
+     * new StorageRedisDsnModule('redis://localhost:6379', marshallingOptions: ['enabled' => false]); // uncompressed
      * new StorageRedisDsnModule(
      *     dsn: 'redis://localhost:6379',
      *     marshallingOptions: [
