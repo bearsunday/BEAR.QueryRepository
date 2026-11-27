@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\ResourceInterface;
+use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
 use FakeVendor\HelloWorld\Entity\Catalog;
 use FakeVendor\HelloWorld\Resource\App\UncachedLeaf;
@@ -27,7 +28,6 @@ use function in_array;
 use function is_array;
 use function is_string;
 
-/** With AppSurrogateKeyModule, every entry and every Surrogate-Key carries the application's key */
 class AppSurrogateKeyModuleTest extends TestCase
 {
     public const KEY = 'app-key';
@@ -49,6 +49,7 @@ class AppSurrogateKeyModuleTest extends TestCase
     private QueryRepositoryInterface $repository;
     private SemanticLoggerInterface $logger;
     private FakeCountingPurger $purger;
+    private CacheDependencyInterface $cacheDependency;
 
     /** @return array<string, array{string}> */
     public static function installOrderProvider(): array
@@ -125,6 +126,51 @@ class AppSurrogateKeyModuleTest extends TestCase
         $this->assertSame($without, $this->withoutKey($before));
     }
 
+    public function testDependsLeavesTheKeyToTheWriteThatStoresTheParent(): void
+    {
+        $this->boot('after');
+        $parent = new class extends ResourceObject {
+        };
+        $parent->uri = new Uri('app://self/parent');
+        $parent->headers[Header::SURROGATE_KEY] = 'parent-own';
+        $child = new class extends ResourceObject {
+        };
+        $child->uri = new Uri('app://self/child');
+        $child->headers[Header::SURROGATE_KEY] = 'child-own';
+
+        $this->cacheDependency->depends($parent, $child);
+        $this->assertSame('parent-own _child_ grp-_child_ child-own', $parent->headers[Header::SURROGATE_KEY], 'not stored');
+
+        $this->repository->put($parent);
+        $this->assertNotNull($this->storage->get(new Uri('app://self/parent')));
+        $this->assertSame(self::KEY . ' parent-own _child_ grp-_child_ child-own', $parent->headers[Header::SURROGATE_KEY], 'stored');
+    }
+
+    public function testInvalidatingTheKeyDropsEntriesSavedDirectly(): void
+    {
+        $this->boot('after');
+        $ro = new class extends ResourceObject {
+        };
+        $ro->uri = new Uri('app://self/direct');
+        $ro->body = ['saved' => 'directly'];
+        $view = new class extends ResourceObject {
+        };
+        $view->uri = new Uri('app://self/direct-view');
+        $view->view = 'view';
+        $this->storage->saveValue($ro, 0);
+        $this->storage->saveDonut($ro->uri, new ResourceDonut('template', [], null, false), null, ['direct']);
+        $this->storage->saveDonutView($view, null, ['explicit']);
+        $this->assertNotNull($this->storage->get($ro->uri));
+        $this->assertNotNull($this->storage->getDonut($ro->uri));
+        $this->assertNotNull($this->storage->get($view->uri));
+
+        $this->storage->invalidateTags([self::KEY]);
+
+        $this->assertNull($this->storage->get($ro->uri));
+        $this->assertNull($this->storage->getDonut($ro->uri));
+        $this->assertNull($this->storage->get($view->uri));
+    }
+
     private function boot(string $order): void
     {
         Catalog::reset();
@@ -170,6 +216,7 @@ class AppSurrogateKeyModuleTest extends TestCase
         $this->storage = $injector->getInstance(ResourceStorageInterface::class);
         $this->repository = $injector->getInstance(QueryRepositoryInterface::class);
         $this->logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
+        $this->cacheDependency = $injector->getInstance(CacheDependencyInterface::class);
     }
 
     /**
