@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Behaviour change**: `#[Purge]`, `#[Refresh]` and `#[RefreshCache]` act only on `onPost()`, `onPut()`, `onPatch()` and `onDelete()`. Move one declared on another method to the write method.
 - **Behaviour change**: when the GET that rebuilds a stored write's entry makes a write whose query cannot address its own key, a POST logs `cache_error` and answers, and a PUT, PATCH or DELETE throws `UnmatchedQuery` after every purge has run.
 - **Behaviour change**: a write opens one `command` log scope, whose entry carries `method` and `annotations` only; a reader of the log that reads `source` has to drop it.
+- **Behaviour change**: `#[NoHttpCache]` sets `Cache-Control: private, no-store, no-cache, must-revalidate` on a response of any status, so a CDN does not store a redirect or a 404 it answers; it was set on a 200 only. `#[HttpCache]` still sets a 200 only.
 
 ### Removed
 - The deprecated `HttpCacheInject`, `RepositoryLoggerInterface` and `RepositoryLogger`, `StorageMemcachedEtagModule`, the qualifiers `#[CacheEngine]`, `#[Memcache]` and `#[Redis]`, and the exceptions `RedisConnectionException` and `ResourceStorageUnserializeException`. Use constructor injection, `SemanticLoggerInterface` with `#[CacheLog]` and `StorageMemcachedModule`.
