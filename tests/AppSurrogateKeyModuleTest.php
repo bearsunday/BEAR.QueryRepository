@@ -28,7 +28,6 @@ use function in_array;
 use function is_array;
 use function is_string;
 
-/** With AppSurrogateKeyModule, every entry and the Surrogate-Key of every response stored or written as a donut carry the application's key */
 class AppSurrogateKeyModuleTest extends TestCase
 {
     public const KEY = 'app-key';

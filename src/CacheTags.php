@@ -50,7 +50,7 @@ final readonly class CacheTags
         return new TagSet([$tag, $this->identityFactory->groupTag($tag)]);
     }
 
-    /** These tags and the application's key, when one is bound */
+    /** Only the final steps add the application's key: storing an entry and {@see self::tagHeader()} */
     public function ofEntry(TagSet $tags): TagSet
     {
         return $this->appKey === null ? $tags : $tags->merge(new TagSet([$this->appKey]));
