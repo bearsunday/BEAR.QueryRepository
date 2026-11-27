@@ -18,6 +18,7 @@ use Ray\Di\Scope;
  * HeaderSetter
  * CdnCacheControlHeaderSetterInterface
  * DonutRepositoryInterface
+ * RepositoryLoggerInterface
  * PurgerInterface
  * UriTagInterface
  *
@@ -37,6 +38,9 @@ final class DonutCacheModule extends AbstractModule
         $this->bind(HeaderSetter::class);
         $this->bind(CdnCacheControlHeaderSetterInterface::class)->to(CdnCacheControlHeaderSetter::class);
         $this->bind(DonutRepositoryInterface::class)->to(DonutRepository::class)->in(Scope::SINGLETON);
+        // No cache event reaches it: the package logs through SemanticLoggerInterface
+        /** @psalm-suppress DeprecatedClass, DeprecatedInterface */
+        $this->bind(RepositoryLoggerInterface::class)->to(RepositoryLogger::class)->in(Scope::SINGLETON);
         $this->bind(PurgerInterface::class)->to(NullPurger::class);
         $this->bind(UriTagInterface::class)->to(UriTag::class);
         $this->bind(CacheIdentityFactory::class);
