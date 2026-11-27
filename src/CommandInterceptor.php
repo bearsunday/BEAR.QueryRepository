@@ -14,6 +14,7 @@ use BEAR\Resource\FactoryInterface;
 use BEAR\Resource\InvokerInterface;
 use BEAR\Resource\Request;
 use BEAR\Resource\ResourceObject;
+use BEAR\Resource\Uri;
 use Override;
 use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
@@ -79,14 +80,20 @@ final readonly class CommandInterceptor implements MethodInterceptor
             $this->rebuild($invocation, $sent, $getQuery);
         }
 
+        $this->refreshDeclared($declared);
+
+        if ($failure !== null) {
+            throw $failure;
+        }
+    }
+
+    /** @param list<array{list<Uri>, bool}> $declared each declaration's URIs, and whether it is a #[Refresh] */
+    private function refreshDeclared(array $declared): void
+    {
         foreach ($declared as [$named, $refresh]) {
             if ($refresh) {
                 $this->command->refresh($named);
             }
-        }
-
-        if ($failure !== null) {
-            throw $failure;
         }
     }
 
