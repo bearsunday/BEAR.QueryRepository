@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use BEAR\QueryRepository\Exception\CacheStoreException;
 use BEAR\Resource\ResourceInterface;
+use BEAR\Resource\Uri;
 use FakeVendor\HelloWorld\Resource\App\FlakyTagPage;
 use FakeVendor\HelloWorld\Resource\App\TagIndex;
 use FakeVendor\HelloWorld\Resource\App\TagPage;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
 
 use function array_keys;
@@ -156,5 +159,76 @@ class FanOutRefreshTest extends TestCase
 
         FlakyTagPage::$failOn = null;
         $this->assertSame(['v' => 'c:v2'], $this->resource->get('app://self/flaky-tag-page', ['id' => 'c'])->body);
+    }
+
+    /**
+     * @return array<string, array{string, string, int, string, bool}> uri, method, the GETs the write makes of the entries it names,
+     *                                                                 the tag of the first URI purged, whether it reads its own URI again
+     */
+    public static function writesWhileTheCdnIsDown(): array
+    {
+        return [
+            'Purge on a class that stores nothing' => ['app://self/fan-out-writer', 'post', 0, '_tag-page_id=a', false],
+            'Refresh on a class that stores nothing' => ['app://self/fan-out-refresh-writer', 'post', 3, '_tag-page_id=a', false],
+            'Purge on a #[Cacheable] class, after its own key' => ['app://self/cacheable-fan-out-writer', 'post', 0, '_cacheable-fan-out-writer_', true],
+            'Refresh on a #[Cacheable] class, after its own key' => ['app://self/cacheable-fan-out-writer', 'put', 3, '_cacheable-fan-out-writer_', true],
+        ];
+    }
+
+    /** A CDN purge that fails stops neither the other purges nor the reads: the first failure is thrown after them */
+    #[DataProvider('writesWhileTheCdnIsDown')]
+    public function testAFailedCdnPurgeLeavesNoStaleEntryAndIsThrownLast(string $uri, string $method, int $refreshed, string $firstTag, bool $rebuildsItself): void
+    {
+        $injector = $this->injectorWhileTheCdnIsDown();
+        $resource = $injector->getInstance(ResourceInterface::class);
+        foreach (['a', 'b', 'c'] as $id) {
+            $resource->get('app://self/tag-page', ['id' => $id]);
+        }
+
+        try {
+            $resource->{$method}($uri, ['id' => ['a', 'b', 'c']]);
+            $this->fail('the failed CDN purge was not thrown');
+        } catch (CacheStoreException $e) {
+            $this->assertInstanceOf(FakeCdnPurgeFailed::class, $e->getPrevious());
+            $this->assertStringStartsWith("purge failed: {$firstTag} ", $e->getPrevious()->getMessage(), 'the first failure');
+        }
+
+        $this->assertSame(3 + $refreshed, TagPage::$gets, 'each #[Refresh] URI is read');
+        $this->assertSame($rebuildsItself, $injector->getInstance(ResourceStorageInterface::class)->get(new Uri($uri)) !== null, 'its own URI is read again where it is stored');
+        foreach (['a', 'b', 'c'] as $id) {
+            $this->assertSame(['v' => "{$id}:1:v2"], $resource->get('app://self/tag-page', ['id' => $id])->body, $id);
+        }
+    }
+
+    /** A read that fails after a failed CDN purge is thrown in its place, once every purge has run */
+    public function testAReadThatFailsAfterAFailedCdnPurgeIsThrownInItsPlace(): void
+    {
+        $resource = $this->injectorWhileTheCdnIsDown()->getInstance(ResourceInterface::class);
+        foreach (['a', 'b', 'c'] as $id) {
+            $resource->get('app://self/flaky-tag-page', ['id' => $id]);
+        }
+
+        FlakyTagPage::$failOn = 'b';
+        try {
+            $resource->post('app://self/flaky-refresh-writer', ['id' => ['a', 'b', 'c']]);
+            $this->fail('the failed read was not thrown');
+        } catch (FakeRefreshFailure) {
+        }
+
+        FlakyTagPage::$failOn = null;
+        $this->assertSame(['v' => 'c:v2'], $resource->get('app://self/flaky-tag-page', ['id' => 'c'])->body);
+    }
+
+    private function injectorWhileTheCdnIsDown(): Injector
+    {
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
+        $module->override(new class extends AbstractModule {
+            protected function configure(): void
+            {
+                $this->bind(PurgerInterface::class)->to(FakeThrowingPurger::class);
+            }
+        });
+
+        return new Injector($module, __DIR__ . '/tmp');
     }
 }

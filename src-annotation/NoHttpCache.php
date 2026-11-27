@@ -7,7 +7,7 @@ namespace BEAR\RepositoryModule\Annotation;
 use Attribute;
 
 /**
- * Sets `Cache-Control: private, no-store, no-cache, must-revalidate` on an onGet() response with status 200
+ * Sets `Cache-Control: private, no-store, no-cache, must-revalidate` on an onGet() response, whatever its status
  *
  * A resource stored by #[Cacheable], #[CacheableResponse] or #[DonutCache] throws UnstorableDeclaration.
  *

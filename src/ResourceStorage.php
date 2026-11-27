@@ -169,10 +169,10 @@ final class ResourceStorage implements ResourceStorageInterface
         $this->logInvalidation($result, $tags);
 
         if ($purgerError !== null) {
-            // Fail-closed, and typed like the rest of the cache path: a command or a direct call
-            // has no catch, so this reaches the caller and the write is not reported as done. The
-            // automatic write inside a GET does catch it, and degrades - that request changed
-            // nothing, so nothing at the edge became stale by it.
+            // Fail-closed, and typed like the rest of the cache path: a command throws it once its other purges
+            // and reads have run, and a direct call has no catch, so it reaches the caller and the write is not
+            // reported as done. The automatic write inside a GET does catch it, and degrades - that request
+            // changed nothing, so nothing at the edge became stale by it.
             throw new CacheStoreException(previous: $purgerError);
         }
 
