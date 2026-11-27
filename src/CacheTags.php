@@ -38,7 +38,7 @@ final readonly class CacheTags
 
     /**
      * The tags a resource that depends on this one takes: its own and its Surrogate-Key's, without the application's key,
-     * which the write that stores the dependent resource puts first ({@see self::tagHeader()})
+     * which {@see self::tagHeader()} puts first when the dependent response is stored or written as a donut
      */
     public function ofDependency(ResourceObject $ro): TagSet
     {

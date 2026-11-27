@@ -29,7 +29,7 @@ use function in_array;
 use function is_array;
 use function is_string;
 
-/** With AppSurrogateKeyModule, every entry and the Surrogate-Key of every stored response carry the application's key */
+/** With AppSurrogateKeyModule, every entry and the Surrogate-Key of every response stored or written as a donut carry the application's key */
 class AppSurrogateKeyModuleTest extends TestCase
 {
     public const KEY = 'app-key';
@@ -149,7 +149,7 @@ class AppSurrogateKeyModuleTest extends TestCase
         $this->assertSame(self::KEY . ' parent-own _child_ grp-_child_ child-own', $parent->headers[Header::SURROGATE_KEY], 'stored');
     }
 
-    /** An uncached child embedded in a stored page carries the keys it passes up, without the application's */
+    /** Uncached children embedded in a stored page, the one that reads a #[ResourceParam] source included, carry the keys they pass up without the application's */
     public function testAnEmbeddedChildThatIsNotStoredCarriesNoKey(): void
     {
         $this->boot('after');
@@ -158,8 +158,12 @@ class AppSurrogateKeyModuleTest extends TestCase
         $this->assertIsArray($page->body);
         $mid = $page->body['mid'] ?? null;
         $this->assertInstanceOf(AbstractRequest::class, $mid);
-
         $this->assertSame('_assisted_child_ grp-_assisted_child_ _user_id=1 grp-_user_id=1', $mid->resourceObject->headers[Header::SURROGATE_KEY] ?? null);
+
+        $this->assertIsArray($mid->resourceObject->body);
+        $inner = $mid->resourceObject->body['inner'] ?? null;
+        $this->assertInstanceOf(AbstractRequest::class, $inner);
+        $this->assertSame('_user_id=1 grp-_user_id=1', $inner->resourceObject->headers[Header::SURROGATE_KEY] ?? null, 'the child that reads the source');
     }
 
     private function boot(string $order): void
