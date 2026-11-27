@@ -179,14 +179,7 @@ class FanOutRefreshTest extends TestCase
     #[DataProvider('writesWhileTheCdnIsDown')]
     public function testAFailedCdnPurgeLeavesNoStaleEntryAndIsThrownLast(string $uri, string $method, int $refreshed, string $firstTag, bool $rebuildsItself): void
     {
-        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
-        $module->override(new class extends AbstractModule {
-            protected function configure(): void
-            {
-                $this->bind(PurgerInterface::class)->to(FakeThrowingPurger::class);
-            }
-        });
-        $injector = new Injector($module, __DIR__ . '/tmp');
+        $injector = $this->injectorWhileTheCdnIsDown();
         $resource = $injector->getInstance(ResourceInterface::class);
         foreach (['a', 'b', 'c'] as $id) {
             $resource->get('app://self/tag-page', ['id' => $id]);
@@ -205,5 +198,37 @@ class FanOutRefreshTest extends TestCase
         foreach (['a', 'b', 'c'] as $id) {
             $this->assertSame(['v' => "{$id}:1:v2"], $resource->get('app://self/tag-page', ['id' => $id])->body, $id);
         }
+    }
+
+    /** A read that fails after a failed CDN purge is thrown in its place, once every purge has run */
+    public function testAReadThatFailsAfterAFailedCdnPurgeIsThrownInItsPlace(): void
+    {
+        $resource = $this->injectorWhileTheCdnIsDown()->getInstance(ResourceInterface::class);
+        foreach (['a', 'b', 'c'] as $id) {
+            $resource->get('app://self/flaky-tag-page', ['id' => $id]);
+        }
+
+        FlakyTagPage::$failOn = 'b';
+        try {
+            $resource->post('app://self/flaky-refresh-writer', ['id' => ['a', 'b', 'c']]);
+            $this->fail('the failed read was not thrown');
+        } catch (FakeRefreshFailure) {
+        }
+
+        FlakyTagPage::$failOn = null;
+        $this->assertSame(['v' => 'c:v2'], $resource->get('app://self/flaky-tag-page', ['id' => 'c'])->body);
+    }
+
+    private function injectorWhileTheCdnIsDown(): Injector
+    {
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
+        $module->override(new class extends AbstractModule {
+            protected function configure(): void
+            {
+                $this->bind(PurgerInterface::class)->to(FakeThrowingPurger::class);
+            }
+        });
+
+        return new Injector($module, __DIR__ . '/tmp');
     }
 }

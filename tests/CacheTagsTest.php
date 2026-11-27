@@ -34,21 +34,25 @@ class CacheTagsTest extends TestCase
         $this->assertSame(['_child_', 'grp-_child_'], $cacheTags->tags($ro, new TagSet())->toArray());
     }
 
-    /** @return array<string, array{string|null, string}> */
+    /** @return array<string, array{string|null, string, string}> */
     public static function appKeyProvider(): array
     {
-        return ['without an application key' => [null, 'a b'], 'with one' => ['app-key', 'app-key a b']];
+        return [
+            'without an application key' => [null, 'a  a b', 'a b'],
+            'with one' => ['app-key', 'a  a b', 'app-key a b'],
+            'with one the header already holds' => ['app-key', 'a app-key b app-key', 'app-key a b'],
+        ];
     }
 
-    /** The application's key comes first; without one, the header is still written without duplicate or empty keys */
+    /** The application's key comes first, once; without one, the header is still written without duplicate or empty keys */
     #[DataProvider('appKeyProvider')]
-    public function testTagHeaderPutsTheAppKeyFirstAndNormalisesTheHeader(string|null $appKey, string $expected): void
+    public function testTagHeaderPutsTheAppKeyFirstAndNormalisesTheHeader(string|null $appKey, string $header, string $expected): void
     {
         $identityFactory = $this->injector->getInstance(CacheIdentityFactory::class);
         $uriTag = new UriTag(new CacheIdentityFactory(new GlobalServerContext()));
         $ro = new class extends ResourceObject {
         };
-        $ro->headers[Header::SURROGATE_KEY] = 'a  a b';
+        $ro->headers[Header::SURROGATE_KEY] = $header;
         (new CacheTags($uriTag, new BaseUriTag($uriTag, $identityFactory), $identityFactory, $appKey))->tagHeader($ro);
 
         $this->assertSame($expected, $ro->headers[Header::SURROGATE_KEY]);
