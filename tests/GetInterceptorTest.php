@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\ExpireAtKeyNotExists;
 use BEAR\Resource\ResourceInterface;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 
@@ -121,6 +122,29 @@ class GetInterceptorTest extends TestCase
     {
         $ro = $this->resource->get('app://self/no-http-cache-control');
         $this->assertSame('private, no-store, no-cache, must-revalidate', $ro->headers['Cache-Control']);
+    }
+
+    /** @return array<string, array{int}> */
+    public static function non200Provider(): array
+    {
+        return ['redirect' => [302], 'forbidden' => [403], 'not found' => [404], 'unavailable' => [503]];
+    }
+
+    /** A CDN stores a redirect or a 404 without Cache-Control for a lifetime of its own */
+    #[DataProvider('non200Provider')]
+    public function testNoHttpCacheSetsAResponseOfAnyStatus(int $code): void
+    {
+        $ro = $this->resource->get('app://self/no-http-cache-control', ['code' => $code]);
+        $this->assertSame($code, $ro->code);
+        $this->assertSame('private, no-store, no-cache, must-revalidate', $ro->headers['Cache-Control']);
+    }
+
+    #[DataProvider('non200Provider')]
+    public function testHttpCacheLeavesAResponseOtherThan200Alone(int $code): void
+    {
+        $ro = $this->resource->get('app://self/http-cache-control', ['code' => $code]);
+        $this->assertSame($code, $ro->code);
+        $this->assertArrayNotHasKey('Cache-Control', $ro->headers);
     }
 
     public function testHttpCacheOverrideMaxAge(): void

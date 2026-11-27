@@ -6,6 +6,7 @@ namespace BEAR\QueryRepository;
 
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 use Ray\Di\InjectorInterface;
@@ -31,5 +32,29 @@ class CacheTagsTest extends TestCase
 
         $this->assertSame(['_child_', 'grp-_child_', 'data'], $cacheTags->tags($ro)->toArray());
         $this->assertSame(['_child_', 'grp-_child_'], $cacheTags->tags($ro, new TagSet())->toArray());
+    }
+
+    /** @return array<string, array{string|null, string, string}> */
+    public static function appKeyProvider(): array
+    {
+        return [
+            'without an application key' => [null, 'a  a b', 'a b'],
+            'with one' => ['app-key', 'a  a b', 'app-key a b'],
+            'with one the header already holds' => ['app-key', 'a app-key b app-key', 'app-key a b'],
+        ];
+    }
+
+    /** The application's key comes first, once; without one, the header is still written without duplicate or empty keys */
+    #[DataProvider('appKeyProvider')]
+    public function testTagHeaderPutsTheAppKeyFirstAndNormalisesTheHeader(string|null $appKey, string $header, string $expected): void
+    {
+        $identityFactory = $this->injector->getInstance(CacheIdentityFactory::class);
+        $uriTag = new UriTag(new CacheIdentityFactory(new GlobalServerContext()));
+        $ro = new class extends ResourceObject {
+        };
+        $ro->headers[Header::SURROGATE_KEY] = $header;
+        (new CacheTags($uriTag, new BaseUriTag($uriTag, $identityFactory), $identityFactory, $appKey))->tagHeader($ro);
+
+        $this->assertSame($expected, $ro->headers[Header::SURROGATE_KEY]);
     }
 }

@@ -59,18 +59,19 @@ class AppSurrogateKeyModuleTest extends TestCase
         ];
     }
 
+    /** First, so a CDN that ignores the keys past a length limit still reads it */
     #[DataProvider('installOrderProvider')]
-    public function testEveryResponseCarriesTheKeyOnce(string $order): void
+    public function testEveryResponseCarriesTheKeyFirstAndOnce(string $order): void
     {
         $this->boot($order);
         foreach (self::PAGES as $uri) {
-            $this->assertKeyOnce($this->header($uri), "{$uri} miss");
-            $this->assertKeyOnce($this->header($uri), "{$uri} hit");
+            $this->assertKeyFirstAndOnce($this->header($uri), "{$uri} miss");
+            $this->assertKeyFirstAndOnce($this->header($uri), "{$uri} hit");
         }
 
         // The page view goes with its hole; the donut is composed again
         $this->repository->purge(new Uri('page://self/html/comment'));
-        $this->assertKeyOnce($this->header('page://self/html/blog-posting'), 'page recomposed around its hole');
+        $this->assertKeyFirstAndOnce($this->header('page://self/html/blog-posting'), 'page recomposed around its hole');
     }
 
     #[DataProvider('installOrderProvider')]
@@ -236,10 +237,12 @@ class AppSurrogateKeyModuleTest extends TestCase
         return $this->resource->get($uri)->headers[Header::SURROGATE_KEY] ?? null;
     }
 
-    private function assertKeyOnce(string|null $header, string $message): void
+    private function assertKeyFirstAndOnce(string|null $header, string $message): void
     {
         $this->assertNotNull($header, $message);
-        $this->assertSame(1, array_count_values(explode(' ', $header))[self::KEY] ?? 0, $message);
+        $keys = explode(' ', $header);
+        $this->assertSame(self::KEY, $keys[0], $message);
+        $this->assertSame(1, array_count_values($keys)[self::KEY] ?? 0, $message);
     }
 
     private function isStored(string $uri): bool

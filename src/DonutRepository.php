@@ -187,6 +187,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $this->logger->event(new CacheHitContext('donut'));
         $this->logger->event(new RefreshDonutContext((string) $ro->uri));
         $donut->refresh($this->resource, $ro, $this->dependencyCollector->begin(new TagSet()));
+        $this->cacheTags->tagHeader($ro);
         if (! $donut->isPage) {
             $this->logCdnHeaders($ro);
             $this->logger->event(new PutSkippedContext((string) $ro->uri, 'not-cacheable'));

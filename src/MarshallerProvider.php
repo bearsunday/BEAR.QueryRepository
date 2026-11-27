@@ -17,6 +17,9 @@ use Symfony\Component\Cache\Marshaller\MarshallerInterface;
  */
 final readonly class MarshallerProvider implements ProviderInterface
 {
+    /** Used when no options are given; given options replace it as a whole, so `['enabled' => false]` stores values uncompressed */
+    private const DEFAULT_OPTIONS = ['enabled' => true, 'type' => 'deflate'];
+
     /** @param array{enabled?: bool, type?: string, use_igbinary?: bool} $options Marshalling options */
     public function __construct(
         #[MarshallerOptions]
@@ -27,13 +30,13 @@ final readonly class MarshallerProvider implements ProviderInterface
     #[Override]
     public function get(): MarshallerInterface|null
     {
-        return $this->createMarshaller($this->options);
+        return $this->createMarshaller($this->options === [] ? self::DEFAULT_OPTIONS : $this->options);
     }
 
     /** @param array{enabled?: bool, type?: string, use_igbinary?: bool} $options */
     private function createMarshaller(array $options): MarshallerInterface|null
     {
-        if (empty($options) || ($options['enabled'] ?? false) !== true) {
+        if (($options['enabled'] ?? false) !== true) {
             return null;
         }
 

@@ -13,8 +13,10 @@ use BEAR\Resource\ResourceObject;
 class HttpCacheControl extends ResourceObject
 {
 
-    public function onGet() : ResourceObject
+    public function onGet(int $code = 200) : ResourceObject
     {
+        $this->code = $code;
+
         return $this;
     }
 }

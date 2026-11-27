@@ -17,7 +17,8 @@ use function assert;
 /**
  * Interceptor for HTTP Cache-Control header with #[HttpCache] or #[NoHttpCache]
  *
- * Bound to onGet methods of classes marked with #[HttpCache] or #[NoHttpCache].
+ * Bound to onGet methods of classes marked with #[HttpCache] or #[NoHttpCache]. #[HttpCache] sets a 200 response,
+ * #[NoHttpCache] every response.
  *
  * @see \BEAR\RepositoryModule\Annotation\HttpCache
  * @see \BEAR\RepositoryModule\Annotation\NoHttpCache
@@ -41,7 +42,7 @@ final class HttpCacheInterceptor implements MethodInterceptor
         $cacheControl = isset($attributes[0]) ? $attributes[0]->newInstance() : null;
         $ro = $invocation->proceed();
         assert($ro instanceof ResourceObject);
-        if ($ro->code === 200 && $cacheControl instanceof AbstractCacheControl) {
+        if ($cacheControl instanceof AbstractCacheControl && ($ro->code === 200 || $cacheControl instanceof NoHttpCache)) {
             $ro->headers[Header::findKey($ro->headers, Header::CACHE_CONTROL) ?? Header::CACHE_CONTROL] = (string) $cacheControl;
         }
 

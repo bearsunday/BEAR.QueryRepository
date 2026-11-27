@@ -7,10 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.21.0] - 2026-11-24
 
+### Changed
+- **Behaviour change**: `StorageRedisDsnModule` compresses stored values with deflate when `$marshallingOptions` is empty; pass `['enabled' => false]` to store them uncompressed. The package now requires `ext-zlib`.
+- **Behaviour change**: `StorageRedisDsnModule` connects to Redis on first use, so building the application, as a compile does, needs no Redis, and a store that is down is logged as `pool_error` per request instead of failing the boot. Pass `['lazy' => false]` to connect when the pool is built. The package now requires `symfony/cache` 6.4.12 or later: earlier lazy connections fail to load with ext-redis 6.3.
+
+## [Unreleased]
+
 ### Added
 - `#[Link(rel: 'collection', href: ...)]` on a row's `onGet()` names the list it belongs to: a write to the row purges the list's URI and the variants that differ only in default-valued parameters, so the list needs no `#[DependsOn]` for its rows. A path-only href (`/posts`) takes the context scheme (`#[ContextScheme]`).
 - The `purge_skipped` log entry (fields `uri`, the write's URI without its query, and `reason`, `unmatched_query`), recorded when a write on a resource without a cache attribute cannot address its own key because its query lacks a required `onGet()` parameter.
-- `AppSurrogateKeyModule($key)` adds the key to every entry this package stores and to every `Surrogate-Key` it sets, so invalidating the key on the server and at the CDN clears the whole application. Install it before or after `QueryRepositoryModule`.
+- `AppSurrogateKeyModule($key)` adds the key to every entry this package stores and, as the first key, to every `Surrogate-Key` it sets, so invalidating the key on the server and at the CDN clears the whole application; a CDN that ignores the keys past a length limit (Fastly: 16,384 bytes) still reads it. Install it before or after `QueryRepositoryModule`.
 - `#[DependsOn(uri: ..., key: ...)]`: `key` names the rows in the body `onGet()` returns, so `#[DependsOn(uri: 'app://self/article?id={id}', key: 'articles')]` with `$this->body['articles'] = [['id' => 1, ...], ['id' => 2, ...]]` depends on `?id=1` and `?id=2`; a row that lacks the variable is skipped, an empty list names no URI, and a variable no row holds is read from the body's top level, then from the arguments. A body or row list that can be read only once, such as a `Generator`, is left in the body as an `ArrayIterator` with every row, under the keys it yielded unless a key repeats, as with `yield from`, which leaves a list.
 
 ### Changed
@@ -28,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Behaviour change**: `#[Purge]`, `#[Refresh]` and `#[RefreshCache]` act only on `onPost()`, `onPut()`, `onPatch()` and `onDelete()`. Move one declared on another method to the write method.
 - **Behaviour change**: when the GET that rebuilds a stored write's entry makes a write whose query cannot address its own key, a POST logs `cache_error` and answers, and a PUT, PATCH or DELETE throws `UnmatchedQuery` after every purge has run.
 - **Behaviour change**: a write opens one `command` log scope, whose entry carries `method` and `annotations` only; a reader of the log that reads `source` has to drop it.
+- **Behaviour change**: `#[NoHttpCache]` sets `Cache-Control: private, no-store, no-cache, must-revalidate` on a response of any status, so a CDN does not store a redirect or a 404 it answers; it was set on a 200 only. `#[HttpCache]` still sets a 200 only.
 
 ### Removed
 - The deprecated `HttpCacheInject`, `RepositoryLoggerInterface` and `RepositoryLogger`, `StorageMemcachedEtagModule`, the qualifiers `#[CacheEngine]`, `#[Memcache]` and `#[Redis]`, and the exceptions `RedisConnectionException` and `ResourceStorageUnserializeException`. Use constructor injection, `SemanticLoggerInterface` with `#[CacheLog]` and `StorageMemcachedModule`.
@@ -55,6 +62,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A POST that cannot address its own key no longer writes the values it was sent into the cache log: `cache_error` records its URI without the query, and the `UnmatchedQuery` message names the missing `onGet()` parameter instead of quoting the query.
 - A write whose query carries `null` for an `onGet()` parameter that allows null now addresses its own key, as BEAR.Resource binds that parameter; the key was taken as missing, so the write threw `UnmatchedQuery` or skipped its own key.
 - A PUT, PATCH or DELETE handler with both `#[RefreshCache]` and `#[Purge]`/`#[Refresh]`, on a class that is neither `#[Cacheable]` nor `#[CacheableResponse]`, whose query lacks a parameter its `onGet()` requires now throws `UnmatchedQuery` before the URIs it names are purged, as on a `#[CacheableResponse]` class.
+- A write whose purge fails, such as a CDN purge, still runs its other purges and its reads of its own URI and its `#[Refresh]` URIs, then throws the first failure as `CacheStoreException`; it stopped at the first failure and left the other entries stale in the local pool. To report such a write as done while the CDN is down, bind a `PurgerInterface` of your own that records the failure instead of throwing.
 
 ## [1.20.2] - 2026-11-13
 

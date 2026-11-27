@@ -37,8 +37,10 @@ final readonly class RedisDsnProvider implements ProviderInterface
     #[Override]
     public function get(): Redis|RedisArray|RedisCluster|ClientInterface|Relay|RelayCluster
     {
+        // Connect on first use: the pool is built at boot, where a compile has no store to reach.
+        // A `lazy` in the options or the DSN query still wins.
         /** @var Redis|RedisArray|RedisCluster|ClientInterface|Relay|RelayCluster $connection */
-        $connection = RedisAdapter::createConnection($this->dns, $this->options);
+        $connection = RedisAdapter::createConnection($this->dns, $this->options + ['lazy' => true]);
 
         return $connection;
     }
