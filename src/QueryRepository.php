@@ -74,7 +74,7 @@ final readonly class QueryRepository implements QueryRepositoryInterface
     private function doPut(ResourceObject $ro): bool
     {
         if ($ro->code === 200) {
-            $this->setCacheDependency($ro);
+            $this->dependencyCollector->collect($ro);
         }
 
         $this->cacheTags->tagHeader($ro);
@@ -198,11 +198,6 @@ final readonly class QueryRepository implements QueryRepositoryInterface
         }
 
         return new CachePolicyContext($uri, $cacheable->expiry, null, null, $ttl);
-    }
-
-    private function setCacheDependency(ResourceObject $ro): void
-    {
-        $this->dependencyCollector->collect($ro);
     }
 
     /**

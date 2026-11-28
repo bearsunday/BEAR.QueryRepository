@@ -73,7 +73,7 @@ final class ResourceBodyEvaluator
     /**
      * Materialize an embedded request as a copy the live response graph cannot mutate
      *
-     * The child was already run before the store (QueryRepository::setCacheDependency()
+     * The child was already run before the store (CacheDependencyCollector::collect()
      * casts it, the renderer reads it), and AbstractRequest memoizes that single
      * execution. Its __invoke() ignores the memo and runs the request again, which for a
      * non-idempotent child would leave a type: "view" entry holding a body and a view

@@ -36,43 +36,45 @@ final readonly class RefreshAnnotatedCommand
     public function __construct(
         private ResourceInterface $resource,
         private CacheIdentityFactory $identityFactory,
-        private DependsOnTemplates $templates,
+        private UriTemplates $uriTemplates,
         private UriFactory $uriFactory,
     ) {
     }
 
     /**
-     * The URIs each #[Purge]/#[Refresh] of the method names, in declaration order, and whether it is a #[Refresh]; then the URI
-     * each #[Link(rel: 'collection')] on the resource's onGet() names, purged only; an href that does not expand to a resource URI is
-     * skipped
+     * The URIs each #[Purge]/#[Refresh] of the method names, in declaration order, then the URI each
+     * #[Link(rel: 'collection')] on the resource's onGet() names (purged only); an href that does not expand
+     * to a resource URI is skipped
      *
      * @param MethodInvocation<object> $invocation
-     *
-     * @return list<array{list<Uri>, bool}>
      */
-    public function declared(MethodInvocation $invocation, ResourceObject $ro): array
+    public function declared(MethodInvocation $invocation, ResourceObject $ro): CommandTargets
     {
         /** @var AbstractUri|null $uri a resource object taken from the injector has none */
         $uri = $ro->uri;
         $query = $uri === null ? $this->passedArguments($invocation) : $uri->query;
-        $declared = [];
+        $purge = [];
+        $refresh = [];
         foreach ($invocation->getMethod()->getAnnotations() as $annotation) {
             if (! $annotation instanceof Purge && ! $annotation instanceof Refresh) {
                 continue;
             }
 
             $uris = array_map(static fn (string $uri): Uri => new Uri($uri), $this->uris($ro, $annotation->uri, $query));
-            $declared[] = [$uris, $annotation instanceof Refresh];
+            $purge = [...$purge, ...$uris];
+            if ($annotation instanceof Refresh) {
+                $refresh = [...$refresh, ...$uris];
+            }
         }
 
         $target = $invocation->getThis();
         if ($target instanceof ResourceObject) {
             foreach ($this->collections($target) as $href) {
-                $declared[] = [$this->resourceUris($this->uris($ro, $href, $query)), false];
+                $purge = [...$purge, ...$this->resourceUris($this->uris($ro, $href, $query))];
             }
         }
 
-        return $declared;
+        return new CommandTargets($purge, $refresh);
     }
 
     /**
@@ -112,7 +114,7 @@ final readonly class RefreshAnnotatedCommand
     }
 
     /**
-     * One URI per element of each list given to an exploded query variable: {@see DependsOnTemplates::variableSets()}
+     * One URI per element of each list given to an exploded query variable: {@see UriTemplates::variableSets()}
      *
      * @param array<mixed> $query
      *
@@ -122,7 +124,7 @@ final readonly class RefreshAnnotatedCommand
     {
         $body = is_array($ro->body) ? $ro->body : [];
         $uris = [];
-        foreach ($this->templates->variableSets($template, $body + $query) as $variables) {
+        foreach ($this->uriTemplates->variableSets($template, $body + $query) as $variables) {
             $uris[] = uri_template($template, $variables);
         }
 

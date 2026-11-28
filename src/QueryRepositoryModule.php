@@ -85,7 +85,7 @@ final class QueryRepositoryModule extends AbstractModule
         $this->bind(CommandQuery::class);
         $this->bind(UnsafeMethodMatcher::class);
         // Server context for thread safety (Swoole, RoadRunner, etc.)
-        $this->bind(ServerContextInterface::class)->to(GlobalServerContext::class)->in(Scope::SINGLETON);
+        $this->bind(ServerContextInterface::class)->to(GlobalServerContext::class);
         $this->bind(ReplacedEntry::class);
         // #[Cacheable]
         $this->install(new CacheableModule());

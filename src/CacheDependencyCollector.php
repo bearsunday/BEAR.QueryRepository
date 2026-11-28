@@ -40,7 +40,7 @@ final readonly class CacheDependencyCollector
     {
         $dependencies = $this->begin(new TagSet());
         $this->declared($ro);
-        foreach ($this->dependsOnTags->requests($ro) as $request) {
+        foreach (EmbeddedRequests::of($ro) as $request) {
             $this->materialize($request);
             $child = $request->resourceObject;
             $this->depends($ro, $child, $dependencies->read($child));
@@ -51,7 +51,7 @@ final readonly class CacheDependencyCollector
     public function materials(ResourceObject $ro, Dependencies $dependencies): void
     {
         $this->declared($ro);
-        foreach ($this->dependsOnTags->requests($ro) as $request) {
+        foreach (EmbeddedRequests::of($ro) as $request) {
             $child = $request->resourceObject;
             $this->depends($ro, $child, $dependencies->embedded($child));
         }

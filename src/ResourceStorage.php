@@ -56,7 +56,7 @@ final class ResourceStorage implements ResourceStorageInterface
     private const KEY_RO = 'ro-';
 
     /**
-     * Resource static cache prifix
+     * Resource static cache prefix
      */
     private const KEY_DONUT = 'donut-';
 
@@ -82,11 +82,11 @@ final class ResourceStorage implements ResourceStorageInterface
         private ResourceBodyEvaluator $evaluateBody,
         private EntityTags $entityTags,
     ) {
-        $this->initializePools($roPoolProvider);
+        $this->initializePool($roPoolProvider);
     }
 
     /** @param ProviderInterface<TagAwareAdapterInterface> $roPoolProvider */
-    private function initializePools(ProviderInterface $roPoolProvider): void
+    private function initializePool(ProviderInterface $roPoolProvider): void
     {
         $this->roPoolProvider = $roPoolProvider;
         $this->roPool = $roPoolProvider->get();
@@ -380,6 +380,6 @@ final class ResourceStorage implements ResourceStorageInterface
         $this->cacheTags = $data['cacheTags'];
         $this->evaluateBody = $data['evaluateBody'];
         $this->entityTags = $data['entityTags'];
-        $this->initializePools($data['roProvider']);
+        $this->initializePool($data['roProvider']);
     }
 }

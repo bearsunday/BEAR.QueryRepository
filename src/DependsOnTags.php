@@ -5,9 +5,7 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\RepositoryModule\Annotation\DependsOn;
-use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\ResourceObject;
-use Generator;
 
 use function array_keys;
 use function is_array;
@@ -25,23 +23,8 @@ final readonly class DependsOnTags
         private DependsOnRows $rows,
         private CacheIdentityFactory $identityFactory,
         private DependsOnTemplates $templates,
+        private UriTemplates $uriTemplates,
     ) {
-    }
-
-    /**
-     * Enumerate only immediate values of the array-cast body, in order and with duplicates.
-     * Do not execute requests, descend into children, or consume Traversable bodies.
-     *
-     * @return Generator<AbstractRequest>
-     */
-    public function requests(ResourceObject $ro): Generator
-    {
-        /** @var mixed $body */
-        foreach ((array) $ro->body as $body) {
-            if ($body instanceof AbstractRequest) {
-                yield $body;
-            }
-        }
     }
 
     /** @return TagSet|null what onGet() declares; null when it declares nothing */
@@ -79,7 +62,7 @@ final readonly class DependsOnTags
         }
 
         $source = sprintf('%s onGet()', (string) $ro->uri);
-        $expansion = new DependsOnExpansion($this->uriTag, $this->templates, $source, is_array($ro->body) ? $ro->body : [], $arguments, $onGet->names(), array_keys($onGet->bound()));
+        $expansion = new DependsOnExpansion($this->uriTag, $this->uriTemplates, $source, is_array($ro->body) ? $ro->body : [], $arguments, $onGet->names(), array_keys($onGet->bound()));
         $tags = [];
         foreach ($declarations as $dependsOn) {
             $tags = [...$tags, ...$expansion->tags($dependsOn, $this->rows->of($ro, $dependsOn->key))];
