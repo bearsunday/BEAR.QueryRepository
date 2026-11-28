@@ -63,14 +63,7 @@ final class DeclaredCacheControl
         return $declared instanceof HttpCache ? $declared : null;
     }
 
-    private function forbidsSharing(string $cacheControl): bool
-    {
-        $lower = strtolower($cacheControl);
-
-        return str_contains($lower, 'no-store') || str_contains($lower, 'private');
-    }
-
-    private function attribute(ResourceObject $ro): HttpCache|NoHttpCache|null
+    public function attribute(ResourceObject $ro): HttpCache|NoHttpCache|null
     {
         if (array_key_exists($ro::class, $this->declared)) {
             return $this->declared[$ro::class];
@@ -83,5 +76,12 @@ final class DeclaredCacheControl
         }
 
         return $this->declared[$ro::class] = isset($attributes[0]) ? $attributes[0]->newInstance() : null;
+    }
+
+    private function forbidsSharing(string $cacheControl): bool
+    {
+        $lower = strtolower($cacheControl);
+
+        return str_contains($lower, 'no-store') || str_contains($lower, 'private');
     }
 }

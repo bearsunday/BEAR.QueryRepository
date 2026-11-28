@@ -248,7 +248,7 @@ final class ResourceStorage implements ResourceStorageInterface
      * {@inheritDoc}
      */
     #[Override]
-    public function saveDonut(AbstractUri $uri, ResourceDonut $donut, int|null $ttl, array $headerKeys): void
+    public function saveDonut(AbstractUri $uri, ResourceDonut $donut, int|null $ttl, array $headerKeys): bool
     {
         $ttl = $this->nonNegative($ttl);
         $key = $this->getUriKey($uri, self::KEY_DONUT);
@@ -257,6 +257,8 @@ final class ResourceStorage implements ResourceStorageInterface
         // saved=false is logged, not asserted: a quiet store failure must stay observable
         // in the log (an assert here would throw AFTER the event, contradicting it).
         $this->logger->event(new SaveDonutContext((string) $uri, $headerKeys, $ttl, $saved));
+
+        return $saved;
     }
 
     #[Override]

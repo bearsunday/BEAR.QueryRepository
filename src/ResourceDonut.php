@@ -251,6 +251,10 @@ final class ResourceDonut
              * @var mixed     $maybeRequest
              */
             foreach ($ro->body as $key => &$maybeRequest) {
+                if ($maybeRequest instanceof DonutRequest) {
+                    $maybeRequest = $maybeRequest->request;
+                }
+
                 if ($maybeRequest instanceof AbstractRequest) {
                     $maybeRequest = $embeds[$key] = new DonutRequest($maybeRequest, $storage, $etags);
                 }
@@ -259,7 +263,18 @@ final class ResourceDonut
             unset($maybeRequest);
         }
 
-        $donutTemplate = $ro->toString();
+        try {
+            $donutTemplate = $ro->toString();
+        } catch (Throwable $e) {
+            if (is_array($ro->body)) {
+                foreach ($embeds as $key => $embed) {
+                    $ro->body[$key] = $embed->request;
+                }
+            }
+
+            throw $e;
+        }
+
         foreach ($embeds as $embed) {
             if ($embed->isEncoded && is_array($ro->body)) {
                 return self::ofBody($ro, $embeds, $etags, $sMaxAge, $isPage);

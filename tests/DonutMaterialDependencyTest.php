@@ -16,6 +16,7 @@ use Override;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 use Ray\Di\InjectorInterface;
+use Ray\Di\ProviderInterface;
 
 use function array_filter;
 use function array_values;
@@ -287,9 +288,8 @@ class DonutMaterialDependencyTest extends TestCase
     }
 
     /**
-     * Pins DonutRenderer: a second full MISS of the same page in one long-running
-     * container must render the hole's FRESH content, not the first MISS's stale view
-     * (setView() must overwrite by placeholder, not append).
+     * A second full MISS of the same page in one long-running container must render the hole's
+     * FRESH content, not the first MISS's stale view.
      */
     public function testASecondFullMissOfTheSamePageRendersTheFreshHoleContent(): void
     {
@@ -434,7 +434,18 @@ class DonutMaterialDependencyTest extends TestCase
                 $storage,
                 $resource,
                 $logger,
-                $injector->getInstance(DonutRendererInterface::class),
+                /** @implements ProviderInterface<DonutRendererInterface> */
+                new class ($injector) implements ProviderInterface {
+                    public function __construct(private readonly InjectorInterface $injector)
+                    {
+                    }
+
+                    #[Override]
+                    public function get(): DonutRendererInterface
+                    {
+                        return $this->injector->getInstance(DonutRendererInterface::class);
+                    }
+                },
                 new DeclaredCacheControl(),
                 new ReplacedEntry($logger, $storage, $uriTag),
                 $cacheTags,

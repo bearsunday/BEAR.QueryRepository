@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - `ResourceDonut`, `ResourceBodyEvaluator`, `RefreshAnnotatedCommand` and the default log classes `Log\HostRuntime`, `Log\ProcessSession`, `Log\SafeSemanticLogger` and `Log\ShutdownFlush` are `@internal`: depend on the interfaces they implement and the modules that bind them. `RefreshAnnotatedCommand`'s constructor and `ResourceDonut::create()`/`refresh()` take new arguments, so code that builds them with `new` has to take them from the injector instead.
+- `ResourceStorageInterface::saveDonut()` now returns `bool` (whether the template entry was saved) instead of `void`; custom `ResourceStorageInterface` implementations must return `bool`.
 - `HttpCache` and `CliHttpCache` take only the `ConditionalRequest` they answer with, and `UriTag`, `EtagSetter` and `Log\Session` require their dependency. Code that builds them with `new` has to pass it, or take them from the injector.
 - `#[Cacheable]`'s `expirySecond` is documented as `non-negative-int`, so PHPStan and Psalm report a negative literal; a negative value is stored as no lifetime.
 - The classes in `src-deprecated/` and `src-annotation-deprecated/` are kept as they were in 1.20.2 and are no longer maintained; `StorageRedisCacheProvider`, `StorageMemcachedCacheProvider`, `NamespacedCacheProvider` and `ResourceStorageCacheableTrait` no longer work, as the qualifiers and classes they use are removed. `RepositoryLoggerInterface` is still bound to `RepositoryLogger` and receives no cache event; read the log from `SemanticLoggerInterface` with `#[CacheLog]`.
@@ -49,6 +50,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The `BaseUriTagInterface` binding: the group tag of an entry is always the one a purge of its bare URI reaches.
 
 ### Fixed
+- `#[HttpCache]` and `#[NoHttpCache]` on a resource class that inherits `onGet()` from a parent class now apply.
+- Direct top-level `DonutRepositoryInterface::putStatic()` and `putDonut()` calls now close their `manual_store` scope with `failed` when the response is unstorable or when saving the view or template is refused by the pool; they previously closed with `stored`.
+- `DonutRendererInterface` is now resolved per donut write from DI, so the default transient binding creates a fresh renderer per write instead of retaining rendered hole views across requests in long-running processes; a singleton or `toInstance()` binding remains shared as configured.
 - A resource stored by `#[Cacheable]`, `#[CacheableResponse]` or `#[DonutCache]` that declares `private` or `no-store`, with `#[HttpCache(isPrivate: true)]`, `#[HttpCache(noStore: true)]` or `#[NoHttpCache]`, throws `UnstorableDeclaration` and stores nothing; it was stored in the shared pool, served to every visitor, and given a CDN lifetime. Remove the cache attribute or the declaration.
 - A `#[Cacheable(expiryAt: ...)]` response whose time has already passed is not stored and answers `Cache-Control: no-store`, logging `put_skipped` with the reason `expired`; it was stored without expiry and served until a write invalidated it.
 - A conditional request whose ETag, set by an `EtagSetterInterface` of your own, holds a character PSR-6 reserves in a cache key, such as the `/` of base64, is answered with 304; it was answered in full.

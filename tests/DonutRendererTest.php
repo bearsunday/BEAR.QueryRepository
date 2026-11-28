@@ -21,10 +21,9 @@ class DonutRendererTest extends TestCase
     }
 
     /**
-     * A long-running container reuses one DonutRenderer across requests: a second MISS of
-     * the same page must overwrite the hole's view by placeholder, not append behind it -
-     * str_replace() with a duplicate search entry only ever consumes the FIRST occurrence
-     * in the template, so an appended, stale second entry would never apply.
+     * When one DonutRenderer receives the same placeholder twice, the later view must win:
+     * str_replace() with duplicate search entries consumes the first occurrence, whereas
+     * strtr() keyed by placeholder replaces it.
      */
     public function testSetViewOverwritesAnEarlierViewForTheSamePlaceholder(): void
     {

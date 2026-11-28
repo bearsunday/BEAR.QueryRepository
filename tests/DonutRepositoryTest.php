@@ -8,7 +8,12 @@ use BEAR\QueryRepository\Cdn\AkamaiCacheControlHeaderSetter;
 use BEAR\QueryRepository\Cdn\FastlyCacheControlHeaderSetter;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
+use BEAR\Resource\AbstractRequest;
+use BEAR\Resource\InvokerInterface;
+use BEAR\Resource\RenderInterface;
+use BEAR\Resource\Request;
 use BEAR\Resource\ResourceInterface;
+use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
 use FakeVendor\HelloWorld\Resource\Page\Html\ClosureBodyDonut;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
@@ -20,6 +25,7 @@ use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
 use ReflectionClass;
 use RuntimeException;
+use Stringable;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
@@ -29,6 +35,7 @@ use function basename;
 use function class_exists;
 use function dirname;
 use function glob;
+use function is_array;
 use function is_string;
 use function is_subclass_of;
 use function time;
@@ -680,6 +687,97 @@ class DonutRepositoryTest extends TestCase
         $this->assertSame(301, $resource->get('page://self/html/redirect-donut')->code, 'second request');
         $tree = $this->flushAndValidate($logger);
         $this->assertNotNull(self::eventContextJsonOf($tree, 'refresh_donut'), 'the second request is answered by the template refresh');
+    }
+
+    public function testDonutWriteResolvesFreshRendererPerWrite(): void
+    {
+        FakeCountingDonutRenderer::reset();
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
+        $module->override(new TwigModule([dirname(__DIR__) . '/tests/Fake/fake-app/var/templates']));
+        $module->override(new class extends AbstractModule {
+            protected function configure(): void
+            {
+                $this->bind(DonutRendererInterface::class)->to(FakeCountingDonutRenderer::class);
+            }
+        });
+        $injector = new Injector($module, __DIR__ . '/tmp');
+        $resource = $injector->getInstance(ResourceInterface::class);
+        $storage = $injector->getInstance(ResourceStorageInterface::class);
+
+        $first = $resource->get('page://self/html/blog-posting');
+        $this->assertStringContainsString('comment01', (string) $first->view);
+
+        $storage->invalidateTags([
+            (new UriTag(new CacheIdentityFactory(new GlobalServerContext())))(new Uri('page://self/html/blog-posting')),
+        ]);
+        $second = $resource->get('page://self/html/blog-posting');
+        $this->assertStringContainsString('comment01', (string) $second->view);
+
+        $instances = FakeCountingDonutRenderer::instances();
+        $this->assertCount(2, $instances);
+        $this->assertNotSame($instances[0], $instances[1]);
+    }
+
+    public function testRetryAfterRenderFailureResolvesHolePlaceholder(): void
+    {
+        $injector = $this->getInjector();
+        $donutRepository = $injector->getInstance(DonutRepositoryInterface::class);
+        $attempts = 0;
+        $invoker = new class ($attempts) implements InvokerInterface {
+            public function __construct(private int &$attempts)
+            {
+            }
+
+            #[Override]
+            public function invoke(AbstractRequest $request): ResourceObject
+            {
+                $this->attempts++;
+                if ($this->attempts === 1) {
+                    throw new RuntimeException('hole failed once');
+                }
+
+                $ro = $request->resourceObject;
+                $ro->body = ['status' => 'healthy'];
+                $ro->view = 'healthy';
+
+                return $ro;
+            }
+        };
+        $holeRo = new class extends ResourceObject {
+        };
+        $holeRo->uri = new Uri('app://self/flaky-hole');
+
+        $holeRequest = new Request($invoker, $holeRo);
+        $page = new class extends ResourceObject {
+        };
+        $page->uri = new Uri('page://self/retry-donut');
+        $page->body = ['hole' => $holeRequest];
+        $page->setRenderer(new class implements RenderInterface {
+            #[Override]
+            public function render(ResourceObject $ro): string
+            {
+                assert(is_array($ro->body));
+                /** @var Stringable $hole */
+                $hole = $ro->body['hole'];
+                $ro->view = 'page:' . (string) $hole;
+
+                return $ro->view;
+            }
+        });
+
+        $threw = false;
+        try {
+            $donutRepository->putDonut($page, null);
+        } catch (RuntimeException) {
+            $threw = true;
+        }
+
+        $this->assertTrue($threw, 'first write fails while rendering the hole');
+        $this->assertSame($holeRequest, $page->body['hole'], 'failed render restores the original embedded request');
+
+        $retried = $donutRepository->putDonut($page, null);
+        $this->assertSame('page:healthy', $retried->view);
+        $this->assertStringNotContainsString('[le2:', (string) $retried->view);
     }
 
     public function testEveryBuiltInCdnHeaderIsInTheRecordedSet(): void

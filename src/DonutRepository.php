@@ -19,6 +19,8 @@ use BEAR\Resource\ResourceInterface;
 use BEAR\Resource\ResourceObject;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Override;
+use Ray\Di\Di\Set;
+use Ray\Di\ProviderInterface;
 use Throwable;
 
 use function explode;
@@ -27,7 +29,11 @@ use function max;
 /** @internal */
 final readonly class DonutRepository implements DonutRepositoryInterface
 {
-    /** @SuppressWarnings("PHPMD.ExcessiveParameterList") */
+    /**
+     * @param ProviderInterface<DonutRendererInterface> $rendererProvider
+     *
+     * @SuppressWarnings("PHPMD.ExcessiveParameterList")
+     */
     public function __construct(
         private QueryRepositoryInterface $queryRepository,
         private HeaderSetter $headerSetter,
@@ -35,7 +41,8 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         private ResourceInterface $resource,
         #[CacheLog]
         private SemanticLoggerInterface $logger,
-        private DonutRendererInterface $renderer,
+        #[Set(DonutRendererInterface::class)]
+        private ProviderInterface $rendererProvider,
         private DeclaredCacheControl $declaredCacheControl,
         private ReplacedEntry $replacedEntry,
         private CacheTags $cacheTags,
@@ -115,8 +122,7 @@ final readonly class DonutRepository implements DonutRepositoryInterface
         $openId = $this->logger->open(new ManualStoreContext((string) $ro->uri));
         $stored = false;
         try {
-            $this->write($ro, $isPage, $ttl, $sMaxAge);
-            $stored = true;
+            $stored = $this->write($ro, $isPage, $ttl, $sMaxAge);
 
             return $ro;
         } finally {
@@ -130,14 +136,16 @@ final readonly class DonutRepository implements DonutRepositoryInterface
      * The template is tagged with its own URI tag (so `purge($uri)` reaches it, #185) and the material children's tags
      * ({@see CacheDependencyCollector::materials()}). Holes are left out: their write drops only the view and the page is recomposed.
      */
-    private function write(ResourceObject $ro, bool $isPage, int|null $ttl, int|null $sMaxAge): void
+    private function write(ResourceObject $ro, bool $isPage, int|null $ttl, int|null $sMaxAge): bool
     {
         $keys = $this->dependencyCollector->begin($this->cacheTags->own($ro));
         $this->dependencyCollector->materials($ro, $keys);
         $this->logger->event(new PutDonutContext((string) $ro->uri, $ttl, $sMaxAge));
         $templateTags = $this->cacheTags->tags($ro)->toArray();
-        $donut = ResourceDonut::create($ro, $this->renderer, $keys, $sMaxAge, $isPage)->withStorageState($ttl, $templateTags);
-        $donut->render($ro, $this->renderer);
+        // A per-write renderer from the provider isolates hole views across requests and concurrent coroutines
+        $renderer = $this->rendererProvider->get();
+        $donut = ResourceDonut::create($ro, $renderer, $keys, $sMaxAge, $isPage)->withStorageState($ttl, $templateTags);
+        $donut->render($ro, $renderer);
         // Checked on the rendered response before the write adds its own headers
         $storability = $this->declaredCacheControl->storability($ro);
         $keys->addTo($ro);
@@ -154,16 +162,19 @@ final readonly class DonutRepository implements DonutRepositoryInterface
 
         $this->logCdnHeaders($ro);
         if (! $this->replacedEntry->page($ro, $storability)) {
-            return;
+            return false;
         }
 
+        $viewSaved = true;
         if ($viewTags !== null) {
-            $this->resourceStorage->saveDonutView($ro, $sMaxAge, $viewTags->toArray());
+            $viewSaved = $this->resourceStorage->saveDonutView($ro, $sMaxAge, $viewTags->toArray());
             // The content state lets a later refresh keep Last-Modified when the recomposed content is unchanged
             $donut = $donut->withContentState($ro);
         }
 
-        $this->resourceStorage->saveDonut($ro->uri, $donut, $ttl, $templateTags);
+        $donutSaved = $this->resourceStorage->saveDonut($ro->uri, $donut, $ttl, $templateTags);
+
+        return $viewSaved && $donutSaved;
     }
 
     /**
