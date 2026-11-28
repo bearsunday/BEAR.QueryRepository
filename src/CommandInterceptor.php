@@ -14,14 +14,11 @@ use BEAR\Resource\FactoryInterface;
 use BEAR\Resource\InvokerInterface;
 use BEAR\Resource\Request;
 use BEAR\Resource\ResourceObject;
-use BEAR\Resource\Uri;
 use Override;
 use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
 use ReflectionClass;
 
-use function array_column;
-use function array_merge;
 use function method_exists;
 
 /**
@@ -74,27 +71,17 @@ final readonly class CommandInterceptor implements MethodInterceptor
     {
         $stored = $this->isStored($invocation);
         $getQuery = $sent === null ? null : $this->getQuery($invocation, $sent, $stored);
-        $declared = $this->command->declared($invocation, $ro);
+        $targets = $this->command->declared($invocation, $ro);
         $own = $sent === null || $getQuery === null ? [] : $this->commandQuery->ownUris($sent, $getQuery);
-        $failure = $this->purge([...$own, ...array_merge(...array_column($declared, 0))]);
+        $failure = $this->purge([...$own, ...$targets->purge]);
         if ($stored && $sent !== null && $getQuery !== null) {
             $this->rebuild($invocation, $sent, $getQuery);
         }
 
-        $this->refreshDeclared($declared);
+        $this->command->refresh($targets->refresh);
 
         if ($failure !== null) {
             throw $failure;
-        }
-    }
-
-    /** @param list<array{list<Uri>, bool}> $declared each declaration's URIs, and whether it is a #[Refresh] */
-    private function refreshDeclared(array $declared): void
-    {
-        foreach ($declared as [$named, $refresh]) {
-            if ($refresh) {
-                $this->command->refresh($named);
-            }
         }
     }
 

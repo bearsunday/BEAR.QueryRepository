@@ -23,12 +23,12 @@ use Symfony\Component\Cache\Adapter\RedisAdapter;
 final readonly class RedisDsnProvider implements ProviderInterface
 {
     /**
-     * @param string                                                   $dns     Redis DSN
+     * @param string                                                   $dsn     Redis DSN
      * @param array<string, bool|int|string|array<string, mixed>|null> $options Redis DSN Options
      */
     public function __construct(
         #[RedisDsn]
-        private string $dns,
+        private string $dsn,
         #[RedisDsnOptions]
         private array $options,
     ) {
@@ -40,7 +40,7 @@ final readonly class RedisDsnProvider implements ProviderInterface
         // Connect on first use: the pool is built at boot, where a compile has no store to reach.
         // A `lazy` in the options or the DSN query still wins.
         /** @var Redis|RedisArray|RedisCluster|ClientInterface|Relay|RelayCluster $connection */
-        $connection = RedisAdapter::createConnection($this->dns, $this->options + ['lazy' => true]);
+        $connection = RedisAdapter::createConnection($this->dsn, $this->options + ['lazy' => true]);
 
         return $connection;
     }

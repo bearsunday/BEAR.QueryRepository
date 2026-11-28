@@ -15,13 +15,10 @@ use Ray\Aop\MethodInvocation;
 
 use function array_fill_keys;
 use function array_key_exists;
-use function explode;
 use function is_callable;
 use function parse_str;
 use function parse_url;
 use function preg_match;
-use function preg_match_all;
-use function preg_replace;
 use function sprintf;
 use function strrchr;
 use function substr;
@@ -43,6 +40,7 @@ final class RefreshTemplateValidator
         private readonly ResourceInterface $resource,
         private readonly NamedParamMetasInterface $namedParamMetas,
         private readonly CacheIdentityFactory $identityFactory,
+        private readonly UriTemplates $uriTemplates,
     ) {
     }
 
@@ -76,7 +74,7 @@ final class RefreshTemplateValidator
             return;
         }
 
-        $uri = uri_template($template, array_fill_keys($this->variableNames($template), '0'));
+        $uri = uri_template($template, array_fill_keys($this->uriTemplates->variables($template), '0'));
         try {
             $destination = $this->resource->newInstance($uri);
         } catch (BadRequestException) {
@@ -106,19 +104,5 @@ final class RefreshTemplateValidator
         $attribute = substr((string) strrchr($annotation::class, '\\'), 1);
 
         throw new TemplateLacksRequiredParameter($methodName, sprintf("#[%s(uri: '%s')]", $attribute, $template), $missing);
-    }
-
-    /** @return list<string> */
-    private function variableNames(string $template): array
-    {
-        preg_match_all('/\{[+#.\/;?&]?([^}]+)\}/', $template, $matches);
-        $names = [];
-        foreach ($matches[1] as $varList) {
-            foreach (explode(',', $varList) as $var) {
-                $names[] = (string) preg_replace('/(:\d+|\*)$/', '', $var);
-            }
-        }
-
-        return $names;
     }
 }

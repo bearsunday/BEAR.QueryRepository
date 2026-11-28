@@ -20,6 +20,7 @@ final readonly class CacheDependencyCollector
         private CacheDependencyInterface $cacheDependency,
         private CacheTags $cacheTags,
         private CacheIdentityFactory $identityFactory,
+        private ResourceBodyEvaluator $bodyEvaluator,
         #[CacheLog]
         private SemanticLoggerInterface $logger,
     ) {
@@ -28,7 +29,7 @@ final readonly class CacheDependencyCollector
     /** @param TagSet $keys the keys the response has before anything is collected */
     public function begin(TagSet $keys): Dependencies
     {
-        return new Dependencies($keys, $this->dependsOnTags, $this->resourceParamSources, $this->cacheTags, $this->identityFactory);
+        return new Dependencies($keys, $this->dependsOnTags, $this->resourceParamSources, $this->cacheTags, $this->identityFactory, $this->bodyEvaluator);
     }
 
     /**
@@ -40,7 +41,7 @@ final readonly class CacheDependencyCollector
     {
         $dependencies = $this->begin(new TagSet());
         $this->declared($ro);
-        foreach ($this->dependsOnTags->requests($ro) as $request) {
+        foreach ($this->bodyEvaluator->requests($ro) as $request) {
             $this->materialize($request);
             $child = $request->resourceObject;
             $this->depends($ro, $child, $dependencies->read($child));
@@ -51,7 +52,7 @@ final readonly class CacheDependencyCollector
     public function materials(ResourceObject $ro, Dependencies $dependencies): void
     {
         $this->declared($ro);
-        foreach ($this->dependsOnTags->requests($ro) as $request) {
+        foreach ($this->bodyEvaluator->requests($ro) as $request) {
             $child = $request->resourceObject;
             $this->depends($ro, $child, $dependencies->embedded($child));
         }

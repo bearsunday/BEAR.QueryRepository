@@ -50,9 +50,9 @@ class CacheDependencyCollectorTest extends TestCase
         };
         $parent->uri = new Uri('app://self/parent');
         $parent->body = ['scalar', $child, [$request], $request];
-        $tags = $this->injector->getInstance(DependsOnTags::class);
+        $evaluator = $this->injector->getInstance(ResourceBodyEvaluator::class);
 
-        $this->assertSame([$request], iterator_to_array($tags->requests($parent)));
+        $this->assertSame([$request], iterator_to_array($evaluator->requests($parent)));
         $this->assertSame(0, $invoker->calls);
         $this->injector->getInstance(CacheDependencyCollector::class)->collect($parent);
         $this->assertSame(1, $invoker->calls);

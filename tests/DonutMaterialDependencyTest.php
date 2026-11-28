@@ -424,7 +424,7 @@ class DonutMaterialDependencyTest extends TestCase
         $storage = $injector->getInstance(ResourceStorageInterface::class);
         $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
         $sources = new ResourceParamSources($resource, $storage, $cacheTags, $identityFactory);
-        $dependsOnTags = new DependsOnTags($uriTag, new DependsOnRows(), $identityFactory, $this->injector->getInstance(DependsOnTemplates::class));
+        $dependsOnTags = new DependsOnTags($uriTag, new DependsOnRows(), $identityFactory, $this->injector->getInstance(DependsOnTemplates::class), new UriTemplates());
 
         return [
             $resource,
@@ -449,7 +449,7 @@ class DonutMaterialDependencyTest extends TestCase
                 new DeclaredCacheControl(),
                 new ReplacedEntry($logger, $storage, $uriTag),
                 $cacheTags,
-                new CacheDependencyCollector($dependsOnTags, $sources, new CacheDependency($cacheTags, $logger), $cacheTags, $identityFactory, $logger),
+                new CacheDependencyCollector($dependsOnTags, $sources, new CacheDependency($cacheTags, $logger), $cacheTags, $identityFactory, new ResourceBodyEvaluator(), $logger),
             ),
         ];
     }

@@ -73,17 +73,17 @@ final class ResourceDonut
     }
 
     /** Answers the page again from what was stored. Whatever fails on the way degrades the hit to a fresh run of the page. */
-    public function refresh(ResourceInterface $resource, ResourceObject $ro, Dependencies $etags): ResourceObject
+    public function refresh(ResourceInterface $resource, ResourceObject $ro, Dependencies $dependencies): ResourceObject
     {
         try {
             if ($this->body === null) {
-                $view = $this->compose($resource, $etags);
+                $view = $this->compose($resource, $dependencies);
                 $ro->headers = $this->headers;
                 $ro->view = $view;
             }
 
             if ($this->body !== null) {
-                $this->renderBody($this->body, $resource, $ro, $etags);
+                $this->renderBody($this->body, $resource, $ro, $dependencies);
             }
 
             $ro->code = $this->code;
@@ -91,7 +91,7 @@ final class ResourceDonut
             // $this->headers lacks the group tag; add the stored tags.
             (new TagSet($this->getStorageTags()))->addTo($ro);
 
-            $etags->addTo($ro);
+            $dependencies->addTo($ro);
         } catch (Throwable $e) {
             throw new CacheStoreException(previous: $e);
         }
@@ -100,14 +100,14 @@ final class ResourceDonut
     }
 
     /** The template with the view of each embedded request, read again, in its place */
-    private function compose(ResourceInterface $resource, Dependencies $etags): string|null
+    private function compose(ResourceInterface $resource, Dependencies $dependencies): string|null
     {
-        return preg_replace_callback(self::URI_REGEX, static function (array $matches) use ($resource, $etags): string {
+        return preg_replace_callback(self::URI_REGEX, static function (array $matches) use ($resource, $dependencies): string {
             $reference = rawurldecode($matches[1]);
             // toString(), not (string): the cast turns a render failure into '', which would be served
             $ro = $resource->get($reference);
             $ro->toString();
-            $etags->hole($ro);
+            $dependencies->hole($ro);
 
             return (string) $ro->view;
         }, $this->template);
@@ -118,7 +118,7 @@ final class ResourceDonut
      *
      * @param array<array-key, mixed> $body
      */
-    private function renderBody(array $body, ResourceInterface $resource, ResourceObject $ro, Dependencies $etags): void
+    private function renderBody(array $body, ResourceInterface $resource, ResourceObject $ro, Dependencies $dependencies): void
     {
         $requests = [];
         foreach ($this->embeds as $key => $reference) {
@@ -134,7 +134,7 @@ final class ResourceDonut
         $ro->toString();
         foreach ($requests as $request) {
             // After rendering: what a request passes up from the requests it embeds itself is known once those have run
-            $etags->hole(DonutRequest::resultOf($request));
+            $dependencies->hole(DonutRequest::resultOf($request));
         }
     }
 
@@ -239,13 +239,13 @@ final class ResourceDonut
      * Renders via `toString()`, not `(string) $ro`, which swallows a render failure into
      * an `E_USER_WARNING` and `''` - that would store an empty template for every later visitor.
      */
-    public static function create(ResourceObject $ro, DonutRendererInterface $storage, Dependencies $etags, int|null $sMaxAge, bool $isPage): self
+    public static function create(ResourceObject $ro, DonutRendererInterface $storage, Dependencies $dependencies, int|null $sMaxAge, bool $isPage): self
     {
         // A resource with nothing to return leaves its body null - a 204 typically does, while
         // an #[Embed] would have made it an array - and a null body holds no embedded request
         // to wrap. It is composed as an empty one rather than refused.
         assert(is_iterable($ro->body) || $ro->body === null);
-        $embeds = self::wrapEmbeds($ro, $storage, $etags);
+        $embeds = self::wrapEmbeds($ro, $storage, $dependencies);
         try {
             $donutTemplate = $ro->toString();
         } catch (Throwable $e) {
@@ -256,7 +256,7 @@ final class ResourceDonut
 
         foreach ($embeds as $embed) {
             if ($embed->isEncoded && is_array($ro->body)) {
-                return self::ofBody($ro, $embeds, $etags, $sMaxAge, $isPage);
+                return self::ofBody($ro, $embeds, $dependencies, $sMaxAge, $isPage);
             }
         }
 
@@ -264,7 +264,7 @@ final class ResourceDonut
     }
 
     /** @return array<array-key, DonutRequest> */
-    private static function wrapEmbeds(ResourceObject $ro, DonutRendererInterface $storage, Dependencies $etags): array
+    private static function wrapEmbeds(ResourceObject $ro, DonutRendererInterface $storage, Dependencies $dependencies): array
     {
         if (! is_iterable($ro->body)) {
             return [];
@@ -281,7 +281,7 @@ final class ResourceDonut
             }
 
             if ($maybeRequest instanceof AbstractRequest) {
-                $maybeRequest = $embeds[$key] = new DonutRequest($maybeRequest, $storage, $etags);
+                $maybeRequest = $embeds[$key] = new DonutRequest($maybeRequest, $storage, $dependencies);
             }
         }
 
@@ -306,7 +306,7 @@ final class ResourceDonut
      *
      * @param array<array-key, DonutRequest> $embeds
      */
-    private static function ofBody(ResourceObject $ro, array $embeds, Dependencies $etags, int|null $sMaxAge, bool $isPage): self
+    private static function ofBody(ResourceObject $ro, array $embeds, Dependencies $dependencies, int|null $sMaxAge, bool $isPage): self
     {
         assert(is_array($ro->body));
         $body = $ro->body;
@@ -332,7 +332,7 @@ final class ResourceDonut
         $ro->toString();
         foreach ($embeds as $key => $embed) {
             // After rendering: what a request passes up from the requests it embeds itself is known once those have run
-            $etags->hole($invoked[$key] ?? DonutRequest::resultOf($embed->request));
+            $dependencies->hole($invoked[$key] ?? DonutRequest::resultOf($embed->request));
         }
 
         return new self('', $ro->headers, $sMaxAge, $isPage, code: $ro->code, body: $body, embeds: $references);

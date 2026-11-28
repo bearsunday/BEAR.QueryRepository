@@ -7,6 +7,7 @@ namespace BEAR\QueryRepository;
 use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\RequestInterface;
 use BEAR\Resource\ResourceObject;
+use Generator;
 
 use function assert;
 use function is_array;
@@ -21,6 +22,22 @@ use function is_array;
  */
 final class ResourceBodyEvaluator
 {
+    /**
+     * Enumerate only immediate values of the array-cast body, in order and with duplicates.
+     * Do not execute requests, descend into children, or consume Traversable bodies.
+     *
+     * @return Generator<AbstractRequest>
+     */
+    public function requests(ResourceObject $ro): Generator
+    {
+        /** @var mixed $body */
+        foreach ((array) $ro->body as $body) {
+            if ($body instanceof AbstractRequest) {
+                yield $body;
+            }
+        }
+    }
+
     public function __invoke(mixed $body): mixed
     {
         if (! is_array($body)) {
@@ -73,7 +90,7 @@ final class ResourceBodyEvaluator
     /**
      * Materialize an embedded request as a copy the live response graph cannot mutate
      *
-     * The child was already run before the store (QueryRepository::setCacheDependency()
+     * The child was already run before the store (CacheDependencyCollector::collect()
      * casts it, the renderer reads it), and AbstractRequest memoizes that single
      * execution. Its __invoke() ignores the memo and runs the request again, which for a
      * non-idempotent child would leave a type: "view" entry holding a body and a view

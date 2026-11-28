@@ -38,7 +38,7 @@ class EmbeddedChildMaterializationTest extends TestCase
     /**
      * One cold parent GET runs the embedded child exactly once
      *
-     * The child is materialized by setCacheDependency() and again by the storage,
+     * The child is materialized by CacheDependencyCollector::collect() and again by the storage,
      * and only AbstractRequest's memoized result makes the second pass free.
      */
     public function testColdGetExecutesEmbeddedChildOnce(): void
