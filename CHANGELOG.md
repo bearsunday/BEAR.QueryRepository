@@ -5,13 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
-### Changed
-- **Behaviour change**: `StorageRedisDsnModule` compresses stored values with deflate when `$marshallingOptions` is empty; pass `['enabled' => false]` to store them uncompressed. The package now requires `ext-zlib`.
-- **Behaviour change**: `StorageRedisDsnModule` connects to Redis on first use, so building the application, as a compile does, needs no Redis, and a store that is down is logged as `pool_error` per request instead of failing the boot. Pass `['lazy' => false]` to connect when the pool is built. The package now requires `symfony/cache` 6.4.12 or later: earlier lazy connections fail to load with ext-redis 6.3.
-
-## [Unreleased]
+## [1.21.0] - 2026-11-24
 
 ### Added
 - `#[Link(rel: 'collection', href: ...)]` on a row's `onGet()` names the list it belongs to: a write to the row purges the list's URI and the variants that differ only in default-valued parameters, so the list needs no `#[DependsOn]` for its rows. A path-only href (`/posts`) takes the context scheme (`#[ContextScheme]`).
@@ -35,6 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Behaviour change**: when the GET that rebuilds a stored write's entry makes a write whose query cannot address its own key, a POST logs `cache_error` and answers, and a PUT, PATCH or DELETE throws `UnmatchedQuery` after every purge has run.
 - **Behaviour change**: a write opens one `command` log scope, whose entry carries `method` and `annotations` only; a reader of the log that reads `source` has to drop it.
 - **Behaviour change**: `#[NoHttpCache]` sets `Cache-Control: private, no-store, no-cache, must-revalidate` on a response of any status, so a CDN does not store a redirect or a 404 it answers; it was set on a 200 only. `#[HttpCache]` still sets a 200 only.
+- **Behaviour change**: `StorageRedisDsnModule` compresses stored values with deflate when `$marshallingOptions` is empty; pass `['enabled' => false]` to store them uncompressed. The package now requires `ext-zlib`.
+- **Behaviour change**: `StorageRedisDsnModule` connects to Redis on first use, so building the application, as a compile does, needs no Redis, and a store that is down is logged as `pool_error` per request instead of failing the boot. Pass `['lazy' => false]` to connect when the pool is built. The package now requires `symfony/cache` 6.4.12 or later: earlier lazy connections fail to load with ext-redis 6.3.
 
 ### Removed
 - The deprecated `HttpCacheInject`, `StorageMemcachedEtagModule`, the qualifiers `#[CacheEngine]`, `#[Memcache]` and `#[Redis]`, and the exceptions `RedisConnectionException` and `ResourceStorageUnserializeException`. Use constructor injection and `StorageMemcachedModule`.
