@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use ArrayAccess;
 use BEAR\QueryRepository\Exception\CacheStoreException;
 use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\Request;
@@ -292,12 +293,10 @@ final class ResourceDonut
     /** @param array<array-key, DonutRequest> $embeds */
     private static function restoreEmbeds(ResourceObject $ro, array $embeds): void
     {
-        if (! is_array($ro->body)) {
-            return;
-        }
-
-        foreach ($embeds as $key => $embed) {
-            $ro->body[$key] = $embed->request;
+        if (is_array($ro->body) || $ro->body instanceof ArrayAccess) {
+            foreach ($embeds as $key => $embed) {
+                $ro->body[$key] = $embed->request;
+            }
         }
     }
 

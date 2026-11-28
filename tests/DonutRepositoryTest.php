@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use ArrayObject;
 use BEAR\QueryRepository\Cdn\AkamaiCacheControlHeaderSetter;
 use BEAR\QueryRepository\Cdn\FastlyCacheControlHeaderSetter;
 use BEAR\RepositoryModule\Annotation\CacheLog;
@@ -778,6 +779,68 @@ class DonutRepositoryTest extends TestCase
         $retried = $donutRepository->putDonut($page, null);
         $this->assertSame('page:healthy', $retried->view);
         $this->assertStringNotContainsString('[le2:', (string) $retried->view);
+    }
+
+    public function testRetryAfterRenderFailureRestoresArrayObjectBody(): void
+    {
+        $injector = $this->getInjector();
+        $donutRepository = $injector->getInstance(DonutRepositoryInterface::class);
+        $attempts = 0;
+        $invoker = new class ($attempts) implements InvokerInterface {
+            public function __construct(private int &$attempts)
+            {
+            }
+
+            #[Override]
+            public function invoke(AbstractRequest $request): ResourceObject
+            {
+                $this->attempts++;
+                if ($this->attempts === 1) {
+                    throw new RuntimeException('hole failed once');
+                }
+
+                $ro = $request->resourceObject;
+                $ro->body = ['status' => 'healthy'];
+                $ro->view = 'healthy';
+
+                return $ro;
+            }
+        };
+        $holeRo = new class extends ResourceObject {
+        };
+        $holeRo->uri = new Uri('app://self/flaky-hole');
+
+        $holeRequest = new Request($invoker, $holeRo);
+        $body = new ArrayObject(['hole' => $holeRequest]);
+        $page = new class extends ResourceObject {
+        };
+        $page->uri = new Uri('page://self/retry-donut-array-object');
+        $page->body = $body;
+        $page->setRenderer(new class implements RenderInterface {
+            #[Override]
+            public function render(ResourceObject $ro): string
+            {
+                assert($ro->body instanceof ArrayObject);
+                /** @var Stringable $hole */
+                $hole = $ro->body['hole'];
+                $ro->view = 'page:' . (string) $hole;
+
+                return $ro->view;
+            }
+        });
+
+        $threw = false;
+        try {
+            $donutRepository->putDonut($page, null);
+        } catch (RuntimeException) {
+            $threw = true;
+        }
+
+        $this->assertTrue($threw);
+        $this->assertSame($holeRequest, $body['hole'], 'failed render restores the original request in an ArrayObject body');
+
+        $retried = $donutRepository->putDonut($page, null);
+        $this->assertSame('page:healthy', $retried->view);
     }
 
     public function testEveryBuiltInCdnHeaderIsInTheRecordedSet(): void
