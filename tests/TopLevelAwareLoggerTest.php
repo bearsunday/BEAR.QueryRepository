@@ -10,11 +10,15 @@ use BEAR\QueryRepository\Log\Context\ManualPurgeResultContext;
 use BEAR\QueryRepository\Log\Context\ManualStoreContext;
 use BEAR\QueryRepository\Log\Context\ManualStoreResultContext;
 use BEAR\RepositoryModule\Annotation\CacheLog;
+use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\Resource\ResourceInterface;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
+use Symfony\Component\Cache\Adapter\ArrayAdapter;
+use Symfony\Component\Cache\Adapter\TagAwareAdapter;
+use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 
 use function array_filter;
 use function array_values;
@@ -31,6 +35,7 @@ class TopLevelAwareLoggerTest extends TestCase
 {
     private RecordingTopLevelAwareLogger $logger;
     private QueryRepositoryInterface $repository;
+    private DonutRepositoryInterface $donutRepository;
     private ResourceStorageInterface $storage;
     private ResourceInterface $resource;
 
@@ -53,6 +58,7 @@ class TopLevelAwareLoggerTest extends TestCase
         });
         $injector = new Injector($module, __DIR__ . '/tmp');
         $this->repository = $injector->getInstance(QueryRepositoryInterface::class);
+        $this->donutRepository = $injector->getInstance(DonutRepositoryInterface::class);
         $this->storage = $injector->getInstance(ResourceStorageInterface::class);
         $this->resource = $injector->getInstance(ResourceInterface::class);
 
@@ -83,6 +89,73 @@ class TopLevelAwareLoggerTest extends TestCase
         $this->storage->invalidateTags(['user_1']);
         $invalidateOpens = self::ofType($this->logger->opens, ManualInvalidateContext::class);
         $this->assertCount(1, $invalidateOpens);
+    }
+
+    public function testTopLevelDonutStoreReportsFailedWhenUnstorable(): void
+    {
+        $storable = $this->resource->get('app://self/user', ['id' => 1]);
+        $this->donutRepository->putStatic($storable);
+
+        $unstorable = clone $storable;
+        $unstorable->headers[Header::CACHE_CONTROL] = 'private';
+        $this->donutRepository->putStatic($unstorable);
+
+        $storeCloses = self::ofType($this->logger->closes, ManualStoreResultContext::class);
+        $this->assertCount(2, $storeCloses);
+        $this->assertTrue($storeCloses[0]->stored);
+        $this->assertFalse($storeCloses[1]->stored);
+    }
+
+    public function testTopLevelDonutStoreReportsFailedWhenPoolRefusesViewOrTemplate(): void
+    {
+        // Refusing only ro- makes saveDonutView() return false while saveDonut() still runs and succeeds
+        [$viewRefusedLogger, $viewRefusedDonut, $viewRefusedStorage, $viewRefusedResource] = $this->envWithRefusingPool('ro-');
+        $ro = $viewRefusedResource->get('app://self/user', ['id' => 1]);
+        $viewRefusedDonut->putStatic($ro);
+        $viewCloses = self::ofType($viewRefusedLogger->closes, ManualStoreResultContext::class);
+        $this->assertCount(1, $viewCloses);
+        $this->assertFalse($viewCloses[0]->stored);
+        $this->assertNotNull($viewRefusedStorage->getDonut($ro->uri), 'template save still runs when view save is refused');
+
+        // Refusing only donut- makes saveDonut() return false for both putStatic() and putDonut()
+        [$donutRefusedLogger, $donutRefusedDonut, , $donutRefusedResource] = $this->envWithRefusingPool('donut-');
+        $page = $donutRefusedResource->get('app://self/user', ['id' => 1]);
+        $donutRefusedDonut->putStatic($page);
+        $donutRefusedDonut->putDonut(clone $page, null);
+        $donutCloses = self::ofType($donutRefusedLogger->closes, ManualStoreResultContext::class);
+        $this->assertCount(2, $donutCloses);
+        $this->assertFalse($donutCloses[0]->stored, 'putStatic() reports failed when template save is refused');
+        $this->assertFalse($donutCloses[1]->stored, 'putDonut() reports failed when template save is refused');
+    }
+
+    /** @return array{RecordingTopLevelAwareLogger, DonutRepositoryInterface, ResourceStorageInterface, ResourceInterface} */
+    private function envWithRefusingPool(string $refusedKeyPrefix): array
+    {
+        $logger = new RecordingTopLevelAwareLogger();
+        $pool = new FakeRefusingPool(new TagAwareAdapter(new ArrayAdapter()), refusedKeyPrefix: $refusedKeyPrefix);
+        $module = ModuleFactory::getInstance('FakeVendor\HelloWorld');
+        $module->override(new class ($logger, $pool) extends AbstractModule {
+            public function __construct(
+                private readonly RecordingTopLevelAwareLogger $logger,
+                private readonly TagAwareAdapterInterface $pool,
+            ) {
+                parent::__construct();
+            }
+
+            protected function configure(): void
+            {
+                $this->bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)->toInstance($this->logger);
+                $this->bind(TagAwareAdapterInterface::class)->annotatedWith(ResourceObjectPool::class)->toInstance($this->pool);
+            }
+        });
+        $injector = new Injector($module, __DIR__ . '/tmp');
+
+        return [
+            $logger,
+            $injector->getInstance(DonutRepositoryInterface::class),
+            $injector->getInstance(ResourceStorageInterface::class),
+            $injector->getInstance(ResourceInterface::class),
+        ];
     }
 
     /**

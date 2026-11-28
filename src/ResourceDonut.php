@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
+use ArrayAccess;
 use BEAR\QueryRepository\Exception\CacheStoreException;
 use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\Request;
@@ -244,22 +245,15 @@ final class ResourceDonut
         // an #[Embed] would have made it an array - and a null body holds no embedded request
         // to wrap. It is composed as an empty one rather than refused.
         assert(is_iterable($ro->body) || $ro->body === null);
-        $embeds = [];
-        if (is_iterable($ro->body)) {
-            /**
-             * @var array-key $key
-             * @var mixed     $maybeRequest
-             */
-            foreach ($ro->body as $key => &$maybeRequest) {
-                if ($maybeRequest instanceof AbstractRequest) {
-                    $maybeRequest = $embeds[$key] = new DonutRequest($maybeRequest, $storage, $etags);
-                }
-            }
+        $embeds = self::wrapEmbeds($ro, $storage, $etags);
+        try {
+            $donutTemplate = $ro->toString();
+        } catch (Throwable $e) {
+            self::restoreEmbeds($ro, $embeds);
 
-            unset($maybeRequest);
+            throw $e;
         }
 
-        $donutTemplate = $ro->toString();
         foreach ($embeds as $embed) {
             if ($embed->isEncoded && is_array($ro->body)) {
                 return self::ofBody($ro, $embeds, $etags, $sMaxAge, $isPage);
@@ -267,6 +261,43 @@ final class ResourceDonut
         }
 
         return new self($donutTemplate, $ro->headers, $sMaxAge, $isPage, code: $ro->code);
+    }
+
+    /** @return array<array-key, DonutRequest> */
+    private static function wrapEmbeds(ResourceObject $ro, DonutRendererInterface $storage, Dependencies $etags): array
+    {
+        if (! is_iterable($ro->body)) {
+            return [];
+        }
+
+        $embeds = [];
+        /**
+         * @var array-key $key
+         * @var mixed     $maybeRequest
+         */
+        foreach ($ro->body as $key => &$maybeRequest) {
+            if ($maybeRequest instanceof DonutRequest) {
+                $maybeRequest = $maybeRequest->request;
+            }
+
+            if ($maybeRequest instanceof AbstractRequest) {
+                $maybeRequest = $embeds[$key] = new DonutRequest($maybeRequest, $storage, $etags);
+            }
+        }
+
+        unset($maybeRequest);
+
+        return $embeds;
+    }
+
+    /** @param array<array-key, DonutRequest> $embeds */
+    private static function restoreEmbeds(ResourceObject $ro, array $embeds): void
+    {
+        if (is_array($ro->body) || $ro->body instanceof ArrayAccess) {
+            foreach ($embeds as $key => $embed) {
+                $ro->body[$key] = $embed->request;
+            }
+        }
     }
 
     /**

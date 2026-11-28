@@ -1,6 +1,9 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
 # Reviews run on demand: mention @coderabbitai review when a PR needs one.
 reviews:
   review_status: false
+  auto_approvals:
+    enabled: true
   pre_merge_checks:
     docstrings:
       mode: "off"

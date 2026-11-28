@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace BEAR\QueryRepository;
 
-use BEAR\RepositoryModule\Annotation\AbstractCacheControl;
-use BEAR\RepositoryModule\Annotation\HttpCache;
 use BEAR\RepositoryModule\Annotation\NoHttpCache;
 use BEAR\Resource\ResourceObject;
 use Override;
@@ -25,24 +23,24 @@ use function assert;
  * @see https://bearsunday.github.io/manuals/1.0/en/cache.html
  * @internal
  */
-final class HttpCacheInterceptor implements MethodInterceptor
+final readonly class HttpCacheInterceptor implements MethodInterceptor
 {
+    public function __construct(
+        private DeclaredCacheControl $declaredCacheControl,
+    ) {
+    }
+
     /**
      * {@inheritDoc}
      */
     #[Override]
     public function invoke(MethodInvocation $invocation)
     {
-        $class = $invocation->getMethod()->getDeclaringClass();
-        $attributes = $class->getAttributes(HttpCache::class);
-        if (empty($attributes)) {
-            $attributes = $class->getAttributes(NoHttpCache::class);
-        }
-
-        $cacheControl = isset($attributes[0]) ? $attributes[0]->newInstance() : null;
+        $target = $invocation->getThis();
+        $cacheControl = $target instanceof ResourceObject ? $this->declaredCacheControl->attribute($target) : null;
         $ro = $invocation->proceed();
         assert($ro instanceof ResourceObject);
-        if ($cacheControl instanceof AbstractCacheControl && ($ro->code === 200 || $cacheControl instanceof NoHttpCache)) {
+        if ($cacheControl !== null && ($ro->code === 200 || $cacheControl instanceof NoHttpCache)) {
             $ro->headers[Header::findKey($ro->headers, Header::CACHE_CONTROL) ?? Header::CACHE_CONTROL] = (string) $cacheControl;
         }
 

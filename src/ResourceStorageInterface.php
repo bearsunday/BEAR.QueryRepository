@@ -47,7 +47,7 @@ interface ResourceStorageInterface
      *
      * @param list<string> $headerKeys
      */
-    public function saveDonut(AbstractUri $uri, ResourceDonut $donut, int|null $ttl, array $headerKeys): void;
+    public function saveDonut(AbstractUri $uri, ResourceDonut $donut, int|null $ttl, array $headerKeys): bool;
 
     /**
      * Save donut-cache state

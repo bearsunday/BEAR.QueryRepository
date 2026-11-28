@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BEAR\QueryRepository;
 
 use BEAR\QueryRepository\Exception\ExpireAtKeyNotExists;
+use BEAR\Resource\Module\ResourceModule;
 use BEAR\Resource\ResourceInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -157,6 +158,23 @@ class GetInterceptorTest extends TestCase
     {
         $ro = $this->resource->get('app://self/http-cache-control-lower-case');
         $this->assertSame(['cache-control' => 'max-age=60'], array_intersect_ukey($ro->headers, ['cache-control' => true], strcasecmp(...)));
+    }
+
+    public function testHttpCacheAppliesWhenOnGetIsInherited(): void
+    {
+        $ro = $this->resource->get('app://self/inherited-http-cache-child');
+        $this->assertSame('max-age=60', $ro->headers['Cache-Control']);
+    }
+
+    public function testCacheableModuleStandaloneAppliesInheritedHttpCache(): void
+    {
+        $resource = (new Injector(new CacheableModule(new ResourceModule('FakeVendor\HelloWorld')), __DIR__ . '/tmp'))->getInstance(ResourceInterface::class);
+
+        $httpCache = $resource->get('app://self/inherited-http-cache-child');
+        $this->assertSame('max-age=60', $httpCache->headers['Cache-Control']);
+
+        $noHttpCache = $resource->get('app://self/no-http-cache-control', ['code' => 404]);
+        $this->assertSame('private, no-store, no-cache, must-revalidate', $noHttpCache->headers['Cache-Control']);
     }
 
     public function testHttpCacheEtag(): void
