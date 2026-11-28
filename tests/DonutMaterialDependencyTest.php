@@ -449,7 +449,7 @@ class DonutMaterialDependencyTest extends TestCase
                 new DeclaredCacheControl(),
                 new ReplacedEntry($logger, $storage, $uriTag),
                 $cacheTags,
-                new CacheDependencyCollector($dependsOnTags, $sources, new CacheDependency($cacheTags, $logger), $cacheTags, $identityFactory, new ResourceBodyEvaluator(), $logger),
+                new CacheDependencyCollector($dependsOnTags, $sources, new CacheDependency($cacheTags, $logger), $cacheTags, $identityFactory, $logger),
             ),
         ];
     }

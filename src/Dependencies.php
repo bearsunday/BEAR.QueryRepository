@@ -25,7 +25,6 @@ final class Dependencies
         private readonly ResourceParamSources $resourceParamSources,
         private readonly CacheTags $cacheTags,
         private readonly CacheIdentityFactory $identityFactory,
-        private readonly ResourceBodyEvaluator $bodyEvaluator,
     ) {
     }
 
@@ -110,7 +109,7 @@ final class Dependencies
     private function passedUp(ResourceObject $ro, Closure $embedded): TagSet
     {
         $tags = new TagSet();
-        foreach ($this->bodyEvaluator->requests($ro) as $request) {
+        foreach (EmbeddedRequests::of($ro) as $request) {
             if ($embedded($request->resourceObject)) {
                 $tags = $tags->merge($this->cacheTags->tags($request->resourceObject));
             }

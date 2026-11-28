@@ -11,20 +11,11 @@ use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
 use Override;
 use PHPUnit\Framework\TestCase;
-use Ray\Di\Injector;
-use Ray\Di\InjectorInterface;
 
 use function iterator_to_array;
 
-class ResourceBodyEvaluatorTest extends TestCase
+class EmbeddedRequestsTest extends TestCase
 {
-    private InjectorInterface $injector;
-
-    protected function setUp(): void
-    {
-        $this->injector = new Injector(ModuleFactory::getInstance('FakeVendor\HelloWorld'), __DIR__ . '/tmp');
-    }
-
     public function testRequestsPreserveOrderAndDuplicatesWithoutConsumingTraversableBodies(): void
     {
         $child = new class extends ResourceObject {
@@ -44,12 +35,11 @@ class ResourceBodyEvaluatorTest extends TestCase
         $first = new Request($invoker, $child);
         $second = new Request($invoker, clone $child);
         $parent = clone $child;
-        $evaluator = $this->injector->getInstance(ResourceBodyEvaluator::class);
         $child->body = [$second];
         $parent->body = (object) ['second' => $second, 'nested' => [$first], 'child' => $child, 'first' => $first, 'again' => $second];
 
         // INV-08: enumeration preserves order and multiplicity without running a child.
-        $this->assertSame([$second, $first, $second], iterator_to_array($evaluator->requests($parent)));
+        $this->assertSame([$second, $first, $second], iterator_to_array(EmbeddedRequests::of($parent)));
         $this->assertSame(0, $invoker->calls);
 
         $parent->body = (static function () use ($first, $invoker) {
@@ -57,7 +47,7 @@ class ResourceBodyEvaluatorTest extends TestCase
             yield $first;
         })();
 
-        $this->assertSame([], iterator_to_array($evaluator->requests($parent)));
+        $this->assertSame([], iterator_to_array(EmbeddedRequests::of($parent)));
         $this->assertSame(0, $invoker->calls);
     }
 }

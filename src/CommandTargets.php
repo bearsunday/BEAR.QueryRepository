@@ -14,7 +14,7 @@ use BEAR\Resource\Uri;
 final readonly class CommandTargets
 {
     /**
-     * @param list<Uri> $purge   all declared URIs to purge, in declaration order
+     * @param list<Uri> $purge   the #[Purge]/#[Refresh] URIs in declaration order, then the #[Link(rel: 'collection')] URIs
      * @param list<Uri> $refresh the #[Refresh] URIs to read again after every purge has run
      */
     public function __construct(
